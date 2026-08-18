@@ -117,8 +117,9 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
             const accent = DOS_TINT[t.type === "studio" ? "studio" : "trainer"];
             const sub = [t.area, t.city].filter(Boolean).join(", ") || "—";
             return (
-              <div
+              <Link
                 key={t.id}
+                href={`/business/${t.id}/classes`}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -129,6 +130,8 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
                   borderRadius: 16,
                   padding: "12px 13px",
                   marginBottom: 9,
+                  color: INK,
+                  textDecoration: "none",
                 }}
               >
                 <span
@@ -153,8 +156,8 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
                     {t.type === "studio" ? "Studio" : "Trainer business"} · {sub}
                   </div>
                 </div>
-                <span style={{ fontSize: 10.5, fontWeight: 800, color: accent, flexShrink: 0 }}>Manage ›</span>
-              </div>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: accent, flexShrink: 0 }}>Classes ›</span>
+              </Link>
             );
           })
         ) : (

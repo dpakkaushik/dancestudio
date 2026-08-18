@@ -34,8 +34,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 0 | Foundations: repo restructure, Next.js scaffold, CI | ✅ done (commit 817d01a) |
 | 1 | Auth + identity (mobile-OTP login) | ✅ done (18 Aug 2026) |
 | 2 | Tenant onboarding | ✅ done (18 Aug 2026) |
-| 3 | Classes | ⬅ next |
-| 4 | Enrollment | |
+| 3 | Classes | ✅ done (19 Aug 2026) |
+| 4 | Enrollment | ⬅ next |
 | 5 | Discovery ("near me") | |
 | 6 | Hardening & pilot | |
 
@@ -77,11 +77,36 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 - Verified: `scripts/rls-proof-tenants.ps1` — A can't see, rename, or self-invite
   into B's studio; anonymous sees 0 rows. Build/lint/typecheck green.
 
-### Step 3 — Classes
-- Migrations: `classes`, `class_sessions` (tenant_id, style, schedule, capacity,
-  price placeholder) + RLS: tenant writes own; public reads listed ones
-- Repository + server actions: create / edit / list classes
-- UI: studio/trainer class management + learner class listing, lifted from prototype
+### Step 3 — Classes ✅ (done 19 Aug 2026)
+- Migration `20260819080000_create_classes.sql`: `classes` (tenant_id, title, style,
+  level, room, price_inr placeholder, capacity, status draft|published|completed,
+  audit + soft delete) + `class_sessions` (class_id, tenant_id denormalised,
+  starts_at/ends_at) + RLS: members read all their tenant's rows; owners/trainers
+  update; public (anon + signed-in) reads published classes of LISTED tenants only;
+  creation ONLY via `create_class_with_session` security-definer RPC (class + first
+  session atomic, membership checked). Also added "anyone reads listed tenants"
+  policy on `tenants` (pulled forward from Step 5 so the learner listing can name
+  the studio).
+- Migration `20260819110000_members_read_deleted_classes.sql`: member SELECT
+  policies lost their `deleted_at is null` filter — PostgREST updates run with an
+  internal RETURNING that applies SELECT policies to the NEW row, so soft delete
+  was refused (403) while the deleter couldn't select the deleted row. Queries
+  filter live rows; public policies stay strict. **Lesson for future tables: a
+  soft-deleting role must be able to SELECT the row it just deleted.**
+- Style registry lifted to `lib/constants/styles.ts` (66 styles + colours,
+  prototype DOS_STYLE_REG line 1630); repository `repositories/classes.ts`;
+  Zod-validated actions create/update/publish/delete in
+  `features/classes/server-actions/classes.ts` (times stored as IST, +05:30).
+- UI lifted from prototype: Classes register S_classesmod (DanceOSApp.jsx:14970,
+  tabs + confirm sheets) at `/business/[tenantId]/classes`, class form S_classform
+  essentials (15108 — style/level chips, name, date+times, room, price, capacity;
+  room pickers/artists arrive with ERP) at `.../classes/new` and `.../[classId]/edit`,
+  learner "Upcoming classes" (4771) at `/classes` with the BookingCard sleeve tile
+  (7969) as `ClassTile`. Business-hub rows now open the register.
+- Verified: `scripts/rls-proof-classes.ps1` — 8 checks (draft hidden from outsiders,
+  cross-tenant update/create blocked, published visible to stranger + anonymous with
+  studio name + session, anonymous write blocked, soft delete hides). Build/lint/
+  typecheck green.
 
 ### Step 4 — Enrollment
 - Migration: `enrollments` (session ↔ learner, status incl. waitlist) + RLS

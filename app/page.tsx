@@ -94,6 +94,27 @@ export default async function HomePage() {
           the app arrive step by step from the prototype.
         </div>
         <Link
+          href="/classes"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "rgba(255,255,255,.07)",
+            border: `1px solid ${LINE}`,
+            borderLeft: "4px solid #5AC8FA",
+            borderRadius: 16,
+            padding: "14px 15px",
+            marginBottom: 10,
+            color: INK,
+            textDecoration: "none",
+            fontSize: 13.5,
+            fontWeight: 900,
+          }}
+        >
+          Upcoming classes — book a session
+          <span style={{ color: "#5AC8FA", fontWeight: 800, fontSize: 12 }}>Open ›</span>
+        </Link>
+        <Link
           href="/business"
           style={{
             display: "flex",
