@@ -86,6 +86,22 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 Razorpay payments + attendance + studio CRM → community/feed/reviews →
 events/video → search (Typesense) + analytics.
 
+### Execution order — every step follows this exact sequence, no exceptions
+
+1. **Connect** — Supabase project exists and keys are wired in `.env.local`
+   (done once in Step 1, then verified at the start of each later step)
+2. **Schema** — new migration file in `supabase/migrations/`: tables + RLS policy
+   together (Rule 3). Apply and confirm it runs cleanly.
+3. **Backend** — repository module + server actions with Zod validation and
+   server-side authorization. No UI yet.
+4. **UI** — the screen lifted from `prototype/DanceOSApp.jsx` (Rule 2), wired to
+   the server actions from step 3.
+5. **Verify** — run the step's "done when" test + the Definition of Done checklist,
+   demo in the browser. Only then is the step complete.
+
+Never start a later stage before the earlier one is finished (no UI before schema
+and backend exist). Never start the next step before the current one passes step 5.
+
 **One step per session.** Each slice is vertical: migration → RLS → repository →
 server action → UI, finished and verified before the next begins.
 
