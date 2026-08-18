@@ -52,8 +52,11 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   (signed-in read live rows; insert/update own row only) — applied to the live DB
 - **Auth is mobile-OTP** (login = phone number, like the prototype's S_auth flow —
   NOT email). Dev uses Supabase test numbers 99999 99999 / 88888 88888, OTP 123456,
-  no SMS sent. Before pilot: connect an SMS provider (MSG91/Twilio + India DLT).
-  `mailer_autoconfirm` is on (dev); revisit before pilot.
+  nothing is sent. **Decided (18 Aug 2026): production OTP is WhatsApp-first**
+  (Supabase channel "whatsapp" via Twilio Verify — needs Meta business verification
+  + an approved authentication template) **with SMS fallback** (needs India DLT
+  registration). Wired at Step 6; code change is `channel: "whatsapp"` in
+  signInWithOtp. `mailer_autoconfirm` is on (dev); revisit before pilot.
 - UI lifted from prototype S_auth (DanceOSApp.jsx:3616-3946): `/login` welcome,
   `/login/phone` sign-in, `/login/verify` OTP boxes, `/onboarding` name+role+city,
   `/` identity header (prototype Home sleeve treatment). Session refresh in `proxy.ts`.
@@ -93,6 +96,9 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 ### Step 6 — Hardening & pilot
 - `supabase/seed.sql`: 1 studio, 1 trainer, a few learners
 - Playwright e2e: signup → onboard studio → create class → enroll (happy path)
+- Real OTP delivery: **WhatsApp-first** (Twilio Verify WhatsApp channel; Meta
+  business verification + authentication template) with **SMS fallback** (DLT
+  registration); turn off `mailer_autoconfirm`
 - Deploy to Vercel; invite 1–2 real studios as pilots
 
 ### Later phases (not in this plan's scope)
