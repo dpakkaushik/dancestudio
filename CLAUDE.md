@@ -23,19 +23,68 @@ events, discovery. Two things live here:
   `__DOSLINKS`, …). These storage shapes are the source material for the real
   database schema. UI-only keys (`__DOSTHEME`, `__DOSNAV`, `__DOSTAB`) stay client-side.
 
-## Build plan (approved 18 Aug 2026)
+## Build plan (approved 18 Aug 2026) — the single source of truth
+
+Goal: turn the prototype into a scalable multi-tenant app serving many studios
+pan-India. The prototype's `__DOS*` localStorage shapes are the source material
+for the database schema. **The UI is not redesigned** — see Rule 2.
 
 | Step | Slice | Status |
 |------|-------|--------|
-| 0 | Foundations: repo restructure, Next.js scaffold, CI | in progress |
-| 1 | Auth + identity: `profiles` + RLS, Supabase Auth, login/roles | next |
-| 2 | Tenant onboarding: `tenants`, `tenant_members` + RLS | |
-| 3 | Classes: `classes`, `class_sessions` + RLS, manage + list | |
-| 4 | Enrollment: `enrollments` + RLS, enroll/cancel/waitlist | |
-| 5 | Discovery: PostGIS "near me" | |
-| 6 | Hardening: seed data, e2e happy path, deploy, pilot studios | |
+| 0 | Foundations: repo restructure, Next.js scaffold, CI | ✅ done (commit 817d01a) |
+| 1 | Auth + identity | ⬅ next |
+| 2 | Tenant onboarding | |
+| 3 | Classes | |
+| 4 | Enrollment | |
+| 5 | Discovery ("near me") | |
+| 6 | Hardening & pilot | |
 
-Later: Razorpay payments → attendance/CRM → community → events/video → search.
+### Step 0 — Foundations ✅
+Prototype moved to `prototype/` (byte-identical); Next.js 16 + TypeScript +
+Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
+(lint + typecheck + build on every push). Verified: `pnpm typecheck`, `pnpm lint`,
+`pnpm build` all green.
+
+### Step 1 — Auth + Identity (first vertical slice)
+- Create the Supabase project; wire `.env.local` (`.env.local.example` documents keys)
+- Migration: `profiles` table (UUID PK, audit columns, soft delete) + RLS policies
+- Supabase Auth: email OTP + Google sign-in; session middleware; auth helpers in `/lib`
+- UI: sign-up/login + role selection (learner / trainer / studio owner), lifted
+  from the prototype's onboarding screens (Rule 2)
+- **Done when:** two different browsers can hold two different logged-in users
+
+### Step 2 — Tenant onboarding
+- Migrations: `tenants` (studio | trainer_business, name, location lat/lng,
+  visibility), `tenant_members` (user ↔ tenant, role) + RLS: members see only
+  their own tenant
+- Server actions: create studio / trainer business (Zod-validated)
+- UI: minimal onboarding flow (name, type, city/location) lifted from prototype
+- **Done when:** two studios exist and each owner sees only their own
+
+### Step 3 — Classes
+- Migrations: `classes`, `class_sessions` (tenant_id, style, schedule, capacity,
+  price placeholder) + RLS: tenant writes own; public reads listed ones
+- Repository + server actions: create / edit / list classes
+- UI: studio/trainer class management + learner class listing, lifted from prototype
+
+### Step 4 — Enrollment
+- Migration: `enrollments` (session ↔ learner, status incl. waitlist) + RLS
+- Server actions: enroll, cancel, capacity check (payments stubbed until Phase 2)
+- UI: enroll button, learner's "my classes", studio roster — lifted from prototype
+
+### Step 5 — Discovery ("near me")
+- Enable PostGIS; geography column + spatial index on `tenants`
+- Server action: studios/trainers within a radius, respecting visibility settings
+- UI: discovery list (map view later — Google Maps key needed then)
+
+### Step 6 — Hardening & pilot
+- `supabase/seed.sql`: 1 studio, 1 trainer, a few learners
+- Playwright e2e: signup → onboard studio → create class → enroll (happy path)
+- Deploy to Vercel; invite 1–2 real studios as pilots
+
+### Later phases (not in this plan's scope)
+Razorpay payments + attendance + studio CRM → community/feed/reviews →
+events/video → search (Typesense) + analytics.
 
 **One step per session.** Each slice is vertical: migration → RLS → repository →
 server action → UI, finished and verified before the next begins.
@@ -50,16 +99,20 @@ server action → UI, finished and verified before the next begins.
 ## Rules
 
 1. **Never edit anything in `prototype/`** — it is the reference.
-2. **Every table ships with**: UUID PK, `tenant_id` (if tenant-scoped), audit columns
+2. **Keep the prototype's UI — do not redesign it.** Every screen's JSX (markup,
+   styles, interactions) is lifted directly from `prototype/DanceOSApp.jsx` into the
+   real app. Only the data wiring changes: `dosStorage` reads/writes are replaced
+   with server actions. The built screen must look identical to the prototype screen.
+3. **Every table ships with**: UUID PK, `tenant_id` (if tenant-scoped), audit columns
    (`created_at`, `updated_at`, `created_by`, `updated_by`), soft delete (`deleted_at`),
    and its RLS policy — all in the same migration.
-3. **Never modify an applied migration** — write a new one.
-4. **No direct Supabase calls from components** — repository layer only
+4. **Never modify an applied migration** — write a new one.
+5. **No direct Supabase calls from components** — repository layer only
    (`/repositories`), orchestrated by server actions (`/features/*/server-actions`).
-5. **Validate every input server-side with Zod.** Never trust the client.
-6. **Secrets only in `.env.local`** (gitignored). `.env.local.example` documents the keys.
-7. **Pagination on every list endpoint** (cursor-based for feeds).
-8. Anything touching money, auth, or RLS gets flagged explicitly in the summary of changes.
+6. **Validate every input server-side with Zod.** Never trust the client.
+7. **Secrets only in `.env.local`** (gitignored). `.env.local.example` documents the keys.
+8. **Pagination on every list endpoint** (cursor-based for feeds).
+9. Anything touching money, auth, or RLS gets flagged explicitly in the summary of changes.
 
 ## Structure
 
