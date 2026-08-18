@@ -32,8 +32,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | Step | Slice | Status |
 |------|-------|--------|
 | 0 | Foundations: repo restructure, Next.js scaffold, CI | ✅ done (commit 817d01a) |
-| 1 | Auth + identity | ⬅ next |
-| 2 | Tenant onboarding | |
+| 1 | Auth + identity (mobile-OTP login) | ✅ done (18 Aug 2026) |
+| 2 | Tenant onboarding | ⬅ next |
 | 3 | Classes | |
 | 4 | Enrollment | |
 | 5 | Discovery ("near me") | |
@@ -45,13 +45,20 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 (lint + typecheck + build on every push). Verified: `pnpm typecheck`, `pnpm lint`,
 `pnpm build` all green.
 
-### Step 1 — Auth + Identity (first vertical slice)
-- Create the Supabase project; wire `.env.local` (`.env.local.example` documents keys)
-- Migration: `profiles` table (UUID PK, audit columns, soft delete) + RLS policies
-- Supabase Auth: email OTP + Google sign-in; session middleware; auth helpers in `/lib`
-- UI: sign-up/login + role selection (learner / trainer / studio owner), lifted
-  from the prototype's onboarding screens (Rule 2)
-- **Done when:** two different browsers can hold two different logged-in users
+### Step 1 — Auth + Identity ✅ (done 18 Aug 2026)
+- Supabase project **danceos** (Mumbai, `wonhocebhckjokfssvja`), linked; keys in `.env.local`
+- Migration `20260818070000_create_profiles.sql`: `profiles` (UUID PK ref auth.users,
+  full_name, role dancer|trainer|studio, city, audit cols, soft delete) + RLS
+  (signed-in read live rows; insert/update own row only) — applied to the live DB
+- **Auth is mobile-OTP** (login = phone number, like the prototype's S_auth flow —
+  NOT email). Dev uses Supabase test numbers 99999 99999 / 88888 88888, OTP 123456,
+  no SMS sent. Before pilot: connect an SMS provider (MSG91/Twilio + India DLT).
+  `mailer_autoconfirm` is on (dev); revisit before pilot.
+- UI lifted from prototype S_auth (DanceOSApp.jsx:3616-3946): `/login` welcome,
+  `/login/phone` sign-in, `/login/verify` OTP boxes, `/onboarding` name+role+city,
+  `/` identity header (prototype Home sleeve treatment). Session refresh in `proxy.ts`.
+- Verified: `scripts/rls-proof.ps1` — 2 users, cross-user update blocked, impostor
+  insert rejected, anonymous reads 0 rows. Build/lint/typecheck green.
 
 ### Step 2 — Tenant onboarding
 - Migrations: `tenants` (studio | trainer_business, name, location lat/lng,

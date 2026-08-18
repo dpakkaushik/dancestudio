@@ -16,6 +16,7 @@ next-env.d.ts
 
 # local tooling artifacts (not project code)
 ruvector.db
+supabase/.temp/
 
 # misc
 .DS_Store
