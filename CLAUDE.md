@@ -189,7 +189,8 @@ the technical detail; this log is the at-a-glance history.
   proof green (commit d933ef0). Also locked the WhatsApp-first production OTP
   decision into this file (78a8cce) and clarified: Supabase's WhatsApp channel is
   built in, but delivery needs the user's Twilio account + Meta business
-  verification — wired at Step 6, test numbers until then.
+  verification — wired at Step 6, test numbers until then. Session ended cleanly:
+  session-log rule (Rule 10) added, everything committed and pushed.
 - **Done so far:** Steps 0–3 — scaffold + CI, mobile-OTP auth (test numbers
   99999 99999 / 88888 88888, OTP 123456), tenant onboarding, classes.
 - **Remaining:** Steps 4–6 (enrollment, discovery "near me", hardening & pilot),
