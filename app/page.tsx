@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
@@ -92,6 +93,27 @@ export default async function HomePage() {
           You&apos;re signed in with a real account on a real database. Classes, discovery, and the rest of
           the app arrive step by step from the prototype.
         </div>
+        <Link
+          href="/business"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "rgba(255,255,255,.07)",
+            border: `1px solid ${LINE}`,
+            borderLeft: "4px solid #3B82F6",
+            borderRadius: 16,
+            padding: "14px 15px",
+            marginBottom: 24,
+            color: INK,
+            textDecoration: "none",
+            fontSize: 13.5,
+            fontWeight: 900,
+          }}
+        >
+          Your businesses — studios & trainer setups
+          <span style={{ color: "#3B82F6", fontWeight: 800, fontSize: 12 }}>Open ›</span>
+        </Link>
         <form action={signOutAction}>
           <button
             type="submit"

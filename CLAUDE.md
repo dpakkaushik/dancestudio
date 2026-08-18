@@ -33,8 +33,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 |------|-------|--------|
 | 0 | Foundations: repo restructure, Next.js scaffold, CI | ✅ done (commit 817d01a) |
 | 1 | Auth + identity (mobile-OTP login) | ✅ done (18 Aug 2026) |
-| 2 | Tenant onboarding | ⬅ next |
-| 3 | Classes | |
+| 2 | Tenant onboarding | ✅ done (18 Aug 2026) |
+| 3 | Classes | ⬅ next |
 | 4 | Enrollment | |
 | 5 | Discovery ("near me") | |
 | 6 | Hardening & pilot | |
@@ -60,13 +60,19 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 - Verified: `scripts/rls-proof.ps1` — 2 users, cross-user update blocked, impostor
   insert rejected, anonymous reads 0 rows. Build/lint/typecheck green.
 
-### Step 2 — Tenant onboarding
-- Migrations: `tenants` (studio | trainer_business, name, location lat/lng,
-  visibility), `tenant_members` (user ↔ tenant, role) + RLS: members see only
-  their own tenant
-- Server actions: create studio / trainer business (Zod-validated)
-- UI: minimal onboarding flow (name, type, city/location) lifted from prototype
-- **Done when:** two studios exist and each owner sees only their own
+### Step 2 — Tenant onboarding ✅ (done 18 Aug 2026)
+- Migration `20260818100000_create_tenants.sql`: `tenants` (studio |
+  trainer_business, name, area, city, lat/lng for Step 5, visibility) and
+  `tenant_members` (user ↔ tenant, owner|trainer|staff) + RLS: members read only
+  their own tenants, owners update; **no direct inserts** — creation goes through
+  the `create_tenant_with_owner` security-definer RPC (tenant + owner membership
+  atomic, so no ownerless tenant can exist)
+- Repository `repositories/tenants.ts`, Zod-validated `createTenantAction`
+- UI lifted from prototype S_bizhub (DanceOSApp.jsx:2608-2686): `/business` hub
+  (owned-business rows, dashed add button) + the "New studio" bottom sheet with
+  the closed DOS_CITIES list; rooms arrive with the ERP slice
+- Verified: `scripts/rls-proof-tenants.ps1` — A can't see, rename, or self-invite
+  into B's studio; anonymous sees 0 rows. Build/lint/typecheck green.
 
 ### Step 3 — Classes
 - Migrations: `classes`, `class_sessions` (tenant_id, style, schedule, capacity,
