@@ -173,6 +173,30 @@ server action → UI, finished and verified before the next begins.
 7. **Secrets only in `.env.local`** (gitignored). `.env.local.example` documents the keys.
 8. **Pagination on every list endpoint** (cursor-based for feeds).
 9. Anything touching money, auth, or RLS gets flagged explicitly in the summary of changes.
+10. **When the user asks to end a session**, append an entry to the Session log
+    (below) with exactly four things — this session / done so far / remaining /
+    next session — then commit and push it. Newest entry on top.
+
+## Session log
+
+Four lines per session, written when the user ends it. The step records above hold
+the technical detail; this log is the at-a-glance history.
+
+### 19 Aug 2026
+- **This session:** Step 3 (Classes) built end-to-end and verified: classes +
+  class_sessions schema with RLS, atomic creation RPC, repository + Zod server
+  actions, register/form/learner-listing UI lifted from the prototype, 8-check RLS
+  proof green (commit d933ef0). Also locked the WhatsApp-first production OTP
+  decision into this file (78a8cce) and clarified: Supabase's WhatsApp channel is
+  built in, but delivery needs the user's Twilio account + Meta business
+  verification — wired at Step 6, test numbers until then.
+- **Done so far:** Steps 0–3 — scaffold + CI, mobile-OTP auth (test numbers
+  99999 99999 / 88888 88888, OTP 123456), tenant onboarding, classes.
+- **Remaining:** Steps 4–6 (enrollment, discovery "near me", hardening & pilot),
+  then later phases: payments, community, events, search.
+- **Next session:** Step 4 — Enrollment: `enrollments` table + RLS, enroll/cancel
+  server actions with capacity check (payments stubbed), learner "my classes" +
+  studio roster UI lifted from the prototype.
 
 ## Structure
 
