@@ -1,8 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
- * The MVP happy path (CLAUDE.md Step 6): signup → onboard studio → create
- * class → enroll. Runs against the dev server + the linked Supabase project.
+ * The MVP happy path (CLAUDE.md Steps 6+8): signup → onboard studio → create
+ * class → owner pulls the booking link off the class detail page → a learner
+ * opens that link and books there. Runs against the dev server + the linked
+ * Supabase project.
  *
  * Sign-up uses the admin generate_link API (same technique as
  * scripts/auth-proof-email.ps1): no inbox needed, and the link still exercises
@@ -66,7 +68,7 @@ async function deleteUser(userId: string) {
   });
 }
 
-test("signup → onboard studio → create class → enroll", async ({ browser }) => {
+test("signup → onboard studio → create class → share link → enroll", async ({ browser }) => {
   test.skip(!supabaseUrl || !serviceKey, "Supabase keys missing (.env.local or env)");
 
   const stamp = Date.now().toString(36);
@@ -114,20 +116,31 @@ test("signup → onboard studio → create class → enroll", async ({ browser }
 
     // back on the register, the class sits under the Published tab — the tile
     // headlines the STYLE (a class is its style, per the prototype), so the
-    // title only appears in the tile's aria-label
+    // title only appears in the tile's aria-label (a link now: it opens /c/{slug})
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
-    await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
+    const registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
+    await expect(registerTile).toBeVisible();
 
-    // ---- learner: signup → onboard (Dancer is the default role) → book ----
+    // ---- the class detail page + its booking link (Step 8) ----------------
+    await registerTile.click();
+    await owner.waitForURL(/\/c\/[a-z0-9-]+$/);
+    const shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";
+    expect(shareSlug).not.toBe("");
+
+    await owner.getByRole("button", { name: "Share the booking link" }).click();
+    const sheet = owner.getByRole("dialog", { name: "Share booking link" });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByText(`/c/${shareSlug}`)).toBeVisible();
+    await sheet.getByRole("button", { name: "Done" }).click();
+
+    // ---- learner: signup → onboard → open the shared link → book ----------
     const learner = await learnerContext.newPage();
     learnerId = await signUp(learner, `e2e-learner-${stamp}@example.com`);
     await onboard(learner, "E2E", "Learner", null, "Pune");
 
-    await learner.goto("/classes");
-    const tile = learner.locator(`[aria-label="Open ${classTitle}"]`);
-    await expect(tile).toBeVisible();
-    await tile.getByRole("button", { name: "Book a spot" }).click();
-    await expect(tile.getByText("Enrolled ✓")).toBeVisible();
+    await learner.goto(`/c/${shareSlug}`);
+    await learner.getByRole("button", { name: "Book this class" }).click();
+    await expect(learner.getByText(/You.re booked/)).toBeVisible();
 
     // the booking shows up on the learner's own list too
     await learner.goto("/my-classes");

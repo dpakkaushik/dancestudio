@@ -41,6 +41,8 @@ export async function enrollAction(
     revalidatePath("/classes");
     revalidatePath("/my-classes");
     revalidatePath("/discover");
+    revalidatePath("/");
+    revalidatePath("/c/[slug]", "page");
     return { error: null, outcome: status === "waitlisted" ? "waitlisted" : "enrolled" };
   } catch (error: unknown) {
     return {
@@ -65,6 +67,8 @@ export async function cancelEnrollmentAction(
     revalidatePath("/classes");
     revalidatePath("/my-classes");
     revalidatePath("/discover");
+    revalidatePath("/");
+    revalidatePath("/c/[slug]", "page");
     return { error: null, outcome: "cancelled" };
   } catch (error: unknown) {
     return {

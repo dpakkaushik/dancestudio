@@ -62,6 +62,7 @@ export default async function ClassesPage() {
             filled={filled}
             tenantName={c.tenantName}
             city={c.tenantCity}
+            href={`/c/${c.shareSlug}`}
             actions={
               c.session ? (
                 <EnrollButton

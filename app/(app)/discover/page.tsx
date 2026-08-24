@@ -163,6 +163,7 @@ export default async function DiscoverPage({
               filled={filled}
               tenantName={c.tenantName}
               city={c.tenantCity}
+              href={`/c/${c.shareSlug}`}
               actions={
                 c.session ? (
                   <EnrollButton

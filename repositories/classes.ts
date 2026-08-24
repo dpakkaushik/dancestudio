@@ -16,6 +16,7 @@ interface ClassRow {
   id: string;
   tenant_id: string;
   title: string;
+  share_slug: string;
   style: string;
   level: ClassLevel;
   room: string | null;
@@ -30,7 +31,7 @@ interface PublicClassRow extends ClassRow {
 }
 
 const CLASS_COLUMNS =
-  "id, tenant_id, title, style, level, room, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
+  "id, tenant_id, title, share_slug, style, level, room, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -42,6 +43,7 @@ const toClass = (row: ClassRow): DanceClass => ({
   id: row.id,
   tenantId: row.tenant_id,
   title: row.title,
+  shareSlug: row.share_slug,
   style: row.style,
   level: row.level,
   room: row.room,
@@ -147,6 +149,35 @@ export async function findPublishedClasses(
     tenantArea: row.tenants?.area ?? null,
     tenantCity: row.tenants?.city ?? null,
   }));
+}
+
+/** One class by its share slug — the /c/{slug} detail page. No policy of its own:
+ *  the public resolves published classes of listed tenants, a member resolves
+ *  their tenant's drafts too, and anyone else gets null. */
+export async function findClassBySlug(
+  supabase: SupabaseClient,
+  slug: string
+): Promise<PublicClassListing | null> {
+  const { data, error } = await supabase
+    .from("classes")
+    .select(`${CLASS_COLUMNS}, tenants (name, area, city)`)
+    .eq("share_slug", slug)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`classes.findBySlug failed: ${error.message}`);
+  }
+  if (!data) {
+    return null;
+  }
+  const row = data as unknown as PublicClassRow;
+  return {
+    ...toClass(row),
+    tenantName: row.tenants?.name ?? "",
+    tenantArea: row.tenants?.area ?? null,
+    tenantCity: row.tenants?.city ?? null,
+  };
 }
 
 /** Draft → published, or published → completed. RLS admits owners/trainers only. */

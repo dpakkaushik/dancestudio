@@ -41,6 +41,27 @@ interface MembershipRow {
   tenants: TenantRow | null;
 }
 
+export type MemberRole = "owner" | "trainer" | "staff";
+
+/** The signed-in user's role on one tenant, or null when they are not a member.
+ *  tenant_members RLS is own-rows-only, so this can never see anyone else's seat. */
+export async function findMyMembershipRole(
+  supabase: SupabaseClient,
+  tenantId: string
+): Promise<MemberRole | null> {
+  const { data, error } = await supabase
+    .from("tenant_members")
+    .select("member_role")
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`tenants.myRole failed: ${error.message}`);
+  }
+  return (data?.member_role as MemberRole | undefined) ?? null;
+}
+
 /** Tenants the signed-in user belongs to.
  *  RLS policies OR together — since discovery made listed tenants publicly
  *  readable, selecting from `tenants` directly returns EVERY listed tenant.

@@ -13,6 +13,8 @@ export interface DanceClass {
   id: string;
   tenantId: string;
   title: string;
+  /** Stable public booking-link slug — the class detail page lives at /c/{shareSlug}. */
+  shareSlug: string;
   style: string;
   level: ClassLevel;
   room: string | null;

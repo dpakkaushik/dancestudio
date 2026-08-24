@@ -31,13 +31,14 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 8 / 27 steps** (Steps 0–7). Step 7 landed 24 Aug 2026: app chrome
-  (top bar, five-tab pill bar, light/dark theme system) + Home parity (greeting
-  sleeve, booked-classes deck with live-now chips, run-your-business section).
+- **Completed: 9 / 27 steps** (Steps 0–8). Step 8 landed 24 Aug 2026: class
+  detail page at /c/{slug} (prototype S_class — poster sleeve, the card opened,
+  AT THE STUDIO, booking bar) + share/booking links (share_slug on classes,
+  ShareSheet with the real URL, every tile/deck/register row opens the page).
   Step 6 ops tasks still open: verify a Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 8 — Class detail page + share/booking links** (lifted from
-  prototype S_class)
+- **Next: Step 9 — Razorpay payments ⚠** (orders/payments/refunds tables,
+  verified idempotent webhooks, paid enrollment)
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -49,8 +50,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 5 | Discovery ("near me") | ✅ done (24 Aug 2026) |
 | 6 | Hardening & pilot | ✅ done (24 Aug 2026) — pending ops: Resend domain, pilot invites |
 | 7 | App chrome + Home parity | ✅ done (24 Aug 2026) |
-| 8 | Class detail page + share links | ⬅ next |
-| 9 | Razorpay payments ⚠ | ⬜ |
+| 8 | Class detail page + share links | ✅ done (24 Aug 2026) |
+| 9 | Razorpay payments ⚠ | ⬅ next |
 | 10 | Attendance + waitlist management | ⬜ |
 | 11 | Rooms & people (full class form) | ⬜ |
 | 12 | Studio CRM (leads/trials/conversions) | ⬜ |
@@ -289,6 +290,50 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   `Date.now()` out of component bodies (react-hooks/purity) by computing time
   slices in module-level helpers.**
 
+### Step 8 — Class detail page + share links ✅ (done 24 Aug 2026)
+- Migration `20260824150000_class_share_slugs.sql`: `share_slug` on `classes` —
+  stable public booking-link slug (title slugified to the prototype's grammar,
+  shareRecOf 3975, + 4-char random suffix), stamped by a BEFORE INSERT trigger
+  (`generate_class_slug`, security definer so the uniqueness probe sees every
+  row) so every insert path gets one without rewriting the applied RPC. Backfill
+  for existing rows, NOT NULL, unique index spanning soft-deleted rows (a dead
+  class's slug is never reused). **No RLS policy added or changed** — the
+  /c/{slug} lookup rides the existing SELECT policies, so a draft's link 404s
+  for strangers and resolves for the studio's own members.
+- Repository: `findClassBySlug` (+ `share_slug` through CLASS_COLUMNS and the
+  enrollments join), `findMyMembershipRole` in repositories/tenants.ts (owner /
+  trainer / staff / null — membership table as the spine). Enrollment actions
+  also revalidate `/` and `/c/[slug]`.
+- UI lifted from prototype S_class (11626-12807), Step-8 scope: `/c/[slug]`
+  (app/(app)/c/[slug]/page.tsx + features/classes/components/ClassDetail.tsx) —
+  the poster sleeve lit like a player (poster kit lifted to poster.tsx:
+  PosterBlock/dosPosterAuto/DosPosterSleeve/useDosFold; drawn designs, uploads
+  arrive Step 11), the card you tapped opened into a page (calendar block,
+  style headline in dosStyleInk contrast-walked ink, live chip, capacity bar,
+  price chip), AT THE STUDIO (studio row + Maps chip; amenities arrive with
+  rooms), the fixed booking bar (book / sold-out→waitlist / booked / sign-in),
+  the you're-booked card with cancel, the draft footer (YOUR DRAFT · Edit
+  class), and ShareSheet (3984-4005) printing the real deployment's /c/{slug}.
+  Session date/time grammar extracted to lib/format/session.ts, shared by tile
+  and page (the prototype's "one grammar" rule, line 70). Every class surface
+  now opens the page: ClassTile's sleeve is a link (booking actions stay
+  outside the anchor), home deck rows, and the owner register rows.
+- Interim placements, tracked in the backlog: "Share booking link" sits as a
+  button on the detail page (the prototype moved it behind the poster's pass
+  sheet, which arrives with Step 10's QR work); the two-step pay sheets and the
+  POLICY section arrive with Step 9 (printing refund/membership promises before
+  money exists would be a lie); no artist column/team/routine until Step 11.
+- Verified: `scripts/rls-proof-slugs.ps1` — 5 checks (slug auto-stamped in
+  shape, anon resolves published link with studio name, draft link dark to
+  anon, owner resolves own draft, same title twice → different slugs; cleans
+  up via service role). e2e extended: owner opens the page from the register,
+  the share sheet shows the real link, the learner opens that link and books
+  there (16.6s green). Typecheck/lint/build green. **Lesson: this repo's lint
+  also forbids ref-writes during render (react-hooks/refs) — the prototype's
+  `hRef.current = h` mid-render pattern must become an effect dependency. And
+  keep .ps1 files ASCII: an em-dash in a double-quoted string breaks
+  PowerShell 5.1's ANSI parse of BOM-less UTF-8.**
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -302,9 +347,12 @@ remove entries as they close.**
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
-| Class detail page (poster, artist, add-ons, share/booking link) — booking is on the tile today | S_class | Step 8 |
+| Class detail page: two-step pay sheets + POLICY section | S_class 12399-12571 | Step 9 |
+| Class detail page: pass/QR sheet behind the poster (the share button moves there), attendance/earnings/refunds tabs | S_class PassSheet + owner tabs | Steps 10 + 13 |
+| Class detail page: artist column, CLASS ASSISTANTS team, WHAT YOU'LL DANCE (routine/notes/songs), poster upload/picker, room amenities | S_class 11900+, 12278-12354 | Step 11 |
+| Class detail page: invoice segment on the you're-booked card | BookingActions 6431 | Step 9 |
 | Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | Step 11 |
-| Class card: poster art, live chips, share sheet, undo toasts | BookingCard 7969 | Steps 8 (share) + 11 (posters) |
+| Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: BizShell tools grid (students, attendance, earnings, reports, rooms, calendar) — "Manage" opens the Classes register only | S_bizhub/BizShell | Steps 10–14 |
 | Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Steps 15 (counts), 22 (crews), 23 (filters/sort/map) |
 | My classes: real calendar view; owner-side waitlist queue management | Calendar tab / attend 12080 | Steps 10 (waitlist mgmt) + 14 (calendar) |

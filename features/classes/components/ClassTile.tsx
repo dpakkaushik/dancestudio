@@ -1,31 +1,11 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, INK, LINE, SUB } from "@/lib/design/tokens";
+import { dateParts, timeRangeOf } from "@/lib/format/session";
 import type { DanceClass } from "@/types/class";
 
 const CARD = "var(--card)";
-
-/** Session date/time read in IST — the app is India-only for now. */
-const IST = "Asia/Kolkata";
-
-const dateParts = (iso: string) => {
-  const d = new Date(iso);
-  const get = (opts: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat("en-IN", { timeZone: IST, ...opts }).format(d);
-  return {
-    weekday: get({ weekday: "short" }).toUpperCase(),
-    day: get({ day: "numeric" }),
-    month: get({ month: "short" }).toUpperCase(),
-  };
-};
-
-const timeOf = (iso: string) =>
-  new Intl.DateTimeFormat("en-IN", {
-    timeZone: IST,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).format(new Date(iso));
 
 /** Seats read as a decision — what is LEFT is what you act on (prototype 8073-8079). */
 const seatsOf = (taken: number, cap: number) => {
@@ -44,6 +24,8 @@ export interface ClassTileProps {
   city?: string | null;
   /** Owner-side action pills rendered under the facts bar. */
   actions?: ReactNode;
+  /** When set, the sleeve opens the class detail page (actions stay outside the link). */
+  href?: string;
 }
 
 /**
@@ -52,33 +34,19 @@ export interface ClassTileProps {
  * calendar block for WHEN, the style's name full-size as WHAT (a class IS its
  * style), and the two session facts — seats and price — across the bottom.
  */
-export function ClassTile({ danceClass: c, filled = 0, tenantName, city, actions }: ClassTileProps) {
+export function ClassTile({ danceClass: c, filled = 0, tenantName, city, actions, href }: ClassTileProps) {
   const bc = dosStyleColor(c.style);
   const ground = `linear-gradient(150deg, ${bc}47 0%, ${bc}24 55%, ${bc}17 100%)`;
   const weave = `repeating-linear-gradient(45deg, ${bc}1a 0 6px, transparent 6px 12px)`;
   const when = c.session ? dateParts(c.session.startsAt) : null;
-  const timeRange = c.session ? `${timeOf(c.session.startsAt)} – ${timeOf(c.session.endsAt)}` : null;
+  const timeRange = c.session ? timeRangeOf(c.session.startsAt, c.session.endsAt) : null;
   const seats = seatsOf(filled, c.capacity);
   const priceAmt = c.priceInr === 0 ? "Free" : `₹${c.priceInr}`;
   const levelWord = DOS_LEVEL_LABEL[c.level] ?? c.level;
   const isPast = c.status === "completed";
   const whereBits = [tenantName, c.room, city].filter(Boolean) as string[];
 
-  return (
-    <div
-      aria-label={`Open ${c.title}`}
-      data-card="session"
-      data-kind="class"
-      style={{
-        overflow: "hidden",
-        background: CARD,
-        marginBottom: 10,
-        opacity: isPast ? 0.6 : 1,
-        border: `1px solid ${LINE}`,
-        borderRadius: 20,
-        boxShadow: "0 2px 10px -2px rgba(0,0,0,.28)",
-      }}
-    >
+  const sleeve = (
       <div
         style={{
           display: "flex",
@@ -172,6 +140,36 @@ export function ClassTile({ danceClass: c, filled = 0, tenantName, city, actions
           </div>
         )}
       </div>
+  );
+
+  return (
+    <div
+      aria-label={href ? undefined : `Open ${c.title}`}
+      data-card="session"
+      data-kind="class"
+      style={{
+        overflow: "hidden",
+        background: CARD,
+        marginBottom: 10,
+        opacity: isPast ? 0.6 : 1,
+        border: `1px solid ${LINE}`,
+        borderRadius: 20,
+        boxShadow: "0 2px 10px -2px rgba(0,0,0,.28)",
+      }}
+    >
+      {/* the sleeve opens the class page — booking stays outside the link, so a
+          button never nests inside an anchor */}
+      {href ? (
+        <Link
+          href={href}
+          aria-label={`Open ${c.title}`}
+          style={{ display: "block", color: INK, textDecoration: "none" }}
+        >
+          {sleeve}
+        </Link>
+      ) : (
+        sleeve
+      )}
 
       {/* the two facts that belong to the session, not to any column */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px" }}>

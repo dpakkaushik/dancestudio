@@ -272,6 +272,7 @@ export function ClassesManager({
               key={c.id}
               danceClass={c}
               filled={c.session ? filledBySession[c.session.id] ?? 0 : 0}
+              href={`/c/${c.shareSlug}`}
               actions={
                 c.status === "draft" ? (
                   <>

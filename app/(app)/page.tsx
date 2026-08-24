@@ -187,7 +187,7 @@ export default async function HomePage() {
           return (
             <Link
               key={e.id}
-              href="/my-classes"
+              href={`/c/${e.shareSlug}`}
               style={{
                 display: "flex",
                 alignItems: "center",

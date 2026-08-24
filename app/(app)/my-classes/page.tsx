@@ -12,6 +12,7 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   id: e.classId,
   tenantId: "",
   title: e.title,
+  shareSlug: e.shareSlug,
   style: e.style,
   level: e.level,
   room: e.room,
@@ -66,6 +67,7 @@ export default async function MyClassesPage() {
           danceClass={toTileClass(e)}
           tenantName={e.tenantName}
           city={e.tenantCity}
+          href={`/c/${e.shareSlug}`}
           actions={
             <EnrollButton
               sessionId={e.sessionId}

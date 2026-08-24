@@ -9,6 +9,8 @@ export interface MyEnrollment {
   sessionId: string;
   classId: string;
   title: string;
+  /** Booking-link slug of the class — the tile links to /c/{shareSlug}. */
+  shareSlug: string;
   style: string;
   level: ClassLevel;
   room: string | null;

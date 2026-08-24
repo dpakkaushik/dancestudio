@@ -105,6 +105,7 @@ const TAB_SET: Array<{ label: string; href: string }> = [
 /* drill-page titles — the top bar names where you are (prototype 19241) */
 const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/classes$/, "Classes"],
+  [/^\/c\/[^/]+$/, "Class"],
   [/^\/my-classes$/, "My classes"],
   [/^\/business$/, "Your business"],
   [/^\/business\/[^/]+\/classes$/, "Classes"],

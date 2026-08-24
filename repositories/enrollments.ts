@@ -10,6 +10,7 @@ interface MyEnrollmentRow {
   class_sessions: { starts_at: string; ends_at: string } | null;
   classes: {
     title: string;
+    share_slug: string;
     style: string;
     level: ClassLevel;
     room: string | null;
@@ -59,7 +60,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
   const { data, error } = await supabase
     .from("enrollments")
     .select(
-      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (title, style, level, room, price_inr, capacity, status), tenants (name, city)"
+      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (title, share_slug, style, level, room, price_inr, capacity, status), tenants (name, city)"
     )
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
@@ -77,6 +78,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
       sessionId: r.session_id,
       classId: r.class_id,
       title: r.classes!.title,
+      shareSlug: r.classes!.share_slug,
       style: r.classes!.style,
       level: r.classes!.level,
       room: r.classes!.room,
