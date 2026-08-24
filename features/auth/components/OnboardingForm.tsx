@@ -17,7 +17,7 @@ const ROLES: Array<{ key: ProfileRole; label: string; caption: string }> = [
 const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
-  background: "rgba(255,255,255,.07)",
+  background: "var(--card)",
   color: INK,
   border: `1.5px solid ${LINE}`,
   borderRadius: 14,
@@ -91,7 +91,7 @@ export function OnboardingForm() {
                   padding: "13px 16px",
                   borderRadius: 14,
                   cursor: "pointer",
-                  background: on ? `${accent}14` : "rgba(255,255,255,.07)",
+                  background: on ? `${accent}14` : "var(--card)",
                   border: `2px solid ${on ? accent : LINE}`,
                   transition: "all .15s",
                 }}

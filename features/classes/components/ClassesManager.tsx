@@ -12,8 +12,8 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassStatus, DanceClass } from "@/types/class";
 
-const CARD = "rgba(255,255,255,.07)";
-const EL = "rgba(255,255,255,.13)";
+const CARD = "var(--card)";
+const EL = "var(--el)";
 const TABS: ClassStatus[] = ["published", "draft", "completed"];
 const TAB_WORD: Record<ClassStatus, string> = {
   published: "Published",
@@ -181,9 +181,6 @@ export function ClassesManager({
       }}
     >
       <div style={{ padding: "14px 16px 0" }}>
-        <Link href="/business" style={{ fontSize: 20, color: INK, textDecoration: "none" }}>
-          ←
-        </Link>
         <div style={{ margin: "10px 0 2px", fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB }}>
           {tenantName.toUpperCase()}
         </div>

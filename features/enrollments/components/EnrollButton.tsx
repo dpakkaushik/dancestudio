@@ -10,7 +10,7 @@ import {
 import { GOLD, GREEN, INK, LILAC } from "@/lib/design/tokens";
 import type { EnrollmentStatus } from "@/types/enrollment";
 
-const EL = "rgba(255,255,255,.13)";
+const EL = "var(--el)";
 const initialState: EnrollActionState = { error: null, outcome: null };
 
 const chip = (color: string): React.CSSProperties => ({

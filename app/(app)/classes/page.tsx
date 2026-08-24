@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -40,9 +39,6 @@ export default async function ClassesPage() {
         boxSizing: "border-box",
       }}
     >
-      <Link href="/" style={{ fontSize: 20, color: INK, textDecoration: "none" }}>
-        ←
-      </Link>
       <div
         style={{
           display: "flex",
@@ -85,7 +81,7 @@ export default async function ClassesPage() {
             textAlign: "center",
             padding: "40px 20px",
             color: SUB,
-            border: "1.5px dashed rgba(255,255,255,.13)",
+            border: "1.5px dashed var(--el)",
             borderRadius: 20,
             fontSize: 13,
           }}

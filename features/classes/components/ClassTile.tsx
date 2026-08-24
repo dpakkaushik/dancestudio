@@ -3,7 +3,7 @@ import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, INK, LINE, SUB } from "@/lib/design/tokens";
 import type { DanceClass } from "@/types/class";
 
-const CARD = "rgba(255,255,255,.07)";
+const CARD = "var(--card)";
 
 /** Session date/time read in IST — the app is India-only for now. */
 const IST = "Asia/Kolkata";
@@ -163,7 +163,7 @@ export function ClassTile({ danceClass: c, filled = 0, tenantName, city, actions
                 letterSpacing: 0.8,
                 padding: "4px 9px",
                 borderRadius: 999,
-                background: "rgba(255,255,255,.13)",
+                background: "var(--el)",
                 color: SUB,
               }}
             >

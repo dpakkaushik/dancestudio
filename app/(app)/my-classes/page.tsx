@@ -46,9 +46,6 @@ export default async function MyClassesPage() {
         boxSizing: "border-box",
       }}
     >
-      <Link href="/" style={{ fontSize: 20, color: INK, textDecoration: "none" }}>
-        ←
-      </Link>
       <div
         style={{
           display: "flex",
@@ -85,7 +82,7 @@ export default async function MyClassesPage() {
             textAlign: "center",
             padding: "40px 20px",
             color: SUB,
-            border: "1.5px dashed rgba(255,255,255,.13)",
+            border: "1.5px dashed var(--el)",
             borderRadius: 20,
             fontSize: 13,
           }}

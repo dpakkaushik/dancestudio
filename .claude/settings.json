@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vercel whoami *)",
+      "Bash(supabase --version)",
+      "Bash(./node_modules/.bin/supabase projects *)",
+      "PowerShell($cfg = Invoke-RestMethod -Uri \"https://api.supabase.com/v1/projects/wonhocebhckjokfssvja/config/auth\" -Headers @{ Authorization = \"Bearer $env:SUPABASE_ACCESS_TOKEN\" }; $cfg | Select-Object site_url, uri_allow_list, mailer_autoconfirm, external_email_enabled, external_phone_enabled, smtp_host, smtp_port, smtp_user, smtp_sender_name, smtp_admin_email, rate_limit_email_sent, mailer_otp_exp | ConvertTo-Json)"
+    ]
+  }
+}

@@ -1,11 +1,111 @@
 @import "tailwindcss";
 
+/* ── DanceOS theme palette — lifted from prototype DOS_PALETTE (DanceOSApp.jsx:41-42).
+   The theme class lives on <html> (set pre-paint by the boot script in app/layout.tsx,
+   toggled from the top bar); every screen reads these variables via lib/design/tokens. */
+html.dark {
+  --bg: #0a0a0a;
+  --solid: #0a0a0a;
+  --card: rgba(255, 255, 255, 0.07);
+  --el: rgba(255, 255, 255, 0.13);
+  --text: #fafafa;
+  --sub: #a3a3a3;
+  --muted: #707070;
+  /* shell chrome (prototype 19171-19172, 19249-19251, 19308-19312, 19381) */
+  --hdr-bg: rgba(10, 10, 10, 0.72);
+  --hdr-line: rgba(255, 255, 255, 0.12);
+  --nav-bg: rgba(18, 18, 18, 0.42);
+  --nav-line: rgba(255, 255, 255, 0.12);
+  --nav-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --chip-bg: rgba(255, 255, 255, 0.09);
+  --chip-line: rgba(255, 255, 255, 0.09);
+  --tab-rest: rgba(255, 255, 255, 0.62);
+}
+html.light {
+  --bg: #ffffff;
+  --solid: #ffffff;
+  --card: rgba(0, 0, 0, 0.045);
+  --el: rgba(0, 0, 0, 0.09);
+  --text: #111111;
+  --sub: #5b5b5b;
+  --muted: #8a8a8a;
+  --hdr-bg: rgba(255, 255, 255, 0.8);
+  --hdr-line: rgba(0, 0, 0, 0.08);
+  --nav-bg: rgba(255, 255, 255, 0.45);
+  --nav-line: rgba(0, 0, 0, 0.07);
+  --nav-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --chip-bg: rgba(17, 17, 17, 0.055);
+  --chip-line: rgba(17, 17, 17, 0.05);
+  --tab-rest: rgba(0, 0, 0, 0.45);
+}
+
+/* ── The phone's own furniture — safe-area insets + top-bar height, published once
+   (prototype 19194-19199). Zero on desktop; real on notched phones via viewport-fit=cover. */
 :root {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
+  --dos-safe-top: 0px;
+  --dos-safe-bottom: 0px;
+  --dos-bar: 54px;
+  --dos-top: 54px;
+}
+@supports (top: env(safe-area-inset-top)) {
+  :root {
+    --dos-safe-top: env(safe-area-inset-top, 0px);
+    --dos-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --dos-top: calc(54px + env(safe-area-inset-top, 0px));
+  }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ── Focus is only useful if you can SEE it — one ring, keyboard-only, never on tap
+   (prototype 19207-19212). */
+[role="button"]:focus {
+  outline: none;
+}
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2.5px solid #ec4899;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.dos-skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 999;
+}
+.dos-skip:focus {
+  left: 8px;
+  top: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #ec4899;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+/* the live pulse used on the deck, the calendar and Discover — declared once, app-wide */
+@keyframes dosPulseH {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
 }

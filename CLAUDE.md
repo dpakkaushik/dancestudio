@@ -31,11 +31,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 7 / 27 steps** (Steps 0–6). Step 6 is code-complete; two non-code
-  ops tasks remain: verify a Resend sending domain, invite 1–2 pilot studios.
+- **Completed: 8 / 27 steps** (Steps 0–7). Step 7 landed 24 Aug 2026: app chrome
+  (top bar, five-tab pill bar, light/dark theme system) + Home parity (greeting
+  sleeve, booked-classes deck with live-now chips, run-your-business section).
+  Step 6 ops tasks still open: verify a Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 7 — App chrome + Home parity** (bottom tab bar, top bar, theme
-  system, home sleeves — frontend-only, lifted from prototype shell/nav + Home 7248+)
+- **Next: Step 8 — Class detail page + share/booking links** (lifted from
+  prototype S_class)
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -46,8 +48,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 4 | Enrollment | ✅ done (24 Aug 2026) |
 | 5 | Discovery ("near me") | ✅ done (24 Aug 2026) |
 | 6 | Hardening & pilot | ✅ done (24 Aug 2026) — pending ops: Resend domain, pilot invites |
-| 7 | App chrome + Home parity | ⬅ next |
-| 8 | Class detail page + share links | ⬜ |
+| 7 | App chrome + Home parity | ✅ done (24 Aug 2026) |
+| 8 | Class detail page + share links | ⬅ next |
 | 9 | Razorpay payments ⚠ | ⬜ |
 | 10 | Attendance + waitlist management | ⬜ |
 | 11 | Rooms & people (full class form) | ⬜ |
@@ -255,6 +257,38 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   roadmap (WhatsApp-first via Twilio Verify + Meta business verification, SMS/DLT
   fallback).
 
+### Step 7 — App chrome + Home parity ✅ (done 24 Aug 2026)
+- **Theme system:** prototype DOS_PALETTE lifted to CSS variables on `<html>`
+  (`html.dark` / `html.light` in `app/globals.css`), applied pre-paint by a boot
+  script in the root layout (localStorage key `__DOSTHEME`), toggled from the top
+  bar. The neutral design tokens (`INK`/`LILAC`/`SUB`/`LINE` + new `CARD`/`MUTED`)
+  are now `var()`-backed, so every already-built screen follows the toggle; card
+  and border literals were swept to `var(--card)`/`var(--el)`. Accents stay literal
+  hex (the prototype keeps them theme-invariant, and call sites alpha-suffix them).
+  Auth screens pin the dark palette on AuthShell ("auth wears the in-app dark
+  look", prototype line 48).
+- **Chrome** (`features/shell/components/AppChrome.tsx`, lifted from the root
+  shell 19171-19397): fixed top bar (DosMark + wordmark on tabs; back chip + page
+  title on drill pages; round theme/settings chips) and the floating five-tab pill
+  bar — **Home · Discover · Stats · Inbox · Profile** with per-tab accent tints and
+  the expanding selected capsule. NOTE: the prototype's FINAL tab set has no
+  Calendar/Create tab (Calendar opens from Home ▸ business; the old backlog line
+  was stale). Signed-in routes moved into the `app/(app)/` route group (URLs
+  unchanged) whose layout wears the chrome; in-page ← arrows removed from drill
+  pages (the chrome owns back now). Tabs are real routes, so active-tab and
+  bar-visibility read off the pathname.
+- **Home** (`app/(app)/page.tsx`, prototype S_homedancer 7206-7352): time-of-day
+  greeting on the identity sleeve, booked-classes deck with LIVE pulse chip
+  (dosPulseH) and waitlist tag, run-your-business rows (tenant → its register) with
+  the dashed add row, discover row. Log out moved to the new `/profile` tab page
+  (identity kit + sign-out); `/stats` and `/inbox` are placeholder tabs wearing the
+  prototype's own not-built treatment (19164-19169).
+- Verified: typecheck, lint, production build, e2e happy path (14s) all green.
+  **Lesson: this repo's lint forbids setState-in-effect — read DOM-owned state
+  (like the `<html>` theme class) through `useSyncExternalStore`, and keep
+  `Date.now()` out of component bodies (react-hooks/purity) by computing time
+  slices in module-level helpers.**
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -264,8 +298,10 @@ remove entries as they close.**
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| App chrome: bottom tab bar (Home·Discover·Create·Calendar·Profile), top bar, theme system | shell/nav | Step 7 |
-| Home screen: sleeves, live-now chips, greeting, tools — current home is identity header + row links | Home 7248+ | Step 7 |
+| Top bar: notifications bell + notifications screen | shell 19254, S_notif | Step 24 (notifications) |
+| Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
+| Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
+| Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
 | Class detail page (poster, artist, add-ons, share/booking link) — booking is on the tile today | S_class | Step 8 |
 | Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | Step 11 |
 | Class card: poster art, live chips, share sheet, undo toasts | BookingCard 7969 | Steps 8 (share) + 11 (posters) |

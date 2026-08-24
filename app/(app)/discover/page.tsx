@@ -14,8 +14,8 @@ import {
 import { findProfileById } from "@/repositories/profiles";
 import type { EnrollmentStatus } from "@/types/enrollment";
 
-const EL = "rgba(255,255,255,.13)";
-const CARD = "rgba(255,255,255,.07)";
+const EL = "var(--el)";
+const CARD = "var(--card)";
 const TABS = [
   ["classes", "Classes"],
   ["studios", "Studios"],
@@ -87,9 +87,6 @@ export default async function DiscoverPage({
         boxSizing: "border-box",
       }}
     >
-      <Link href="/" style={{ fontSize: 20, color: INK, textDecoration: "none" }}>
-        ←
-      </Link>
       <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, margin: "8px 0 10px" }}>
         Discover
       </div>

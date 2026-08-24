@@ -56,7 +56,7 @@ export default function LoginWelcomePage() {
           style={{
             ...BTN_STYLE,
             flex: 1,
-            background: "rgba(255,255,255,.07)",
+            background: "var(--card)",
             color: INK,
             border: `1.5px solid ${LINE}`,
             textDecoration: "none",

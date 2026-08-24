@@ -14,7 +14,7 @@ const initialState: AuthActionState = { error: null };
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
-  background: "rgba(255,255,255,.07)",
+  background: "var(--card)",
   color: INK,
   border: `1.5px solid ${LINE}`,
   borderRadius: 14,
@@ -82,7 +82,7 @@ export function PhoneSignIn({ initialError = null }: { initialError?: string | n
                 cursor: "pointer",
                 fontSize: 12.5,
                 fontWeight: 800,
-                background: on ? `${PINK}14` : "rgba(255,255,255,.07)",
+                background: on ? `${PINK}14` : "var(--card)",
                 color: on ? PINK : SUB,
                 border: `2px solid ${on ? PINK : "transparent"}`,
                 transition: "all .15s",
@@ -103,7 +103,7 @@ export function PhoneSignIn({ initialError = null }: { initialError?: string | n
           <div style={{ display: "flex", gap: 8 }}>
             <div
               style={{
-                background: "rgba(255,255,255,.07)",
+                background: "var(--card)",
                 color: INK,
                 border: `1.5px solid ${LINE}`,
                 borderRadius: 14,

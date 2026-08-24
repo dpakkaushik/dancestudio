@@ -64,7 +64,7 @@ export function OtpVerify({ phone }: { phone: string }) {
               style={{
                 flex: 1,
                 height: 58,
-                background: "rgba(255,255,255,.07)",
+                background: "var(--card)",
                 color: INK,
                 borderRadius: 14,
                 border: `2px solid ${i === otp.length ? PINK : i < otp.length ? GREEN : LINE}`,

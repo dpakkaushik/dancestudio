@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
   createClassAction,
@@ -11,8 +10,8 @@ import { DOS_LEVELS, DOS_STYLE_REG } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassLevel, DanceClass } from "@/types/class";
 
-const CARD = "rgba(255,255,255,.07)";
-const EL = "rgba(255,255,255,.13)";
+const CARD = "var(--card)";
+const EL = "var(--el)";
 const initialState: ClassActionState = { error: null };
 
 /* form kit lifted from the prototype's S_classform (DanceOSApp.jsx:15169-15196) */
@@ -96,9 +95,6 @@ export function ClassForm({
         boxSizing: "border-box",
       }}
     >
-      <Link href={`/business/${tenantId}/classes`} style={{ fontSize: 20, color: INK, textDecoration: "none" }}>
-        ←
-      </Link>
       <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, margin: "10px 0 2px" }}>
         {isEdit ? "Edit class" : "Add class"}
       </div>

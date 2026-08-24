@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
-import { DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tokens";
+import { DARK_THEME_VARS, DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tokens";
 
-/** Page wrapper lifted from the prototype's `shell()` (DanceOSApp.jsx:3683-3698). */
+/** Page wrapper lifted from the prototype's `shell()` (DanceOSApp.jsx:3683-3698).
+ *  Auth always wears the in-app dark look (prototype line 48), so the dark palette
+ *  is pinned here regardless of the app-wide theme toggle. */
 export function AuthShell({
   children,
   toast,
@@ -12,6 +14,7 @@ export function AuthShell({
   return (
     <div
       style={{
+        ...(DARK_THEME_VARS as React.CSSProperties),
         background: LILAC,
         minHeight: "100vh",
         color: INK,
@@ -37,7 +40,7 @@ export function AuthShell({
             bottom: 28,
             left: "50%",
             transform: "translateX(-50%)",
-            background: "rgba(255,255,255,.13)",
+            background: "var(--el)",
             color: "#FAFAFA",
             border: "1.5px solid #EC4899",
             backdropFilter: "blur(10px)",

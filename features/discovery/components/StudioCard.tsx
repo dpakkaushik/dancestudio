@@ -1,8 +1,8 @@
 import { DOS_DISPLAY, SUB } from "@/lib/design/tokens";
 import type { NearbyTenant } from "@/repositories/discovery";
 
-const CARD = "rgba(255,255,255,.07)";
-const EL = "rgba(255,255,255,.13)";
+const CARD = "var(--card)";
+const EL = "var(--el)";
 
 /** Every studio wears a gradient of its own until real photos arrive — the same
  *  fallback the prototype's cover strip uses (DanceOSApp.jsx:4323). */

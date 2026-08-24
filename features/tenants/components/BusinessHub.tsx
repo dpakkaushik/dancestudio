@@ -27,8 +27,8 @@ const ArtistI = ({ size = 18, color = "currentColor" }: { size?: number; color?:
   </svg>
 );
 
-const CARD = "rgba(255,255,255,.07)";
-const EL = "rgba(255,255,255,.13)";
+const CARD = "var(--card)";
+const EL = "var(--el)";
 const ACCENT_STUDIO = DOS_TINT.studio;
 const initialState: TenantActionState = { error: null };
 
@@ -84,9 +84,6 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
       }}
     >
       <div style={{ padding: "14px 16px 0" }}>
-        <Link href="/" style={{ fontSize: 20, color: INK, textDecoration: "none" }}>
-          ←
-        </Link>
         <div
           style={{
             borderRadius: 22,
@@ -106,7 +103,7 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
               width: 130,
               height: 130,
               borderRadius: 65,
-              background: "rgba(255,255,255,.13)",
+              background: "var(--el)",
             }}
           />
           <div

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -7,7 +6,7 @@ import { findRosterByClass } from "@/repositories/enrollments";
 import { findMyTenants } from "@/repositories/tenants";
 import type { RosterEntry } from "@/types/enrollment";
 
-const EL = "rgba(255,255,255,.13)";
+const EL = "var(--el)";
 
 const initials = (name: string) =>
   (name.match(/\b\w/g) || ["D"]).slice(0, 2).join("").toUpperCase();
@@ -89,9 +88,6 @@ export default async function RosterPage({
         boxSizing: "border-box",
       }}
     >
-      <Link href={`/business/${tenantId}/classes`} style={{ fontSize: 20, color: INK, textDecoration: "none" }}>
-        ←
-      </Link>
       <div style={{ margin: "10px 0 2px", fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB }}>
         ROSTER
       </div>
