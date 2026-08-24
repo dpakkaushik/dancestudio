@@ -171,6 +171,8 @@ export default async function DiscoverPage({
                     isFull={filled >= c.capacity}
                     isSignedIn={Boolean(user)}
                     mine={mine.get(c.session.id) ?? null}
+                    priceInr={c.priceInr}
+                    shareSlug={c.shareSlug}
                   />
                 ) : null
               }

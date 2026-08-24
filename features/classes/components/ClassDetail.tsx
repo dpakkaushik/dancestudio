@@ -1,29 +1,47 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   cancelEnrollmentAction,
   enrollAction,
   type EnrollActionState,
 } from "@/features/enrollments/server-actions/enrollments";
+import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
+import { PayFlow } from "@/features/payments/components/PayFlow";
+import { RefundSheet } from "@/features/payments/components/RefundSheet";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
+import type { PaidReceipt } from "@/types/payment";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "./poster";
 import { ShareSheet, dosKey } from "./ShareSheet";
 
-/** The class detail page, lifted from prototype S_class (DanceOSApp.jsx:11626-12807),
- *  Step-8 scope: the poster sleeve, the card you tapped opened into a page (same three
- *  rows in the same order), AT THE STUDIO, and the booking bar. Later slices bring the
- *  rest of the screen: payment sheets (9), attendance/waitlist tools + the pass sheet
- *  behind the poster (10), rooms/artists/team/posters/routine (11), earnings/refunds
- *  (13) — see the UI parity backlog. */
+/** The class detail page, lifted from prototype S_class (DanceOSApp.jsx:11626-12807).
+ *  Step-8 brought the poster sleeve, the card opened into a page, AT THE STUDIO, and
+ *  the booking bar; Step 9 adds the money: the two-step pay sheets (12456-12573), the
+ *  POLICY section (12399-12402), and the booked card's Invoice | Cancel segments
+ *  (BookingActions 6429-6448) backed by real orders/payments/refunds. Still to come:
+ *  attendance/waitlist tools + the pass sheet behind the poster (10), rooms/artists/
+ *  team/posters/routine (11), owner earnings/refunds tabs (13) — see the backlog. */
 
 /* the studio's metal ring — prototype DOS_RINGS.studio (line 1462) */
 const STUDIO_RING = ["#F9E27D", "#B8860B"];
+
+const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
+
+/* one k/v line inside a section — prototype Row */
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "5px 0", fontSize: 12.5 }}>
+      <span style={{ color: "var(--sub)" }}>{k}</span>
+      <b style={{ textAlign: "right", minWidth: 0 }}>{v}</b>
+    </div>
+  );
+}
 
 /* prototype dosStyleInk (1697-1708): walk the style's colour toward the theme's ink
    until it clears 4.2:1 on the page background, so the headline is always readable */
@@ -96,19 +114,25 @@ export interface ClassDetailProps {
   /** Viewer is owner/trainer — sees the draft footer's Edit class. */
   canManage: boolean;
   mine: { id: string; status: EnrollmentStatus } | null;
+  /** The captured payment behind the viewer's booking — feeds the invoice. */
+  receipt: PaidReceipt | null;
 }
 
-export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMember, canManage, mine }: ClassDetailProps) {
+export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMember, canManage, mine, receipt }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
   const ink = dosStyleInk(col, dark);
   const heroGone = useDosFold(DOS_SLEEVE);
+  const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2400);
   };
   const [shareOpen, setShareOpen] = useState(false);
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
@@ -139,6 +163,12 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
   const weave = `repeating-linear-gradient(45deg, ${col}1a 0 6px, transparent 6px 12px)`;
   const whereBits = [c.room, c.tenantCity].filter(Boolean).join(" · ");
   const mapsQuery = [c.room, c.tenantName, c.tenantArea, c.tenantCity].filter(Boolean).join(", ");
+
+  /* one grammar for the money sheets — the same date/time the card prints */
+  const whenText = when
+    ? `${when.weekday} ${when.day} ${when.month}${time ? ` · ${time}` : ""}`
+    : (time ?? "—");
+  const whereText = [c.room, c.tenantCity].filter(Boolean).join(", ");
 
   return (
     <div
@@ -412,20 +442,89 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
       </div>
 
       <div style={{ padding: "12px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
-        {/* ── a booking you hold (prototype BookingActions, 6408-6448 — the invoice
-            segment arrives with payments; waitlist copy follows the shipped
-            EnrollButton semantics) ── */}
-        {mine && !isMember && !done && (
+        {/* ── a booking you hold (prototype BookingActions 6408-6448): neutral card,
+            the confirmed dot, and the two money actions MERGED into one segmented
+            pill — the invoice and the cancel-and-refund are two halves of one
+            subject. Waitlist rows keep their simple leave button. ── */}
+        {mine && !isMember && !done && booked && (
           <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 4, background: booked ? GREEN : GOLD, flexShrink: 0 }} />
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
               <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {booked ? "You’re booked" : "You’re on the waitlist"}
+                You’re booked
+              </span>
+              <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)", marginLeft: "auto", flexShrink: 0 }}>
+                {bookingCodeOf(mine.id)}
               </span>
             </div>
-            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>
-              {booked ? "See it on Home and My classes." : "You get the next freed spot."}
+            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>See it on Home and My classes.</div>
+            {/* one bordered pill, two segments, a hairline between */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "stretch",
+                marginTop: 10,
+                border: "1px solid var(--el)",
+                borderRadius: 999,
+                overflow: "hidden",
+                background: "var(--solid)",
+              }}
+            >
+              <span
+                role="button"
+                tabIndex={0}
+                onKeyDown={dosKey}
+                aria-label="Invoice"
+                onClick={() => setInvoiceOpen(true)}
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "10px 6px",
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  color: "var(--text)",
+                }}
+              >
+                Invoice
+              </span>
+              <span aria-hidden="true" style={{ width: 1, background: "var(--el)" }} />
+              <span
+                role="button"
+                tabIndex={0}
+                onKeyDown={dosKey}
+                aria-label="Cancel booking"
+                onClick={() => setRefundOpen(true)}
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "10px 6px",
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  color: "#F87171",
+                }}
+              >
+                Cancel booking
+              </span>
             </div>
+          </div>
+        )}
+        {mine && !isMember && !done && !booked && (
+          <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: GOLD, flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                You’re on the waitlist
+              </span>
+            </div>
+            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>You get the next freed spot.</div>
             <form action={cancelForm} style={{ display: "flex", marginTop: 10 }}>
               <input type="hidden" name="enrollmentId" value={mine.id} />
               <button
@@ -447,7 +546,7 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
                   borderRadius: 999,
                 }}
               >
-                {cancelPending ? "Cancelling…" : booked ? "Cancel booking" : "Leave waitlist"}
+                {cancelPending ? "Cancelling…" : "Leave waitlist"}
               </button>
             </form>
           </div>
@@ -546,6 +645,23 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
             </span>
           </div>
         </Sec>
+
+        {/* ── POLICY — what the price does NOT tell you (12399-12402). The
+            Memberships row waits for passes to exist (see backlog). ── */}
+        {!done && (
+          <Sec
+            col={col}
+            label="POLICY"
+            icon={
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="7" width="16" height="13" rx="2.5" />
+                <path d="M8 7V5.5A2.5 2.5 0 0 1 10.5 3h3A2.5 2.5 0 0 1 16 5.5V7M4 12.5h16" />
+              </svg>
+            }
+          >
+            <Row k="Refund" v={isFree ? "Not applicable — free" : "Full refund until 48 h before"} />
+          </Sec>
+        )}
 
         {/* ── the booking link people hand out — members only. Interim placement: the
             prototype moved this behind the poster's pass sheet, which arrives with
@@ -699,35 +815,35 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
                   Booked
                 </div>
               ) : (
-                <form action={enrollForm} style={{ flex: 1, display: "flex" }}>
-                  <input type="hidden" name="sessionId" value={c.session!.id} />
-                  <button
-                    type="submit"
-                    disabled={enrollPending}
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      padding: "15px",
-                      borderRadius: 999,
-                      cursor: "pointer",
-                      fontWeight: 900,
-                      fontSize: 14.5,
-                      background: "var(--text)",
-                      color: "var(--solid)",
-                      border: "none",
-                      boxShadow: "0 5px 16px rgba(0,0,0,.32)",
-                      fontFamily: DOS_UI,
-                    }}
-                  >
-                    {enrollPending ? "Booking…" : isFree ? "Book free trial" : "Book this class"}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                      <path d="M5 12h13M13 6.5 18.5 12 13 17.5" />
-                    </svg>
-                  </button>
-                </form>
+                /* two steps now, in the order a person thinks in (12439): free goes
+                   straight to the confirm sheet, paid chooses how it's paying first */
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={dosKey}
+                  onClick={() => setFlowOpen(true)}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    padding: "15px",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    fontWeight: 900,
+                    fontSize: 14.5,
+                    background: "var(--text)",
+                    color: "var(--solid)",
+                    boxShadow: "0 5px 16px rgba(0,0,0,.32)",
+                    fontFamily: DOS_UI,
+                  }}
+                >
+                  {isFree ? "Book free trial" : "Book this class"}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M5 12h13M13 6.5 18.5 12 13 17.5" />
+                  </svg>
+                </div>
               )}
             </div>
           )}
@@ -786,6 +902,50 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
 
       {shareOpen && (
         <ShareSheet title={c.title} slug={c.shareSlug} fire={fire} onClose={() => setShareOpen(false)} />
+      )}
+      {flowOpen && c.session && (
+        <PayFlow
+          sessionId={c.session.id}
+          isFree={isFree}
+          priceInr={c.priceInr}
+          posterItem={posterItem}
+          posterK={posterK}
+          col={col}
+          metaTop={`${c.style}${time ? ` · ${time}` : ""}`}
+          metaBottom={`${c.room ?? c.tenantName}${c.tenantCity ? `, ${c.tenantCity}` : ""}`}
+          businessName={c.tenantName}
+          classLabel={c.title}
+          onClose={() => setFlowOpen(false)}
+          onDone={(msg) => {
+            setFlowOpen(false);
+            fire(msg);
+          }}
+        />
+      )}
+      {invoiceOpen && mine && (
+        <InvoiceSheet
+          title={c.title}
+          whenText={whenText}
+          whereText={whereText}
+          enrollmentId={mine.id}
+          amountInr={receipt?.amountInr ?? null}
+          method={receipt?.method ?? null}
+          onClose={() => setInvoiceOpen(false)}
+        />
+      )}
+      {refundOpen && mine && (
+        <RefundSheet
+          enrollmentId={mine.id}
+          title={c.title}
+          timeText={whenText}
+          amountInr={receipt?.amountInr ?? 0}
+          onClose={() => setRefundOpen(false)}
+          onDone={(msg) => {
+            setRefundOpen(false);
+            fire(msg);
+            router.refresh();
+          }}
+        />
       )}
       {toast && (
         <div

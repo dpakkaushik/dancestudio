@@ -70,6 +70,8 @@ export default async function ClassesPage() {
                   isFull={filled >= c.capacity}
                   isSignedIn={Boolean(user)}
                   mine={mine.get(c.session.id) ?? null}
+                  priceInr={c.priceInr}
+                  shareSlug={c.shareSlug}
                 />
               ) : null
             }

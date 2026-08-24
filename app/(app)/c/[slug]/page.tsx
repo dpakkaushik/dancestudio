@@ -5,6 +5,7 @@ import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassBySlug } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
+import { findPaidReceiptByEnrollment } from "@/repositories/payments";
 import { findMyMembershipRole } from "@/repositories/tenants";
 import type { EnrollmentStatus } from "@/types/enrollment";
 
@@ -66,6 +67,13 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
   const liveNow = danceClass.session
     ? isLiveNow(danceClass.session.startsAt, danceClass.session.endsAt)
     : false;
+  const myBooking = sessionId ? mine.get(sessionId) ?? null : null;
+
+  // the paid side of the viewer's booking — feeds the invoice + refund sheets
+  const receipt =
+    myBooking && danceClass.priceInr > 0
+      ? await findPaidReceiptByEnrollment(supabase, myBooking.id)
+      : null;
 
   return (
     <ClassDetail
@@ -75,7 +83,8 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       isSignedIn={Boolean(user)}
       isMember={role !== null}
       canManage={role === "owner" || role === "trainer"}
-      mine={sessionId ? mine.get(sessionId) ?? null : null}
+      mine={myBooking}
+      receipt={receipt}
     />
   );
 }

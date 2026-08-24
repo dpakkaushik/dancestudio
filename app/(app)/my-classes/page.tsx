@@ -74,6 +74,8 @@ export default async function MyClassesPage() {
               isFull={false}
               isSignedIn
               mine={{ id: e.id, status: e.status }}
+              priceInr={e.priceInr}
+              shareSlug={e.shareSlug}
             />
           }
         />

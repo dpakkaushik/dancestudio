@@ -31,14 +31,17 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 9 / 27 steps** (Steps 0–8). Step 8 landed 24 Aug 2026: class
-  detail page at /c/{slug} (prototype S_class — poster sleeve, the card opened,
-  AT THE STUDIO, booking bar) + share/booking links (share_slug on classes,
-  ShareSheet with the real URL, every tile/deck/register row opens the page).
-  Step 6 ops tasks still open: verify a Resend sending domain, invite pilots.
+- **Completed: 10 / 27 steps** (Steps 0–9). Step 9 landed 24 Aug 2026: Razorpay
+  payments — orders/payments/refunds/webhook_events tables + RLS, verified
+  idempotent webhooks, paid enrollment through the prototype's two-step pay
+  sheets, POLICY section, Invoice | Cancel pill with real refund logic (48 h
+  window). Ops still open: create the Razorpay account + keys (until then paid
+  classes say "payments aren't switched on yet"; free classes work), verify a
+  Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 9 — Razorpay payments ⚠** (orders/payments/refunds tables,
-  verified idempotent webhooks, paid enrollment)
+- **Next: Step 10 — Attendance + waitlist management** (attendance table + RPCs,
+  owner-side waitlist queue — which also closes the paid-class no-auto-promote
+  gap — QR pass sheet behind the poster)
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -51,8 +54,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 6 | Hardening & pilot | ✅ done (24 Aug 2026) — pending ops: Resend domain, pilot invites |
 | 7 | App chrome + Home parity | ✅ done (24 Aug 2026) |
 | 8 | Class detail page + share links | ✅ done (24 Aug 2026) |
-| 9 | Razorpay payments ⚠ | ⬅ next |
-| 10 | Attendance + waitlist management | ⬜ |
+| 9 | Razorpay payments ⚠ | ✅ done (24 Aug 2026) — pending ops: Razorpay account + keys |
+| 10 | Attendance + waitlist management | ⬅ next |
 | 11 | Rooms & people (full class form) | ⬜ |
 | 12 | Studio CRM (leads/trials/conversions) | ⬜ |
 | 13 | Earnings & payouts ⚠ | ⬜ |
@@ -334,6 +337,76 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   keep .ps1 files ASCII: an em-dash in a double-quoted string breaks
   PowerShell 5.1's ANSI parse of BOM-less UTF-8.**
 
+### Step 9 — Razorpay payments ⚠ ✅ (done 24 Aug 2026)
+- Migration `20260824180000_create_payments.sql`: `orders` (tenant + user +
+  class + session traceability, price snapshot in whole rupees, razorpay_order_id,
+  created | paid | refund_pending | refunded), `payments` (unique
+  razorpay_payment_id — the idempotency spine; captured | failed | refunded),
+  `refunds` (the auditable money-back ledger: requested | pending | processed |
+  failed, with the learner's reason), `webhook_events` (unique event_id =
+  exactly-once webhook processing; machine-written, so its created_by is
+  nullable). RLS: the payer reads own rows, tenant members read the studio's,
+  the public reads none; **no direct writes** — money moves only through RPCs:
+  `create_payment_order` / `attach_razorpay_order` / `cancel_booking`
+  (authenticated) and `apply_captured_payment` / `apply_failed_payment` /
+  `apply_refund_update` (service_role only). Same migration closes the free
+  hole: `enroll_in_session` rejects a priced class with open seats (waitlisting
+  a full one stays free), and a freed seat auto-promotes ONLY on free classes —
+  a paid seat goes back on sale (promoting an unpaid waitlister would give a
+  paid seat away; Step 10's owner queue closes this properly).
+  `cancel_enrollment` is now a wrapper on `cancel_booking(reason)`: the seat
+  back immediately, the refund row by the 48 h window ('pending' auto-refund
+  outside it, 'requested' studio-decides inside — the POLICY line the learner
+  saw when booking). Capture is capacity-safe: money landing on a full, closed,
+  or amount-mismatched order files a pending refund instead of overbooking, and
+  a waitlisted learner who pays for an open seat is promoted.
+- Migration `20260824190000_set_updated_at_service_safe.sql`: the shared
+  `set_updated_at` trigger stamped `updated_by := auth.uid()` unconditionally —
+  NULL for service-role writes, so every webhook-driven update violated NOT
+  NULL. It now coalesces to the explicitly-set/previous author. **Lesson: a
+  shared audit trigger must never assume auth.uid() is non-null.**
+- Razorpay server side: `lib/razorpay/api.ts` (orders / fetch-payment / refund
+  via plain fetch + basic auth; RAZORPAY_KEY_ID / KEY_SECRET / WEBHOOK_SECRET in
+  env, documented in .env.local.example), `lib/razorpay/signature.ts`
+  (HMAC-SHA256 + timing-safe compare), `lib/supabase/admin.ts` (service-role
+  client, used only by the webhook route and the verified handshake).
+- Webhook `/api/webhooks/razorpay`: raw-body HMAC verify (401 on mismatch) →
+  exactly-once event ledger (replayed delivery = 200 no-op) → the idempotent
+  apply_* RPCs (payment.captured/failed, refund.processed/failed); non-2xx lets
+  Razorpay retry safely. The checkout handshake (`confirmCheckoutAction`)
+  verifies the signature server-side, fetches the payment FROM Razorpay, and
+  calls the same RPC — webhook and handshake race harmlessly.
+- Actions `features/payments/server-actions/payments.ts` (Zod): startCheckout
+  (the amount always from the database, never the client), confirmCheckout,
+  cancelBooking (fires the real refund API when one is due; a failed call
+  leaves the ledgered 'pending' row visible for ops/Step 13).
+- UI lifted from the prototype: the two-step pay sheets (S_class 12456-12573 —
+  free skips to the confirm sheet, 12439; one method row until passes arrive),
+  POLICY section (12399-12402, Refund row only — Memberships waits for passes),
+  BookingActions' merged Invoice | Cancel pill on the you're-booked card
+  (6408-6448), InvoiceSheet (6230-6255, real amount + method; Download PDF
+  omitted until it can be real), RefundSheet (6269-6327, reasons + 48 h copy).
+  EnrollButton routes priced classes (and paid-booking cancels) to /c/{slug},
+  where the money conversation lives; free bookings and waitlist moves stay
+  one tap.
+- Verified: `scripts/rls-proof-payments.ps1` — 12 checks green (free path
+  closed, no direct writes, apply_* machine-only, capture enrolls + replay is a
+  no-op, member/anon visibility, full-class capture refunds instead of
+  overbooking, both sides of the 48 h window, refund.processed closes the loop,
+  free-class waitlist promotion regression). `e2e/paid-webhook.spec.ts` — forged
+  signature 401, signed capture books the seat through the live route, replayed
+  delivery changes nothing (green). Happy-path e2e updated (price 0 + the new
+  confirm sheet) green. Typecheck / lint / production build green. **PowerShell
+  lessons: Invoke-RestMethod parses a JSON [] into something @() counts as 1 —
+  count via ConvertFrom-Json + a null filter; and a function returning a
+  1-element array unrolls it to a scalar — return `,@(...)`.**
+- Ops remaining (not code): create the Razorpay account, put RAZORPAY_KEY_ID /
+  RAZORPAY_KEY_SECRET (+ a strong RAZORPAY_WEBHOOK_SECRET) in .env.local and the
+  Vercel project, and register the webhook (URL {deployment}/api/webhooks/razorpay,
+  events payment.captured, payment.failed, refund.processed, refund.failed).
+  Until then paid classes say "payments aren't switched on yet" and free classes
+  work end to end.
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -347,10 +420,10 @@ remove entries as they close.**
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
-| Class detail page: two-step pay sheets + POLICY section | S_class 12399-12571 | Step 9 |
 | Class detail page: pass/QR sheet behind the poster (the share button moves there), attendance/earnings/refunds tabs | S_class PassSheet + owner tabs | Steps 10 + 13 |
 | Class detail page: artist column, CLASS ASSISTANTS team, WHAT YOU'LL DANCE (routine/notes/songs), poster upload/picker, room amenities | S_class 11900+, 12278-12354 | Step 11 |
-| Class detail page: invoice segment on the you're-booked card | BookingActions 6431 | Step 9 |
+| Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
+| Paid classes don't auto-promote their waitlist (a freed paid seat goes back on sale) — owner queue + notify closes it | attend 12080 | Step 10 |
 | Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | Step 11 |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: BizShell tools grid (students, attendance, earnings, reports, rooms, calendar) — "Manage" opens the Classes register only | S_bizhub/BizShell | Steps 10–14 |

@@ -36,21 +36,29 @@ const btn = (solid: boolean): React.CSSProperties => ({
 });
 
 /** The booking control on a class card. Full class → the waitlist takes over
- *  (prototype: "join the waitlist and we'll tell you if one opens", 12420-12423). */
+ *  (prototype: "join the waitlist and we'll tell you if one opens", 12420-12423).
+ *  Step 9: money lives on the class page — a priced class's book button and a
+ *  paid booking's cancel both open /c/{slug}, where the pay sheets and the
+ *  refund sheet are. Free bookings and waitlist moves stay one tap. */
 export function EnrollButton({
   sessionId,
   isFull,
   isSignedIn,
   mine,
+  priceInr,
+  shareSlug,
 }: {
   sessionId: string;
   isFull: boolean;
   isSignedIn: boolean;
   mine: { id: string; status: EnrollmentStatus } | null;
+  priceInr: number;
+  shareSlug: string;
 }) {
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
   const error = enrollState.error || cancelState.error;
+  const isPaid = priceInr > 0;
 
   if (!isSignedIn) {
     return (
@@ -68,13 +76,23 @@ export function EnrollButton({
             <span style={chip(mine.status === "enrolled" ? GREEN : GOLD)}>
               {mine.status === "enrolled" ? "Enrolled ✓" : "📋 On the waitlist"}
             </span>
-            <form action={cancelForm} style={{ flex: 1, display: "flex" }}>
-              <input type="hidden" name="enrollmentId" value={mine.id} />
-              <button type="submit" disabled={cancelPending} style={btn(false)}>
-                {cancelPending ? "Cancelling…" : mine.status === "enrolled" ? "Cancel booking" : "Leave waitlist"}
-              </button>
-            </form>
+            {mine.status === "enrolled" && isPaid ? (
+              <Link href={`/c/${shareSlug}`} style={{ ...btn(false), textDecoration: "none" }}>
+                Cancel / refund ›
+              </Link>
+            ) : (
+              <form action={cancelForm} style={{ flex: 1, display: "flex" }}>
+                <input type="hidden" name="enrollmentId" value={mine.id} />
+                <button type="submit" disabled={cancelPending} style={btn(false)}>
+                  {cancelPending ? "Cancelling…" : mine.status === "enrolled" ? "Cancel booking" : "Leave waitlist"}
+                </button>
+              </form>
+            )}
           </>
+        ) : isPaid && !isFull ? (
+          <Link href={`/c/${shareSlug}`} style={{ ...btn(true), textDecoration: "none" }}>
+            Book this class
+          </Link>
         ) : (
           <form action={enrollForm} style={{ flex: 1, display: "flex" }}>
             <input type="hidden" name="sessionId" value={sessionId} />

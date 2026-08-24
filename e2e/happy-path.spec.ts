@@ -112,6 +112,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.locator('input[name="title"]').fill(classTitle);
     const inThreeDays = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await owner.locator('input[name="date"]').fill(inThreeDays);
+    // free trial — the ₹300 default would route booking through Razorpay (Step 9),
+    // which the paid-webhook spec covers; this path proves the free flow
+    await owner.locator('input[name="priceInr"]').fill("0");
     await owner.getByRole("button", { name: "Publish" }).click();
 
     // back on the register, the class sits under the Published tab — the tile
@@ -138,8 +141,13 @@ test("signup → onboard studio → create class → share link → enroll", asy
     learnerId = await signUp(learner, `e2e-learner-${stamp}@example.com`);
     await onboard(learner, "E2E", "Learner", null, "Pune");
 
+    // booking is two steps now (Step 9): the bar opens the confirm sheet, and a
+    // free class confirms without payment
     await learner.goto(`/c/${shareSlug}`);
-    await learner.getByRole("button", { name: "Book this class" }).click();
+    await learner.getByRole("button", { name: "Book free trial" }).click();
+    const confirmSheet = learner.getByRole("dialog", { name: "Confirm — no payment" });
+    await expect(confirmSheet).toBeVisible();
+    await confirmSheet.getByRole("button", { name: "Confirm free trial" }).click();
     await expect(learner.getByText(/You.re booked/)).toBeVisible();
 
     // the booking shows up on the learner's own list too
