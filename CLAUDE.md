@@ -29,6 +29,14 @@ Goal: turn the prototype into a scalable multi-tenant app serving many studios
 pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
+### Progress tracker — update after EVERY push (Rule 11)
+
+- **Completed: 7 / 27 steps** (Steps 0–6). Step 6 is code-complete; two non-code
+  ops tasks remain: verify a Resend sending domain, invite 1–2 pilot studios.
+- **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
+- **Next: Step 7 — App chrome + Home parity** (bottom tab bar, top bar, theme
+  system, home sleeves — frontend-only, lifted from prototype shell/nav + Home 7248+)
+
 | Step | Slice | Status |
 |------|-------|--------|
 | 0 | Foundations: repo restructure, Next.js scaffold, CI | ✅ done (commit 817d01a) |
@@ -37,7 +45,30 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 3 | Classes | ✅ done (19 Aug 2026) |
 | 4 | Enrollment | ✅ done (24 Aug 2026) |
 | 5 | Discovery ("near me") | ✅ done (24 Aug 2026) |
-| 6 | Hardening & pilot | ⬅ next |
+| 6 | Hardening & pilot | ✅ done (24 Aug 2026) — pending ops: Resend domain, pilot invites |
+| 7 | App chrome + Home parity | ⬅ next |
+| 8 | Class detail page + share links | ⬜ |
+| 9 | Razorpay payments ⚠ | ⬜ |
+| 10 | Attendance + waitlist management | ⬜ |
+| 11 | Rooms & people (full class form) | ⬜ |
+| 12 | Studio CRM (leads/trials/conversions) | ⬜ |
+| 13 | Earnings & payouts ⚠ | ⬜ |
+| 14 | Calendar views | ⬜ |
+| 15 | Follows + public profiles | ⬜ |
+| 16 | Reviews + ratings | ⬜ |
+| 17 | Social feed (images first) | ⬜ |
+| 18 | Messaging (DMs → groups) | ⬜ |
+| 19 | Moderation + reporting | ⬜ |
+| 20 | Video/reels (Mux/Cloudflare Stream) | ⬜ |
+| 21 | Events, competitions, ticketing ⚠ | ⬜ |
+| 22 | Teams/crews + auditions | ⬜ |
+| 23 | Search (Typesense) + Discover filters/map | ⬜ |
+| 24 | Push notifications | ⬜ |
+| 25 | Analytics dashboards | ⬜ |
+| 26 | WhatsApp OTP unpark ⚠ | ⬜ |
+
+Steps 0–6 detail is recorded below; Steps 7–26 detail lives in the
+**Extended roadmap** section. ⚠ = touches money/auth (Rule 9).
 
 ### Step 0 — Foundations ✅
 Prototype moved to `prototype/` (byte-identical); Next.js 16 + TypeScript +
@@ -218,11 +249,11 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   localhost + all three vercel.app aliases, so magic links work live. Smoke
   tested: / redirects anon → /login, /login /discover /classes all 200, and a
   production magic link was sent/delivered.
-- Remaining: verify a sending domain in Resend (until then sign-in emails only
-  reach deepakkaushik8919@gmail.com); real OTP delivery **parked** —
-  WhatsApp-first (Twilio Verify; Meta business verification + template) with
-  SMS fallback (DLT registration); invite 1–2 pilot studios
-- Remaining: deploy to Vercel; invite 1–2 real studios as pilots
+- Remaining (ops, not code): verify a sending domain in Resend (until then
+  sign-in emails only reach deepakkaushik8919@gmail.com), then invite 1–2 pilot
+  studios. Real OTP delivery stays **parked** — it is Step 26 in the extended
+  roadmap (WhatsApp-first via Twilio Verify + Meta business verification, SMS/DLT
+  fallback).
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -233,18 +264,73 @@ remove entries as they close.**
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| App chrome: bottom tab bar (Home·Discover·Create·Calendar·Profile), top bar, theme system | shell/nav | Step 6 polish |
-| Home screen: sleeves, live-now chips, greeting, tools — current home is identity header + row links | Home 7248+ | Step 6 polish |
-| Class detail page (poster, artist, add-ons, share/booking link) — booking is on the tile today | S_class | Phase 2 (attendance slice) |
-| Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | ERP slice (rooms/people) |
-| Class card: poster art, live chips, share sheet, undo toasts | BookingCard 7969 | Phase 2-3 |
-| Studio desk: BizShell tools grid (students, attendance, earnings, reports, rooms, calendar) — "Manage" opens the Classes register only | S_bizhub/BizShell | Phase 2 (ERP) |
-| Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Step 6+ / Phase 3 |
-| My classes: real calendar view; owner-side waitlist queue management | Calendar tab / attend 12080 | Phase 2 (attendance) |
+| App chrome: bottom tab bar (Home·Discover·Create·Calendar·Profile), top bar, theme system | shell/nav | Step 7 |
+| Home screen: sleeves, live-now chips, greeting, tools — current home is identity header + row links | Home 7248+ | Step 7 |
+| Class detail page (poster, artist, add-ons, share/booking link) — booking is on the tile today | S_class | Step 8 |
+| Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | Step 11 |
+| Class card: poster art, live chips, share sheet, undo toasts | BookingCard 7969 | Steps 8 (share) + 11 (posters) |
+| Studio desk: BizShell tools grid (students, attendance, earnings, reports, rooms, calendar) — "Manage" opens the Classes register only | S_bizhub/BizShell | Steps 10–14 |
+| Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Steps 15 (counts), 22 (crews), 23 (filters/sort/map) |
+| My classes: real calendar view; owner-side waitlist queue management | Calendar tab / attend 12080 | Steps 10 (waitlist mgmt) + 14 (calendar) |
 
-### Later phases (not in this plan's scope)
-Razorpay payments + attendance + studio CRM → community/feed/reviews →
-events/video → search (Typesense) + analytics.
+### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
+
+Same discipline as Steps 0–6: one vertical slice per session, execution order
+below (schema+RLS → repository → Zod actions → UI → verify), and **Rule 2 is
+absolute — every screen's JSX is lifted from `prototype/DanceOSApp.jsx`
+unchanged; only the `dosStorage` wiring is replaced with server actions.** Each
+step names the prototype screens its UI comes from so nothing gets redesigned.
+⚠ = touches money/auth (Rule 9).
+
+**Prototype parity (no new tables)**
+
+| # | Slice | Backend | Prototype UI source |
+|---|-------|---------|---------------------|
+| 7 | App chrome + Home: bottom tab bar (Home·Discover·Create·Calendar·Profile), top bar, theme system, home sleeves/greeting/live-now chips | none — reads existing data | shell/nav, Home 7248+ |
+
+**Phase 2 — Transactions**
+
+| # | Slice | Backend | Prototype UI source |
+|---|-------|---------|---------------------|
+| 8 | Class detail page + share/booking links | share-slug lookup | S_class |
+| 9 | ⚠ Razorpay: orders/payments/refunds tables, **verified idempotent webhooks**, paid enrollment; every payment traceable to tenant + user + bookable | biggest single slice | booking flow, BookingCard 7969 |
+| 10 | Attendance (manual first, QR later) + owner-side waitlist queue management | attendance table + RPCs | attend 12080 |
+| 11 | Rooms & people: studio rooms, room picker, artist/assistant claims, posters → completes the two-step class form wizard | rooms + claims tables | S_classform 15108 |
+| 12 | Studio CRM: leads, trials, conversions | leads pipeline | BizShell students tools |
+| 13 | ⚠ Earnings & payouts: trainer payout ledger (manual first), earnings dashboard, reports | payout ledger | BizShell earnings/reports |
+| 14 | Calendar views (learner + studio) | none new — reads sessions | Calendar tab |
+
+**Phase 3 — Community**
+
+| # | Slice | Backend | Prototype UI source |
+|---|-------|---------|---------------------|
+| 15 | Follow system + public profiles with follower counts | follows table + aggregates | profile screens |
+| 16 | Reviews (trainer/studio categories) + rating rollups on profiles | reviews + rollups | review screens |
+| 17 | Social feed, images first: cursor pagination, rate limiting | posts/likes/comments | feed screens |
+| 18 | Messaging: DMs first, group/community chat later (Supabase Realtime) | conversations/messages | chat screens |
+| 19 | Moderation: user reports on all UGC, admin queue, pending/published states | reports + queue | admin screens |
+
+**Phase 4 — Performance & events**
+
+| # | Slice | Backend | Prototype UI source |
+|---|-------|---------|---------------------|
+| 20 | Video/reels: Mux or Cloudflare Stream (decide before building), webhook-driven, playback IDs only in Postgres, automated screening | media pipeline | reel screens |
+| 21 | ⚠ Events, competitions, ticketing (reuses the Step 9 Razorpay rails) | events/tickets | event screens |
+| 22 | Teams/crews + auditions (fills Discover's crews tab) | teams/members | crew screens |
+
+**Phase 5 — Scale & intelligence**
+
+| # | Slice | Backend | Prototype UI source |
+|---|-------|---------|---------------------|
+| 23 | Typesense search sync (triggers + reconciliation job) → Discover style rail, sort, map view | sync pipeline | S_discover 4100+ |
+| 24 | Push notifications (OneSignal/FCM) | fan-out | system-level |
+| 25 | Analytics: DAU/MAU, retention, GMV dashboards | aggregates | admin/reports |
+| 26 | ⚠ WhatsApp-first OTP unpark: Twilio Verify + Meta business verification, SMS/DLT fallback | provider setup; code = `channel:"whatsapp"` in signInWithOtp | existing S_auth screens |
+
+Order rationale: Step 7 first so pilot studios see the prototype's real chrome
+(zero backend risk); then money — Phase 2 — because paying students is a pilot
+studio's first ask, and payments unlock payouts, ticketing, and GMV analytics
+downstream; community after transactions; scale last.
 
 ### Execution order — every step follows this exact sequence, no exceptions
 
@@ -292,6 +378,10 @@ server action → UI, finished and verified before the next begins.
 10. **When the user asks to end a session**, append an entry to the Session log
     (below) with exactly four things — this session / done so far / remaining /
     next session — then commit and push it. Newest entry on top.
+11. **After every push, update the Progress tracker** (top of the Build plan) in
+    the same push or the immediately following one: steps complete / 27, what
+    just landed, and what's next. The tracker and the step table must always
+    match reality — a stale tracker is a bug.
 
 ## Session log
 
