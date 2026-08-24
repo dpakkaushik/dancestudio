@@ -274,6 +274,30 @@ server action → UI, finished and verified before the next begins.
 Four lines per session, written when the user ends it. The step records above hold
 the technical detail; this log is the at-a-glance history.
 
+### 24 Aug 2026
+- **This session:** Steps 4, 5, and Step 6 part 1 — Enrollment (enrollments table
+  + RPCs with capacity/waitlist logic, EnrollButton, /my-classes, roster, 9-check
+  RLS proof), Discovery (PostGIS + city centroids, nearby_tenants, /discover with
+  city rail + tabs, 5-check proof), interim email magic-link sign-in (📱/✉️ toggle,
+  /auth/confirm; commit 691e4eb), then hardening part 1: local-only seed.sql +
+  self-cleaning Playwright e2e of the full happy path (signup → onboard → create
+  studio → publish class → second user enrolls). The e2e caught and we fixed a
+  real RLS leak (findMyTenants showed everyone every listed studio — membership
+  table is now the query spine) and an a11y bug (bottom sheets aria-hidden, forms
+  invisible to screen readers → proper role="dialog"). e2e + typecheck + lint +
+  build all green; pushed as 70dbccf.
+- **Done so far:** Steps 0–5 complete + Step 6 partly (seed, e2e, RLS/a11y fixes).
+  Auth: email magic link live (interim), test phone numbers for OTP.
+- **Remaining:** Step 6 rest — custom SMTP (Resend) to lift the ~2/hour mailer cap,
+  WhatsApp-first OTP (Twilio Verify + Meta verification, SMS/DLT fallback), turn
+  off mailer_autoconfirm, add production URL to uri_allow_list, deploy to Vercel,
+  invite 1–2 pilot studios. Optional: delete ~8 leftover proof-script studios from
+  the live DB. Then later phases (payments, community, events, search) + the UI
+  parity backlog.
+- **Next session:** Step 6 rest — start with Vercel deploy + Resend SMTP (needs
+  the user's accounts), then WhatsApp OTP setup; or, if the user prefers building,
+  begin Phase 2 groundwork (attendance/ERP) as the next vertical slice.
+
 ### 19 Aug 2026
 - **This session:** Step 3 (Classes) built end-to-end and verified: classes +
   class_sessions schema with RLS, atomic creation RPC, repository + Zod server
