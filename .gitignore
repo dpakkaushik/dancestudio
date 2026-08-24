@@ -24,3 +24,6 @@ playwright-report/
 
 # misc
 .DS_Store
+
+# local Claude Code session config
+.claude/
