@@ -141,10 +141,13 @@ export function ClassesManager({
   tenantId,
   tenantName,
   classes,
+  filledBySession = {},
 }: {
   tenantId: string;
   tenantName: string;
   classes: DanceClass[];
+  /** Enrolled count per session id — real numbers from Step 4. */
+  filledBySession?: Record<string, number>;
 }) {
   const [tab, setTab] = useState<ClassStatus>("published");
   const [ask, setAsk] = useState<{ kind: "publish" | "draft" | "published"; c: DanceClass } | null>(null);
@@ -268,6 +271,7 @@ export function ClassesManager({
             <ClassTile
               key={c.id}
               danceClass={c}
+              filled={c.session ? filledBySession[c.session.id] ?? 0 : 0}
               actions={
                 c.status === "draft" ? (
                   <>
@@ -282,10 +286,25 @@ export function ClassesManager({
                     </button>
                   </>
                 ) : c.status === "published" ? (
-                  <button type="button" onClick={() => setAsk({ kind: "published", c })} style={pill(true)}>
-                    Delete
-                  </button>
-                ) : null
+                  <>
+                    <Link
+                      href={`/business/${tenantId}/classes/${c.id}/roster`}
+                      style={{ ...pill(false), textDecoration: "none" }}
+                    >
+                      Roster
+                    </Link>
+                    <button type="button" onClick={() => setAsk({ kind: "published", c })} style={pill(true)}>
+                      Delete
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href={`/business/${tenantId}/classes/${c.id}/roster`}
+                    style={{ ...pill(false), textDecoration: "none" }}
+                  >
+                    Roster
+                  </Link>
+                )
               }
             />
           ))}

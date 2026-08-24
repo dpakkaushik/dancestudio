@@ -35,8 +35,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 1 | Auth + identity (mobile-OTP login) | ✅ done (18 Aug 2026) |
 | 2 | Tenant onboarding | ✅ done (18 Aug 2026) |
 | 3 | Classes | ✅ done (19 Aug 2026) |
-| 4 | Enrollment | ⬅ next |
-| 5 | Discovery ("near me") | |
+| 4 | Enrollment | ✅ done (24 Aug 2026) |
+| 5 | Discovery ("near me") | ⬅ next |
 | 6 | Hardening & pilot | |
 
 ### Step 0 — Foundations ✅
@@ -108,10 +108,30 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   studio name + session, anonymous write blocked, soft delete hides). Build/lint/
   typecheck green.
 
-### Step 4 — Enrollment
-- Migration: `enrollments` (session ↔ learner, status incl. waitlist) + RLS
-- Server actions: enroll, cancel, capacity check (payments stubbed until Phase 2)
-- UI: enroll button, learner's "my classes", studio roster — lifted from prototype
+### Step 4 — Enrollment ✅ (done 24 Aug 2026)
+- Migration `20260824090000_create_enrollments.sql`: `enrollments` (session_id,
+  class_id + tenant_id denormalised, user_id → **profiles** so the roster can name
+  the learner, status enrolled|waitlisted|cancelled, audit + soft delete; partial
+  unique index = one live spot per learner per session, cancelled rows don't block
+  re-enrolling). RLS: learners read own rows; tenant members read their roster;
+  **no direct writes** — everything through security-definer RPCs:
+  `enroll_in_session` (row-lock on the class → atomic capacity check, full →
+  waitlisted, rejects past/unpublished sessions and missing profiles),
+  `cancel_enrollment` (own rows only; a freed seat auto-promotes the oldest
+  waitlisted — prototype 13648), `session_seat_counts` (aggregate-only, granted to
+  anon so public cards can say "N spots left" without exposing who).
+- Repository `repositories/enrollments.ts`; Zod actions enroll/cancel in
+  `features/enrollments/server-actions/enrollments.ts` (revalidate /classes +
+  /my-classes).
+- UI: `EnrollButton` on the class tiles (Book a spot / Join waitlist / Enrolled ✓ /
+  cancel — waitlist copy from prototype 12420), `/my-classes` (learner bookings,
+  soonest first), roster at `/business/[tenantId]/classes/[classId]/roster`
+  (person-row treatment from PeoplePicker 649), real seat counts on the register
+  and learner listing, "My classes" row on home.
+- Verified: `scripts/rls-proof-enrollments.ps1` — 9 checks (enroll, double-book
+  rejected, full → waitlist, anon enroll rejected, direct insert rejected, cancel
+  promotes waitlist, cross-user cancel rejected, roster member-only, anon seat
+  counts). Build/lint/typecheck green.
 
 ### Step 5 — Discovery ("near me")
 - Enable PostGIS; geography column + spatial index on `tenants`

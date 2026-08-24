@@ -115,6 +115,27 @@ export default async function HomePage() {
           <span style={{ color: "#5AC8FA", fontWeight: 800, fontSize: 12 }}>Open ›</span>
         </Link>
         <Link
+          href="/my-classes"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "rgba(255,255,255,.07)",
+            border: `1px solid ${LINE}`,
+            borderLeft: "4px solid #22C55E",
+            borderRadius: 16,
+            padding: "14px 15px",
+            marginBottom: 10,
+            color: INK,
+            textDecoration: "none",
+            fontSize: 13.5,
+            fontWeight: 900,
+          }}
+        >
+          My classes — your booked spots
+          <span style={{ color: "#22C55E", fontWeight: 800, fontSize: 12 }}>Open ›</span>
+        </Link>
+        <Link
           href="/business"
           style={{
             display: "flex",
