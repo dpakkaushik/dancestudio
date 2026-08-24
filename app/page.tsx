@@ -94,7 +94,7 @@ export default async function HomePage() {
           the app arrive step by step from the prototype.
         </div>
         <Link
-          href="/classes"
+          href="/discover"
           style={{
             display: "flex",
             alignItems: "center",
@@ -111,7 +111,7 @@ export default async function HomePage() {
             fontWeight: 900,
           }}
         >
-          Upcoming classes — book a session
+          Discover — classes & studios near you
           <span style={{ color: "#5AC8FA", fontWeight: 800, fontSize: 12 }}>Open ›</span>
         </Link>
         <Link

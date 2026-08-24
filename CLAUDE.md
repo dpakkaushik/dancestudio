@@ -36,8 +36,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 2 | Tenant onboarding | ✅ done (18 Aug 2026) |
 | 3 | Classes | ✅ done (19 Aug 2026) |
 | 4 | Enrollment | ✅ done (24 Aug 2026) |
-| 5 | Discovery ("near me") | ⬅ next |
-| 6 | Hardening & pilot | |
+| 5 | Discovery ("near me") | ✅ done (24 Aug 2026) |
+| 6 | Hardening & pilot | ⬅ next |
 
 ### Step 0 — Foundations ✅
 Prototype moved to `prototype/` (byte-identical); Next.js 16 + TypeScript +
@@ -133,10 +133,29 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   promotes waitlist, cross-user cancel rejected, roster member-only, anon seat
   counts). Build/lint/typecheck green.
 
-### Step 5 — Discovery ("near me")
-- Enable PostGIS; geography column + spatial index on `tenants`
-- Server action: studios/trainers within a radius, respecting visibility settings
-- UI: discovery list (map view later — Google Maps key needed then)
+### Step 5 — Discovery ("near me") ✅ (done 24 Aug 2026)
+- Migration `20260824120000_discovery_postgis.sql`: PostGIS enabled (extensions
+  schema); `city_centroids` reference table (12 DOS_CITIES seeded, public read);
+  existing tenants backfilled with their city's coordinates (trigger paused for the
+  backfill — auth.uid() is null in migrations); `create_tenant_with_owner` replaced
+  (same signature) to stamp centroid lat/lng at creation; GIST expression index on
+  tenants; `nearby_tenants(lat,lng,radius_km,type)` — **SECURITY INVOKER** so the
+  caller's RLS decides visibility: anon sees listed only, owners still find their
+  own unlisted business. Precise addresses (Google Maps autocomplete) arrive later;
+  until then a studio sits at its city centroid.
+- Repository `repositories/discovery.ts`; centroids mirrored in
+  `lib/constants/cities.ts` for the client.
+- UI `/discover` lifted from prototype S_discover: city chip rail (closed list, URL
+  state `?city=`), entity tabs Classes | Studios | Artists (`?tab=`), classes shelf
+  reuses ClassTile + EnrollButton filtered by city, studios/artists use `StudioCard`
+  lifted from prototype 4306 (cover strip with per-business gradient, 56px squircle
+  avatar riding the cover edge, distance chip top-right). Home's discover row points
+  here. Profile city = default city.
+- Verified: `scripts/rls-proof-discovery.ps1` — 5 checks (new studio gets coords,
+  anon finds it near Pune, type filter, unlisted hidden from anon but visible to
+  owner, Delhi search excludes Pune). Build/lint/typecheck green. (PowerShell
+  lesson: compare REST ids with `-contains` + `[string]` casts, not `Where-Object`
+  object equality.)
 
 ### Step 6 — Hardening & pilot
 - `supabase/seed.sql`: 1 studio, 1 trainer, a few learners
@@ -145,6 +164,24 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   business verification + authentication template) with **SMS fallback** (DLT
   registration); turn off `mailer_autoconfirm`
 - Deploy to Vercel; invite 1–2 real studios as pilots
+
+### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
+
+Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
+between the built screens and their prototype counterparts, each tagged with the
+slice that closes it. **Add to this list whenever a screen ships simplified;
+remove entries as they close.**
+
+| Gap | Prototype ref | Closes with |
+|-----|--------------|-------------|
+| App chrome: bottom tab bar (Home·Discover·Create·Calendar·Profile), top bar, theme system | shell/nav | Step 6 polish |
+| Home screen: sleeves, live-now chips, greeting, tools — current home is identity header + row links | Home 7248+ | Step 6 polish |
+| Class detail page (poster, artist, add-ons, share/booking link) — booking is on the tile today | S_class | Phase 2 (attendance slice) |
+| Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | ERP slice (rooms/people) |
+| Class card: poster art, live chips, share sheet, undo toasts | BookingCard 7969 | Phase 2-3 |
+| Studio desk: BizShell tools grid (students, attendance, earnings, reports, rooms, calendar) — "Manage" opens the Classes register only | S_bizhub/BizShell | Phase 2 (ERP) |
+| Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Step 6+ / Phase 3 |
+| My classes: real calendar view; owner-side waitlist queue management | Calendar tab / attend 12080 | Phase 2 (attendance) |
 
 ### Later phases (not in this plan's scope)
 Razorpay payments + attendance + studio CRM → community/feed/reviews →
@@ -250,3 +287,13 @@ pnpm typecheck  → tsc --noEmit
 - At least one test on the happy path
 - Loading and error states in UI
 - Demoable in the browser
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

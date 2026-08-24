@@ -40,6 +40,7 @@ export async function enrollAction(
     const status = await enrollInSession(supabase, parsed.data.sessionId);
     revalidatePath("/classes");
     revalidatePath("/my-classes");
+    revalidatePath("/discover");
     return { error: null, outcome: status === "waitlisted" ? "waitlisted" : "enrolled" };
   } catch (error: unknown) {
     return {
@@ -63,6 +64,7 @@ export async function cancelEnrollmentAction(
     await cancelEnrollment(supabase, parsed.data.enrollmentId);
     revalidatePath("/classes");
     revalidatePath("/my-classes");
+    revalidatePath("/discover");
     return { error: null, outcome: "cancelled" };
   } catch (error: unknown) {
     return {
