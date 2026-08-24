@@ -107,14 +107,34 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes/);
     tenantId = owner.url().match(/\/business\/([0-9a-f-]+)\/classes/)?.[1] ?? null;
 
+    // ---- add a room, so the class has somewhere to be (Step 11) -----------
+    await owner.getByRole("link", { name: "Rooms ›" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/rooms$/);
+    await owner.getByRole("button", { name: "Add room" }).click();
+    const roomName = owner.getByLabel("Room 1 name");
+    await expect(roomName).toBeVisible();
+    await roomName.fill("Studio A");
+    await roomName.blur();
+    // amenities live with the room and show up on the public class page
+    await owner.getByRole("button", { name: "Amenities in Studio A" }).click();
+    await owner.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
+    await expect(owner.getByText("🪞 Mirrors", { exact: false }).first()).toBeVisible();
+
+    // ---- the class form is a two-step wizard (Step 11) --------------------
+    await owner.goto(`/business/${tenantId}/classes`);
     await owner.getByText("Create class").click();
-    await owner.getByText("Bollywood", { exact: true }).click();
-    await owner.locator('input[name="title"]').fill(classTitle);
+    // step 1 — basics: when, what, the name, and the room it runs in
     const inThreeDays = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    await owner.locator('input[name="date"]').fill(inThreeDays);
-    // free trial — the ₹300 default would route booking through Razorpay (Step 9),
-    // which the paid-webhook spec covers; this path proves the free flow
-    await owner.locator('input[name="priceInr"]').fill("0");
+    await owner.getByLabel("Class date").fill(inThreeDays);
+    await owner.getByText("Bollywood", { exact: true }).click();
+    await owner.getByLabel("Class name").fill(classTitle);
+    await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
+    await owner.getByRole("button", { name: /Next · people & price/ }).click();
+    // the room now defines the capacity (prototype: "defined by Studio A")
+    await expect(owner.getByText(/defined by Studio A/)).toBeVisible();
+    // step 2 — people & price. Free trial: the ₹300 default would route booking
+    // through Razorpay (Step 9), which the paid-webhook spec covers.
+    await owner.getByLabel("Price per session").fill("0");
     await owner.getByRole("button", { name: "Publish" }).click();
 
     // back on the register, the class sits under the Published tab — the tile
@@ -145,6 +165,8 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // booking is two steps now (Step 9): the bar opens the confirm sheet, and a
     // free class confirms without payment
     await learner.goto(`/c/${shareSlug}`);
+    // AT THE STUDIO carries what the room has in it (Step 11)
+    await expect(learner.getByText("🪞 Mirrors")).toBeVisible();
     await learner.getByRole("button", { name: "Book free trial" }).click();
     const confirmSheet = learner.getByRole("dialog", { name: "Confirm — no payment" });
     await expect(confirmSheet).toBeVisible();

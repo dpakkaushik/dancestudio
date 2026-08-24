@@ -9,6 +9,7 @@ import {
   removeFromWaitlistAction,
   undoCheckInAction,
 } from "@/features/attendance/server-actions/attendance";
+import { respondToClaimAction } from "@/features/claims/server-actions/claims";
 import {
   cancelEnrollmentAction,
   enrollAction,
@@ -21,6 +22,7 @@ import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
 import type { ClassRegister } from "@/repositories/attendance";
+import type { ClassClaim } from "@/types/claim";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { PaidReceipt } from "@/types/payment";
@@ -134,6 +136,12 @@ export interface ClassDetailProps {
   sessionPhase: "upcoming" | "live" | "ended";
   /** The live register + waitlist queue — fetched only for owner/trainer viewers. */
   register: ClassRegister | null;
+  /** Who is on this class. The public sees confirmed claims only (RLS). */
+  claims: ClassClaim[];
+  /** An ask waiting for the signed-in viewer's own answer. */
+  myClaim: ClassClaim | null;
+  /** What the room has in it — read off the room the class runs in. */
+  roomAmenities: string[];
 }
 
 export function ClassDetail({
@@ -147,6 +155,9 @@ export function ClassDetail({
   receipt,
   sessionPhase,
   register,
+  claims,
+  myClaim,
+  roomAmenities,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -172,7 +183,15 @@ export function ClassDetail({
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
   const actionError = enrollState.error || cancelState.error;
 
-  const posterK = dosPosterAuto(c.title);
+  /* the design the studio chose, or the one the class draws from its own name */
+  const posterK = c.poster && c.poster !== "none" ? c.poster : dosPosterAuto(c.title);
+
+  /* the people. A name reaches a stranger only once its claim is confirmed —
+     RLS already filters that for the public, and a member sees the asks too, so
+     the page only prints unconfirmed rows to people who can act on them. */
+  const artist = claims.find((cl) => cl.kind === "artist" && cl.status === "confirmed") ?? null;
+  const assistants = claims.filter((cl) => cl.kind === "assistant" && cl.status === "confirmed");
+  const pendingAsks = isMember ? claims.filter((cl) => cl.status === "asked") : [];
   const posterItem = { title: c.title, style: c.style, styleColor: col };
   const levelWord = DOS_LEVEL_LABEL[c.level] ?? c.level;
   const done = c.status === "completed";
@@ -223,6 +242,15 @@ export function ClassDetail({
             ? "Anyone who scans this can book your class."
             : "Anyone who scans this can book this class.",
         };
+
+  const answerClaim = async (claimId: string, accept: boolean) => {
+    if (opPending) return;
+    setOpPending(claimId);
+    const out = await respondToClaimAction({ claimId, accept });
+    setOpPending(null);
+    fire(out.error ?? (accept ? "You’re on this class" : "Declined — they’ve been told"));
+    router.refresh();
+  };
 
   const runRegisterOp = async (
     enrollmentId: string,
@@ -401,7 +429,56 @@ export function ClassDetail({
               )}
             </div>
 
-            {/* the artist column arrives with Step 11 (rooms & people) */}
+            {/* the artist column — who is taking it, beside when it runs. Only a
+                CONFIRMED claim is ever printed here (prototype 11900+). */}
+            {artist && (
+              <div
+                style={{
+                  width: 62,
+                  flexShrink: 0,
+                  boxSizing: "border-box",
+                  padding: "11px 4px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  borderLeft: `1px solid ${col}33`,
+                }}
+              >
+                <span
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10.5,
+                    fontWeight: 900,
+                    color: "#fff",
+                    background: `linear-gradient(135deg,${col},#7C3AED)`,
+                  }}
+                >
+                  {artist.personName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+                </span>
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: "var(--sub)",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: 54,
+                  }}
+                >
+                  {artist.personName.split(" ")[0]}
+                </span>
+              </div>
+            )}
 
             <div
               style={{
@@ -557,6 +634,86 @@ export function ClassDetail({
       </div>
 
       <div style={{ padding: "12px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
+        {/* ── YOU HAVE BEEN ASKED — consent is the person's own answer, so it is
+            asked where the class is (prototype 15455: "They are asked to
+            confirm. A class does not go on Discover until they do."). ── */}
+        {myClaim && myClaim.status === "asked" && (
+          <div
+            style={{
+              background: "var(--card)",
+              border: `1px solid ${GOLD}66`,
+              borderLeft: `3px solid ${GOLD}`,
+              borderRadius: 16,
+              padding: "12px 14px",
+              marginBottom: 10,
+            }}
+          >
+            <div style={{ fontSize: 12.5, fontWeight: 900 }}>
+              {c.tenantName} wants you {myClaim.kind === "artist" ? "taking this class" : "assisting on this session"}
+            </div>
+            <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2, lineHeight: 1.45 }}>
+              {myClaim.kind === "artist"
+                ? "Your name goes on the public class once you say yes."
+                : [
+                    myClaim.canAttendance ? "checking people in" : null,
+                    myClaim.canRefunds ? "settling refunds" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" and ")
+                  ? `You would hold ${[
+                      myClaim.canAttendance ? "attendance" : null,
+                      myClaim.canRefunds ? "refunds" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" and ")} on this class.`
+                  : "You would be on the team for this session."}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <span
+                role="button"
+                tabIndex={0}
+                onKeyDown={dosKey}
+                aria-label="Decline this ask"
+                onClick={() => void answerClaim(myClaim.id, false)}
+                style={{
+                  flex: 1,
+                  textAlign: "center",
+                  padding: "10px",
+                  borderRadius: 999,
+                  background: "var(--solid)",
+                  border: "1px solid var(--el)",
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  color: "#F87171",
+                }}
+              >
+                No thanks
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                onKeyDown={dosKey}
+                aria-label="Accept this ask"
+                onClick={() => void answerClaim(myClaim.id, true)}
+                style={{
+                  flex: 1.3,
+                  textAlign: "center",
+                  padding: "10px",
+                  borderRadius: 999,
+                  background: "var(--text)",
+                  color: "var(--solid)",
+                  fontWeight: 900,
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                Yes, I&rsquo;m in
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* ── a booking you hold (prototype BookingActions 6408-6448): neutral card,
             the confirmed dot, and the two money actions MERGED into one segmented
             pill — the invoice and the cancel-and-refund are two halves of one
@@ -755,13 +912,91 @@ export function ClassDetail({
               Maps
             </a>
           </div>
-          {/* what the room HAS arrives with rooms (Step 11) — until then, the honest line */}
+          {/* what the room HAS — the amenities the studio set on it (12278-12354) */}
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 11, color: "var(--muted)" }}>
-              Nothing listed for {c.room ?? "this venue"} yet.
-            </span>
+            {roomAmenities.length > 0 ? (
+              roomAmenities.map((a) => (
+                <span
+                  key={a}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "5px 10px",
+                    borderRadius: 999,
+                    background: "var(--el)",
+                    color: "var(--sub)",
+                  }}
+                >
+                  {a}
+                </span>
+              ))
+            ) : (
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                Nothing listed for {c.room ?? "this venue"} yet.
+              </span>
+            )}
           </div>
         </Sec>
+
+        {/* ── THE CLASS TEAM — an assistant is a person with a job (81-91).
+            Confirmed names only; the asks show to the studio's own people. ── */}
+        {(assistants.length > 0 || pendingAsks.length > 0) && (
+          <Sec
+            col={col}
+            label="CLASS ASSISTANTS"
+            icon={
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="10" cy="8" r="3.4" />
+                <path d="M3.8 19.5c.8-3.3 3.2-5 6.2-5 1 0 2 .2 2.9.6" />
+                <path d="M16 11.5a2.6 2.6 0 1 0 0-5.2M17.5 19.5c-.3-1.6-1-2.9-2-3.8" />
+              </svg>
+            }
+          >
+            {[...assistants, ...pendingAsks].map((cl) => (
+              <div
+                key={cl.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "7px 0",
+                  borderBottom: "1px solid var(--el)",
+                }}
+              >
+                <span
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    fontWeight: 900,
+                    background: "var(--el)",
+                    color: "var(--sub)",
+                  }}
+                >
+                  {cl.personName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800 }}>{cl.personName}</div>
+                  <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 1 }}>
+                    {cl.kind === "artist"
+                      ? "Taking the class"
+                      : [cl.canAttendance ? "attendance" : null, cl.canRefunds ? "refunds" : null]
+                          .filter(Boolean)
+                          .join(" and ") || "assisting"}
+                  </div>
+                </div>
+                {cl.status !== "confirmed" && (
+                  <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: GOLD }}>⏳ Asked</span>
+                )}
+              </div>
+            ))}
+          </Sec>
+        )}
 
         {/* ── POLICY — what the price does NOT tell you (12399-12402). The
             Memberships row waits for passes to exist (see backlog). ── */}

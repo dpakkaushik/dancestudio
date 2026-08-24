@@ -3,6 +3,7 @@ import type {
   ClassLevel,
   ClassStatus,
   DanceClass,
+  PosterChoice,
   PublicClassListing,
 } from "@/types/class";
 
@@ -20,6 +21,8 @@ interface ClassRow {
   style: string;
   level: ClassLevel;
   room: string | null;
+  room_id: string | null;
+  poster: PosterChoice | null;
   price_inr: number;
   capacity: number;
   status: ClassStatus;
@@ -31,7 +34,7 @@ interface PublicClassRow extends ClassRow {
 }
 
 const CLASS_COLUMNS =
-  "id, tenant_id, title, share_slug, style, level, room, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
+  "id, tenant_id, title, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -47,6 +50,8 @@ const toClass = (row: ClassRow): DanceClass => ({
   style: row.style,
   level: row.level,
   room: row.room,
+  roomId: row.room_id,
+  poster: row.poster,
   priceInr: row.price_inr,
   capacity: row.capacity,
   status: row.status,
@@ -59,6 +64,8 @@ export interface CreateClassInput {
   style: string;
   level: ClassLevel;
   room: string | null;
+  roomId: string | null;
+  poster: PosterChoice | null;
   priceInr: number;
   capacity: number;
   status: "draft" | "published";
@@ -66,7 +73,9 @@ export interface CreateClassInput {
   endsAt: string;
 }
 
-/** Atomic create: class + first session via the create_class_with_session RPC. */
+/** Atomic create: class + first session via the create_class_with_session RPC.
+ *  The room and poster arguments default to null in SQL, so ten-argument
+ *  callers (the earlier proof scripts) still hit this one creation path. */
 export async function createClassWithSession(
   supabase: SupabaseClient,
   input: CreateClassInput
@@ -82,6 +91,8 @@ export async function createClassWithSession(
     p_status: input.status,
     p_starts_at: input.startsAt,
     p_ends_at: input.endsAt,
+    p_room_id: input.roomId,
+    p_poster: input.poster,
   });
 
   if (error) {
@@ -206,6 +217,8 @@ export interface UpdateClassInput {
   style: string;
   level: ClassLevel;
   room: string | null;
+  roomId: string | null;
+  poster: PosterChoice | null;
   priceInr: number;
   capacity: number;
   startsAt: string;
@@ -225,6 +238,8 @@ export async function updateClassDetails(
       style: input.style,
       level: input.level,
       room: input.room,
+      room_id: input.roomId,
+      poster: input.poster,
       price_inr: input.priceInr,
       capacity: input.capacity,
     })

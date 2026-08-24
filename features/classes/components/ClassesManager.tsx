@@ -184,8 +184,34 @@ export function ClassesManager({
         <div style={{ margin: "10px 0 2px", fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB }}>
           {tenantName.toUpperCase()}
         </div>
-        <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, marginBottom: 12 }}>
-          Classes
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 10,
+            margin: "0 0 12px",
+          }}
+        >
+          <div style={{ flex: 1, fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
+            Classes
+          </div>
+          {/* the rest of the studio desk's tools arrive with Steps 12-14; rooms
+              is here because a class is held in one */}
+          <Link
+            href={`/business/${tenantId}/rooms`}
+            style={{
+              flexShrink: 0,
+              fontSize: 11.5,
+              fontWeight: 800,
+              color: INK,
+              textDecoration: "none",
+              border: `1px solid ${EL}`,
+              borderRadius: 999,
+              padding: "6px 12px",
+            }}
+          >
+            Rooms ›
+          </Link>
         </div>
 
         <Link

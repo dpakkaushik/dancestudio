@@ -11,6 +11,7 @@ import {
   updateClassDetails,
   updateClassStatus,
 } from "@/repositories/classes";
+import { reconcileClassPeople } from "@/services/classPeople";
 
 export interface ClassActionState {
   error: string | null;
@@ -24,6 +25,11 @@ const classFields = z.object({
   style: z.string().refine((s) => DOS_STYLE_NAMES.includes(s), "Pick a dance style"),
   level: z.enum(["all", "beginner", "intermediate", "professional"]),
   room: z.string().trim().max(140).optional(),
+  /** Step 11: the room is picked from the studio's own rooms. The RPC and the
+   *  class triggers re-check that it belongs to this tenant and that it holds
+   *  the capacity, so a forged id gets nowhere. */
+  roomId: z.string().uuid().optional(),
+  poster: z.enum(["bold", "split", "quiet", "none"]).optional(),
   priceInr: z.coerce.number().int("Whole rupees only").min(0).max(1000000, "Price is too high"),
   capacity: z.coerce.number().int().min(1, "At least one place").max(500, "Capacity is too high"),
   date: z.string().regex(DATE_RE, "Pick a date"),
@@ -53,11 +59,41 @@ const updateClassSchema = classFields
 /** India-only for now — a picked date + time means IST. */
 const toIst = (date: string, time: string): string => `${date}T${time}:00+05:30`;
 
+/** Who the form says is on this class. Parsed separately from the class fields
+ *  because a bad people payload must never stop the class itself saving. */
+const peopleSchema = z.object({
+  artistUserId: z.string().uuid().nullable(),
+  assistants: z
+    .array(
+      z.object({
+        userId: z.string().uuid(),
+        canAttendance: z.boolean(),
+        canRefunds: z.boolean(),
+      })
+    )
+    .max(12),
+});
+
+const readPeople = (formData: FormData) => {
+  const raw = formData.get("people");
+  if (typeof raw !== "string" || raw.length === 0) {
+    return null;
+  }
+  try {
+    const parsed = peopleSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null; // not JSON — treat as "the form said nothing about people"
+  }
+};
+
 const readFields = (formData: FormData) => ({
   title: formData.get("title"),
   style: formData.get("style"),
   level: formData.get("level"),
   room: (formData.get("room") as string) || undefined,
+  roomId: (formData.get("roomId") as string) || undefined,
+  poster: (formData.get("poster") as string) || undefined,
   priceInr: formData.get("priceInr"),
   capacity: formData.get("capacity"),
   date: formData.get("date"),
@@ -91,19 +127,26 @@ export async function createClassAction(
 
   const supabase = await requireUser();
   const d = parsed.data;
+  const people = readPeople(formData);
   try {
-    await createClassWithSession(supabase, {
+    const classId = await createClassWithSession(supabase, {
       tenantId: d.tenantId,
       title: d.title,
       style: d.style,
       level: d.level,
       room: d.room ?? null,
+      roomId: d.roomId ?? null,
+      poster: d.poster ?? null,
       priceInr: d.priceInr,
       capacity: d.capacity,
       status: d.status,
       startsAt: toIst(d.date, d.startTime),
       endsAt: toIst(d.date, d.endTime),
     });
+    // the asks go out once the class they are about exists
+    if (people) {
+      await reconcileClassPeople(supabase, classId, people);
+    }
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not create the class" };
   }
@@ -126,17 +169,23 @@ export async function updateClassAction(
 
   const supabase = await requireUser();
   const d = parsed.data;
+  const people = readPeople(formData);
   try {
     await updateClassDetails(supabase, d.classId, {
       title: d.title,
       style: d.style,
       level: d.level,
       room: d.room ?? null,
+      roomId: d.roomId ?? null,
+      poster: d.poster ?? null,
       priceInr: d.priceInr,
       capacity: d.capacity,
       startsAt: toIst(d.date, d.startTime),
       endsAt: toIst(d.date, d.endTime),
     });
+    if (people) {
+      await reconcileClassPeople(supabase, d.classId, people);
+    }
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save the class" };
   }

@@ -16,6 +16,10 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   style: e.style,
   level: e.level,
   room: e.room,
+  // the tile draws the room's NAME and its own poster from the title — the
+  // booking row carries neither id
+  roomId: null,
+  poster: null,
   priceInr: e.priceInr,
   capacity: e.capacity,
   status: e.classStatus,

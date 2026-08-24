@@ -9,6 +9,10 @@ export interface ClassSession {
   endsAt: string;
 }
 
+/** A drawn poster design (prototype DOS_POSTERS), "none" for deliberately no
+ *  poster, or null for "not chosen" — which the UI answers with dosPosterAuto. */
+export type PosterChoice = "bold" | "split" | "quiet" | "none";
+
 export interface DanceClass {
   id: string;
   tenantId: string;
@@ -17,7 +21,11 @@ export interface DanceClass {
   shareSlug: string;
   style: string;
   level: ClassLevel;
+  /** The room's name, denormalised and kept in step with roomId by a trigger. */
   room: string | null;
+  /** The studio room this class runs in — its capacity caps the class. */
+  roomId: string | null;
+  poster: PosterChoice | null;
   priceInr: number;
   capacity: number;
   status: ClassStatus;

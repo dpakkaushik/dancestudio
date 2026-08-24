@@ -4,9 +4,11 @@ import { cache } from "react";
 import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassRegister } from "@/repositories/attendance";
+import { findClaimsByClass } from "@/repositories/claims";
 import { findClassBySlug } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findPaidReceiptByEnrollment } from "@/repositories/payments";
+import { findRoomById } from "@/repositories/rooms";
 import { findMyMembershipRole } from "@/repositories/tenants";
 import type { EnrollmentStatus } from "@/types/enrollment";
 
@@ -90,6 +92,14 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
   // the live register + waitlist queue — only people who can run it get it
   const register = canManage ? await findClassRegister(supabase, danceClass.id) : null;
 
+  // who is on the class, and what the room has in it. RLS decides what the
+  // viewer may see: the public gets confirmed claims on published classes only.
+  const [claims, room] = await Promise.all([
+    findClaimsByClass(supabase, danceClass.id),
+    danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null),
+  ]);
+  const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
+
   return (
     <ClassDetail
       danceClass={danceClass}
@@ -102,6 +112,9 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       receipt={receipt}
       sessionPhase={phaseOf(danceClass.session?.startsAt, danceClass.session?.endsAt)}
       register={register}
+      claims={claims}
+      myClaim={myClaim}
+      roomAmenities={room?.amenities ?? []}
     />
   );
 }

@@ -31,17 +31,19 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 11 / 27 steps** (Steps 0–10). Step 10 landed 24 Aug 2026:
-  attendance + waitlist management — attendance table + register RPCs
-  (check-in window owned by the clock), Details|Attendance owner tabs with the
-  live register and the waitlist queue (give spot / remove — the owner now hands
-  out freed paid seats), and the pass sheet behind the poster (sharing moved
-  there). Ops still open: Razorpay account + keys (paid classes say "payments
-  aren't switched on yet" until then), verify a Resend sending domain, invite
-  pilots.
+- **Completed: 12 / 27 steps** (Steps 0–11). Step 11 landed 25 Aug 2026: rooms &
+  people — `rooms` (capacity caps the class, amenities, no double-booking) and
+  `class_claims` (artist/assistant with real two-sided consent and the
+  attendance/refunds jobs), `room_id` + `poster` on classes, the rooms manager at
+  /business/{id}/rooms, the class form as the prototype's **two-step wizard**
+  (basics + room → people, price, poster), and the class page's artist column,
+  CLASS ASSISTANTS, room amenities and "you've been asked" card. An assistant
+  holding attendance now gets the register. Ops still open: Razorpay account +
+  keys (paid classes say "payments aren't switched on yet" until then), verify a
+  Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 11 — Rooms & people** (studio rooms, room picker, artist/assistant
-  claims, posters → completes the two-step class form wizard)
+- **Next: Step 12 — Studio CRM** (leads, trials, conversions — and the staff
+  invite flow the claim system is waiting on)
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -56,8 +58,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 8 | Class detail page + share links | ✅ done (24 Aug 2026) |
 | 9 | Razorpay payments ⚠ | ✅ done (24 Aug 2026) — pending ops: Razorpay account + keys |
 | 10 | Attendance + waitlist management | ✅ done (24 Aug 2026) |
-| 11 | Rooms & people (full class form) | ⬅ next |
-| 12 | Studio CRM (leads/trials/conversions) | ⬜ |
+| 11 | Rooms & people (full class form) | ✅ done (25 Aug 2026) |
+| 12 | Studio CRM (leads/trials/conversions) + staff invites | ⬅ next |
 | 13 | Earnings & payouts ⚠ | ⬜ |
 | 14 | Calendar views | ⬜ |
 | 15 | Follows + public profiles | ⬜ |
@@ -447,6 +449,71 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   render (react-hooks/immutability) — hash-walk drawing math belongs in a pure
   module-level helper returning data.**
 
+### Step 11 — Rooms & people ✅ (done 25 Aug 2026)
+- Migration `20260824230000_create_rooms_and_claims.sql`:
+  - `rooms` (tenant, name, capacity, amenities text[] from the closed
+    DOS_AMENITIES vocabulary, audit + soft delete) + RLS: members read their
+    tenant's (no deleted_at filter — Step 3's soft-delete lesson), **anyone reads
+    a listed tenant's live rooms** so a public class page can say what the room
+    has; owners/trainers insert/update directly (plain config, no cross-row
+    invariant needs an RPC).
+  - `classes.room_id` + `classes.poster` ('bold'|'split'|'quiet'|'none'), and the
+    three promises the prototype's settings footnote makes (18425) enforced by
+    triggers, not by the caller: a BEFORE trigger resolves `room_id` from the
+    room NAME (Step 8's share_slug technique, so every insert path gets it) and
+    keeps the denormalised name in step; `assert_room_ok` refuses a capacity
+    above the room's and refuses an overlapping **published** class in the same
+    room — while a DRAFT holds no room at all (9729), so two drafts can share a
+    slot.
+  - `class_claims` (class, tenant, person → profiles, kind artist|assistant,
+    status asked|confirmed|rejected, can_attendance/can_refunds — the jobs from
+    dosTeamOne 89-90) + RLS: you read your own, members read their tenant's, and
+    **anyone reads CONFIRMED claims on a published class of a listed tenant** —
+    so an unanswered ask never puts a name on a public page. No direct writes:
+    `claim_person` (owner/trainer, own team only), `respond_to_claim` (**only the
+    person asked**), `withdraw_claim`, `set_claim_powers`.
+  - `can_run_register_for_class` replaces Step 10's tenant-scoped check, so **an
+    assistant handed attendance gets the register** (12390) — check_in,
+    undo_check_in, give_spot and remove_from_waitlist all re-pointed at it.
+  - `create_class_with_session` gained `p_room_id` / `p_poster` **with defaults**,
+    so the earlier proof scripts' ten-argument calls still hit the one creation
+    path (the old signature was dropped, not overloaded).
+- Migrations `20260824234500_members_read_team.sql` + `20260825000500_fix_team_policy_recursion.sql`:
+  a tenant's members can now read each other (the people pickers had nothing to
+  offer while tenant_members was own-rows-only). The first attempt recursed —
+  **a policy on table X must never contain a subquery against X** (42P17); the
+  membership test moved into the security-definer `is_tenant_member`. And
+  because RLS is a ceiling rather than a scope, `findMyTenants` now says
+  `user_id = auth.uid()` out loud instead of leaning on the old narrow policy.
+- Repositories `rooms.ts`, `claims.ts` (+ `findTenantTeam` in tenants.ts — two
+  queries, because tenant_members.user_id references auth.users, not profiles, so
+  PostgREST has no relationship to embed the name through); Zod actions in
+  `features/rooms/server-actions/rooms.ts` and
+  `features/claims/server-actions/claims.ts`; first use of `/services` —
+  `services/classPeople.ts` reconciles the form's intent against the claims on
+  record so **a person who already said yes is never re-asked**, only their job
+  is updated (changing artist ⇄ assistant re-asks by design).
+- UI lifted from the prototype: **rooms manager** at `/business/{id}/rooms`
+  (settings Rooms segment 18389-18425 — name/capacity edited in place, amenities
+  folded away, the closing note that says what a room decides), reachable from a
+  "Rooms ›" chip on the classes register; the **two-step class form wizard**
+  (15309-15531 — step 1 date/time, style, level, name, WHERE from the studio's
+  own rooms 15381-15396; step 2 WHO IS TAKING IT + CLASS ASSISTANTS with the
+  Attendance/Refunds job chips and the ⏳ Asked / ✓ Confirmed badges 15473-15475,
+  capacity "defined by Studio A" 15507-15509, price, and the drawn poster
+  picker); the class page's **artist column** in the card, **CLASS ASSISTANTS**
+  section, real **room amenities** in AT THE STUDIO (12278-12354), the chosen
+  poster design, and the **"you've been asked" card** where the person answers
+  (15455). Poster uploads and the "None" poster stay on the backlog.
+- Verified: `scripts/rls-proof-rooms-people.ps1` — 13 checks green (room read by
+  anon, cross-tenant room insert rejected, capacity cap, name→room_id trigger,
+  overlap rejected, draft may share the slot, off-team claim rejected, unanswered
+  ask invisible to the public, the studio cannot answer for you, confirmed name
+  public, staff assistant with attendance runs the register, job removed closes
+  it, direct claim insert rejected). e2e extended to add a room with an amenity,
+  pick it in the wizard, see "defined by Studio A", and find that amenity on the
+  learner's public class page — both specs green. Typecheck/lint/build green.
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -461,12 +528,14 @@ remove entries as they close.**
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
 | Class detail page: Earnings + Refunds owner tabs (money segment 12008-12042, refund queue) | S_class owner tabs | Step 13 |
-| Class detail page: artist column, CLASS ASSISTANTS team, WHAT YOU'LL DANCE (routine/notes/songs), poster upload/picker, room amenities | S_class 11900+, 12278-12354 | Step 11 |
+| Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
+| Poster uploads (PosterCropper + Storage) and the "None" poster — the three drawn designs ship | PosterCropper, dosPosterOf 129-135 | media slice (Step 20 rails) |
+| Staff invites — the claim system can only offer people already on the team | settings Staff & permissions 18427 | Step 12 |
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
 | Register: walk-in add + the QR scanner (needs the student pool); the pass QR is drawn, not scannable yet | attend 12104-12116, PassSheet 6209 | Steps 11-12 (people); real scanning later |
-| Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | Step 11 |
+| Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
-| Studio desk: BizShell tools grid (students, attendance, earnings, reports, rooms, calendar) — "Manage" opens the Classes register only | S_bizhub/BizShell | Steps 10–14 |
+| Studio desk: BizShell tools grid (students, earnings, reports, calendar) — today the register plus a Rooms chip | S_bizhub/BizShell | Steps 12–14 |
 | Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Steps 15 (counts), 22 (crews), 23 (filters/sort/map) |
 | My classes: real calendar view | Calendar tab | Step 14 |
 
