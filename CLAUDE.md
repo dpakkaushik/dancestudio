@@ -206,6 +206,10 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   the Resend account owner's address (deepakkaushik8919@gmail.com) — verify a
   domain at resend.com/domains + switch smtp_admin_email to that domain before
   inviting pilot users.
+- ✅ Live-DB cleanup (24 Aug 2026): all 8 leftover proof-script studios deleted
+  (children cascaded), plus 3 leaked test users (2 e2e owners + dbg@example.com).
+  Live DB now holds only: the owner's real account (deepakkaushik8919@gmail.com),
+  the 2 test-number users and their profiles, 0 tenants. Production build green.
 - Remaining: verify a sending domain in Resend (needed before real users can
   receive links); real OTP delivery **parked** — WhatsApp-first (Twilio Verify;
   Meta business verification + template) with SMS fallback (DLT registration);
