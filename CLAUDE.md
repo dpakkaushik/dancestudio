@@ -57,6 +57,17 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   + an approved authentication template) **with SMS fallback** (needs India DLT
   registration). Wired at Step 6; code change is `channel: "whatsapp"` in
   signInWithOtp. `mailer_autoconfirm` is on (dev); revisit before pilot.
+- **Interim real sign-in (added 24 Aug 2026): email magic link** — free tier can't
+  customise email templates (no OTP code by email) or send SMS, so the sign-in
+  screen has a 📱 Mobile / ✉️ Email toggle: email sends a Supabase magic link →
+  `/auth/confirm` route verifies the token_hash and forks to onboarding/home.
+  `uri_allow_list=http://localhost:3000/**` (add the Vercel URL at deploy). The
+  default mailer sends only ~2 emails/hour — connect custom SMTP (e.g. Resend) at
+  Step 6. gotrue quirk: a NEW user's link verifies with type `signup`, a returning
+  user's with `magiclink` — the confirm route passes the URL's type through.
+  Verified: `scripts/auth-proof-email.ps1` (mint link via admin API → lands at
+  /onboarding signed in → reused link bounces). WhatsApp-first remains the
+  production phone channel.
 - UI lifted from prototype S_auth (DanceOSApp.jsx:3616-3946): `/login` welcome,
   `/login/phone` sign-in, `/login/verify` OTP boxes, `/onboarding` name+role+city,
   `/` identity header (prototype Home sleeve treatment). Session refresh in `proxy.ts`.
@@ -162,7 +173,9 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 - Playwright e2e: signup → onboard studio → create class → enroll (happy path)
 - Real OTP delivery: **WhatsApp-first** (Twilio Verify WhatsApp channel; Meta
   business verification + authentication template) with **SMS fallback** (DLT
-  registration); turn off `mailer_autoconfirm`
+  registration); turn off `mailer_autoconfirm`. Email magic link is already live
+  as the interim (24 Aug 2026) — add custom SMTP (Resend) to lift the ~2/hour
+  mailer cap, and add the production URL to `uri_allow_list`
 - Deploy to Vercel; invite 1–2 real studios as pilots
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten

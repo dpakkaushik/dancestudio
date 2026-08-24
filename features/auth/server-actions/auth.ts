@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -47,6 +48,38 @@ export async function requestOtpAction(
   }
 
   redirect(`/login/verify?phone=${parsed.data}`);
+}
+
+const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .email("Enter a valid email address")
+  .max(254);
+
+/** Interim real sign-in (24 Aug 2026): Supabase email magic link — works on the
+ *  current plan with no SMS/SMTP provider. WhatsApp OTP stays the production
+ *  phone channel, wired at Step 6. */
+export async function requestEmailLinkAction(
+  _prev: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const parsed = emailSchema.safeParse(formData.get("email"));
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid email" };
+  }
+
+  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email: parsed.data,
+    options: { emailRedirectTo: `${origin}/auth/confirm` },
+  });
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect(`/login/check-email?email=${encodeURIComponent(parsed.data)}`);
 }
 
 export async function verifyOtpAction(
