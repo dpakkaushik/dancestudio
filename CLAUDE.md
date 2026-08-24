@@ -210,10 +210,18 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   (children cascaded), plus 3 leaked test users (2 e2e owners + dbg@example.com).
   Live DB now holds only: the owner's real account (deepakkaushik8919@gmail.com),
   the 2 test-number users and their profiles, 0 tenants. Production build green.
-- Remaining: verify a sending domain in Resend (needed before real users can
-  receive links); real OTP delivery **parked** — WhatsApp-first (Twilio Verify;
-  Meta business verification + template) with SMS fallback (DLT registration);
-  add the production URL to `uri_allow_list` at deploy
+- ✅ Deployed to Vercel (24 Aug 2026): **https://dancestudio-orcin.vercel.app**
+  — project `dancestudio` (git-connected to dpakkaushik/dancestudio, auto-deploys
+  main; VERCEL_TOKEN in `.env.local`). Env vars set via API: the two
+  NEXT_PUBLIC_SUPABASE_* keys only (service role stays local). Supabase
+  `site_url` now points at the production URL and `uri_allow_list` carries
+  localhost + all three vercel.app aliases, so magic links work live. Smoke
+  tested: / redirects anon → /login, /login /discover /classes all 200, and a
+  production magic link was sent/delivered.
+- Remaining: verify a sending domain in Resend (until then sign-in emails only
+  reach deepakkaushik8919@gmail.com); real OTP delivery **parked** —
+  WhatsApp-first (Twilio Verify; Meta business verification + template) with
+  SMS fallback (DLT registration); invite 1–2 pilot studios
 - Remaining: deploy to Vercel; invite 1–2 real studios as pilots
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
