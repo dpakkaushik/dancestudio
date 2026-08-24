@@ -145,14 +145,17 @@ export const DOS_SLEEVE = 306;
 
 /** The sleeve pins under the top bar and the opaque sheet below slides up over it —
  *  it never shrinks, so the page's height never fights the scroll (prototype
- *  DosPosterSleeve, 6497-6524). Tapping the poster opens the pass sheet in the
- *  prototype; that arrives with Step 10, so the square is not a control yet. */
+ *  DosPosterSleeve, 6497-6524). Tapping the poster opens the pass sheet
+ *  (Step 10) — pass onOpen to make the square the control it is in the
+ *  prototype; without it the square stays inert. */
 export function DosPosterSleeve({
   item,
   design,
   col,
   heroGone = 0,
   size = 246,
+  onOpen,
+  label = "Open the pass",
   children,
 }: {
   item: PosterItem;
@@ -160,6 +163,8 @@ export function DosPosterSleeve({
   col: string;
   heroGone?: number;
   size?: number;
+  onOpen?: () => void;
+  label?: string;
   children?: ReactNode;
 }) {
   return (
@@ -222,10 +227,25 @@ export function DosPosterSleeve({
         }}
       >
         <span
+          role={onOpen ? "button" : undefined}
+          tabIndex={onOpen ? 0 : undefined}
+          aria-label={onOpen ? label : undefined}
+          onClick={onOpen}
+          onKeyDown={
+            onOpen
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpen();
+                  }
+                }
+              : undefined
+          }
           style={{
             lineHeight: 0,
             display: "block",
             borderRadius: 0,
+            cursor: onOpen ? "pointer" : undefined,
             boxShadow:
               "0 0 52px 20px rgba(0,0,0,.62), 0 26px 60px -4px rgba(0,0,0,.85), 0 8px 18px rgba(0,0,0,.65)",
           }}

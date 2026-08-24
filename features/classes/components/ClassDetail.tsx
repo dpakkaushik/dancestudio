@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
+  checkInAction,
+  giveSpotAction,
+  removeFromWaitlistAction,
+  undoCheckInAction,
+} from "@/features/attendance/server-actions/attendance";
+import {
   cancelEnrollmentAction,
   enrollAction,
   type EnrollActionState,
@@ -14,11 +20,13 @@ import { RefundSheet } from "@/features/payments/components/RefundSheet";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
+import type { ClassRegister } from "@/repositories/attendance";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { PaidReceipt } from "@/types/payment";
+import { PassSheet } from "./PassSheet";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "./poster";
-import { ShareSheet, dosKey } from "./ShareSheet";
+import { dosKey } from "./ShareSheet";
 
 /** The class detail page, lifted from prototype S_class (DanceOSApp.jsx:11626-12807).
  *  Step-8 brought the poster sleeve, the card opened into a page, AT THE STUDIO, and
@@ -77,6 +85,11 @@ const subscribeToHtmlClass = (onChange: () => void): (() => void) => {
 const readIsDark = () => document.documentElement.className !== "light";
 const readServerIsDark = () => true;
 
+/* the page's own host, read the sanctioned way (same pattern as ShareSheet) */
+const subscribeNever = () => () => {};
+const readHost = () => window.location.host;
+const readServerHost = () => "";
+
 /* one section shape for the whole page — prototype DSecTint (11545-11551) */
 function Sec({ icon, label, col, children }: { icon: ReactNode; label: string; col: string; children: ReactNode }) {
   return (
@@ -116,9 +129,25 @@ export interface ClassDetailProps {
   mine: { id: string; status: EnrollmentStatus } | null;
   /** The captured payment behind the viewer's booking — feeds the invoice. */
   receipt: PaidReceipt | null;
+  /** Where the clock stands on the session — the strip only SAYS which moment
+   *  you are in (prototype 12050-12063); the check-in window is enforced server-side. */
+  sessionPhase: "upcoming" | "live" | "ended";
+  /** The live register + waitlist queue — fetched only for owner/trainer viewers. */
+  register: ClassRegister | null;
 }
 
-export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMember, canManage, mine, receipt }: ClassDetailProps) {
+export function ClassDetail({
+  danceClass: c,
+  filled,
+  liveNow,
+  isSignedIn,
+  isMember,
+  canManage,
+  mine,
+  receipt,
+  sessionPhase,
+  register,
+}: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
   const ink = dosStyleInk(col, dark);
@@ -129,10 +158,15 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
     setToast(m);
     setTimeout(() => setToast(null), 2400);
   };
-  const [shareOpen, setShareOpen] = useState(false);
+  const [passOpen, setPassOpen] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  /* Details / Attendance — the strip belongs to the card (prototype 11961-11970) */
+  const [ownerSeg, setOwnerSeg] = useState<"details" | "att">("details");
+  /* one register op at a time — the row that is busy shows it */
+  const [opPending, setOpPending] = useState<string | null>(null);
+  const host = useSyncExternalStore(subscribeNever, readHost, readServerHost);
 
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
@@ -170,6 +204,43 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
     : (time ?? "—");
   const whereText = [c.room, c.tenantCity].filter(Boolean).join(", ");
 
+  /* Details / Attendance tabs — what YOU can do here (prototype 11755-11757;
+     Earnings/Refunds arrive with Step 13, assistant claims with Step 11) */
+  const ownerTabs = canManage && !isDraft && register !== null;
+  const showDetails = !ownerTabs || ownerSeg === "details";
+  const checkedInCount = register?.checkedInCount ?? 0;
+
+  /* the pass behind the poster (prototype dosCodeFor, 115-121): a booked viewer
+     gets their entry code, everyone else the booking link */
+  const shareLink = `${host || ""}/c/${c.shareSlug}`;
+  const pass =
+    booked && mine
+      ? { code: bookingCodeOf(mine.id), label: "Entry code", note: "Scan this at the door." }
+      : {
+          code: shareLink,
+          label: "Booking link",
+          note: isMember
+            ? "Anyone who scans this can book your class."
+            : "Anyone who scans this can book this class.",
+        };
+
+  const runRegisterOp = async (
+    enrollmentId: string,
+    op: (input: { enrollmentId: string }) => Promise<{ error: string | null }>,
+    doneMsg: string | null
+  ) => {
+    if (opPending) return;
+    setOpPending(enrollmentId);
+    const out = await op({ enrollmentId });
+    setOpPending(null);
+    if (out.error) {
+      fire(out.error);
+    } else if (doneMsg) {
+      fire(doneMsg);
+    }
+    router.refresh();
+  };
+
   return (
     <div
       style={{
@@ -182,8 +253,16 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
         transition: "background .25s",
       }}
     >
-      {/* ── THE SLEEVE, LIT LIKE A PLAYER (prototype 11799-11814) ── */}
-      <DosPosterSleeve item={posterItem} design={posterK} col={col} heroGone={heroGone} />
+      {/* ── THE SLEEVE, LIT LIKE A PLAYER (prototype 11799-11814). Tapping the
+          poster opens the pass — sharing, the QR and the entry code live behind
+          it now, one place instead of three (12001). ── */}
+      <DosPosterSleeve
+        item={posterItem}
+        design={posterK}
+        col={col}
+        heroGone={heroGone}
+        onOpen={!isDraft ? () => setPassOpen(true) : undefined}
+      />
 
       {/* ── A STATUS IS NOT A BUTTON: a finished class says so once, at the top (11816-11843) ── */}
       {done && (
@@ -439,6 +518,42 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
             </span>
           </div>
         </div>
+
+        {/* ── Details / Attendance belongs to the card, not the page under it
+            (prototype 11961-11970) ── */}
+        {ownerTabs && (
+          <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 8 }}>
+            {(
+              [
+                ["details", "Details"],
+                ["att", "Attendance"],
+              ] as Array<["details" | "att", string]>
+            ).map(([k, l]) => (
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={dosKey}
+                key={k}
+                onClick={() => setOwnerSeg(k)}
+                style={{
+                  flex: 1,
+                  textAlign: "center",
+                  padding: "7px 4px",
+                  borderRadius: 9,
+                  cursor: "pointer",
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  background: ownerSeg === k ? "var(--solid)" : "transparent",
+                  color: ownerSeg === k ? "var(--text)" : "var(--sub)",
+                  boxShadow: ownerSeg === k ? "0 1px 4px rgba(0,0,0,.3)" : "none",
+                  transition: "all .15s",
+                }}
+              >
+                {l}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ padding: "12px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
@@ -552,6 +667,8 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
           </div>
         )}
 
+        {showDetails && (
+          <>
         {/* ── AT THE STUDIO — one place says where, and says it properly (12273-12320) ── */}
         <Sec
           col={col}
@@ -662,31 +779,242 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
             <Row k="Refund" v={isFree ? "Not applicable — free" : "Full refund until 48 h before"} />
           </Sec>
         )}
+          </>
+        )}
 
-        {/* ── the booking link people hand out — members only. Interim placement: the
-            prototype moved this behind the poster's pass sheet, which arrives with
-            Step 10 (see parity backlog). ── */}
-        {isMember && !isDraft && !done && (
-          <div
-            role="button"
-            tabIndex={0}
-            onKeyDown={dosKey}
-            aria-label="Share the booking link"
-            onClick={() => setShareOpen(true)}
-            style={{
-              textAlign: "center",
-              padding: "12px",
-              borderRadius: 999,
-              marginBottom: 10,
-              background: "var(--card)",
-              border: "1px solid var(--el)",
-              fontWeight: 800,
-              fontSize: 12.5,
-              cursor: "pointer",
-            }}
-          >
-            Share booking link
-          </div>
+        {/* ── ATTENDANCE — the register and the queue (prototype 12043-12138).
+            Walk-ins and the QR scanner arrive with the people work (backlog). ── */}
+        {ownerTabs && ownerSeg === "att" && register && (
+          <>
+            {/* the clock starts the session, not a button (12050-12063) */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: sessionPhase === "live" ? "rgba(34,197,94,.10)" : "var(--card)",
+                border: `1px solid ${sessionPhase === "live" ? "rgba(34,197,94,.32)" : "var(--el)"}`,
+                borderRadius: 16,
+                padding: "11px 13px",
+                marginBottom: 10,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 900, color: sessionPhase === "live" ? "#22C55E" : "var(--text)" }}>
+                  {sessionPhase === "ended" ? "Session ended" : sessionPhase === "live" ? "Session live" : "Not started yet"}
+                </div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
+                  {sessionPhase === "ended"
+                    ? "The register below is final."
+                    : sessionPhase === "live"
+                      ? `${checkedInCount} checked in · check-in is open`
+                      : time
+                        ? `Opens by itself at ${time.split("–")[0].trim()} — nothing to press.`
+                        : "Opens by itself at the start time — nothing to press."}
+                </div>
+              </div>
+              {sessionPhase === "live" && (
+                <span style={{ position: "relative", width: 10, height: 10, flexShrink: 0, marginRight: 4 }}>
+                  <span style={{ position: "absolute", inset: 0, borderRadius: 5, background: "#22C55E" }} />
+                  <span
+                    style={{
+                      position: "absolute",
+                      inset: -4,
+                      borderRadius: 9,
+                      border: "2px solid #22C55E",
+                      opacity: 0.4,
+                      animation: "dosPulse 1.4s ease-out infinite",
+                    }}
+                  />
+                  <style>{`@keyframes dosPulse{0%{transform:scale(.8);opacity:.6}100%{transform:scale(1.9);opacity:0}}`}</style>
+                </span>
+              )}
+            </div>
+
+            {/* the waitlist is a queue of real people — the owner hands a freed
+                spot to the next one (12080-12099) */}
+            {register.waitlist.length > 0 && (
+              <Sec
+                col={col}
+                label={`WAITLIST · ${register.waitlist.length} WAITING`}
+                icon={
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="8.5" />
+                    <path d="M12 7.5V12l3 2" />
+                  </svg>
+                }
+              >
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginBottom: 8 }}>
+                  {soldOut
+                    ? "The class is full — offer the next spot the moment one frees."
+                    : `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} open — offer them now.`}
+                </div>
+                {register.waitlist.map((w, i) => (
+                  <div
+                    key={w.enrollmentId}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--el)" }}
+                  >
+                    <span style={{ width: 22, fontSize: 11, fontWeight: 900, color: "var(--muted)", fontFamily: DOS_MONO }}>
+                      #{i + 1}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {w.learnerName}
+                    </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={dosKey}
+                      aria-label={`Give the spot to ${w.learnerName}`}
+                      onClick={() => {
+                        if (soldOut) {
+                          fire("Free a spot first — the class is full");
+                          return;
+                        }
+                        void runRegisterOp(w.enrollmentId, giveSpotAction, `✅ ${w.learnerName} moved off the waitlist`);
+                      }}
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        color: soldOut ? "var(--muted)" : "#22C55E",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        border: `1px solid ${soldOut ? "var(--el)" : "#22C55E55"}`,
+                        borderRadius: 999,
+                        padding: "4px 10px",
+                        opacity: opPending === w.enrollmentId ? 0.5 : 1,
+                      }}
+                    >
+                      Give spot
+                    </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={dosKey}
+                      aria-label={`Remove ${w.learnerName} from the waitlist`}
+                      onClick={() =>
+                        void runRegisterOp(w.enrollmentId, removeFromWaitlistAction, `${w.learnerName} removed from the waitlist`)
+                      }
+                      style={{ fontSize: 13, color: "var(--muted)", cursor: "pointer", flexShrink: 0, padding: "0 2px" }}
+                    >
+                      ✕
+                    </span>
+                  </div>
+                ))}
+              </Sec>
+            )}
+
+            {/* the register itself (12117-12137) */}
+            <Sec
+              col={col}
+              label={`${sessionPhase === "ended" ? "FINAL REGISTER" : "LIVE REGISTER"} · ${checkedInCount}/${c.capacity} IN`}
+              icon={
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
+                  <path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" />
+                  <path d="m8.5 14.5 2.3 2.3 4.7-4.7" />
+                </svg>
+              }
+            >
+              <div style={{ height: 6, borderRadius: 3, background: "var(--el)", marginBottom: 10 }}>
+                <div
+                  style={{
+                    height: 6,
+                    borderRadius: 3,
+                    width: `${Math.min(100, (100 * checkedInCount) / Math.max(1, c.capacity))}%`,
+                    background: soldOut ? "#EF4444" : `linear-gradient(90deg,${col},${col}88)`,
+                  }}
+                />
+              </div>
+              {register.rows.map((r, i) => (
+                <div
+                  key={r.enrollmentId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "7px 0",
+                    borderBottom: i === register.rows.length - 1 ? "none" : "1px solid var(--el)",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 9,
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 10,
+                      fontWeight: 900,
+                      background: r.checkedIn ? `linear-gradient(135deg,${col},#7C3AED)` : "var(--el)",
+                      color: r.checkedIn ? "#fff" : "var(--sub)",
+                    }}
+                  >
+                    {r.learnerName.split(" ").map((x) => x[0]).join("").slice(0, 2)}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800 }}>{r.learnerName}</div>
+                  </div>
+                  {sessionPhase === "ended" ? (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: "6px 12px",
+                        borderRadius: 999,
+                        flexShrink: 0,
+                        background: r.checkedIn ? "rgba(34,197,94,.22)" : "var(--el)",
+                        color: r.checkedIn ? "#22C55E" : "var(--sub)",
+                      }}
+                    >
+                      {r.checkedIn ? "✓ In" : "—"}
+                    </span>
+                  ) : (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={dosKey}
+                      aria-label={r.checkedIn ? `Check ${r.learnerName} out` : `Check ${r.learnerName} in`}
+                      onClick={() =>
+                        void runRegisterOp(
+                          r.enrollmentId,
+                          r.checkedIn ? undoCheckInAction : checkInAction,
+                          r.checkedIn ? `${r.learnerName} checked out` : `${r.learnerName} checked in`
+                        )
+                      }
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: "6px 12px",
+                        borderRadius: 999,
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        background: r.checkedIn ? "rgba(34,197,94,.22)" : "var(--el)",
+                        color: r.checkedIn ? "#22C55E" : "var(--text)",
+                        opacity: opPending === r.enrollmentId ? 0.5 : 1,
+                      }}
+                    >
+                      {r.checkedIn ? "✓ In" : "Check in"}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {register.rows.length === 0 && (
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>Nobody has booked yet.</div>
+              )}
+            </Sec>
+          </>
         )}
       </div>
 
@@ -900,8 +1228,19 @@ export function ClassDetail({ danceClass: c, filled, liveNow, isSignedIn, isMemb
         </div>
       )}
 
-      {shareOpen && (
-        <ShareSheet title={c.title} slug={c.shareSlug} fire={fire} onClose={() => setShareOpen(false)} />
+      {passOpen && (
+        <PassSheet
+          posterItem={posterItem}
+          posterK={posterK}
+          col={col}
+          title={c.title}
+          styleName={c.style}
+          levelWord={levelWord}
+          pass={pass}
+          slug={c.shareSlug}
+          fire={fire}
+          onClose={() => setPassOpen(false)}
+        />
       )}
       {flowOpen && c.session && (
         <PayFlow

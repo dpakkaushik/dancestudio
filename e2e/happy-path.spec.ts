@@ -130,8 +130,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     const shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";
     expect(shareSlug).not.toBe("");
 
-    await owner.getByRole("button", { name: "Share the booking link" }).click();
-    const sheet = owner.getByRole("dialog", { name: "Share booking link" });
+    // sharing lives behind the poster now — the pass sheet carries the link (Step 10)
+    await owner.getByRole("button", { name: "Open the pass" }).click();
+    const sheet = owner.getByRole("dialog", { name: "Class pass" });
     await expect(sheet).toBeVisible();
     await expect(sheet.getByText(`/c/${shareSlug}`)).toBeVisible();
     await sheet.getByRole("button", { name: "Done" }).click();

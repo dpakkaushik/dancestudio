@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findClassRegister } from "@/repositories/attendance";
 import { findClassBySlug } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findPaidReceiptByEnrollment } from "@/repositories/payments";
@@ -38,6 +39,16 @@ const isLiveNow = (startsAt: string, endsAt: string): boolean => {
   return new Date(startsAt).getTime() <= now && now <= new Date(endsAt).getTime();
 };
 
+/* where the clock stands on the session — the attendance strip only SAYS which
+   moment you are in; the check-in window itself is enforced by the RPCs */
+const phaseOf = (startsAt: string | undefined, endsAt: string | undefined): "upcoming" | "live" | "ended" => {
+  if (!startsAt || !endsAt) return "upcoming";
+  const now = Date.now();
+  if (now > new Date(endsAt).getTime()) return "ended";
+  if (now >= new Date(startsAt).getTime()) return "live";
+  return "upcoming";
+};
+
 export default async function ClassSharePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!SLUG_RE.test(slug)) {
@@ -68,12 +79,16 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
     ? isLiveNow(danceClass.session.startsAt, danceClass.session.endsAt)
     : false;
   const myBooking = sessionId ? mine.get(sessionId) ?? null : null;
+  const canManage = role === "owner" || role === "trainer";
 
   // the paid side of the viewer's booking — feeds the invoice + refund sheets
   const receipt =
     myBooking && danceClass.priceInr > 0
       ? await findPaidReceiptByEnrollment(supabase, myBooking.id)
       : null;
+
+  // the live register + waitlist queue — only people who can run it get it
+  const register = canManage ? await findClassRegister(supabase, danceClass.id) : null;
 
   return (
     <ClassDetail
@@ -82,9 +97,11 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       liveNow={liveNow}
       isSignedIn={Boolean(user)}
       isMember={role !== null}
-      canManage={role === "owner" || role === "trainer"}
+      canManage={canManage}
       mine={myBooking}
       receipt={receipt}
+      sessionPhase={phaseOf(danceClass.session?.startsAt, danceClass.session?.endsAt)}
+      register={register}
     />
   );
 }

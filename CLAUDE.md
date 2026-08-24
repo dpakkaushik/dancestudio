@@ -31,17 +31,17 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 10 / 27 steps** (Steps 0–9). Step 9 landed 24 Aug 2026: Razorpay
-  payments — orders/payments/refunds/webhook_events tables + RLS, verified
-  idempotent webhooks, paid enrollment through the prototype's two-step pay
-  sheets, POLICY section, Invoice | Cancel pill with real refund logic (48 h
-  window). Ops still open: create the Razorpay account + keys (until then paid
-  classes say "payments aren't switched on yet"; free classes work), verify a
-  Resend sending domain, invite pilots.
+- **Completed: 11 / 27 steps** (Steps 0–10). Step 10 landed 24 Aug 2026:
+  attendance + waitlist management — attendance table + register RPCs
+  (check-in window owned by the clock), Details|Attendance owner tabs with the
+  live register and the waitlist queue (give spot / remove — the owner now hands
+  out freed paid seats), and the pass sheet behind the poster (sharing moved
+  there). Ops still open: Razorpay account + keys (paid classes say "payments
+  aren't switched on yet" until then), verify a Resend sending domain, invite
+  pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 10 — Attendance + waitlist management** (attendance table + RPCs,
-  owner-side waitlist queue — which also closes the paid-class no-auto-promote
-  gap — QR pass sheet behind the poster)
+- **Next: Step 11 — Rooms & people** (studio rooms, room picker, artist/assistant
+  claims, posters → completes the two-step class form wizard)
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -55,8 +55,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 7 | App chrome + Home parity | ✅ done (24 Aug 2026) |
 | 8 | Class detail page + share links | ✅ done (24 Aug 2026) |
 | 9 | Razorpay payments ⚠ | ✅ done (24 Aug 2026) — pending ops: Razorpay account + keys |
-| 10 | Attendance + waitlist management | ⬅ next |
-| 11 | Rooms & people (full class form) | ⬜ |
+| 10 | Attendance + waitlist management | ✅ done (24 Aug 2026) |
+| 11 | Rooms & people (full class form) | ⬅ next |
 | 12 | Studio CRM (leads/trials/conversions) | ⬜ |
 | 13 | Earnings & payouts ⚠ | ⬜ |
 | 14 | Calendar views | ⬜ |
@@ -407,6 +407,46 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Until then paid classes say "payments aren't switched on yet" and free classes
   work end to end.
 
+### Step 10 — Attendance + waitlist management ✅ (done 24 Aug 2026)
+- Migration `20260824210000_create_attendance.sql`: `attendance` (enrollment_id +
+  session/class/tenant/user denormalised, audit + soft delete) — one live row
+  per enrollment = checked in; check-out soft-deletes so history is never
+  destroyed, re-check-in inserts anew. RLS: learners read their own check-ins,
+  tenant members read the register; **no direct writes** — the register moves
+  only through RPCs gated by `can_run_register` (owner|trainer; assistant claims
+  arrive with Step 11): `check_in` (idempotent; **the clock owns the window** —
+  opens 30 min before starts_at, closes at ends_at, after which the register is
+  final — prototype 12050-12063), `undo_check_in`, `give_spot` (promotes a
+  waitlisted learner under the class lock, capacity-checked: "free a spot first"
+  when full; works on paid classes — the studio's seat to give, desk money until
+  Step 13), `remove_from_waitlist`. This closes Step 9's deliberate gap: a freed
+  paid seat waits for the owner instead of auto-promoting an unpaid waitlister.
+  (Fix caught at apply time: the membership column is `member_role`, not `role`.)
+- Repository `repositories/attendance.ts` (`findClassRegister` — enrolled rows
+  with live-attendance state + the waitlist in join order — and the four RPC
+  wrappers); Zod actions in `features/attendance/server-actions/attendance.ts`.
+- UI lifted from prototype: **Details | Attendance owner tabs** on the class
+  page (strip belongs to the card, 11961-11970; SEGS 11755-11757 — Earnings/
+  Refunds segments arrive Step 13), the clock-derived session strip with the
+  live pulse (12050-12077), the WAITLIST queue (12080-12099: #position, Give
+  spot, ✕ remove), the LIVE/FINAL REGISTER (12117-12137: fill bar, initials
+  avatars, Check in / ✓ In toggles; read-only once ended). **PassSheet behind
+  the poster** (6161-6227: the ticket — poster with the style pill riding its
+  top edge, torn edge, QR block, code line, Share): the poster is now the
+  control (DosPosterSleeve onOpen), a booked viewer gets their entry code,
+  everyone else the booking link (dosCodeFor grammar, 115-121) — the standalone
+  "Share booking link" button is gone (one place instead of three, 12001).
+  Walk-ins + the QR scanner need the student pool (Steps 11-12, backlog).
+- Verified: `scripts/rls-proof-attendance.ps1` — 10 checks green (learner can't
+  run the register, owner check-in visible to the learner, double check-in
+  no-op, undo keeps history, window rejects a far session, give_spot rejected
+  when full, freed paid seat does NOT auto-promote, give_spot promotes, owner
+  clears a queue row, direct insert rejected). e2e updated (share now flows
+  through the pass sheet) — both specs green. Typecheck/lint/build green.
+  **Lesson: this repo's lint also forbids mutating a closure variable during
+  render (react-hooks/immutability) — hash-walk drawing math belongs in a pure
+  module-level helper returning data.**
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -420,15 +460,15 @@ remove entries as they close.**
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
-| Class detail page: pass/QR sheet behind the poster (the share button moves there), attendance/earnings/refunds tabs | S_class PassSheet + owner tabs | Steps 10 + 13 |
+| Class detail page: Earnings + Refunds owner tabs (money segment 12008-12042, refund queue) | S_class owner tabs | Step 13 |
 | Class detail page: artist column, CLASS ASSISTANTS team, WHAT YOU'LL DANCE (routine/notes/songs), poster upload/picker, room amenities | S_class 11900+, 12278-12354 | Step 11 |
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
-| Paid classes don't auto-promote their waitlist (a freed paid seat goes back on sale) — owner queue + notify closes it | attend 12080 | Step 10 |
+| Register: walk-in add + the QR scanner (needs the student pool); the pass QR is drawn, not scannable yet | attend 12104-12116, PassSheet 6209 | Steps 11-12 (people); real scanning later |
 | Class form: two-step wizard, DosDatePick calendar, room picker from studio rooms, artist/assistant claims, posters | S_classform 15108 | Step 11 |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: BizShell tools grid (students, attendance, earnings, reports, rooms, calendar) — "Manage" opens the Classes register only | S_bizhub/BizShell | Steps 10–14 |
 | Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Steps 15 (counts), 22 (crews), 23 (filters/sort/map) |
-| My classes: real calendar view; owner-side waitlist queue management | Calendar tab / attend 12080 | Steps 10 (waitlist mgmt) + 14 (calendar) |
+| My classes: real calendar view | Calendar tab | Step 14 |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 
