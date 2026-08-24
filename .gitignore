@@ -18,5 +18,9 @@ next-env.d.ts
 ruvector.db
 supabase/.temp/
 
+# playwright artifacts
+test-results/
+playwright-report/
+
 # misc
 .DS_Store

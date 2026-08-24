@@ -37,11 +37,19 @@ export async function createTenantWithOwner(
   return toTenant(data as TenantRow);
 }
 
-/** Tenants the signed-in user belongs to — RLS scopes the rows automatically. */
+interface MembershipRow {
+  tenants: TenantRow | null;
+}
+
+/** Tenants the signed-in user belongs to.
+ *  RLS policies OR together — since discovery made listed tenants publicly
+ *  readable, selecting from `tenants` directly returns EVERY listed tenant.
+ *  Membership is the query's spine instead: tenant_members RLS is own-rows-only,
+ *  so only the caller's businesses can ever come back. */
 export async function findMyTenants(supabase: SupabaseClient): Promise<Tenant[]> {
   const { data, error } = await supabase
-    .from("tenants")
-    .select(TENANT_COLUMNS)
+    .from("tenant_members")
+    .select(`created_at, tenants (${TENANT_COLUMNS})`)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(50);
@@ -49,5 +57,8 @@ export async function findMyTenants(supabase: SupabaseClient): Promise<Tenant[]>
   if (error) {
     throw new Error(`tenants.findMine failed: ${error.message}`);
   }
-  return (data as TenantRow[]).map(toTenant);
+  return (data as unknown as MembershipRow[])
+    .map((row) => row.tenants)
+    .filter((tenant): tenant is TenantRow => tenant !== null)
+    .map(toTenant);
 }

@@ -52,7 +52,21 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
   const [city, setCity] = useState("");
-  const [state, formAction, isPending] = useActionState(createTenantAction, initialState);
+  // the action revalidates in place (no navigation), so the sheet closes itself
+  // once a creation lands — prototype behavior after "Create studio"
+  const [state, formAction, isPending] = useActionState(
+    async (prev: TenantActionState, formData: FormData) => {
+      const result = await createTenantAction(prev, formData);
+      if (result.created) {
+        setSheetOpen(false);
+        setName("");
+        setArea("");
+        setCity("");
+      }
+      return result;
+    },
+    initialState
+  );
 
   const isStudio = type === "studio";
   const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0));
@@ -193,7 +207,6 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
       {/* "New studio" bottom sheet — lifted from DanceOSApp.jsx:2659-2685 */}
       {sheetOpen && (
         <div
-          aria-hidden="true"
           onClick={() => setSheetOpen(false)}
           style={{
             position: "fixed",
@@ -206,6 +219,9 @@ export function BusinessHub({ tenants }: { tenants: Tenant[] }) {
           }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="New business"
             onClick={(e) => e.stopPropagation()}
             style={{
               background: LILAC,

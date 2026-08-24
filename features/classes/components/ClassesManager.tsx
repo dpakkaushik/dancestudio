@@ -93,8 +93,11 @@ function ConfirmSheet({
     </button>
   );
   return (
-    <div aria-hidden="true" onClick={onClose} style={sheetWrap}>
+    <div onClick={onClose} style={sheetWrap}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: LILAC,

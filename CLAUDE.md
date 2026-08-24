@@ -168,15 +168,37 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   lesson: compare REST ids with `-contains` + `[string]` casts, not `Where-Object`
   object equality.)
 
-### Step 6 — Hardening & pilot
-- `supabase/seed.sql`: 1 studio, 1 trainer, a few learners
-- Playwright e2e: signup → onboard studio → create class → enroll (happy path)
-- Real OTP delivery: **WhatsApp-first** (Twilio Verify WhatsApp channel; Meta
-  business verification + authentication template) with **SMS fallback** (DLT
-  registration); turn off `mailer_autoconfirm`. Email magic link is already live
-  as the interim (24 Aug 2026) — add custom SMTP (Resend) to lift the ~2/hour
-  mailer cap, and add the production URL to `uri_allow_list`
-- Deploy to Vercel; invite 1–2 real studios as pilots
+### Step 6 — Hardening & pilot (in progress, 24 Aug 2026)
+- ✅ `supabase/seed.sql`: demo cast (Tandav Dance Academy/Pune + Meera Rao Dance
+  Company/Mumbai + 3 learners, future-dated sessions, a full class demoing the
+  waitlist). LOCAL ONLY — runs on `supabase db reset`, never pushed to the cloud
+  project; superuser context, so created_by is set explicitly on every row.
+- ✅ Playwright e2e (`e2e/happy-path.spec.ts`, `pnpm test:e2e`): signup (admin
+  generate_link → real /auth/confirm) → onboard studio → create studio → publish
+  class → second user books a spot; unique-stamped rows, cleans up after itself
+  (tenant cascade + admin user delete). **Its first run caught a real RLS bug:**
+  `findMyTenants` selected from `tenants` relying on RLS to mean "my tenants",
+  but policies OR together — Step 3's public "anyone reads listed tenants" policy
+  made every listed studio show up in everyone's business hub (and /business/*
+  page guards pass). **Lesson: RLS is a ceiling, not a scoping mechanism — a
+  "rows I belong to" query must use the membership table as its spine** (fixed:
+  repository now selects `tenant_members` with the tenant embedded). Also fixed:
+  create-studio action redirected to the same route so the sheet never closed —
+  it now returns `{created:true}` + revalidatePath and the sheet closes itself
+  (setState lives in the useActionState wrapper, not an effect — lint rejects
+  setState-in-effect). **Second real find: the bottom sheets had
+  `aria-hidden="true"` on their backdrop wrapper**, hiding the whole form from
+  the accessibility tree (screen readers couldn't create a studio; getByRole
+  couldn't either) — replaced with `role="dialog"` + `aria-modal` on the sheet
+  itself (BusinessHub + ClassesManager ConfirmSheet). e2e VERIFIED green 24 Aug
+  2026 (12s) + typecheck/lint/build all green. Test-selector note: ClassTile
+  headlines the STYLE, the class title lives only in its aria-label.
+- Remaining: real OTP delivery — **WhatsApp-first** (Twilio Verify WhatsApp
+  channel; Meta business verification + authentication template) with **SMS
+  fallback** (DLT registration); turn off `mailer_autoconfirm`. Email magic link
+  is already live as the interim (24 Aug 2026) — add custom SMTP (Resend) to lift
+  the ~2/hour mailer cap, and add the production URL to `uri_allow_list`
+- Remaining: deploy to Vercel; invite 1–2 real studios as pilots
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

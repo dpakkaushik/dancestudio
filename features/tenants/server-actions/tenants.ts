@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { DOS_CITIES } from "@/lib/constants/cities";
@@ -8,6 +9,7 @@ import { createTenantWithOwner } from "@/repositories/tenants";
 
 export interface TenantActionState {
   error: string | null;
+  created?: boolean;
 }
 
 const createTenantSchema = z
@@ -62,5 +64,8 @@ export async function createTenantAction(
     };
   }
 
-  redirect("/business");
+  // a redirect to /business would land on the same route and leave the sheet's
+  // client state open — refresh the list and let the sheet close itself instead
+  revalidatePath("/business");
+  return { error: null, created: true };
 }
