@@ -193,11 +193,23 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   itself (BusinessHub + ClassesManager ConfirmSheet). e2e VERIFIED green 24 Aug
   2026 (12s) + typecheck/lint/build all green. Test-selector note: ClassTile
   headlines the STYLE, the class title lives only in its aria-label.
-- Remaining: real OTP delivery — **WhatsApp-first** (Twilio Verify WhatsApp
-  channel; Meta business verification + authentication template) with **SMS
-  fallback** (DLT registration); turn off `mailer_autoconfirm`. Email magic link
-  is already live as the interim (24 Aug 2026) — add custom SMTP (Resend) to lift
-  the ~2/hour mailer cap, and add the production URL to `uri_allow_list`
+- ✅ Email verification production-ready (24 Aug 2026, decided: email-first,
+  mobile parked): **Resend SMTP wired** into the hosted project via the
+  management API (smtp.resend.com:465, user "resend", password = RESEND_API_KEY
+  in `.env.local`; sender onboarding@resend.dev), email rate limit raised
+  2 → 60/hour, **`mailer_autoconfirm` turned OFF** (new email users verify via a
+  real signup-type link — /auth/confirm already handles both types), sign-in
+  screen now defaults to ✉️ Email with 📱 Mobile second (test numbers stay for
+  dev). Verified: auth-proof-email.ps1 green, e2e green (9.8s), typecheck/lint
+  green, and a real email delivered through the full gotrue → Resend pipeline.
+  **Resend limitation until a domain is verified:** test mode delivers ONLY to
+  the Resend account owner's address (deepakkaushik8919@gmail.com) — verify a
+  domain at resend.com/domains + switch smtp_admin_email to that domain before
+  inviting pilot users.
+- Remaining: verify a sending domain in Resend (needed before real users can
+  receive links); real OTP delivery **parked** — WhatsApp-first (Twilio Verify;
+  Meta business verification + template) with SMS fallback (DLT registration);
+  add the production URL to `uri_allow_list` at deploy
 - Remaining: deploy to Vercel; invite 1–2 real studios as pilots
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten

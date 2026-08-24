@@ -24,10 +24,11 @@ const inputStyle: React.CSSProperties = {
   letterSpacing: 1,
 };
 
-/** Sign-in screen lifted from the prototype (DanceOSApp.jsx:3726-3747), with the
- *  interim email channel beside the phone one (real SMS/WhatsApp arrives at Step 6). */
+/** Sign-in screen lifted from the prototype (DanceOSApp.jsx:3726-3747). Email is
+ *  the primary channel for now (24 Aug 2026); phone stays for dev test numbers
+ *  until WhatsApp OTP is wired. */
 export function PhoneSignIn({ initialError = null }: { initialError?: string | null }) {
-  const [channel, setChannel] = useState<"phone" | "email">("phone");
+  const [channel, setChannel] = useState<"phone" | "email">("email");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [phoneState, phoneFormAction, phonePending] = useActionState(requestOtpAction, initialState);
@@ -56,8 +57,8 @@ export function PhoneSignIn({ initialError = null }: { initialError?: string | n
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {(
           [
-            ["phone", "📱 Mobile"],
             ["email", "✉️ Email"],
+            ["phone", "📱 Mobile"],
           ] as const
         ).map(([key, label]) => {
           const on = channel === key;
