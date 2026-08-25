@@ -90,14 +90,39 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   it, gated on `can_settle_refunds_for_class` (owner, or a confirmed claim
   holding the refunds job — **not** a plain trainer), and the class page has the
   prototype's Refunds tab.
-- **Next: Step 13b part 2b — the studio's money-IN half of S_earn** (gross
-  collected, SHARE OF GROSS, HOW STUDENTS PAID off the real `payments.method`, the
-  period chips and month statements). Buildable now; what must WAIT for a real
-  Razorpay account is only the deductions-and-settlement panel (the 0.9% fee, GST
-  on it, TDS, PAYOUTS TO YOUR BANK) — printing "settles T+2 · fee 0.9%" before an
-  account exists would be a promise, not a fact, and a `FROM GROSS TO YOUR BANK`
-  panel missing its deductions is the exact half-truth the prototype's own comment
-  at 18086-18092 was written about. Then Step 14 (calendar views).
+- **Next: Step 13b part 2b — the studio's money-IN half of S_earn.** Scoped
+  25 Aug 2026 by reading S_earn 17877-18205 in full; the three buckets below are
+  the whole of what remains, so nothing here needs re-deriving.
+
+  **(a) Build — real data exists today** (S_earn 17992-18048, 18171-18178):
+  the GROSS · AUGUST card (total summed from captured payments), the **▲/▼ vs
+  last month** badge *counted from the same months the statements print* — the
+  prototype is emphatic that a number which can only be good news is not a
+  measurement (17996-18002) — the **REFUNDED** tile, the period chips
+  (This month / July / June / May), the month statements with WHERE IT CAME FROM
+  + DEDUCTIONS + Net settled (18055-18082), and **HOW STUDENTS PAID** off the real
+  `payments.method`. Deductions today legitimately contains only Refunds, so
+  `Net settled = Gross` is a TRUE sentence — we charge no fee.
+
+  **(b) Do NOT build yet — real, but degenerate until Step 21.** The prototype's
+  studio ledger has four sources (Class fees · Event tickets · Packages sold ·
+  Room rentals, EARN_ROWS 17893-17901) and **three of the four do not exist as
+  features**: ticketing is Step 21, packages and paid room rentals are on no step
+  at all. So `Earnings by source` / `SHARE OF GROSS`, the stacked source bar
+  (18020-18026) and the source filter chips (18050-18053) would today be one
+  segment labelled "Classes" at 100% and a filter of "All | Classes" that filters
+  nothing. Not blocked — just empty of meaning until there is a second source.
+
+  **(c) Blocked on a real Razorpay account:** the `DanceOS fee · 0.9%` and
+  `GST on fee · 18%` lines, `TDS · 10%` (needs a withholding rate the studio sets,
+  not a tax engine), `PAYOUTS TO YOUR BANK` (18179-18183) and the **Settled /
+  In transit tiles**, which for a studio count bank settlements. The gross card's
+  subtitle "Settles T+2 to your studio account · DanceOS fee 0.9% at source"
+  (18014) goes with them. Shipping a `FROM GROSS TO YOUR BANK` panel without its
+  deductions is the exact half-truth the prototype's own comment at 18086-18092
+  was written about.
+
+  Then Step 14 — but see its roadmap row: it is not the small slice it looks.
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -888,7 +913,9 @@ remove entries as they close.**
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
-| Earnings: the studio's money-IN half of S_earn — gross collected, SHARE OF GROSS, HOW STUDENTS PAID (real, `payments.method` exists), period chips | S_earn 18095-18200 | Step 13b part 2b (buildable now) |
+| Earnings: the studio's money-IN half — GROSS card + ▲/▼ vs-last-month badge, REFUNDED tile, period chips, month statements (WHERE IT CAME FROM · DEDUCTIONS · Net settled), HOW STUDENTS PAID off real `payments.method` | S_earn 17992-18048, 18055-18082, 18171-18178 | Step 13b part 2b — **buildable now** |
+| Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips. Real, but the studio ledger's other three sources (tickets, packages, room rentals) don't exist — today it is one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | after Step 21 (needs a second source to mean anything) |
+| Earnings: the Settled / In transit tiles (they count bank settlements) and the gross card's "Settles T+2 · DanceOS fee 0.9% at source" subtitle | S_earn 18014, 18037-18047 | blocked with the deductions panel below |
 | Earnings: the deductions + settlement panel only — `DanceOS fee · 0.9%`, `GST on fee · 18%`, `PAYOUTS TO YOUR BANK` | S_earn 18156-18183 | blocked on a real Razorpay account (a platform fee that does not exist, and settlements with no account behind them) |
 | Earnings: period chips (This month / July / June / May), the month statements with WHERE IT CAME FROM + DEDUCTIONS + Download statement, and the ▲/▼ vs-last-month badge | S_earn 17998-18085 | Step 13b |
 | Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | Step 13b (needs a withholding rate the studio sets — not a tax engine) |
@@ -932,7 +959,7 @@ step names the prototype screens its UI comes from so nothing gets redesigned.
 | 11 | Rooms & people: studio rooms, room picker, artist/assistant claims, posters → completes the two-step class form wizard | rooms + claims tables | S_classform 15108 |
 | 12 | Studio CRM: leads, trials, conversions | leads pipeline | BizShell students tools |
 | 13 | ⚠ Earnings & payouts: trainer payout ledger (manual first), earnings dashboard, reports | payout ledger | BizShell earnings/reports |
-| 14 | Calendar views (learner + studio) | none new — reads sessions | Calendar tab |
+| 14 | Calendar views (learner + studio) | none new — reads sessions | **Not a standalone screen** (found 25 Aug 2026): the calendar IS `S_profiletab` behind a flag — `CalTab=()=><S_profiletab calendarOnly/>` (19146) and `PubCal=()=><S_profiletab calendarOnly pubSchedule/>` (19140). Its parts: `calManage` 8845, `calSection` 9057, `calSheetEl` 9359, day/month/schedule views (7655), and the tile is `CalTile=BookingCard` (8505), already built. Backend is genuinely nothing; the UI is a large lift out of a screen the parity backlog otherwise defers to Phase 3, so budget for it. |
 
 **Phase 3 — Community**
 
