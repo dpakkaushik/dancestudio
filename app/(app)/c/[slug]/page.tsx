@@ -7,7 +7,7 @@ import { findClassRegister } from "@/repositories/attendance";
 import { findClaimsByClass } from "@/repositories/claims";
 import { findClassBySlug } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
-import { findPaidReceiptByEnrollment } from "@/repositories/payments";
+import { findClassMoney, findPaidReceiptByEnrollment } from "@/repositories/payments";
 import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
 import { findMyMembershipRole } from "@/repositories/tenants";
@@ -111,6 +111,13 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
     (myClaim?.status === "confirmed" && myClaim.canRefunds && danceClass.priceInr > 0);
   const refunds = canSettleRefunds ? await findRefundsByClass(supabase, danceClass.id) : [];
 
+  /* What the class made is the OWNER's figure alone — the prototype puts the
+     Earnings segment behind `isMine` (SEGS 11757) while Attendance and Refunds
+     ride the grantable jobs beside it. A trainer running the register has no
+     business reading the studio's take, which is the same line /business/{id}/earnings
+     already draws. */
+  const classMoney = role === "owner" ? await findClassMoney(supabase, danceClass.id) : null;
+
   return (
     <ClassDetail
       danceClass={danceClass}
@@ -128,6 +135,7 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       roomAmenities={room?.amenities ?? []}
       refunds={refunds}
       canSettleRefunds={canSettleRefunds}
+      classMoney={classMoney}
     />
   );
 }

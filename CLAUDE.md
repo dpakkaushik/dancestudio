@@ -31,9 +31,23 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 15 / 29 steps** (Steps 0–13). (The denominator grew from 27 as
+- **Completed: 15 / 29 steps** (Steps 0–13); Step 13b is two-thirds done.
+  (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
-  Step 13.) Step 13 landed 25 Aug 2026: **earnings & payouts** — a per-session
+  Step 13.) **Step 13b part 2a landed 25 Aug 2026: the class page's Earnings
+  tab** — S_class's WHAT THIS SESSION MADE (12008-12042), the one place a class's
+  price, fill and refunds are added up. No migration, no RPC, no policy: it reads
+  the orders/payments/refunds Step 9 already admits members to. One deliberate
+  departure from the prototype, which the proof pins down: the prototype derives
+  "Came in" as price × seats because it has no payments to count, and we count the
+  captured payments instead — proven to differ (₹1,500 real vs ₹1,800 derived once
+  a seat is comped). **This slice also found that the remaining 13b work is
+  smaller than "the income half":** `Gross collected`, `Refunds issued`,
+  `SHARE OF GROSS` and `HOW STUDENTS PAID` are all real queries today
+  (`payments.method` exists). What actually waits on Razorpay is narrower — the
+  `DanceOS fee · 0.9%` and `GST on fee · 18%` lines (a platform fee that does not
+  exist), `TDS · 10%` (needs a rate the studio sets), and `PAYOUTS TO YOUR BANK`
+  (settlements with no account behind them). Step 13 landed 25 Aug 2026: **earnings & payouts** — a per-session
   rate the OWNER sets on the ask, `payouts` + `payout_lines` where a line
   snapshots the rate paid so a session can never be paid twice and a rate change
   can never rewrite a settled payment, and both sides of the prototype's S_earn:
@@ -76,11 +90,14 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   it, gated on `can_settle_refunds_for_class` (owner, or a confirmed claim
   holding the refunds job — **not** a plain trainer), and the class page has the
   prototype's Refunds tab.
-- **Next: Step 13b part 2 — S_earn's money-IN half** (gross collected, the fee
-  and GST lines, HOW STUDENTS PAID, PAYOUTS TO YOUR BANK, the month statements)
-  plus the class page's Earnings owner tab. Waits on a real Razorpay account:
-  printing "settles T+2 · fee 0.9%" before one exists would be a promise, not a
-  fact.
+- **Next: Step 13b part 2b — the studio's money-IN half of S_earn** (gross
+  collected, SHARE OF GROSS, HOW STUDENTS PAID off the real `payments.method`, the
+  period chips and month statements). Buildable now; what must WAIT for a real
+  Razorpay account is only the deductions-and-settlement panel (the 0.9% fee, GST
+  on it, TDS, PAYOUTS TO YOUR BANK) — printing "settles T+2 · fee 0.9%" before an
+  account exists would be a promise, not a fact, and a `FROM GROSS TO YOUR BANK`
+  panel missing its deductions is the exact half-truth the prototype's own comment
+  at 18086-18092 was written about. Then Step 14 (calendar views).
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -99,7 +116,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 12 | Studio CRM (leads/trials/conversions) | ✅ done (25 Aug 2026) |
 | 12b | Staff invites (split out of 12) | ✅ done (25 Aug 2026) |
 | 13 | Earnings & payouts ⚠ | ✅ done (25 Aug 2026) |
-| 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | 🔶 **refund queue done** (25 Aug 2026); income half remains ⬅ next |
+| 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | 🔶 **refund queue + class Earnings tab done** (25 Aug 2026); studio income half remains ⬅ next |
 | 14 | Calendar views | ⬜ |
 | 15 | Follows + public profiles | ⬜ |
 | 16 | Reviews + ratings | ⬜ |
@@ -777,6 +794,54 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   e2e specs green; the owner's own visit to /c/{slug} in the happy path is what
   exercises the new `orders!inner` embed.
 
+### Step 13b part 2a — the class page's Earnings tab ⚠ ✅ (done 25 Aug 2026)
+- **No migration.** This slice adds no table, no RPC and no policy: it reads the
+  `orders` / `payments` / `refunds` that Step 9 already admits a tenant's members
+  to, and adds them up. `findClassMoney` in `repositories/payments.ts` joins
+  through `orders!inner (class_id)` — the same spine `findRefundsByClass` rides,
+  since payments carry no class_id.
+- UI lifted from S_class 12008-12042 as
+  `features/payments/components/ClassEarnings.tsx`: the style-edged card, WHAT
+  THIS SESSION MADE, the net in DOS_DISPLAY (green, or the prototype's softer red
+  `#F87171` when it goes negative), the "after ₹X refunded" line, the five dotted
+  rows (Seats taken · Price a seat · Came in · Refunded · Still being asked for)
+  and "See it beside everything else you earn ›" — a real `Link` to
+  /business/{id}/earnings where the prototype fires `__DOSNAV("earn")`. Hung on
+  the class page as the **Earnings** segment, placed between Attendance and
+  Refunds exactly as the prototype's SEGS orders them (11757).
+- **Owner-only, and honest about what that means.** The prototype gates Earnings
+  on `isMine` while Attendance and Refunds ride grantable jobs, so the tab is the
+  owner's alone. That is a *presentation* gate: Step 9's RLS admits every member
+  of the tenant to these rows, so a trainer can still read the takings through the
+  API. Proof check 9 asserts exactly that, so nobody later mistakes the tab for a
+  wall — narrowing it is an RLS change to Step 9, not a UI change here.
+- **The one departure from the prototype.** It computes `gotIn = price × seats`
+  because it has no payments to count. We have them, and "Came in" is a claim
+  about money, so it sums the payments actually captured — a comped or unpaid seat
+  cannot inflate what a class made. A payment later refunded still counts as
+  came-in, with the refund on its own line beneath, which is how the prototype
+  prints them. Declined and failed refunds are in neither total, matching its own
+  filters (only Paid, and Requested + Processing).
+- Verified: `scripts/rls-proof-class-earnings.ps1` — 9 checks green first run
+  (free class honestly zero; **came-in counts 5 captured payments at ₹1,500 where
+  price × 6 orders would have said ₹1,800**; a settled refund leaves gross intact
+  and nets ₹1,200; an open request is owed not refunded; declined in neither;
+  failed in neither; a rival's takings stay out; rival and public read nothing;
+  and the documented non-boundary). Regressions re-run green: Step 9 payments
+  (12) and the refund queue (12). e2e extended — the owner opens the Earnings tab
+  from the class page and the learner never sees it; that visit is what exercises
+  the new embeds, which a script querying PostgREST directly would never catch.
+  typecheck / lint / production build / both specs green.
+- **A finding worth recording, not building:** the parity backlog's "the learner's
+  own view of a refund decision" has no prototype screen to lift. The prototype's
+  only learner-side refund UI is the RefundSheet that *files* the request; the
+  decision lives on the studio's Refunds tab and S_refunds ledger, both
+  business-side. There is an unrendered `REFUNDS` array at 8506 that looks like a
+  learner's list ("₹400 · refunded ✓", "₹499 · processing…") but nothing consumes
+  it — its literals appear nowhere else in the file. So closing that gap needs a
+  product decision about a new screen, not a lift, and it stays on the backlog
+  marked as such rather than being invented.
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -822,9 +887,9 @@ remove entries as they close.**
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
-| Class detail page: the **Earnings** owner tab (money segment 12008-12042) — the Refunds tab and its queue shipped 25 Aug 2026 | S_class owner tabs | Step 13b part 2 |
-| Refunds: the learner's own view of a decision (they can read the row and its note; there is no screen that tells them "declined, because…") | S_class booked card | Step 13b part 2 |
-| Earnings: the studio's money-IN half of S_earn (gross collected, DanceOS fee 0.9% + GST on fee, FROM GROSS TO YOUR BANK, HOW STUDENTS PAID, PAYOUTS TO YOUR BANK) — the pay-out half ships | S_earn 18095-18200 | Step 13b (needs Razorpay settlement to exist first — printing T+2 and a 0.9% fee today would be a promise, not a fact) |
+| Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
+| Earnings: the studio's money-IN half of S_earn — gross collected, SHARE OF GROSS, HOW STUDENTS PAID (real, `payments.method` exists), period chips | S_earn 18095-18200 | Step 13b part 2b (buildable now) |
+| Earnings: the deductions + settlement panel only — `DanceOS fee · 0.9%`, `GST on fee · 18%`, `PAYOUTS TO YOUR BANK` | S_earn 18156-18183 | blocked on a real Razorpay account (a platform fee that does not exist, and settlements with no account behind them) |
 | Earnings: period chips (This month / July / June / May), the month statements with WHERE IT CAME FROM + DEDUCTIONS + Download statement, and the ▲/▼ vs-last-month badge | S_earn 17998-18085 | Step 13b |
 | Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | Step 13b (needs a withholding rate the studio sets — not a tax engine) |
 | Earnings: the pay ledger's third tile reads OWED where the prototype's reads REFUNDED (refunds belong to the income half, which is not built yet) | S_earn 18049 | Step 13b |

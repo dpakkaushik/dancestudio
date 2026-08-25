@@ -15,6 +15,7 @@ import {
   enrollAction,
   type EnrollActionState,
 } from "@/features/enrollments/server-actions/enrollments";
+import { ClassEarnings } from "@/features/payments/components/ClassEarnings";
 import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
 import { PayFlow } from "@/features/payments/components/PayFlow";
 import { RefundQueue } from "@/features/payments/components/RefundQueue";
@@ -26,7 +27,7 @@ import type { ClassRegister } from "@/repositories/attendance";
 import type { ClassClaim } from "@/types/claim";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
-import type { PaidReceipt } from "@/types/payment";
+import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
 import { PassSheet } from "./PassSheet";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "./poster";
@@ -147,6 +148,9 @@ export interface ClassDetailProps {
   refunds?: RefundRequest[];
   /** Whether this viewer may answer those requests. */
   canSettleRefunds?: boolean;
+  /** What this class took and what is going back out — fetched for the owner
+   *  alone, who is the only person the prototype shows it to (SEGS 11757). */
+  classMoney?: ClassMoney | null;
   /** What the room has in it — read off the room the class runs in. */
   roomAmenities: string[];
 }
@@ -167,6 +171,7 @@ export function ClassDetail({
   roomAmenities,
   refunds = [],
   canSettleRefunds = false,
+  classMoney = null,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -183,7 +188,7 @@ export function ClassDetail({
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   /* Details / Attendance — the strip belongs to the card (prototype 11961-11970) */
-  const [ownerSeg, setOwnerSeg] = useState<"details" | "att" | "ref">("details");
+  const [ownerSeg, setOwnerSeg] = useState<"details" | "att" | "money" | "ref">("details");
   /* one register op at a time — the row that is busy shows it */
   const [opPending, setOpPending] = useState<string | null>(null);
   const host = useSyncExternalStore(subscribeNever, readHost, readServerHost);
@@ -236,7 +241,7 @@ export function ClassDetail({
      Earnings/Refunds arrive with Step 13, assistant claims with Step 11) */
   /* the strip appears for whoever has something behind it: the register
      (owner/trainer) or the refund queue (owner, or the refunds job) */
-  const ownerTabs = !isDraft && (register !== null || canSettleRefunds);
+  const ownerTabs = !isDraft && (register !== null || canSettleRefunds || classMoney !== null);
   const showDetails = !ownerTabs || ownerSeg === "details";
   const checkedInCount = register?.checkedInCount ?? 0;
 
@@ -615,13 +620,17 @@ export function ClassDetail({
               [
                 ["details", "Details"],
                 ...(register !== null ? ([["att", "Attendance"]] as Array<["att", string]>) : []),
+                /* Earnings sits between Attendance and Refunds, as it does in the
+                   prototype's SEGS (11757) — and behind `isMine` there, so it is
+                   the owner's alone while the two beside it ride grantable jobs. */
+                ...(classMoney !== null ? ([["money", "Earnings"]] as Array<["money", string]>) : []),
                 /* Refunds is its own segment in the prototype's SEGS
                    (11755-11757), and it only appears for somebody who may
                    actually settle: the owner, or a confirmed claim holding the
                    refunds job. A trainer without it does not get a tab that
                    would only refuse them. */
                 ...(canSettleRefunds ? ([["ref", "Refunds"]] as Array<["ref", string]>) : []),
-              ] as Array<["details" | "att" | "ref", string]>
+              ] as Array<["details" | "att" | "money" | "ref", string]>
             ).map(([k, l]) => (
               <div
                 role="button"
@@ -1032,6 +1041,21 @@ export function ClassDetail({
           </Sec>
         )}
           </>
+        )}
+
+        {/* ── EARNINGS — what this session made (prototype 12008-12042). The
+            price was on the card, the fill on the register and the refunds on a
+            third tab; this is the one place they are added up. ── */}
+        {ownerTabs && ownerSeg === "money" && classMoney && (
+          <ClassEarnings
+            styleColor={col}
+            priceInr={c.priceInr}
+            /* attended if the register has more, else booked — prototype 12013 */
+            seatsTaken={Math.max(checkedInCount, filled)}
+            capacity={c.capacity}
+            figures={classMoney}
+            earningsHref={`/business/${c.tenantId}/earnings`}
+          />
         )}
 
         {/* ── REFUNDS — the requests Step 9 filed and nothing could answer

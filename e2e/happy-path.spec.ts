@@ -204,6 +204,21 @@ test("signup → onboard studio → create class → share link → enroll", asy
     const shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";
     expect(shareSlug).not.toBe("");
 
+    // ---- the class page's own Earnings tab (Step 13b part 2a) -------------
+    // What this session made, added up in one place. This class is free and
+    // three days out, so every figure is honestly zero — the point of running it
+    // here is that it exercises the payments/refunds embeds through orders,
+    // which the proof script (querying PostgREST directly) would never catch.
+    await owner.getByRole("button", { name: "Earnings" }).click();
+    await expect(owner.getByText("WHAT THIS SESSION MADE")).toBeVisible();
+    await expect(owner.getByText("Came in")).toBeVisible();
+    await expect(owner.getByText("nothing refunded.")).toBeVisible();
+    await expect(
+      owner.getByRole("link", { name: /See it beside everything else you earn/ })
+    ).toBeVisible();
+    // back to Details so the share step below finds the poster
+    await owner.getByRole("button", { name: "Details" }).click();
+
     // sharing lives behind the poster now — the pass sheet carries the link (Step 10)
     await owner.getByRole("button", { name: "Open the pass" }).click();
     const sheet = owner.getByRole("dialog", { name: "Class pass" });
@@ -221,6 +236,8 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await learner.goto(`/c/${shareSlug}`);
     // AT THE STUDIO carries what the room has in it (Step 11)
     await expect(learner.getByText("🪞 Mirrors")).toBeVisible();
+    // what the class made is the studio's business, not the room's
+    await expect(learner.getByText("WHAT THIS SESSION MADE")).toHaveCount(0);
     await learner.getByRole("button", { name: "Book free trial" }).click();
     const confirmSheet = learner.getByRole("dialog", { name: "Confirm — no payment" });
     await expect(confirmSheet).toBeVisible();

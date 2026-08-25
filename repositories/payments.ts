@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { OrderStatus, PaidReceipt, PaymentOrder, RefundOutcome } from "@/types/payment";
+import type { ClassMoney, OrderStatus, PaidReceipt, PaymentOrder, RefundOutcome } from "@/types/payment";
 
 interface OrderRow {
   id: string;
@@ -129,6 +129,69 @@ export async function findPaidReceiptByEnrollment(
     razorpayPaymentId: paid.razorpay_payment_id,
     paidAt: paid.created_at,
     orderStatus: order.status,
+  };
+}
+
+/* A class's money is a handful of rows, not a feed; the cap is a runaway guard,
+   not a page size — the card states one total, so a partial sum would be a wrong
+   number rather than a short list. */
+const MAX_MONEY_ROWS = 2000;
+
+interface ClassMoneyRow {
+  amount_inr: number;
+  status: string;
+}
+
+/** What this class took and what is going back out (prototype S_class 12008-12042).
+ *
+ *  The prototype derives "Came in" as price x seats, because it has no payments to
+ *  count. We do — so this sums what was actually captured, and a comped or unpaid
+ *  seat cannot inflate what the class made. The rest is its own arithmetic.
+ *
+ *  Reads are plain RLS-shaped queries: Step 9 admits a tenant's members to its
+ *  orders, payments and refunds, and the public to none. WHO SEES THE TAB is
+ *  narrower still and decided by the page — the owner alone, matching the
+ *  prototype's own `isMine` gate on the Earnings segment (11757). */
+export async function findClassMoney(
+  supabase: SupabaseClient,
+  classId: string
+): Promise<ClassMoney> {
+  const [paymentsRes, refundsRes] = await Promise.all([
+    supabase
+      .from("payments")
+      /* payments carry no class_id — the join through orders is the same spine
+         findRefundsByClass rides, and !inner makes it a filter, not an embed */
+      .select("amount_inr, status, orders!inner (class_id)")
+      .eq("orders.class_id", classId)
+      /* a refunded payment still CAME IN; the refund is its own line below */
+      .in("status", ["captured", "refunded"])
+      .is("deleted_at", null)
+      .limit(MAX_MONEY_ROWS),
+    supabase
+      .from("refunds")
+      .select("amount_inr, status, orders!inner (class_id)")
+      .eq("orders.class_id", classId)
+      .is("deleted_at", null)
+      .limit(MAX_MONEY_ROWS),
+  ]);
+
+  for (const [what, res] of [
+    ["payments", paymentsRes],
+    ["refunds", refundsRes],
+  ] as const) {
+    if (res.error) {
+      throw new Error(`payments.findClassMoney(${what}) failed: ${res.error.message}`);
+    }
+  }
+
+  const payments = (paymentsRes.data ?? []) as unknown as ClassMoneyRow[];
+  const refunds = (refundsRes.data ?? []) as unknown as ClassMoneyRow[];
+  const sum = (rows: ClassMoneyRow[]) => rows.reduce((a, r) => a + r.amount_inr, 0);
+
+  return {
+    collectedInr: sum(payments),
+    refundedInr: sum(refunds.filter((r) => r.status === "processed")),
+    owedInr: sum(refunds.filter((r) => r.status === "requested" || r.status === "pending")),
   };
 }
 

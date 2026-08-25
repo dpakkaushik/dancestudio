@@ -35,6 +35,20 @@ export interface PaidReceipt {
   orderStatus: OrderStatus;
 }
 
+/** What one class took and what is going back out — the figures behind the
+ *  prototype's WHAT THIS SESSION MADE card (S_class 12008-12042).
+ *
+ *  `collectedInr` is GROSS: a payment that was later refunded still came in, and
+ *  the refund is its own line under it, exactly as the prototype prints them. */
+export interface ClassMoney {
+  collectedInr: number;
+  /** Refunds actually settled — the prototype's "Paid" rows. */
+  refundedInr: number;
+  /** Asked for and not settled — its "Requested" + "Processing" rows.
+   *  Declined and failed refunds are in neither total, as there too. */
+  owedInr: number;
+}
+
 /** cancel_booking's money outcome, when the seat was paid for. */
 export interface RefundOutcome {
   id: string;
