@@ -1,5 +1,6 @@
 "use client";
 
+import { QRBlock } from "@/components/ui/QRBlock";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import { PosterBlock } from "./poster";
 import { dosKey } from "./ShareSheet";
@@ -13,73 +14,8 @@ import { dosKey } from "./ShareSheet";
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
-/* prototype dosHash (6388) + QRBlock (6460-6477): a code that LOOKS like the one
-   on the door scanner — three finder squares, the rest derived from the code so
-   a given booking always draws the same pattern */
-const dosHash = (str: string): number => {
-  let h = 2166136261;
-  const s = String(str || "");
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-};
-
-const QR_N = 13;
-
-/* the filled cells for a code — a pure module-level walk, so the component body
-   never mutates anything mid-render (this repo's react-hooks/immutability rule) */
-const qrCells = (code: string): Array<[number, number]> => {
-  let h = dosHash(code) || 1;
-  const next = () => {
-    h ^= h << 13;
-    h >>>= 0;
-    h ^= h >> 17;
-    h ^= h << 5;
-    h >>>= 0;
-    return h;
-  };
-  const finder = (x: number, y: number) =>
-    (x < 4 && y < 4) || (x > QR_N - 5 && y < 4) || (x < 4 && y > QR_N - 5);
-  const cells: Array<[number, number]> = [];
-  for (let y = 0; y < QR_N; y++) {
-    for (let x = 0; x < QR_N; x++) {
-      if (finder(x, y)) continue;
-      if (next() % 100 < 46) cells.push([x, y]);
-    }
-  }
-  return cells;
-};
-
-function QRBlock({ code, size = 96, label = "Entry code" }: { code: string; size?: number; label?: string }) {
-  const cell = size / QR_N;
-  const N = QR_N;
-  const dots = qrCells(code).map(([x, y]) => (
-    <rect key={`${x}-${y}`} x={x * cell} y={y * cell} width={cell} height={cell} fill="#111" />
-  ));
-  const eye = (cx: number, cy: number) => (
-    <g key={`${cx}:${cy}`}>
-      <rect x={cx * cell} y={cy * cell} width={cell * 3} height={cell * 3} fill="none" stroke="#111" strokeWidth={cell * 0.72} />
-      <rect x={(cx + 1) * cell} y={(cy + 1) * cell} width={cell} height={cell} fill="#111" />
-    </g>
-  );
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      role="img"
-      aria-label={`${label} ${code}`}
-      style={{ background: "#fff", borderRadius: 8, padding: 3, boxSizing: "content-box", flexShrink: 0, display: "block" }}
-    >
-      {dots}
-      {eye(0, 0)}
-      {eye(N - 3.5, 0)}
-      {eye(0, N - 3.5)}
-    </svg>
-  );
-}
+/* the drawn code square now lives in components/ui/QRBlock (Step 12b) — a staff
+   invite wears the same one */
 
 export interface PassCode {
   /** what the QR encodes and the mono line prints — an entry code or the booking link */

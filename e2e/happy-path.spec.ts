@@ -77,10 +77,12 @@ test("signup → onboard studio → create class → share link → enroll", asy
 
   let ownerId: string | null = null;
   let learnerId: string | null = null;
+  let trainerId: string | null = null;
   let tenantId: string | null = null;
 
   const ownerContext = await browser.newContext();
   const learnerContext = await browser.newContext();
+  const trainerContext = await browser.newContext();
 
   try {
     // ---- studio owner: signup → onboarding -------------------------------
@@ -120,6 +122,37 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
     await expect(owner.getByText("🪞 Mirrors", { exact: false }).first()).toBeVisible();
 
+    // ---- invite a trainer who is not on DanceOS yet (Step 12b) ------------
+    // The whole point of an invite: the address need not have an account. It
+    // waits for whoever signs in with it, and only they can accept.
+    const trainerEmail = `e2e-trainer-${stamp}@example.com`;
+    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.getByRole("button", { name: "Invite staff or team member" }).click();
+    const inviteSheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
+    await inviteSheet.getByLabel("Their name").fill("E2E Trainer");
+    await inviteSheet.getByLabel("Their email").fill(trainerEmail);
+    await inviteSheet.getByRole("button", { name: "Send invite" }).click();
+    // they show as asked-but-unanswered, and the QR the prototype promised is here
+    await expect(owner.getByText(/Invited — waiting on them to accept/)).toBeVisible();
+    await owner.getByRole("button", { name: "Show the invite for E2E Trainer" }).click();
+    const qrSheet = owner.getByRole("dialog", { name: "Invite for E2E Trainer" });
+    await expect(qrSheet.getByRole("img", { name: /Invite code/ })).toBeVisible();
+    await expect(qrSheet.getByText(/\/join\/[0-9a-f]+/)).toBeVisible();
+    await qrSheet.getByRole("button", { name: "Done" }).click();
+
+    // ---- the trainer signs up and finds the invite waiting for them --------
+    const trainer = await trainerContext.newPage();
+    trainerId = await signUp(trainer, trainerEmail);
+    await onboard(trainer, "E2E", "Trainer", "Artist / Trainer", "Pune");
+    await trainer.goto("/");
+    const askCard = trainer.getByRole("link", { name: new RegExp(`${studioName} wants you on the team`) });
+    await expect(askCard).toBeVisible();
+    await askCard.click();
+    await trainer.waitForURL(/\/join\/[0-9a-f]+$/);
+    await trainer.getByRole("button", { name: "Join the team" }).click();
+    // accepting lands them on the studio they just joined
+    await trainer.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
+
     // ---- the class form is a two-step wizard (Step 11) --------------------
     await owner.goto(`/business/${tenantId}/classes`);
     await owner.getByText("Create class").click();
@@ -132,6 +165,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.getByRole("button", { name: /Next · people & price/ }).click();
     // the room now defines the capacity (prototype: "defined by Studio A")
     await expect(owner.getByText(/defined by Studio A/)).toBeVisible();
+    // and the payoff of Step 12b: the artist picker finally has somebody to
+    // offer, because a real person accepted a real invite
+    await expect(owner.getByRole("button", { name: "E2E Trainer takes this class" })).toBeVisible();
     // step 2 — people & price. Free trial: the ₹300 default would route booking
     // through Razorpay (Step 9), which the paid-webhook spec covers.
     await owner.getByLabel("Price per session").fill("0");
@@ -187,7 +223,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     }
     if (ownerId) await deleteUser(ownerId);
     if (learnerId) await deleteUser(learnerId);
+    if (trainerId) await deleteUser(trainerId);
     await ownerContext.close();
     await learnerContext.close();
+    await trainerContext.close();
   }
 });

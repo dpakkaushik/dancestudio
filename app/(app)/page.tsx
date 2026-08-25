@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyEnrollments } from "@/repositories/enrollments";
+import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { CARD, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
+import { CARD, DOS_DISPLAY, DOS_TINT, DOS_UI, GOLD, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
 import type { MyEnrollment } from "@/types/enrollment";
 import type { ProfileRole } from "@/types/profile";
 import type { Tenant } from "@/types/tenant";
+import { MEMBER_ROLE_WORD } from "@/types/staff";
 
 /** Metal rings per role — prototype DOS_RINGS (DanceOSApp.jsx:1462-1463). */
 const DOS_RINGS: Record<ProfileRole, string[]> = {
@@ -80,9 +82,12 @@ export default async function HomePage() {
     redirect("/onboarding");
   }
 
-  const [enrollments, tenants] = await Promise.all([
+  const [enrollments, tenants, invites] = await Promise.all([
     findMyEnrollments(supabase),
     findMyTenants(supabase),
+    // somebody asked you onto their team — matched on the address you sign in
+    // with, so an invite arrives here without any link being passed around
+    findMyPendingInvites(supabase),
   ]);
 
   const { upcoming, liveIds } = selectUpcoming(enrollments);
@@ -291,6 +296,37 @@ export default async function HomePage() {
         <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB, padding: "16px 0 8px" }}>
           RUN YOUR BUSINESS
         </div>
+
+        {/* somebody has asked you onto their team, and only you can answer —
+            the same gold ask the class page wears when a class is handed over */}
+        {invites.map((inv) => (
+          <Link
+            key={inv.inviteId}
+            href={`/join/${inv.code}`}
+            style={{
+              display: "block",
+              background: CARD,
+              border: `1px solid ${GOLD}66`,
+              borderLeft: `3px solid ${GOLD}`,
+              borderRadius: 16,
+              padding: "13px 14px",
+              marginBottom: 10,
+              color: INK,
+              textDecoration: "none",
+            }}
+          >
+            <span style={{ display: "block", fontSize: 12.5, fontWeight: 900 }}>
+              {inv.tenantName} wants you on the team
+            </span>
+            <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 3 }}>
+              As {MEMBER_ROLE_WORD[inv.memberRole].toLowerCase()} · you decide
+            </span>
+            <span style={{ display: "block", fontSize: 11.5, fontWeight: 800, color: GOLD, marginTop: 7 }}>
+              Answer this ›
+            </span>
+          </Link>
+        ))}
+
         {tenants.map((t) => {
           const tint = t.type === "studio" ? DOS_TINT.studio : DOS_TINT.trainer;
           return (

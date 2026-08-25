@@ -44,15 +44,29 @@ interface MembershipRow {
 export type MemberRole = "owner" | "trainer" | "staff";
 
 /** The signed-in user's role on one tenant, or null when they are not a member.
- *  tenant_members RLS is own-rows-only, so this can never see anyone else's seat. */
+ *
+ *  Says `user_id = auth.uid()` OUT LOUD, and must keep doing so. This query once
+ *  leaned on tenant_members being own-rows-only under RLS — then Step 11 let a
+ *  tenant's members read each other, so on any studio with two people it started
+ *  matching several rows and maybeSingle() threw ("multiple (or no) rows
+ *  returned"), taking the public class page down with it. Same lesson as
+ *  findMyTenants below: RLS is a ceiling, not a scoping mechanism. */
 export async function findMyMembershipRole(
   supabase: SupabaseClient,
   tenantId: string
 ): Promise<MemberRole | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return null;
+  }
+
   const { data, error } = await supabase
     .from("tenant_members")
     .select("member_role")
     .eq("tenant_id", tenantId)
+    .eq("user_id", user.id)
     .is("deleted_at", null)
     .maybeSingle();
 

@@ -201,6 +201,7 @@ export function ClassesManager({
             [
               ["students", "Students"],
               ["rooms", "Rooms"],
+              ["staff", "Staff"],
             ] as Array<[string, string]>
           ).map(([slug, word]) => (
             <Link

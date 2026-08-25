@@ -31,14 +31,19 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 13 / 27 steps** (Steps 0–12). Step 12 landed 25 Aug 2026: the
+- **Completed: 14 / 28 steps** (Steps 0–12b). (The denominator grew from 27 when
+  Step 12b was split out of Step 12.) Step 12b landed 25 Aug 2026: **staff
+  invites** — `tenant_invites` keyed on the **email address people sign in with**,
+  the owner-only ask, the invited person's own accept, and the Staff & permissions
+  desk at /business/{id}/staff with the prototype's QR kept. The class form's
+  artist/assistant pickers finally have people to offer. Ops open as before:
+  Razorpay keys, Resend domain, pilot invites.
+- Step 12 landed 25 Aug 2026: the
   Studio CRM — a `leads` desk at /business/{id}/students with the prototype's own
   five stages (New · Quoted · Trial · Won · Lost), the open/enrolled funnel, and
   trials agreed against a real class **without faking an enrollment** (a learner
   still books their own seat). Leads are private: no public policy exists on the
-  table at all. **Staff invites did NOT ship with it** — see the backlog; the
-  claim pickers still only offer people already on the team. Ops open as before:
-  Razorpay keys, Resend domain, pilot invites.
+  table at all.
 - Step 11 landed 25 Aug 2026: rooms &
   people — `rooms` (capacity caps the class, amenities, no double-booking) and
   `class_claims` (artist/assistant with real two-sided consent and the
@@ -69,8 +74,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 10 | Attendance + waitlist management | ✅ done (24 Aug 2026) |
 | 11 | Rooms & people (full class form) | ✅ done (25 Aug 2026) |
 | 12 | Studio CRM (leads/trials/conversions) | ✅ done (25 Aug 2026) |
-| 12b | Staff invites (split out of 12) | ⬅ next |
-| 13 | Earnings & payouts ⚠ | ⬜ |
+| 12b | Staff invites (split out of 12) | ✅ done (25 Aug 2026) |
+| 13 | Earnings & payouts ⚠ | ⬅ next |
 | 14 | Calendar views | ⬜ |
 | 15 | Follows + public profiles | ⬜ |
 | 16 | Reviews + ratings | ⬜ |
@@ -553,6 +558,71 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   called during render even in a server component (react-hooks/purity) — stamp
   it from a module-level helper.**
 
+### Step 12b — Staff invites ✅ (done 25 Aug 2026)
+- Migration `20260825120000_create_tenant_invites.sql`: `tenant_invites` (tenant,
+  name, **email**, member_role trainer|staff, unique `code`, status
+  pending|accepted|declined|revoked, accepted_by/at, audit + soft delete). The
+  prototype's settings footnote is the whole design in one line (18434): *"Payout
+  approval is owner-only and can't be granted (§10.9) · attachments are
+  consent-based: invite → accept."*
+- **The handle is an email, because email is what DanceOS authenticates on
+  today** (Step 6's magic link; mobile OTP is parked at Step 26). So an invite
+  reaches its person two ways, both ending in the same consent: it appears in-app
+  for whoever signs in with that address (`my_pending_invites`, matched on
+  `auth.users.email` via `my_auth_email()`), and the owner can show or send the
+  `/join/{code}` link — the prototype's **QR arm**, kept as a real drawn square.
+  **Possession of the link is never enough:** `accept_tenant_invite` demands the
+  signed-in email match, so a forwarded link cannot walk into a business that
+  handles money. `preview_tenant_invite` masks the address (`s***@example.com`)
+  so a link-holder never learns somebody else's email.
+- RLS: members read their own desk; **no public policy, and no policy for the
+  invitee either** — an invite carries an email address, so the table is
+  business-private and the invited person meets their invite only through the
+  definer functions (which hand back one invite, never the list). No
+  insert/update/delete policies at all: `invite_to_tenant` / `revoke_tenant_invite`
+  (owner-only), `accept_tenant_invite` / `decline_tenant_invite` (the person
+  asked, only), `set_member_role` / `remove_tenant_member` (owner-only).
+  `owner` is not a grantable role on any path.
+- **`remove_tenant_member` closes the person's `class_claims` in the same act.**
+  Step 11's `can_run_register_for_class` has a second branch that reads a
+  confirmed attendance claim **without re-checking membership** — so a removed
+  assistant would have kept running the register. **Lesson: when a permission can
+  be granted by two independent paths, revoking the membership must revoke the
+  grant too — or "removed" doesn't mean removed.** Proof check 14 asserts exactly
+  this (ran the register → removed → register lost).
+- **Latent bug this slice exposed and fixed:** `findMyMembershipRole` leaned on
+  `tenant_members` RLS meaning "my rows", but Step 11 let a tenant's members read
+  each other. With one member per studio it never fired; the moment a second
+  person joined it matched several rows and `maybeSingle()` threw
+  ("multiple (or no) rows returned"), **500ing the public class page for members**.
+  It now says `user_id = auth.uid()` out loud, like `findMyTenants`. **This is the
+  third time this exact lesson has cost us a bug — RLS is a ceiling, not a
+  scoping mechanism.** Audited: `tenant_members` is touched nowhere else, and every
+  other `maybeSingle()` in `/repositories` is keyed on `id` or the unique
+  `share_slug`.
+- `components/ui/QRBlock.tsx`: the drawn code square lifted out of PassSheet
+  (first shared UI primitive) so the invite wears the same one.
+- Repository `repositories/invites.ts`, Zod actions
+  `features/staff/server-actions/staff.ts`, UI
+  `features/staff/components/StaffDesk.tsx` at `/business/{id}/staff` (the
+  prototype's Staff & permissions cards 18428-18433 with the Admin/Staff level
+  badge, the footnote verbatim, the dashed ＋ Invite button, the "⏳ Invited"
+  treatment from 18578, and the QR/link sheet) plus
+  `features/staff/components/JoinInvite.tsx` at `/join/{code}` wearing the same
+  gold "you've been asked" card the class page uses (15455). Home shows incoming
+  asks above RUN YOUR BUSINESS; the register gained a **Staff ›** chip.
+- Verified: `scripts/rls-proof-staff.ps1` — 15 checks green (owner invites with a
+  normalised email, owner not grantable, rival cannot invite in, public/rival/
+  invitee all read 0 rows off the table, the invitee finds their own invite, a
+  link-holder cannot accept, preview masks the address, accept makes the seat, a
+  re-invite of a member is refused, a trainer can neither invite nor remove,
+  role change works but promotion to owner is refused, an owner cannot be removed,
+  **removal takes the register with it**, bogus and withdrawn codes are dead).
+  The proof mints real email accounts through the admin API — test phone numbers
+  have no address for an invite to find. e2e extended: the owner invites an email
+  with **no account yet**, sees the QR, that person signs up, finds the ask on
+  Home, accepts, and then appears in the class form's artist picker.
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -569,7 +639,8 @@ remove entries as they close.**
 | Class detail page: Earnings + Refunds owner tabs (money segment 12008-12042, refund queue) | S_class owner tabs | Step 13 |
 | Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
 | Poster uploads (PosterCropper + Storage) and the "None" poster — the three drawn designs ship | PosterCropper, dosPosterOf 129-135 | media slice (Step 20 rails) |
-| Staff invites — the claim system can only offer people already on the team | settings Staff & permissions 18427 | Step 12b (next) |
+| Invite by **mobile** and by QR **scan** — the invite handle is an email (what we authenticate on) and the QR is drawn, not yet scannable | invite sheet 18435 "QR / mobile / search" | Step 26 (WhatsApp OTP) + the camera work |
+| Staff & permissions: per-person permission grants (the prototype's "enquiries ✓ scanner ✓ classes ✓" are per-role words today, not individually toggled) | settings 18428-18429 | later slice |
 | Leads: the event-enquiry desk (celebrations/corporate/judge/collab types, quotes, in vs out) — the STUDENT pipeline ships | ENQ_TYPES 4902, S_enqdetail 5380 | later slice |
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
 | Register: walk-in add + the QR scanner (needs the student pool); the pass QR is drawn, not scannable yet | attend 12104-12116, PassSheet 6209 | Steps 11-12 (people); real scanning later |
