@@ -31,7 +31,15 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 12 / 27 steps** (Steps 0–11). Step 11 landed 25 Aug 2026: rooms &
+- **Completed: 13 / 27 steps** (Steps 0–12). Step 12 landed 25 Aug 2026: the
+  Studio CRM — a `leads` desk at /business/{id}/students with the prototype's own
+  five stages (New · Quoted · Trial · Won · Lost), the open/enrolled funnel, and
+  trials agreed against a real class **without faking an enrollment** (a learner
+  still books their own seat). Leads are private: no public policy exists on the
+  table at all. **Staff invites did NOT ship with it** — see the backlog; the
+  claim pickers still only offer people already on the team. Ops open as before:
+  Razorpay keys, Resend domain, pilot invites.
+- Step 11 landed 25 Aug 2026: rooms &
   people — `rooms` (capacity caps the class, amenities, no double-booking) and
   `class_claims` (artist/assistant with real two-sided consent and the
   attendance/refunds jobs), `room_id` + `poster` on classes, the rooms manager at
@@ -42,8 +50,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   keys (paid classes say "payments aren't switched on yet" until then), verify a
   Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 12 — Studio CRM** (leads, trials, conversions — and the staff
-  invite flow the claim system is waiting on)
+- **Next: Step 12b — staff invites** (invite by mobile → they accept → a
+  tenant_members row; unblocks the class form's people pickers), then Step 13 —
+  earnings & payouts ⚠
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -59,7 +68,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 9 | Razorpay payments ⚠ | ✅ done (24 Aug 2026) — pending ops: Razorpay account + keys |
 | 10 | Attendance + waitlist management | ✅ done (24 Aug 2026) |
 | 11 | Rooms & people (full class form) | ✅ done (25 Aug 2026) |
-| 12 | Studio CRM (leads/trials/conversions) + staff invites | ⬅ next |
+| 12 | Studio CRM (leads/trials/conversions) | ✅ done (25 Aug 2026) |
+| 12b | Staff invites (split out of 12) | ⬅ next |
 | 13 | Earnings & payouts ⚠ | ⬜ |
 | 14 | Calendar views | ⬜ |
 | 15 | Follows + public profiles | ⬜ |
@@ -514,6 +524,35 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   pick it in the wizard, see "defined by Studio A", and find that amenity on the
   learner's public class page — both specs green. Typecheck/lint/build green.
 
+### Step 12 — Studio CRM (leads) ✅ (done 25 Aug 2026)
+- Migration `20260825090000_create_leads.sql`: `leads` (tenant, name, mobile,
+  interest, source walk_in|enquiry|referral|social, status **new | quoted |
+  trial_booked | converted | lost** — the prototype's own five stages, chip row
+  5978 and tints 5664 — plus trial_class_id, trial_on, converted_user_id, note,
+  audit + soft delete). RLS: **every member of the tenant** reads and writes the
+  desk (staff answer the phone, so staff work leads), via the security-definer
+  `is_tenant_member`; SELECT carries no deleted_at filter (Step 3's lesson).
+  **There is no public policy on this table at all** — who enquired, what they
+  were quoted and that they left is private business data.
+- The deliberate non-feature: a studio **cannot book a seat for somebody**.
+  Enrolling is the learner's own act (Step 4's self-only RPC), so a "booked
+  trial" is recorded as what it really is at the desk — which class, which day —
+  and the lead is marked Converted when they turn up for real. Faking an
+  enrollment here would have put a name on a roster that never agreed to it.
+- Repository `repositories/leads.ts`, Zod actions in
+  `features/leads/server-actions/leads.ts`, UI `features/leads/components/LeadsDesk.tsx`
+  at `/business/{id}/students` (funnel summary, stage chips, one row per person
+  with its age, an add sheet, and a per-lead sheet that moves the stage and sets
+  the trial class). The classes register now carries **Students ›** and
+  **Rooms ›** chips.
+- Verified: `scripts/rls-proof-leads.ps1` — 10 checks green (rival studio sees
+  nothing, public sees nothing, rival cannot write, staff read AND move a lead,
+  trial against a real class, **the trial took no seat**, invented stage
+  rejected by the database, soft delete keeps the record). e2e both green,
+  typecheck/lint/build green. **Lesson re-learned: `Date.now()` may not be
+  called during render even in a server component (react-hooks/purity) — stamp
+  it from a module-level helper.**
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -530,7 +569,8 @@ remove entries as they close.**
 | Class detail page: Earnings + Refunds owner tabs (money segment 12008-12042, refund queue) | S_class owner tabs | Step 13 |
 | Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
 | Poster uploads (PosterCropper + Storage) and the "None" poster — the three drawn designs ship | PosterCropper, dosPosterOf 129-135 | media slice (Step 20 rails) |
-| Staff invites — the claim system can only offer people already on the team | settings Staff & permissions 18427 | Step 12 |
+| Staff invites — the claim system can only offer people already on the team | settings Staff & permissions 18427 | Step 12b (next) |
+| Leads: the event-enquiry desk (celebrations/corporate/judge/collab types, quotes, in vs out) — the STUDENT pipeline ships | ENQ_TYPES 4902, S_enqdetail 5380 | later slice |
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
 | Register: walk-in add + the QR scanner (needs the student pool); the pass QR is drawn, not scannable yet | attend 12104-12116, PassSheet 6209 | Steps 11-12 (people); real scanning later |
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |

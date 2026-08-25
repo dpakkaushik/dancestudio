@@ -195,23 +195,31 @@ export function ClassesManager({
           <div style={{ flex: 1, fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
             Classes
           </div>
-          {/* the rest of the studio desk's tools arrive with Steps 12-14; rooms
-              is here because a class is held in one */}
-          <Link
-            href={`/business/${tenantId}/rooms`}
-            style={{
-              flexShrink: 0,
-              fontSize: 11.5,
-              fontWeight: 800,
-              color: INK,
-              textDecoration: "none",
-              border: `1px solid ${EL}`,
-              borderRadius: 999,
-              padding: "6px 12px",
-            }}
-          >
-            Rooms ›
-          </Link>
+          {/* the studio desk's tools, as they arrive — earnings and the calendar
+              land with Steps 13-14 */}
+          {(
+            [
+              ["students", "Students"],
+              ["rooms", "Rooms"],
+            ] as Array<[string, string]>
+          ).map(([slug, word]) => (
+            <Link
+              key={slug}
+              href={`/business/${tenantId}/${slug}`}
+              style={{
+                flexShrink: 0,
+                fontSize: 11.5,
+                fontWeight: 800,
+                color: INK,
+                textDecoration: "none",
+                border: `1px solid ${EL}`,
+                borderRadius: 999,
+                padding: "6px 12px",
+              }}
+            >
+              {word} ›
+            </Link>
+          ))}
         </div>
 
         <Link
