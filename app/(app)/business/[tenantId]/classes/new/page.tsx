@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyTenants, findTenantTeam } from "@/repositories/tenants";
+import { findMyMembershipRole, findMyTenants, findTenantTeam } from "@/repositories/tenants";
 
 export default async function NewClassPage({
   params,
@@ -23,10 +23,13 @@ export default async function NewClassPage({
     redirect("/business");
   }
 
-  const [rooms, team] = await Promise.all([
+  const [rooms, team, role] = await Promise.all([
     findRoomsByTenant(supabase, tenantId),
     findTenantTeam(supabase, tenantId),
+    findMyMembershipRole(supabase, tenantId),
   ]);
 
-  return <ClassForm tenantId={tenantId} rooms={rooms} team={team} />;
+  return (
+    <ClassForm tenantId={tenantId} rooms={rooms} team={team} isOwner={role === "owner"} />
+  );
 }

@@ -145,12 +145,15 @@ export function ClassesManager({
   tenantName,
   classes,
   filledBySession = {},
+  isOwner = false,
 }: {
   tenantId: string;
   tenantName: string;
   classes: DanceClass[];
   /** Enrolled count per session id — real numbers from Step 4. */
   filledBySession?: Record<string, number>;
+  /** Owner-only tools (the earnings desk) are only offered to the owner. */
+  isOwner?: boolean;
 }) {
   const [tab, setTab] = useState<ClassStatus>("published");
   const [ask, setAsk] = useState<{ kind: "publish" | "draft" | "published"; c: DanceClass } | null>(null);
@@ -195,13 +198,16 @@ export function ClassesManager({
           <div style={{ flex: 1, fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
             Classes
           </div>
-          {/* the studio desk's tools, as they arrive — earnings and the calendar
-              land with Steps 13-14 */}
+          {/* the studio desk's tools, as they arrive — the calendar lands with
+              Step 14. Earnings is owner-only (payout approval cannot be
+              granted, prototype 18434), so a trainer is not offered a door
+              that would only shut on them. */}
           {(
             [
               ["students", "Students"],
               ["rooms", "Rooms"],
               ["staff", "Staff"],
+              ...(isOwner ? ([["earnings", "Earnings"]] as Array<[string, string]>) : []),
             ] as Array<[string, string]>
           ).map(([slug, word]) => (
             <Link

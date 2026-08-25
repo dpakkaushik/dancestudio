@@ -12,6 +12,11 @@ export interface ClassClaim {
   status: ClaimStatus;
   canAttendance: boolean;
   canRefunds: boolean;
+  /** What the studio pays them for one session of this class, in whole rupees.
+   *  The owner's number — set on the ask, so the person confirming sees what
+   *  they are agreeing to. 0 is a real answer (an owner teaching their own
+   *  class is owed nothing). */
+  payPerSessionInr: number;
   /** The claimed person, for the page that prints them. */
   personName: string;
   personCity: string | null;

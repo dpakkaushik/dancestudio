@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassById } from "@/repositories/classes";
 import { findClaimsByClass } from "@/repositories/claims";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyTenants, findTenantTeam } from "@/repositories/tenants";
+import { findMyMembershipRole, findMyTenants, findTenantTeam } from "@/repositories/tenants";
 
 export default async function EditClassPage({
   params,
@@ -30,10 +30,11 @@ export default async function EditClassPage({
     redirect(`/business/${tenantId}/classes`);
   }
 
-  const [rooms, team, claims] = await Promise.all([
+  const [rooms, team, claims, role] = await Promise.all([
     findRoomsByTenant(supabase, tenantId),
     findTenantTeam(supabase, tenantId),
     findClaimsByClass(supabase, classId),
+    findMyMembershipRole(supabase, tenantId),
   ]);
 
   return (
@@ -43,6 +44,7 @@ export default async function EditClassPage({
       rooms={rooms}
       team={team}
       claims={claims}
+      isOwner={role === "owner"}
     />
   );
 }

@@ -31,8 +31,16 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 14 / 28 steps** (Steps 0–12b). (The denominator grew from 27 when
-  Step 12b was split out of Step 12.) **Hardening landed 25 Aug 2026** (no new
+- **Completed: 15 / 29 steps** (Steps 0–13). (The denominator grew from 27 as
+  Step 12b was split out of Step 12, and again as Step 13b was split out of
+  Step 13.) Step 13 landed 25 Aug 2026: **earnings & payouts** — a per-session
+  rate the OWNER sets on the ask, `payouts` + `payout_lines` where a line
+  snapshots the rate paid so a session can never be paid twice and a rate change
+  can never rewrite a settled payment, and both sides of the prototype's S_earn:
+  the studio's pay ledger at /business/{id}/earnings and the teacher's own at
+  /earnings. No money moves through code — the studio settles by bank or UPI and
+  records it, which is the prototype's own limit ("DanceOS is not the thing that
+  runs the payroll"). **Hardening landed 25 Aug 2026** (no new
   step): migration `20260825140000` moves the register's membership test into
   `can_run_register_for_class` itself, so a confirmed attendance claim grants the
   register only while its holder is still a live member — the guarantee no longer
@@ -61,9 +69,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   keys (paid classes say "payments aren't switched on yet" until then), verify a
   Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 13 — earnings & payouts ⚠** (trainer payout ledger, earnings
-  dashboard, the class page's Earnings + Refunds owner tabs from the parity
-  backlog)
+- **Next: Step 13b — the income half + the refund queue ⚠** (S_earn's money-IN
+  side for a studio, the month statements, and the class page's Earnings +
+  Refunds owner tabs. **Lead with the refund queue:** Step 9 files in-window
+  refunds as `requested` for the studio to decide and there is still NO UI
+  anywhere to settle them, so a learner's refund request has no path today.)
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -81,7 +91,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 11 | Rooms & people (full class form) | ✅ done (25 Aug 2026) |
 | 12 | Studio CRM (leads/trials/conversions) | ✅ done (25 Aug 2026) |
 | 12b | Staff invites (split out of 12) | ✅ done (25 Aug 2026) |
-| 13 | Earnings & payouts ⚠ | ⬅ next |
+| 13 | Earnings & payouts ⚠ | ✅ done (25 Aug 2026) |
+| 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | ⬅ next |
 | 14 | Calendar views | ⬜ |
 | 15 | Follows + public profiles | ⬜ |
 | 16 | Reviews + ratings | ⬜ |
@@ -629,6 +640,82 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   with **no account yet**, sees the QR, that person signs up, finds the ask on
   Home, accepts, and then appears in the class form's artist picker.
 
+### Step 13 — Earnings & payouts ⚠ ✅ (done 25 Aug 2026)
+- **The prototype's own limit, honoured.** S_earn's closing line is
+  `/* S_payroll — a 133-line payroll desk, removed with the feature. A studio
+  pays its faculty; DanceOS is not the thing that runs the payroll. */` So this
+  slice builds **no payroll engine**: no pay cycles, no batch runs, no payslips,
+  no approval chains. It adds ONE write — the studio records a settlement it has
+  already made — because that single record is the only thing that can make the
+  prototype's own "WHO HAS PAID YOU" rows true (dosEarnPayouts, 17950-17961).
+- **Nor does money move through code.** Step 9's rail is collection-only: one
+  platform key pair in `lib/razorpay/api.ts`, so class fees land in the
+  PLATFORM's Razorpay account. Paying a third party needs a payout rail we do
+  not have — Route (splits at capture; fits a revenue share) or RazorpayX (true
+  payouts; fits a fixed per-session rate) — and no Razorpay account exists yet.
+  So `payouts` carries a nullable `provider_ref` and states that match both the
+  prototype's words and a rail's lifecycle (`done | in_transit | on_hold |
+  failed`), and switching a rail on later fills fields this ledger already has.
+- Migration `20260825160000_create_payouts.sql`:
+  - `class_claims.pay_per_session_inr` — **the OWNER's number**, set per person
+    per class (an artist and an assistant on the same class can be paid
+    differently; 0 is a real answer). The prototype's ₹900/₹1,300 are sample
+    rows, not constants: what is lifted is the grammar `sessions × rate =
+    amount`. It rides the ask, so the person confirming sees what they are
+    agreeing to.
+  - `payouts` (tenant, payee → profiles, amount, status, method, provider_ref,
+    paid_on, note) + `payout_lines` (which sessions a payout covered, each with
+    the **rate actually paid**). RLS: **the owner and the payee only** — not
+    every member, because a trainer has no business reading another trainer's
+    pay (deliberately unlike `leads`, where staff answer the phone so staff read
+    the desk). No insert/update/delete policies at all.
+  - The integrity spine: `payout_lines` carries a unique index on
+    `(session_id, user_id) where deleted_at is null`, so **a session can never be
+    paid twice** — and because a line snapshots its rate, **raising a rate later
+    cannot rewrite what was already settled**.
+  - `record_payout` counts the amount from the rates on record (Step 9's rule
+    kept: the client never states an amount) and refuses sessions that have not
+    ended, sessions belonging to another studio, and totals of zero. It reads
+    the claim **regardless of `deleted_at`**, because Step 12b's removal closes a
+    person's claims and *the work still happened* — somebody taken off the team
+    is still owed for the sessions they taught.
+  - `set_claim_pay` is separate from `set_claim_powers` on purpose: attendance
+    and refunds are jobs an owner OR trainer hands out, but what a session pays
+    is the owner's alone (18434). `claim_person` gained the rate with a default
+    and was **dropped and recreated, not overloaded** (Step 11's lesson), so the
+    ten existing five-argument callers still resolve — proven by re-running the
+    Step 11 and 12b scripts.
+  - `void_payout` releases a mis-recorded payment's sessions and soft-deletes
+    both sides, so the mistake stays readable.
+- Repository `repositories/payouts.ts` (the owner's ledger and the teacher's own,
+  both plain RLS-shaped reads), `types/payout.ts`, Zod actions in
+  `features/payouts/server-actions/payouts.ts`. Accrual has a cutoff: a claim
+  stops earning the moment it is closed, so a removed assistant is owed for what
+  they taught and not for what ran afterwards.
+- UI lifted from S_earn (17877-18205) as a shared kit (`earnings-kit.tsx`: the
+  green hero, the money card with its stacked bar built FROM the rows, the three
+  counted tiles, the ledger block whose row opens into WHO, the settlement row
+  painted by state): **the studio's pay desk** at `/business/{id}/earnings`
+  (owner-only, server-checked, reachable by a new **Earnings ›** chip on the
+  register) with the record-a-payment sheet and per-payment void, and **the
+  teacher's own earnings** at `/earnings` — the prototype is explicit that these
+  are two different ledgers ("A STUDIO is a business… AN ARTIST is a person…
+  PAID BY studios"), never a studio's P&L with your name on it. The class form's
+  step 2 gained the rate field, owner-only.
+- Verified: `scripts/rls-proof-payouts.ps1` — 14 checks green (owner sets the
+  rate; a trainer can neither attach nor change one; no direct writes even by the
+  owner; a trainer cannot record; a future session cannot be paid; two sessions
+  counted server-side to ₹1,800; **the same session cannot be paid twice**; payee
+  reads their own while rival, teammate and public read none; **a rate rise
+  leaves a settled payout at ₹1,800 on a ₹900 line**; void releases the session;
+  **removed from the team and still paid**; zero-rate sessions cannot become a
+  payout; a rival's session cannot be paid from your ledger). Regressions re-run
+  green: rooms-people (13), staff+hardening (17). e2e extended — the owner puts
+  the invited trainer on the class **at ₹900**, then the earnings desk and the
+  teacher's own screen both load (which is what actually exercises the new
+  PostgREST embeds; the proof script queries the API directly and would never
+  catch a bad one). typecheck / lint / production build / both specs green.
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -674,7 +761,12 @@ remove entries as they close.**
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
-| Class detail page: Earnings + Refunds owner tabs (money segment 12008-12042, refund queue) | S_class owner tabs | Step 13 |
+| Class detail page: Earnings + Refunds owner tabs (money segment 12008-12042, refund queue) — **Step 9's `requested` refunds have no settling UI at all yet** | S_class owner tabs | Step 13b |
+| Earnings: the studio's money-IN half of S_earn (gross collected, DanceOS fee 0.9% + GST on fee, FROM GROSS TO YOUR BANK, HOW STUDENTS PAID, PAYOUTS TO YOUR BANK) — the pay-out half ships | S_earn 18095-18200 | Step 13b (needs Razorpay settlement to exist first — printing T+2 and a 0.9% fee today would be a promise, not a fact) |
+| Earnings: period chips (This month / July / June / May), the month statements with WHERE IT CAME FROM + DEDUCTIONS + Download statement, and the ▲/▼ vs-last-month badge | S_earn 17998-18085 | Step 13b |
+| Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | Step 13b (needs a withholding rate the studio sets — not a tax engine) |
+| Earnings: the pay ledger's third tile reads OWED where the prototype's reads REFUNDED (refunds belong to the income half, which is not built yet) | S_earn 18049 | Step 13b |
+| Earnings: "Open invoices" and the ALSO COLLECTED enquiries card | S_earn 18084, 18124 | later slices (invoices, event enquiry desk) |
 | Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
 | Poster uploads (PosterCropper + Storage) and the "None" poster — the three drawn designs ship | PosterCropper, dosPosterOf 129-135 | media slice (Step 20 rails) |
 | Invite by **mobile** and by QR **scan** — the invite handle is an email (what we authenticate on) and the QR is drawn, not yet scannable | invite sheet 18435 "QR / mobile / search" | Step 26 (WhatsApp OTP) + the camera work |
@@ -819,20 +911,29 @@ the technical detail; this log is the at-a-glance history.
   test moved **into** `can_run_register_for_class`, so an attendance claim no
   longer outlives the seat behind it whatever ends the seat, and a deleted class
   has no register (staff proof now 17 checks; attendance and rooms/people proofs
-  re-run green; typecheck / lint / build / both e2e specs green).
-- **Done so far:** Steps 0–12b (14 / 28) plus that hardening. Studios can be
-  created, staffed by invite, given rooms, run classes with real people and
-  posters, take free bookings (paid ones wait on Razorpay keys), run an
-  attendance register with a waitlist queue, and work a leads pipeline.
-- **Remaining:** Step 13 (earnings & payouts ⚠) next, then 14–26. Ops still open,
-  all needing the user's accounts: Razorpay account + keys and the webhook
-  registration, a verified Resend sending domain (sign-in email currently reaches
-  only the Resend account owner), pilot studio invites. Plus the UI parity
-  backlog.
-- **Next session:** Step 13 — earnings & payouts: the trainer payout ledger
-  (manual first), the earnings dashboard, and the class page's Earnings + Refunds
-  owner tabs (money segment 12008-12042 and the refund queue) lifted from
-  BizShell.
+  re-run green; typecheck / lint / build / both e2e specs green). Then **Step 13
+  — earnings & payouts ⚠**: an owner-set per-session rate on the claim, `payouts`
+  + `payout_lines` whose snapshot makes double-paying a session impossible and a
+  rate change unable to rewrite a settled payment, and both sides of S_earn (the
+  studio's pay desk, the teacher's own earnings). Deliberately no payroll engine
+  and no money movement — the prototype deleted its own payroll desk, and Step
+  9's rail only collects. 14-check proof green, both regressions re-run green.
+- **Done so far:** Steps 0–13 (15 / 29) plus that hardening. Studios can be
+  created, staffed by invite, given rooms, run classes with real people, posters
+  and per-session pay, take free bookings (paid ones wait on Razorpay keys), run
+  an attendance register with a waitlist queue, work a leads pipeline, and settle
+  what they owe the people who taught.
+- **Remaining:** Step 13b next, then 14–26. Ops still open, all needing the
+  user's accounts: Razorpay account + keys and the webhook registration, a
+  verified Resend sending domain (sign-in email currently reaches only the Resend
+  account owner), pilot studio invites. Plus the UI parity backlog, which grew by
+  six tracked Step 13b entries.
+- **Next session:** Step 13b — **lead with the refund settlement queue**: Step 9
+  files in-window refunds as `requested` for the studio to decide and nothing in
+  the app can settle them, so a learner's refund request has no path today. Then
+  S_earn's money-IN half for a studio and the month statements (both wait on a
+  real Razorpay account, since printing "settles T+2 · fee 0.9%" before one
+  exists would be a promise rather than a fact).
 
 ### 24 Aug 2026
 - **This session:** Steps 4, 5, and Step 6 part 1 — Enrollment (enrollments table

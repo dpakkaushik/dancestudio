@@ -85,6 +85,9 @@ interface AssistantIntent {
   userId: string;
   canAttendance: boolean;
   canRefunds: boolean;
+  /** What the studio pays them per session (Step 13). Owner-only: the RPCs
+   *  refuse a rate from anybody else, so a trainer's save never sends one. */
+  payInr: number;
 }
 
 /** Create/edit a class — the prototype's two-step S_classform wizard
@@ -100,12 +103,17 @@ export function ClassForm({
   rooms,
   team,
   claims = [],
+  isOwner = false,
 }: {
   tenantId: string;
   existing?: DanceClass;
   rooms: Room[];
   team: TeamMember[];
   claims?: ClassClaim[];
+  /** Only the owner sets what a session pays (prototype 18434: payout approval
+   *  is owner-only and cannot be granted). A trainer sees the people pickers
+   *  without the money. */
+  isOwner?: boolean;
 }) {
   const isEdit = Boolean(existing);
   const [step, setStep] = useState(0);
@@ -126,10 +134,16 @@ export function ClassForm({
 
   const artistClaim = claims.find((c) => c.kind === "artist");
   const [artistUserId, setArtistUserId] = useState<string | null>(artistClaim?.userId ?? null);
+  const [artistPayInr, setArtistPayInr] = useState(artistClaim?.payPerSessionInr ?? 0);
   const [assistants, setAssistants] = useState<AssistantIntent[]>(
     claims
       .filter((c) => c.kind === "assistant")
-      .map((c) => ({ userId: c.userId, canAttendance: c.canAttendance, canRefunds: c.canRefunds }))
+      .map((c) => ({
+        userId: c.userId,
+        canAttendance: c.canAttendance,
+        canRefunds: c.canRefunds,
+        payInr: c.payPerSessionInr,
+      }))
   );
 
   const [state, formAction, isPending] = useActionState(
@@ -150,7 +164,7 @@ export function ClassForm({
     setAssistants((list) =>
       list.some((a) => a.userId === userId)
         ? list.filter((a) => a.userId !== userId)
-        : [...list, { userId, canAttendance: false, canRefunds: false }]
+        : [...list, { userId, canAttendance: false, canRefunds: false, payInr: 0 }]
     );
   };
   const toggleJob = (userId: string, job: "canAttendance" | "canRefunds") => {
@@ -158,10 +172,19 @@ export function ClassForm({
       list.map((a) => (a.userId === userId ? { ...a, [job]: !a[job] } : a))
     );
   };
+  const setAssistantPay = (userId: string, payInr: number) => {
+    setAssistants((list) => list.map((a) => (a.userId === userId ? { ...a, payInr } : a)));
+  };
 
+  /* the rate only travels when an OWNER is saving — the RPCs reject it from
+     anybody else, so sending it from a trainer's form would be an error rather
+     than a permission check */
   const peoplePayload = JSON.stringify({
     artistUserId,
-    assistants: assistants.filter((a) => a.userId !== artistUserId),
+    ...(isOwner ? { artistPayInr } : {}),
+    assistants: assistants
+      .filter((a) => a.userId !== artistUserId)
+      .map((a) => (isOwner ? a : { userId: a.userId, canAttendance: a.canAttendance, canRefunds: a.canRefunds })),
   });
 
   return (
@@ -440,6 +463,31 @@ export function ClassForm({
               );
             })}
 
+            {/* ── WHAT A SESSION PAYS (Step 13) ─────────────────────────────
+                The studio owner's number, not a platform rate and not a fixed
+                one. It rides the ask, so the person confirming sees what they
+                are agreeing to, and every session of this class that runs adds
+                it to what they are owed. */}
+            {isOwner && artistUserId && (
+              <>
+                <div style={labelStyle}>WHAT A SESSION PAYS THEM</div>
+                <input
+                  type="number"
+                  min={0}
+                  max={200000}
+                  step={50}
+                  value={artistPayInr}
+                  aria-label="What a session pays the artist"
+                  onChange={(e) => setArtistPayInr(Math.max(0, Number(e.target.value) || 0))}
+                  style={inputStyle}
+                />
+                <div style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>
+                  ₹ per session. Leave it at 0 if this one is on the house. You settle it yourself and record it on
+                  the earnings desk — DanceOS does not move the money.
+                </div>
+              </>
+            )}
+
             <div style={labelStyle}>
               7 · CLASS ASSISTANTS <span style={{ color: "var(--muted)", fontWeight: 600 }}>· optional</span>
             </div>
@@ -535,6 +583,35 @@ export function ClassForm({
                             </span>
                           );
                         })}
+                        {isOwner && (
+                          <label
+                            style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto" }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: SUB }}>₹/session</span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={200000}
+                              step={50}
+                              value={intent.payInr}
+                              aria-label={`What a session pays ${m.name}`}
+                              onChange={(e) => setAssistantPay(m.userId, Math.max(0, Number(e.target.value) || 0))}
+                              style={{
+                                width: 78,
+                                boxSizing: "border-box",
+                                background: CARD,
+                                border: `1px solid ${EL}`,
+                                borderRadius: 999,
+                                padding: "5px 9px",
+                                color: INK,
+                                fontSize: 11.5,
+                                outline: "none",
+                                fontFamily: "inherit",
+                              }}
+                            />
+                          </label>
+                        )}
                       </div>
                     )}
                   </div>

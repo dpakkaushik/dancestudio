@@ -13,11 +13,12 @@ interface ClaimRow {
   status: "asked" | "confirmed" | "rejected";
   can_attendance: boolean;
   can_refunds: boolean;
+  pay_per_session_inr: number;
   profiles: { full_name: string; city: string | null } | null;
 }
 
 const CLAIM_COLUMNS =
-  "id, class_id, user_id, kind, status, can_attendance, can_refunds, profiles (full_name, city)";
+  "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, profiles (full_name, city)";
 
 const toClaim = (row: ClaimRow): ClassClaim => ({
   id: row.id,
@@ -27,6 +28,7 @@ const toClaim = (row: ClaimRow): ClassClaim => ({
   status: row.status,
   canAttendance: row.can_attendance,
   canRefunds: row.can_refunds,
+  payPerSessionInr: row.pay_per_session_inr ?? 0,
   personName: row.profiles?.full_name ?? "Someone",
   personCity: row.profiles?.city ?? null,
 });
@@ -98,6 +100,7 @@ export async function claimPerson(
     kind: ClaimKind;
     canAttendance?: boolean;
     canRefunds?: boolean;
+    payPerSessionInr?: number;
   }
 ): Promise<void> {
   const { error } = await supabase.rpc("claim_person", {
@@ -106,6 +109,23 @@ export async function claimPerson(
     p_kind: input.kind,
     p_can_attendance: input.canAttendance ?? false,
     p_can_refunds: input.canRefunds ?? false,
+    p_pay_per_session_inr: input.payPerSessionInr ?? 0,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** What a session pays is the OWNER's call alone — separate from the jobs an
+ *  owner or trainer hands out, which is why this is not part of setClaimPowers. */
+export async function setClaimPay(
+  supabase: SupabaseClient,
+  claimId: string,
+  payPerSessionInr: number
+): Promise<void> {
+  const { error } = await supabase.rpc("set_claim_pay", {
+    p_claim_id: claimId,
+    p_pay_per_session_inr: payPerSessionInr,
   });
   if (error) {
     throw new Error(error.message);

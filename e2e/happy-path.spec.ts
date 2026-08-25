@@ -168,6 +168,10 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // and the payoff of Step 12b: the artist picker finally has somebody to
     // offer, because a real person accepted a real invite
     await expect(owner.getByRole("button", { name: "E2E Trainer takes this class" })).toBeVisible();
+    // Step 13: put them on it AT A RATE. The rate field is the owner's alone —
+    // a trainer's form never shows it, and the RPCs refuse it from anybody else.
+    await owner.getByRole("button", { name: "E2E Trainer takes this class" }).click();
+    await owner.getByLabel("What a session pays the artist").fill("900");
     // step 2 — people & price. Free trial: the ₹300 default would route booking
     // through Razorpay (Step 9), which the paid-webhook spec covers.
     await owner.getByLabel("Price per session").fill("0");
@@ -180,7 +184,21 @@ test("signup → onboard studio → create class → share link → enroll", asy
     const registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible();
 
+    // ---- the earnings desk reads that same ledger (Step 13) ---------------
+    // Owner-only, and it is the pay side of the prototype's S_earn — not a
+    // payroll desk: the studio settles by bank or UPI and records it here.
+    await owner.getByRole("link", { name: "Earnings ›" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/earnings$/);
+    await expect(owner.getByText(/DanceOS does not move this money/)).toBeVisible();
+    // the class runs in three days, so nothing has been taught yet
+    await expect(owner.getByText(/Nobody has taught a session yet/)).toBeVisible();
+
+    // the teaching side of the same screen, for the person who was asked
+    await trainer.goto("/earnings");
+    await expect(trainer.getByText(/Paid by each studio on their own cycle/)).toBeVisible();
+
     // ---- the class detail page + its booking link (Step 8) ----------------
+    await owner.goto(`/business/${tenantId}/classes`);
     await registerTile.click();
     await owner.waitForURL(/\/c\/[a-z0-9-]+$/);
     const shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";

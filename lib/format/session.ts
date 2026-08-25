@@ -16,6 +16,19 @@ export const dateParts = (iso: string) => {
   };
 };
 
+/** "Fri 7 Aug" — the same one grammar, for a row that needs only the day
+ *  (the pay ledger's session lines). Built from `dateParts` rather than its own
+ *  Intl call, so it can never drift from the tile and the page. */
+export const sessionDayLabel = (iso: string) => {
+  const p = dateParts(iso);
+  const title = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+  return `${title(p.weekday)} ${p.day} ${title(p.month)}`;
+};
+
+/** "August" — the month a ledger is reporting on. */
+export const monthLabelOf = (iso: string) =>
+  new Intl.DateTimeFormat("en-IN", { timeZone: IST, month: "long" }).format(new Date(iso));
+
 export const timeOf = (iso: string) =>
   new Intl.DateTimeFormat("en-IN", {
     timeZone: IST,
