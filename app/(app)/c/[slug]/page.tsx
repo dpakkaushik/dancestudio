@@ -8,6 +8,7 @@ import { findClaimsByClass } from "@/repositories/claims";
 import { findClassBySlug } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findPaidReceiptByEnrollment } from "@/repositories/payments";
+import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
 import { findMyMembershipRole } from "@/repositories/tenants";
 import type { EnrollmentStatus } from "@/types/enrollment";
@@ -100,6 +101,16 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
   ]);
   const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
 
+  /* Who may answer a refund request: the owner, or somebody holding the refunds
+     job on this class (prototype 12710). Deliberately NOT every trainer — the
+     job is grantable per class precisely because settling money is not implied
+     by being a trainer. The RPCs re-check all of this server-side; this only
+     decides whether the tab is worth drawing. */
+  const canSettleRefunds =
+    role === "owner" ||
+    (myClaim?.status === "confirmed" && myClaim.canRefunds && danceClass.priceInr > 0);
+  const refunds = canSettleRefunds ? await findRefundsByClass(supabase, danceClass.id) : [];
+
   return (
     <ClassDetail
       danceClass={danceClass}
@@ -115,6 +126,8 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       claims={claims}
       myClaim={myClaim}
       roomAmenities={room?.amenities ?? []}
+      refunds={refunds}
+      canSettleRefunds={canSettleRefunds}
     />
   );
 }

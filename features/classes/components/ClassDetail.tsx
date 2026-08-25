@@ -17,6 +17,7 @@ import {
 } from "@/features/enrollments/server-actions/enrollments";
 import { InvoiceSheet, bookingCodeOf } from "@/features/payments/components/InvoiceSheet";
 import { PayFlow } from "@/features/payments/components/PayFlow";
+import { RefundQueue } from "@/features/payments/components/RefundQueue";
 import { RefundSheet } from "@/features/payments/components/RefundSheet";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
@@ -26,6 +27,7 @@ import type { ClassClaim } from "@/types/claim";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { PaidReceipt } from "@/types/payment";
+import type { RefundRequest } from "@/types/refund";
 import { PassSheet } from "./PassSheet";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "./poster";
 import { dosKey } from "./ShareSheet";
@@ -140,6 +142,11 @@ export interface ClassDetailProps {
   claims: ClassClaim[];
   /** An ask waiting for the signed-in viewer's own answer. */
   myClaim: ClassClaim | null;
+  /** Refund requests against this class — fetched only for a viewer who may
+   *  settle them (owner, or a confirmed claim holding the refunds job). */
+  refunds?: RefundRequest[];
+  /** Whether this viewer may answer those requests. */
+  canSettleRefunds?: boolean;
   /** What the room has in it — read off the room the class runs in. */
   roomAmenities: string[];
 }
@@ -158,6 +165,8 @@ export function ClassDetail({
   claims,
   myClaim,
   roomAmenities,
+  refunds = [],
+  canSettleRefunds = false,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -174,7 +183,7 @@ export function ClassDetail({
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   /* Details / Attendance — the strip belongs to the card (prototype 11961-11970) */
-  const [ownerSeg, setOwnerSeg] = useState<"details" | "att">("details");
+  const [ownerSeg, setOwnerSeg] = useState<"details" | "att" | "ref">("details");
   /* one register op at a time — the row that is busy shows it */
   const [opPending, setOpPending] = useState<string | null>(null);
   const host = useSyncExternalStore(subscribeNever, readHost, readServerHost);
@@ -225,7 +234,9 @@ export function ClassDetail({
 
   /* Details / Attendance tabs — what YOU can do here (prototype 11755-11757;
      Earnings/Refunds arrive with Step 13, assistant claims with Step 11) */
-  const ownerTabs = canManage && !isDraft && register !== null;
+  /* the strip appears for whoever has something behind it: the register
+     (owner/trainer) or the refund queue (owner, or the refunds job) */
+  const ownerTabs = !isDraft && (register !== null || canSettleRefunds);
   const showDetails = !ownerTabs || ownerSeg === "details";
   const checkedInCount = register?.checkedInCount ?? 0;
 
@@ -603,8 +614,14 @@ export function ClassDetail({
             {(
               [
                 ["details", "Details"],
-                ["att", "Attendance"],
-              ] as Array<["details" | "att", string]>
+                ...(register !== null ? ([["att", "Attendance"]] as Array<["att", string]>) : []),
+                /* Refunds is its own segment in the prototype's SEGS
+                   (11755-11757), and it only appears for somebody who may
+                   actually settle: the owner, or a confirmed claim holding the
+                   refunds job. A trainer without it does not get a tab that
+                   would only refuse them. */
+                ...(canSettleRefunds ? ([["ref", "Refunds"]] as Array<["ref", string]>) : []),
+              ] as Array<["details" | "att" | "ref", string]>
             ).map(([k, l]) => (
               <div
                 role="button"
@@ -1015,6 +1032,14 @@ export function ClassDetail({
           </Sec>
         )}
           </>
+        )}
+
+        {/* ── REFUNDS — the requests Step 9 filed and nothing could answer
+            (prototype 12219-12262). Approve fires the real refund; declining is
+            a decision, not a failure; "Mark refunded" is for money handed back
+            at the desk. ── */}
+        {ownerTabs && ownerSeg === "ref" && canSettleRefunds && (
+          <RefundQueue refunds={refunds} paidSeats={filled} />
         )}
 
         {/* ── ATTENDANCE — the register and the queue (prototype 12043-12138).

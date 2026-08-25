@@ -69,11 +69,18 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   keys (paid classes say "payments aren't switched on yet" until then), verify a
   Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 13b — the income half + the refund queue ⚠** (S_earn's money-IN
-  side for a studio, the month statements, and the class page's Earnings +
-  Refunds owner tabs. **Lead with the refund queue:** Step 9 files in-window
-  refunds as `requested` for the studio to decide and there is still NO UI
-  anywhere to settle them, so a learner's refund request has no path today.)
+- **Step 13b part 1 landed 25 Aug 2026: the refund settlement queue** — the hole
+  is closed. Step 9's in-window `requested` refunds had no writer but the
+  service-role webhook, so a learner's money sat in a queue with no door.
+  `decide_refund` (approve / decline / reopen) + `settle_refund_offline` now open
+  it, gated on `can_settle_refunds_for_class` (owner, or a confirmed claim
+  holding the refunds job — **not** a plain trainer), and the class page has the
+  prototype's Refunds tab.
+- **Next: Step 13b part 2 — S_earn's money-IN half** (gross collected, the fee
+  and GST lines, HOW STUDENTS PAID, PAYOUTS TO YOUR BANK, the month statements)
+  plus the class page's Earnings owner tab. Waits on a real Razorpay account:
+  printing "settles T+2 · fee 0.9%" before one exists would be a promise, not a
+  fact.
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -92,7 +99,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 12 | Studio CRM (leads/trials/conversions) | ✅ done (25 Aug 2026) |
 | 12b | Staff invites (split out of 12) | ✅ done (25 Aug 2026) |
 | 13 | Earnings & payouts ⚠ | ✅ done (25 Aug 2026) |
-| 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | ⬅ next |
+| 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | 🔶 **refund queue done** (25 Aug 2026); income half remains ⬅ next |
 | 14 | Calendar views | ⬜ |
 | 15 | Follows + public profiles | ⬜ |
 | 16 | Reviews + ratings | ⬜ |
@@ -716,6 +723,60 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   PostgREST embeds; the proof script queries the API directly and would never
   catch a bad one). typecheck / lint / production build / both specs green.
 
+### Step 13b part 1 — the refund settlement queue ⚠ ✅ (done 25 Aug 2026)
+- **The hole.** Step 9 files a cancellation inside the 48 h window as
+  `requested` — "the studio decides" — and then the only writer of that row was
+  `apply_refund_update`, which is **service_role only** (the webhook). No
+  authenticated path existed, so a learner who cancelled in-window had their seat
+  taken back and their money left in a queue nobody could reach. Silent, and on
+  the customer's side of the till.
+- Migration `20260825180000_refund_settlement_queue.sql`:
+  - `declined` added to the refunds status check. A studio saying no inside its
+    own policy window is a **decision**; recording it as `failed` would have
+    claimed the rail broke, which is a different fact. Plus `decided_at`,
+    `decision_note`, and `settled_offline` — because a cash refund handed back at
+    the desk must not be indistinguishable from one Razorpay actually processed.
+  - `can_settle_refunds_for_class`: the owner, **or a confirmed claim holding the
+    refunds job** (prototype 12710, "Manages refunds · Sees refund requests
+    against this class and settles them"). A plain trainer is deliberately NOT
+    admitted — the job is grantable per class precisely because settling money is
+    not implied by being a trainer, and unlike payout approval (owner-only,
+    ungrantable, §10.9) this one *is* grantable. **The membership re-check is in
+    the claim branch from the start** — 20260825140000 had to go back and add it
+    to `can_run_register_for_class`, and the lesson was cheaper to apply than to
+    relearn.
+  - `decide_refund` (approve / decline / reopen — the transitions stated once)
+    and `settle_refund_offline` (the prototype's "Mark refunded", refused once a
+    `razorpay_refund_id` exists, because then the rail owns the outcome).
+  - `attach_settled_refund_reference` — **a real find:** Step 9's
+    `attach_razorpay_refund` is scoped `user_id = auth.uid()`, the LEARNER's own
+    cancel path, so a studio approving somebody else's refund could never have
+    bound the rail id with it. That would have thrown at runtime, after the money
+    moved. The settler needs their own bind.
+- Approving does not move money inside the database: the row goes to `pending`
+  and the action fires the Razorpay refund, exactly as `cancelBookingAction`
+  already did. A failed call or missing keys leaves the row `pending` and still
+  on the queue — ledgered rather than lost — and Razorpay's `refund.processed`
+  event is what finally closes it, so the action never claims the money landed.
+- Repository `repositories/refunds.ts`, `types/refund.ts`, Zod actions in
+  `features/payments/server-actions/refunds.ts`, UI
+  `features/payments/components/RefundQueue.tsx` lifted from S_class 12219-12262
+  (the TO SETTLE / OWED / PAID SEATS tiles, "Refund all N · ₹X" when more than
+  one waits, and the per-status Approve / Decline / Mark refunded / Reopen row),
+  hung on the class page as the prototype's own **Refunds** owner segment
+  (SEGS 11755-11757). The tab is only drawn for somebody who may actually settle.
+- Verified: `scripts/rls-proof-refunds.ps1` — 12 checks green (the in-window
+  request is filed; the learner cannot decide their own; a trainer without the
+  job cannot; a rival cannot; the owner approves to `pending` with the payment id
+  known; re-approving is refused; the job holder declines and reopens; **the seat
+  pulled behind the RPC's back stops the job working while the claim stays
+  live**; cash marked refunded flips the order too; a refund already with
+  Razorpay cannot be closed by hand; a direct PATCH changes nothing; the learner
+  reads their own decision and nobody else's). Step 9's payments proof re-run
+  green (12) — the constraint change touched it. typecheck / lint / build / both
+  e2e specs green; the owner's own visit to /c/{slug} in the happy path is what
+  exercises the new `orders!inner` embed.
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -761,7 +822,8 @@ remove entries as they close.**
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
-| Class detail page: Earnings + Refunds owner tabs (money segment 12008-12042, refund queue) — **Step 9's `requested` refunds have no settling UI at all yet** | S_class owner tabs | Step 13b |
+| Class detail page: the **Earnings** owner tab (money segment 12008-12042) — the Refunds tab and its queue shipped 25 Aug 2026 | S_class owner tabs | Step 13b part 2 |
+| Refunds: the learner's own view of a decision (they can read the row and its note; there is no screen that tells them "declined, because…") | S_class booked card | Step 13b part 2 |
 | Earnings: the studio's money-IN half of S_earn (gross collected, DanceOS fee 0.9% + GST on fee, FROM GROSS TO YOUR BANK, HOW STUDENTS PAID, PAYOUTS TO YOUR BANK) — the pay-out half ships | S_earn 18095-18200 | Step 13b (needs Razorpay settlement to exist first — printing T+2 and a 0.9% fee today would be a promise, not a fact) |
 | Earnings: period chips (This month / July / June / May), the month statements with WHERE IT CAME FROM + DEDUCTIONS + Download statement, and the ▲/▼ vs-last-month badge | S_earn 17998-18085 | Step 13b |
 | Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | Step 13b (needs a withholding rate the studio sets — not a tax engine) |
@@ -923,7 +985,16 @@ the technical detail; this log is the at-a-glance history.
   and per-session pay, take free bookings (paid ones wait on Razorpay keys), run
   an attendance register with a waitlist queue, work a leads pipeline, and settle
   what they owe the people who taught.
-- **Remaining:** Step 13b next, then 14–26. Ops still open, all needing the
+  Then **Step 13b part 1 — the refund settlement queue**, closing the hole Step 13
+  surfaced: in-window refunds were filed as `requested` with no writer but the
+  webhook, so a learner's money had no door. `decide_refund` +
+  `settle_refund_offline` behind `can_settle_refunds_for_class` (owner, or the
+  refunds job — not a plain trainer), the prototype's Refunds tab on the class
+  page, 12 checks green, Step 9's proof re-run green. It also caught that Step 9's
+  `attach_razorpay_refund` is payer-scoped, so a studio could never have bound
+  the rail id — that would have thrown after the money moved.
+- **Remaining:** Step 13b part 2 (S_earn's income half + the class page's
+  Earnings tab, both waiting on a real Razorpay account), then 14–26. Ops still open, all needing the
   user's accounts: Razorpay account + keys and the webhook registration, a
   verified Resend sending domain (sign-in email currently reaches only the Resend
   account owner), pilot studio invites. Plus the UI parity backlog, which grew by
