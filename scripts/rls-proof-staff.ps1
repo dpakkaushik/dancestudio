@@ -3,6 +3,12 @@
 # enough, 'owner' is not a grantable role, and taking somebody off the team takes
 # their powers with them.
 #
+# Checks 16-17 cover the hardening in 20260825140000: check 14 proves
+# remove_tenant_member closes the claims it should, 16 proves the register does
+# not depend on it doing so (the seat is pulled with the service role, no RPC
+# involved, and the register shuts anyway), 17 proves a soft-deleted class has no
+# register for anybody.
+#
 # Invites are keyed on EMAIL (what DanceOS authenticates on today), so this proof
 # mints real email users through the admin API rather than using the test phone
 # numbers - a phone-only account has no address for an invite to find.
@@ -55,6 +61,8 @@ $stamp = Get-Date -Format "HHmmss"
 $owner = New-EmailUser "staffproof-owner-$stamp@example.com" "Owner $stamp" "studio"
 $joiner = New-EmailUser "staffproof-join-$stamp@example.com" "Vikram $stamp" "trainer"
 $rival = New-EmailUser "staffproof-rival-$stamp@example.com" "Rival $stamp" "studio"
+# checks 16-17: a staff assistant whose seat is pulled out from under them
+$ghost = New-EmailUser "staffproof-ghost-$stamp@example.com" "Priya $stamp" "dancer"
 
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Staff Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
@@ -166,11 +174,47 @@ try {
   Rpc (Api $owner.token) "revoke_tenant_invite" @{ p_invite_id = $inv2.id } | Out-Null
   $revokedBlocked = Expect-Fail { Rpc (Api $joiner.token) "accept_tenant_invite" @{ p_code = $inv2.code } }
   Check 15 "A bogus code and a withdrawn invite are both dead" ($bogusBlocked -and $revokedBlocked)
+
+  # 16. THE HARDENING (20260825140000): check 14 proves the RPC closes the claims
+  #     it should. This proves the register does not DEPEND on it. The membership
+  #     row is soft-deleted DIRECTLY with the service role - no RPC, so the claim
+  #     stays live, exactly like a future offboarding job that forgot about
+  #     claims - and the register must still shut. Reviving the seat brings it
+  #     back, which is what shows the membership test is what moved.
+  $ghostInv = Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Priya Ghost";
+    p_email = $ghost.email; p_role = "staff" }
+  Rpc (Api $ghost.token) "accept_tenant_invite" @{ p_code = $ghostInv.code } | Out-Null
+  $ghostClaim = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $cls.id; p_user_id = $ghost.id;
+    p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
+  Rpc (Api $ghost.token) "respond_to_claim" @{ p_claim_id = $ghostClaim.id; p_accept = $true } | Out-Null
+  $staffCanRun = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
+
+  $memberRow = Get-Rows $svcH "tenant_members?tenant_id=eq.$($ta.id)&user_id=eq.$($ghost.id)&select=id"
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenant_members?id=eq.$($memberRow[0].id)" -Headers $svcH `
+    -Body (@{ deleted_at = (Get-Date).ToString("o") } | ConvertTo-Json) | Out-Null
+  $runAfterSeatGone = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
+  $claimStillLive = Get-Rows $svcH "class_claims?id=eq.$($ghostClaim.id)&deleted_at=is.null&select=id"
+
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenant_members?id=eq.$($memberRow[0].id)" -Headers $svcH `
+    -Body (@{ deleted_at = $null } | ConvertTo-Json) | Out-Null
+  $runAfterRevive = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
+  Check 16 "Staff assistant runs the register ($staffCanRun); seat soft-deleted behind the RPC's back -> refused ($runAfterSeatGone) with the claim still live ($($claimStillLive.Count)); seat back -> allowed ($runAfterRevive)" (
+    ($staffCanRun -eq $true) -and ($runAfterSeatGone -eq $false) -and ($claimStillLive.Count -eq 1) -and ($runAfterRevive -eq $true))
+
+  # 17. same migration's second tightening: the claim branch never filtered
+  #     soft-deleted classes while the owner branch always did, so a deleted
+  #     class's register stayed open to its assistant. It is shut for everybody.
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($cls.id)" -Headers $svcH `
+    -Body (@{ deleted_at = (Get-Date).ToString("o") } | ConvertTo-Json) | Out-Null
+  $ghostOnDeleted = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
+  $ownerOnDeleted = Rpc (Api $owner.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
+  Check 17 "A deleted class has no register: assistant ($ghostOnDeleted) and owner ($ownerOnDeleted) both refused" (
+    ($ghostOnDeleted -eq $false) -and ($ownerOnDeleted -eq $false))
 }
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
-  foreach ($u in @($owner, $joiner, $rival)) {
+  foreach ($u in @($owner, $joiner, $rival, $ghost)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }
   "   (cleanup: proof studios and throwaway accounts deleted)"

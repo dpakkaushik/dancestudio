@@ -32,7 +32,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 ### Progress tracker — update after EVERY push (Rule 11)
 
 - **Completed: 14 / 28 steps** (Steps 0–12b). (The denominator grew from 27 when
-  Step 12b was split out of Step 12.) Step 12b landed 25 Aug 2026: **staff
+  Step 12b was split out of Step 12.) **Hardening landed 25 Aug 2026** (no new
+  step): migration `20260825140000` moves the register's membership test into
+  `can_run_register_for_class` itself, so a confirmed attendance claim grants the
+  register only while its holder is still a live member — the guarantee no longer
+  depends on `remove_tenant_member` remembering to close claims. Same migration
+  shuts a deleted class's register for everybody. Proof checks 16–17.
+- Step 12b landed 25 Aug 2026: **staff
   invites** — `tenant_invites` keyed on the **email address people sign in with**,
   the owner-only ask, the invited person's own accept, and the Staff & permissions
   desk at /business/{id}/staff with the prototype's QR kept. The class form's
@@ -55,9 +61,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   keys (paid classes say "payments aren't switched on yet" until then), verify a
   Resend sending domain, invite pilots.
 - **Live:** https://dancestudio-orcin.vercel.app (auto-deploys `main`)
-- **Next: Step 12b — staff invites** (invite by mobile → they accept → a
-  tenant_members row; unblocks the class form's people pickers), then Step 13 —
-  earnings & payouts ⚠
+- **Next: Step 13 — earnings & payouts ⚠** (trainer payout ledger, earnings
+  dashboard, the class page's Earnings + Refunds owner tabs from the parity
+  backlog)
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -623,6 +629,38 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   with **no account yet**, sees the QR, that person signs up, finds the ask on
   Home, accepts, and then appears in the class form's artist picker.
 
+### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
+- Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
+  `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
+  confirmed attendance claim opens the register **only while its holder is still
+  a live member** of the studio that owns the class. Step 12b had closed the same
+  hole at the revocation site (`remove_tenant_member` soft-deletes the person's
+  claims in the same act) — a real guarantee, since `tenant_members` carries only
+  SELECT policies and that RPC is the one way a seat can end, but the **weak**
+  form of it: it held only because every path that ends a membership also closed
+  the claims. **Lesson: put the test where the decision is made, not only where
+  the grant is revoked — a defence that depends on every future caller
+  remembering something reopens silently, and stays invisible until somebody hits
+  it.** The function only ever loses authority (signature, volatility, definer
+  status and grants unchanged), so check_in / undo_check_in / give_spot /
+  remove_from_waitlist inherited the stricter test untouched.
+- Second tightening in the same migration: the claim branch never filtered
+  soft-deleted classes while the membership branch always did, so an assistant
+  could run the register on a class the studio had deleted. Both branches now
+  read live classes only.
+- Step 11's feature is intact by construction: `claim_person` only ever asks your
+  own team, so every legitimate claim holder is a member — a **staff** assistant
+  handed attendance still runs the register (rooms/people proof check 11).
+- Verified: `scripts/rls-proof-staff.ps1` now 17 checks green. **Check 16 is the
+  one that matters** — it soft-deletes the membership row **directly with the
+  service role, bypassing the RPC entirely** (exactly like a future offboarding
+  job that forgets about claims), leaving the claim live, and the register shuts
+  anyway; reviving the seat brings it back, which is what proves the membership
+  test is what moved. Check 17: a deleted class has no register for assistant or
+  owner. Regressions re-run green: `rls-proof-attendance.ps1` (10) and
+  `rls-proof-rooms-people.ps1` (13). typecheck / lint / production build / both
+  e2e specs green.
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -756,7 +794,7 @@ server action → UI, finished and verified before the next begins.
     (below) with exactly four things — this session / done so far / remaining /
     next session — then commit and push it. Newest entry on top.
 11. **After every push, update the Progress tracker** (top of the Build plan) in
-    the same push or the immediately following one: steps complete / 27, what
+    the same push or the immediately following one: steps complete / 28, what
     just landed, and what's next. The tracker and the step table must always
     match reality — a stale tracker is a bug.
 
@@ -764,6 +802,37 @@ server action → UI, finished and verified before the next begins.
 
 Four lines per session, written when the user ends it. The step records above hold
 the technical detail; this log is the at-a-glance history.
+
+### 25 Aug 2026
+- **This session:** Steps 11, 12 and 12b, then a hardening pass. Step 11 — rooms
+  & people (`rooms` + `class_claims`, capacity cap and no double-booking enforced
+  by triggers, two-sided consent on claims, the class form as the prototype's
+  two-step wizard; 13-check proof, commit ac57db0). Step 12 — the Studio CRM
+  leads desk with the prototype's five stages, and the deliberate non-feature: a
+  studio cannot book a seat for somebody, so a "trial" records the class and the
+  day instead of faking an enrollment (10 checks, 531b493). Step 12b — staff
+  invites keyed on the email people sign in with, owner-only ask, the invited
+  person's own accept, `/join/{code}` + the drawn QR (15 checks, 47ed215); it
+  exposed and fixed the third instance of the RLS-is-a-ceiling bug
+  (`findMyMembershipRole` 500ing the public class page once a studio had two
+  members). Finished with migration `20260825140000`: the register's membership
+  test moved **into** `can_run_register_for_class`, so an attendance claim no
+  longer outlives the seat behind it whatever ends the seat, and a deleted class
+  has no register (staff proof now 17 checks; attendance and rooms/people proofs
+  re-run green; typecheck / lint / build / both e2e specs green).
+- **Done so far:** Steps 0–12b (14 / 28) plus that hardening. Studios can be
+  created, staffed by invite, given rooms, run classes with real people and
+  posters, take free bookings (paid ones wait on Razorpay keys), run an
+  attendance register with a waitlist queue, and work a leads pipeline.
+- **Remaining:** Step 13 (earnings & payouts ⚠) next, then 14–26. Ops still open,
+  all needing the user's accounts: Razorpay account + keys and the webhook
+  registration, a verified Resend sending domain (sign-in email currently reaches
+  only the Resend account owner), pilot studio invites. Plus the UI parity
+  backlog.
+- **Next session:** Step 13 — earnings & payouts: the trainer payout ledger
+  (manual first), the earnings dashboard, and the class page's Earnings + Refunds
+  owner tabs (money segment 12008-12042 and the refund queue) lifted from
+  BizShell.
 
 ### 24 Aug 2026
 - **This session:** Steps 4, 5, and Step 6 part 1 — Enrollment (enrollments table
