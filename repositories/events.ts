@@ -75,6 +75,9 @@ interface BookingRow {
   qty: number;
   entrant_name: string | null;
   partner_name: string | null;
+  partner_id: string | null;
+  partner_status: "asked" | "confirmed" | "rejected" | null;
+  crew_id: string | null;
   amount_inr: number;
   status: "booked" | "cancelled";
   checked_in_at: string | null;
@@ -97,7 +100,7 @@ interface MyBookingRow extends BookingRow {
 const EVENT_SELECT =
   "id, tenant_id, cat, title, style, start_date, end_date, start_time, venue, address, city, maps_url, about, entry_format, bracket, rounds, prizes, tickets_on, status, share_slug, poster, tenants (name, city), event_entry_tiers (id, format, fee_inr, capacity, deleted_at), event_ticket_tiers (id, name, price_inr, capacity, sort, deleted_at)";
 const BOOKING_SELECT =
-  "id, event_id, user_id, kind, ticket_tier_id, entry_format, qty, entrant_name, partner_name, amount_inr, status, checked_in_at, created_at, profiles (full_name), event_ticket_tiers (name)";
+  "id, event_id, user_id, kind, ticket_tier_id, entry_format, qty, entrant_name, partner_name, partner_id, partner_status, crew_id, amount_inr, status, checked_in_at, created_at, profiles!event_bookings_user_id_fkey (full_name), event_ticket_tiers (name)";
 
 const toEvent = (r: EventRow, counts: CountRow[]): DanceEvent => ({
   id: r.id,
@@ -278,6 +281,9 @@ export async function bookEvent(
     format?: EntryFormat | null;
     entrantName?: string | null;
     partnerName?: string | null;
+    /** Step 22: the crew you lead, and the partner as a person */
+    crewId?: string | null;
+    partnerId?: string | null;
   }
 ): Promise<string> {
   const { data, error } = await supabase.rpc("book_event", {
@@ -288,6 +294,8 @@ export async function bookEvent(
     p_format: input.format ?? null,
     p_entrant_name: input.entrantName ?? null,
     p_partner_name: input.partnerName ?? null,
+    p_crew_id: input.crewId ?? null,
+    p_partner_id: input.partnerId ?? null,
   });
   if (error) {
     throw new Error(error.message);
@@ -336,6 +344,9 @@ const toBooking = (r: BookingRow): EventBooking => ({
   qty: r.qty,
   name: r.entrant_name ?? r.profiles?.full_name ?? "Someone",
   partnerName: r.partner_name,
+  partnerId: r.partner_id,
+  partnerStatus: r.partner_status,
+  crewId: r.crew_id,
   amountInr: r.amount_inr,
   status: r.status,
   checkedInAt: r.checked_in_at,

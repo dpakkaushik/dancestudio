@@ -425,6 +425,98 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(owner.getByRole("button", { name: "Check out E2E Learner" })).toBeVisible();
     await expect(owner.getByText("GATE LIST · 1/1 arrived")).toBeVisible();
 
+    // ---- Step 22: a crew, from the hub to the door of an event ----
+    // The learner creates a crew and asks the trainer onto it (a roster is a
+    // public page, so being on one is an ASK, never a write); the trainer
+    // confirms from the Inbox's Requests desk; the crew's public page prints
+    // both and Discover's Crews tab lists it. Then the owner publishes a crew
+    // battle and the learner enters it AS THE CREW'S LEADER from the crews they
+    // lead — a typed name no longer books — the organiser's register says so,
+    // and the crew's page carries the entry as its battle record.
+    const crewName = `E2E Crew ${stamp}`;
+    await learner.goto("/crews");
+    await expect(learner.getByText("You do not lead a crew yet.")).toBeVisible();
+    await learner.getByRole("link", { name: "＋ Create crew" }).click();
+    await learner.waitForURL(/\/crews\/new$/);
+    await learner.getByLabel("Crew name").fill(crewName);
+    await learner.getByLabel("Dance style").selectOption("Hip-Hop");
+    await learner.getByRole("button", { name: "Add a member" }).click();
+    await learner.getByLabel("Search DanceOS for a dancer").fill("E2E Trainer");
+    await learner.getByRole("button", { name: "Add E2E Trainer to the crew" }).click();
+    await expect(learner.getByText("MEMBERS · 1 added")).toBeVisible();
+    await learner.getByRole("button", { name: "Save crew" }).click();
+    await learner.getByRole("dialog", { name: "Confirm · create crew" }).getByRole("button", { name: "Confirm & create" }).click();
+    await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage$/);
+    const crewId = learner.url().match(/\/crews\/([0-9a-f-]+)\/manage$/)![1];
+    // ASKED IS NOT JOINED: the desk says the trainer has not answered, and counts one member
+    await expect(learner.getByText("⏳ Waiting on them to confirm")).toBeVisible();
+    await expect(learner.getByTestId("crew-tile-members")).toHaveText("1");
+
+    // the trainer answers from the Requests desk — only they can
+    await trainer.goto("/inbox");
+    // the desk counts everything waiting on them — an earlier class ask included — so the crew
+    // ask is found by its own words rather than by the total
+    await expect(trainer.getByRole("button", { name: `Open the a crew member request from E2E Learner` })).toBeVisible();
+    await trainer.getByRole("button", { name: /^Requests — \d+ waiting/ }).click();
+    await expect(trainer.getByText(`wants to add you to ${crewName}`)).toBeVisible();
+    await trainer.getByRole("button", { name: `Confirm ${crewName}` }).click();
+    await expect(trainer.getByText(`wants to add you to ${crewName}`)).toHaveCount(0);
+    await learner.reload();
+    await expect(learner.getByTestId("crew-tile-members")).toHaveText("2");
+    await expect(learner.getByText("Member", { exact: true })).toBeVisible();
+
+    // the public page prints the confirmed roster; the hub knows which list the trainer belongs on
+    await trainer.goto(`/crew/${crewId}`);
+    await expect(trainer.getByTestId("crew-members-count")).toHaveText("2");
+    await expect(trainer.getByText("You are in this crew")).toBeVisible();
+    await expect(trainer.getByText("Crew leader", { exact: true })).toBeVisible();
+    await trainer.goto("/crews");
+    await expect(trainer.getByText("CREWS YOU ARE IN")).toBeVisible();
+    await expect(trainer.getByRole("link", { name: `${crewName} — open the profile` })).toBeVisible();
+    await trainer.goto("/discover?city=Pune&tab=crews");
+    await expect(trainer.getByRole("link", { name: `${crewName} — Crew` })).toBeVisible();
+
+    // the owner publishes a FREE crew battle: crews only, eight places, no spectator tickets
+    const battleTitle = `E2E Battle ${stamp}`;
+    await owner.goto(`/business/${tenantId}/events/new`);
+    await owner.getByRole("button", { name: "Battle Tournament", exact: true }).click();
+    await owner.getByLabel("Event name").fill(battleTitle);
+    await owner.getByLabel("Dance style").selectOption("All styles");
+    await owner.getByLabel("First day").fill(inTwelveDays);
+    await owner.getByLabel("Venue name").fill("E2E Arena");
+    await owner.getByLabel("City", { exact: true }).selectOption("Pune");
+    await owner.getByLabel("Google Maps link").fill("https://maps.google.com/?q=E2E+Arena+Pune");
+    await owner.getByRole("button", { name: "Continue", exact: true }).click();
+    await owner.getByRole("button", { name: "Crew", exact: true }).click();
+    await owner.getByLabel("Crew places").fill("8");
+    await owner.getByRole("button", { name: "Selling tickets" }).click();
+    await owner.getByRole("button", { name: "Publish event" }).click();
+    await owner.getByRole("dialog", { name: "Publish this event?" }).getByRole("button", { name: "Confirm & publish" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
+    await expect(owner.getByRole("link", { name: `${battleTitle} — Battle tournament` })).toBeVisible();
+
+    // the leader enters the crew from the crews they lead — pre-picked, since they lead one
+    await learner.goto("/discover?city=Pune&tab=events");
+    await learner.getByRole("link", { name: `${battleTitle} — Battle tournament` }).click();
+    await learner.waitForURL(/\/e\/[a-z0-9-]+$/);
+    await learner.getByRole("button", { name: "Register to compete" }).click();
+    const entrySheet = learner.getByRole("dialog", { name: "Register to perform" });
+    await expect(entrySheet.getByRole("button", { name: `Enter as ${crewName}` })).toHaveAttribute("aria-pressed", "true");
+    await entrySheet.getByRole("button", { name: "Continue", exact: true }).click();
+    await learner.getByRole("dialog", { name: "Confirm your entry" }).getByRole("button", { name: "Confirm entry" }).click();
+    await expect(learner.getByText(/You.re entered/)).toBeVisible();
+    await expect(learner.getByText(`Crew entry · ${crewName}`)).toBeVisible();
+
+    // the organiser's register names the crew and says who put it forward
+    await owner.getByRole("link", { name: `${battleTitle} — Battle tournament` }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/events\/[0-9a-f-]+$/);
+    await owner.getByRole("button", { name: "Participants" }).click();
+    await expect(owner.getByText("Crew entry · entered by its leader · registered")).toBeVisible();
+
+    // and the crew's page carries it as its battle record
+    await learner.goto(`/crew/${crewId}`);
+    await expect(learner.getByRole("link", { name: `Open ${battleTitle}` })).toBeVisible();
+
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browser.newContext();
     try {

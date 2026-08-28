@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ClassTile } from "@/features/classes/components/ClassTile";
+import { CrewCard } from "@/features/crews/components/CrewCard";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { EventCard } from "@/features/events/components/EventCard";
@@ -9,6 +10,7 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedClasses } from "@/repositories/classes";
+import { findCrewsByCity } from "@/repositories/crews";
 import { findNearbyTenants } from "@/repositories/discovery";
 import { findPublishedEvents } from "@/repositories/events";
 import { findFollowerCounts } from "@/repositories/follows";
@@ -26,6 +28,7 @@ const TABS = [
   ["classes", "Classes"],
   ["studios", "Studios"],
   ["artists", "Artists"],
+  ["crews", "Crews"],
   ["events", "Events"],
 ] as const;
 
@@ -85,6 +88,8 @@ export default async function DiscoverPage({
   /* Discover's Events tab (Step 21): published, still to come, in this city —
      the same card the desk and the event page draw, opening /e/{slug} */
   const events = tab === "events" ? (await findPublishedEvents(supabase, dayKeyOf(stampNowIso()), city)).filter((e) => evCat === "all" || e.cat === evCat) : [];
+  /* Discover's Crews tab (Step 22): live crews in this city, two to a row (CompactCard 4813) */
+  const crews = tab === "crews" ? await findCrewsByCity(supabase, city) : [];
 
   const classes = allClasses.filter((c) => c.tenantCity === city);
   const counts =
@@ -105,8 +110,8 @@ export default async function DiscoverPage({
       : new Map<string, number>();
 
   const shelfHead =
-    tab === "classes" ? "Upcoming classes" : tab === "studios" ? "Studios near you" : tab === "artists" ? "Artists near you" : "Events near you";
-  const shelfCount = tab === "classes" ? classes.length : tab === "events" ? events.length : nearby.length;
+    tab === "classes" ? "Upcoming classes" : tab === "studios" ? "Studios near you" : tab === "artists" ? "Artists near you" : tab === "crews" ? "Crews" : "Events near you";
+  const shelfCount = tab === "classes" ? classes.length : tab === "events" ? events.length : tab === "crews" ? crews.length : nearby.length;
 
   return (
     <div
@@ -216,6 +221,14 @@ export default async function DiscoverPage({
       {wantsBusinesses &&
         nearby.map((t) => <StudioCard key={t.id} tenant={t} followers={followerCounts.get(t.id) ?? 0} />)}
 
+      {tab === "crews" && crews.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {crews.map((c) => (
+            <CrewCard key={c.id} crew={c} />
+          ))}
+        </div>
+      )}
+
       {tab === "events" && (
         <>
           {/* the kind chips (S_eventslist 13556-13561) — URL state, like the city rail */}
@@ -256,7 +269,9 @@ export default async function DiscoverPage({
             ? `No upcoming classes in ${city} — try another city.`
             : tab === "events"
               ? "No events match that yet."
-              : `Nothing within 25 km of ${city} yet.`}
+              : tab === "crews"
+                ? `No crews in ${city} yet — lead one from Crews on Home.`
+                : `Nothing within 25 km of ${city} yet.`}
         </div>
       )}
     </div>

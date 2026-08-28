@@ -7,7 +7,9 @@ import { PassSheet } from "@/features/classes/components/PassSheet";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { bookEventAction, cancelEventBookingAction } from "@/features/events/server-actions/events";
+import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
+import type { Profile } from "@/types/profile";
 import {
   EVENT_CRITERIA,
   EV_TINT,
@@ -120,20 +122,6 @@ const solidBtn: React.CSSProperties = {
   fontFamily: "inherit",
 };
 const eyebrow: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.6, color: "var(--muted)", margin: "0 0 6px", textTransform: "uppercase" };
-const fieldInp: React.CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  background: "var(--card)",
-  border: "1.5px solid var(--el)",
-  borderRadius: 14,
-  padding: "12px",
-  fontSize: 12.5,
-  color: "var(--text)",
-  outline: "none",
-  fontFamily: "inherit",
-  marginBottom: 12,
-};
-
 export interface EventPageProps {
   event: DanceEvent;
   isSignedIn: boolean;
@@ -143,11 +131,13 @@ export interface EventPageProps {
   canManage: boolean;
   /** the viewer's own live bookings on this event */
   mine: EventBooking[];
+  /** Step 22: the crews the viewer LEADS — a crew is entered from these (13397-13420) */
+  ledCrews?: Array<{ id: string; name: string; members: number }>;
   /** the IST day, stamped server-side so the page never runs a clock in render */
   todayKey: string;
 }
 
-export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, todayKey }: EventPageProps) {
+export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, ledCrews = [], todayKey }: EventPageProps) {
   const router = useRouter();
   const cat = ev.cat;
   const col = EV_TINT[cat];
@@ -165,8 +155,10 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, to
   const [evPass, setEvPass] = useState(false);
   const [bookMode, setBookMode] = useState<"audience" | "participant">("audience");
   const [entryAs, setEntryAs] = useState<EntryFormat | null>(null);
-  const [partner, setPartner] = useState("");
-  const [crewName, setCrewName] = useState("");
+  /* Step 22: the partner is a PERSON on DanceOS, the crew one you lead */
+  const [partner, setPartner] = useState<Profile | null>(null);
+  const [crewId, setCrewId] = useState<string | null>(ledCrews.length === 1 ? ledCrews[0].id : null);
+  const crewName = ledCrews.find((c) => c.id === crewId)?.name ?? "";
   const [qty, setQty] = useState(1);
   const [busy, setBusy] = useState(false);
   const [cancelAsk, setCancelAsk] = useState<EventBooking | null>(null);
@@ -201,13 +193,13 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, to
   const whatFor =
     bookMode === "audience"
       ? `${ev.title} · ${qty} × ${sel?.name ?? "Ticket"}`
-      : `${ev.title} · ${asFmt === "crew" ? `${crewName.trim() || "crew"} entry` : asFmt === "duo" ? "duet entry" : "solo entry"}`;
+      : `${ev.title} · ${asFmt === "crew" ? `${crewName || "crew"} entry` : asFmt === "duo" ? `duet entry${partner ? ` with ${partner.fullName}` : ""}` : "solo entry"}`;
   /* the one place that knows whether this booking may go ahead */
   const whyNotReady = (): string | null => {
     if (bookMode === "audience") return seatsLeft < 1 ? "Sold out" : null;
     if (entryFmt === "all" && !entryAs) return "Pick solo, duet or crew";
-    if (asFmt === "crew" && !crewName.trim()) return "Name the crew you are entering";
-    if (asFmt === "duo" && !partner.trim()) return "A duet needs your partner";
+    if (asFmt === "crew" && !crewId) return ledCrews.length ? "Pick the crew you are entering" : "Only the person who leads a crew can enter it";
+    if (asFmt === "duo" && !partner) return "A duet needs your partner — pick them from DanceOS";
     return null;
   };
   /* and the one place that writes it */
@@ -222,8 +214,8 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, to
             slug: ev.shareSlug,
             kind: "participant",
             format: asFmt,
-            entrantName: asFmt === "crew" ? crewName.trim() : null,
-            partnerName: asFmt === "duo" ? partner.trim() : null,
+            crewId: asFmt === "crew" ? crewId : null,
+            partnerId: asFmt === "duo" ? partner?.id ?? null : null,
           }
     );
     setBusy(false);
@@ -594,8 +586,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, to
                   aria-label="Register to compete"
                   onClick={() => {
                     setEntryAs(entryFmt === "all" ? null : entryFmt);
-                    setPartner("");
-                    setCrewName("");
+                    setPartner(null);
                     setBookMode("participant");
                     setConfirm(true);
                   }}
@@ -679,8 +670,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, to
                         aria-label={`Enter as ${l}`}
                         onClick={() => {
                           setEntryAs(k);
-                          setPartner("");
-                          setCrewName("");
+                          setPartner(null);
                         }}
                         style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "11px 4px", borderRadius: 14, cursor: "pointer", boxSizing: "border-box", background: on ? `${col}18` : "var(--card)", border: `2px solid ${on ? col : "var(--el)"}`, color: on ? col : "var(--sub)" }}
                       >
@@ -694,19 +684,56 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, to
               </>
             ) : null}
 
-            {/* A DUET IS TWO PEOPLE (13362-13395) — their name, until the people picker lands */}
+            {/* A DUET IS TWO PEOPLE (13362-13395) — a person on DanceOS, picked, then ASKED;
+                the entry stands either way (1815: what changes is what the organiser sees) */}
             {bookMode === "participant" && asFmt === "duo" ? (
               <>
                 <div style={eyebrow}>Your partner</div>
-                <input value={partner} aria-label="Your duet partner" onChange={(e) => setPartner(e.target.value.slice(0, 80))} placeholder="The dancer you are entering with" style={fieldInp} />
+                {partner ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--card)", border: `1.5px solid ${col}`, borderRadius: 14, padding: "10px 12px", marginBottom: 12 }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{partner.fullName}</span>
+                      <span style={{ display: "block", fontSize: 9.5, color: "var(--muted)", marginTop: 1 }}>They will be asked to confirm — the entry holds either way.</span>
+                    </span>
+                    <button type="button" aria-label="Pick a different partner" onClick={() => setPartner(null)} style={{ fontSize: 10, fontWeight: 800, color: "var(--sub)", background: "var(--el)", border: "none", borderRadius: 999, padding: "6px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, padding: "10px 12px", marginBottom: 12 }}>
+                    <PeoplePicker title="YOUR PARTNER" placeholder="The dancer you are entering with" ariaLabel="Search DanceOS for your partner" actionWord="Pick ›" actionColor={col} pickLabel={(p) => `Enter with ${p.fullName}`} onPick={(p) => setPartner(p)} />
+                  </div>
+                )}
               </>
             ) : null}
 
-            {/* A CREW IS ENTERED BY THE PERSON WHO LEADS IT (13397-13420) — named here */}
+            {/* A CREW IS ENTERED BY THE PERSON WHO LEADS IT (13397-13420) — from the crews you lead */}
             {bookMode === "participant" && asFmt === "crew" ? (
               <>
                 <div style={eyebrow}>Which crew</div>
-                <input value={crewName} aria-label="Crew name" onChange={(e) => setCrewName(e.target.value.slice(0, 80))} placeholder="The crew you are entering" style={fieldInp} />
+                {ledCrews.length === 0 ? (
+                  <div style={{ background: "var(--card)", border: "1.5px dashed var(--el)", borderRadius: 14, padding: "12px", marginBottom: 12, fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>
+                    Only the person who leads a crew can put it forward — you don&apos;t lead one yet.{" "}
+                    <Link href="/crews/new" style={{ color: col, fontWeight: 800 }}>
+                      Create a crew ›
+                    </Link>
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gap: 7, marginBottom: 12 }}>
+                    {ledCrews.map((c) => {
+                      const on = crewId === c.id;
+                      return (
+                        <div role="button" tabIndex={0} onKeyDown={dosKey} key={c.id} aria-pressed={on} aria-label={`Enter as ${c.name}`} onClick={() => setCrewId(c.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 14, cursor: "pointer", background: on ? `${col}18` : "var(--card)", border: `2px solid ${on ? col : "var(--el)"}` }}>
+                          <EvFormatIcon fmt="crew" size={16} color={on ? col : "var(--sub)"} />
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
+                          <span style={{ fontSize: 9.5, color: "var(--muted)", flexShrink: 0 }}>
+                            {c.members} member{c.members === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             ) : null}
 

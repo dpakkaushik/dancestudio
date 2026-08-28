@@ -82,12 +82,14 @@ function Ev($cat, $title, $ticketsOn, $tiers, $entries) {
     bracket = $(if ($cat -eq "battle") { 16 } else { 0 }); rounds = $(if ($cat -eq "tournament") { 3 } else { 0 })
     prizes = @(5000, 2000, 1000); tickets_on = $ticketsOn; entry_tiers = $entries; ticket_tiers = $tiers }
 }
-function Book($user, $eventId, $kind, $tierId, $qty, $format, $entrant, $partner) {
+# Step 22: a crew entry names the crew you LEAD (p_crew_id) and a duet names a
+# PERSON on DanceOS (p_partner_id) - typed names no longer book either
+function Book($user, $eventId, $kind, $tierId, $qty, $format, $crewId, $partnerId) {
   $body = @{ p_event_id = $eventId; p_kind = $kind; p_qty = $qty }
   if ($tierId) { $body.p_ticket_tier_id = $tierId }
   if ($format) { $body.p_format = $format }
-  if ($entrant) { $body.p_entrant_name = $entrant }
-  if ($partner) { $body.p_partner_name = $partner }
+  if ($crewId) { $body.p_crew_id = $crewId }
+  if ($partnerId) { $body.p_partner_id = $partnerId }
   return Rpc (Api $user.token) "book_event" $body
 }
 $EVSEL = "select=id,title,status,share_slug,deleted_at,event_ticket_tiers(id,name,price_inr,capacity),event_entry_tiers(id,format,fee_inr,capacity)"
@@ -161,7 +163,7 @@ try {
 
   # 6. THE PEOPLE WHO RUN IT DO NOT BOOK IT (13273) - owner and staff alike
   $ownerBooks = Fails { Book $ownerA $bId "spectator" $general.id 1 $null $null $null }
-  $staffBooks = Fails { Book $staffA $bId "participant" $null 1 "duo" $null "Somebody" }
+  $staffBooks = Fails { Book $staffA $bId "participant" $null 1 "duo" $null $null }
   Check 6 "Owner refused ($ownerBooks); staff refused ($staffBooks)" (
     ($ownerBooks -match "run this event") -and ($staffBooks -match "run this event"))
 
@@ -175,11 +177,11 @@ try {
   Check 7 "Showcase entry refused ($showEntry); a showcase seat books fine (qty $($showSeat.qty))" (
     ($showEntry -match "invite-only") -and ($showSeat.status -eq "booked") -and ($showSeat.qty -eq 2))
 
-  # 8. A DUET NEEDS A PARTNER; A CREW NEEDS A NAME
+  # 8. A DUET NEEDS A PARTNER (a person on DanceOS); A CREW IS ONE YOU LEAD (Step 22)
   $noPartner = Fails { Book $l1 $bId "participant" $null 1 "duo" $null $null }
   $noCrew = Fails { Book $l1 $bId "participant" $null 1 "crew" $null $null }
-  Check 8 "Duet without partner ($noPartner); crew without name ($noCrew)" (
-    ($noPartner -match "needs your partner") -and ($noCrew -match "name the crew"))
+  Check 8 "Duet without partner ($noPartner); crew without a crew ($noCrew)" (
+    ($noPartner -match "needs your partner") -and ($noCrew -match "pick the crew"))
 
   # 9. A SOLO ENTRY BOOKS ONCE; the one solo place is then FULL for the next person
   $solo = Book $l1 $bId "participant" $null 1 "solo" $null $null
@@ -230,13 +232,15 @@ try {
   $directE = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/events" -Headers (Api $ownerA.token) -Body (@{ tenant_id = $ta.id; cat = "battle"; title = "Direct"; style = "x"; start_date = $in10; end_date = $in10; venue = "v"; city = "Pune"; maps_url = "m" } | ConvertTo-Json) }
   Check 14 "Direct booking insert refused ($directB); direct event insert refused ($directE)" (($directB -ne "") -and ($directE -ne ""))
 
-  # 15. DUET AND CREW ENTRIES CARRY THEIR NAMES; the public counts each format
-  $duo = Book $l2 $bId "participant" $null 1 "duo" $null "Partner Person"
-  $crew = Book $l2 $bId "participant" $null 1 "crew" "Proof Crew" $null
+  # 15. DUET AND CREW ENTRIES CARRY THEIR NAMES (Step 22: the partner's from their
+  #     profile, the crew's from the crew L2 leads); the public counts each format
+  $duo = Book $l2 $bId "participant" $null 1 "duo" $null $l1.id
+  $l2Crew = Rpc (Api $l2.token) "create_crew" @{ p_name = "Proof Crew $stamp"; p_city = "Pune"; p_style = "Breaking"; p_member_ids = @() }
+  $crew = Book $l2 $bId "participant" $null 1 "crew" $l2Crew.id $null
   $pc = @((Rpc $anonH "event_counts" @{ p_event_ids = @($bId) }) | Where-Object { $_.kind -eq "participant" })
   $perFmt = ($pc | Sort-Object entry_format | ForEach-Object { "$($_.entry_format)=$($_.n)" }) -join ","
-  Check 15 "Duet with '$($duo.partner_name)', crew named '$($crew.entrant_name)'; public entry counts $perFmt" (
-    ($duo.partner_name -eq "Partner Person") -and ($crew.entrant_name -eq "Proof Crew") -and ($perFmt -eq "crew=1,duo=1,solo=1"))
+  Check 15 "Duet with '$($duo.partner_name)' ($($duo.partner_status)), crew named '$($crew.entrant_name)'; public entry counts $perFmt" (
+    ($duo.partner_name -eq "Dancer One $stamp") -and ($duo.partner_status -eq "asked") -and ($crew.entrant_name -eq "Proof Crew $stamp") -and ($perFmt -eq "crew=1,duo=1,solo=1"))
 
   # 16. DELETE IS SOFT AND THE ORGANISER'S: the rival cannot; the owner does; the
   #     public no longer finds the showcase while the owner still reads the record

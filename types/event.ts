@@ -104,6 +104,11 @@ export interface EventBooking {
   /** who the register prints: the account's name, a crew, a duet, a walk-in */
   name: string;
   partnerName: string | null;
+  /** Step 22: the duet partner as a person, asked — and whether they answered */
+  partnerId: string | null;
+  partnerStatus: "asked" | "confirmed" | "rejected" | null;
+  /** Step 22: the crew a crew entry is for, entered by the person who leads it */
+  crewId: string | null;
   amountInr: number;
   status: "booked" | "cancelled";
   checkedInAt: string | null;

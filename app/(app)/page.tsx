@@ -9,6 +9,7 @@ import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_TINT, DOS_UI, GOLD, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
 import type { MyEnrollment } from "@/types/enrollment";
 import type { ProfileRole } from "@/types/profile";
+import { CREW_TINT } from "@/types/crew";
 import type { Tenant } from "@/types/tenant";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
@@ -387,6 +388,27 @@ export default async function HomePage() {
           }}
         >
           {tenants.length === 0 ? "＋ Set up a studio or artist business" : "＋ Add another business"}
+        </Link>
+
+        {/* crews are the other thing a person RUNS (prototype 2495-2512: the Studios
+            and Crews entry tiles) — one door, the same dashed treatment */}
+        <Link
+          href="/crews"
+          aria-label="Crews"
+          style={{
+            display: "block",
+            textAlign: "center",
+            padding: "13px",
+            borderRadius: 16,
+            border: `1.5px dashed ${CREW_TINT}`,
+            color: CREW_TINT,
+            fontWeight: 800,
+            fontSize: 13,
+            textDecoration: "none",
+            marginTop: 10,
+          }}
+        >
+          Crews — the ones you lead and the ones you are in ›
         </Link>
 
         {/* ── discover row ── */}

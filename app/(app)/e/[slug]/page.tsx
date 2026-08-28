@@ -4,6 +4,7 @@ import { cache } from "react";
 import { EventPage } from "@/features/events/components/EventPage";
 import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findMyLedCrews } from "@/repositories/crews";
 import { findEventBySlug, findMyBookingsForEvent } from "@/repositories/events";
 import { findMyMembershipRole } from "@/repositories/tenants";
 import { TYPE_LABEL } from "@/types/event";
@@ -49,9 +50,12 @@ export default async function EventSharePage({ params }: { params: Promise<{ slu
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [role, mine] = await Promise.all([
+  /* Step 22: a crew is entered from the crews you LEAD (13397-13420) */
+  const wantsCrews = Boolean(user) && ev.entryTiers.some((t) => t.format === "crew");
+  const [role, mine, ledCrews] = await Promise.all([
     user ? findMyMembershipRole(supabase, ev.tenantId) : Promise.resolve(null),
     user ? findMyBookingsForEvent(supabase, ev.id, user.id) : Promise.resolve([]),
+    wantsCrews ? findMyLedCrews(supabase) : Promise.resolve([]),
   ]);
 
   return (
@@ -61,6 +65,7 @@ export default async function EventSharePage({ params }: { params: Promise<{ slu
       isMember={role !== null}
       canManage={role === "owner" || role === "trainer"}
       mine={mine}
+      ledCrews={ledCrews.map((c) => ({ id: c.id, name: c.name, members: c.members }))}
       todayKey={dayKeyOf(stampNowIso())}
     />
   );

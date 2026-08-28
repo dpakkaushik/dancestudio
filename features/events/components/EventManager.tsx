@@ -389,7 +389,15 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
             {participants.map((p) => {
               const f = p.entryFormat ?? "solo";
               const FL = FORMAT_WORD[f];
-              const extra = f === "crew" ? (p.userId ? "entered by a member" : "") : f === "duo" && p.partnerName ? `with ${p.partnerName}` : "";
+              /* Step 22: a crew entry names its leader; a duet's partner is asked, and the row says where that stands (1815: "awaiting partner" is what the ORGANISER sees) */
+              const extra =
+                f === "crew"
+                  ? p.userId
+                    ? "entered by its leader"
+                    : ""
+                  : f === "duo" && p.partnerName
+                    ? `with ${p.partnerName}${p.partnerStatus === "asked" ? " · awaiting partner" : p.partnerStatus === "rejected" ? " · partner declined" : ""}`
+                    : "";
               const reg = p.userId ? (p.amountInr > 0 ? `paid ₹${p.amountInr}` : "registered") : isShow ? "added by you" : "walk-in";
               const meta = [`${FL} entry`, extra, reg].filter(Boolean).join(" · ");
               return <AttendeeRow key={p.id} name={p.name} meta={meta} inState={Boolean(p.checkedInAt)} tint={col} busy={opPending === p.id} onToggle={() => void toggle(p)} />;

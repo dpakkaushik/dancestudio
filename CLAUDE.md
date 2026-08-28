@@ -31,8 +31,46 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 20 / 29 steps** (Steps 0–15, 18 and 21; 16, 17, 19 and 20 are
-  ❌ not in the prototype — see the re-scope below — so the road ahead is 22–26).
+- **Completed: 21 / 29 steps** (Steps 0–15, 18, 21 and 22; 16, 17, 19 and 20 are
+  ❌ not in the prototype — see the re-scope below — so the road ahead is 23–26).
+  **Step 22 landed 28 Aug 2026: crews** — the prototype's crew is a RECORD, not a
+  constant (CREWS 661-708), with two relationships (S_bizhub 2596): the crews you
+  LEAD have a desk, the crews you are IN have a page. Migration
+  `20260829090000_create_crews.sql` (⚠ RLS): `crews` (name, city, style,
+  leader_id → profiles; no tenant_id — a crew belongs to a person) and
+  `crew_members` (role leader | member | trainee, status **asked | confirmed |
+  rejected**, sort). **Nobody is put on a roster without saying yes** (1792): a
+  crew is public and its CONFIRMED roster is anybody's to read, an unanswered
+  ask is the leader's and the asked person's, and only the person asked answers.
+  No direct writes — `create_crew` (you are the leader, everyone named is
+  asked), `update_crew`, `ask_crew_member`, `respond_to_crew_ask`,
+  `withdraw_crew_ask`, `remove_crew_member` (the leader removes or a member
+  leaves; **the leader cannot leave**), `set_crew_member_role` (Promote; **Make
+  leader hands the crew over**), `reorder_crew_members`, the aggregate-only
+  `crew_member_counts`. **Step 21's two debts paid in the same migration:**
+  `event_bookings` gained `crew_id` (a crew entry is made BY THE PERSON WHO
+  LEADS IT, from a crew they lead — a typed name no longer books), `partner_id`
+  + `partner_status` (the duet partner is a PERSON on DanceOS, asked through
+  `respond_to_partner_ask`; the entry stands either way — "blocking here would
+  only strand money", 1815), a partner-reads-their-ask policy and a public policy
+  for a crew's entries into published events (its battle record). `book_event`
+  dropped and recreated with `p_crew_id` / `p_partner_id`. Screens lifted: the
+  **Crews hub** `/crews` (S_bizhub — CREWS YOU LEAD · Manage › / ＋ Create crew /
+  CREWS YOU ARE IN · Profile ›), **Create your crew** `/crews/new` (crewFormOnly
+  9545 — DETAILS, MEMBERS as faces with the dashed ＋, the CONFIRM · CREATE CREW
+  sheet), **the crew desk** `/crews/{id}/manage` (S_crewmanage 16318 — tiles,
+  Members | Battle record, ⏳ Waiting on them to confirm, Promote / Make leader /
+  Remove / Withdraw, ↑ ↓, ＋ Add member → SEARCH DANCEOS, THEN ASK THEM), **the
+  public crew page** `/crew/{id}` (publicEntity="crew" 11044 — CREW, the
+  figures, the style coin, Crew leader / Crew members, the battle record),
+  Discover's **Crews** tab (CompactCard grid), the Inbox's Requests desk with
+  **crew asks and duet-partner asks** on both sides, the event page's **Which
+  crew** picker (the crews you lead, pre-picked when there is one) and **Your
+  partner** as a PeoplePicker, the organiser's row reading "entered by its
+  leader" / "with X · awaiting partner", a Crews door under RUN YOUR BUSINESS, the
+  chrome titles. Shared: `features/people/PeoplePicker` + `searchPeopleAction`
+  (the one people search). 14-check proof, the events proof re-run on the new
+  `book_event` (16), both e2e specs green.
   **Step 21 landed 28 Aug 2026: events, competitions, ticketing ⚠** — the
   prototype's event record with its two sides (EVENT_STORE 912): the people who
   come to DANCE (entries by format — solo / duet / crew, each its own fee and
@@ -217,19 +255,14 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   20 are **not built** (nothing to lift — building them would invent UI), and
   **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
   foot of the parity backlog so none is forgotten.
-- **Next: Step 22 — crews.** Scope it against the prototype first: **auditions
-  are gone** ("decision, 16 Aug 2026: crew auditions do not exist in this
-  product", 13520-13523) and the crew **open call** was designed, started and
-  declined (13565-13573), so the row's "+ auditions" is not built. What remains
-  is the crew itself — `BIZ_STORE.crews` (the crews you LEAD) against
-  `memberCrews` (the crews you merely dance in), the crew screens
-  (`crewFormOnly` on S_profiletab 8639, the crews tab on Discover 4100+, the
-  Requests desk's crew asks 5757), and the two things Step 21 left waiting on
-  it: entering a crew event from a crew you lead instead of a typed name, and
-  the duet partner as a person on DanceOS. Inventory with `grep -n "crew"
-  prototype/DanceOSApp.jsx` before writing the migration. Then 23–26. Migrations
-  apply with `npx supabase db push --db-url` over the pooler (Step 13b part 2b's
-  environment note). Still parity, tracked in the backlog: 13b **(b)** the
+- **Next: Step 23 — search + Discover filters.** Scope it against the prototype
+  first: S_discover's style filter rail, sort and the filter sheet (4100+,
+  4830-4890), the events search box (S_eventslist 13551), and whether Typesense
+  is warranted at pilot scale or Postgres full-text search does the job (the
+  roadmap says Typesense; the honest question is row counts). Then 24–26.
+  Migrations apply with `npx supabase db push --db-url` over the pooler through
+  the scratchpad `push-migration.js` pattern (spawn `npx` with `shell: true` —
+  Node refuses `npx.cmd` without a shell, EINVAL). Still parity, tracked in the backlog: 13b **(b)** the
   source bar / SHARE OF GROSS waits for a second PAID source — tickets exist now
   but every one is free until the Cashfree account is live (KYC); **(c)** the
   fee, GST, TDS and settlement lines wait for that live account and Easy Split —
@@ -263,8 +296,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 19 | Moderation + reporting | ❌ removed with the feed ("went with it", 4897) — not built |
 | 20 | Video/reels (Mux/Cloudflare Stream) | ❌ no reel/post screen in the prototype — not built; photo uploads (posters, studio photos) stay a media slice |
 | 21 | Events, competitions, ticketing ⚠ | ✅ done (28 Aug 2026) — free seats and entries end to end; paid tickets/entries wait on the Razorpay account; bracket/rounds/judges/scoring/earnings/refunds segments on the backlog |
-| 22 | Crews (auditions are gone from the prototype, 13520; the open call was declined, 13565) | ⬜ ⬅ next |
-| 23 | Search (Typesense) + Discover filters/map | ⬜ |
+| 22 | Crews (auditions are gone from the prototype, 13520; the open call was declined, 13565) | ✅ done (28 Aug 2026) — crews, rosters by consent, the crew entry and the duet partner as a person; results/points and Follow-a-crew on the backlog |
+| 23 | Search (Typesense) + Discover filters/map | ⬜ ⬅ next |
 | 24 | Push notifications | ⬜ |
 | 25 | Analytics dashboards | ⬜ |
 | 26 | WhatsApp OTP unpark ⚠ | ⬜ |
@@ -1431,6 +1464,129 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Step 22 — Crews ✅ (done 28 Aug 2026)
+- **Scoped against the prototype first, as the tracker asked.** Auditions do not
+  exist in this product (13520-13523) and the open call was declined
+  (13565-13573), so the roadmap row's "+ auditions" is not built. What the
+  prototype keeps is the crew as a record (CREWS 661-708: name, city, style, a
+  roster with roles, the battles it entered) and two relationships (S_bizhub
+  2596-2603): "A crew you lead and a crew you dance in are not the same object
+  with a flag on it: one has a roster … to keep, and the other has a page you
+  read." The crew manager (S_crewmanage 16318) had already lost Bookings,
+  Payroll, Practice and Chats in the prototype's own words — none is lifted.
+- Migration `20260829090000_create_crews.sql` (⚠ RLS): `crews` (name ≤ 64,
+  city, style, leader_id → profiles, photo, audit, soft delete — **no
+  tenant_id**: a crew belongs to a person, not a business) and `crew_members`
+  (role leader | member | trainee, status asked | confirmed | rejected, sort, one
+  live row per person per crew). **Consent is the design** (1792-1812, the same
+  rule as class claims and team invites): a crew is a public entity — anyone
+  reads the record and the CONFIRMED roster, Discover lists it — while an
+  unanswered ask is readable by the leader (`is_crew_leader`) and the person
+  asked only, and `respond_to_crew_ask` is theirs alone. No insert/update/delete
+  policies: `create_crew` (the leader confirmed by construction, everyone named
+  ASKED), `update_crew`, `ask_crew_member` (a no or a withdrawal soft-deletes
+  and a fresh ask is a fresh row; asking a member again is refused),
+  `withdraw_crew_ask` (unanswered only), `remove_crew_member` (the leader
+  removes, a member leaves, **the leader cannot leave — hand the crew to somebody
+  first**), `set_crew_member_role` (Promote a trainee; **Make leader** moves
+  `leader_id` and demotes the old leader to member — the prototype's "a row only
+  offers what it can actually change", 16382), `reorder_crew_members` (the
+  public roster's order is the desk's ↑ ↓), and the aggregate-only
+  `crew_member_counts` granted to anon.
+- **Step 21's two debts, paid here.** `event_bookings.crew_id`: a crew entry
+  is made by the person who LEADS the crew, from a crew they lead (13397-13420) —
+  `book_event` refuses a crew entry without `p_crew_id`, one whose leader is
+  not the caller, and a crew already entered; `entrant_name` carries the crew's
+  name at the time. `event_bookings.partner_id` + `partner_status`: a duet
+  partner is a PERSON on DanceOS (13362-13395; DOS_LINK_WHAT.partner has
+  `offOk:false` — they cannot confirm from outside it), named from their profile
+  and ASKED; `respond_to_partner_ask` is the partner's alone; the entry holds
+  whatever they answer ("blocking here would only strand money", 1815-1817) — what
+  changes is what the organiser sees ("with X · awaiting partner" / "partner
+  declined"). A typed partner name no longer books. Two policies added: the
+  partner reads the entry naming them; **a crew's entries into published events
+  are public** — its battle record (16437). `book_event` was dropped and
+  recreated (defaults would have made two overloads ambiguous); the old proof's
+  typed-name calls were updated to the rule.
+- Repository `repositories/crews.ts` (every "mine" query says `leader_id = me`
+  or `user_id = me` out loud; the roster read admits asked rows for the leader
+  and confirmed for everybody else, by RLS; `findCrewEntries` is the battle
+  record off public rows; the partner asks from both ends), `searchProfiles` in
+  `repositories/profiles.ts` (the one people search — live profiles by name,
+  the caller left out, at most eight), `types/crew.ts`, Zod actions in
+  `features/crews/server-actions/crews.ts` and `features/people/server-actions/people.ts`.
+  Two FKs from `event_bookings` to `profiles` now exist, so every embed says
+  `profiles!event_bookings_user_id_fkey`.
+- UI lifted: **the Crews hub** `/crews` (S_bizhub kind="crews" — the red paint,
+  CREWS YOU LEAD with Manage ›, the dashed ＋ Create crew, CREWS YOU ARE IN with
+  Profile › — "where a row goes decides what pressing it does"); **Create your
+  crew** `/crews/new` (crewFormOnly 9545-9611 — the blue sleeve, DETAILS with
+  the city list and the app's own style registry, MEMBERS · N added as a row of
+  faces, Save crew, CONFIRM · CREATE CREW "+ you as leader", the manager opens on
+  it); **the crew desk** `/crews/{id}/manage` (S_crewmanage — the strip whose
+  photo and name both open the crew's page, the three tiles, Members | Battle
+  record; a row per person with the role colour on its edge, ASKED IS NOT JOINED
+  "⏳ Waiting on them to confirm", Promote / Make leader / Remove or Withdraw, the
+  ↑ ↓; ＋ Add member → SEARCH DANCEOS, THEN ASK THEM — "nobody is added by this";
+  the battle record's rows each a door to the event's page — "A ROW OPENS ITS
+  EVENT, OR IT IS NOT A BUTTON", and every one of ours has an event); **the public
+  crew page** `/crew/{id}` (publicEntity="crew" 10565-11060, the branch at
+  11044 — the lit profile, CREW over the name, the QR, Since {year} · city, the
+  figures Members / Events, the style coin, "You lead this crew · Manage ›" or
+  "You are in this crew", Crew leader and Crew members each headed with a count,
+  "Nobody else in the crew yet.", the battle record); `CrewCard` on Discover's
+  **Crews** tab (CompactCard 4813, two to a row); the Inbox's Requests desk with
+  **crew asks** (CREW · "wants to add you to {crew}" · Confirm / Reject; Sent ·
+  Withdraw) and **duet-partner asks** (EVENT · "wants to enter with you into
+  {event}"); the event page's **Which crew** (the crews you lead as radio rows,
+  pre-picked when there is one; "Only the person who leads a crew can put it
+  forward" with a Create a crew › door when you lead none) and **Your partner**
+  (the PeoplePicker, "They will be asked to confirm — the entry holds either
+  way"); the organiser's register row; a Crews door under RUN YOUR BUSINESS on
+  Home (the prototype's Crews entry tile, 2495-2512); AppChrome titles. Shared:
+  `features/people/components/PeoplePicker.tsx` (the add panel 16413-16447 —
+  the glass, "Type a name to find them." / "Nobody on DanceOS by that name." /
+  the hits with initials and the word on the right), `features/crews/components/crew-kit.tsx`.
+- **Departures, stated and tracked in the backlog:** the desk's tiles read
+  Members / Entered / Upcoming where the prototype's read Members / Battles won /
+  Points — results and points need scoring, which no table holds; "See crew
+  ranking" waits for Step 25; practice attendance and pay per performance are not
+  columns; a member row's photo/name door goes nowhere yet (person pages);
+  Follow a crew (follows target tenants); a crew photo (media slice); Enquiry a
+  crew.
+- Verified: `scripts/rls-proof-crews.ps1` — 14 checks green (the leader is
+  confirmed and the named member ASKED; a stranger reads the crew and the
+  confirmed row only, the count agrees; the asked person reads their ask and
+  neither a bystander nor the leader can answer it; no direct writes; confirming
+  moves the public roster and the count, a bystander cannot ask; **a no is a no
+  and a fresh ask is a fresh row**, asking a member again refused; withdraw is the
+  leader's and for an unanswered ask only; **Make leader hands the crew over**
+  and the old leader can no longer ask, then back; the leader cannot leave, a
+  bystander cannot remove, a member leaves, the leader reorders; **a crew entry
+  without a crew, or by a member who does not lead it, is refused, the leader
+  enters as the crew and cannot twice**; a stranger reads the crew's entry and no
+  other booking; **a typed partner and yourself are refused, a person is named
+  and asked**; the partner reads the entry naming them and only they answer,
+  once; the hub's two lists come off real rows). `rls-proof-events.ps1` re-run
+  green (16) on the new `book_event` — checks 8 and 15 updated to the rule. e2e
+  extended: the learner creates a crew from the hub and asks the trainer, sees
+  "⏳ Waiting on them to confirm" and one member; the trainer confirms from the
+  Requests desk; the desk counts two, the public page counts two and says "You
+  are in this crew", the hub lists it under CREWS YOU ARE IN, Discover's Crews
+  tab lists it; the owner publishes a crew battle (crews only, eight places,
+  tickets off); the learner enters it with the crew pre-picked and holds the
+  entry; the organiser's register reads "Crew entry · entered by its leader ·
+  registered"; the crew's page carries the event as its battle record.
+  typecheck / lint / production build / both specs green. **Lessons:** (1)
+  `ConvertTo-Json` defaults to depth 2 — a nested `entry_tiers` array
+  serialised as `"System.Collections.Hashtable"` and `save_event` failed on a
+  null format; pass `-Depth 8` in a proof's `Rpc`. (2) Node's `spawnSync`
+  refuses `npx.cmd` without a shell (EINVAL) — spawn `npx` with `shell: true`.
+  (3) Leaked e2e accounts from earlier failed runs made the people search
+  return two "E2E Trainer"s and the strict locator failed — the leak was
+  cleaned (five `e2e-*@example.com` users); the finally block is the only
+  cleanup, so a run killed mid-way leaks.
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -1565,7 +1721,7 @@ remove entries as they close.**
 | Top bar: notifications bell + notifications screen | shell 19254, S_notif | Step 24 (notifications) |
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
-| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + crews with 22 |
+| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype; the crew desk's member rows and the Requests desk's View › would open them) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + person/crew follows as their own slice |
 | Stats tab: placeholder screen today (the Inbox landed with Step 18) | HistPage | Step 25 |
 | Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (notifications, Step 24); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
@@ -1585,11 +1741,12 @@ remove entries as they close.**
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
-| Discover: style filter rail, sort, crews tab, studio photos, map view (follower counts landed with Step 15) | S_discover 4100+ | Steps 22 (crews), 23 (filters/sort/map), media slice (photos) |
+| Discover: style filter rail, sort, studio photos, map view (follower counts landed with Step 15, the Crews tab with Step 22) | S_discover 4100+ | Step 23 (filters/sort/map), media slice (photos) |
+| Crews: the desk's Battles won / Points tiles and "See crew ranking" (results and points need scoring — no table), practice attendance and pay per performance on a member row, the photo/name door to a person's page, Follow a crew (follows target tenants), Enquiry a crew, a crew photo | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | Step 25 (ranking/results); person pages; a follows extension; media slice |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
 | Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a live Cashfree account + an `orders` extension |
-| Events: the duet partner as a person on DanceOS (PeoplePicker) and the crews you LEAD (typed names today), the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule), the events search box | S_event 13362-13420, 13040, 12985, 13273; WalkIn 13904; S_eventslist 13551 | Step 22 (crews / the picker), real scanning, Step 23 (search); the rest need fields or a product decision |
+| Events: the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule), the events search box (the duet partner as a person and the crews you lead landed with Step 22) | S_event 13040, 12985, 13273; WalkIn 13904; S_eventslist 13551 | real scanning, Step 23 (search); the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | slot after Step 22: memberships + rentals + invoices with a Razorpay account; people / routines / settings as their own slices |
@@ -1637,7 +1794,7 @@ step names the prototype screens its UI comes from so nothing gets redesigned.
 |---|-------|---------|---------------------|
 | 20 | ~~Video/reels~~ — **no reel, post or feed screen in the prototype.** Not built. Photo uploads (class posters, studio photos, profile pictures) remain a media slice with Storage. | — | — |
 | 21 | ⚠ Events, competitions, ticketing (reuses the Step 9 Razorpay rails) | events/tickets | event screens |
-| 22 | Teams/crews + auditions (fills Discover's crews tab) | teams/members | crew screens |
+| 22 | Crews (auditions are gone from the prototype — fills Discover's crews tab; pays Step 21's crew-entry and duet-partner debts) | crews/crew_members + event_bookings.crew_id/partner_id | S_bizhub 2585, crewFormOnly 9545, S_crewmanage 16318, publicEntity crew 11044 |
 
 **Phase 5 — Scale & intelligence**
 
@@ -1708,6 +1865,35 @@ server action → UI, finished and verified before the next begins.
 
 Four lines per session, written when the user ends it. The step records above hold
 the technical detail; this log is the at-a-glance history.
+
+### 28 Aug 2026 — third session
+- **This session:** **Step 22 — crews**, scoped against the prototype first (no
+  auditions, no open call): migration `20260829090000_create_crews.sql` — `crews`
+  and `crew_members` with rosters by consent (asked → confirmed, only the person
+  asked answers, the leader alone asks / withdraws / removes / promotes / hands
+  over / arranges, the leader cannot leave), and Step 21's two debts paid in the
+  same migration: `event_bookings.crew_id` (a crew is entered by its leader from
+  the crews they lead) and `partner_id` + `partner_status` (the duet partner is a
+  person on DanceOS, asked). Screens lifted: the Crews hub, Create your crew, the
+  crew desk, the public crew page, Discover's Crews tab, crew and partner asks on
+  the Inbox's Requests desk, the event page's Which crew / Your partner pickers,
+  the shared PeoplePicker, a Crews door on Home. 14-check proof, the events proof
+  re-run (16) on the recreated `book_event`, both e2e specs green with a new crew
+  leg (hub → ask → confirm → public page → Discover → a crew battle entered as
+  the leader → the organiser's register → the battle record).
+- **Done so far:** 21 / 29 steps (0–15, 18, 21, 22). Live at
+  https://dancestudio-orcin.vercel.app once this push deploys.
+- **Remaining:** Steps 23–26 (search + Discover filters, notifications,
+  analytics, WhatsApp OTP), then the parity backlog (crew results/points wait on
+  scoring; Follow-a-crew and person pages are their own slice). Ops still open:
+  Cashfree KYC + Easy Split, the webhook registration, a verified Resend domain,
+  pilot invites.
+- **Next session:** Step 23 — scope S_discover's filter rail / sort / sheet and
+  the events search against the prototype, decide Typesense vs Postgres FTS on
+  honest row counts, then migration → repository → actions → screens → proof →
+  e2e. Verify with `npm run typecheck`, `npm run lint`, `npm run build` (with
+  nothing on :3000), the proofs through the PowerShell tool, and `npx playwright
+  test` against a FRESH `npm run dev`.
 
 ### 28 Aug 2026 — second session
 - **This session:** finished **Step 21 — events, competitions, ticketing ⚠** from

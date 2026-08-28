@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
+import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { DOS_DISPLAY, DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
 import {
@@ -36,7 +37,8 @@ import { DOS_MONO, EnqIcon, agoWords, initialsOf, moneyShort, pressKey } from ".
  *  detail page supersedes them ("A QUOTE IS A CONVERSATION, NOT A FIELD"). */
 
 export interface RequestItem {
-  kind: "claim" | "invite";
+  /** Step 22 added crew asks and duet-partner asks to the two Step 18 kinds */
+  kind: "claim" | "invite" | "crew" | "partner";
   id: string;
   dir: "in" | "out";
   /** in: who is asking; out: who is being asked */
@@ -45,7 +47,7 @@ export interface RequestItem {
   what: string;
   /** DOS_LINK_WHAT verb: "list you as the artist on" */
   verb: string;
-  subjectKind: "CLASS" | "STUDIO";
+  subjectKind: "CLASS" | "STUDIO" | "CREW" | "EVENT";
   subjectTitle: string;
   when: string | null;
   href: string | null;
@@ -55,7 +57,13 @@ export interface RequestItem {
   inviteCode?: string;
   inviteId?: string;
   tenantId?: string;
+  /** crew asks (crew_members.id) and duet-partner asks (event_bookings.id) */
+  memberId?: string;
+  crewId?: string;
+  bookingId?: string;
 }
+
+const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet" };
 
 const REQ_TINT = "#8B5CF6";
 
@@ -158,6 +166,26 @@ export function InboxScreen({
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
+  /* one answer per kind — the RPC behind each decides who may give it */
+  const answer = (r: RequestItem, accept: boolean) =>
+    r.kind === "claim"
+      ? respondToClaimAction({ claimId: r.claimId!, accept })
+      : r.kind === "invite"
+        ? accept
+          ? acceptInviteAction({ code: r.inviteCode! })
+          : declineInviteAction({ code: r.inviteCode! })
+        : r.kind === "crew"
+          ? respondToCrewAskAction({ memberId: r.memberId!, accept })
+          : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
+  const withdraw = (r: RequestItem) =>
+    r.kind === "claim"
+      ? withdrawClaimAction({ claimId: r.claimId! })
+      : r.kind === "invite"
+        ? revokeInviteAction({ tenantId: r.tenantId!, inviteId: r.inviteId! })
+        : r.kind === "crew"
+          ? withdrawCrewAskAction({ memberId: r.memberId!, crewId: r.crewId })
+          : Promise.resolve({ error: "A duet entry is withdrawn from the event page" });
+
   const requestCard = (r: RequestItem) => {
     const c = REQ_TINT;
     const meta: Array<[string, string]> = [
@@ -169,7 +197,7 @@ export function InboxScreen({
       <Row key={`${r.kind}-${r.id}`} c={c}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
           <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, padding: "3px 8px", borderRadius: 999, background: `${c}22`, color: c }}>{r.subjectKind}</span>
-          <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--muted)", textTransform: "capitalize" }}>{r.kind === "claim" ? "class" : "team"}</span>
+          <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--muted)", textTransform: "capitalize" }}>{KIND_WORD[r.kind]}</span>
           <span style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--muted)" }}>{agoWords(r.at, nowIso)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -204,7 +232,7 @@ export function InboxScreen({
               aria-label={`Reject ${r.subjectTitle}`}
               onClick={() =>
                 void run(
-                  () => (r.kind === "claim" ? respondToClaimAction({ claimId: r.claimId!, accept: false }) : declineInviteAction({ code: r.inviteCode! })),
+                  () => answer(r, false),
                   `Rejected · ${r.who} has been told`
                 )
               }
@@ -218,7 +246,7 @@ export function InboxScreen({
               aria-label={`Confirm ${r.subjectTitle}`}
               onClick={() =>
                 void run(
-                  () => (r.kind === "claim" ? respondToClaimAction({ claimId: r.claimId!, accept: true }) : acceptInviteAction({ code: r.inviteCode! })),
+                  () => answer(r, true),
                   `✅ Confirmed · you are ${r.what} on ${r.subjectTitle}`
                 )
               }
@@ -237,7 +265,7 @@ export function InboxScreen({
                 aria-label={`Withdraw ${r.subjectTitle}`}
                 onClick={() =>
                   void run(
-                    () => (r.kind === "claim" ? withdrawClaimAction({ claimId: r.claimId! }) : revokeInviteAction({ tenantId: r.tenantId!, inviteId: r.inviteId! })),
+                    () => withdraw(r),
                     `Withdrawn — ${r.who} is no longer being asked`
                   )
                 }

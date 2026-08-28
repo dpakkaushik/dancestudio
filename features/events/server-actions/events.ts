@@ -165,6 +165,8 @@ const bookSchema = z.object({
   format: z.enum(FORMATS).nullable().optional(),
   entrantName: z.string().trim().max(80).nullable().optional(),
   partnerName: z.string().trim().max(80).nullable().optional(),
+  crewId: z.string().uuid().nullable().optional(),
+  partnerId: z.string().uuid().nullable().optional(),
 });
 
 export async function bookEventAction(input: z.input<typeof bookSchema>): Promise<EventActionResult> {
