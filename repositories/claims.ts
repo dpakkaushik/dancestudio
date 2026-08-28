@@ -14,11 +14,12 @@ interface ClaimRow {
   can_attendance: boolean;
   can_refunds: boolean;
   pay_per_session_inr: number;
+  created_at: string;
   profiles: { full_name: string; city: string | null } | null;
 }
 
 const CLAIM_COLUMNS =
-  "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, profiles (full_name, city)";
+  "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, created_at, profiles (full_name, city)";
 
 const toClaim = (row: ClaimRow): ClassClaim => ({
   id: row.id,
@@ -29,6 +30,7 @@ const toClaim = (row: ClaimRow): ClassClaim => ({
   canAttendance: row.can_attendance,
   canRefunds: row.can_refunds,
   payPerSessionInr: row.pay_per_session_inr ?? 0,
+  createdAt: row.created_at,
   personName: row.profiles?.full_name ?? "Someone",
   personCity: row.profiles?.city ?? null,
 });
@@ -181,4 +183,42 @@ export async function setClaimPowers(
   if (error) {
     throw new Error(error.message);
   }
+}
+
+/** Asks a set of businesses have SENT and are still waiting on — the Requests
+ *  desk's Sent side for whoever runs those businesses (prototype 5734: "it is
+ *  the reason a class of yours is still a draft, so it says so"). Says which
+ *  tenants out loud: members read their tenant's claims under RLS, and a person
+ *  on two teams would otherwise see both as one list. */
+export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenantIds: string[]): Promise<MyClaimAsk[]> {
+  if (tenantIds.length === 0) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("class_claims")
+    .select(
+      `${CLAIM_COLUMNS}, classes (title, style, share_slug, tenants (name), class_sessions (starts_at))`
+    )
+    .in("tenant_id", tenantIds)
+    .eq("status", "asked")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    throw new Error(`claims.findAskedForTenants failed: ${error.message}`);
+  }
+  return (data as unknown as MyAskRow[])
+    .filter((r) => r.classes)
+    .map((r) => ({
+      ...toClaim(r),
+      classTitle: r.classes!.title,
+      classStyle: r.classes!.style,
+      classShareSlug: r.classes!.share_slug,
+      tenantName: r.classes!.tenants?.name ?? "",
+      startsAt:
+        [...(r.classes!.class_sessions ?? [])]
+          .map((s) => s.starts_at)
+          .sort((a, b) => a.localeCompare(b))[0] ?? null,
+    }));
 }

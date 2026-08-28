@@ -314,6 +314,53 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await learner.goto("/profile");
     await expect(learner.getByRole("link", { name: new RegExp(studioName) })).toBeVisible();
 
+    // ---- Step 18: an enquiry, from the profile to the studio's Inbox and back ----
+    // The learner asks for private sessions; the studio finds it waiting, opens
+    // it and quotes; the learner accepts; the studio records the advance. The
+    // stage on the page is DERIVED from the live quote at every step.
+    await learner.goto(studioUrl);
+    await learner.getByRole("button", { name: "Enquiry", exact: true }).click();
+    const enqSheet = learner.getByRole("dialog", { name: `Enquiry to ${studioName}` });
+    await enqSheet.getByText("Private Sessions", { exact: true }).click();
+    const inTenDays = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await enqSheet.getByLabel("Date of event").fill(inTenDays);
+    await enqSheet.getByLabel("Session format").selectOption("One-on-one");
+    await enqSheet.getByLabel("Dance style").selectOption("Bollywood");
+    await enqSheet.getByLabel("Level").selectOption("Beginner");
+    await enqSheet.getByLabel("Where they train").selectOption("At the studio");
+    await enqSheet.getByRole("button", { name: "City" }).click();
+    await enqSheet.getByRole("button", { name: "Pune", exact: true }).click();
+    await enqSheet.getByLabel("Message").fill("Eight evening sessions before a wedding.");
+    await enqSheet.getByRole("button", { name: "Send enquiry" }).click();
+    await expect(enqSheet.getByText("Enquiry sent")).toBeVisible();
+    await enqSheet.getByRole("button", { name: "Done" }).click();
+
+    await owner.goto("/inbox");
+    await expect(owner.getByText("1 waiting on you")).toBeVisible();
+    await owner.getByRole("button", { name: /^Enquiries — 1 waiting/ }).click();
+    await owner.getByRole("link", { name: "Private Sessions enquiry from E2E Learner" }).click();
+    await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
+    await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
+    await owner.getByRole("button", { name: "Send a quote" }).click();
+    await owner.getByLabel("Project cost").fill("5000");
+    await owner.getByRole("button", { name: "Send this quote" }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Quoted");
+
+    await learner.goto("/inbox");
+    await learner.getByRole("button", { name: /^Enquiries/ }).click();
+    await learner.getByRole("button", { name: "Sent enquiries" }).click();
+    await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
+    await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
+    await expect(learner.getByTestId("quote-1-state")).toHaveText("Waiting on an answer");
+    await learner.getByRole("button", { name: "Accept this quote" }).click();
+    await expect(learner.getByTestId("enquiry-stage")).toHaveText("Confirmed");
+    // the sender cannot pay yet — the rail has no account — and the page says so
+    await expect(learner.getByText(/Payments aren.t switched on yet/)).toBeVisible();
+
+    await owner.reload();
+    await owner.getByRole("button", { name: "Mark advance received" }).click();
+    await expect(owner.getByTestId("enquiry-stage")).toHaveText("Advance paid");
+
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browser.newContext();
     try {

@@ -17,6 +17,8 @@ export interface ClassClaim {
    *  they are agreeing to. 0 is a real answer (an owner teaching their own
    *  class is owed nothing). */
   payPerSessionInr: number;
+  /** when the ask was made — the Inbox orders the desk by it */
+  createdAt: string;
   /** The claimed person, for the page that prints them. */
   personName: string;
   personCity: string | null;

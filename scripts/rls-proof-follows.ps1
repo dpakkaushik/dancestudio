@@ -44,7 +44,14 @@ function Fails($script) {
   try { & $script | Out-Null; return "" }
   catch {
     $msg = $_.Exception.Message
-    try { $body = $_.ErrorDetails.Message; if ($body) { $j = $body | ConvertFrom-Json; if ($j.message) { $msg = $j.message } } } catch {}
+    # PowerShell 5.1 does not always surface the response body in ErrorDetails;
+    # read the stream so the refusal's own words are what gets asserted
+    $body = $_.ErrorDetails.Message
+    if (-not $body) {
+      try { $stream = $_.Exception.Response.GetResponseStream(); $stream.Position = 0
+        $body = (New-Object System.IO.StreamReader($stream)).ReadToEnd() } catch {}
+    }
+    try { if ($body) { $j = $body | ConvertFrom-Json; if ($j.message) { $msg = $j.message } } } catch {}
     return $msg
   }
 }

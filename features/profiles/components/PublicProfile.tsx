@@ -2,6 +2,8 @@ import Link from "next/link";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import type { PublicTenantProfile } from "@/types/publicProfile";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
+import { enquiryTypesFor } from "@/types/enquiry";
 import { FollowButton } from "./FollowButton";
 import { ProfileShare } from "./ProfileShare";
 
@@ -273,13 +275,20 @@ export function PublicProfile({
               You are on this team · Manage ›
             </Link>
           ) : (
-            <FollowButton
-              tenantId={tenant.id}
-              initialFollowing={following}
-              initialFollowers={profile.followers}
-              accent={RC}
-              signedIn={signedIn}
-            />
+            /* the things you can do TO a business share one line (10883): follow
+               it, and ask it something — Call waits for a number on record */
+            <div style={{ display: "grid", gridTemplateColumns: enquiryTypesFor(tenant.type).length ? "1fr 1fr" : "1fr", gap: 6 }}>
+              <FollowButton
+                tenantId={tenant.id}
+                initialFollowing={following}
+                initialFollowers={profile.followers}
+                accent={RC}
+                signedIn={signedIn}
+              />
+              {enquiryTypesFor(tenant.type).length ? (
+                <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} />
+              ) : null}
+            </div>
           )}
           <div style={{ height: 8 }} />
           <Link

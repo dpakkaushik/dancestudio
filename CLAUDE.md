@@ -31,10 +31,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 18 / 29 steps** (Steps 0–15).
+- **Completed: 19 / 29 steps** (Steps 0–15 and 18; 16, 17, 19 and 20 are
+  ❌ not in the prototype — see the re-scope below — so the road ahead is 21–26).
   (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
-  Step 13.) **Step 15 landed 28 Aug 2026: follows + public profiles** — the
+  Step 13.) **Step 18 landed 28 Aug 2026: the Inbox** — the prototype's
+  `S_chats` after it removed internal chat: two desks that count what is waiting
+  on you. **Requests** reads rows that already exist from BOTH ends (class
+  claims and team invites — Received: confirm or reject; Sent: what your
+  business asked and is still waiting on, withdraw). **Enquiries** is new:
+  migration `20260828150000` (`enquiries` + `enquiry_quotes`, RLS for the two
+  ends only, no public policy, five RPCs) — the five-type enquiry system sent
+  from a business's public page (EnquirySheet), quoted by the business (a quote
+  is a LIST; a revision supersedes, never erases), accepted or declined by the
+  person quoted, the stage DERIVED from the live quote, and the advance and
+  balance RECORDED as received by the business (Step 13's honest limit — no
+  rail yet). `/inbox`, `/inbox/enquiries/{id}`, the profile's Enquiry button.
+  12-check proof, both e2e specs green (the full loop: send → quote → accept →
+  advance recorded). **Step 15 landed 28 Aug 2026: follows + public profiles** — the
   first migration since the DB password was reset: `follows` (a person follows a
   business; rows private to the follower and the business's members, no public
   policy at all; the COUNT public through the aggregate-only `follower_counts`;
@@ -132,13 +146,35 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   it, gated on `can_settle_refunds_for_class` (owner, or a confirmed claim
   holding the refunds job — **not** a plain trainer), and the class page has the
   prototype's Refunds tab.
-- **Next: Step 16 — reviews.** Read the prototype before deciding what this
-  is: its own comment at 4218 says *"There is no rating anywhere in DanceOS any
-  more"* — the Rating badge became a follower count — so "rating rollups on
-  profiles" in the roadmap row may describe a feature the prototype deleted.
-  Scope from the review screens that actually exist, and if none do, record
-  that and move to Step 17. Migrations apply with `npx supabase db push
-  --db-url` over the pooler (see the Step 13b part 2b environment note). What
+- **Phase 3 re-scoped against the prototype (28 Aug 2026).** Rule 2 says every
+  screen is lifted from `prototype/DanceOSApp.jsx`; a full inventory of its
+  screens (`grep -oE "^const (S|G)_[A-Za-z0-9]+"`) shows four roadmap rows
+  describe features the prototype **deliberately removed**, in its own words:
+  **16 Reviews + ratings** — "There is no rating anywhere in DanceOS any more"
+  (4218); no review screen exists. **17 Social feed** — "the Feed is what got
+  left behind when that changed. Removed deliberately rather than left to rot"
+  (4895-4896); `__DOSTAB("feed")` maps to Discover (19082). **19 Moderation** —
+  "Moderation (Report on posts and comments) went with it: it existed to police
+  this surface" (4897). **20 Video/reels** — no reel, post or feed screen
+  anywhere. **18 Messaging** — "Internal chat is removed from the product"
+  (6080, 10892): `S_chats` is the **Inbox**, two desks that count what is
+  waiting on you — **Requests** (asks to be put on a class, a crew, a team) and
+  **Enquiries** (the five-type enquiry system, ENQ_TYPES 4900-4923: celebrations,
+  corporate, judge, private sessions, collaboration — quoted, advanced, won or
+  lost; `S_enqdetail` 5380; the EnquirySheet a profile opens). So 16, 17, 19 and
+  20 are **not built** (nothing to lift — building them would invent UI), and
+  **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
+  foot of the parity backlog so none is forgotten.
+- **Next: Step 21 — events, competitions, ticketing ⚠** (19 and 20 are not in
+  the prototype). The prototype's event screens are real and large: `S_event`
+  12810 (the event page), `S_eventslist` 13517, `S_eventsmod` 13811 (the studio's
+  events desk), `S_eventmanage` 13946, `S_eventform` 15759, `normEvent` 2760 (the
+  one shape every card reads), and Discover's Events tab. Tickets reuse Step 9's
+  Razorpay rails (orders/payments/refunds) — paid tickets wait on keys exactly as
+  paid classes do; free entries and the whole desk work without them. Read
+  `normEvent` and the event form first; the data model follows their fields.
+  Migrations apply with `npx supabase db push --db-url` over the pooler (see the
+  Step 13b part 2b environment note). What
   still stands of 13b is only parity, tracked in the backlog: **(b)** the source
   bar / SHARE OF GROSS / source chips wait for a second source (Step 21
   tickets); **(c)** `DanceOS fee · 0.9%`, `GST on fee · 18%`, `TDS · 10%`,
@@ -166,12 +202,12 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | ✅ done (28 Aug 2026) — source bar and fee/settlement lines stay on the parity backlog by design |
 | 14 | Calendar views | ✅ done (28 Aug 2026) |
 | 15 | Follows + public profiles | ✅ done (28 Aug 2026) — business pages; person pages and person-follows tracked in the backlog |
-| 16 | Reviews + ratings | ⬜ ⬅ next (scope against the prototype's own "no rating anywhere" line first) |
-| 17 | Social feed (images first) | ⬜ |
-| 18 | Messaging (DMs → groups) | ⬜ |
-| 19 | Moderation + reporting | ⬜ |
-| 20 | Video/reels (Mux/Cloudflare Stream) | ⬜ |
-| 21 | Events, competitions, ticketing ⚠ | ⬜ |
+| 16 | Reviews + ratings | ❌ not in the prototype ("There is no rating anywhere in DanceOS any more", 4218) — not built |
+| 17 | Social feed (images first) | ❌ removed from the prototype ("Removed deliberately rather than left to rot", 4895) — not built |
+| 18 | Inbox: Requests + Enquiries desks (was "Messaging" — internal chat is removed from the prototype, 6080) | ✅ done (28 Aug 2026) |
+| 19 | Moderation + reporting | ❌ removed with the feed ("went with it", 4897) — not built |
+| 20 | Video/reels (Mux/Cloudflare Stream) | ❌ no reel/post screen in the prototype — not built; photo uploads (posters, studio photos) stay a media slice |
+| 21 | Events, competitions, ticketing ⚠ | ⬜ ⬅ next |
 | 22 | Teams/crews + auditions | ⬜ |
 | 23 | Search (Typesense) + Discover filters/map | ⬜ |
 | 24 | Push notifications | ⬜ |
@@ -1099,6 +1135,95 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   in an assignment — `$rows = ,@(...)` nests the array and an empty answer reads
   as 0 through member enumeration.
 
+### Step 18 — the Inbox: Requests + Enquiries ⚠ ✅ (done 28 Aug 2026)
+- **What the prototype's Inbox is** (S_chats 5617-6098, after internal chat was
+  removed): "what remains is the work — something somebody has asked of you, and
+  something somebody wants to book. The badge counts only what waits on YOU."
+  Two desks and a combined All, newest first. **Requests** are rows that already
+  exist — class claims (Step 11) and team invites (Step 12b) — read from BOTH
+  ends: Received is somebody claiming you (Confirm / Reject through the RPCs
+  those steps already have), Sent is what your businesses asked of other people
+  and are still waiting on (Withdraw). `findAskedClaimsForTenants` and
+  `findPendingInvites` say which tenants out loud; `class_claims` gained
+  `created_at` on its read so the desk orders by it.
+- Migration `20260828150000_create_enquiries.sql` (⚠ RLS, ⚠ money-adjacent):
+  `enquiries` (tenant → business asked, from_user → person asking, type_key in
+  the five kinds, `fields` jsonb of [label, value] pairs exactly as the type
+  collected them, dates, where, message, mobile, a manual `status`) and
+  `enquiry_quotes` (n, cost, advance %, advance, status sent | accepted |
+  declined | superseded, advance_paid_at, full_paid_at). **The prototype's own
+  correction is the design** (4939-4952): "A QUOTE IS A CONVERSATION, NOT A
+  FIELD … It is a LIST now, newest last … Revising a price adds a quote rather
+  than erasing one" — `send_enquiry_quote` supersedes the live quote and inserts
+  #n+1; the stage is DERIVED from the live quote (`enquiryStage`, after
+  enqStage 4977) so "a quote can be accepted and paid while the enquiry still
+  said New" cannot happen. RLS: the two ends only — sender (`from_user_id =
+  auth.uid()`) and the business's members (every member: the desk is the
+  studio's CRM, Step 12's rule) — **no public policy, no direct writes.** Five
+  RPCs: `send_enquiry` (onboarded; listed business; not one you belong to;
+  **Invite as Judge is refused for a studio** — judging is a person's job, 4934;
+  a date and a message required), `set_enquiry_status` (members), `send_enquiry_quote`
+  (members; a won/lost enquiry takes no quote), `answer_enquiry_quote` (**the
+  person quoted, only**, on a `sent` quote), `record_enquiry_payment` (members;
+  advance once, balance closes it Won). **Money, honestly:** the advance and the
+  balance are RECORDED as received by the business — Step 13's limit ("DanceOS
+  records it, it does not move the money") — because the rail has no account;
+  the sender's "Pay the advance" prints Step 9's own sentence ("Payments aren't
+  switched on yet") instead of pretending. The columns are the ones a capture
+  will stamp when the rail is on.
+- Repository `repositories/enquiries.ts`, `types/enquiry.ts` (ENQ_TYPES lifted
+  whole from 4900-4923 with each type's own fields and audience; ENQ_TINT;
+  stages in the prototype's words), Zod actions
+  `features/enquiries/server-actions/enquiries.ts`.
+- UI lifted: **`InboxScreen`** (S_chats — the profile-tinted wash, "N waiting on
+  you", the All / Requests / Enquiries pills each carrying only what waits on
+  you, the combined desk, the Requests desk's Received / Sent with the linkCard
+  anatomy 5757-5810, the Enquiries desk's Received / Sent, the three counted
+  tiles that name the side you are on, Pipeline breakup BY TYPE / BY STAGE, the
+  type and stage chips, the enquiry card 5990-6000); **`EnquiryDetail`**
+  (S_enqdetail 5380-5616 — DosHero in the type's tint, Call as a real `tel:`
+  hand-off or "no number on this enquiry", the STATUS menu for the business,
+  WHAT THEY ASKED FOR, THEIR MESSAGE, the QUOTES history oldest first with
+  "Replaced / Waiting on an answer / Accepted / Declined / Advance paid / Paid in
+  full", and THE QUOTE, FROM BOTH ENDS — the sender's Decline / Accept, the
+  business's Mark advance / balance received, Send / Revise the quote with the
+  0 · 30 · 50 · 100 advance chips and the cost / advance / on-completion rows);
+  **`EnquirySheet`** (5051-5193 — what's it for, only the kinds that make sense
+  for who it is going TO, single or multiple dates, the type's fields, location
+  + city, a number, a message, "Enquiry sent") opened by the profile's new
+  **Enquiry** button beside Follow (10883); the shared atoms `Surface`,
+  `Eyebrow`, `Figure`, `DosHero`, `EnqIcon` in `features/inbox/components/inbox-kit.tsx`
+  (2713-2745, 5195). Routes `/inbox` (the tab's placeholder is gone) and
+  `/inbox/enquiries/[enquiryId]`.
+- **Deliberately not lifted, tracked in the backlog:** studio rental requests on
+  the Requests desk (S_rentals is unbuilt), the Remind button (needs
+  notifications, Step 24), the judge type's "Pick from DanceOS" event picker
+  (events are Step 21 — the event is named in words), the inline quote / Take
+  payment controls on the list card (the prototype's own detail page supersedes
+  that older design), the sender's real payment (Razorpay), and the earnings
+  page's ALSO COLLECTED card, which can now be counted from recorded advances.
+- Verified: `scripts/rls-proof-enquiries.ps1` — 12 checks green (filed New
+  with its fields; **judge refused for a studio, accepted for an artist
+  business**; own business and a private business refused with the right words;
+  reads are the two ends — sender 2, studio owner 1 AND staff 1, artist 1,
+  bystander 0, public 0; direct insert refused; **staff quote** #1 with a 30%
+  advance moves the enquiry to Quoted and the sender cannot quote; **a revision
+  supersedes** — #1 superseded, #2 live; **only the person quoted answers** — the
+  studio cannot, a superseded quote cannot, the sender accepts → Confirmed;
+  **money is recorded by the business** — the sender cannot, the advance once
+  (→ Advance paid), again refused, the balance → Won; the stage menu is the
+  business's and a closed enquiry takes no quote; quotes as private as the
+  enquiry; the public cannot send). Regression: follows proof re-run green. e2e
+  extended with the full loop — the learner sends Private Sessions from the
+  studio's page, the owner finds "1 waiting on you", opens it from the Enquiries
+  pill, quotes ₹5,000 (Quoted), the learner opens it under Sent, accepts
+  (Confirmed) and is told payments aren't switched on yet, the owner records the
+  advance (Advance paid). typecheck / lint / production build / both specs green.
+  **PowerShell lesson:** 5.1's `Invoke-RestMethod` does not always surface the
+  response body in `$_.ErrorDetails` — read
+  `$_.Exception.Response.GetResponseStream()` or a refusal's own words cannot be
+  asserted (three checks first read as "(400) Bad Request").
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -1144,7 +1269,8 @@ remove entries as they close.**
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
 | Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + crews with 22 |
-| Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
+| Stats tab: placeholder screen today (the Inbox landed with Step 18) | HistPage | Step 25 |
+| Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (notifications, Step 24); the judge enquiry's "Pick from DanceOS" event picker (Step 21); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | Steps 21 / 24; the rest with a Razorpay account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
 | Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Real, but the studio ledger's other three sources (tickets, packages, room rentals) don't exist — today it would be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | after Step 21 (needs a second source to mean anything) |
 | Earnings: the Settled / In transit tiles (they count bank settlements) and the gross card's "Settles T+2 · DanceOS fee 0.9% at source" subtitle. Today the GROSS card's first two tiles read **Net** and **Asked back** — the two real states of this money — beside REFUNDED | S_earn 18014, 18037-18047 | blocked with the deductions panel below |
@@ -1166,6 +1292,7 @@ remove entries as they close.**
 | Calendar: the Classes/Events switch above the sides (events do not exist yet) | SideTiles 6836 | Step 21 |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
+| **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | slot after Step 22: memberships + rentals + invoices with a Razorpay account; people / routines / settings as their own slices |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 
@@ -1199,16 +1326,16 @@ step names the prototype screens its UI comes from so nothing gets redesigned.
 | # | Slice | Backend | Prototype UI source |
 |---|-------|---------|---------------------|
 | 15 | Follow system + public profiles with follower counts | follows table + aggregates | profile screens |
-| 16 | Reviews (trainer/studio categories) + rating rollups on profiles | reviews + rollups | review screens |
-| 17 | Social feed, images first: cursor pagination, rate limiting | posts/likes/comments | feed screens |
-| 18 | Messaging: DMs first, group/community chat later (Supabase Realtime) | conversations/messages | chat screens |
-| 19 | Moderation: user reports on all UGC, admin queue, pending/published states | reports + queue | admin screens |
+| 16 | ~~Reviews + rating rollups~~ — **no such screen in the prototype**; it says so itself (4218). Not built. | — | — |
+| 17 | ~~Social feed~~ — **removed from the prototype** (4895-4896). Not built. | — | — |
+| 18 | **Inbox** (re-scoped 28 Aug 2026): the Requests desk (asks waiting on you — class claims, team invites, crew asks) and the Enquiries desk (the five-type enquiry system: sent from a profile's EnquirySheet, quoted with an advance, staged New · Quoted · Won · Lost) | `enquiries` table + RLS + RPCs; requests read off existing rows | S_chats 5617, S_enqdetail 5380, ENQ_TYPES 4900, EnquirySheet |
+| 19 | ~~Moderation~~ — **removed with the feed** (4897). Not built. | — | — |
 
 **Phase 4 — Performance & events**
 
 | # | Slice | Backend | Prototype UI source |
 |---|-------|---------|---------------------|
-| 20 | Video/reels: Mux or Cloudflare Stream (decide before building), webhook-driven, playback IDs only in Postgres, automated screening | media pipeline | reel screens |
+| 20 | ~~Video/reels~~ — **no reel, post or feed screen in the prototype.** Not built. Photo uploads (class posters, studio photos, profile pictures) remain a media slice with Storage. | — | — |
 | 21 | ⚠ Events, competitions, ticketing (reuses the Step 9 Razorpay rails) | events/tickets | event screens |
 | 22 | Teams/crews + auditions (fills Discover's crews tab) | teams/members | crew screens |
 
