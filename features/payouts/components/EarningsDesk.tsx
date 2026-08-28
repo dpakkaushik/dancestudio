@@ -8,6 +8,7 @@ import {
 } from "@/features/payouts/server-actions/payouts";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, GREEN, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
 import { sessionDayLabel } from "@/lib/format/session";
+import type { TenantIncome } from "@/types/income";
 import {
   PAYOUT_METHOD_LABEL,
   PAYOUT_STATUS_LABEL,
@@ -28,14 +29,21 @@ import {
   money,
   type LedgerRow,
 } from "./earnings-kit";
+import { GrossCard, HowStudentsPaid, MonthStatements, PeriodChips } from "./StudioIncome";
 
-/** The studio's side of the earnings screen (prototype S_earn, 17877-18205).
+/** The studio's side of the earnings screen (prototype S_earn, 17877-18205),
+ *  both halves of it:
  *
- *  What it is NOT: a payroll desk. The prototype deleted its own — "a studio pays
- *  its faculty; DanceOS is not the thing that runs the payroll" — so there are no
- *  pay cycles and no batch runs here. The studio settles by bank or UPI on its
- *  own, and RECORDS it, which is the only thing that can make a teacher's "who
- *  has paid you" true. */
+ *  MONEY IN (Step 13b part 2b) — the period chips, GROSS · {month} with its
+ *  ▲/▼ badge and the counted tiles, HOW STUDENTS PAID, and the past months'
+ *  statements. Every figure is summed from Step 9's payments and refunds.
+ *
+ *  MONEY OUT (Step 13) — what the studio owes the people who taught, and what
+ *  it has settled. What it is NOT: a payroll desk. The prototype deleted its
+ *  own — "a studio pays its faculty; DanceOS is not the thing that runs the
+ *  payroll" — so there are no pay cycles and no batch runs here. The studio
+ *  settles by bank or UPI on its own, and RECORDS it, which is the only thing
+ *  that can make a teacher's "who has paid you" true. */
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -109,13 +117,21 @@ export function EarningsDesk({
   tenantId,
   tenantName,
   ledger,
+  income,
   monthLabel,
 }: {
   tenantId: string;
   tenantName: string;
   ledger: TenantPayLedger;
+  income: TenantIncome;
   monthLabel: string;
 }) {
+  /* the prototype remembers its period across drill-ins (17880-17884) — here the
+     desk stays mounted through the server actions' revalidation, so plain state
+     carries the same memory */
+  const [eview, setEview] = useState<"now" | "hist">("now");
+  const [eopen, setEopen] = useState<string | null>(null);
+
   const [openRow, setOpenRow] = useState<string | null>(null);
   const [payPerson, setPayPerson] = useState<PersonPayLedger | null>(null);
   const [openPayout, setOpenPayout] = useState<string | null>(null);
@@ -192,96 +208,125 @@ export function EarningsDesk({
     >
       <EarnHero title="Earnings" sub={tenantName} />
 
-      <MoneyCard
-        label={`SESSION PAY · ${monthLabel.toUpperCase()}`}
-        amount={accrued}
-        note="What your people have earned teaching. You settle it by bank or UPI and record it here — DanceOS does not move this money."
-        segments={ledger.people
-          .filter((p) => p.owedInr + p.paidInr > 0)
-          .map((p, i) => ({ label: p.personName.split(" ")[0], value: p.owedInr + p.paidInr, colour: barColour(i) }))}
-        tiles={[
-          [money(ledger.paidTotal), "Settled", GREEN],
-          [money(ledger.inTransitTotal), "In transit", GOLD],
-          [money(ledger.owedTotal), "Owed", RED],
-        ]}
+      {/* period filter — This month is live, past months open their statement */}
+      <PeriodChips
+        months={income.previous}
+        view={eview}
+        openKey={eopen}
+        onNow={() => setEview("now")}
+        onMonth={(key) => {
+          setEview("hist");
+          setEopen(key);
+        }}
       />
 
-      {ledger.people.length === 0 ? (
-        <div
-          style={{
-            background: CARD,
-            border: `1px solid ${LINE}`,
-            borderRadius: 16,
-            padding: "16px 15px",
-            fontSize: 12.5,
-            color: SUB,
-            marginBottom: 10,
-          }}
-        >
-          Nobody has taught a session yet. Put an artist or an assistant on a class, set what a session pays, and
-          what you owe them shows up here once the class has run.
-        </div>
+      {eview === "hist" ? (
+        <MonthStatements
+          tenantName={tenantName}
+          months={income.previous}
+          openKey={eopen}
+          onToggle={(key) => setEopen(eopen === key ? null : key)}
+          onDownloaded={(label) => fire(`📄 ${label} statement downloaded`)}
+        />
       ) : (
         <>
-          <SectionLabel>WHAT YOU OWE</SectionLabel>
-          <LedgerBlock
-            rows={rows}
-            openKey={openRow}
-            onToggle={(k) => setOpenRow(openRow === k ? null : k)}
-            whoLabel="SESSIONS"
+          {/* ── money in ── */}
+          <GrossCard income={income} />
+          <HowStudentsPaid month={income.current} />
+
+          {/* ── money out ── */}
+          <MoneyCard
+            label={`SESSION PAY · ${monthLabel.toUpperCase()}`}
+            amount={accrued}
+            note="What your people have earned teaching. You settle it by bank or UPI and record it here — DanceOS does not move this money."
+            segments={ledger.people
+              .filter((p) => p.owedInr + p.paidInr > 0)
+              .map((p, i) => ({ label: p.personName.split(" ")[0], value: p.owedInr + p.paidInr, colour: barColour(i) }))}
+            tiles={[
+              [money(ledger.paidTotal), "Settled", GREEN],
+              [money(ledger.inTransitTotal), "In transit", GOLD],
+              [money(ledger.owedTotal), "Owed", RED],
+            ]}
           />
-          {openRow ? (
-            (() => {
-              const person = ledger.people.find((p) => p.userId === openRow);
-              if (!person) return null;
-              return (
-                <div style={{ marginTop: -4, marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                  <button
-                    type="button"
-                    disabled={person.unpaid.length === 0 || person.owedInr <= 0}
-                    onClick={() => openPaySheet(person)}
-                    style={{
-                      flex: 1,
-                      background: person.owedInr > 0 ? GREEN : CARD,
-                      color: person.owedInr > 0 ? "#fff" : SUB,
-                      border: `1px solid ${person.owedInr > 0 ? GREEN : LINE}`,
-                      borderRadius: 999,
-                      padding: "11px 14px",
-                      fontSize: 13,
-                      fontWeight: 800,
-                      cursor: person.owedInr > 0 ? "pointer" : "default",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    {person.owedInr > 0 ? `Record a payment · ${money(person.owedInr)}` : "Nothing outstanding"}
-                  </button>
-                </div>
-              );
-            })()
+
+          {ledger.people.length === 0 ? (
+            <div
+              style={{
+                background: CARD,
+                border: `1px solid ${LINE}`,
+                borderRadius: 16,
+                padding: "16px 15px",
+                fontSize: 12.5,
+                color: SUB,
+                marginBottom: 10,
+              }}
+            >
+              Nobody has taught a session yet. Put an artist or an assistant on a class, set what a session pays, and
+              what you owe them shows up here once the class has run.
+            </div>
+          ) : (
+            <>
+              <SectionLabel>WHAT YOU OWE</SectionLabel>
+              <LedgerBlock
+                rows={rows}
+                openKey={openRow}
+                onToggle={(k) => setOpenRow(openRow === k ? null : k)}
+                whoLabel="SESSIONS"
+              />
+              {openRow ? (
+                (() => {
+                  const person = ledger.people.find((p) => p.userId === openRow);
+                  if (!person) return null;
+                  return (
+                    <div style={{ marginTop: -4, marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
+                      <button
+                        type="button"
+                        disabled={person.unpaid.length === 0 || person.owedInr <= 0}
+                        onClick={() => openPaySheet(person)}
+                        style={{
+                          flex: 1,
+                          background: person.owedInr > 0 ? GREEN : CARD,
+                          color: person.owedInr > 0 ? "#fff" : SUB,
+                          border: `1px solid ${person.owedInr > 0 ? GREEN : LINE}`,
+                          borderRadius: 999,
+                          padding: "11px 14px",
+                          fontSize: 13,
+                          fontWeight: 800,
+                          cursor: person.owedInr > 0 ? "pointer" : "default",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {person.owedInr > 0 ? `Record a payment · ${money(person.owedInr)}` : "Nothing outstanding"}
+                      </button>
+                    </div>
+                  );
+                })()
+              ) : null}
+            </>
+          )}
+
+          {ledger.payouts.length > 0 ? (
+            <>
+              <SectionLabel>WHAT YOU HAVE SETTLED</SectionLabel>
+              {ledger.payouts.map((p) => (
+                <SettlementRow
+                  key={p.id}
+                  title={`${p.personName} · ${PAYOUT_METHOD_LABEL[p.method]}`}
+                  meta={`${p.paidOn}${p.providerRef ? ` · ${p.providerRef}` : ""} · ${p.sessionCount} session${
+                    p.sessionCount === 1 ? "" : "s"
+                  } · ${PAYOUT_STATUS_LABEL[p.status]}`}
+                  amount={p.amountInr}
+                  tone={payoutTone(p.status)}
+                  onOpen={() => {
+                    setError(null);
+                    setOpenPayout(p.id);
+                  }}
+                />
+              ))}
+            </>
           ) : null}
         </>
       )}
-
-      {ledger.payouts.length > 0 ? (
-        <>
-          <SectionLabel>WHAT YOU HAVE SETTLED</SectionLabel>
-          {ledger.payouts.map((p) => (
-            <SettlementRow
-              key={p.id}
-              title={`${p.personName} · ${PAYOUT_METHOD_LABEL[p.method]}`}
-              meta={`${p.paidOn}${p.providerRef ? ` · ${p.providerRef}` : ""} · ${p.sessionCount} session${
-                p.sessionCount === 1 ? "" : "s"
-              } · ${PAYOUT_STATUS_LABEL[p.status]}`}
-              amount={p.amountInr}
-              tone={payoutTone(p.status)}
-              onOpen={() => {
-                setError(null);
-                setOpenPayout(p.id);
-              }}
-            />
-          ))}
-        </>
-      ) : null}
 
       {payPerson ? (
         <Sheet

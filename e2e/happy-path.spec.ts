@@ -61,6 +61,19 @@ async function onboard(page: Page, first: string, last: string, role: string | n
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
 
+/** "July" when the clock (read in IST, like the app) is in August — the period
+ *  chip the earnings desk offers for last month. */
+function lastMonthName(): string {
+  const parts = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const y = Number(parts.find((p) => p.type === "year")?.value);
+  const m = Number(parts.find((p) => p.type === "month")?.value);
+  return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", month: "long" }).format(new Date(Date.UTC(y, m - 2, 15)));
+}
+
 async function deleteUser(userId: string) {
   await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
     method: "DELETE",
@@ -192,6 +205,21 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(owner.getByText(/DanceOS does not move this money/)).toBeVisible();
     // the class runs in three days, so nothing has been taught yet
     await expect(owner.getByText(/Nobody has taught a session yet/)).toBeVisible();
+
+    // ---- the income half of the same screen (Step 13b part 2b) --------------
+    // GROSS · {month} is counted from captured payments — none yet, so the card
+    // reads ₹0 and HOW STUDENTS PAID says so instead of drawing an empty bar.
+    // A past month's chip opens its statement, honestly empty for a new studio.
+    await expect(owner.getByText(/^GROSS · [A-Z]+$/)).toBeVisible();
+    await expect(owner.getByText("HOW STUDENTS PAID")).toBeVisible();
+    await expect(owner.getByText(/No payments yet this month/)).toBeVisible();
+    await owner.getByRole("button", { name: lastMonthName(), exact: true }).click();
+    await expect(owner.getByText("WHERE IT CAME FROM")).toBeVisible();
+    await expect(owner.getByText("DEDUCTIONS")).toBeVisible();
+    await expect(owner.getByText("Net settled")).toBeVisible();
+    await expect(owner.getByText(/₹0 net · 0 payments/).first()).toBeVisible();
+    await owner.getByRole("button", { name: "This month", exact: true }).click();
+    await expect(owner.getByText(/^GROSS · [A-Z]+$/)).toBeVisible();
 
     // the teaching side of the same screen, for the person who was asked
     await trainer.goto("/earnings");

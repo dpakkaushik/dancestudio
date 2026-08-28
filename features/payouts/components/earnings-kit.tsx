@@ -169,12 +169,15 @@ export function MoneyCard({
   label,
   amount,
   note,
+  badge,
   segments,
   tiles,
 }: {
   label: string;
   amount: number;
   note: string;
+  /** rides the baseline beside the figure — the ▲/▼ vs-last-month pill (17996) */
+  badge?: ReactNode;
   segments?: BarSegment[];
   tiles?: Array<[string, string, string]>;
 }) {
@@ -196,6 +199,7 @@ export function MoneyCard({
         <span style={{ fontSize: 29, fontWeight: 700, letterSpacing: -0.8, fontFamily: DOS_MONO }}>
           {money(amount)}
         </span>
+        {badge ?? null}
       </div>
       <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>{note}</div>
       {segments ? <StackedBar segments={segments} /> : null}

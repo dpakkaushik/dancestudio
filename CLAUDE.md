@@ -31,10 +31,28 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 15 / 29 steps** (Steps 0–13); Step 13b is two-thirds done.
+- **Completed: 16 / 29 steps** (Steps 0–13 and 13b).
   (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
-  Step 13.) **Step 13b part 2a landed 25 Aug 2026: the class page's Earnings
+  Step 13.) **Step 13b part 2b landed 28 Aug 2026: the studio's money-IN half
+  of S_earn** — GROSS · {month} counted from captured payments, the ▲/▼
+  vs-last-month badge computed from the same months the statements print, the
+  Net / Asked back / Refunded tiles, HOW STUDENTS PAID off the real
+  `payments.method`, the period chips, and the past three months' statements
+  (WHERE IT CAME FROM · DEDUCTIONS · Net settled · a real CSV download). No
+  migration, no RPC, no policy: plain RLS-shaped reads of Step 9's rows. The
+  sums live in the repository because this project's PostgREST has aggregates
+  switched off (PGRST123), so the queries carry a 4,000-row runaway guard and
+  the screen says so if it is ever hit; months are IST (proof check 4 pins the
+  boundary). Buckets (b) — source bar / SHARE OF GROSS — and (c) — fee, GST,
+  bank settlements — stay on the parity backlog by design. **Environment
+  findings the same day (28 Aug 2026):** this machine has no pnpm (`npm run …`
+  runs the same scripts); the `.env.local` keys are now Supabase's `sb_secret_`
+  format and Supabase refuses a secret key from a browser-like user agent, so
+  every proof script sets a custom UserAgent; and **the DB password in
+  `.env.local` is rejected by the pooler, so no migration can be applied from
+  this machine until it is fixed** — Step 14 needs none, Step 15 does. Step 13b
+  part 2a landed 25 Aug 2026: the class page's Earnings
   tab** — S_class's WHAT THIS SESSION MADE (12008-12042), the one place a class's
   price, fill and refunds are added up. No migration, no RPC, no policy: it reads
   the orders/payments/refunds Step 9 already admits members to. One deliberate
@@ -90,39 +108,18 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   it, gated on `can_settle_refunds_for_class` (owner, or a confirmed claim
   holding the refunds job — **not** a plain trainer), and the class page has the
   prototype's Refunds tab.
-- **Next: Step 13b part 2b — the studio's money-IN half of S_earn.** Scoped
-  25 Aug 2026 by reading S_earn 17877-18205 in full; the three buckets below are
-  the whole of what remains, so nothing here needs re-deriving.
-
-  **(a) Build — real data exists today** (S_earn 17992-18048, 18171-18178):
-  the GROSS · AUGUST card (total summed from captured payments), the **▲/▼ vs
-  last month** badge *counted from the same months the statements print* — the
-  prototype is emphatic that a number which can only be good news is not a
-  measurement (17996-18002) — the **REFUNDED** tile, the period chips
-  (This month / July / June / May), the month statements with WHERE IT CAME FROM
-  + DEDUCTIONS + Net settled (18055-18082), and **HOW STUDENTS PAID** off the real
-  `payments.method`. Deductions today legitimately contains only Refunds, so
-  `Net settled = Gross` is a TRUE sentence — we charge no fee.
-
-  **(b) Do NOT build yet — real, but degenerate until Step 21.** The prototype's
-  studio ledger has four sources (Class fees · Event tickets · Packages sold ·
-  Room rentals, EARN_ROWS 17893-17901) and **three of the four do not exist as
-  features**: ticketing is Step 21, packages and paid room rentals are on no step
-  at all. So `Earnings by source` / `SHARE OF GROSS`, the stacked source bar
-  (18020-18026) and the source filter chips (18050-18053) would today be one
-  segment labelled "Classes" at 100% and a filter of "All | Classes" that filters
-  nothing. Not blocked — just empty of meaning until there is a second source.
-
-  **(c) Blocked on a real Razorpay account:** the `DanceOS fee · 0.9%` and
-  `GST on fee · 18%` lines, `TDS · 10%` (needs a withholding rate the studio sets,
-  not a tax engine), `PAYOUTS TO YOUR BANK` (18179-18183) and the **Settled /
-  In transit tiles**, which for a studio count bank settlements. The gross card's
-  subtitle "Settles T+2 to your studio account · DanceOS fee 0.9% at source"
-  (18014) goes with them. Shipping a `FROM GROSS TO YOUR BANK` panel without its
-  deductions is the exact half-truth the prototype's own comment at 18086-18092
-  was written about.
-
-  Then Step 14 — but see its roadmap row: it is not the small slice it looks.
+- **Next: Step 14 — Calendar views.** See its roadmap row before starting: it
+  is not the small slice it looks. The calendar is `S_profiletab` behind a flag
+  (`CalTab=()=><S_profiletab calendarOnly/>` 19146), with `calManage` 8845,
+  `calSection` 9057, `calSheetEl` 9359 and the day/month/schedule views at 7655;
+  its tile is `CalTile=BookingCard` (8505), already built. Backend is genuinely
+  nothing — it reads sessions — so it is buildable while migrations are blocked.
+  What still stands of 13b is only parity, tracked in the backlog: **(b)** the
+  source bar / SHARE OF GROSS / source chips wait for a second source (Step 21
+  tickets); **(c)** `DanceOS fee · 0.9%`, `GST on fee · 18%`, `TDS · 10%`,
+  `PAYOUTS TO YOUR BANK` and the Settled / In transit tiles wait for a real
+  Razorpay account — printing them first would be the half-truth the prototype's
+  own comment at 18086-18092 was written about.
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -141,8 +138,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 12 | Studio CRM (leads/trials/conversions) | ✅ done (25 Aug 2026) |
 | 12b | Staff invites (split out of 12) | ✅ done (25 Aug 2026) |
 | 13 | Earnings & payouts ⚠ | ✅ done (25 Aug 2026) |
-| 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | 🔶 **refund queue + class Earnings tab done** (25 Aug 2026); studio income half remains ⬅ next |
-| 14 | Calendar views | ⬜ |
+| 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | ✅ done (28 Aug 2026) — source bar and fee/settlement lines stay on the parity backlog by design |
+| 14 | Calendar views | ⬜ ⬅ next |
 | 15 | Follows + public profiles | ⬜ |
 | 16 | Reviews + ratings | ⬜ |
 | 17 | Social feed (images first) | ⬜ |
@@ -867,6 +864,82 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   product decision about a new screen, not a lift, and it stays on the backlog
   marked as such rather than being invented.
 
+### Step 13b part 2b — the studio's money IN ⚠ ✅ (done 28 Aug 2026)
+- **No migration, again — but for a reason that was checked, not assumed.** The
+  natural way to sum a month is an aggregate, and this project's PostgREST has
+  them switched off (`PGRST123 Use of aggregate functions is not allowed`); a
+  SQL rollup function would have been a migration, and **no migration can be
+  applied from this machine today** (below). So `findTenantIncome` in
+  `repositories/income.ts` reads the rows and sums them here, over a window of
+  this month plus the three before it (the prototype's period chips, 17988),
+  with a 4,000-row **runaway guard, not a page size** — part 2a's precedent: the
+  card states one total, so a partial sum is a wrong number rather than a short
+  list. If a query ever fills the guard, `complete` goes false and the screen
+  prints "Counting the latest 4,000 rows only" instead of a figure that looks
+  finished. An aggregate RPC is the right follow-up once migrations can land.
+- **Months are IST.** `lib/format/month.ts` (pure: the clock is handed in) keys
+  every payment by its IST calendar month — 00:15 on the 1st in India is 18:45
+  on the last day of the previous month in UTC, and proof check 4 plants a
+  payment exactly there and shows the two readings disagree. A processed refund
+  belongs to the month it was DECIDED (an approval or a desk settlement), or,
+  for the rail's own auto-refunds nobody decided, the month the row last moved.
+- **What the numbers are.** Gross = captured payments (a later-refunded payment
+  still came in; its refund is a deduction beneath — the prototype prints them
+  that way). Refunded = processed refunds in the month. Asked back = refunds
+  `requested` or `pending` right now, whatever month they were filed — a live
+  queue figure, like the prototype's In transit tile. Declined and failed are in
+  neither total, matching its own filters. The **▲/▼ vs last month** pill is
+  computed from the same month the statements print and is not drawn when last
+  month took nothing — "a number that can only ever be good news is not a
+  measurement" (17996-18002). The statement's Deductions hold only Refunds
+  because we charge no fee, so `Net settled = Gross − Refunds` is a true sentence.
+- UI lifted from S_earn into `features/payouts/components/StudioIncome.tsx` and
+  composed in `EarningsDesk.tsx` as the top half of `/business/{id}/earnings`
+  (owner-only, server-checked, as before): the period chips (17988-17992),
+  GROSS · {MONTH} via the kit's `MoneyCard` with a new `badge` slot
+  (17993-18011), the three tiles — **Net and Asked back stand in for the
+  prototype's Settled / In transit**, which count bank settlements that do not
+  exist without a Razorpay account, beside its own REFUNDED (18037-18049) —
+  HOW STUDENTS PAID with the prototype's method tints (18171-18178, shares of
+  the money), and in the past-month view the statements (18055-18082) with WHERE
+  IT CAME FROM (one source today — Classes), DEDUCTIONS, Net settled and
+  **Download statement ↓, which writes a real CSV** rather than firing the
+  prototype's demo toast. Its sub-line counts payments where the prototype
+  counts bank payouts — the real number we have. Deliberately absent: the source
+  bar / SHARE OF GROSS / source chips (bucket b), the fee / GST / settlement
+  lines and "Settles T+2" subtitle (bucket c), Open invoices (later slice).
+- Verified: `scripts/rls-proof-studio-income.ps1` — 13 checks green (empty
+  studio is honestly zero; four payments by three methods sum to gross and split
+  HOW STUDENTS PAID; a payment moved into last month separates the badge's two
+  inputs, ₹300 vs ₹900 → +200%; **the IST boundary**; a failed payment adds
+  nothing; a desk-settled refund deducts while gross stands; an open request is
+  asked back; declined and failed in neither total; a rival's takings stay out
+  and its own screen counts only its own; rival and public read zero rows;
+  **a trainer still reads the takings — the owner-only screen is the
+  prototype's presentation gate, not a wall**; a payment older than the window
+  is outside the read while an unbounded read finds it). Regressions re-run
+  green: payments (12), refunds (12), class earnings (9). e2e: the happy path
+  opens the GROSS card, the empty HOW STUDENTS PAID, a past month's statement
+  and back; the paid-webhook spec now signs the owner in through the real
+  screens (test number, OTP typed into the hidden input) and finds the one
+  captured payment as ₹300 and "UPI 100%" — the only place a REAL payment meets
+  these queries. typecheck / lint / production build / both specs green.
+- **Environment lessons (28 Aug 2026), all three hit before the first check
+  ran:** (1) `.env.local` now holds Supabase's new-format keys and **Supabase
+  refuses an `sb_secret_` key from a browser-like user agent** — PowerShell 5.1's
+  `Invoke-RestMethod` announces itself as `Mozilla/5.0`, so every `scripts/*.ps1`
+  now sets `$PSDefaultParameterValues` with a `danceos-proof` UserAgent right
+  after `$ErrorActionPreference`; keep that line in new scripts. (2) This machine
+  has no pnpm; `npm run typecheck|lint|build|dev` and `npx playwright test` run
+  the same scripts, and Playwright needed `npx playwright install chromium`;
+  start `npm run dev` before the e2e (the config reuses a running server).
+  (3) **`SUPABASE_DB_PASSWORD` is rejected by the pooler** (`password
+  authentication failed`), the direct host is IPv6-only and does not resolve
+  here, the CLI is unlinked and there is no access token — so **migrations are
+  blocked until the password is reset in the Supabase dashboard** (Database →
+  Settings → reset) or a `SUPABASE_ACCESS_TOKEN` is supplied. Steps 15+ need
+  schema; Step 14 does not.
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -913,14 +986,12 @@ remove entries as they close.**
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
-| Earnings: the studio's money-IN half — GROSS card + ▲/▼ vs-last-month badge, REFUNDED tile, period chips, month statements (WHERE IT CAME FROM · DEDUCTIONS · Net settled), HOW STUDENTS PAID off real `payments.method` | S_earn 17992-18048, 18055-18082, 18171-18178 | Step 13b part 2b — **buildable now** |
-| Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips. Real, but the studio ledger's other three sources (tickets, packages, room rentals) don't exist — today it is one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | after Step 21 (needs a second source to mean anything) |
-| Earnings: the Settled / In transit tiles (they count bank settlements) and the gross card's "Settles T+2 · DanceOS fee 0.9% at source" subtitle | S_earn 18014, 18037-18047 | blocked with the deductions panel below |
-| Earnings: the deductions + settlement panel only — `DanceOS fee · 0.9%`, `GST on fee · 18%`, `PAYOUTS TO YOUR BANK` | S_earn 18156-18183 | blocked on a real Razorpay account (a platform fee that does not exist, and settlements with no account behind them) |
-| Earnings: period chips (This month / July / June / May), the month statements with WHERE IT CAME FROM + DEDUCTIONS + Download statement, and the ▲/▼ vs-last-month badge | S_earn 17998-18085 | Step 13b |
-| Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | Step 13b (needs a withholding rate the studio sets — not a tax engine) |
-| Earnings: the pay ledger's third tile reads OWED where the prototype's reads REFUNDED (refunds belong to the income half, which is not built yet) | S_earn 18049 | Step 13b |
-| Earnings: "Open invoices" and the ALSO COLLECTED enquiries card | S_earn 18084, 18124 | later slices (invoices, event enquiry desk) |
+| Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Real, but the studio ledger's other three sources (tickets, packages, room rentals) don't exist — today it would be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | after Step 21 (needs a second source to mean anything) |
+| Earnings: the Settled / In transit tiles (they count bank settlements) and the gross card's "Settles T+2 · DanceOS fee 0.9% at source" subtitle. Today the GROSS card's first two tiles read **Net** and **Asked back** — the two real states of this money — beside REFUNDED | S_earn 18014, 18037-18047 | blocked with the deductions panel below |
+| Earnings: the deductions + settlement panel only — `DanceOS fee · 0.9%`, `GST on fee · 18%`, `PAYOUTS TO YOUR BANK`, and the statements' Fee / GST deduction rows (Deductions hold only Refunds today, which is the truth) | S_earn 18156-18183 | blocked on a real Razorpay account (a platform fee that does not exist, and settlements with no account behind them) |
+| Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | blocked: needs a withholding rate the studio sets — not a tax engine |
+| Earnings: the statement sub-line counts payments where the prototype counts bank payouts; the earnings period state is component state, not the prototype's `__DOSEARNSTATE` memory across drill-ins | S_earn 18062, 17880 | with the settlement panel above; the memory if a drill-in ever leaves the page |
+| Earnings: "Open invoices" (the past-months view's button) and the ALSO COLLECTED enquiries card | S_earn 18084, 18124 | later slices (invoices, event enquiry desk) |
 | Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
 | Poster uploads (PosterCropper + Storage) and the "None" poster — the three drawn designs ship | PosterCropper, dosPosterOf 129-135 | media slice (Step 20 rails) |
 | Invite by **mobile** and by QR **scan** — the invite handle is an email (what we authenticate on) and the QR is drawn, not yet scannable | invite sheet 18435 "QR / mobile / search" | Step 26 (WhatsApp OTP) + the camera work |

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { EarningsDesk } from "@/features/payouts/components/EarningsDesk";
 import { monthLabelOf } from "@/lib/format/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findTenantIncome } from "@/repositories/income";
 import { findTenantPayLedger } from "@/repositories/payouts";
 import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
@@ -31,22 +32,28 @@ export default async function TenantEarningsPage({
 
   /* ⚠ owner-only, checked on the server and not merely hidden in the UI: the
      prototype's settings footnote is explicit that payout approval is the
-     owner's alone and cannot be granted (18434). RLS backs this up — the payouts
-     table admits the owner and the person paid, nobody else — so a trainer
-     opening this URL would see an empty ledger anyway. */
+     owner's alone and cannot be granted (18434), and it gates the earnings
+     screen itself on `isMine`. RLS backs the pay half up — the payouts table
+     admits the owner and the person paid, nobody else. The income half is a
+     PRESENTATION gate only: Step 9 admits every member of the tenant to the
+     payments and refunds it sums, which the proof script asserts on purpose. */
   const role = await findMyMembershipRole(supabase, tenantId);
   if (role !== "owner") {
     redirect(`/business/${tenantId}/classes`);
   }
 
   const now = stampNowIso();
-  const ledger = await findTenantPayLedger(supabase, tenantId, now);
+  const [ledger, income] = await Promise.all([
+    findTenantPayLedger(supabase, tenantId, now),
+    findTenantIncome(supabase, tenantId, now),
+  ]);
 
   return (
     <EarningsDesk
       tenantId={tenantId}
       tenantName={tenant.name}
       ledger={ledger}
+      income={income}
       monthLabel={monthLabelOf(now)}
     />
   );

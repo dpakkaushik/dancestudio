@@ -72,6 +72,7 @@ async function rows<T>(headers: Record<string, string>, path: string): Promise<T
 
 test("razorpay webhook: bad signature rejected, capture books the seat, replay is a no-op", async ({
   request,
+  browser,
 }) => {
   test.skip(
     !supabaseUrl || !anonKey || !serviceKey || !webhookSecret,
@@ -166,6 +167,29 @@ test("razorpay webhook: bad signature rejected, capture books the seat, replay i
       `payments?order_id=eq.${order.id}&select=id`
     );
     expect(payments).toHaveLength(1);
+
+    // 4. the studio's own screen counts that money (Step 13b part 2b): the owner
+    //    signs in through the real screens — test number, OTP 123456 — and the
+    //    GROSS card reads the one captured payment, paid by UPI. This is the
+    //    only place a REAL captured payment meets the income half's queries.
+    const page = await browser.newPage();
+    try {
+      await page.goto("/login/phone");
+      await page.getByRole("button", { name: /Mobile/ }).click();
+      await page.getByPlaceholder("10-digit mobile number").fill("9999999999");
+      await page.getByRole("button", { name: "Send OTP" }).click();
+      await page.waitForURL(/\/login\/verify/);
+      // the code goes into a visually hidden input behind the six boxes
+      await page.getByLabel("One-time password").focus();
+      await page.keyboard.type("123456");
+      await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+      await page.goto(`/business/${tenant.id}/earnings`);
+      await expect(page.getByText(/^GROSS · [A-Z]+$/)).toBeVisible();
+      await expect(page.getByText("₹300", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("UPI 100%")).toBeVisible();
+    } finally {
+      await page.close();
+    }
   } finally {
     // tenant delete cascades class → session → enrollment → order → payment;
     // the webhook_events ledger row is machine history and stays

@@ -1,6 +1,10 @@
 # RLS proof for Step 1 (profiles): two users, cross-user writes must fail.
 # Reads keys from .env.local — run from the repo root: pwsh scripts/rls-proof.ps1
 $ErrorActionPreference = "Stop"
+# Supabase refuses a secret (sb_secret_...) key from anything that looks like a
+# browser, and PowerShell's default user agent starts with "Mozilla/5.0". Name
+# ourselves honestly so the admin and service-role calls are accepted.
+$PSDefaultParameterValues = @{ "Invoke-RestMethod:UserAgent" = "danceos-proof"; "Invoke-WebRequest:UserAgent" = "danceos-proof" }
 
 $envFile = Join-Path $PSScriptRoot "..\.env.local"
 $vars = @{}
