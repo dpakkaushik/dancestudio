@@ -127,6 +127,7 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/crews\/new$/, "Create crew"],
   [/^\/crews\/[^/]+\/manage$/, "Crew"],
   [/^\/crew\/[^/]+$/, "Crew"],
+  [/^\/notifications$/, "Notifications"],
 ];
 
 const titleFor = (pathname: string): string => {
@@ -161,7 +162,7 @@ const chipStyle: React.CSSProperties = {
   border: "1px solid var(--chip-line)",
 };
 
-export function AppChrome({ children }: { children: ReactNode }) {
+export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** what the bell says — counted server-side for this render */ unread?: number }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeTab = TAB_SET.find((t) => t.href === pathname)?.label ?? null;
@@ -275,6 +276,19 @@ export function AppChrome({ children }: { children: ReactNode }) {
           )}
         </span>
         <span style={{ display: "flex", gap: 7, flexShrink: 0 }}>
+          {/* the bell, with what is unread on it (prototype 19252-19257) — a real
+              route, so the badge is whatever the server counted for this render */}
+          <Link href="/notifications" aria-label={unread > 0 ? `Notifications — ${unread} unread` : "Notifications"} style={{ ...chipStyle, textDecoration: "none" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5" />
+              <path d="M10.5 19a2 2 0 0 0 3 0" />
+            </svg>
+            {unread > 0 ? (
+              <span data-testid="bell-badge" style={{ position: "absolute", top: -2, right: -2, minWidth: 14, height: 14, borderRadius: 7, padding: "0 3.5px", background: "#EC4899", color: "#fff", fontSize: 8.5, fontWeight: 900, lineHeight: "14px", textAlign: "center", fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', border: "2px solid var(--bg)", boxSizing: "border-box" }}>
+                {unread > 9 ? "9+" : unread}
+              </span>
+            ) : null}
+          </Link>
           <span
             role="button"
             tabIndex={0}

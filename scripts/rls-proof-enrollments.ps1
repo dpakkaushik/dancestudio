@@ -31,7 +31,12 @@ $stamp = Get-Date -Format "HHmmss"
 
 # A: studio + published class with capacity 1 (so the SECOND booking waitlists)
 $ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Enroll Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
-$cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body (@{ p_tenant_id = $ta.id; p_title = "Tiny class $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 1; p_status = "published"; p_starts_at = "2027-03-01T19:00:00+05:30"; p_ends_at = "2027-03-01T20:00:00+05:30" } | ConvertTo-Json)
+# FREE, and that is the point: Step 9 made enroll_in_session refuse a priced
+# class with open seats ("book it from its class page"), so the capacity and
+# waitlist claims this script exists to prove belong to a free one. The paid
+# refusal is check 10 below - this proof was red from Step 9 to Step 24 because
+# it still built a Rs 300 class here and nobody re-ran it.
+$cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body (@{ p_tenant_id = $ta.id; p_title = "Tiny class $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = "Studio A"; p_price_inr = 0; p_capacity = 1; p_status = "published"; p_starts_at = "2027-03-01T19:00:00+05:30"; p_ends_at = "2027-03-01T20:00:00+05:30" } | ConvertTo-Json)
 $sess = Invoke-RestMethod -Uri "$base/rest/v1/class_sessions?class_id=eq.$($cls.id)&select=id" -Headers (Api $a.access_token)
 $sid = $sess[0].id
 "0. Studio + published class (cap 1) + session ready"
@@ -89,5 +94,20 @@ $counts = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/session_seat_co
 $countOk = (@($counts).Count -eq 1) -and ([int]$counts[0].enrolled -eq 1)
 "9. Anonymous seat count: $($counts[0].enrolled)/1 $(if ($countOk) {'-- OK'} else {'-- !!! FAILED !!!'})"
 if (-not $countOk) { $pass = $false }
+
+# 10. AND THE RULE THAT MADE THIS CLASS FREE: a priced class with open seats
+#     refuses this door and sends you to its page (Step 9's line, kept)
+$paid = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body (@{ p_tenant_id = $ta.id; p_title = "Paid class $stamp"; p_style = "Salsa"; p_level = "all"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 5; p_status = "published"; p_starts_at = "2027-03-02T19:00:00+05:30"; p_ends_at = "2027-03-02T20:00:00+05:30" } | ConvertTo-Json)
+$paidSess = Invoke-RestMethod -Uri "$base/rest/v1/class_sessions?class_id=eq.$($paid.id)&select=id" -Headers (Api $a.access_token)
+$paidMsg = ""
+try {
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/enroll_in_session" -Headers (Api $b.access_token) -Body (@{ p_session_id = $paidSess[0].id } | ConvertTo-Json) | Out-Null
+} catch {
+  $body = $_.ErrorDetails.Message
+  if (-not $body) { try { $st = $_.Exception.Response.GetResponseStream(); $st.Position = 0; $body = (New-Object System.IO.StreamReader($st)).ReadToEnd() } catch {} }
+  try { if ($body) { $paidMsg = ($body | ConvertFrom-Json).message } } catch { $paidMsg = $body }
+}
+"10. A priced class refuses this door: $paidMsg $(if ($paidMsg -match 'takes payment') {'-- OK'} else {'-- !!! FAILED !!!'})"
+if ($paidMsg -notmatch "takes payment") { $pass = $false }
 
 if ($pass) { "`nALL ENROLLMENT CHECKS PASSED"; exit 0 } else { "`nENROLLMENT CHECKS FAILED"; exit 1 }

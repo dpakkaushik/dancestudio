@@ -561,6 +561,46 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(learner.getByRole("link", { name: `${eventTitle} — Showcase` })).toHaveCount(0);
     await expect(learner.getByRole("link", { name: `${battleTitle} — Battle tournament` })).toBeVisible();
 
+    // ---- Step 24: notifications ----
+    // Nothing in this leg raises a notification: everything the story already did
+    // — a seat booked, a person asked onto a class and answering, a crew ask
+    // confirmed, an entry made — raised one through a trigger. So the bell is
+    // read as evidence of the rest of the test, which is the whole claim.
+    await owner.goto("/");
+    await expect(owner.getByTestId("bell-badge")).toBeVisible();
+    await owner.getByRole("link", { name: /^Notifications/ }).click();
+    await owner.waitForURL(/\/notifications$/);
+    await expect(owner.getByText("What needs you")).toBeVisible();
+    // the stacks are one per kind, and the studio's story made at least these two.
+    // (People is the trainer's and the crew leader's, further down.)
+    await expect(owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ })).toBeVisible();
+    await expect(owner.getByRole("button", { name: /^Events — \d+ updates?$/ })).toBeVisible();
+    // open the Bookings stack and read a real row: the learner booking the class
+    await owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ }).click();
+    await expect(owner.getByText(`E2E Learner booked ${classTitle}`)).toBeVisible();
+    // Mark read on the stack: the count drops and the badge follows
+    await owner.getByRole("button", { name: "Mark Bookings read" }).click();
+    await expect(owner.getByText("Bookings marked read")).toBeVisible();
+    // a kind switched off hides its stack, and nothing is deleted by it
+    await owner.getByRole("button", { name: "Notification settings" }).click();
+    const notifSheet = owner.getByRole("dialog", { name: "Notification settings" });
+    await notifSheet.getByRole("button", { name: "Bookings" }).click();
+    await notifSheet.getByRole("button", { name: "Save settings" }).click();
+    await expect(owner.getByRole("button", { name: /^Bookings — / })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: /^Events — / })).toBeVisible();
+    // switch it back on and the history is there — the prototype's own promise
+    await owner.getByRole("button", { name: "Notification settings" }).click();
+    await notifSheet.getByRole("button", { name: "Bookings" }).click();
+    await notifSheet.getByRole("button", { name: "Save settings" }).click();
+    await expect(owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ })).toBeVisible();
+    // a row opens the thing it is about: the crew ask the trainer answered
+    await trainer.goto("/notifications");
+    await trainer.getByRole("button", { name: /^People — \d+ updates?$/ }).click();
+    await expect(trainer.getByText(`${crewName} wants you on the roster`)).toBeVisible();
+    // and clearing a stack empties it for good (soft-deleted, gone from the screen)
+    await trainer.getByRole("button", { name: "Clear all People" }).click();
+    await expect(trainer.getByText("People cleared")).toBeVisible();
+    await expect(trainer.getByRole("button", { name: /^People — / })).toHaveCount(0);
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browser.newContext();
     try {

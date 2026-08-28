@@ -31,9 +31,39 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 22 / 29 steps** (Steps 0–15, 18, 21, 22 and 23; 16, 17, 19 and 20
-  are ❌ not in the prototype — see the re-scope below — so the road ahead is
-  24–26). **Step 23 landed 28 Aug 2026: search + Discover filters** — the
+- **Completed: 23 / 29 steps** (Steps 0–15, 18, 21, 22, 23 and 24; 16, 17, 19 and
+  20 are ❌ not in the prototype — see the re-scope below — so the road ahead is
+  25–26). **Step 24 landed 28 Aug 2026: notifications** — the prototype's
+  notifications screen (S_notif 13702) is six KINDS stacked one card each, an
+  unread dot per row, Mark read / Clear all per stack, and a settings sheet
+  ("What reaches you") with a switch per kind and three channels. Migration
+  `20260829150000_create_notifications.sql` (⚠ RLS): `notifications` (per
+  PERSON — there is no such thing as a tenant's notification, only its owner's)
+  and `notification_prefs`. **Notifications are raised WHERE THE FACT HAPPENS**
+  — the prototype says it twice ("THE WAITLIST IS TOLD, OR IT IS NOT A WAITLIST"
+  13647; "A REQUEST NOBODY SEES IS NOT A REQUEST" 13659) — so they are TRIGGERS
+  on the tables that already hold the facts, not calls sprinkled through actions:
+  a class claim asked and answered, a seat booked, **a waitlisted seat offered**,
+  a refund requested and decided, a payout settled, an enquiry sent and quoted,
+  an event seat or entry booked, a **duet partner** asked and their answer, a
+  **crew** ask and its answer. Every path that writes the fact raises it — an
+  action, an RPC, the Cashfree webhook, a proof, the demo seeder — because none
+  of them can write the row without passing the trigger. The notify function is revoked from
+  every client role, there is no insert policy, and it **never raises**: a
+  notification must not be the reason a booking fails. Reads/clears are scoped to
+  `auth.uid()` inside the RPCs, so passing somebody else's ids touches nothing.
+  Second migration `20260829163000_notify_auto_refund.sql`, **found by the
+  proof**: a refund filed automatically outside the 48-hour window told nobody —
+  the commonest refund of all was silent — so the trigger now speaks on that
+  insert too. Screens: `/notifications` (S_notif lifted — the hero, the stacks,
+  the rows, Mark read / Clear all, the settings sheet) and **the bell with its
+  badge in the top bar**, counted once per render of the signed-in layout.
+  Channels, honestly: in-app is the only delivery — the push / WhatsApp / email
+  switches are real stored answers, and each waits on the thing that sends it
+  (VAPID keys and a service worker, Step 26's provider, the verified Resend
+  domain). 12-check proof; six proofs re-run as regressions, one of which
+  (**enrollments**) turned out to have been red since Step 9 and is repaired.
+  **Step 23 landed 28 Aug 2026: search + Discover filters** — the
   prototype's Discover is one search box that "searches everything" (4535-4575:
   Studios · Artists · Crews · Events, three each, matching a name that STARTS
   with the term or has a WORD that does) plus every way of narrowing a list —
@@ -282,13 +312,16 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   20 are **not built** (nothing to lift — building them would invent UI), and
   **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
   foot of the parity backlog so none is forgotten.
-- **Next: Step 24 — push notifications.** Scope it against the prototype first:
-  the top bar's notifications bell and `S_notif` (the screen the parity backlog
-  has carried since Step 7), what actually deserves a push (an ask waiting on
-  you, a class tomorrow, an event you hold a ticket for, a quote answered), and
-  the provider question — a web-push subscription table plus the Web Push API is
-  the honest first cut; OneSignal/FCM is a dependency to justify, not a default.
-  Then 25–26.
+- **Next: Step 25 — analytics dashboards.** Scope it against the prototype
+  first: the **Stats tab** is a placeholder today and the prototype's screens for
+  it are `S_profiletab`'s `historyOnly` (Your Stats), `classesOnly`
+  (History) and `chartsOnly` (Global Rankings, 8770+) — three dresses of one
+  screen — plus the crew desk's "See crew ranking" and the calendar's History
+  chip, which both point here. Everything it needs is already in the database
+  (attendance, claims, enrollments, event entries, payouts), so expect no
+  migration and a repository of honest aggregates instead; the open question is
+  what a RANK can truthfully be at pilot scale, where one studio's numbers are
+  the whole league. Then 26 (WhatsApp OTP), then the parity backlog.
   Migrations apply with `npx supabase db push --db-url` over the pooler through
   the scratchpad `push-migration.js` pattern (spawn `npx` with `shell: true` —
   Node refuses `npx.cmd` without a shell, EINVAL). Still parity, tracked in the backlog: 13b **(b)** the
@@ -327,8 +360,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 21 | Events, competitions, ticketing ⚠ | ✅ done (28 Aug 2026) — free seats and entries end to end; paid tickets/entries wait on the Razorpay account; bracket/rounds/judges/scoring/earnings/refunds segments on the backlog |
 | 22 | Crews (auditions are gone from the prototype, 13520; the open call was declined, 13565) | ✅ done (28 Aug 2026) — crews, rosters by consent, the crew entry and the duet partner as a person; results/points and Follow-a-crew on the backlog |
 | 23 | Search + Discover filters (Postgres, not Typesense — the reason is in the migration) | ✅ done (28 Aug 2026) — the map view stays on the backlog |
-| 24 | Push notifications | ⬜ ⬅ next |
-| 25 | Analytics dashboards | ⬜ |
+| 24 | Notifications (in-app, raised by triggers where the facts happen; the three delivery channels are stored and wait on their senders) | ✅ done (28 Aug 2026) |
+| 25 | Analytics dashboards | ⬜ ⬅ next |
 | 26 | WhatsApp OTP unpark ⚠ | ⬜ |
 
 Steps 0–6 detail is recorded below; Steps 7–26 detail lives in the
@@ -1493,6 +1526,111 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Step 24 — Notifications ✅ (done 28 Aug 2026)
+- **What the prototype's screen is** (S_notif 13702-13812, NOTIF_KINDS 13642):
+  six kinds — Enquiries · Bookings · Money · People · Events · Classes — each a
+  STACK under one card (the count in a coin, the label, the newest title as the
+  sub-line, "N NEW", a chevron that turns), opening onto rows that each carry an
+  unread dot, a title, a body, an age and a × that clears it, with Mark read /
+  Clear all beneath; "All clear · Nothing needs you right now." when empty; and
+  the settings sheet, "What reaches you" — a switch per kind ("Switch a kind off
+  and its stack disappears from this screen") and three channels under HOW THEY
+  REACH YOU. The top bar carries the bell with what is unread on it (19252).
+- **Where a notification is raised, and why it is a trigger.** The prototype
+  states the principle twice in its own comments — "THE WAITLIST IS TOLD, OR IT
+  IS NOT A WAITLIST" (13647) and "A REQUEST NOBODY SEES IS NOT A REQUEST"
+  (13659): the notification is raised at the moment the fact happens, not by
+  whichever screen remembers to. So migration
+  `20260829150000_create_notifications.sql` puts them on the tables that
+  already hold the facts: `class_claims` (asked → the person; answered → the
+  studio), `enrollments` (booked → the studio; **waitlisted → enrolled → the
+  learner**, which is the prototype's `__DOSWAITCALL`), `refunds` (requested →
+  the studio; decided → the payer), `payouts` (settled → the payee),
+  `enquiries` and `enquiry_quotes` (sent → the studio; quoted → the sender),
+  `event_bookings` (a seat or an entry → the organiser; **a duet partner asked
+  → the partner**, and their answer → the entrant), `crew_members` (asked → the
+  person; answered → the leader). Every path that writes those rows raises the
+  same notification — an action, an RPC, the Cashfree webhook, a proof script,
+  the demo seeder — because none of them can write the row without passing the
+  trigger. The proof asserts this the only way that means anything: **it never
+  calls a notify function**, it books, asks, answers, pays and refunds, then
+  reads what appeared.
+- **⚠ RLS.** `notifications` is per PERSON (`user_id` → profiles): there is no
+  such thing as a tenant's notification, only its owner's, which is why
+  `notify_tenant_owners` fans out to the owners and nobody else — a trainer has
+  no business reading what a studio was told about its money. One SELECT policy
+  per table (`user_id = auth.uid()`, no deleted_at filter — Step 3's lesson),
+  **no insert policy anywhere**, no public policy at all, and `notify` /
+  `notify_tenant_owners` / every trigger function revoked from public, anon
+  AND authenticated. `mark_notifications_read`, `clear_notifications`,
+  `my_notification_prefs`, `set_notification_prefs` and
+  `my_unread_notifications` all scope to `auth.uid()` INSIDE the function, so
+  passing somebody else's ids touches nothing (proof check 7 does exactly that).
+  `set_notification_prefs` refuses a kind the app cannot act on and a switch
+  that is not a boolean.
+- **A notification never breaks the fact it observes.** A trigger runs inside
+  the transaction it watches, so `notify` drops a notification whose recipient
+  has no live profile and swallows anything else that goes wrong. That is the
+  whole of its error handling and it is deliberate: an unsent notification is a
+  missing line on a screen; a failed insert is a lost seat.
+- Migration `20260829163000_notify_auto_refund.sql` — **the proof found this,
+  not a reading.** Step 9 files a cancellation OUTSIDE the 48-hour window as
+  `pending` (the rail refunds it, nobody decides), and the first cut only spoke
+  on an INSERT of `requested` and on the deciding UPDATE. So the commonest
+  refund of all was silent to the payer: seat back, money moving, no line
+  anywhere. The same trigger now says both things — the studio hears a request
+  that needs deciding, the payer hears that money is coming back, whether a
+  person decided it or the policy did. (Rule 4: the applied migration is
+  untouched.)
+- Repository `repositories/notifications.ts`, `types/notification.ts`
+  (NOTIF_KINDS with the prototype's tints, the prefs shape, `agoWords` for the
+  relative age the prototype prints), Zod actions in
+  `features/notifications/server-actions/notifications.ts` (read, clear, prefs
+  — nothing raises).
+- UI: **`/notifications`** (S_notif lifted — the hero in the notifications tint
+  with "What needs you", "N unread · N total", the settings chip and Read all;
+  the stacks; the rows opening their `href` and marking themselves read on the
+  way; Mark read / Clear all; the empty state, which also says when every kind is
+  switched off; the settings sheet) and **the bell in `AppChrome`** with the
+  pink badge, its count read once per render of the `(app)` layout and passed
+  down — a failed count is zero, never an error page, because the bell is
+  decoration on somebody's actual work.
+- **Deliberately not lifted / not wired, tracked in the backlog (Rule 12):** a
+  real web push (VAPID keys + a service worker + a subscriptions table), WhatsApp
+  and email delivery (Step 26's provider; the verified Resend domain), the
+  prototype's swipe-left-to-clear gesture (a touch gesture with no test — the ×
+  is the way, and the hint line is simply not printed), the theme chip inside
+  S_notif's own hero (the chrome already carries one), and the Inbox's Remind
+  button, which can now be built on this table.
+- Verified: `scripts/rls-proof-notifications.ps1` — 12 checks green (a booking
+  tells the studio and the trigger is what tells it; it is ONE person's and
+  neither the learner nor a rival nor the public can read it; **no way to write
+  one from outside** — direct insert refused, `notify` refused to a signed-in
+  caller and to the public; a consent ask reaches the person asked and the answer
+  reaches the studio; **the freed seat tells the waitlisted learner**; both ways a
+  refund is filed — inside the window the studio hears it and the payer hears the
+  decision, outside it the payer is told anyway; a rival marking or clearing the
+  owner's rows touches 0; the owner's own read and clear work and the unread count
+  follows; prefs are made on first read, a made-up kind and a non-boolean are
+  refused, and switching a kind off deletes nothing; prefs are private; **a
+  notification never breaks the fact** — a booking lands with no notification for
+  a deleted profile; clearing is soft and clearing nothing in particular is
+  refused). Regressions re-run green: payments (12), refunds (12), attendance
+  (10), crews (14), events (16), enquiries (12) — the triggers sit on those very
+  tables, so this was the point. **One of the regressions was already red:
+  `rls-proof-enrollments.ps1` had been failing since Step 9 (24 Aug) — it builds
+  a ₹300 class and calls `enroll_in_session`, which Step 9 deliberately made
+  illegal — and nobody re-ran it for four days.** Repaired: the class is free
+  (the capacity and waitlist claims it exists to prove belong to a free one) and
+  the paid refusal became check 10. **Lesson: a proof is only true the last time
+  it ran — when a rule changes, re-run every script the rule touches, not only
+  the one being written.** e2e extended: the owner finds the bell badge, opens
+  the screen, reads the Bookings and Events stacks the story itself made, opens a
+  row that names the learner's booking, marks the stack read, switches Bookings
+  off in the settings sheet and watches the stack disappear and come back with
+  its history; the trainer reads their crew ask and clears the People stack.
+  typecheck / lint / production build / both specs green.
+
 ### Step 23 — Search + Discover filters ✅ (done 28 Aug 2026)
 - **Postgres, not Typesense — decided and written down.** The roadmap named
   Typesense. At pilot scale every searchable table holds tens of rows, so a
@@ -1846,12 +1984,12 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| Top bar: notifications bell + notifications screen | shell 19254, S_notif | Step 24 (notifications) |
+| Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
 | Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype; the crew desk's member rows and the Requests desk's View › would open them) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + person/crew follows as their own slice |
 | Stats tab: placeholder screen today (the Inbox landed with Step 18) | HistPage | Step 25 |
-| Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (notifications, Step 24); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
+| Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (a nudge — buildable on Step 24's `notifications` table now); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
 | Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Tickets exist since Step 21 but every one is free until the rail has an account, so today it would still be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | with a live Cashfree account (paid tickets are the second source) |
 | Earnings: the Settled / In transit tiles (they count bank settlements) and the gross card's "Settles T+2 · DanceOS fee 0.9% at source" subtitle. Today the GROSS card's first two tiles read **Net** and **Asked back** — the two real states of this money — beside REFUNDED | S_earn 18014, 18037-18047 | blocked with the deductions panel below |
@@ -1929,7 +2067,7 @@ step names the prototype screens its UI comes from so nothing gets redesigned.
 | # | Slice | Backend | Prototype UI source |
 |---|-------|---------|---------------------|
 | 23 | Search + Discover filters — **Postgres, not Typesense** (the reason is in the migration: tens of rows per table at pilot scale, so a sync pipeline would carry nothing); the map view stays on the backlog | `search_dance_os` (SECURITY INVOKER) + pure URL-state predicates | S_discover 4535, 4596, 4655, 4827; S_eventslist 13551 |
-| 24 | Push notifications (OneSignal/FCM) | fan-out | system-level |
+| 24 | Notifications — in-app, raised by TRIGGERS where the facts happen (a claim, a booking, a freed seat, a refund, a payout, an enquiry, a quote, an event entry, a duet partner, a crew ask); the bell with its badge; the prefs sheet. Delivery channels stored, not yet sending — no OneSignal/FCM dependency taken on | `notifications` + `notification_prefs` + 8 trigger functions | S_notif 13702, NOTIF_KINDS 13642, the bell 19252 |
 | 25 | Analytics: DAU/MAU, retention, GMV dashboards | aggregates | admin/reports |
 | 26 | ⚠ WhatsApp-first OTP unpark: Twilio Verify + Meta business verification, SMS/DLT fallback | provider setup; code = `channel:"whatsapp"` in signInWithOtp | existing S_auth screens |
 
@@ -2006,8 +2144,18 @@ Four lines per session, written when the user ends it. The step records above ho
 the technical detail; this log is the at-a-glance history.
 
 ### 28 Aug 2026 — third session
-- **This session:** **Step 22 — crews** and **Step 23 — search + Discover
-  filters**. Step 23: one migration holding one function
+- **This session:** **Step 22 — crews**, **Step 23 — search + Discover
+  filters**, one-command **demo data** with **Rule 12** (nothing is deferred
+  without a backlog row) and a dated backlog audit, and **Step 24 —
+  notifications**. Step 24: two migrations — `notifications` +
+  `notification_prefs` with eight TRIGGERS that raise a notification where the
+  fact happens (so every path that writes the fact raises it, and `notify` is
+  revoked from every client role and can never break the fact), then a
+  proof-found follow-up because an automatic refund told nobody. The screen is
+  S_notif lifted (stacks per kind, Mark read / Clear all, the "What reaches you"
+  sheet) plus the bell and its badge in the chrome; in-app is the only delivery
+  and the three channel switches say so. 12-check proof, six regressions — one of
+  which (`rls-proof-enrollments`) had been red since Step 9 and is repaired. Step 23: one migration holding one function
   (`search_dance_os`, SECURITY INVOKER — the caller's RLS decides what is
   found; Postgres rather than Typesense, with the reason written into the
   migration), the filters as pure URL-state predicates
@@ -2029,19 +2177,21 @@ the technical detail; this log is the at-a-glance history.
   re-run (16) on the recreated `book_event`, both e2e specs green with a new crew
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
-- **Done so far:** 22 / 29 steps (0–15, 18, 21, 22, 23). Live at
-  https://dancestudio-orcin.vercel.app once this push deploys.
-- **Remaining:** Steps 24–26 (notifications, analytics, WhatsApp OTP), then the
-  parity backlog (crew results/points wait on scoring; Follow-a-crew, person
-  pages and Discover's map are their own slices). Ops still open: Cashfree KYC +
-  Easy Split, the webhook registration, a verified Resend domain, pilot invites.
-- **Next session:** Step 24 — push notifications: scope the bell and `S_notif`
-  against the prototype, decide what deserves a push and whether a
-  `push_subscriptions` table + the Web Push API is the honest first cut before
-  taking on OneSignal/FCM, then migration → repository → actions → screens →
-  proof → e2e. Verify with `npm run typecheck`, `npm run lint`, `npm run build`
-  (with nothing on :3000), the proofs through the PowerShell tool, and `npx
-  playwright test` against a FRESH `npm run dev`.
+- **Done so far:** 23 / 29 steps (0–15, 18, 21–24). Live at
+  https://dancestudio-orcin.vercel.app once this push deploys. The hosted project
+  also carries a demo world (`node scripts/demo-data.js seed | status | wipe`).
+- **Remaining:** Steps 25–26 (analytics, WhatsApp OTP), then the parity backlog
+  (crew results/points wait on scoring; web push, Follow-a-crew, person pages and
+  Discover's map are their own slices). Ops still open: Cashfree KYC + Easy
+  Split, the webhook registration, a verified Resend domain, pilot invites.
+- **Next session:** Step 25 — analytics: the Stats tab is a placeholder and the
+  prototype's screens for it are S_profiletab's `historyOnly`, `classesOnly`
+  and `chartsOnly` (8770+), with the crew desk's "See crew ranking" and the
+  calendar's History chip pointing at it. Expect no migration — the rows exist —
+  and decide honestly what a RANK can mean at pilot scale. Verify with `npm run
+  typecheck`, `npm run lint`, `npm run build` (with nothing on :3000), the
+  proofs through the PowerShell tool, and `npx playwright test` against a FRESH
+  `npm run dev`.
 
 ### 28 Aug 2026 — second session
 - **This session:** finished **Step 21 — events, competitions, ticketing ⚠** from
