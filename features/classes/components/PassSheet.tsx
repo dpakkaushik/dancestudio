@@ -32,13 +32,18 @@ export interface PassSheetProps {
   styleName: string;
   levelWord: string;
   pass: PassCode;
-  /** the booking-link slug — Share copies this deployment's full /c/{slug} URL */
+  /** the booking-link slug — Share copies this deployment's full /c/{slug} URL
+   *  (or /e/{slug} for an event, Step 21) */
   slug: string;
+  /** which public address the slug lives at — classes at /c, events at /e */
+  path?: "c" | "e";
+  /** the dialog's name — "Class pass" unless the ticket is for something else */
+  ariaLabel?: string;
   onClose: () => void;
   fire: (msg: string) => void;
 }
 
-export function PassSheet({ posterItem, posterK, col, title, styleName, levelWord, pass, slug, onClose, fire }: PassSheetProps) {
+export function PassSheet({ posterItem, posterK, col, title, styleName, levelWord, pass, slug, path = "c", ariaLabel = "Class pass", onClose, fire }: PassSheetProps) {
   return (
     <div
       onClick={onClose}
@@ -56,7 +61,7 @@ export function PassSheet({ posterItem, posterK, col, title, styleName, levelWor
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Class pass"
+        aria-label={ariaLabel}
         onClick={(e) => e.stopPropagation()}
         style={{
           position: "relative",
@@ -143,7 +148,7 @@ export function PassSheet({ posterItem, posterK, col, title, styleName, levelWor
             tabIndex={0}
             onKeyDown={dosKey}
             onClick={() => {
-              const full = `${window.location.protocol}//${window.location.host}/c/${slug}`;
+              const full = `${window.location.protocol}//${window.location.host}/${path}/${slug}`;
               try {
                 if (navigator.clipboard?.writeText) navigator.clipboard.writeText(full);
               } catch {

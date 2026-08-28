@@ -1,3 +1,8 @@
+"use client";
+
+/* a client component on purpose: it draws PosterBlock and dosPosterAuto from poster.tsx,
+   which is a client module — a server component (Discover) may RENDER this card but
+   could never CALL dosPosterAuto itself (found by the e2e, 28 Aug 2026) */
 import Link from "next/link";
 import { PosterBlock, dosPosterAuto } from "@/features/classes/components/poster";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";

@@ -31,28 +31,33 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 19 / 29 steps** (Steps 0–15 and 18; 16, 17, 19 and 20 are
-  ❌ not in the prototype — see the re-scope below — so the road ahead is 21–26).
-  **Step 21 is IN PROGRESS (28 Aug 2026), committed as scaffolding:** migration
-  `20260828180000_create_events.sql` is **applied to the live DB** (`events`,
-  `event_entry_tiers`, `event_ticket_tiers`, `event_bookings`, RLS for members /
-  public-of-listed / holders, RPCs `save_event`, `publish_event` with the
-  prototype's blocker sentences, `set_event_status`, `delete_event`,
-  `event_counts`, `book_event` — free seats and entries only, priced ones refuse
-  with Step 9's "payments aren't switched on yet" — `cancel_event_booking`,
-  `check_in_event_booking`, `add_event_walk_in`); `types/event.ts`,
-  `repositories/events.ts`, Zod actions, `event-kit.tsx`, **`EventCard`**, the
-  **events desk** at `/business/{id}/events` and the two-step **event form**
-  at `/events/new` and `/events/{id}/edit` are written and the build is green.
-  **Not yet written:** the public event page `/e/{slug}` (S_event 12810 — the
-  sleeve, the card on the page, PRIZES / WHEN / VENUE / FORMAT / TICKETS /
-  POLICY, the booking bar, the confirm + pay sheets), the event manager at
-  `/business/{id}/events/{eventId}` (S_eventmanage 13946 — Details, Participants
-  and Spectators registers with check-in and walk-ins; bracket/rounds/judges/
-  scoring/earnings/refunds segments go to the backlog), Discover's **Events**
-  tab (S_eventslist 13517), the "Your tickets" shelf on /my-classes, the
-  register's **Events ›** chip, the chrome titles, `scripts/rls-proof-events.ps1`,
-  the e2e, and the Step 21 record + backlog rows in this file. **The desk is
+- **Completed: 20 / 29 steps** (Steps 0–15, 18 and 21; 16, 17, 19 and 20 are
+  ❌ not in the prototype — see the re-scope below — so the road ahead is 22–26).
+  **Step 21 landed 28 Aug 2026: events, competitions, ticketing ⚠** — the
+  prototype's event record with its two sides (EVENT_STORE 912): the people who
+  come to DANCE (entries by format — solo / duet / crew, each its own fee and
+  places) and the people who come to WATCH (ticket tiers, each a name, a price
+  and seats). Migration `20260828180000_create_events.sql` (`events`,
+  `event_entry_tiers`, `event_ticket_tiers`, `event_bookings`; RLS for members /
+  the public-of-listed / holders; **no direct writes** — `save_event`,
+  `publish_event` with the blockers in the prototype's own sentences,
+  `set_event_status`, `delete_event`, the aggregate-only `event_counts`,
+  `book_event`, `cancel_event_booking`, `check_in_event_booking`,
+  `add_event_walk_in`) plus `20260828210000_fix_event_blockers_array.sql`, a
+  fix the proof found (`text[] || 'literal'` is array‖array to Postgres — the
+  blocker came back as `malformed array literal`). **Money, honestly:** every
+  seat and entry books FREE; a priced tier or entry is refused with Step 9's
+  sentence, because the rail has no account and `orders` is class-shaped. Sold
+  counts are COUNTED from live bookings, never stored, so a cancellation frees a
+  seat by arithmetic. Screens lifted: the desk (S_eventsmod), the two-step form
+  (S_eventform), **the event page `/e/{slug}`** (S_event — sleeve, the card on
+  the page, PRIZE MONEY, WHEN, VENUE, FORMAT, TICKETS, POLICY, the booking bar,
+  the confirm sheet and the payment step, the held ticket, the completed
+  figures), **the manager** (S_eventmanage — Details, Participants, Spectators
+  with check-in and walk-ins), Discover's **Events** tab with the kind chips
+  (S_eventslist), the **Your tickets** shelf on /my-classes, the register's
+  **Events ›** chip and the chrome titles. 16-check proof, both e2e specs green.
+  **The desk is
   reachable only by URL until the chip lands.** (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
   Step 13.) **Step 18 landed 28 Aug 2026: the Inbox** — the prototype's
@@ -185,37 +190,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   20 are **not built** (nothing to lift — building them would invent UI), and
   **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
   foot of the parity backlog so none is forgotten.
-- **Next: finish Step 21 — events ⚠.** Pick up from the scaffolding above, in
-  this order: (1) `/e/[slug]` — `features/events/components/EventPage.tsx`
-  lifting S_event 12810-13516 (DosPosterSleeve from `poster.tsx`, the EventCard
-  on the page, PRIZES, WHEN, VENUE with Maps, FORMAT, TICKETS tiers with the
-  seats bar, POLICY, the fixed booking bar "Book as participant / Book as a
-  spectator", the confirm sheet — entering as / partner / crew / how many — and
-  the pay step that books free entries via `bookEventAction` and prints Step 9's
-  sentence for priced ones; "you run this event" for members; the held-ticket
-  block with cancel); (2) the manager at `/business/[tenantId]/events/[eventId]`
-  lifting S_eventmanage Details (the two bars, the details rows, the venue),
-  Participants and Spectators (register rows, Check in toggles via
-  `checkInEventBookingAction`, walk-in via `addWalkInAction`); (3) Discover's
-  Events tab (`findPublishedEvents(todayKey, city)` → EventCard → `/e/{slug}`),
-  the "Your tickets" shelf on /my-classes (`findMyEventBookings`), the register's
-  **Events ›** chip in `ClassesManager`, AppChrome titles for `/e/`, `/events`;
-  (4) `scripts/rls-proof-events.ps1` — free booking under capacity, priced tier
-  refused with the sentence, member cannot book own event, showcase takes no
-  entries, duet needs a partner, crew needs a name, cancel frees the seat,
-  check-in is members-only, drafts invisible to the public, publish blockers in
-  the prototype's words; (5) e2e — owner creates and publishes a free showcase,
-  learner books a seat from Discover, owner checks them in; (6) the Step 21
-  record, parity-backlog rows (bracket/rounds/judges/scoring/earnings/refunds
-  segments, the duet PeoplePicker, poster upload, paid tickets via `orders`),
-  and the tracker. Then Steps 22–26. Migrations apply with `npx supabase db push
-  --db-url` over the pooler (see the Step 13b part 2b environment note). What
-  still stands of 13b is only parity, tracked in the backlog: **(b)** the source
-  bar / SHARE OF GROSS / source chips wait for a second source (Step 21
-  tickets); **(c)** `DanceOS fee · 0.9%`, `GST on fee · 18%`, `TDS · 10%`,
-  `PAYOUTS TO YOUR BANK` and the Settled / In transit tiles wait for a real
-  Razorpay account — printing them first would be the half-truth the
-  prototype's own comment at 18086-18092 was written about.
+- **Next: Step 22 — crews.** Scope it against the prototype first: **auditions
+  are gone** ("decision, 16 Aug 2026: crew auditions do not exist in this
+  product", 13520-13523) and the crew **open call** was designed, started and
+  declined (13565-13573), so the row's "+ auditions" is not built. What remains
+  is the crew itself — `BIZ_STORE.crews` (the crews you LEAD) against
+  `memberCrews` (the crews you merely dance in), the crew screens
+  (`crewFormOnly` on S_profiletab 8639, the crews tab on Discover 4100+, the
+  Requests desk's crew asks 5757), and the two things Step 21 left waiting on
+  it: entering a crew event from a crew you lead instead of a typed name, and
+  the duet partner as a person on DanceOS. Inventory with `grep -n "crew"
+  prototype/DanceOSApp.jsx` before writing the migration. Then 23–26. Migrations
+  apply with `npx supabase db push --db-url` over the pooler (Step 13b part 2b's
+  environment note). Still parity, tracked in the backlog: 13b **(b)** the
+  source bar / SHARE OF GROSS waits for a second PAID source — tickets exist now
+  but every one is free until the rail has an account; **(c)** the fee, GST, TDS
+  and settlement lines wait for a real Razorpay account — printing them first
+  would be the half-truth the prototype's own comment at 18086-18092 was written
+  about.
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -242,8 +234,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 18 | Inbox: Requests + Enquiries desks (was "Messaging" — internal chat is removed from the prototype, 6080) | ✅ done (28 Aug 2026) |
 | 19 | Moderation + reporting | ❌ removed with the feed ("went with it", 4897) — not built |
 | 20 | Video/reels (Mux/Cloudflare Stream) | ❌ no reel/post screen in the prototype — not built; photo uploads (posters, studio photos) stay a media slice |
-| 21 | Events, competitions, ticketing ⚠ | 🔶 **in progress** (28 Aug 2026): migration applied, desk + form + card built; event page, manager, Discover tab, proof, e2e remain ⬅ next |
-| 22 | Teams/crews + auditions | ⬜ |
+| 21 | Events, competitions, ticketing ⚠ | ✅ done (28 Aug 2026) — free seats and entries end to end; paid tickets/entries wait on the Razorpay account; bracket/rounds/judges/scoring/earnings/refunds segments on the backlog |
+| 22 | Crews (auditions are gone from the prototype, 13520; the open call was declined, 13565) | ⬜ ⬅ next |
 | 23 | Search (Typesense) + Discover filters/map | ⬜ |
 | 24 | Push notifications | ⬜ |
 | 25 | Analytics dashboards | ⬜ |
@@ -1259,6 +1251,158 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   `$_.Exception.Response.GetResponseStream()` or a refusal's own words cannot be
   asserted (three checks first read as "(400) Bad Request").
 
+### Step 21 — Events, competitions, ticketing ⚠ ✅ (done 28 Aug 2026)
+- **What the prototype's event is** (EVENT_STORE 912, S_eventform 15759): one
+  record with two sides — the people who come to DANCE, entered by format (solo /
+  duet / crew, "a solo dancer and a nine-person crew are not the same product",
+  16070, each its own fee and places) and the people who come to WATCH, seated
+  by ticket tier. Three kinds remain (showcase · battle · tournament — auditions
+  were removed, 2989), and **a showcase is watched**: its line-up is the host's
+  to build, so it has no public entry (13245). Publishing has one rule, stated
+  once (dosEventBlockers 3061): a venue, a city and a map link; tickets on need a
+  tier with seats; an entered event needs a way in with places; a showcase must
+  sell tickets. `publish_event` is that rule server-side, in the prototype's own
+  sentences, and `types/event.ts`'s `eventBlockers` says the same words while
+  you type.
+- Migration `20260828180000_create_events.sql` (⚠ RLS, ⚠ money-adjacent):
+  `events` (tenant, cat, title ≤ 64 chars, style, start/end date, doors time,
+  venue, address, city, maps_url, about, the entry headline, bracket, rounds,
+  prizes int[], tickets_on, status draft | published | completed, a `share_slug`
+  stamped by a BEFORE INSERT trigger in Step 8's grammar, audit + soft delete),
+  `event_entry_tiers` (one live row per format; capacity 0 = up to 500),
+  `event_ticket_tiers` (name, price, capacity 1–5000, sort), `event_bookings`
+  (a seat — tier + qty — or an entry — format, entrant_name for a crew,
+  partner_name for a duet; user_id nullable for a walk-in the desk recorded by
+  name; amount_inr; booked | cancelled; checked_in_at). RLS: members read their
+  tenant's rows drafts included (no deleted_at filter — Step 3's lesson); anyone
+  reads a LISTED tenant's published events and their tiers; bookings are the
+  holder's (`user_id = auth.uid()`) and the organiser's members'. **No
+  insert/update/delete policies anywhere.** `can_run_events` (owner or trainer)
+  gates `save_event` (create or edit; tiers RECONCILED, not replaced — a tier
+  that keeps its id keeps its bookings), `publish_event`, `set_event_status`
+  and `delete_event`; `is_tenant_member` gates the door — `check_in_event_booking`
+  and `add_event_walk_in` (a walk-in "is recorded, not asked": the person is
+  standing at the desk, 14208; a showcase performer added by the desk is NOT
+  checked in). `event_counts(uuid[])` is aggregate-only and granted to anon
+  (the `session_seat_counts` pattern) so a card can say how full each side is
+  without naming anybody. `book_event` locks the event row and enforces the
+  lot: published, listed, not over, the caller onboarded and **not a member of
+  the organiser** ("you run this event — the register is yours, not a ticket";
+  the prototype's "Studios can't book", 13273); a spectator needs a live tier
+  with seats left (1–20 at a time); a participant needs an open format, a
+  partner for a duet, a name for a crew, one entry per person per format, a
+  place left; and **a priced seat or entry is refused with Step 9's sentence** —
+  "payments aren't switched on yet" — because `orders` carries class_id and
+  session_id and no Razorpay account exists. Sold counts are never stored, so
+  `cancel_event_booking` (your own, until the event ends) frees a seat by
+  arithmetic.
+- Migration `20260828210000_fix_event_blockers_array.sql`: **found by the proof
+  (check 2), not by reading.** `event_blockers` appended with
+  `out := out || 'A showcase is watched …'`; with an untyped literal on the right
+  Postgres resolves `||` to anyarray‖anyarray and parses the sentence AS an
+  array, so `publish_event` raised `malformed array literal: "A showcase is
+  watched — put tickets on sale before publishing"`. The refusal was right and
+  the words were wrong — the form never showed it (it computes the same blockers
+  client-side and disables the button) but the desk's Publish pill would have
+  printed the parser's complaint. Same signature and grants, `array_append` with
+  `::text`. **Lesson: append to a text[] with array_append or cast the literal.**
+  The proof's check 2 now anchors on the START of the sentence so the fix is
+  what it proves. Never edit the applied migration (Rule 4).
+- Repository `repositories/events.ts` (the list hydrated with `event_counts` so
+  `entered` and `sold` ride on the tiers; `findEventBySlug` for the public page —
+  RLS decides who resolves a draft; `findPublishedEvents(todayKey, city)` for
+  Discover; `findEventBookings` for the register; `findMyEventBookings` and
+  `findMyBookingsForEvent` saying `user_id = me` out loud — an organiser's
+  member reads every booking on their events, and RLS is a ceiling, not a
+  scope), `types/event.ts` (EV_TINT, TYPE_LABEL, EV_FORMATS, EVENT_CRITERIA,
+  the ceilings, `eventBlockers`, the card's arithmetic — `entryLabelOf`,
+  `eventPriceLabel`, the capacity sums), Zod actions in
+  `features/events/server-actions/events.ts` (shape only — the RPCs hold every
+  rule). `PassSheet` gained `path` and `ariaLabel` so an event's pass prints
+  /e/{slug} and calls itself "Event pass".
+- UI lifted: **`EventCard`** (2800-2925 — the kind as a filled cap in its own
+  colour, the format beside it with its mark, the poster, the date and the price,
+  TWO BARS, TWO AUDIENCES, ONE ROW — one card for Discover, the desk and the page
+  itself); **`EventsDesk`** at `/business/{id}/events` (S_eventsmod 13811 — the
+  Events hero, Create event, the live banner, Published · Draft · Completed with
+  counts, each event's lifecycle under its card); **`EventForm`** at
+  `/events/new` and `/events/{id}/edit` (S_eventform — TWO STEPS LIKE ADD CLASS:
+  the kind, the name clamped to 8 words / 64 chars, the style, when, the venue
+  that is not optional and the map link; then who competes, bracket or rounds,
+  prize money, FOR HOW MUCH AND HOW MANY per format, spectator tickets and their
+  tiers with the presets, BEFORE THIS CAN GO ON DISCOVER, Save draft / Publish);
+  **`EventPage`** at `/e/{slug}` (S_event 12810-13516 — the same player-lit
+  sleeve as the class page, THE CARD ITSELF ON THE PAGE, LIVE NOW inside its
+  days, PRIZE MONEY with the pool and 1st/2nd/3rd, WHEN with the span, VENUE
+  opening Maps, FORMAT with the ways in and "Scored on …", TICKETS as
+  radio-shaped tiers with SELLING FAST and the seats bar or ENTRY when there
+  are none, WHAT TO KNOW off `about`, POLICY in words the code keeps, the bar
+  stuck to the bottom — "Book as participant" / "Book as a spectator", Sign in
+  to book, Sold out, YOUR EVENT · Check-in / entry for a member, Event completed
+  with Full report › — the confirm sheet (ENTERING AS from the open formats, YOUR
+  PARTNER, WHICH CREW, HOW MANY with the stepper), THE PAYMENT STEP (one sheet,
+  both kinds; free confirms; priced prints Step 9's sentence and disables Pay),
+  the held ticket with Cancel ticket / Withdraw entry, the draft footer, the
+  pass behind the poster with a DOS-EV code); **`EventManager`** at
+  `/business/{id}/events/{eventId}` (S_eventmanage 13946-14340 — the sleeve, the
+  title and sub, DETAILS FIRST: the tiles, the two bars, the prize money, the
+  venue, EVENT DETAILS; PARTICIPANTS: ADD A PARTICIPANT / ADD A PERFORMER with
+  the format, REGISTRATIONS · N with a count per format, a row per entry with
+  Check in / In; SPECTATORS: gate sales while seats remain — Event full when
+  not — TICKETS · ₹ collected per tier, GATE LIST · in/all arrived); Discover's
+  **Events** tab (S_eventslist — the kind chips as URL state, the same card →
+  /e/{slug}, "No events match that yet."); the **Your tickets** shelf on
+  /my-classes (an event booking is a booking too, S_bookings 6099); the
+  register's **Events ›** chip; AppChrome titles for /e, /events, Add event,
+  Edit event, Event.
+- **Deliberately not lifted, tracked in the backlog:** the manager's Line-up /
+  Bracket / Rounds / Judges / Earnings / Refunds / Setup segments and the
+  judging sheet (no rows behind them — brackets, judges and scores need their
+  own tables; earnings and refunds need paid tickets), the rules textarea and
+  theme (no column; ABOUT is printed), the duet partner as a PeoplePicker person
+  and the crews you LEAD (typed names today — crews are Step 22), the add
+  panel's Scan QR / New user arms, poster upload from the manager, the venue's
+  amenity chips (the prototype seeds the same five for every event; we hold no
+  venue amenities), WHO ATTENDED on a completed page (names are private; the
+  counts are printed), the event waitlist and the sold-out Waitlist action, the
+  events search box (Step 23), "Studios can't book" for a studio-role viewer who
+  is not a member (only members are refused — the database's rule), and paid
+  tickets and entries through `orders`.
+- Verified: `scripts/rls-proof-events.ps1` — 16 checks green (a draft is dark to
+  the public and to a signed-in stranger while the owner reads it; **the three
+  publish blockers arrive as the prototype's whole sentences**; a rival cannot
+  publish and staff cannot save, the owner publishes and the public reads the
+  event WITH its tiers; a free seat books and the public count moves while no
+  name does; **a priced tier is refused with Step 9's sentence**; owner and staff
+  are refused a ticket to their own event; a showcase refuses an entry and sells
+  a seat; a duet needs a partner and a crew a name; a solo entry books once, is
+  refused twice, and the one place is full for the next person; **a cancelled
+  seat goes back on sale** — refused while full, booked after the cancel — and
+  nobody cancels somebody else's; reads are the holder's own and the
+  organiser's members' — rival and public read zero; the door is the
+  organiser's — self check-in refused, staff check in and out; a walk-in is
+  recorded by name with no account, checked in, and a holder cannot add one;
+  direct inserts into bookings and events are refused; duet and crew entries
+  carry their names and the public counts each format; delete is soft and the
+  organiser's). e2e extended — the owner opens the desk from the register's new
+  chip, publishes a free showcase through the two-step form (the Free entry
+  preset, 150 seats across 1 tier), the learner finds it on Discover's Events
+  tab, opens the page (no participant door on a showcase), books a seat through
+  the confirm sheet and the payment step, holds it on the page ("1 booked · 149
+  still available") and under Your tickets, and the owner opens the manager's
+  Spectators register and checks them in (GATE LIST · 1/1 arrived). typecheck /
+  lint / production build / both specs green.
+- **Environment lessons (28 Aug 2026):** (1) Windows spawns have a command-length
+  ceiling — a Bash heredoc holding a whole component fails with `ENAMETOOLONG` or
+  is silently truncated (an "unexpected EOF" that is not in the file); write big
+  files with the Write tool and patch with a Node script kept in the scratchpad.
+  (2) `next build` beside a running `next dev` wedged the dev server (the overlay
+  read "Jest worker encountered 2 child process exceptions") and the e2e failed
+  on the first page it touched; recycle the dev server before the e2e. (3) The
+  happy path is one long story and each route compiles on first visit — the
+  Playwright test timeout is 180 s now, not 90.
+
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -1305,9 +1449,9 @@ remove entries as they close.**
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
 | Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + crews with 22 |
 | Stats tab: placeholder screen today (the Inbox landed with Step 18) | HistPage | Step 25 |
-| Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (notifications, Step 24); the judge enquiry's "Pick from DanceOS" event picker (Step 21); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | Steps 21 / 24; the rest with a Razorpay account |
+| Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (notifications, Step 24); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a Razorpay account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
-| Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Real, but the studio ledger's other three sources (tickets, packages, room rentals) don't exist — today it would be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | after Step 21 (needs a second source to mean anything) |
+| Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Tickets exist since Step 21 but every one is free until the rail has an account, so today it would still be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | with a Razorpay account (paid tickets are the second source) |
 | Earnings: the Settled / In transit tiles (they count bank settlements) and the gross card's "Settles T+2 · DanceOS fee 0.9% at source" subtitle. Today the GROSS card's first two tiles read **Net** and **Asked back** — the two real states of this money — beside REFUNDED | S_earn 18014, 18037-18047 | blocked with the deductions panel below |
 | Earnings: the deductions + settlement panel only — `DanceOS fee · 0.9%`, `GST on fee · 18%`, `PAYOUTS TO YOUR BANK`, and the statements' Fee / GST deduction rows (Deductions hold only Refunds today, which is the truth) | S_earn 18156-18183 | blocked on a real Razorpay account (a platform fee that does not exist, and settlements with no account behind them) |
 | Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | blocked: needs a withholding rate the studio sets — not a tax engine |
@@ -1324,7 +1468,10 @@ remove entries as they close.**
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
 | Discover: style filter rail, sort, crews tab, studio photos, map view (follower counts landed with Step 15) | S_discover 4100+ | Steps 22 (crews), 23 (filters/sort/map), media slice (photos) |
-| Calendar: the Classes/Events switch above the sides (events do not exist yet) | SideTiles 6836 | Step 21 |
+| Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
+| Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
+| Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a Razorpay account + an `orders` extension |
+| Events: the duet partner as a person on DanceOS (PeoplePicker) and the crews you LEAD (typed names today), the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule), the events search box | S_event 13362-13420, 13040, 12985, 13273; WalkIn 13904; S_eventslist 13551 | Step 22 (crews / the picker), real scanning, Step 23 (search); the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | slot after Step 22: memberships + rentals + invoices with a Razorpay account; people / routines / settings as their own slices |
@@ -1443,6 +1590,33 @@ server action → UI, finished and verified before the next begins.
 
 Four lines per session, written when the user ends it. The step records above hold
 the technical detail; this log is the at-a-glance history.
+
+### 28 Aug 2026 — second session
+- **This session:** finished **Step 21 — events, competitions, ticketing ⚠** from
+  the scaffolding: the public event page `/e/{slug}` (S_event lifted whole — the
+  sleeve, the card on the page, PRIZE MONEY / WHEN / VENUE / FORMAT / TICKETS /
+  POLICY, the booking bar, the confirm sheet and the payment step, the held
+  ticket), the manager with Details / Participants / Spectators and real
+  check-in and walk-ins, Discover's Events tab with the kind chips, the Your
+  tickets shelf, the register's Events › chip, the chrome titles, a 16-check
+  proof and the e2e leg from the desk to Discover to the door. The proof found a
+  real bug in the applied migration — `text[] || 'literal'` made Postgres return
+  `malformed array literal` instead of the publish blocker's sentence — fixed by
+  a second migration, applied over the pooler and re-proven. Three environment
+  lessons recorded (Windows command-length ceiling → Write tool + scratchpad
+  scripts; `next build` beside `next dev` wedges the dev server; the e2e
+  timeout is 180 s).
+- **Done so far:** 20 / 29 steps (0–15, 18, 21). Live at
+  https://dancestudio-orcin.vercel.app. Free seats and entries book end to end;
+  a priced one refuses with Step 9's sentence until the Razorpay account lands.
+- **Remaining:** Steps 22–26 (crews — scoped without auditions, search,
+  notifications, analytics, WhatsApp OTP), then the parity backlog. Ops still
+  open: Razorpay account + keys (paid classes, tickets, entries and enquiry
+  advances all wait on it), a verified Resend domain, pilot invites.
+- **Next session:** Step 22 — crews, scoped against the prototype first (the
+  tracker's Next block says how). Verify with `npm run typecheck`, `npm run
+  lint`, `npm run build`, the proof via `powershell -File`, and `npx playwright
+  test` against a FRESH `npm run dev` (recycle it if a build ran beside it).
 
 ### 28 Aug 2026
 - **This session:** a fresh clone on a new Windows machine (no pnpm, new-format

@@ -361,6 +361,70 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.getByRole("button", { name: "Mark advance received" }).click();
     await expect(owner.getByTestId("enquiry-stage")).toHaveText("Advance paid");
 
+    // ---- Step 21: an event, from the desk to Discover to the door ----
+    // The owner publishes a FREE showcase (a showcase is WATCHED: tickets on, no
+    // entries) through the two-step form; the learner finds it on Discover's
+    // Events tab, opens its page, books a seat through the confirm sheet and
+    // the payment step (free, so it confirms without a rail), holds the ticket
+    // on the page and under Your tickets; the owner opens the manager's
+    // Spectators register and checks them in. Seats are COUNTED, never stored.
+    const eventTitle = `E2E Showcase ${stamp}`;
+    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.getByRole("link", { name: "Events ›" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
+    await owner.getByRole("link", { name: "Create event" }).click();
+    await owner.waitForURL(/\/events\/new$/);
+    await owner.getByRole("button", { name: "Showcase", exact: true }).click();
+    await owner.getByLabel("Event name").fill(eventTitle);
+    await owner.getByLabel("Dance style").selectOption("All styles");
+    const inTwelveDays = new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await owner.getByLabel("First day").fill(inTwelveDays);
+    await owner.getByLabel("Venue name").fill("E2E Hall");
+    await owner.getByLabel("City", { exact: true }).selectOption("Pune");
+    await owner.getByLabel("Google Maps link").fill("https://maps.google.com/?q=E2E+Hall+Pune");
+    await owner.getByRole("button", { name: "Continue", exact: true }).click();
+    // step 2 — tickets are on by default; one free tier is what a showcase needs
+    await owner.getByRole("button", { name: "Free entry · free" }).click();
+    await owner.getByRole("button", { name: "Add tier" }).click();
+    await expect(owner.getByText("150 seats across 1 tier")).toBeVisible();
+    await owner.getByRole("button", { name: "Publish event" }).click();
+    await owner.getByRole("dialog", { name: "Publish this event?" }).getByRole("button", { name: "Confirm & publish" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
+    await expect(owner.getByRole("link", { name: `${eventTitle} — Showcase` })).toBeVisible();
+
+    // the learner finds it on Discover — the same card — and books a seat
+    await learner.goto("/discover?city=Pune&tab=events");
+    await learner.getByRole("link", { name: `${eventTitle} — Showcase` }).click();
+    await learner.waitForURL(/\/e\/[a-z0-9-]+$/);
+    await expect(learner.getByText("TICKETS", { exact: true })).toBeVisible();
+    await expect(learner.getByText("0 booked · 150 still available")).toBeVisible();
+    // a showcase offers no participant door — the host builds the line-up
+    await expect(learner.getByRole("button", { name: "Register to compete" })).toHaveCount(0);
+    await learner.getByRole("button", { name: "Book as a spectator" }).click();
+    const seatSheet = learner.getByRole("dialog", { name: "Complete your booking" });
+    await expect(seatSheet.getByText(/1 LEFT|150 LEFT/)).toBeVisible();
+    await seatSheet.getByRole("button", { name: "Continue", exact: true }).click();
+    const paySheet = learner.getByRole("dialog", { name: "Confirm your booking" });
+    await expect(paySheet.getByText("Free", { exact: true })).toBeVisible();
+    await paySheet.getByRole("button", { name: "Confirm booking" }).click();
+    await expect(learner.getByTestId("held-booking")).toBeVisible();
+    await expect(learner.getByText(/You.re booked/)).toBeVisible();
+    await expect(learner.getByText("1 booked · 149 still available")).toBeVisible();
+    // and it sits under Your tickets on My classes
+    await learner.goto("/my-classes");
+    await expect(learner.getByText("Your tickets")).toBeVisible();
+    await expect(learner.getByRole("link", { name: `Open ${eventTitle}` })).toBeVisible();
+
+    // the owner runs the door: the manager's Spectators register, Check in → In
+    await owner.getByRole("link", { name: `${eventTitle} — Showcase` }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/events\/[0-9a-f-]+$/);
+    await expect(owner.getByText("EVENT DETAILS")).toBeVisible();
+    await owner.getByRole("button", { name: "Spectators" }).click();
+    await expect(owner.getByText("GATE LIST · 0/1 arrived")).toBeVisible();
+    await owner.getByRole("button", { name: "Check in E2E Learner" }).click();
+    await expect(owner.getByRole("button", { name: "Check out E2E Learner" })).toBeVisible();
+    await expect(owner.getByText("GATE LIST · 1/1 arrived")).toBeVisible();
+
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browser.newContext();
     try {

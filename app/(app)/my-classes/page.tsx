@@ -2,9 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
+import { EvIcon, bookingWords, eventCodeOf, eventTimeWords, eventWhen } from "@/features/events/components/event-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyEnrollments } from "@/repositories/enrollments";
+import { findMyEventBookings } from "@/repositories/events";
+import { EV_TINT, TYPE_LABEL } from "@/types/event";
 import type { DanceClass } from "@/types/class";
 import type { MyEnrollment } from "@/types/enrollment";
 
@@ -36,7 +39,7 @@ export default async function MyClassesPage() {
     redirect("/login");
   }
 
-  const enrollments = await findMyEnrollments(supabase);
+  const [enrollments, tickets] = await Promise.all([findMyEnrollments(supabase), findMyEventBookings(supabase, user.id)]);
 
   return (
     <div
@@ -119,6 +122,48 @@ export default async function MyClassesPage() {
           </Link>{" "}
           to get started.
         </div>
+      )}
+
+      {/* ── YOUR TICKETS (Step 21) — the seats and entries you hold, soonest first.
+          An event booking is a booking too (S_bookings 6099); each row opens the
+          event's own page, where the pass and the cancel live. ── */}
+      {tickets.length > 0 && (
+        <>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "22px 0 10px" }}>
+            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>Your tickets</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: SUB }}>
+              {tickets.length} {tickets.length === 1 ? "booking" : "bookings"}
+            </div>
+          </div>
+          {tickets.map((t) => {
+            const tint = EV_TINT[t.eventCat];
+            return (
+              <Link
+                key={t.id}
+                href={`/e/${t.eventShareSlug}`}
+                aria-label={`Open ${t.eventTitle}`}
+                style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${tint}`, borderRadius: 16, padding: "11px 13px", marginBottom: 8, textDecoration: "none", color: INK }}
+              >
+                <span style={{ width: 34, height: 34, borderRadius: 11, flexShrink: 0, background: `${tint}1f`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <EvIcon cat={t.eventCat} size={18} color={tint} />
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.eventTitle}</span>
+                  <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
+                    {eventWhen(t.startDate, t.startDate)} · {eventTimeWords(t.startTime)} · {t.venue}
+                  </span>
+                  <span style={{ display: "block", fontSize: 10, color: "var(--muted)", marginTop: 2 }}>
+                    {TYPE_LABEL[t.eventCat]} · {bookingWords(t)}
+                  </span>
+                </span>
+                <span style={{ flexShrink: 0, textAlign: "right" }}>
+                  <span style={{ display: "block", fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace', fontSize: 10, color: "var(--muted)" }}>{eventCodeOf(t.id)}</span>
+                  <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: tint, marginTop: 3 }}>{t.checkedInAt ? "Checked in" : t.amountInr > 0 ? `₹${t.amountInr}` : "Free"}</span>
+                </span>
+              </Link>
+            );
+          })}
+        </>
       )}
     </div>
   );

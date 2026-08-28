@@ -2,11 +2,15 @@ import Link from "next/link";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
+import { EventCard } from "@/features/events/components/EventCard";
+import { EvIcon } from "@/features/events/components/event-kit";
 import { DOS_CITIES, DOS_CITY_CENTROIDS, type DosCity } from "@/lib/constants/cities";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedClasses } from "@/repositories/classes";
 import { findNearbyTenants } from "@/repositories/discovery";
+import { findPublishedEvents } from "@/repositories/events";
 import { findFollowerCounts } from "@/repositories/follows";
 import {
   countEnrolledBySession,
@@ -14,6 +18,7 @@ import {
 } from "@/repositories/enrollments";
 import { findProfileById } from "@/repositories/profiles";
 import type { EnrollmentStatus } from "@/types/enrollment";
+import { EV_TINT, type EventCat } from "@/types/event";
 
 const EL = "var(--el)";
 const CARD = "var(--card)";
@@ -21,7 +26,20 @@ const TABS = [
   ["classes", "Classes"],
   ["studios", "Studios"],
   ["artists", "Artists"],
+  ["events", "Events"],
 ] as const;
+
+/* the kind chips on the events list (S_eventslist CATS2 13544) — All in the
+   app's own pink, then each kind in its colour */
+const EVENT_CATS: Array<[EventCat | "all", string, string]> = [
+  ["all", "All", "#5AC8FA"],
+  ["showcase", "Showcases", EV_TINT.showcase],
+  ["battle", "Battles", EV_TINT.battle],
+  ["tournament", "Tournaments", EV_TINT.tournament],
+];
+const isEventCat = (v: string | undefined): v is EventCat => v === "showcase" || v === "battle" || v === "tournament";
+
+const stampNowIso = (): string => new Date().toISOString();
 
 const isCity = (v: string | undefined): v is DosCity =>
   Boolean(v) && (DOS_CITIES as readonly string[]).includes(v as string);
@@ -32,7 +50,7 @@ const isCity = (v: string | undefined): v is DosCity =>
 export default async function DiscoverPage({
   searchParams,
 }: {
-  searchParams: Promise<{ city?: string; tab?: string }>;
+  searchParams: Promise<{ city?: string; tab?: string; cat?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createSupabaseServerClient();
@@ -48,10 +66,12 @@ export default async function DiscoverPage({
       : "Pune";
   const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "classes";
   const centre = DOS_CITY_CENTROIDS[city];
+  const evCat: EventCat | "all" = isEventCat(params.cat) ? params.cat : "all";
+  const wantsBusinesses = tab === "studios" || tab === "artists";
 
   const [allClasses, nearby, mine] = await Promise.all([
     tab === "classes" ? findPublishedClasses(supabase) : Promise.resolve([]),
-    tab !== "classes"
+    wantsBusinesses
       ? findNearbyTenants(supabase, {
           ...centre,
           type: tab === "studios" ? "studio" : "trainer_business",
@@ -61,6 +81,10 @@ export default async function DiscoverPage({
       ? findMyEnrolledSessionIds(supabase)
       : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
   ]);
+
+  /* Discover's Events tab (Step 21): published, still to come, in this city —
+     the same card the desk and the event page draw, opening /e/{slug} */
+  const events = tab === "events" ? (await findPublishedEvents(supabase, dayKeyOf(stampNowIso()), city)).filter((e) => evCat === "all" || e.cat === evCat) : [];
 
   const classes = allClasses.filter((c) => c.tenantCity === city);
   const counts =
@@ -73,7 +97,7 @@ export default async function DiscoverPage({
   /* the follower count sits at the foot of every business card — a number,
      never a name (Step 15) */
   const followerCounts =
-    tab !== "classes"
+    wantsBusinesses
       ? await findFollowerCounts(
           supabase,
           nearby.map((t) => t.id)
@@ -81,8 +105,8 @@ export default async function DiscoverPage({
       : new Map<string, number>();
 
   const shelfHead =
-    tab === "classes" ? "Upcoming classes" : tab === "studios" ? "Studios near you" : "Artists near you";
-  const shelfCount = tab === "classes" ? classes.length : nearby.length;
+    tab === "classes" ? "Upcoming classes" : tab === "studios" ? "Studios near you" : tab === "artists" ? "Artists near you" : "Events near you";
+  const shelfCount = tab === "classes" ? classes.length : tab === "events" ? events.length : nearby.length;
 
   return (
     <div
@@ -189,8 +213,33 @@ export default async function DiscoverPage({
             />
           );
         })}
-      {tab !== "classes" &&
+      {wantsBusinesses &&
         nearby.map((t) => <StudioCard key={t.id} tenant={t} followers={followerCounts.get(t.id) ?? 0} />)}
+
+      {tab === "events" && (
+        <>
+          {/* the kind chips (S_eventslist 13556-13561) — URL state, like the city rail */}
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", marginBottom: 12 }}>
+            {EVENT_CATS.map(([k, l, c]) => {
+              const on = evCat === k;
+              return (
+                <Link
+                  key={k}
+                  href={`/discover?city=${encodeURIComponent(city)}&tab=events${k === "all" ? "" : `&cat=${k}`}`}
+                  aria-pressed={on}
+                  style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, textDecoration: "none", fontSize: 11, fontWeight: 800, background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1px solid ${EL}` }}
+                >
+                  {k !== "all" ? <EvIcon cat={k} size={12} color={on ? LILAC : c} sw={2} /> : null}
+                  {l}
+                </Link>
+              );
+            })}
+          </div>
+          {events.map((e) => (
+            <EventCard key={e.id} event={e} href={`/e/${e.shareSlug}`} />
+          ))}
+        </>
+      )}
 
       {shelfCount === 0 && (
         <div
@@ -205,7 +254,9 @@ export default async function DiscoverPage({
         >
           {tab === "classes"
             ? `No upcoming classes in ${city} — try another city.`
-            : `Nothing within 25 km of ${city} yet.`}
+            : tab === "events"
+              ? "No events match that yet."
+              : `Nothing within 25 km of ${city} yet.`}
         </div>
       )}
     </div>

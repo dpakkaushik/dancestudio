@@ -199,6 +199,7 @@ export function ClassesManager({
           {(
             [
               ["calendar", "Calendar"],
+              ["events", "Events"],
               ["students", "Students"],
               ["rooms", "Rooms"],
               ["staff", "Staff"],

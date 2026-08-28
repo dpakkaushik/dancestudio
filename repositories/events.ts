@@ -385,3 +385,22 @@ export async function findMyEventBookings(supabase: SupabaseClient, userId: stri
     }))
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
 }
+
+/** The viewer's own live bookings on ONE event — the held-ticket block on /e/{slug}.
+ *  Says `user_id = me` out loud: an organiser's member reads every booking on
+ *  their events, and RLS is a ceiling, not a scope. */
+export async function findMyBookingsForEvent(supabase: SupabaseClient, eventId: string, userId: string): Promise<EventBooking[]> {
+  const { data, error } = await supabase
+    .from("event_bookings")
+    .select(BOOKING_SELECT)
+    .eq("event_id", eventId)
+    .eq("user_id", userId)
+    .eq("status", "booked")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(20);
+  if (error) {
+    throw new Error(`events.findMyBookingsForEvent failed: ${error.message}`);
+  }
+  return ((data ?? []) as unknown as BookingRow[]).map(toBooking);
+}

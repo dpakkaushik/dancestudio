@@ -18,7 +18,9 @@ try {
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 90_000,
+  // the happy path is one long story (Steps 6-21) and a dev server compiles each
+  // route on first visit — three minutes is head-room, not slack
+  timeout: 180_000,
   fullyParallel: false,
   retries: 0,
   reporter: [["list"]],

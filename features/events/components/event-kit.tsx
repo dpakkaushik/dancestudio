@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { EntryFormat, EventCat } from "@/types/event";
+import { FORMAT_WORD, type EntryFormat, type EventBooking, type EventCat } from "@/types/event";
 
 /** The event atoms, lifted from the prototype (EV_ICON / EV_FMT_ICON 3005-3016,
  *  EvIcon 3130, EvFormatIcon 3125): one mark per kind of event, one per way in. */
@@ -112,3 +112,21 @@ export const eventDays = (startDate: string, endDate: string): string[] => {
 };
 
 export const moneyWords = (n: number) => (n === 0 ? "Free" : `₹${n.toLocaleString("en-IN")}`);
+
+/* the same hash the class pass uses (InvoiceSheet dosHash), so an event code
+   reads like a class code — DOS-EV-1234 beside DOS-CL-1234 */
+const evHash = (s: string): number => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+};
+/** "DOS-EV-4821" — what the pass prints and the door reads */
+export const eventCodeOf = (bookingId: string): string => `DOS-EV-${String((evHash(bookingId) % 9000) + 1000)}`;
+
+/** what a booking you hold is called on the page and on the register */
+export const bookingWords = (b: EventBooking): string => {
+  if (b.kind === "spectator") return `${b.ticketTierName ?? "Ticket"}${b.qty > 1 ? ` × ${b.qty}` : ""}`;
+  const f = b.entryFormat ?? "solo";
+  const who = f === "crew" ? b.name : f === "duo" && b.partnerName ? `with ${b.partnerName}` : "";
+  return `${FORMAT_WORD[f]} entry${who ? ` · ${who}` : ""}`;
+};
