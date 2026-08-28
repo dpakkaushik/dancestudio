@@ -1,6 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
 import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
 import type { CrewSummary } from "@/types/crew";
 import { initialsOf } from "./crew-kit";
 
@@ -11,8 +13,8 @@ export function CrewCard({ crew }: { crew: CrewSummary }) {
   const g = gradientOf(crew.name);
   return (
     <Link href={`/crew/${crew.id}`} aria-label={`${crew.name} — Crew`} style={{ display: "block", background: "var(--card)", border: "1px solid var(--el)", borderRadius: 18, padding: 12, color: INK, textDecoration: "none", minWidth: 0 }}>
-      <div style={{ width: 56, height: 56, borderRadius: 16, background: `linear-gradient(135deg,${g[0]},${g[1]})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: 0.4 }}>
-        {initialsOf(crew.name)}
+      <div style={{ width: 56, height: 56, borderRadius: 16, overflow: "hidden", background: `linear-gradient(135deg,${g[0]},${g[1]})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: 0.4 }}>
+        {photoUrl(crew.photo) ? <Image src={photoUrl(crew.photo)!} alt="" width={56} height={56} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(crew.name)}
       </div>
       <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 1.4, color: "#DC2626", marginTop: 10 }}>CREW</div>
       <div style={{ fontSize: 13.5, fontWeight: 900, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crew.name}</div>

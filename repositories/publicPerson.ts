@@ -102,7 +102,7 @@ export async function setPersonFollow(supabase: SupabaseClient, userId: string, 
 export async function findPublicPerson(supabase: SupabaseClient, userId: string): Promise<PublicPerson | null> {
   const { data: profileRow, error: profileError } = await supabase
     .from("profiles")
-    .select("id, full_name, role, city")
+    .select("id, full_name, role, city, avatar_path")
     .eq("id", userId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -114,6 +114,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     fullName: (profileRow as { full_name: string }).full_name,
     role: (profileRow as { role: ProfileRole }).role,
     city: (profileRow as { city: string | null }).city,
+    avatarPath: (profileRow as { avatar_path?: string | null }).avatar_path ?? null,
   };
 
   const [statsRes, countsMap, crewsRes, teachesRes, runsRes] = await Promise.all([

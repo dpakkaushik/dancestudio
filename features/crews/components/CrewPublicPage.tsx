@@ -1,7 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
 import { dosStyleColor } from "@/lib/constants/styles";
+import { photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import type { Crew, CrewEntry, CrewMember } from "@/types/crew";
 import { EV_TINT } from "@/types/event";
@@ -29,12 +31,13 @@ const monthDay = (iso: string) => {
 
 function Person({ m, role }: { m: CrewMember; role: string }) {
   const g = gradientOf(m.name);
+  const face = photoUrl(m.avatarPath);
   return (
     /* the roster opens the people on it — the person page landed with the first
        parity slice, and a name you can tap is the whole point of a roster */
     <Link href={`/person/${m.userId}`} aria-label={`Open ${m.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", minWidth: 0, color: INK, textDecoration: "none" }}>
-      <span style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 13, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(150deg,${g[0]},${g[1]})`, color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: 0.4, fontFamily: DOS_DISPLAY }}>
-        {initialsOf(m.name)}
+      <span style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 13, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(150deg,${g[0]},${g[1]})`, color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: 0.4, fontFamily: DOS_DISPLAY }}>
+        {face ? <Image src={face} alt="" width={42} height={42} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
@@ -68,14 +71,15 @@ export function CrewPublicPage({ crew, members, entries, viewer, todayKey }: { c
   const rest = members.filter((m) => m.role !== "leader");
   const styleCol = dosStyleColor(crew.style);
   const path = `/crew/${crew.id}`;
+  const face = photoUrl(crew.photo);
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <div style={{ padding: "0 16px" }}>
         <div style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: `linear-gradient(180deg, ${RC}b8 0%, ${RC}55 46%, ${RC}18 74%, ${LILAC} 100%)` }}>
           <div style={{ display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            <div aria-label={crew.name} style={{ width: SQ, height: SQ, display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${RG[0]},${RG[1]})`, color: "#fff", fontSize: 64, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY, boxShadow: sqShadow }}>
-              {initialsOf(crew.name)}
+            <div aria-label={crew.name} style={{ width: SQ, height: SQ, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: `linear-gradient(135deg,${RG[0]},${RG[1]})`, color: "#fff", fontSize: 64, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY, boxShadow: sqShadow }}>
+              {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(crew.name)}
             </div>
           </div>
           <div style={{ padding: "10px 16px 2px" }}>

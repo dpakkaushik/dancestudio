@@ -41,6 +41,7 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
       following={following}
       signedIn={Boolean(user)}
       isMember={role !== null}
+      canEditPhoto={role === "owner" || role === "trainer"}
       scheduleHref={publicSchedulePath(profile.tenant)}
       manageHref={`/business/${tenantId}/classes`}
     />

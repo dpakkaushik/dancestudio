@@ -1,9 +1,12 @@
+import Image from "next/image";
 import Link from "next/link";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import type { PublicTenantProfile } from "@/types/publicProfile";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { enquiryTypesFor } from "@/types/enquiry";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { photoUrl } from "@/lib/media/photo";
 import { FollowButton } from "./FollowButton";
 import { ProfileShare } from "./ProfileShare";
 
@@ -100,6 +103,7 @@ export function PublicProfile({
   following,
   signedIn,
   isMember,
+  canEditPhoto = false,
   scheduleHref,
   manageHref,
 }: {
@@ -110,6 +114,8 @@ export function PublicProfile({
   signedIn: boolean;
   /** the viewer belongs to this business: no Follow, a Manage door instead */
   isMember: boolean;
+  /** an owner or trainer — the pair that may change the business's photo */
+  canEditPhoto?: boolean;
   scheduleHref: string;
   manageHref: string;
 }) {
@@ -121,6 +127,7 @@ export function PublicProfile({
   const kind = tenant.type === "studio" ? "STUDIO" : "ARTIST";
   const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
   const mapsHref = place ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${tenant.name} ${place}`)}` : null;
+  const face = photoUrl(tenant.photoPath);
 
   return (
     <div
@@ -154,6 +161,7 @@ export function PublicProfile({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                overflow: "hidden",
                 background: `linear-gradient(135deg,${RG[0]},${RG[1]})`,
                 color: "#fff",
                 fontSize: 64,
@@ -163,7 +171,7 @@ export function PublicProfile({
                 boxShadow: sqShadow,
               }}
             >
-              {initialsOf(tenant.name)}
+              {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(tenant.name)}
             </div>
           </div>
 
@@ -274,6 +282,11 @@ export function PublicProfile({
             >
               You are on this team · Manage ›
             </Link>
+          ) : null}
+          {canEditPhoto ? (
+            <div style={{ marginTop: 8 }}>
+              <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" />
+            </div>
           ) : (
             /* the things you can do TO a business share one line (10883): follow
                it, and ask it something — Call waits for a number on record */

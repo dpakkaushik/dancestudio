@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { CrewI } from "@/features/crews/components/crew-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -5,7 +6,9 @@ import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@
 import { CREW_ROLE_WORD } from "@/types/crew";
 import type { ProfileRole } from "@/types/profile";
 import { SIDE_TINT, SIDE_VERB, hoursWords } from "@/types/stats";
+import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { PersonFollowButton } from "./PersonFollowButton";
 import { ProfileShare } from "./ProfileShare";
 import { fmtFollowers } from "./PublicProfile";
@@ -95,6 +98,7 @@ export function PublicPersonPage({ person, isMe, following, signedIn }: { person
   const totalSessions = stats.sessionsConducted + stats.sessionsAssisted + stats.sessionsAttended;
   const totalHours = Math.round((stats.hoursConducted + stats.hoursAssisted + stats.hoursAttended) * 10) / 10;
   const from = monthWords(stats.firstSession);
+  const face = photoUrl(profile.avatarPath);
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -102,8 +106,10 @@ export function PublicPersonPage({ person, isMe, following, signedIn }: { person
         {/* ── the profile, lit like a player ── */}
         <div style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: `linear-gradient(180deg, ${RC}b8 0%, ${RC}55 46%, ${RC}18 74%, ${LILAC} 100%)` }}>
           <div style={{ display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            <div aria-label={profile.fullName} style={{ width: SQ, height: SQ, display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${ring[0]},${ring[1]})`, color: "#fff", fontSize: 64, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY, boxShadow: sqShadow }}>
-              {initialsOf(profile.fullName)}
+            <div aria-label={profile.fullName} style={{ width: SQ, height: SQ, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: `linear-gradient(135deg,${ring[0]},${ring[1]})`, color: "#fff", fontSize: 64, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY, boxShadow: sqShadow }}>
+              {/* a cover, not an avatar (10577) — the photo fills the square and
+                  the initials are what stands there until there is one */}
+              {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(profile.fullName)}
             </div>
           </div>
           <div style={{ padding: "10px 16px 2px" }}>
@@ -151,9 +157,14 @@ export function PublicPersonPage({ person, isMe, following, signedIn }: { person
         {/* the one thing you can do to a person, or the door to your own page */}
         <div style={{ marginTop: 12 }}>
           {isMe ? (
-            <Link href="/stats" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
-              This is you · Your record ›
-            </Link>
+            <>
+              <Link href="/stats" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
+                This is you · Your record ›
+              </Link>
+              <div style={{ marginTop: 8 }}>
+                <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
+              </div>
+            </>
           ) : (
             <PersonFollowButton userId={profile.id} initialFollowing={following} initialFollowers={person.followers} accent={RC} signedIn={signedIn} />
           )}

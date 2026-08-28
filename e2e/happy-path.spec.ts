@@ -735,6 +735,21 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.waitForURL(/\/person\/[0-9a-f-]+$/);
     await expect(trainer.getByRole("link", { name: /This is you/ })).toBeVisible();
     await expect(trainer.getByRole("button", { name: "Follow" })).toHaveCount(0);
+    // and the photo: the file goes from THIS browser straight to Storage with the
+    // trainer's own session (the proof covers the rules; only a browser can cover
+    // the upload), the row records the path, and the square stops being initials
+    await expect(trainer.locator("img")).toHaveCount(0);
+    // the control says "Add a photo" until there is one, and "Change your photo" after
+    await trainer.getByLabel("Add a photo").setInputFiles({
+      name: "face.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
+    });
+    await expect(trainer.locator("img").first()).toBeVisible({ timeout: 20_000 });
+    await expect(trainer.getByLabel("Change your photo")).toBeAttached();
+    // taking it down puts the initials back
+    await trainer.getByRole("button", { name: "Remove the photo" }).click();
+    await expect(trainer.locator("img")).toHaveCount(0);
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browserRef.newContext();
     try {

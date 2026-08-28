@@ -27,6 +27,8 @@ export interface Crew {
 
 export interface CrewMember {
   id: string;
+  /** the member's own photo, so a roster shows faces (parity slice 2) */
+  avatarPath?: string | null;
   crewId: string;
   userId: string;
   role: CrewRole;

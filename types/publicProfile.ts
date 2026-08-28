@@ -13,6 +13,8 @@ export interface PublicTenant {
   /** when the business joined DanceOS — the honest stand-in for the prototype's
    *  founding year, which no field holds yet */
   createdAt: string;
+  /** a path in the public media bucket, or null for the business's gradient */
+  photoPath: string | null;
 }
 
 /** Somebody confirmed on one of the business's published classes — the

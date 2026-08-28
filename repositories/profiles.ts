@@ -6,15 +6,17 @@ interface ProfileRow {
   full_name: string;
   role: ProfileRole;
   city: string | null;
+  avatar_path?: string | null;
 }
 
-const PROFILE_COLUMNS = "id, full_name, role, city";
+const PROFILE_COLUMNS = "id, full_name, role, city, avatar_path";
 
 const toProfile = (row: ProfileRow): Profile => ({
   id: row.id,
   fullName: row.full_name,
   role: row.role,
   city: row.city,
+  avatarPath: row.avatar_path ?? null,
 });
 
 export async function findProfileById(

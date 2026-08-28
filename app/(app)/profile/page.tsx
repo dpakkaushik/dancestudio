@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -5,6 +6,8 @@ import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { findMyFollowing } from "@/repositories/follows";
 import { findProfileById } from "@/repositories/profiles";
 import { signOutAction } from "@/features/auth/server-actions/auth";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
 import type { ProfileRole } from "@/types/profile";
 
@@ -45,6 +48,7 @@ export default async function ProfilePage() {
   const following = await findMyFollowing(supabase);
 
   const RG = DOS_RINGS[profile.role];
+  const face = photoUrl(profile.avatarPath);
   const RC = RG[3];
 
   return (
@@ -79,10 +83,15 @@ export default async function ProfilePage() {
             fontWeight: 900,
             letterSpacing: 1,
             fontFamily: DOS_DISPLAY,
+            overflow: "hidden",
             boxShadow: "0 0 34px 10px rgba(0,0,0,.28), 0 14px 30px -6px rgba(0,0,0,.6)",
           }}
         >
-          {initials(profile.fullName)}
+          {face ? <Image src={face} alt="" width={86} height={86} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initials(profile.fullName)}
+        </div>
+        {/* the one place a person changes their own picture (prototype 10619) */}
+        <div style={{ marginTop: 10 }}>
+          <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
         </div>
         <div style={{ fontSize: 24, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.8, marginTop: 14 }}>
           {profile.fullName}

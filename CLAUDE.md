@@ -31,6 +31,32 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Parity slice 2 landed 28 Aug 2026: photos.** Every profile, crew and business
+  page drew initials on a gradient where a picture belongs. Migration
+  `20260829230000_media_photos.sql`: one Supabase Storage bucket, `media`,
+  **public for reads** (these images exist to be looked at, on pages the public
+  already reads, and a signed URL per image would make a public page depend on a
+  round trip) and **path-scoped for writes** — `avatars/{user}` only by that
+  person, `tenants/{tenant}` only by its owner or a trainer, `crews/{crew}`
+  only by its leader, nothing anywhere else, nothing at all from a stranger; 5 MB
+  and JPEG/PNG/WebP enforced by the bucket itself. Three columns
+  (`profiles.avatar_path`, `tenants.photo_path`, the existing
+  `crews.photo`) and three RPCs (`set_my_avatar`,
+  `set_tenant_photo`, `set_crew_photo`) that re-check the same authority
+  AND that the path sits in the folder that authority owns — so **a row can never
+  point at somebody else's file**. The FILE never travels through a server
+  action: `PhotoPicker` uploads straight from the browser with the person's
+  own session and sends only the PATH; a replacement takes a NEW random path so a
+  cached old picture can never be what somebody is shown after they change it.
+  `next/image` with the storage host allowed, so every `<img>` warning is
+  gone rather than silenced. Faces drawn on: the Profile tab (with the picker),
+  the person page (picker for its owner), the crew page and its roster, the crew
+  desk (picker for the leader) and its member rows, Discover's crew card, the
+  studio/artist page (picker for owner or trainer). **Not** posters (a different
+  thing — the prototype's crop-and-frame PosterCropper) and **not** the albums
+  grid; both stay on the backlog rather than being half-built. 9-check proof; the
+  e2e uploads a real PNG from the browser and caught a read (`findPublicPerson`)
+  that had not been given the new column.
 - **Parity slice 1 landed 28 Aug 2026: person pages + following a person.** The
   roadmap being finished, this is the first row off the backlog, chosen because it
   blocks nothing and **three built screens already wanted it**: the crew desk's
@@ -395,7 +421,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   deliberately removed, in its own words, line-referenced in the re-scope below).
   What is left is the table further down this file, and the honest order is by
   what blocks nothing. **Person pages landed 28 Aug 2026** (with person-follows
-  and the search's People section), so next is the **media slice** (poster uploads, studio and crew photos, profile pictures —
+  and the search's People section) and **photos landed the same day** (a face on
+  a person, a crew and a business; posters and albums stay), so next is
+  **S_managed** — "everything you manage" — then **web push** (VAPID keys + a
+  service worker + a subscriptions table, which makes Step 24's first channel
+  switch real), then the **poster uploads** (PosterCropper's crop-and-frame flow
+  onto the same bucket), and the calendar / crew rows that are a button each. Not
+  the **media slice** (poster uploads, studio and crew photos, profile pictures —
   Supabase Storage, and it closes rows on six screens), **S_managed** ("everything
   you manage"), **web push** (VAPID keys + a service worker + a subscriptions
   table, which makes Step 24's first channel switch real), and the **calendar and
@@ -1610,6 +1642,75 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Parity slice 2 — photos ✅ (28 Aug 2026, no step number)
+- **What it gives a picture to, and what it deliberately does not.** A person
+  (their own), a crew (its leader's) and a business (its owner's or a trainer's) —
+  the three entities with an obvious owner and an obvious screen, and the six
+  places that drew initials on a gradient where a face belongs. NOT class and
+  event posters: a poster is a different thing — the prototype draws three
+  designs and only then offers an upload through PosterCropper's crop-and-frame
+  flow (6604) — and NOT the albums grid (11093), a third thing again. Both stay on
+  the backlog rather than being half-built here.
+- **One bucket, public on purpose, path-scoped for writes.** Migration
+  `20260829230000_media_photos.sql` creates `media` (5 MB,
+  JPEG/PNG/WebP — enforced by the bucket, not only by the browser). Reads are
+  public: these images exist to be looked at, on pages the public already reads,
+  and a signed URL that expires would make a public page depend on a round trip
+  per image. Writes are decided by the PATH: `avatars/{user id}` only by that
+  person, `tenants/{tenant id}` only by an owner or trainer of that business
+  (Step 11's pair), `crews/{crew id}` only by that crew's leader
+  (`is_crew_leader`, Step 22) — insert and delete alike — and **nothing may be
+  written outside those three folders at all**, by anybody. A stranger writes
+  nothing anywhere.
+- **The row that points at a file is set by an RPC that checks the same authority
+  AND the folder.** `set_my_avatar`, `set_tenant_photo` and
+  `set_crew_photo` each refuse a path outside the folder their authority owns
+  ("that file is not in your own folder" / "does not belong to this business" /
+  "does not belong to this crew"), so a row can never be made to point at a file
+  its owner does not own — the proof tries every cross-pairing. Null clears.
+- **The file never travels through a server action.** `PhotoPicker`
+  (`features/media/components`) uploads straight from the browser to Storage
+  with the person's own session, so the path-scoped policy is what decides and a
+  5 MB image never rides a server action; only the resulting PATH is sent, and if
+  the RPC refuses it the orphan file is deleted again. A replacement takes a
+  **new random path** (`lib/media/photo.ts`) rather than overwriting — the
+  proof found that a deleted object is still served from the CDN for a while, and
+  a cached old picture must never be what somebody is shown after they change it.
+  The browser refuses a wrong type or size before spending anybody's data.
+- **`next/image`, with the storage host allowed** in `next.config.ts`
+  (one pattern, one bucket path, read from the same env var the client uses), so
+  every `<img>` lint warning is gone rather than silenced; every size is fixed
+  and known, so `width`/`height` rather than `fill`.
+- Faces drawn on: the **Profile tab** (with the picker — "the one place a person
+  changes their own picture", 10619), the **person page** (picker for its owner
+  beside "This is you"), the **crew page** and its roster rows, the **crew desk**
+  (picker for the leader) and its member rows, Discover's **crew card**, and the
+  **studio / artist page** (picker for an owner or trainer). Reads thread
+  `avatar_path` / `photo_path` through `Profile`, `Tenant`,
+  `CrewMember`, `PublicTenant` and the public person.
+- **Deliberately not lifted, tracked in the backlog (Rule 12):** poster uploads
+  and PosterCropper's crop-and-frame flow, the albums / photo grid and the
+  swipeable cover (10577), the Discover studio card's cover strip photo, and a
+  crop step for these squares (`object-fit: cover` does what every one of
+  these places wanted from one).
+- Verified: `scripts/rls-proof-media.ps1` — 9 checks green, with a real PNG
+  uploaded the way the browser does it (your own folder and only yours; nothing
+  outside the three folders and nothing from a stranger; the RPC records a path in
+  your folder and refuses one in somebody else's; the photo reads publicly; a
+  business's folder is its owner's to write and record and a bystander is refused
+  both; a crew's is its leader's; **no row can point at another entity's file**,
+  all three cross-pairings refused; clearing empties the row, somebody else cannot
+  delete the file, its owner can and the folder no longer lists it; a text file is
+  refused by the bucket's own mime list). e2e: the trainer uploads a PNG from the
+  browser on their own person page, the square stops being initials, the control
+  turns from "Add a photo" to "Change your photo", and Remove puts the initials
+  back — **and that step caught a real bug**: `findPublicPerson` selected its
+  own column list and had never been given `avatar_path`, so the upload
+  succeeded and the page did not show it. typecheck / lint / production build /
+  both specs green. **Lesson:** a deleted Storage object is still served from the
+  public CDN for a while — assert the object listing, not the URL, and never
+  overwrite a path a browser may have cached.
+
 ### Parity slice 1 — person pages + following a person ✅ (28 Aug 2026, no step number)
 - **Why this one first.** The roadmap is finished, so the order is now the
   backlog's own: what blocks nothing, and what other screens are already waiting
@@ -2337,7 +2438,7 @@ nothing to lift.
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
-| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **Person pages landed 28 Aug 2026**; what stays open on them: a PUBLIC person page (a decision about somebody else's data), the photo, About / age / experience (no fields), Call and the enquiry sheet, the albums tabs, the rank ladder — and **following a CREW** (follows now names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; a follows extension for crews; the rest need fields or a product decision |
+| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **Person pages landed 28 Aug 2026**; what stays open on them: a PUBLIC person page (a decision about somebody else's data), the photo, About / age / experience (no fields), Call and the enquiry sheet, the albums tabs, the rank ladder — and **following a CREW** (follows now names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | bio with a fields slice (photos landed 28 Aug 2026); a follows extension for crews; the rest need a product decision |
 | Stats: the metal tier / rank ladder on the hero (`dosTierOf` — a ladder nobody has designed; the hero shows the real place instead), the History library's city / room / provider / assistant filters and its search box (side and style ship), the **Wins** metric and a crew's battle record (both need scoring), the "updated daily" cadence and the 10% monthly decay (a product rule nobody has decided), and the studio-side S_reports / S_reportdetail | S_profiletab 9862-10520, 9610-9707; S_reportdetail | scoring with a later event slice; the rest need a product decision or their own slice |
 | Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (a nudge — buildable on Step 24's `notifications` table now); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
@@ -2348,7 +2449,8 @@ nothing to lift.
 | Earnings: the statement sub-line counts payments where the prototype counts bank payouts; the earnings period state is component state, not the prototype's `__DOSEARNSTATE` memory across drill-ins | S_earn 18062, 17880 | with the settlement panel above; the memory if a drill-in ever leaves the page |
 | Earnings: "Open invoices" (the past-months view's button) and the ALSO COLLECTED enquiries card | S_earn 18084, 18124 | later slices (invoices, event enquiry desk) |
 | Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
-| Poster uploads (PosterCropper + Storage) and the "None" poster — the three drawn designs ship | PosterCropper, dosPosterOf 129-135 | media slice (Step 20 rails) |
+| Poster uploads (PosterCropper's crop-and-frame flow, 6604) onto the `media` bucket — the bucket, its policies and `next/image` exist since the photos slice; what is left is a `posters/{tenant}/` folder rule, a column on classes and events, the cropper, and the "None" poster | PosterCropper 6604, dosPosterOf 129-135 | a posters slice, on the photos slice's bucket |
+| Photos, what the photos slice left: the albums / photo grid and the swipeable cover (10577, 11093), the Discover studio card's cover-strip photo, a crop step for the squares (`object-fit: cover` stands in) | S_profiletab 10577-10620, 11093, StudioCard 4323 | an albums slice |
 | Invite by **mobile** and by QR **scan** — the invite handle is an email, and inviting by mobile needs two things Step 26 did not add: a mobile number ON the profile (nothing stores one today; phone sign-in identifies, it does not record) and real OTP delivery. The QR is drawn, not scannable | invite sheet 18435 "QR / mobile / search" | a profile-fields slice + the Twilio work; the camera separately |
 | Staff & permissions: per-person permission grants (the prototype's "enquiries ✓ scanner ✓ classes ✓" are per-role words today, not individually toggled) | settings 18428-18429 | later slice |
 | Leads: the event-enquiry desk (celebrations/corporate/judge/collab types, quotes, in vs out) — the STUDENT pipeline ships | ENQ_TYPES 4902, S_enqdetail 5380 | later slice |
@@ -2357,7 +2459,7 @@ nothing to lift.
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
-| Discover: the map view (studios still sit at their city centroid — it needs real addresses), studio photos, long-press a style tile to open the style page (`S_styleinfo` unbuilt), `__DOSNAVHIDE` while searching (our chrome is per-route) — the search dropdown's People section landed with person pages | S_discover 4100+, 4611, 4551 | a map/media slice |
+| Discover: the map view (studios still sit at their city centroid — it needs real addresses), the studio card's cover-strip photo (the business photo exists; the card does not draw it yet), long-press a style tile to open the style page (`S_styleinfo` unbuilt), `__DOSNAVHIDE` while searching (our chrome is per-route) — the search dropdown's People section landed with person pages | S_discover 4100+, 4611, 4551 | a map/media slice |
 | Crews: the desk's Battles won / Points tiles (results need scoring — no table holds a score) and its "See crew ranking" button (the board exists since Step 25 at `/stats?tab=charts&seg=crew`; the button is not drawn), practice attendance and pay per performance on a member row, the photo/name door to a person's page, Follow a crew (follows target tenants), Enquiry a crew, a crew photo | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | scoring with a later event slice; person pages; a follows extension; media slice |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
@@ -2515,7 +2617,12 @@ the technical detail; this log is the at-a-glance history.
   the search's People section, and the three doors earlier steps drew with nowhere
   to go. 12-check proof — and re-running the older proofs caught a regression it
   had caused: two FKs into `profiles` make an unqualified embed ambiguous, which
-  had silently broken Step 15's Followers read. Step 24: two migrations — `notifications` +
+  had silently broken Step 15's Followers read. Then **parity slice 2 — photos**:
+  one public, path-scoped Storage bucket, three RPCs that refuse a row pointing at
+  anybody else's file, a browser-to-Storage picker, `next/image`, and faces on
+  six screens. 9-check proof; the e2e's real upload caught a read that had not
+  been given the new column. And the happy path was split into nine serial
+  segments (2.3 min total, longest 35 s) with the timeout brought back to 120 s. Step 24: two migrations — `notifications` +
   `notification_prefs` with eight TRIGGERS that raise a notification where the
   fact happens (so every path that writes the fact raises it, and `notify` is
   revoked from every client role and can never break the fact), then a
@@ -2546,8 +2653,8 @@ the technical detail; this log is the at-a-glance history.
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
 - **Done so far:** 25 / 29 steps (0–15, 18, 21–26) — **every step the prototype
-  describes**; 16, 17, 19 and 20 are features it deliberately removed — plus the
-  first parity slice (person pages). Live at
+  describes**; 16, 17, 19 and 20 are features it deliberately removed — plus two
+  parity slices (person pages, photos). Live at
   https://dancestudio-orcin.vercel.app once this push deploys. The hosted project
   also carries a demo world (`node scripts/demo-data.js seed | status | wipe`).
 - **Remaining:** the parity backlog, in the order the tracker's Next block now
@@ -2557,11 +2664,12 @@ the technical detail; this log is the at-a-glance history.
   invite-by-mobile. Ops the user owns: Cashfree KYC + Easy Split + the webhook
   registration, a verified Resend domain, Twilio + Meta + DLT for real OTP
   delivery, pilot invites.
-- **Next session:** the **media slice** — poster uploads (PosterCropper +
-  Storage), studio / crew photos and profile pictures. It closes rows on six
-  screens, and every one of them currently draws initials on a gradient where a
-  picture belongs. Consider splitting the happy-path spec first: it is one 3.5-
-  minute story now, against a 300 s timeout.
+- **Next session:** **S_managed** — "everything you manage" (the prototype's
+  hub over everything a person runs and is on), then **web push** (a
+  `push_subscriptions` table + VAPID keys + a service worker, making Step 24's
+  first channel switch real), then **poster uploads** onto the photos slice's
+  bucket. The happy path is nine segments now; add a segment per slice rather
+  than growing one.
   Verify with `npm run typecheck`, `npm run lint`, `npm run build`
   (with nothing on :3000), the proofs through the PowerShell tool, and
   `npx playwright test` against a FRESH `npm run dev`.

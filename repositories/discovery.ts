@@ -3,6 +3,8 @@ import type { TenantType } from "@/types/tenant";
 
 export interface NearbyTenant {
   id: string;
+  /** filled in by the caller from the tenants it just listed (parity slice 2) */
+  photoPath?: string | null;
   type: TenantType;
   name: string;
   area: string | null;

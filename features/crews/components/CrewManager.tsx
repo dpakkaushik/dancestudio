@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +13,9 @@ import {
   type CrewActionResult,
 } from "@/features/crews/server-actions/crews";
 import { EvIcon } from "@/features/events/components/event-kit";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
+import { photoUrl } from "@/lib/media/photo";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { CREW_GRAD, CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
 import { EV_TINT } from "@/types/event";
@@ -70,13 +73,18 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
     ["battles", "Battle record"],
   ];
   const pageHref = `/crew/${crew.id}`;
+  const face = photoUrl(crew.photo);
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       {/* the strip: the photo and the name, both opening the crew's own page (BizShell) */}
       <div style={{ margin: "12px 16px 12px", borderRadius: 22, padding: "16px 16px 14px", background: `linear-gradient(135deg,${CREW_GRAD[0]},${CREW_GRAD[1]})`, color: "#fff", display: "flex", alignItems: "center", gap: 12 }}>
-        <Link href={pageHref} aria-label={`Open ${crew.name}'s profile`} style={{ display: "block", borderRadius: 16, overflow: "hidden", border: "2px solid rgba(255,255,255,.55)", flexShrink: 0 }}>
-          <CrewFace name={crew.name} size={52} grad={["rgba(255,255,255,.2)", "rgba(255,255,255,.2)"]} radius={14} />
+        <Link href={pageHref} aria-label={`Open ${crew.name}'s profile`} style={{ display: "block", width: 52, height: 52, borderRadius: 16, overflow: "hidden", border: "2px solid rgba(255,255,255,.55)", flexShrink: 0 }}>
+          {face ? (
+            <Image src={face} alt="" width={52} height={52} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          ) : (
+            <CrewFace name={crew.name} size={52} grad={["rgba(255,255,255,.2)", "rgba(255,255,255,.2)"]} radius={14} />
+          )}
         </Link>
         <Link href={pageHref} style={{ flex: 1, minWidth: 0, color: "#fff", textDecoration: "none" }}>
           <div style={{ fontSize: 19, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crew.name}</div>
@@ -84,6 +92,11 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
             {crew.style} · {crew.city}
           </div>
         </Link>
+      </div>
+      {/* the leader is the only person who may change the crew, so the picker
+          lives on the desk rather than the public page */}
+      <div style={{ padding: "0 16px 12px" }}>
+        <PhotoPicker owner={{ kind: "crew", id: crew.id }} hasPhoto={Boolean(crew.photo)} label="Change the crew photo" />
       </div>
 
       <div style={{ padding: "0 16px" }}>
@@ -133,8 +146,11 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
                         does". The person page landed with the first parity slice, so
                         both the face and the name open it. */}
                     <Link href={`/person/${m.userId}`} aria-label={`Open ${m.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, color: INK, textDecoration: "none" }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 11, background: `linear-gradient(135deg,${rc},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
-                        {m.name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+                      <div style={{ width: 36, height: 36, borderRadius: 11, overflow: "hidden", background: `linear-gradient(135deg,${rc},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
+                        {photoUrl(m.avatarPath) ? <Image src={photoUrl(m.avatarPath)!} alt="" width={36} height={36} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}
+                        {photoUrl(m.avatarPath) ? null : (
+                        <>{m.name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase()}</>
+                        )}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 900 }}>{m.name}</div>

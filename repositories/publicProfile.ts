@@ -19,6 +19,7 @@ interface TenantRow {
   area: string | null;
   city: string | null;
   created_at: string;
+  photo_path?: string | null;
 }
 
 interface StyleRow {
@@ -39,7 +40,7 @@ interface FacultyRow {
 export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, type, name, area, city, created_at")
+    .select("id, type, name, area, city, created_at, photo_path")
     .eq("id", tenantId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -50,7 +51,7 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
     return null;
   }
   const row = data as TenantRow;
-  return { id: row.id, type: row.type, name: row.name, area: row.area, city: row.city, createdAt: row.created_at };
+  return { id: row.id, type: row.type, name: row.name, area: row.area, city: row.city, createdAt: row.created_at, photoPath: row.photo_path ?? null };
 }
 
 export async function findPublicTenantProfile(
@@ -73,7 +74,7 @@ export async function findPublicTenantProfile(
       .limit(MAX_CLASSES),
     supabase
       .from("class_claims")
-      .select("user_id, kind, profiles (full_name, city), classes!inner (tenant_id, status)")
+      .select("user_id, kind, profiles (full_name, city, avatar_path), classes!inner (tenant_id, status)")
       .eq("classes.tenant_id", tenantId)
       .eq("classes.status", "published")
       .eq("status", "confirmed")

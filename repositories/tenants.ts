@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Tenant, TenantType } from "@/types/tenant";
 
 interface TenantRow {
+  photo_path?: string | null;
   id: string;
   type: TenantType;
   name: string;
@@ -9,7 +10,7 @@ interface TenantRow {
   city: string | null;
 }
 
-const TENANT_COLUMNS = "id, type, name, area, city";
+const TENANT_COLUMNS = "id, type, name, area, city, photo_path";
 
 const toTenant = (row: TenantRow): Tenant => ({
   id: row.id,
@@ -17,6 +18,7 @@ const toTenant = (row: TenantRow): Tenant => ({
   name: row.name,
   area: row.area,
   city: row.city,
+  photoPath: row.photo_path ?? null,
 });
 
 /** Atomic create: tenant + owner membership via the create_tenant_with_owner RPC. */

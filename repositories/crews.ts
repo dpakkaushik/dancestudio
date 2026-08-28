@@ -25,7 +25,7 @@ interface MemberRow {
   status: "asked" | "confirmed" | "rejected";
   sort: number;
   created_at: string;
-  profiles: { full_name: string; city: string | null } | null;
+  profiles: { full_name: string; city: string | null; avatar_path?: string | null } | null;
 }
 interface MyAskRow extends MemberRow {
   crews: { name: string; city: string; leader_id: string; deleted_at: string | null; profiles: { full_name: string } | null } | null;
@@ -56,7 +56,7 @@ interface PartnerRow {
 }
 
 const CREW_COLUMNS = "id, name, city, style, leader_id, photo, created_at";
-const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city)";
+const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city, avatar_path)";
 
 const toCrew = (r: CrewRow): Crew => ({
   id: r.id,
@@ -77,6 +77,7 @@ const toMember = (r: MemberRow): CrewMember => ({
   createdAt: r.created_at,
   name: r.profiles?.full_name ?? "Someone",
   city: r.profiles?.city ?? null,
+  avatarPath: r.profiles?.avatar_path ?? null,
 });
 
 const currentUserId = async (supabase: SupabaseClient): Promise<string | null> => {
