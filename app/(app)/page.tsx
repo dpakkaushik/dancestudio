@@ -294,8 +294,16 @@ export default async function HomePage() {
         )}
 
         {/* ── run your business (prototype BizSection, 7342-7344) ── */}
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB, padding: "16px 0 8px" }}>
-          RUN YOUR BUSINESS
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "16px 0 8px" }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB }}>RUN YOUR BUSINESS</div>
+          {/* the door to everything you manage (prototype 7150-7154) — offered only to
+              somebody who runs something: "offering it to somebody who manages nothing
+              is a door onto an empty room" */}
+          {tenants.length > 0 ? (
+            <Link href="/managed" aria-label="Everything you manage" style={{ fontSize: 11.5, fontWeight: 800, color: "#5AC8FA", textDecoration: "none" }}>
+              Manage ›
+            </Link>
+          ) : null}
         </div>
 
         {/* somebody has asked you onto their team, and only you can answer —

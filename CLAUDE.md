@@ -31,6 +31,26 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Parity slice 3 landed 28 Aug 2026: S_managed — "everything you manage".**
+  The prototype's hub over what a person RUNS (6332-6378): one segmented control
+  (All · Classes · Events), the WHAT YOU RUN shelf with its count, and a row per
+  listing that IS the session's own card with its desk behind it. **No
+  migration, no RPC, no policy** — like Step 14, it is rows the app already
+  keeps, read from the side that runs them: `findClassesByTenants` and
+  `findEventsByTenants` (one query per kind, `IN` the ids of the
+  businesses the person belongs to) composed by `repositories/managed.ts`,
+  seats off the aggregate-only `session_seat_counts`. The spine is
+  MEMBERSHIP (`findMyTenants` says `user_id = auth.uid()` out loud)
+  and the reads are scoped to those ids on purpose: RLS is a ceiling, and a
+  person who can read every listed studio's published classes runs none of them
+  — the proof reads a published class as a stranger and then gets NOTHING from
+  the managed read. Sorted coming-first, then over, then undated. Route
+  `/managed` with the filter as URL state (`?kind=class|event`); the
+  Home deck's RUN YOUR BUSINESS head gained the **Manage ›** door, offered only
+  to somebody who runs something ("a door onto an empty room", 7135), and a
+  person who runs nothing gets the honest empty room with a Set up a business
+  door rather than a redirect. Class rows open the roster desk, event rows the
+  event manager. 8-check proof; a tenth e2e segment.
 - **Parity slice 2 landed 28 Aug 2026: photos.** Every profile, crew and business
   page drew initials on a gradient where a picture belongs. Migration
   `20260829230000_media_photos.sql`: one Supabase Storage bucket, `media`,
@@ -421,12 +441,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   deliberately removed, in its own words, line-referenced in the re-scope below).
   What is left is the table further down this file, and the honest order is by
   what blocks nothing. **Person pages landed 28 Aug 2026** (with person-follows
-  and the search's People section) and **photos landed the same day** (a face on
-  a person, a crew and a business; posters and albums stay), so next is
-  **S_managed** — "everything you manage" — then **web push** (VAPID keys + a
-  service worker + a subscriptions table, which makes Step 24's first channel
-  switch real), then the **poster uploads** (PosterCropper's crop-and-frame flow
-  onto the same bucket), and the calendar / crew rows that are a button each. Not
+  and the search's People section), **photos landed the same day** (a face on
+  a person, a crew and a business; posters and albums stay) and **S_managed
+  landed the same day** (one list over every business you run), so next is
+  **web push** (VAPID keys + a service worker + a subscriptions table, which
+  makes Step 24's first channel switch real), then the **poster uploads**
+  (PosterCropper's crop-and-frame flow onto the same bucket), and the calendar /
+  crew rows that are a button each. Not
   the **media slice** (poster uploads, studio and crew photos, profile pictures —
   Supabase Storage, and it closes rows on six screens), **S_managed** ("everything
   you manage"), **web push** (VAPID keys + a service worker + a subscriptions
@@ -1642,6 +1663,77 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Parity slice 3 — S_managed, "everything you manage" ✅ (28 Aug 2026, no step number)
+- **What the prototype's screen is** (S_managed 6332-6378, behind the Home
+  deck's "Manage" door at 7150-7154 and the empty day's "See everything you
+  manage" at 7173): one list of every class and every event a person runs,
+  under All · Classes · Events, the shelf headed WHAT YOU RUN with "N listings"
+  at its right, each row the session's own card — the prototype's own
+  correction says why: "the row IS the session card, so it needs the session's
+  own fields — it used to get only a title and a status, which is why every
+  listing read 'All-day' with no style, date or price" — and "Nothing here yet ·
+  Classes and events you create show up here." when there is nothing.
+- **No migration, no RPC, no policy.** A managed listing is a class or an event
+  of a business the person belongs to, seen from the side that runs it — rows
+  Steps 3 and 21 already keep, under the RLS they already set. Two reads were
+  added, one per kind, each taking the LIST of business ids and querying
+  `IN` them (`findClassesByTenants`, `findEventsByTenants`),
+  composed by `repositories/managed.ts`: memberships first
+  (`findMyTenants`, which says `user_id = auth.uid()` out loud), then
+  both kinds in parallel, then seats off `session_seat_counts` — the
+  aggregate-only RPC, so the list never reads a booking row. **Scoped by
+  membership on purpose, not by what RLS lets through:** the public policy on
+  `classes` lets anybody read a listed studio's published class (Discover
+  needs it), and none of those is something this person RUNS. RLS is a ceiling,
+  not a scope — the fifth time this file has had to say it, and the proof
+  demonstrates it directly (check 3 reads the published class as a stranger;
+  check 4 gets nothing from the managed read). Order: what is coming, soonest
+  first; then what is over, most recent first; a legacy class with no dated
+  session last.
+- **The filter is the URL**, the way Discover's are (Step 23): `/managed`,
+  `/managed?kind=class`, `/managed?kind=event` — three links, the
+  pressed one solid, so a narrowed list has an address and BACK returns to it.
+  `types/managed.ts` holds the discriminated union (a class row carries
+  the class and its seat count, an event row carries the event), the three
+  filter words and the parser.
+- **UI** `features/managed/components/ManagedScreen.tsx`: the segmented
+  control, WHAT YOU RUN with the count, and per row a meta line — the status as
+  a dot and a word (Draft / Live / Over), the kind in its own tint, the business
+  when the person runs more than one, and **Manage ›** naming the listing — over
+  the app's one class tile (`ClassTile`, opening the roster desk) or the one
+  event card (`EventCard`, opening the event manager). The prototype's
+  CalTile in `manage` mode goes the same two places. The empty room offers
+  "Set up a business" to somebody with none and "Open the classes desk" to
+  somebody whose businesses have nothing yet.
+- **Doors.** Home's RUN YOUR BUSINESS head carries **Manage ›** (aria
+  "Everything you manage"), drawn only when the person belongs to a business —
+  the prototype's rule at 7135: "Manage only appears if you actually run
+  something … offering it to somebody who manages nothing is a door onto an
+  empty room." Typing `/managed` with nothing to manage still renders the
+  honest empty room rather than redirecting: the URL says what is true.
+- **Deliberately not lifted, tracked in the backlog (Rule 12):** the toast a
+  CalTile's manage actions fire (our rows are links, not action sheets), the
+  poster on the class row (posters are drawn; uploads are the posters slice),
+  and the empty day's second door on Home ("See everything you manage" in the
+  Today deck's empty state — our Home has no Today deck yet; the RUN YOUR
+  BUSINESS head is where the door lives).
+- Verified: `scripts/rls-proof-managed.ps1` — 8 checks green (the owner of
+  two businesses reads both businesses' classes in one read, drafts included, and
+  both businesses' events; a stranger CAN read the listed studio's published class
+  directly and gets NOTHING from the managed read; a trainer on one business reads
+  its classes and its event and none of the other's; a soft-deleted class drops
+  out; the tile's seat count comes from the aggregate RPC). typecheck / lint /
+  production build green; e2e — a tenth segment: the owner opens Manage › from
+  Home, finds the class and both events the story made, narrows to events (the
+  URL carries `kind=event`, no class row), narrows to classes, opens a
+  class row onto its roster desk; the learner, who runs nothing, is not offered
+  the door and gets the empty room with its Set up a business door when they
+  type the address. **Lesson (PowerShell, again):** `Cls` is an alias for
+  Clear-Host and an alias beats a function of the same name — the proof's class
+  builder silently returned nothing until it was renamed (the `History`
+  clash of Step 25, in a new coat). And `create_class_with_session` returns
+  `{id}`, not a bare id.
+
 ### Parity slice 2 — photos ✅ (28 Aug 2026, no step number)
 - **What it gives a picture to, and what it deliberately does not.** A person
   (their own), a crew (its leader's) and a business (its owner's or a trainer's) —
@@ -2468,7 +2560,8 @@ nothing to lift.
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero — the record page exists since Step 25 (`/stats?tab=history`); the chip is not drawn | 9070-9074 | a calendar parity slice |
 | Tests: **done 28 Aug 2026** — the happy path is nine serial SEGMENTS sharing one seeded world and one set of contexts (`test.describe.serial`), so each part has its own timeout and its own line in the report; the longest runs ~35 s and the per-test limit came back down from 300 s to 120 s. What is still open: the segments share state, so a failure early skips the rest (right for a story, wrong for a suite) — splitting into independently seeded specs needs API-level world builders first | e2e/happy-path.spec.ts | a testing slice, when the story stops being one story |
-| **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | after Step 26: memberships + rentals + invoices need the live **Cashfree** account (they are money screens); people / routines / settings / S_managed are their own slices, none blocked by anything |
+| **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099 — **S_managed landed 28 Aug 2026** at `/managed` | as listed | after Step 26: memberships + rentals + invoices need the live **Cashfree** account (they are money screens); people / routines / settings are their own slices, none blocked by anything |
+| S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here), the poster on a class row (posters are drawn until the posters slice), and the Today deck's empty-day "See everything you manage" door (Home has no Today deck yet — the door is on the RUN YOUR BUSINESS head) | S_managed 6360-6366, 7171-7175 | Home parity slice (the Today deck); posters slice |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 
@@ -2622,7 +2715,13 @@ the technical detail; this log is the at-a-glance history.
   anybody else's file, a browser-to-Storage picker, `next/image`, and faces on
   six screens. 9-check proof; the e2e's real upload caught a read that had not
   been given the new column. And the happy path was split into nine serial
-  segments (2.3 min total, longest 35 s) with the timeout brought back to 120 s. Step 24: two migrations — `notifications` +
+  segments (2.3 min total, longest 35 s) with the timeout brought back to 120 s.
+  Then **parity slice 3 — S_managed**, "everything you manage": no schema, two
+  cross-business reads scoped by membership (RLS is a ceiling — the proof reads a
+  published class as a stranger and gets nothing from the managed read), the
+  filter as URL state, one class tile / event card per row with its desk behind
+  it, and the Manage › door on Home for whoever runs something. 8-check proof, a
+  tenth e2e segment. Step 24: two migrations — `notifications` +
   `notification_prefs` with eight TRIGGERS that raise a notification where the
   fact happens (so every path that writes the fact raises it, and `notify` is
   revoked from every client role and can never break the fact), then a
@@ -2653,8 +2752,8 @@ the technical detail; this log is the at-a-glance history.
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
 - **Done so far:** 25 / 29 steps (0–15, 18, 21–26) — **every step the prototype
-  describes**; 16, 17, 19 and 20 are features it deliberately removed — plus two
-  parity slices (person pages, photos). Live at
+  describes**; 16, 17, 19 and 20 are features it deliberately removed — plus three
+  parity slices (person pages, photos, S_managed). Live at
   https://dancestudio-orcin.vercel.app once this push deploys. The hosted project
   also carries a demo world (`node scripts/demo-data.js seed | status | wipe`).
 - **Remaining:** the parity backlog, in the order the tracker's Next block now
@@ -2664,12 +2763,13 @@ the technical detail; this log is the at-a-glance history.
   invite-by-mobile. Ops the user owns: Cashfree KYC + Easy Split + the webhook
   registration, a verified Resend domain, Twilio + Meta + DLT for real OTP
   delivery, pilot invites.
-- **Next session:** **S_managed** — "everything you manage" (the prototype's
-  hub over everything a person runs and is on), then **web push** (a
-  `push_subscriptions` table + VAPID keys + a service worker, making Step 24's
-  first channel switch real), then **poster uploads** onto the photos slice's
-  bucket. The happy path is nine segments now; add a segment per slice rather
-  than growing one.
+- **Next session:** **web push** (a `push_subscriptions` table + VAPID
+  keys + a service worker, making Step 24's first channel switch real), then
+  **poster uploads** onto the photos slice's bucket (PosterCropper's
+  crop-and-frame flow, a `posters/{tenant}/` folder rule, a column on
+  classes and events), then the calendar History chip and the crew desk's "See
+  crew ranking" — a button each. The happy path is ten segments now; add a
+  segment per slice rather than growing one.
   Verify with `npm run typecheck`, `npm run lint`, `npm run build`
   (with nothing on :3000), the proofs through the PowerShell tool, and
   `npx playwright test` against a FRESH `npm run dev`.

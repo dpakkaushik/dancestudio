@@ -762,4 +762,41 @@ test.describe.serial("DanceOS, end to end", () => {
       await guestContext.close();
     }
   });
+
+  test("everything you manage: one list over every business you run", async () => {
+    // ---- parity slice: S_managed ----
+    // The Home deck offers the door only to somebody who runs something; behind it
+    // is one list of every class and event of every business they belong to, the
+    // row being the session's own card with its desk behind it.
+    await owner.goto("/");
+    await owner.getByRole("link", { name: "Everything you manage" }).click();
+    await owner.waitForURL(/\/managed$/);
+    // the class the story published and both events it created are here, whatever their status
+    // (a class tile headlines its STYLE; the title lives in the row's Manage link)
+    await expect(owner.getByRole("link", { name: `Manage ${classTitle}` })).toBeVisible();
+    await expect(owner.getByText(eventTitle, { exact: true }).first()).toBeVisible();
+    await expect(owner.getByText(battleTitle, { exact: true }).first()).toBeVisible();
+    const all = Number((await owner.getByTestId("managed-count").innerText()).split(" ")[0]);
+    expect(all).toBeGreaterThanOrEqual(3);
+    // the control narrows the list — and it is the URL, so the narrowed list has an address
+    await owner.getByRole("link", { name: "Show events only" }).click();
+    await owner.waitForURL(/\/managed\?kind=event$/);
+    await expect(owner.getByTestId("managed-class")).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: `Manage ${classTitle}` })).toHaveCount(0);
+    await expect(owner.getByText(eventTitle, { exact: true }).first()).toBeVisible();
+    await owner.getByRole("link", { name: "Show classes only" }).click();
+    await owner.waitForURL(/\/managed\?kind=class$/);
+    await expect(owner.getByTestId("managed-event")).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: `Manage ${classTitle}` })).toBeVisible();
+    // pressing a class row opens its desk, not its public page
+    await owner.getByRole("link", { name: `Manage ${classTitle}` }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes\/[0-9a-f-]+\/roster$/);
+    // and the learner, who runs nothing, is not offered the door — the room is
+    // still honest if they type the address
+    await learner.goto("/");
+    await expect(learner.getByRole("link", { name: "Everything you manage" })).toHaveCount(0);
+    await learner.goto("/managed");
+    await expect(learner.getByText("Nothing here yet")).toBeVisible();
+    await expect(learner.getByRole("link", { name: "Set up a business" })).toBeVisible();
+  });
 });

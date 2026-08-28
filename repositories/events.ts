@@ -183,6 +183,25 @@ export async function findEventsByTenant(supabase: SupabaseClient, tenantId: str
   return hydrate(supabase, (data ?? []) as unknown as EventRow[]);
 }
 
+/** Every event of every business in the list, any status — the read behind
+ *  "everything you manage" (S_managed). Scoped by the memberships the caller
+ *  passes, not by RLS alone: published events of listed studios are readable by
+ *  everybody, and they are not things this person runs. */
+export async function findEventsByTenants(supabase: SupabaseClient, tenantIds: string[]): Promise<DanceEvent[]> {
+  if (tenantIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("events")
+    .select(EVENT_SELECT)
+    .in("tenant_id", tenantIds)
+    .is("deleted_at", null)
+    .order("start_date", { ascending: false })
+    .limit(MAX_LIST);
+  if (error) {
+    throw new Error(`events.findByTenants failed: ${error.message}`);
+  }
+  return hydrate(supabase, (data ?? []) as unknown as EventRow[]);
+}
+
 export async function findEventById(supabase: SupabaseClient, eventId: string): Promise<DanceEvent | null> {
   const { data, error } = await supabase.from("events").select(EVENT_SELECT).eq("id", eventId).is("deleted_at", null).maybeSingle();
   if (error) {

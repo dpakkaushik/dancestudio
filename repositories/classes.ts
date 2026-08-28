@@ -120,6 +120,33 @@ export async function findClassesByTenant(
   return (data as unknown as ClassRow[]).map(toClass);
 }
 
+/** Every class of every business in the list, drafts included — the read behind
+ *  "everything you manage" (S_managed). The caller passes the ids of the
+ *  businesses the person BELONGS to (findMyTenants says `user_id = auth.uid()`
+ *  out loud), so the query is scoped by membership and RLS is only the ceiling:
+ *  a person who can also read published classes of every listed studio must not
+ *  see them here as things they run. Empty list, empty result, no query. */
+export async function findClassesByTenants(
+  supabase: SupabaseClient,
+  tenantIds: string[]
+): Promise<DanceClass[]> {
+  if (tenantIds.length === 0) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("classes")
+    .select(CLASS_COLUMNS)
+    .in("tenant_id", tenantIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    throw new Error(`classes.findByTenants failed: ${error.message}`);
+  }
+  return (data as unknown as ClassRow[]).map(toClass);
+}
+
 /** One class by id (members only via RLS) — for the edit form. */
 export async function findClassById(
   supabase: SupabaseClient,
