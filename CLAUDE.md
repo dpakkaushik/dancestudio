@@ -31,10 +31,22 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 17 / 29 steps** (Steps 0–14).
+- **Completed: 18 / 29 steps** (Steps 0–15).
   (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
-  Step 13.) **Step 14 landed 28 Aug 2026: the calendar** — S_profiletab in its
+  Step 13.) **Step 15 landed 28 Aug 2026: follows + public profiles** — the
+  first migration since the DB password was reset: `follows` (a person follows a
+  business; rows private to the follower and the business's members, no public
+  policy at all; the COUNT public through the aggregate-only `follower_counts`;
+  one idempotent door, `set_follow`, that refuses an unlisted business and one
+  you belong to). Public pages at `/studio/{id}` and `/artist/{id}` lifted from
+  S_profiletab's `publicEntity` render — the lit hero, the figures, the styles
+  it teaches (off its published classes), Follow, the Schedule bar, Faculty off
+  public confirmed claims — plus the **public schedule** (`pubSchedule`, the
+  piece Step 14 left for this) at `/…/schedule`, follower pills and links on
+  Discover's cards, and Following on your own profile. Readable signed out:
+  RLS decides what a stranger sees. 12-check proof, both e2e specs green.
+  **Step 14 landed 28 Aug 2026: the calendar** — S_profiletab in its
   `calendarOnly` dress, lifted whole: the sticky block of controls (hero, room
   picker on a studio's, Schedule · Day · Week · Month, Train · Teach · Assist,
   the one date panel that folds open onto the month or the week) and the four
@@ -120,18 +132,19 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   it, gated on `can_settle_refunds_for_class` (owner, or a confirmed claim
   holding the refunds job — **not** a plain trainer), and the class page has the
   prototype's Refunds tab.
-- **Next: Step 15 — follows + public profiles** (Phase 3 opens). The public
-  profile is `S_profiletab` with `publicEntity="studio"|"trainer"|"crew"`
-  (`PubStudio` 19133, PUB presets 8641-8646); a follow needs a `follows` table +
-  aggregate counts, so this is the first migration since the DB password was
-  reset — re-test `db push --dry-run` first. The public schedule
-  (`PubCal`, `calendarOnly pubSchedule`, 19140) hangs off that profile and was
-  deliberately left out of Step 14 for it. What still stands of 13b is only
-  parity, tracked in the backlog: **(b)** the source bar / SHARE OF GROSS /
-  source chips wait for a second source (Step 21 tickets); **(c)** `DanceOS fee ·
-  0.9%`, `GST on fee · 18%`, `TDS · 10%`, `PAYOUTS TO YOUR BANK` and the Settled /
-  In transit tiles wait for a real Razorpay account — printing them first would
-  be the half-truth the prototype's own comment at 18086-18092 was written about.
+- **Next: Step 16 — reviews.** Read the prototype before deciding what this
+  is: its own comment at 4218 says *"There is no rating anywhere in DanceOS any
+  more"* — the Rating badge became a follower count — so "rating rollups on
+  profiles" in the roadmap row may describe a feature the prototype deleted.
+  Scope from the review screens that actually exist, and if none do, record
+  that and move to Step 17. Migrations apply with `npx supabase db push
+  --db-url` over the pooler (see the Step 13b part 2b environment note). What
+  still stands of 13b is only parity, tracked in the backlog: **(b)** the source
+  bar / SHARE OF GROSS / source chips wait for a second source (Step 21
+  tickets); **(c)** `DanceOS fee · 0.9%`, `GST on fee · 18%`, `TDS · 10%`,
+  `PAYOUTS TO YOUR BANK` and the Settled / In transit tiles wait for a real
+  Razorpay account — printing them first would be the half-truth the
+  prototype's own comment at 18086-18092 was written about.
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -152,8 +165,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 13 | Earnings & payouts ⚠ | ✅ done (25 Aug 2026) |
 | 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | ✅ done (28 Aug 2026) — source bar and fee/settlement lines stay on the parity backlog by design |
 | 14 | Calendar views | ✅ done (28 Aug 2026) |
-| 15 | Follows + public profiles | ⬜ ⬅ next |
-| 16 | Reviews + ratings | ⬜ |
+| 15 | Follows + public profiles | ✅ done (28 Aug 2026) — business pages; person pages and person-follows tracked in the backlog |
+| 16 | Reviews + ratings | ⬜ ⬅ next (scope against the prototype's own "no rating anywhere" line first) |
 | 17 | Social feed (images first) | ⬜ |
 | 18 | Messaging (DMs → groups) | ⬜ |
 | 19 | Moderation + reporting | ⬜ |
@@ -1010,6 +1023,82 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   end up mixed — script patches must match on content, not on line endings
   (git normalises on commit).**
 
+### Step 15 — Follows + public profiles ✅ (done 28 Aug 2026)
+- Migration `20260828120000_create_follows.sql` (⚠ RLS): `follows` (follower →
+  profiles, tenant → tenants, audit, soft delete; a partial unique index keeps
+  ONE live follow per person per business while ended rows stay on record).
+  **Rows are private, the count is public.** Two SELECT policies — the follower
+  reads their own (live and ended: a soft-deleting role must see the row it just
+  ended, Step 3's lesson), the followed business's members read who follows
+  them (the prototype's Followers sheet is the profile owner's) — and **no
+  public policy at all**: who follows whom is nobody else's business. No
+  insert/update/delete policies: `set_follow(tenant, on)` is the one door,
+  idempotent (following twice is one follow; unfollowing what you never followed
+  is a no-op), refusing an **unlisted** business ("not open to the public" — the
+  same line "anyone reads listed tenants" draws) and a business you **belong
+  to** (a member's follow would count the business's own people). The count
+  rides `follower_counts(uuid[])`, aggregate-only and granted to anon — the
+  pattern `session_seat_counts` set — answering for listed businesses to
+  everybody and for an unlisted one to its own members only. Targets are
+  tenants for now: following a person or a crew arrives with the screens that
+  show them.
+- Repository `repositories/follows.ts` (every "mine" query says `follower_id =
+  auth.uid()` out loud — a studio member reads their tenant's follows too),
+  `repositories/publicProfile.ts` (the tenant as the caller may see it; styles
+  from its published classes, most-taught first; Faculty from CONFIRMED claims
+  on published classes — Step 11's public policy, so an unanswered ask never
+  puts a name on the page; rows without a readable name are left out rather
+  than printed as "Someone", because `profiles` is readable by signed-in users
+  only), `findPublicTenantSchedule` in `repositories/calendar.ts` (published,
+  upcoming, nothing else), Zod action `features/follows/server-actions/follows.ts`.
+- UI lifted from S_profiletab's `publicEntity` render (10565-11060) as
+  `features/profiles/components/PublicProfile.tsx`: THE PROFILE, LIT LIKE A
+  PLAYER — the business's colour bleeding off the top, the picture as a sharp
+  206px square with the sleeve's thrown shadow, STUDIO/ARTIST over the name, the
+  QR beside it (`ProfileShare`: the drawn code, the link, copy — "what it shares
+  is the thing it is next to", 10688), the place under it opening Maps, the
+  figures set like figures (Followers, Upcoming), the styles as coins
+  (DosStyleCoin 3400), the action row — **Follow/Following** (`FollowButton`,
+  10930: "a state does not get to become a different object", the lit edge in
+  the page's own colour; a stranger's Follow leads to sign-in) or, for a member,
+  "You are on this team · Manage ›" — the one white **Schedule** bar (10919), and
+  Faculty as a row per person headed with a count (11000-11060). Routes
+  `/studio/[tenantId]` and `/artist/[tenantId]` are one component in two dresses
+  (`PubStudio`/`PubTrainer`, 19133); a studio opened under /artist redirects to
+  its own address; an unlisted business is `notFound()` to a stranger, because
+  RLS returns nothing. `/…/schedule` is `CalendarScreen` in its new **public**
+  mode (`PubCal` 19140): no hero, no switcher, no sides, no day gutter, one
+  view, published-and-upcoming only, the room picker kept. Discover's
+  `StudioCard` is a link to the page and carries the prototype's follower pill
+  (DosFollowers 4277) off `follower_counts`; `/profile` gained the Following
+  figure and list (10714).
+- **Deliberately not lifted, tracked in the backlog:** the Following figure and
+  the rank on a business's page (a business follows nobody and holds no rank),
+  About (no bio field — the prototype's default sentence would be one studio's
+  words on every page), the founding year (`Since 2016` — no field; the page
+  says "On DanceOS since {year}" from `created_at`, which is true), Call and
+  Enquiry, Photos and the albums/plans tabs, Stats, the owner's Followers sheet
+  (the read exists — `findTenantFollowers` — the sheet does not), person pages
+  and person-follows.
+- Verified: `scripts/rls-proof-follows.ps1` — 12 checks green (a stranger reads
+  the listed studio and not the private one; count starts at 0, not missing;
+  **following twice is one follow**; direct insert refused; a second follower
+  moves the public count; **rows private, count public** — L1 reads own row
+  only, the owner reads both with names, rival and public read none; unfollow
+  keeps the ended row and re-follow starts a fresh live one; a private business
+  and your own business are refused with the right words; the public cannot call
+  set_follow; a private business's count is absent for a stranger and 0 for its
+  owner; the public schedule shows the published upcoming session and hides the
+  draft's for a stranger while the owner sees both; public styles come off
+  published classes only). e2e extended — the learner finds the studio on
+  Discover, opens its page (followers 0), follows (Following · 1), opens the
+  Schedule and finds the class, sees the studio under Following on their
+  profile; **a guest context with no account reads the same page**, is offered
+  Follow (→ sign-in) and reads the count 1. typecheck / lint / production build
+  / both specs green. **PowerShell lesson:** `,@(...)` belongs on `return`, not
+  in an assignment — `$rows = ,@(...)` nests the array and an empty answer reads
+  as 0 through member enumeration.
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -1053,7 +1142,8 @@ remove entries as they close.**
 |-----|--------------|-------------|
 | Top bar: notifications bell + notifications screen | shell 19254, S_notif | Step 24 (notifications) |
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
-| Profile tab: full S_profiletab (stats, achievements, reviews, settings) — today it is identity + log out | S_profiletab | Phase 3 |
+| Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
+| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + crews with 22 |
 | Stats / Inbox tabs: placeholder screens today | HistPage / S_chats | Steps 25 / 18 |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
 | Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Real, but the studio ledger's other three sources (tickets, packages, room rentals) don't exist — today it would be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | after Step 21 (needs a second source to mean anything) |
@@ -1072,11 +1162,10 @@ remove entries as they close.**
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
-| Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Steps 15 (counts), 22 (crews), 23 (filters/sort/map) |
+| Discover: style filter rail, sort, crews tab, studio photos, map view (follower counts landed with Step 15) | S_discover 4100+ | Steps 22 (crews), 23 (filters/sort/map), media slice (photos) |
 | Calendar: the Classes/Events switch above the sides (events do not exist yet) | SideTiles 6836 | Step 21 |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
-| Calendar: the public schedule (`pubSchedule` — published, upcoming classes only, one view, no switcher) | PubCal 19140, isPublishedClass 8902 | Step 15 (hangs off the public profile) |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 

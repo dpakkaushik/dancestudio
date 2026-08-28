@@ -26,11 +26,14 @@ import type { DanceClass } from "@/types/class";
  *  under it as Schedule, Day, Week or Month (9302-9357). Every card is the app's
  *  one class tile (`CalTile=BookingCard`, 8505).
  *
+ *  In `public` mode it is the prototype's `pubSchedule` (Step 15): a business's
+ *  published classes still to come — no hero, no switcher, no sides, no day
+ *  gutter, one view.
+ *
  *  Left out on purpose, and tracked in the parity backlog: the Classes/Events
  *  switch above the sides (events are Step 21), the hold-to-reorder gesture on
  *  the side pills (a saved preference that also drives Home, which is not
- *  built), the History chip (the record page is Step 25's), and the public
- *  schedule (`pubSchedule`, which hangs off a public profile — Step 15). */
+ *  built), and the History chip (the record page is Step 25's). */
 
 /* the tile that opens this page is painted in the calendar's own colour, and
    the page wears the same paint (DOS_TOOLS 2932) */
@@ -104,7 +107,9 @@ const emptyCard: React.CSSProperties = {
 };
 
 export interface CalendarScreenProps {
-  mode: "personal" | "studio";
+  /** personal: a person's own; studio: the venue's, drafts included; public: the
+   *  prototype's `pubSchedule` — published classes still to come, one view */
+  mode: "personal" | "studio" | "public";
   months: CalendarMonth[];
   /** "2026-08-28" in IST — the clock is the server's, handed in */
   todayKey: string;
@@ -113,9 +118,12 @@ export interface CalendarScreenProps {
   emptyHref: string;
   /** studio only: the compose button's destination */
   composeHref?: string;
+  /** public only: whose schedule this is — the page stands on its own URL */
+  title?: string;
 }
 
-export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, composeHref }: CalendarScreenProps) {
+export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, composeHref, title: pageTitle }: CalendarScreenProps) {
+  const isPublic = mode === "public";
   const idx = (monthKey: string) => months.findIndex((m) => m.key === monthKey);
   const inWindow = (dayKey: string) => idx(monthOfDay(dayKey)) >= 0;
 
@@ -127,7 +135,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
   /* ONE ROOM AT A TIME (8655): a studio with more than one room opens on its
      first room, and "All rooms" is a deliberate act rather than the landing state */
   const rooms = [...new Set(entries.map((e) => e.room).filter((r): r is string => !!r))].sort();
-  const [room, setRoom] = useState<string | null>(mode === "studio" && rooms.length > 1 ? rooms[0] : null);
+  const [room, setRoom] = useState<string | null>(
+    (mode === "studio" || isPublic) && rooms.length > 1 ? rooms[0] : null
+  );
   const [ddOpen, setDdOpen] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const todayRef = useRef<HTMLDivElement>(null);
@@ -337,7 +347,14 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
     />
   );
 
-  const nothing = (
+  const nothing = isPublic ? (
+    <div style={emptyCard}>
+      No upcoming classes on the schedule yet —{" "}
+      <Link href={emptyHref} style={{ color: PINK, fontWeight: 800, textDecoration: "none" }}>
+        back to the profile →
+      </Link>
+    </div>
+  ) : (
     <div style={emptyCard}>
       {mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
       <Link href={emptyHref} style={{ color: PINK, fontWeight: 800, textDecoration: "none" }}>
@@ -379,40 +396,50 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
           borderBottom: `1px solid ${LINE}`,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            margin: "2px 0 10px",
-            borderRadius: 22,
-            padding: "15px 17px 14px",
-            color: "#fff",
-            position: "relative",
-            overflow: "hidden",
-            background: toolPaint(TOOL_COLOUR),
-          }}
-        >
+        {/* a public schedule draws no hero (9065) — it is somebody's page, not
+            your calendar — so it says whose it is in one quiet line instead */}
+        {isPublic ? (
+          pageTitle ? (
+            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: MUTED, margin: "6px 0 10px", textTransform: "uppercase" }}>
+              {pageTitle} · schedule
+            </div>
+          ) : null
+        ) : (
           <div
             style={{
-              position: "absolute",
-              right: -28,
-              top: -32,
-              width: 130,
-              height: 130,
-              borderRadius: 65,
-              background: "rgba(255,255,255,.13)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              margin: "2px 0 10px",
+              borderRadius: 22,
+              padding: "15px 17px 14px",
+              color: "#fff",
+              position: "relative",
+              overflow: "hidden",
+              background: toolPaint(TOOL_COLOUR),
             }}
-          />
-          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
-            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
-              Calendar
+          >
+            <div
+              style={{
+                position: "absolute",
+                right: -28,
+                top: -32,
+                width: 130,
+                height: 130,
+                borderRadius: 65,
+                background: "rgba(255,255,255,.13)",
+              }}
+            />
+            <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+              <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
+                Calendar
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* one studio = one location — only rooms need filtering (9076-9098) */}
-        {mode === "studio" && rooms.length > 0 ? (
+        {(mode === "studio" || isPublic) && rooms.length > 0 ? (
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
               <div
@@ -489,7 +516,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
           </div>
         ) : null}
 
-        {/* ── the segmented views (9116-9120) ── */}
+        {/* ── the segmented views (9116-9120). A public schedule is ONE view —
+            somebody looking at a studio's page came to see when they teach, not
+            to operate a calendar (9113) ── */}
+        {isPublic ? null : (
         <div style={{ display: "flex", gap: 2, background: LINE, borderRadius: 12, padding: 3, marginBottom: 10 }}>
           {VIEWS.map(([k, l]) => (
             <div
@@ -517,6 +547,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
             </div>
           ))}
         </div>
+        )}
 
         {/* ── Train · Teach · Assist — the sides of the same calendar, each with
             what it counts in the view you are in. Tapping one narrows every view
@@ -753,12 +784,16 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
                     <span style={{ flex: 1, height: 1, background: LINE }} />
                   </div>
                 ) : null}
-                {/* the day gutter is the owner calendar's spine (9346) */}
+                {/* the day gutter is the owner calendar's spine (9346). On a
+                    public schedule the card already carries the day, the date
+                    and the month in its own left column, so the gutter would
+                    print the date twice */}
                 <div
                   id={`doscal-${dayKey}`}
                   ref={gi === firstToday ? todayRef : null}
-                  style={{ display: "flex", gap: 10, marginBottom: 8, opacity: past ? 0.62 : 1, scrollMarginTop: 180 }}
+                  style={{ display: "flex", gap: isPublic ? 0 : 10, marginBottom: 8, opacity: past ? 0.62 : 1, scrollMarginTop: 180 }}
                 >
+                  {isPublic ? null : (
                   <div style={{ width: 46, textAlign: "center", paddingTop: 6, flexShrink: 0 }}>
                     <div style={{ fontSize: 9.5, fontWeight: 800, color: isToday(dayKey) ? PINK : MUTED }}>{dowOf(dayKey)}</div>
                     <div
@@ -778,6 +813,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
                     </div>
                     <div style={{ fontSize: 8.5, color: MUTED }}>{monthShortOf(monthOfDay(dayKey)).toUpperCase()}</div>
                   </div>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>{items.map(card)}</div>
                 </div>
               </div>

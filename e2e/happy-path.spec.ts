@@ -294,6 +294,37 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     await expect(learner.getByRole("button", { name: "Train: 1" })).toBeVisible();
     await expect(learner.getByRole("button", { name: "Teach: 0" })).toBeVisible();
+
+    // ---- Step 15: the studio's public page — found on Discover, followed, and
+    // its schedule opened. The follower figure is counted, not stored.
+    await learner.goto("/discover?city=Pune&tab=studios");
+    await learner.getByRole("link", { name: `Open ${studioName}` }).click();
+    await learner.waitForURL(/\/studio\/[0-9a-f-]+$/);
+    const studioUrl = learner.url();
+    await expect(learner.getByText(studioName).first()).toBeVisible();
+    await expect(learner.getByTestId("followers-count")).toHaveText("0");
+    await learner.getByRole("button", { name: "Follow", exact: true }).click();
+    await expect(learner.getByRole("button", { name: "Following" })).toBeVisible();
+    await expect(learner.getByTestId("followers-count")).toHaveText("1");
+    // the schedule is the public calendar: published classes still to come
+    await learner.getByRole("link", { name: "Schedule" }).click();
+    await learner.waitForURL(/\/schedule$/);
+    await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
+    // and the follow shows on their own profile
+    await learner.goto("/profile");
+    await expect(learner.getByRole("link", { name: new RegExp(studioName) })).toBeVisible();
+
+    // a stranger — no account at all — reads the same page and is offered Follow
+    const guestContext = await browser.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      await guest.goto(studioUrl);
+      await expect(guest.getByText(studioName).first()).toBeVisible();
+      await expect(guest.getByRole("link", { name: "Follow" })).toBeVisible();
+      await expect(guest.getByTestId("followers-count")).toHaveText("1");
+    } finally {
+      await guestContext.close();
+    }
   } finally {
     // tenant delete cascades classes → sessions → enrollments; user delete
     // cascades the profiles. Cleanup failures surface but don't mask the test.

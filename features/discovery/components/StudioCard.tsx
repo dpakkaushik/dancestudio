@@ -1,4 +1,6 @@
-import { DOS_DISPLAY, SUB } from "@/lib/design/tokens";
+import Link from "next/link";
+import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
+import { publicProfilePath } from "@/lib/routes/publicProfile";
 import type { NearbyTenant } from "@/repositories/discovery";
 
 const CARD = "var(--card)";
@@ -26,13 +28,37 @@ const hashOf = (s: string) => {
 const initialsOf = (name: string) =>
   name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
+/** "1.2k" — the prototype's fmtF (4189) */
+const fmtF = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n));
+
+/** The follower count, one home (prototype DosFollowers 4277): the two-heads
+ *  mark and the number in tabular figures. */
+function Followers({ n, size = 12 }: { n: number; size?: number }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="9" cy="8.4" r="3.2" />
+        <path d="M3 19.5c.7-3.2 3-4.9 6-4.9s5.3 1.7 6 4.9" />
+        <circle cx="17.2" cy="9.4" r="2.4" />
+        <path d="M15.8 14.4c2.4.2 4.1 1.6 4.7 4.3" />
+      </svg>
+      <span style={{ fontSize: size + 1, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums", letterSpacing: -0.2 }}>
+        {fmtF(n)}
+      </span>
+    </span>
+  );
+}
+
 /**
  * Discovery card for a studio or trainer business — lifted from the prototype's
  * StudioCard (DanceOSApp.jsx:4306-4351): cover strip, the business's own face
  * riding the cover's bottom-left edge half on and half off, name at full size,
- * the where-line underneath. Photos and follower counts arrive with Phase 3.
+ * the where-line underneath — and, since Step 15, the follower count beside it
+ * ("the distance and the follower count sit on one line at the foot, because
+ * they are the two numbers you compare cards on", 4260). The card opens the
+ * business's public page. Photos arrive with the media slice.
  */
-export function StudioCard({ tenant }: { tenant: NearbyTenant }) {
+export function StudioCard({ tenant, followers = 0 }: { tenant: NearbyTenant; followers?: number }) {
   const grad = GRADS[hashOf(tenant.name) % GRADS.length];
   const sub = [
     tenant.type === "studio" ? "Studio" : "Trainer business",
@@ -42,13 +68,18 @@ export function StudioCard({ tenant }: { tenant: NearbyTenant }) {
     .join(" · ");
 
   return (
-    <div
+    <Link
+      href={publicProfilePath(tenant)}
+      aria-label={`Open ${tenant.name}`}
       style={{
+        display: "block",
         borderRadius: 20,
         overflow: "hidden",
         background: CARD,
         border: `1px solid ${EL}`,
         marginBottom: 12,
+        color: INK,
+        textDecoration: "none",
       }}
     >
       <div style={{ position: "relative" }}>
@@ -128,8 +159,11 @@ export function StudioCard({ tenant }: { tenant: NearbyTenant }) {
             </span>
           </span>
         </div>
-        <div style={{ fontSize: 11, color: SUB }}>{sub}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <span style={{ fontSize: 11, color: SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>
+          <Followers n={followers} />
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }

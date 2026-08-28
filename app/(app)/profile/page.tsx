@@ -1,8 +1,11 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { publicProfilePath } from "@/lib/routes/publicProfile";
+import { findMyFollowing } from "@/repositories/follows";
 import { findProfileById } from "@/repositories/profiles";
 import { signOutAction } from "@/features/auth/server-actions/auth";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
+import { CARD, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
 import type { ProfileRole } from "@/types/profile";
 
 /** Metal rings per role — prototype DOS_RINGS (DanceOSApp.jsx:1462-1463). */
@@ -37,6 +40,9 @@ export default async function ProfilePage() {
   if (!profile) {
     redirect("/onboarding");
   }
+  /* the businesses you follow — the prototype's Following figure and sheet
+     (10714, 11336), as a list on the page until the sheet arrives */
+  const following = await findMyFollowing(supabase);
 
   const RG = DOS_RINGS[profile.role];
   const RC = RG[3];
@@ -88,6 +94,56 @@ export default async function ProfilePage() {
       </div>
 
       <div style={{ padding: "10px 16px 24px" }}>
+        {/* the figure, set like a figure (prototype 10706-10716) */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginBottom: 14 }}>
+          <span aria-label={`${following.length} following`}>
+            <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums" }}>
+              {following.length}
+            </span>
+            <span style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--muted)", marginTop: 4 }}>
+              Following
+            </span>
+          </span>
+        </div>
+        {following.length > 0 ? (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB, padding: "0 0 8px" }}>FOLLOWING</div>
+            {following.map((f) => {
+              const tint = f.tenantType === "studio" ? DOS_TINT.studio : DOS_TINT.trainer;
+              return (
+                <Link
+                  key={f.followId}
+                  href={publicProfilePath({ id: f.tenantId, type: f.tenantType })}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    background: CARD,
+                    border: `1px solid ${LINE}`,
+                    borderLeft: `4px solid ${tint}`,
+                    borderRadius: 16,
+                    padding: "12px 15px",
+                    marginBottom: 8,
+                    color: INK,
+                    textDecoration: "none",
+                  }}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {f.tenantName}
+                    </span>
+                    <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: SUB, marginTop: 3 }}>
+                      {f.tenantType === "studio" ? "Studio" : "Artist"}
+                      {f.tenantCity ? ` · ${f.tenantCity}` : ""}
+                    </span>
+                  </span>
+                  <span style={{ color: tint, fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Open ›</span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
         <div style={{ fontSize: 12.5, color: SUB, lineHeight: 1.6, marginBottom: 18 }}>
           Followers, achievements, reviews and your full dance record arrive with the community
           slices — this page grows into the prototype&apos;s profile step by step.

@@ -7,6 +7,7 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedClasses } from "@/repositories/classes";
 import { findNearbyTenants } from "@/repositories/discovery";
+import { findFollowerCounts } from "@/repositories/follows";
 import {
   countEnrolledBySession,
   findMyEnrolledSessionIds,
@@ -67,6 +68,15 @@ export default async function DiscoverPage({
       ? await countEnrolledBySession(
           supabase,
           classes.map((c) => c.session?.id).filter(Boolean) as string[]
+        )
+      : new Map<string, number>();
+  /* the follower count sits at the foot of every business card — a number,
+     never a name (Step 15) */
+  const followerCounts =
+    tab !== "classes"
+      ? await findFollowerCounts(
+          supabase,
+          nearby.map((t) => t.id)
         )
       : new Map<string, number>();
 
@@ -179,7 +189,8 @@ export default async function DiscoverPage({
             />
           );
         })}
-      {tab !== "classes" && nearby.map((t) => <StudioCard key={t.id} tenant={t} />)}
+      {tab !== "classes" &&
+        nearby.map((t) => <StudioCard key={t.id} tenant={t} followers={followerCounts.get(t.id) ?? 0} />)}
 
       {shelfCount === 0 && (
         <div

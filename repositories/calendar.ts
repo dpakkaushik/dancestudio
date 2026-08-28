@@ -215,3 +215,46 @@ export async function findTenantCalendar(
     );
   return withSeatCounts(supabase, entries);
 }
+
+/** A business's PUBLIC schedule (prototype `pubSchedule`, 8902-8907): published
+ *  classes that have not happened yet, and nothing else — not drafts, not what
+ *  is over. "A public schedule is an offer — a list of classes somebody can
+ *  still book." RLS already draws this line for a stranger (published classes
+ *  of listed tenants); the status and time filters draw it for a member too. */
+export async function findPublicTenantSchedule(
+  supabase: SupabaseClient,
+  tenantId: string,
+  tenant: TenantBits,
+  nowIso: string,
+  toIso: string
+): Promise<CalendarEntry[]> {
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select(`id, starts_at, ends_at, class_id, classes!inner (${CLASS_BITS})`)
+    .eq("tenant_id", tenantId)
+    .eq("classes.status", "published")
+    .is("deleted_at", null)
+    .is("classes.deleted_at", null)
+    .gte("starts_at", nowIso)
+    .lt("starts_at", toIso)
+    .order("starts_at", { ascending: true })
+    .limit(MAX_ROWS);
+
+  if (error) {
+    throw new Error(`calendar.findPublicSchedule failed: ${error.message}`);
+  }
+
+  const entries = ((data ?? []) as unknown as TenantSessionRow[])
+    .filter((r) => r.classes)
+    .map((r) =>
+      entryOf(
+        { id: r.id, starts_at: r.starts_at, ends_at: r.ends_at },
+        r.class_id,
+        r.classes as ClassBits,
+        tenant,
+        "hosting",
+        null
+      )
+    );
+  return withSeatCounts(supabase, entries);
+}
