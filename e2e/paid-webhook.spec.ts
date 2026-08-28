@@ -177,8 +177,13 @@ test("razorpay webhook: bad signature rejected, capture books the seat, replay i
       await page.goto("/login/phone");
       await page.getByRole("button", { name: /Mobile/ }).click();
       await page.getByPlaceholder("10-digit mobile number").fill("9999999999");
-      await page.getByRole("button", { name: "Send OTP" }).click();
-      await page.waitForURL(/\/login\/verify/);
+      // the API half of this spec requested an OTP for the same number moments
+      // ago, and Supabase rate-limits a second request ("you can only request
+      // this after N seconds") — so ask again until the cooldown has passed
+      await expect(async () => {
+        await page.getByRole("button", { name: "Send OTP" }).click();
+        await page.waitForURL(/\/login\/verify/, { timeout: 4_000 });
+      }).toPass({ intervals: [2_500, 3_000, 4_000], timeout: 40_000 });
       // the code goes into a visually hidden input behind the six boxes
       await page.getByLabel("One-time password").focus();
       await page.keyboard.type("123456");

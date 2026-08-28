@@ -187,23 +187,18 @@ export function ClassesManager({
         <div style={{ margin: "10px 0 2px", fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB }}>
           {tenantName.toUpperCase()}
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 10,
-            margin: "0 0 12px",
-          }}
-        >
-          <div style={{ flex: 1, fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
-            Classes
-          </div>
-          {/* the studio desk's tools, as they arrive — the calendar lands with
-              Step 14. Earnings is owner-only (payout approval cannot be
-              granted, prototype 18434), so a trainer is not offered a door
-              that would only shut on them. */}
+        <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, margin: "0 0 10px" }}>
+          Classes
+        </div>
+        {/* the studio desk's tools, as they arrive — a chip rail, so a fifth
+            door does not squeeze the title. The prototype's studio deck opens
+            "Classes · Calendar ›" side by side (7140-7148). Earnings is
+            owner-only (payout approval cannot be granted, prototype 18434), so
+            a trainer is not offered a door that would only shut on them. */}
+        <div style={{ display: "flex", gap: 8, margin: "0 0 12px", overflowX: "auto", scrollbarWidth: "none" }}>
           {(
             [
+              ["calendar", "Calendar"],
               ["students", "Students"],
               ["rooms", "Rooms"],
               ["staff", "Staff"],
@@ -222,6 +217,7 @@ export function ClassesManager({
                 border: `1px solid ${EL}`,
                 borderRadius: 999,
                 padding: "6px 12px",
+                whiteSpace: "nowrap",
               }}
             >
               {word} ›

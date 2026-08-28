@@ -62,7 +62,25 @@ export default async function MyClassesPage() {
         <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
           My classes
         </div>
-        <div style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{enrollments.length} booked</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{enrollments.length} booked</div>
+          {/* the same bookings as a calendar (Step 14) — day, week, month, schedule */}
+          <Link
+            href="/calendar"
+            style={{
+              fontSize: 11.5,
+              fontWeight: 800,
+              color: INK,
+              textDecoration: "none",
+              border: "1px solid var(--el)",
+              borderRadius: 999,
+              padding: "6px 12px",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Calendar ›
+          </Link>
+        </div>
       </div>
 
       {enrollments.map((e) => (

@@ -197,6 +197,18 @@ test("signup → onboard studio → create class → share link → enroll", asy
     const registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible();
 
+    // ---- the studio calendar (Step 14): the same session, on the schedule ---
+    // Schedule lists every day with something on it, so the class three days
+    // out is there; Month opens on today, which honestly has nothing on.
+    await owner.getByRole("link", { name: "Calendar ›" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/calendar$/);
+    await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
+    await owner.getByRole("button", { name: "Month", exact: true }).click();
+    await expect(owner.getByText("nothing on")).toBeVisible();
+    await owner.getByRole("button", { name: "Day", exact: true }).click();
+    await expect(owner.getByText("8 am")).toBeVisible();
+    await owner.goto(`/business/${tenantId}/classes`);
+
     // ---- the earnings desk reads that same ledger (Step 13) ---------------
     // Owner-only, and it is the pay side of the prototype's S_earn — not a
     // payroll desk: the studio settles by bank or UPI and records it here.
@@ -275,6 +287,13 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // the booking shows up on the learner's own list too
     await learner.goto("/my-classes");
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
+
+    // ---- and on their calendar (Step 14): a booking is what they TRAIN in ----
+    await learner.getByRole("link", { name: "Calendar ›" }).click();
+    await learner.waitForURL(/\/calendar$/);
+    await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Train: 1" })).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Teach: 0" })).toBeVisible();
   } finally {
     // tenant delete cascades classes → sessions → enrollments; user delete
     // cascades the profiles. Cleanup failures surface but don't mask the test.

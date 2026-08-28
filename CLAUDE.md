@@ -31,10 +31,22 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 16 / 29 steps** (Steps 0–13 and 13b).
+- **Completed: 17 / 29 steps** (Steps 0–14).
   (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
-  Step 13.) **Step 13b part 2b landed 28 Aug 2026: the studio's money-IN half
+  Step 13.) **Step 14 landed 28 Aug 2026: the calendar** — S_profiletab in its
+  `calendarOnly` dress, lifted whole: the sticky block of controls (hero, room
+  picker on a studio's, Schedule · Day · Week · Month, Train · Teach · Assist,
+  the one date panel that folds open onto the month or the week) and the four
+  views under it, every card the app's one class tile. Two routes, no backend:
+  `/calendar` is a person's — bookings are Train, confirmed artist claims Teach,
+  confirmed assistant claims Assist, all real rows — and
+  `/business/{id}/calendar` is the studio's, every session of every live class,
+  drafts included, room by room. The register's tool chips became a rail and
+  gained Calendar; My classes gained a Calendar › door. Migrations are
+  **unblocked again**: the DB password was reset and the pooler accepts it, and
+  a `SUPABASE_ACCESS_TOKEN` in `.env.local` works against the management API as
+  a fallback. **Step 13b part 2b landed 28 Aug 2026: the studio's money-IN half
   of S_earn** — GROSS · {month} counted from captured payments, the ▲/▼
   vs-last-month badge computed from the same months the statements print, the
   Net / Asked back / Refunded tiles, HOW STUDENTS PAID off the real
@@ -49,9 +61,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   findings the same day (28 Aug 2026):** this machine has no pnpm (`npm run …`
   runs the same scripts); the `.env.local` keys are now Supabase's `sb_secret_`
   format and Supabase refuses a secret key from a browser-like user agent, so
-  every proof script sets a custom UserAgent; and **the DB password in
-  `.env.local` is rejected by the pooler, so no migration can be applied from
-  this machine until it is fixed** — Step 14 needs none, Step 15 does. Step 13b
+  every proof script sets a custom UserAgent; and the DB password in
+  `.env.local` was rejected by the pooler for half a session until the user
+  reset it (a fresh reset takes a minute to reach the pooler). Step 13b
   part 2a landed 25 Aug 2026: the class page's Earnings
   tab** — S_class's WHAT THIS SESSION MADE (12008-12042), the one place a class's
   price, fill and refunds are added up. No migration, no RPC, no policy: it reads
@@ -108,18 +120,18 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   it, gated on `can_settle_refunds_for_class` (owner, or a confirmed claim
   holding the refunds job — **not** a plain trainer), and the class page has the
   prototype's Refunds tab.
-- **Next: Step 14 — Calendar views.** See its roadmap row before starting: it
-  is not the small slice it looks. The calendar is `S_profiletab` behind a flag
-  (`CalTab=()=><S_profiletab calendarOnly/>` 19146), with `calManage` 8845,
-  `calSection` 9057, `calSheetEl` 9359 and the day/month/schedule views at 7655;
-  its tile is `CalTile=BookingCard` (8505), already built. Backend is genuinely
-  nothing — it reads sessions — so it is buildable while migrations are blocked.
-  What still stands of 13b is only parity, tracked in the backlog: **(b)** the
-  source bar / SHARE OF GROSS / source chips wait for a second source (Step 21
-  tickets); **(c)** `DanceOS fee · 0.9%`, `GST on fee · 18%`, `TDS · 10%`,
-  `PAYOUTS TO YOUR BANK` and the Settled / In transit tiles wait for a real
-  Razorpay account — printing them first would be the half-truth the prototype's
-  own comment at 18086-18092 was written about.
+- **Next: Step 15 — follows + public profiles** (Phase 3 opens). The public
+  profile is `S_profiletab` with `publicEntity="studio"|"trainer"|"crew"`
+  (`PubStudio` 19133, PUB presets 8641-8646); a follow needs a `follows` table +
+  aggregate counts, so this is the first migration since the DB password was
+  reset — re-test `db push --dry-run` first. The public schedule
+  (`PubCal`, `calendarOnly pubSchedule`, 19140) hangs off that profile and was
+  deliberately left out of Step 14 for it. What still stands of 13b is only
+  parity, tracked in the backlog: **(b)** the source bar / SHARE OF GROSS /
+  source chips wait for a second source (Step 21 tickets); **(c)** `DanceOS fee ·
+  0.9%`, `GST on fee · 18%`, `TDS · 10%`, `PAYOUTS TO YOUR BANK` and the Settled /
+  In transit tiles wait for a real Razorpay account — printing them first would
+  be the half-truth the prototype's own comment at 18086-18092 was written about.
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -139,8 +151,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 12b | Staff invites (split out of 12) | ✅ done (25 Aug 2026) |
 | 13 | Earnings & payouts ⚠ | ✅ done (25 Aug 2026) |
 | 13b | Earnings income half + refund settlement queue (split out of 13) ⚠ | ✅ done (28 Aug 2026) — source bar and fee/settlement lines stay on the parity backlog by design |
-| 14 | Calendar views | ⬜ ⬅ next |
-| 15 | Follows + public profiles | ⬜ |
+| 14 | Calendar views | ✅ done (28 Aug 2026) |
+| 15 | Follows + public profiles | ⬜ ⬅ next |
 | 16 | Reviews + ratings | ⬜ |
 | 17 | Social feed (images first) | ⬜ |
 | 18 | Messaging (DMs → groups) | ⬜ |
@@ -940,6 +952,64 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Settings → reset) or a `SUPABASE_ACCESS_TOKEN` is supplied. Steps 15+ need
   schema; Step 14 does not.
 
+### Step 14 — Calendar views ✅ (done 28 Aug 2026)
+- **No migration, no RPC, no policy.** A calendar is class sessions read through
+  rows that already exist, under the RLS Steps 3, 4 and 11 set. Every query in
+  `repositories/calendar.ts` says whose rows it wants out loud (`user_id = …`,
+  `tenant_id = …`) — a person who is both a learner and a studio's member can
+  read far more than their own rows, and RLS is a ceiling, not a scope.
+  Reads are windowed (two months back, three ahead, `lib/format/month.ts`
+  `monthsWindow`) with a runaway guard; seats come from the aggregate-only
+  `session_seat_counts`.
+- **The prototype's three sides are real rows here.** "A dancer does not attend
+  a class, they TRAIN; a teacher does not host one, they TEACH" (DOS_SIDES 6666):
+  a live booking is Train, a confirmed artist claim is Teach, a confirmed
+  assistant claim is Assist, and teaching outranks assisting on the same session
+  (the classifier's order, 8899). `types/calendar.ts` carries the IST `dayKey`
+  and `hour` on every entry, computed once in the repository, so the client never
+  runs a clock or a time-zone conversion during render.
+- **Two routes, one screen.** `features/calendar/components/CalendarScreen.tsx`
+  is S_profiletab's `calendarOnly` render (10530) lifted whole: the sticky block
+  (`data-dos-sticky`, 9058) with the hero in the calendar's own paint (DOS_TOOLS
+  2932), the room picker on a studio's calendar — a studio with more than one
+  room opens on its first, "All rooms" being a deliberate act (8655) — the
+  Schedule · Day · Week · Month switcher, Train · Teach · Assist with counts that
+  follow the view, and the one date panel every view shares (9157-9300: title,
+  TODAY, Today, ‹ ›, folding open onto a Monday-first month grid or the week
+  strip, dots per day in style colours, the page frozen beneath it). Under it:
+  Schedule (day gutter, TODAY divider, scroll-to-today measured against what is
+  pinned — `dosScrollTo` 1517), Day (an 8 am–9 pm rail widened by the hours the
+  day actually uses), Week and Month (the day you picked, named and counted).
+  Cards are `ClassTile`; a person's carry the side pill and, for Train, the
+  EnrollButton. `/calendar` (from My classes' new Calendar › door) and
+  `/business/{id}/calendar` (from the register's chip rail — now a scrollable
+  rail, Calendar first, as the prototype's studio deck opens "Classes · Calendar
+  ›" side by side, 7140-7148) with the compose FAB offering Add class only — an
+  event is Step 21's, absent rather than refused (10541).
+- **Deliberately not lifted, tracked in the backlog:** the Classes/Events switch
+  above the sides (events don't exist), the hold-to-reorder gesture on the side
+  pills (a saved preference that also drives Home's deck order — Home parity),
+  the History chip (the record page is Step 25's), `pubSchedule` (hangs off a
+  public profile, Step 15), and `__DOSCALSTATE` (view + day remembered across
+  drill-ins; ours is component state). A studio's calendar draws no sides: a
+  venue is not a person on the floor.
+- **Fixed in passing (⚠ RLS):** `findMyPendingClaims` filtered on
+  `status = 'asked'` with no `user_id`, so under Step 11's members-read-their-
+  tenant policy a studio owner would have been shown the asks the studio SENT as
+  asks waiting for them. No caller had reached it yet. The fourth time this
+  lesson has surfaced; it now says `user_id = auth.uid()` out loud.
+- Verified: typecheck / lint / production build green. e2e extended — the owner
+  opens the studio calendar from the register, finds the class three days out on
+  the Schedule, sees Month open on today with "nothing on" and Day draw its
+  8 am rail; the learner opens their calendar from My classes and finds the
+  booking as **Train: 1 · Teach: 0**. The paid-webhook spec's UI sign-in gained a
+  retry: Supabase rate-limits a second OTP request for the same test number
+  moments after the spec's API half made one ("you can only request this after
+  N seconds"), and the first run only passed because a cold dev server was slow.
+  **Lesson: this working copy is CRLF and the Edit tool inserts LF, so files
+  end up mixed — script patches must match on content, not on line endings
+  (git normalises on commit).**
+
 ### Hardening — the register re-checks membership ✅ (25 Aug 2026, no new step)
 - Migration `20260825140000_harden_register_claim_check.sql` (⚠ auth/RLS, Rule 9):
   `can_run_register_for_class`'s claim branch now joins `tenant_members`, so a
@@ -1001,9 +1071,12 @@ remove entries as they close.**
 | Register: walk-in add + the QR scanner (needs the student pool); the pass QR is drawn, not scannable yet | attend 12104-12116, PassSheet 6209 | Steps 11-12 (people); real scanning later |
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
-| Studio desk: BizShell tools grid (students, earnings, reports, calendar) — today the register plus a Rooms chip | S_bizhub/BizShell | Steps 12–14 |
+| Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
 | Discover: style filter rail, sort, crews tab, follower counts, studio photos, map view | S_discover 4100+ | Steps 15 (counts), 22 (crews), 23 (filters/sort/map) |
-| My classes: real calendar view | Calendar tab | Step 14 |
+| Calendar: the Classes/Events switch above the sides (events do not exist yet) | SideTiles 6836 | Step 21 |
+| Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
+| Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
+| Calendar: the public schedule (`pubSchedule` — published, upcoming classes only, one view, no switcher) | PubCal 19140, isPublishedClass 8902 | Step 15 (hangs off the public profile) |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 

@@ -62,13 +62,27 @@ interface MyAskRow extends ClaimRow {
   } | null;
 }
 
-/** The asks waiting for the signed-in person, newest first. */
+/** The asks waiting for the signed-in person, newest first.
+ *
+ *  Says `user_id = auth.uid()` OUT LOUD. This leaned on RLS to mean "my asks",
+ *  but Step 11 lets a tenant's members read every claim on their tenant — so
+ *  for a studio owner this returned the asks the studio SENT as if they were
+ *  asks waiting for the owner. The fourth time this lesson has surfaced: RLS is
+ *  a ceiling, not a scoping mechanism. (No caller hit it yet; fixed at Step 14
+ *  while the calendar was reading the same table.) */
 export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyClaimAsk[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
   const { data, error } = await supabase
     .from("class_claims")
     .select(
       `${CLAIM_COLUMNS}, classes (title, style, share_slug, tenants (name), class_sessions (starts_at))`
     )
+    .eq("user_id", user.id)
     .eq("status", "asked")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
