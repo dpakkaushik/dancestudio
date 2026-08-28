@@ -33,7 +33,27 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 - **Completed: 19 / 29 steps** (Steps 0–15 and 18; 16, 17, 19 and 20 are
   ❌ not in the prototype — see the re-scope below — so the road ahead is 21–26).
-  (The denominator grew from 27 as
+  **Step 21 is IN PROGRESS (28 Aug 2026), committed as scaffolding:** migration
+  `20260828180000_create_events.sql` is **applied to the live DB** (`events`,
+  `event_entry_tiers`, `event_ticket_tiers`, `event_bookings`, RLS for members /
+  public-of-listed / holders, RPCs `save_event`, `publish_event` with the
+  prototype's blocker sentences, `set_event_status`, `delete_event`,
+  `event_counts`, `book_event` — free seats and entries only, priced ones refuse
+  with Step 9's "payments aren't switched on yet" — `cancel_event_booking`,
+  `check_in_event_booking`, `add_event_walk_in`); `types/event.ts`,
+  `repositories/events.ts`, Zod actions, `event-kit.tsx`, **`EventCard`**, the
+  **events desk** at `/business/{id}/events` and the two-step **event form**
+  at `/events/new` and `/events/{id}/edit` are written and the build is green.
+  **Not yet written:** the public event page `/e/{slug}` (S_event 12810 — the
+  sleeve, the card on the page, PRIZES / WHEN / VENUE / FORMAT / TICKETS /
+  POLICY, the booking bar, the confirm + pay sheets), the event manager at
+  `/business/{id}/events/{eventId}` (S_eventmanage 13946 — Details, Participants
+  and Spectators registers with check-in and walk-ins; bracket/rounds/judges/
+  scoring/earnings/refunds segments go to the backlog), Discover's **Events**
+  tab (S_eventslist 13517), the "Your tickets" shelf on /my-classes, the
+  register's **Events ›** chip, the chrome titles, `scripts/rls-proof-events.ps1`,
+  the e2e, and the Step 21 record + backlog rows in this file. **The desk is
+  reachable only by URL until the chip lands.** (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
   Step 13.) **Step 18 landed 28 Aug 2026: the Inbox** — the prototype's
   `S_chats` after it removed internal chat: two desks that count what is waiting
@@ -165,16 +185,31 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   20 are **not built** (nothing to lift — building them would invent UI), and
   **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
   foot of the parity backlog so none is forgotten.
-- **Next: Step 21 — events, competitions, ticketing ⚠** (19 and 20 are not in
-  the prototype). The prototype's event screens are real and large: `S_event`
-  12810 (the event page), `S_eventslist` 13517, `S_eventsmod` 13811 (the studio's
-  events desk), `S_eventmanage` 13946, `S_eventform` 15759, `normEvent` 2760 (the
-  one shape every card reads), and Discover's Events tab. Tickets reuse Step 9's
-  Razorpay rails (orders/payments/refunds) — paid tickets wait on keys exactly as
-  paid classes do; free entries and the whole desk work without them. Read
-  `normEvent` and the event form first; the data model follows their fields.
-  Migrations apply with `npx supabase db push --db-url` over the pooler (see the
-  Step 13b part 2b environment note). What
+- **Next: finish Step 21 — events ⚠.** Pick up from the scaffolding above, in
+  this order: (1) `/e/[slug]` — `features/events/components/EventPage.tsx`
+  lifting S_event 12810-13516 (DosPosterSleeve from `poster.tsx`, the EventCard
+  on the page, PRIZES, WHEN, VENUE with Maps, FORMAT, TICKETS tiers with the
+  seats bar, POLICY, the fixed booking bar "Book as participant / Book as a
+  spectator", the confirm sheet — entering as / partner / crew / how many — and
+  the pay step that books free entries via `bookEventAction` and prints Step 9's
+  sentence for priced ones; "you run this event" for members; the held-ticket
+  block with cancel); (2) the manager at `/business/[tenantId]/events/[eventId]`
+  lifting S_eventmanage Details (the two bars, the details rows, the venue),
+  Participants and Spectators (register rows, Check in toggles via
+  `checkInEventBookingAction`, walk-in via `addWalkInAction`); (3) Discover's
+  Events tab (`findPublishedEvents(todayKey, city)` → EventCard → `/e/{slug}`),
+  the "Your tickets" shelf on /my-classes (`findMyEventBookings`), the register's
+  **Events ›** chip in `ClassesManager`, AppChrome titles for `/e/`, `/events`;
+  (4) `scripts/rls-proof-events.ps1` — free booking under capacity, priced tier
+  refused with the sentence, member cannot book own event, showcase takes no
+  entries, duet needs a partner, crew needs a name, cancel frees the seat,
+  check-in is members-only, drafts invisible to the public, publish blockers in
+  the prototype's words; (5) e2e — owner creates and publishes a free showcase,
+  learner books a seat from Discover, owner checks them in; (6) the Step 21
+  record, parity-backlog rows (bracket/rounds/judges/scoring/earnings/refunds
+  segments, the duet PeoplePicker, poster upload, paid tickets via `orders`),
+  and the tracker. Then Steps 22–26. Migrations apply with `npx supabase db push
+  --db-url` over the pooler (see the Step 13b part 2b environment note). What
   still stands of 13b is only parity, tracked in the backlog: **(b)** the source
   bar / SHARE OF GROSS / source chips wait for a second source (Step 21
   tickets); **(c)** `DanceOS fee · 0.9%`, `GST on fee · 18%`, `TDS · 10%`,
@@ -207,7 +242,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 18 | Inbox: Requests + Enquiries desks (was "Messaging" — internal chat is removed from the prototype, 6080) | ✅ done (28 Aug 2026) |
 | 19 | Moderation + reporting | ❌ removed with the feed ("went with it", 4897) — not built |
 | 20 | Video/reels (Mux/Cloudflare Stream) | ❌ no reel/post screen in the prototype — not built; photo uploads (posters, studio photos) stay a media slice |
-| 21 | Events, competitions, ticketing ⚠ | ⬜ ⬅ next |
+| 21 | Events, competitions, ticketing ⚠ | 🔶 **in progress** (28 Aug 2026): migration applied, desk + form + card built; event page, manager, Discover tab, proof, e2e remain ⬅ next |
 | 22 | Teams/crews + auditions | ⬜ |
 | 23 | Search (Typesense) + Discover filters/map | ⬜ |
 | 24 | Push notifications | ⬜ |
@@ -1408,6 +1443,41 @@ server action → UI, finished and verified before the next begins.
 
 Four lines per session, written when the user ends it. The step records above hold
 the technical detail; this log is the at-a-glance history.
+
+### 28 Aug 2026
+- **This session:** a fresh clone on a new Windows machine (no pnpm, new-format
+  Supabase keys, a stale DB password) — three environment lessons recorded, all
+  proof scripts patched with a non-browser UserAgent, migrations re-enabled once
+  the user reset the password. Then four steps: **13b part 2b** (the studio's
+  money IN — GROSS by IST month, the ▲/▼ badge, Net/Asked back/Refunded, HOW
+  STUDENTS PAID, month statements with a real CSV; 13-check proof; `bcd734b`),
+  **14** (the calendar — S_profiletab's `calendarOnly` lifted whole, personal
+  and studio routes, Train·Teach·Assist off real rows; fixed `findMyPendingClaims`'s
+  missing `user_id` filter; `40d6a2b`), **15** (follows + public profiles —
+  `follows` table, public `/studio/{id}` and `/artist/{id}`, the public schedule,
+  follower pills on Discover; 12-check proof; `7543cb3`), and **18** (the Inbox —
+  Requests from existing claims/invites, Enquiries with quotes as a conversation;
+  migration + 12-check proof + the full e2e loop; `908b4d7`). Between 15 and 18,
+  **Phase 3 was re-scoped against the prototype**: 16, 17, 19 and 20 describe
+  features the prototype deliberately removed (its own words, line-referenced),
+  so they are marked not built. **Step 21 (events) is scaffolded and committed**:
+  migration applied, types/repository/actions, EventCard, the desk and the
+  two-step form; build green.
+- **Done so far:** 19 / 29 steps (0–15, 18) plus the Step 21 scaffolding. Live at
+  https://dancestudio-orcin.vercel.app; migrations apply from this machine via
+  `npx supabase db push --db-url` over the pooler; `SUPABASE_ACCESS_TOKEN` is a
+  management-API fallback.
+- **Remaining:** finish Step 21 (event page, manager, Discover tab, tickets shelf,
+  chip, proof, e2e, docs — the ordered list is in the tracker's Next), then
+  22–26, then the parity backlog. Ops still open: Razorpay account + keys (paid
+  classes, tickets and enquiry advances all wait on it), a verified Resend
+  domain, pilot invites.
+- **Next session:** finish Step 21 from the tracker's numbered list, starting
+  with `/e/[slug]` (S_event 12810). Verify with `npm run typecheck`, `npm run
+  lint`, `npm run build`, the proof scripts via `powershell -File`, and `npx
+  playwright test` against `npm run dev` (Playwright's config launches `pnpm dev`,
+  which this machine lacks — start the dev server yourself; `reuseExistingServer`
+  picks it up).
 
 ### 25 Aug 2026
 - **This session:** Steps 11, 12 and 12b, then a hardening pass. Step 11 — rooms
