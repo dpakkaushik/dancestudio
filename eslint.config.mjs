@@ -5,7 +5,9 @@ const eslintConfig = [
   ...nextCoreWebVitals,
   ...nextTypescript,
   {
-    ignores: ["node_modules/**", ".next/**", "prototype/**"],
+    // scripts/ holds Node maintenance scripts (migrations, proofs, demo data) —
+    // CommonJS by design, run with node, never bundled into the app
+    ignores: ["node_modules/**", ".next/**", "prototype/**", "scripts/**"],
   },
 ];
 

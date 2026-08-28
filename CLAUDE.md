@@ -1833,7 +1833,16 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
 between the built screens and their prototype counterparts, each tagged with the
 slice that closes it. **Add to this list whenever a screen ships simplified;
-remove entries as they close.**
+remove entries as they close** (Rule 12).
+
+**Audited 28 Aug 2026 (third session)** — every step record's "Deliberately not
+lifted" / "Departures" / "Deliberately absent" list was read against this table
+and reconciled: one row per gap, nothing in prose only. Two rows were stale and
+are corrected below (the events search box landed with Step 23; the
+unassigned-screens row still said Razorpay and "after Step 22"). Gaps that are
+NOT parity — the features the prototype deliberately removed (16, 17, 19, 20) —
+are recorded in the Phase 3 re-scope above rather than here, because there is
+nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
@@ -1865,10 +1874,10 @@ remove entries as they close.**
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
 | Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a live Cashfree account + an `orders` extension |
-| Events: the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule), the events search box (the duet partner as a person and the crews you lead landed with Step 22) | S_event 13040, 12985, 13273; WalkIn 13904; S_eventslist 13551 | real scanning, Step 23 (search); the rest need fields or a product decision |
+| Events: the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule) — the duet partner as a person and the crews you lead landed with Step 22, the events search box with Step 23 | S_event 13040, 12985, 13273; WalkIn 13904 | real scanning; the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
-| **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | slot after Step 22: memberships + rentals + invoices with a Razorpay account; people / routines / settings as their own slices |
+| **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | after Step 26: memberships + rentals + invoices need the live **Cashfree** account (they are money screens); people / routines / settings / S_managed are their own slices, none blocked by anything |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 
@@ -1979,6 +1988,17 @@ server action → UI, finished and verified before the next begins.
     the same push or the immediately following one: steps complete / 28, what
     just landed, and what's next. The tracker and the step table must always
     match reality — a stale tracker is a bug.
+12. **Nothing is deferred without a row.** Every time a slice ships something
+    simplified, absent, or "for later" — a prototype control not lifted, a
+    figure that needs a field, a feature waiting on an account — it goes into
+    the **UI parity backlog** table in the SAME push, with three things: what
+    the gap is, the prototype line it comes from, and what closes it. The step
+    record's "Deliberately not lifted" list and the backlog table must agree;
+    a deferral that lives only in prose is a deferral that gets skipped. When a
+    later slice closes a gap, edit or remove its row in that push too — a
+    backlog row for something already built is the same bug pointing the other
+    way. Audit the two against each other whenever a step lands (the last audit
+    is dated at the head of the table).
 
 ## Session log
 
@@ -2201,11 +2221,52 @@ prototype/      → the reference prototype (read-only)
 ## Commands
 
 ```
-pnpm dev        → run locally (http://localhost:3000)
-pnpm build      → production build
-pnpm lint       → eslint
-pnpm typecheck  → tsc --noEmit
+npm run dev         → run locally (http://localhost:3000)  [this machine has no pnpm]
+npm run build       → production build (never beside a running dev server)
+npm run lint        → eslint
+npm run typecheck   → tsc --noEmit
+npx playwright test → both e2e specs, against a FRESH npm run dev
+
+node scripts/demo-data.js seed     → build the demo world in the live project
+node scripts/demo-data.js status   → what demo data exists right now
+node scripts/demo-data.js wipe     → remove ALL of it, in one step
 ```
+
+### Demo data — one command in, one command out (28 Aug 2026)
+
+`scripts/demo-data.js` fills the **hosted** project with a world to click
+around in: eight people, two studios and an artist business, rooms, a trainer
+who accepted a real invite, eight classes (free, paid, a full one with a real
+waitlist, a draft, and one three days past with a register that was run), a
+captured ₹300 payment and a refund waiting on the studio's queue, a settled
+trainer payout, three leads at three stages, four follows, an enquiry quoted at
+₹24,000, a crew with one member confirmed and one still asked, and four events
+(a ticketed showcase, a solo/duet/crew battle with entries including a crew
+entered by its leader and a duet awaiting its partner, another studio's battle,
+and a draft).
+
+Two properties make it safe to leave lying around:
+
+* **It is written through the app's own doors.** Every demo user signs in for
+  real and the rows are created by the same RPCs the screens call, so consent,
+  capacity and the waitlist are all genuine — the demo world cannot contain a
+  state the real one couldn't. The service role is used for exactly three things
+  no user may do: creating the accounts, back-dating a session so a past class
+  exists, and standing in for the Cashfree webhook (`apply_captured_payment`)
+  so the money screens have real rows.
+* **The wipe is total and precise.** Every account is
+  `demo.<name>@example.com` and every row is owned by one of them, so the wipe
+  deletes the demo businesses (cascading rooms, classes, sessions, enrollments,
+  claims, invites, leads, orders, payments, refunds, payouts, events and event
+  bookings) and then the demo accounts (cascading profiles, and with them crews,
+  follows, bookings and enquiries). It never issues a delete that is not keyed
+  on a demo id it just looked up, so nothing real can be caught by it.
+
+The cast is the prototype's own (Bounce Dance Academy, EEE Crew, Rhea Kapoor…),
+which is what makes demo data recognisable as demo data at a glance. The
+password is printed by `seed`; sign-in is by email, so use the ✉️ Email tab.
+`supabase/seed.sql` is a different thing and stays as it was: LOCAL ONLY, for
+`supabase db reset`.
 
 ## Definition of Done (each slice)
 
