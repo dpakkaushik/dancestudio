@@ -16,12 +16,12 @@ interface RefundRow {
   decided_at: string | null;
   decision_note: string | null;
   settled_offline: boolean;
-  razorpay_refund_id: string | null;
+  provider_refund_id: string | null;
   profiles: { full_name: string } | null;
 }
 
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, razorpay_refund_id, profiles (full_name), orders!inner (class_id)";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id)";
 
 /** Every refund against this class, oldest request first — the queue is a
  *  queue, so the person who has waited longest is at the top. */
@@ -51,7 +51,7 @@ export async function findRefundsByClass(
     decidedAt: r.decided_at,
     decisionNote: r.decision_note,
     settledOffline: r.settled_offline,
-    hasRailReference: r.razorpay_refund_id !== null,
+    hasRailReference: r.provider_refund_id !== null,
   }));
 }
 
@@ -59,8 +59,10 @@ export interface RefundDecision {
   id: string;
   status: RefundStatus;
   amountInr: number;
-  /** The captured payment the money goes back onto — the rail needs this. */
-  razorpayPaymentId: string | null;
+  /** The rail's ids — Cashfree refunds are filed against the ORDER. */
+  provider: "razorpay" | "cashfree";
+  providerOrderId: string | null;
+  providerPaymentId: string | null;
   alreadyAttached: boolean;
 }
 
@@ -82,14 +84,18 @@ export async function decideRefund(
     id: string;
     status: RefundStatus;
     amount_inr: number;
-    razorpay_payment_id: string | null;
+    provider: "razorpay" | "cashfree";
+    provider_order_id: string | null;
+    provider_payment_id: string | null;
     already_attached: boolean;
   };
   return {
     id: row.id,
     status: row.status,
     amountInr: row.amount_inr,
-    razorpayPaymentId: row.razorpay_payment_id,
+    provider: row.provider,
+    providerOrderId: row.provider_order_id,
+    providerPaymentId: row.provider_payment_id,
     alreadyAttached: row.already_attached,
   };
 }
@@ -108,16 +114,16 @@ export async function settleRefundOffline(
   }
 }
 
-/** The settler's bind, not the payer's: attach_razorpay_refund is scoped to the
+/** The settler's bind, not the payer's: attach_provider_refund is scoped to the
  *  learner's own row, so a studio approving somebody else's refund needs this. */
 export async function attachSettledRefundReference(
   supabase: SupabaseClient,
   refundId: string,
-  razorpayRefundId: string
+  providerRefundId: string
 ): Promise<void> {
   const { error } = await supabase.rpc("attach_settled_refund_reference", {
     p_refund_id: refundId,
-    p_razorpay_refund_id: razorpayRefundId,
+    p_provider_refund_id: providerRefundId,
   });
   if (error) {
     throw new Error(error.message);

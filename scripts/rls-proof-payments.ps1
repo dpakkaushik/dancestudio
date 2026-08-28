@@ -1,4 +1,4 @@
-# Money proof for Step 9 (Razorpay payments): the free path is closed for priced
+# Money proof for Step 9 (payments; provider-neutral since the Cashfree rail swap): the free path is closed for priced
 # classes, orders/payments/refunds move only through the RPCs, captures are
 # idempotent and capacity-safe, refunds follow the 48h window, and RLS shows
 # money rows only to the payer and the studio.
@@ -77,7 +77,7 @@ try {
   # 2. create_payment_order prices from the database
   $o1 = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s1 }
   Check 2 "Order created (amount $($o1.amount_inr), status $($o1.status))" (($o1.amount_inr -eq 300) -and ($o1.status -eq "created"))
-  Rpc (Api $b.access_token) "attach_razorpay_order" @{ p_order_id = $o1.id; p_razorpay_order_id = "order_PROOF$stamp" } | Out-Null
+  Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $o1.id; p_provider_order_id = "order_PROOF$stamp" } | Out-Null
 
   # 3. nobody writes money tables directly
   $insertBlocked = Expect-Fail {
@@ -88,18 +88,18 @@ try {
 
   # 4. the apply_* functions belong to the machine alone
   $anonApplyBlocked = Expect-Fail {
-    Rpc $anonH "apply_captured_payment" @{ p_razorpay_order_id = "order_PROOF$stamp"; p_razorpay_payment_id = "pay_NOPE"; p_amount_paise = 30000; p_method = "upi" }
+    Rpc $anonH "apply_captured_payment" @{ p_provider_order_id = "order_PROOF$stamp"; p_provider_payment_id = "pay_NOPE"; p_amount_paise = 30000; p_method = "upi" }
   }
   Check 4 "Anon cannot call apply_captured_payment" $anonApplyBlocked
 
   # 5. a verified capture books the seat
-  $cap1 = Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_PROOF$stamp"; p_razorpay_payment_id = "pay_PROOF$stamp"; p_amount_paise = 30000; p_method = "upi" }
+  $cap1 = Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_PROOF$stamp"; p_provider_payment_id = "pay_PROOF$stamp"; p_amount_paise = 30000; p_method = "upi" }
   $enr = Get-Rows (Api $b.access_token) "enrollments?session_id=eq.$s1&select=id,status"
   $ord = Get-Rows (Api $b.access_token) "orders?id=eq.$($o1.id)&select=status"
   Check 5 "Captured payment enrolls (outcome $($cap1.outcome), order $($ord[0].status))" (($cap1.outcome -eq "enrolled") -and ($enr.Count -eq 1) -and ($enr[0].status -eq "enrolled") -and ($ord[0].status -eq "paid"))
 
   # 6. the same payment event twice is a no-op
-  $cap2 = Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_PROOF$stamp"; p_razorpay_payment_id = "pay_PROOF$stamp"; p_amount_paise = 30000; p_method = "upi" }
+  $cap2 = Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_PROOF$stamp"; p_provider_payment_id = "pay_PROOF$stamp"; p_amount_paise = 30000; p_method = "upi" }
   $enr2 = Get-Rows (Api $b.access_token) "enrollments?session_id=eq.$s1&select=id"
   $pays = Get-Rows (Api $b.access_token) "payments?order_id=eq.$($o1.id)&select=id"
   Check 6 "Replayed capture is a no-op (outcome $($cap2.outcome))" (($cap2.outcome -eq "duplicate") -and ($enr2.Count -eq 1) -and ($pays.Count -eq 1))
@@ -113,11 +113,11 @@ try {
   $c2 = New-Class (Api $a.access_token) $ta.id "One Seat $stamp" 300 1 7
   $s2 = Session-Of $c2.id
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s2 }
-  Rpc (Api $b.access_token) "attach_razorpay_order" @{ p_order_id = $oB.id; p_razorpay_order_id = "order_B2$stamp" } | Out-Null
+  Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_B2$stamp" } | Out-Null
   $oA = Rpc (Api $a.access_token) "create_payment_order" @{ p_session_id = $s2 }
-  Rpc (Api $a.access_token) "attach_razorpay_order" @{ p_order_id = $oA.id; p_razorpay_order_id = "order_A2$stamp" } | Out-Null
-  Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_B2$stamp"; p_razorpay_payment_id = "pay_B2$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
-  $capLate = Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_A2$stamp"; p_razorpay_payment_id = "pay_A2$stamp"; p_amount_paise = 30000; p_method = "card" }
+  Rpc (Api $a.access_token) "attach_provider_order" @{ p_order_id = $oA.id; p_provider_order_id = "order_A2$stamp" } | Out-Null
+  Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_B2$stamp"; p_provider_payment_id = "pay_B2$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
+  $capLate = Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_A2$stamp"; p_provider_payment_id = "pay_A2$stamp"; p_amount_paise = 30000; p_method = "card" }
   $refA = Get-Rows (Api $a.access_token) "refunds?order_id=eq.$($oA.id)&select=id,status,reason"
   $enrA = Get-Rows (Api $a.access_token) "enrollments?session_id=eq.$s2&user_id=eq.$($a.user.id)&status=eq.enrolled&select=id"
   Check 8 "Late capture on a full class refunds (outcome $($capLate.outcome), refund $($refA[0].status), not enrolled)" (($capLate.outcome -eq "refund_pending") -and ($refA.Count -eq 1) -and ($refA[0].status -eq "pending") -and ($enrA.Count -eq 0))
@@ -129,7 +129,7 @@ try {
   Check 9 "Cancel outside 48h frees the seat and files a pending refund ($($out9.refund.status))" (($out9.refund.status -eq "pending") -and ($out9.refund.amount_inr -eq 300) -and $seatFreed)
 
   # 10. refund.processed closes the loop
-  Rpc $svcH "apply_refund_update" @{ p_razorpay_payment_id = "pay_PROOF$stamp"; p_razorpay_refund_id = "rfnd_PROOF$stamp"; p_amount_paise = 30000; p_succeeded = $true } | Out-Null
+  Rpc $svcH "apply_refund_update" @{ p_provider_payment_id = "pay_PROOF$stamp"; p_provider_refund_id = "rfnd_PROOF$stamp"; p_amount_paise = 30000; p_succeeded = $true } | Out-Null
   $ref10 = Get-Rows (Api $b.access_token) "refunds?order_id=eq.$($o1.id)&select=status"
   $ord10 = Get-Rows (Api $b.access_token) "orders?id=eq.$($o1.id)&select=status"
   Check 10 "Refund processed (refund $($ref10[0].status), order $($ord10[0].status))" (($ref10[0].status -eq "processed") -and ($ord10[0].status -eq "refunded"))
@@ -138,8 +138,8 @@ try {
   $c3 = New-Class (Api $a.access_token) $ta.id "Tomorrow $stamp" 300 10 1
   $s3 = Session-Of $c3.id
   $o3 = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s3 }
-  Rpc (Api $b.access_token) "attach_razorpay_order" @{ p_order_id = $o3.id; p_razorpay_order_id = "order_C3$stamp" } | Out-Null
-  Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_C3$stamp"; p_razorpay_payment_id = "pay_C3$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
+  Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $o3.id; p_provider_order_id = "order_C3$stamp" } | Out-Null
+  Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_C3$stamp"; p_provider_payment_id = "pay_C3$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
   $enr3 = Get-Rows (Api $b.access_token) "enrollments?session_id=eq.$s3&status=eq.enrolled&select=id"
   $out11 = Rpc (Api $b.access_token) "cancel_booking" @{ p_enrollment_id = $enr3[0].id; p_reason = "Changed my mind" }
   Check 11 "Cancel inside 48h files a request, not a refund ($($out11.refund.status))" ($out11.refund.status -eq "requested")

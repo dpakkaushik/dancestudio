@@ -1303,7 +1303,7 @@ export function ClassDetail({
       </div>
 
       {/* ── ROOM FOR THE ONE THING YOU CAN PRESS — the booking bar (12405-12444).
-          The two-step pay flow arrives with Razorpay (Step 9); booking is free/stubbed. ── */}
+          The two-step pay flow is Step 9's (Cashfree since 28 Aug 2026). ── */}
       {showBar && (
         <div
           style={{

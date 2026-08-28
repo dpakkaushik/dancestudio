@@ -65,8 +65,8 @@ function Add-Member($tenantId, $userId, $memberRole, $byUser) {
 # a captured payment of Rs 300 by the given method, exactly as the webhook applies one
 function Buy-Seat($learner, $sessionId, $tag, $method) {
   $o = Rpc (Api $learner.token) "create_payment_order" @{ p_session_id = $sessionId }
-  Rpc (Api $learner.token) "attach_razorpay_order" @{ p_order_id = $o.id; p_razorpay_order_id = "order_$tag" } | Out-Null
-  Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_$tag"; p_razorpay_payment_id = "pay_$tag";
+  Rpc (Api $learner.token) "attach_provider_order" @{ p_order_id = $o.id; p_provider_order_id = "order_$tag" } | Out-Null
+  Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_$tag"; p_provider_payment_id = "pay_$tag";
     p_amount_paise = 30000; p_method = $method } | Out-Null
   return (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
 }
@@ -74,7 +74,7 @@ function Buy-Seat($learner, $sessionId, $tag, $method) {
 # a payment row's created_at, rewritten with the service role (no policy admits
 # anybody else to write payments at all)
 function Backdate-Payment($tag, $iso) {
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/payments?razorpay_payment_id=eq.pay_$tag" -Headers $svcH `
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/payments?provider_payment_id=eq.pay_$tag" -Headers $svcH `
     -Body (@{ created_at = $iso } | ConvertTo-Json) | Out-Null
 }
 function Sum-Amt($rows) {
@@ -192,8 +192,8 @@ try {
   # 5. a FAILED payment is not money: it never enters gross and never appears in
   #    the rows the page reads
   $fo = Rpc (Api $learners[4].token) "create_payment_order" @{ p_session_id = $sid }
-  Rpc (Api $learners[4].token) "attach_razorpay_order" @{ p_order_id = $fo.id; p_razorpay_order_id = "order_F$stamp" } | Out-Null
-  Rpc $svcH "apply_failed_payment" @{ p_razorpay_order_id = "order_F$stamp"; p_razorpay_payment_id = "pay_F$stamp" } | Out-Null
+  Rpc (Api $learners[4].token) "attach_provider_order" @{ p_order_id = $fo.id; p_provider_order_id = "order_F$stamp" } | Out-Null
+  Rpc $svcH "apply_failed_payment" @{ p_provider_order_id = "order_F$stamp"; p_provider_payment_id = "pay_F$stamp" } | Out-Null
   $i4 = Income-Of (Api $owner.token) $ta.id
   $failedSeen = @($i4.payments | Where-Object { $_.status -eq "failed" }).Count
   Check 5 "A failed payment adds nothing (gross Rs $(M $i4 $curKey 'gross'), $failedSeen failed rows in the read)" (

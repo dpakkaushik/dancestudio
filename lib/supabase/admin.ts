@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-/** Service-role client — bypasses RLS. Server-only: used by the Razorpay webhook
+/** Service-role client — bypasses RLS. Server-only: used by the Cashfree webhook
  *  route and the server-verified checkout handshake to run the apply_* RPCs
  *  (granted to service_role alone). Never import from client components. */
 export function createSupabaseAdminClient(): SupabaseClient {

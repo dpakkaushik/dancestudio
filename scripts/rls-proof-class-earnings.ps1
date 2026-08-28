@@ -63,8 +63,8 @@ function Add-Member($tenantId, $userId, $memberRole, $byUser) {
 }
 function Buy-Seat($learner, $sessionId, $tag) {
   $o = Rpc (Api $learner.token) "create_payment_order" @{ p_session_id = $sessionId }
-  Rpc (Api $learner.token) "attach_razorpay_order" @{ p_order_id = $o.id; p_razorpay_order_id = "order_$tag" } | Out-Null
-  Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_$tag"; p_razorpay_payment_id = "pay_$tag";
+  Rpc (Api $learner.token) "attach_provider_order" @{ p_order_id = $o.id; p_provider_order_id = "order_$tag" } | Out-Null
+  Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_$tag"; p_provider_payment_id = "pay_$tag";
     p_amount_paise = 30000; p_method = "upi" } | Out-Null
   return (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
 }
@@ -129,7 +129,7 @@ try {
   #    that never captured), and price x seats would now over-count by Rs 300.
   $comped = New-EmailUser "earnproof-comp-$stamp@example.com" "Comped $stamp" "dancer"
   $co = Rpc (Api $comped.token) "create_payment_order" @{ p_session_id = $sid }
-  Rpc (Api $comped.token) "attach_razorpay_order" @{ p_order_id = $co.id; p_razorpay_order_id = "order_COMP$stamp" } | Out-Null
+  Rpc (Api $comped.token) "attach_provider_order" @{ p_order_id = $co.id; p_provider_order_id = "order_COMP$stamp" } | Out-Null
   $m1 = Money-Of (Api $owner.token) $cls.id
   $seatsWithAnOrder = (Get-Rows $svcH "orders?class_id=eq.$($cls.id)&select=id").Count
   Check 2 "Came in counts captured payments (Rs $($m1.collected) from $($m1.payRows)), not price x $seatsWithAnOrder orders (Rs $(300 * $seatsWithAnOrder))" (

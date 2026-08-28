@@ -17,47 +17,37 @@ import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 /** HOW YOU ARE PAYING — the two-step booking flow lifted from prototype S_class
  *  (DanceOSApp.jsx:12456-12573): choose how you're paying, then see exactly what
  *  is being charged and agree to it. The prototype's saved methods (DOSDB.methods)
- *  are Razorpay Checkout here — one method row until passes arrive; a free class
+ *  are Cashfree Checkout here — one method row until passes arrive; a free class
  *  skips straight to the confirm sheet ({how:"free"}, 12439). Sheets wear the
  *  repo's corrected role="dialog" pattern, not the prototype's aria-hidden one. */
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
-interface RazorpayCheckoutResponse {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
+/* Cashfree JS SDK v3 (sdk.cashfree.com/js/v3/cashfree.js): a global factory,
+   one checkout() call that opens the modal and resolves when it closes */
+interface CashfreeCheckoutResult {
+  error?: { message?: string };
+  redirect?: boolean;
+  paymentDetails?: { paymentMessage?: string };
 }
-
-interface RazorpayInstance {
-  open: () => void;
+interface CashfreeInstance {
+  checkout: (options: { paymentSessionId: string; redirectTarget: "_modal" | "_self" | "_blank" }) => Promise<CashfreeCheckoutResult>;
 }
 
 declare global {
   interface Window {
-    Razorpay?: new (options: {
-      key: string;
-      order_id: string;
-      amount: number;
-      currency: string;
-      name: string;
-      description: string;
-      prefill: { name?: string; email?: string };
-      theme: { color: string };
-      handler: (response: RazorpayCheckoutResponse) => void;
-      modal: { ondismiss: () => void };
-    }) => RazorpayInstance;
+    Cashfree?: (options: { mode: "sandbox" | "production" }) => CashfreeInstance;
   }
 }
 
 let checkoutLoader: Promise<void> | null = null;
 const loadCheckoutJs = (): Promise<void> => {
-  if (typeof window !== "undefined" && window.Razorpay) {
+  if (typeof window !== "undefined" && window.Cashfree) {
     return Promise.resolve();
   }
   checkoutLoader ??= new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
     script.onload = () => resolve();
     script.onerror = () => {
       checkoutLoader = null;
@@ -100,6 +90,7 @@ export interface PayFlowProps {
   /** poster kit inputs — the same poster the card showed you (12464) */
   posterItem: { title: string; style: string; styleColor: string };
   posterK: string;
+  /** the class's colour — Razorpay's modal wore it; Cashfree's modal wears its own theme, so the prop is kept for the call sites and unused here */
   col: string;
   /** "style · time" and "room, city" lines under the sheet titles */
   metaTop: string;
@@ -119,7 +110,6 @@ export function PayFlow({
   priceInr,
   posterItem,
   posterK,
-  col,
   metaTop,
   metaBottom,
   businessName,
@@ -153,12 +143,10 @@ export function PayFlow({
     router.refresh();
   };
 
-  const confirmPaid = async (response: RazorpayCheckoutResponse) => {
-    const out = await confirmCheckoutAction({
-      razorpayOrderId: response.razorpay_order_id,
-      razorpayPaymentId: response.razorpay_payment_id,
-      razorpaySignature: response.razorpay_signature,
-    });
+  /* after the modal closes the SERVER asks Cashfree what happened on our order —
+     the browser's word for it is never trusted */
+  const confirmPaid = async (orderId: string) => {
+    const out = await confirmCheckoutAction({ orderId });
     setBusy(false);
     if (out.error || !out.outcome) {
       setError(out.error ?? "Could not confirm the payment");
@@ -190,32 +178,28 @@ export function PayFlow({
       setError(loadError instanceof Error ? loadError.message : "Could not load the payment window");
       return;
     }
-    if (!window.Razorpay) {
+    if (!window.Cashfree) {
       setBusy(false);
       setError("Could not load the payment window");
       return;
     }
     const checkout = res.checkout;
-    const razorpay = new window.Razorpay({
-      key: checkout.keyId,
-      order_id: checkout.razorpayOrderId,
-      amount: checkout.amountPaise,
-      currency: checkout.currency,
-      name: checkout.businessName,
-      description: checkout.description,
-      prefill: {
-        name: checkout.prefillName ?? undefined,
-        email: checkout.prefillEmail ?? undefined,
-      },
-      theme: { color: col },
-      handler: (response) => {
-        void confirmPaid(response);
-      },
-      modal: {
-        ondismiss: () => setBusy(false),
-      },
-    });
-    razorpay.open();
+    const cashfree = window.Cashfree({ mode: checkout.mode });
+    let result: CashfreeCheckoutResult;
+    try {
+      result = await cashfree.checkout({ paymentSessionId: checkout.paymentSessionId, redirectTarget: "_modal" });
+    } catch (openError: unknown) {
+      setBusy(false);
+      setError(openError instanceof Error ? openError.message : "Could not open the payment window");
+      return;
+    }
+    if (result.error) {
+      // closed without paying, or the attempt failed — nothing was charged
+      setBusy(false);
+      setError(result.error.message ?? "The payment window closed before the payment finished");
+      return;
+    }
+    void confirmPaid(checkout.orderId);
   };
 
   const header = (title: string) => (
@@ -238,7 +222,7 @@ export function PayFlow({
         <div role="dialog" aria-modal="true" aria-label="How are you paying?" onClick={(e) => e.stopPropagation()} style={sheetBody}>
           {grabber}
           {header("How are you paying?")}
-          {/* the one method on the account until passes arrive — Razorpay Checkout */}
+          {/* the one method on the account until passes arrive — Cashfree Checkout */}
           <div
             role="button"
             tabIndex={0}
@@ -289,7 +273,7 @@ export function PayFlow({
                   DEFAULT
                 </span>
               </div>
-              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>Secure checkout via Razorpay</div>
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>Secure checkout via Cashfree</div>
             </div>
             <span style={{ flexShrink: 0, color: "var(--muted)", fontSize: 16 }}>›</span>
           </div>

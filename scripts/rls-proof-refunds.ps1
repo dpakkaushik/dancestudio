@@ -54,11 +54,11 @@ function Add-Member($tenantId, $userId, $memberRole, $byUser) {
     tenant_id = $tenantId; user_id = $userId; member_role = $memberRole
     created_by = $byUser; updated_by = $byUser } | ConvertTo-Json) | Out-Null
 }
-# a real paid seat: order -> razorpay id -> verified capture (the machine's path)
+# a real paid seat: order -> provider id -> verified capture (the machine's path)
 function Buy-Seat($learner, $sessionId, $tag) {
   $o = Rpc (Api $learner.token) "create_payment_order" @{ p_session_id = $sessionId }
-  Rpc (Api $learner.token) "attach_razorpay_order" @{ p_order_id = $o.id; p_razorpay_order_id = "order_$tag" } | Out-Null
-  Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_$tag"; p_razorpay_payment_id = "pay_$tag";
+  Rpc (Api $learner.token) "attach_provider_order" @{ p_order_id = $o.id; p_provider_order_id = "order_$tag" } | Out-Null
+  Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_$tag"; p_provider_payment_id = "pay_$tag";
     p_amount_paise = 30000; p_method = "upi" } | Out-Null
   return (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
 }
@@ -117,8 +117,8 @@ try {
 
   # 5. the owner approves: the money is now due
   $approved = Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r1; p_decision = "approve" }
-  Check 5 "Owner approves -> $($approved.status), Rs $($approved.amount_inr), payment $(if($approved.razorpay_payment_id){'known'}else{'MISSING'})" (
-    ($approved.status -eq "pending") -and ($approved.amount_inr -eq 300) -and ($approved.razorpay_payment_id -eq "pay_R1$stamp"))
+  Check 5 "Owner approves -> $($approved.status), Rs $($approved.amount_inr), payment $(if($approved.provider_payment_id){'known'}else{'MISSING'})" (
+    ($approved.status -eq "pending") -and ($approved.amount_inr -eq 300) -and ($approved.provider_payment_id -eq "pay_R1$stamp"))
 
   # 6. and only a request can be approved
   $reApproveBlocked = Expect-Fail { Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r1; p_decision = "approve" } }
@@ -154,9 +154,9 @@ try {
   # 10. but once the rail owns it, the rail's event closes it - not a person
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r2; p_decision = "approve" } | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/refunds?id=eq.$r2" -Headers $svcH `
-    -Body (@{ razorpay_refund_id = "rfnd_PROOF$stamp" } | ConvertTo-Json) | Out-Null
+    -Body (@{ provider_refund_id = "rfnd_PROOF$stamp" } | ConvertTo-Json) | Out-Null
   $railBlocked = Expect-Fail { Rpc (Api $owner.token) "settle_refund_offline" @{ p_refund_id = $r2 } }
-  Check 10 "A refund already with Razorpay cannot be closed by hand" $railBlocked
+  Check 10 "A refund already with the rail cannot be closed by hand" $railBlocked
 
   # 11. and the row itself is not writable - there is no UPDATE policy at all
   $patched = Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/refunds?id=eq.$r2" -Headers (Api $owner.token) `

@@ -44,7 +44,8 @@ interface Bucket {
   methods: Map<string, { amount: number; count: number }>;
 }
 
-/** Razorpay's word for the method, lower-cased; nothing → "other". */
+/** The rail's word for the method (Cashfree's payment_group: upi, credit_card,
+ *  net_banking, wallet …), lower-cased; nothing → "other". */
 const normaliseMethod = (method: string | null): string => {
   const m = (method ?? "").trim().toLowerCase();
   return m.length > 0 ? m : "other";

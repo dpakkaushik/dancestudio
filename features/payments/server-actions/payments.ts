@@ -4,32 +4,34 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
-  createRazorpayOrder,
-  fetchRazorpayPayment,
-  getRazorpayKeyId,
-  getRazorpayKeySecret,
-  isRazorpayConfigured,
-  refundRazorpayPayment,
-} from "@/lib/razorpay/api";
-import { verifyCheckoutSignature } from "@/lib/razorpay/signature";
+  cashfreeMode,
+  createCashfreeOrder,
+  fetchCashfreeOrderPayments,
+  isCashfreeConfigured,
+  refundCashfreePayment,
+  rupeesToPaise,
+} from "@/lib/cashfree/api";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   applyCapturedPayment,
-  attachRazorpayOrder,
-  attachRazorpayRefund,
+  applyFailedPayment,
+  attachProviderOrder,
+  attachProviderRefund,
   cancelBooking,
   createPaymentOrder,
+  findMyOrder,
 } from "@/repositories/payments";
 import { findProfileById } from "@/repositories/profiles";
 import type { CheckoutPayload } from "@/types/payment";
 
-/** Step 9 money actions. The flow: startCheckoutAction makes our order + the
- *  Razorpay order (amount always from the database, never the client); the
- *  browser pays in Razorpay Checkout; confirmCheckoutAction verifies the
- *  handshake signature, fetches the payment FROM Razorpay, and applies it via
- *  the same idempotent RPC the webhook uses — whichever lands first wins,
- *  the other becomes a no-op. */
+/** Step 9 money actions on the Cashfree rail (swapped 28 Aug 2026). The flow:
+ *  startCheckoutAction makes our order + the Cashfree order (amount always from
+ *  the database, never the client) and hands the browser a payment session;
+ *  the browser pays in Cashfree's checkout modal; confirmCheckoutAction asks
+ *  Cashfree what actually happened on that order — never the browser — and
+ *  applies it via the same idempotent RPC the webhook uses. Whichever lands
+ *  first wins, the other becomes a no-op. */
 
 const NOT_CONFIGURED =
   "Payments aren't switched on for this deployment yet — ask the studio to book you in.";
@@ -53,6 +55,16 @@ function revalidateBookingSurfaces() {
   revalidatePath("/c/[slug]", "page");
 }
 
+/** Cashfree requires a customer phone on every order. Accounts that signed in
+ *  by phone have one (Supabase stores it as 91XXXXXXXXXX); email accounts do
+ *  not until profiles carry a mobile (Step 26), so the rail gets a placeholder
+ *  it accepts and the receipt stays keyed on OUR user id, never on this. */
+const customerPhoneOf = (authPhone: string | null | undefined): string => {
+  const digits = (authPhone ?? "").replace(/\D/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return "9999999999";
+};
+
 const startSchema = z.object({
   sessionId: z.string().uuid(),
   // display-only strings for the checkout modal — money comes from the DB
@@ -75,34 +87,29 @@ export async function startCheckoutAction(input: {
     return { checkout: null, error: "Invalid booking request" };
   }
   const { supabase, user } = await requireUser();
-  if (!isRazorpayConfigured()) {
+  if (!isCashfreeConfigured()) {
     return { checkout: null, error: NOT_CONFIGURED };
   }
   try {
     const order = await createPaymentOrder(supabase, parsed.data.sessionId);
-    const rzpOrder = await createRazorpayOrder({
-      amountPaise: order.amountInr * 100,
-      receipt: order.id,
-      notes: {
-        order_id: order.id,
-        tenant_id: order.tenantId,
-        class_id: order.classId,
-        session_id: order.sessionId,
-      },
-    });
-    await attachRazorpayOrder(supabase, order.id, rzpOrder.id);
     const profile = await findProfileById(supabase, user.id);
+    const cfOrder = await createCashfreeOrder({
+      orderId: order.id,
+      amountInr: order.amountInr,
+      customer: { id: user.id, phone: customerPhoneOf(user.phone), name: profile?.fullName ?? null, email: user.email ?? null },
+      note: `${parsed.data.businessName} · ${parsed.data.description}`,
+      tags: { order_id: order.id, tenant_id: order.tenantId, class_id: order.classId, session_id: order.sessionId },
+    });
+    await attachProviderOrder(supabase, order.id, cfOrder.order_id);
     return {
       checkout: {
         orderId: order.id,
-        razorpayOrderId: rzpOrder.id,
-        amountPaise: order.amountInr * 100,
-        currency: "INR",
-        keyId: getRazorpayKeyId(),
+        providerOrderId: cfOrder.order_id,
+        paymentSessionId: cfOrder.payment_session_id,
+        mode: cashfreeMode(),
+        amountInr: order.amountInr,
         businessName: parsed.data.businessName,
         description: parsed.data.description,
-        prefillName: profile?.fullName ?? null,
-        prefillEmail: user.email ?? null,
       },
       error: null,
     };
@@ -114,54 +121,51 @@ export async function startCheckoutAction(input: {
   }
 }
 
-const RZP_ID = z.string().min(6).max(64).regex(/^[A-Za-z0-9_]+$/);
-const confirmSchema = z.object({
-  razorpayOrderId: RZP_ID,
-  razorpayPaymentId: RZP_ID,
-  razorpaySignature: z.string().min(16).max(256).regex(/^[a-f0-9]+$/i),
-});
+const confirmSchema = z.object({ orderId: z.string().uuid() });
 
 export interface ConfirmCheckoutResult {
   outcome: "booked" | "processing" | "refund_pending" | null;
   error: string | null;
 }
 
-export async function confirmCheckoutAction(input: {
-  razorpayOrderId: string;
-  razorpayPaymentId: string;
-  razorpaySignature: string;
-}): Promise<ConfirmCheckoutResult> {
+/** After the checkout modal closes: what did Cashfree record on OUR order? The
+ *  browser tells us nothing we trust — the payments list comes from Cashfree. */
+export async function confirmCheckoutAction(input: { orderId: string }): Promise<ConfirmCheckoutResult> {
   const parsed = confirmSchema.safeParse(input);
   if (!parsed.success) {
     return { outcome: null, error: "Invalid payment response" };
   }
-  const { supabase } = await requireUser();
-  if (!isRazorpayConfigured()) {
+  const { supabase, user } = await requireUser();
+  if (!isCashfreeConfigured()) {
     return { outcome: null, error: NOT_CONFIGURED };
   }
-  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = parsed.data;
   try {
-    if (
-      !verifyCheckoutSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature, getRazorpayKeySecret())
-    ) {
-      return { outcome: null, error: "That payment could not be verified" };
+    const order = await findMyOrder(supabase, parsed.data.orderId, user.id);
+    if (!order?.providerOrderId) {
+      return { outcome: null, error: "That payment could not be matched to a booking" };
     }
-    // the authoritative record comes from Razorpay itself, never the browser
-    const payment = await fetchRazorpayPayment(razorpayPaymentId);
-    if (payment.order_id !== razorpayOrderId) {
-      return { outcome: null, error: "That payment could not be verified" };
-    }
-    if (payment.status !== "captured") {
-      // authorized-but-not-captured settles via the webhook shortly
-      return { outcome: "processing", error: null };
+    const attempts = await fetchCashfreeOrderPayments(order.providerOrderId);
+    const success = attempts.find((p) => p.payment_status === "SUCCESS");
+    if (!success) {
+      if (attempts.some((p) => p.payment_status === "PENDING")) {
+        // a UPI collect still waiting on the bank — the webhook settles it shortly
+        return { outcome: "processing", error: null };
+      }
+      const failed = attempts.find((p) => p.payment_status === "FAILED" || p.payment_status === "USER_DROPPED");
+      if (failed) {
+        const admin = createSupabaseAdminClient();
+        await applyFailedPayment(admin, { providerOrderId: order.providerOrderId, providerPaymentId: String(failed.cf_payment_id) });
+        return { outcome: null, error: "The payment didn't go through — nothing was charged. Try again." };
+      }
+      return { outcome: null, error: "No payment was made" };
     }
 
     const admin = createSupabaseAdminClient();
     const applied = await applyCapturedPayment(admin, {
-      razorpayOrderId,
-      razorpayPaymentId,
-      amountPaise: payment.amount,
-      method: payment.method,
+      providerOrderId: order.providerOrderId,
+      providerPaymentId: String(success.cf_payment_id),
+      amountPaise: rupeesToPaise(success.payment_amount),
+      method: success.payment_group ?? null,
     });
     revalidateBookingSurfaces();
 
@@ -177,8 +181,13 @@ export async function confirmCheckoutAction(input: {
       // the seat could not be granted — send the money straight back
       if (applied.refund_id) {
         try {
-          const refund = await refundRazorpayPayment(razorpayPaymentId);
-          await attachRazorpayRefund(supabase, applied.refund_id, refund.id);
+          const refund = await refundCashfreePayment({
+            providerOrderId: order.providerOrderId,
+            refundId: applied.refund_id,
+            amountInr: Math.round(success.payment_amount),
+            note: "Seat could not be granted",
+          });
+          await attachProviderRefund(supabase, applied.refund_id, String(refund.cf_refund_id));
         } catch {
           // the refund row stays 'pending' — the ledger keeps it visible
         }
@@ -227,10 +236,15 @@ export async function cancelBookingAction(input: {
       };
     }
     // full refund due — fire it now; a failed call leaves the ledgered row pending
-    if (isRazorpayConfigured()) {
+    if (isCashfreeConfigured() && refund.provider === "cashfree" && refund.providerOrderId) {
       try {
-        const rzpRefund = await refundRazorpayPayment(refund.razorpayPaymentId);
-        await attachRazorpayRefund(supabase, refund.id, rzpRefund.id);
+        const cf = await refundCashfreePayment({
+          providerOrderId: refund.providerOrderId,
+          refundId: refund.id,
+          amountInr: refund.amountInr,
+          note: parsed.data.reason,
+        });
+        await attachProviderRefund(supabase, refund.id, String(cf.cf_refund_id));
         return {
           message: `Cancelled — your ₹${refund.amountInr.toLocaleString("en-IN")} refund is on its way`,
           error: null,

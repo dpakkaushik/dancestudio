@@ -2,20 +2,22 @@ import { test, expect } from "@playwright/test";
 import { createHmac } from "node:crypto";
 
 /**
- * Step 9: the Razorpay webhook pipeline, end to end against the dev server —
- * without a Razorpay account. A real signed delivery is just an HMAC over the
- * raw body with OUR webhook secret, so the test plays Razorpay: it creates a
- * paid order through the real RPCs (as the test-number users), then posts a
- * payment.captured event to /api/webhooks/razorpay and watches the seat land.
+ * Step 9 (rail: Cashfree since 28 Aug 2026): the payment webhook pipeline, end
+ * to end against the dev server — without a browser checkout. A real signed
+ * delivery is Base64(HMAC-SHA256(timestamp + rawBody, SECRET KEY)), so the test
+ * plays Cashfree: it creates a paid order through the real RPCs (as the
+ * test-number users), then posts a PAYMENT_SUCCESS_WEBHOOK to
+ * /api/webhooks/cashfree and watches the seat land.
  *
  * Proves: signature rejection, signature acceptance, the capture → enrollment
- * pipeline, and exactly-once replay handling (the event ledger).
+ * pipeline, and exactly-once replay handling (the event ledger + the RPC's own
+ * idempotency on the provider payment id).
  */
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
+const secretKey = process.env.CASHFREE_SECRET_KEY ?? "";
 
 const serviceHeaders = {
   apikey: serviceKey,
@@ -57,7 +59,7 @@ async function rpc<T>(headers: Record<string, string>, fn: string, body: unknown
   if (!res.ok) {
     throw new Error(`${fn} failed: ${res.status} ${await res.text()}`);
   }
-  // a void RPC (attach_razorpay_order) comes back 204 with an empty body
+  // a void RPC (attach_provider_order) comes back 204 with an empty body
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
@@ -70,13 +72,13 @@ async function rows<T>(headers: Record<string, string>, path: string): Promise<T
   return (await res.json()) as T[];
 }
 
-test("razorpay webhook: bad signature rejected, capture books the seat, replay is a no-op", async ({
+test("cashfree webhook: bad signature rejected, capture books the seat, replay is a no-op", async ({
   request,
   browser,
 }) => {
   test.skip(
-    !supabaseUrl || !anonKey || !serviceKey || !webhookSecret,
-    "Supabase keys or RAZORPAY_WEBHOOK_SECRET missing (.env.local or env)"
+    !supabaseUrl || !anonKey || !serviceKey || !secretKey,
+    "Supabase keys or CASHFREE_SECRET_KEY missing (.env.local or env)"
   );
 
   const stamp = Date.now().toString(36);
@@ -111,33 +113,44 @@ test("razorpay webhook: bad signature rejected, capture books the seat, replay i
     const order = await rpc<{ id: string }>(userHeaders(learner.token), "create_payment_order", {
       p_session_id: sessionId,
     });
-    const rzpOrderId = `order_e2e${stamp}`;
-    await rpc(userHeaders(learner.token), "attach_razorpay_order", {
+    const providerOrderId = `dos_${order.id.replace(/-/g, "")}`;
+    await rpc(userHeaders(learner.token), "attach_provider_order", {
       p_order_id: order.id,
-      p_razorpay_order_id: rzpOrderId,
+      p_provider_order_id: providerOrderId,
     });
 
-    // ---- the webhook delivery, exactly as Razorpay sends it ----------------
-    const rzpPaymentId = `pay_e2e${stamp}`;
+    // ---- the webhook delivery, exactly as Cashfree sends it -----------------
+    // amounts are rupees with decimals on the wire; the body must reach the
+    // route as this exact text or the signature breaks
+    const cfPaymentId = Number(`${Date.now()}`.slice(-9));
     const body = JSON.stringify({
-      event: "payment.captured",
-      payload: {
-        payment: { entity: { id: rzpPaymentId, order_id: rzpOrderId, amount: 30000, method: "upi" } },
+      data: {
+        order: { order_id: providerOrderId, order_amount: 300.0, order_currency: "INR" },
+        payment: {
+          cf_payment_id: cfPaymentId,
+          payment_status: "SUCCESS",
+          payment_amount: 300.0,
+          payment_currency: "INR",
+          payment_group: "upi",
+          payment_method: { upi: { channel: "collect", upi_id: "testsuccess@gocash" } },
+        },
       },
+      event_time: new Date().toISOString(),
+      type: "PAYMENT_SUCCESS_WEBHOOK",
     });
-    const signature = createHmac("sha256", webhookSecret).update(body).digest("hex");
-    const eventId = `evt_e2e${stamp}`;
+    const timestamp = String(Date.now());
+    const signature = createHmac("sha256", secretKey).update(`${timestamp}${body}`).digest("base64");
 
     // 1. a forged signature is turned away before anything else happens
-    const forged = await request.post("/api/webhooks/razorpay", {
-      headers: { "content-type": "application/json", "x-razorpay-signature": "0".repeat(64), "x-razorpay-event-id": eventId },
+    const forged = await request.post("/api/webhooks/cashfree", {
+      headers: { "content-type": "application/json", "x-webhook-signature": Buffer.from("0".repeat(32)).toString("base64"), "x-webhook-timestamp": timestamp },
       data: body,
     });
     expect(forged.status()).toBe(401);
 
     // 2. the signed capture books the seat
-    const delivered = await request.post("/api/webhooks/razorpay", {
-      headers: { "content-type": "application/json", "x-razorpay-signature": signature, "x-razorpay-event-id": eventId },
+    const delivered = await request.post("/api/webhooks/cashfree", {
+      headers: { "content-type": "application/json", "x-webhook-signature": signature, "x-webhook-timestamp": timestamp },
       data: body,
     });
     expect(delivered.status()).toBe(200);
@@ -150,23 +163,34 @@ test("razorpay webhook: bad signature rejected, capture books the seat, replay i
     );
     expect(enrollments).toHaveLength(1);
     expect(enrollments[0].status).toBe("enrolled");
-    const orderRows = await rows<{ status: string }>(
+    const orderRows = await rows<{ status: string; provider: string }>(
       userHeaders(learner.token),
-      `orders?id=eq.${order.id}&select=status`
+      `orders?id=eq.${order.id}&select=status,provider`
     );
     expect(orderRows[0].status).toBe("paid");
+    expect(orderRows[0].provider).toBe("cashfree");
 
     // 3. the same delivery again is acknowledged and changes nothing
-    const replayed = await request.post("/api/webhooks/razorpay", {
-      headers: { "content-type": "application/json", "x-razorpay-signature": signature, "x-razorpay-event-id": eventId },
+    const replayed = await request.post("/api/webhooks/cashfree", {
+      headers: { "content-type": "application/json", "x-webhook-signature": signature, "x-webhook-timestamp": timestamp },
       data: body,
     });
     expect(replayed.status()).toBe(200);
-    const payments = await rows<{ id: string }>(
+    // …and so is a RETRY with a fresh timestamp — a new ledger row, but the RPC
+    // is idempotent on the provider payment id, so still one payment
+    const retryTs = String(Date.now() + 1);
+    const retried = await request.post("/api/webhooks/cashfree", {
+      headers: { "content-type": "application/json", "x-webhook-signature": createHmac("sha256", secretKey).update(`${retryTs}${body}`).digest("base64"), "x-webhook-timestamp": retryTs },
+      data: body,
+    });
+    expect(retried.status()).toBe(200);
+    expect(((await retried.json()) as { result?: { outcome?: string } }).result?.outcome).toBe("duplicate");
+    const payments = await rows<{ id: string; provider_payment_id: string }>(
       userHeaders(learner.token),
-      `payments?order_id=eq.${order.id}&select=id`
+      `payments?order_id=eq.${order.id}&select=id,provider_payment_id`
     );
     expect(payments).toHaveLength(1);
+    expect(payments[0].provider_payment_id).toBe(String(cfPaymentId));
 
     // 4. the studio's own screen counts that money (Step 13b part 2b): the owner
     //    signs in through the real screens — test number, OTP 123456 — and the

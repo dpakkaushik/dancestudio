@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ClassMoney, OrderStatus, PaidReceipt, PaymentOrder, RefundOutcome } from "@/types/payment";
+import type { ClassMoney, OrderStatus, PaidReceipt, PaymentOrder, PaymentProvider, RefundOutcome } from "@/types/payment";
 
 interface OrderRow {
   id: string;
@@ -7,7 +7,8 @@ interface OrderRow {
   class_id: string;
   session_id: string;
   amount_inr: number;
-  razorpay_order_id: string | null;
+  provider: PaymentProvider;
+  provider_order_id: string | null;
   status: OrderStatus;
 }
 
@@ -29,20 +30,43 @@ export async function createPaymentOrder(
     classId: row.class_id,
     sessionId: row.session_id,
     amountInr: row.amount_inr,
-    razorpayOrderId: row.razorpay_order_id,
+    provider: row.provider,
+    providerOrderId: row.provider_order_id,
     status: row.status,
   };
 }
 
-/** Bind the Razorpay order id to our order before checkout opens. */
-export async function attachRazorpayOrder(
+/** One of the payer's own orders, for the checkout confirmation — says
+ *  `user_id = me` out loud (RLS is a ceiling, not a scope). */
+export async function findMyOrder(
   supabase: SupabaseClient,
   orderId: string,
-  razorpayOrderId: string
+  userId: string
+): Promise<{ id: string; providerOrderId: string | null; provider: PaymentProvider; amountInr: number; status: OrderStatus } | null> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, provider, provider_order_id, amount_inr, status")
+    .eq("id", orderId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`payments.findMyOrder failed: ${error.message}`);
+  }
+  if (!data) return null;
+  const row = data as { id: string; provider: PaymentProvider; provider_order_id: string | null; amount_inr: number; status: OrderStatus };
+  return { id: row.id, provider: row.provider, providerOrderId: row.provider_order_id, amountInr: row.amount_inr, status: row.status };
+}
+
+/** Bind the provider's order id to our order before checkout opens. */
+export async function attachProviderOrder(
+  supabase: SupabaseClient,
+  orderId: string,
+  providerOrderId: string
 ): Promise<void> {
-  const { error } = await supabase.rpc("attach_razorpay_order", {
+  const { error } = await supabase.rpc("attach_provider_order", {
     p_order_id: orderId,
-    p_razorpay_order_id: razorpayOrderId,
+    p_provider_order_id: providerOrderId,
   });
   if (error) {
     throw new Error(error.message);
@@ -63,7 +87,14 @@ export async function cancelBooking(
     throw new Error(error.message);
   }
   const out = data as {
-    refund: { id: string; status: RefundOutcome["status"]; amount_inr: number; razorpay_payment_id: string } | null;
+    refund: {
+      id: string;
+      status: RefundOutcome["status"];
+      amount_inr: number;
+      provider: PaymentProvider;
+      provider_order_id: string | null;
+      provider_payment_id: string;
+    } | null;
   };
   if (!out.refund) {
     return null;
@@ -72,19 +103,21 @@ export async function cancelBooking(
     id: out.refund.id,
     status: out.refund.status,
     amountInr: out.refund.amount_inr,
-    razorpayPaymentId: out.refund.razorpay_payment_id,
+    provider: out.refund.provider,
+    providerOrderId: out.refund.provider_order_id,
+    providerPaymentId: out.refund.provider_payment_id,
   };
 }
 
-/** Bind the Razorpay refund id after the refund API call succeeds. */
-export async function attachRazorpayRefund(
+/** Bind the provider's refund id after the refund API call succeeds (the payer's own row). */
+export async function attachProviderRefund(
   supabase: SupabaseClient,
   refundId: string,
-  razorpayRefundId: string
+  providerRefundId: string
 ): Promise<void> {
-  const { error } = await supabase.rpc("attach_razorpay_refund", {
+  const { error } = await supabase.rpc("attach_provider_refund", {
     p_refund_id: refundId,
-    p_razorpay_refund_id: razorpayRefundId,
+    p_provider_refund_id: providerRefundId,
   });
   if (error) {
     throw new Error(error.message);
@@ -94,7 +127,7 @@ export async function attachRazorpayRefund(
 interface ReceiptRow {
   status: OrderStatus;
   payments: Array<{
-    razorpay_payment_id: string;
+    provider_payment_id: string;
     amount_inr: number;
     method: string | null;
     status: string;
@@ -109,7 +142,7 @@ export async function findPaidReceiptByEnrollment(
 ): Promise<PaidReceipt | null> {
   const { data, error } = await supabase
     .from("orders")
-    .select("status, payments (razorpay_payment_id, amount_inr, method, status, created_at)")
+    .select("status, payments (provider_payment_id, amount_inr, method, status, created_at)")
     .eq("enrollment_id", enrollmentId)
     .in("status", ["paid", "refund_pending", "refunded"])
     .is("deleted_at", null)
@@ -126,7 +159,7 @@ export async function findPaidReceiptByEnrollment(
   return {
     amountInr: paid.amount_inr,
     method: paid.method,
-    razorpayPaymentId: paid.razorpay_payment_id,
+    providerPaymentId: paid.provider_payment_id,
     paidAt: paid.created_at,
     orderStatus: order.status,
   };
@@ -202,16 +235,16 @@ export interface CaptureOutcome {
   enrollment_id?: string;
   order_status?: OrderStatus;
   refund_id?: string;
-  razorpay_payment_id?: string;
+  provider_payment_id?: string;
 }
 
 export async function applyCapturedPayment(
   admin: SupabaseClient,
-  params: { razorpayOrderId: string; razorpayPaymentId: string; amountPaise: number; method: string | null }
+  params: { providerOrderId: string; providerPaymentId: string; amountPaise: number; method: string | null }
 ): Promise<CaptureOutcome> {
   const { data, error } = await admin.rpc("apply_captured_payment", {
-    p_razorpay_order_id: params.razorpayOrderId,
-    p_razorpay_payment_id: params.razorpayPaymentId,
+    p_provider_order_id: params.providerOrderId,
+    p_provider_payment_id: params.providerPaymentId,
     p_amount_paise: params.amountPaise,
     p_method: params.method,
   });
@@ -223,11 +256,11 @@ export async function applyCapturedPayment(
 
 export async function applyFailedPayment(
   admin: SupabaseClient,
-  params: { razorpayOrderId: string; razorpayPaymentId: string }
+  params: { providerOrderId: string; providerPaymentId: string }
 ): Promise<void> {
   const { error } = await admin.rpc("apply_failed_payment", {
-    p_razorpay_order_id: params.razorpayOrderId,
-    p_razorpay_payment_id: params.razorpayPaymentId,
+    p_provider_order_id: params.providerOrderId,
+    p_provider_payment_id: params.providerPaymentId,
   });
   if (error) {
     throw new Error(`apply_failed_payment failed: ${error.message}`);
@@ -236,11 +269,11 @@ export async function applyFailedPayment(
 
 export async function applyRefundUpdate(
   admin: SupabaseClient,
-  params: { razorpayPaymentId: string; razorpayRefundId: string; amountPaise: number; succeeded: boolean }
+  params: { providerPaymentId: string; providerRefundId: string; amountPaise: number; succeeded: boolean }
 ): Promise<void> {
   const { error } = await admin.rpc("apply_refund_update", {
-    p_razorpay_payment_id: params.razorpayPaymentId,
-    p_razorpay_refund_id: params.razorpayRefundId,
+    p_provider_payment_id: params.providerPaymentId,
+    p_provider_refund_id: params.providerRefundId,
     p_amount_paise: params.amountPaise,
     p_succeeded: params.succeeded,
   });

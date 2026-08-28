@@ -34,6 +34,6 @@ export interface RefundRequest {
   decisionNote: string | null;
   /** Settled by hand at the desk rather than through the payment rail. */
   settledOffline: boolean;
-  /** A Razorpay refund id is attached, so the rail owns the outcome now. */
+  /** The rail's refund id is attached, so the rail owns the outcome now. */
   hasRailReference: boolean;
 }

@@ -14,7 +14,7 @@ import { DOS_MONO, MoneyCard, SectionLabel, bizCard, money } from "./earnings-ki
  *  What is NOT here, on purpose (CLAUDE.md, Step 13b part 2b buckets b and c):
  *  the source bar / SHARE OF GROSS (one source exists today — Classes at 100%
  *  is a legend with nothing to say until Step 21 brings tickets), and the fee /
- *  GST / bank-settlement lines, which need a Razorpay account to be true. */
+ *  GST / bank-settlement lines, which need a live (KYC'd) Cashfree account to be true. */
 
 /* the prototype's softer red for money going back out (18075) */
 const SOFT_RED = "#F87171";
@@ -26,18 +26,26 @@ const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
   }
 };
 
-/** Razorpay's method words → the prototype's labels and tints (18130). Methods
- *  the prototype never named get the kit's spare colours; anything unknown
- *  prints as itself rather than being hidden. */
+/** The rail's method words → the prototype's labels and tints (18130). Cashfree
+ *  reports a `payment_group` (upi, credit_card, debit_card, net_banking, wallet,
+ *  pay_later, emi …); the first cut's Razorpay words stay so its rows still read.
+ *  Methods the prototype never named get the kit's spare colours; anything
+ *  unknown prints as itself rather than being hidden. */
 const METHOD_WORDS: Record<string, [string, string]> = {
   upi: ["UPI", "#22C55E"],
+  upi_credit_card: ["UPI", "#22C55E"],
   card: ["Cards", "#3B82F6"],
+  credit_card: ["Cards", "#3B82F6"],
+  debit_card: ["Cards", "#3B82F6"],
+  prepaid_card: ["Cards", "#3B82F6"],
   cash: ["Cash at studio", "#F59E0B"],
   netbanking: ["Netbanking", "#8B5CF6"],
+  net_banking: ["Netbanking", "#8B5CF6"],
   wallet: ["Wallets", "#0EA5E9"],
   emi: ["EMI", "#0D9488"],
   cardless_emi: ["Cardless EMI", "#0EA5E9"],
   paylater: ["Pay later", "#DC2626"],
+  pay_later: ["Pay later", "#DC2626"],
   bank_transfer: ["Bank transfer", "#8E44AD"],
 };
 
@@ -125,7 +133,7 @@ function GrowthBadge({ current, previous }: { current: MonthIncome; previous: Mo
 
 /** GROSS · {MONTH}: what students paid this month, and the three counted tiles.
  *  The prototype's Settled / In transit tiles count bank settlements, which do
- *  not exist without a Razorpay account; the two real states of this money
+ *  not exist without a live Cashfree account; the two real states of this money
  *  today are what stayed (Net) and what is being asked back — so those are the
  *  tiles, beside the prototype's own REFUNDED. */
 export function GrossCard({ income }: { income: TenantIncome }) {
@@ -250,7 +258,7 @@ function downloadStatement(tenantName: string, month: MonthIncome) {
 /** The past months' statements (prototype 18055-18082): each card opens into
  *  WHERE IT CAME FROM, DEDUCTIONS and Net settled. Deductions today hold only
  *  Refunds — we charge no fee — so Net settled = Gross − Refunds is a true
- *  sentence, and the fee / GST lines wait for a Razorpay account rather than
+ *  sentence, and the fee / GST lines wait for a live Cashfree account rather than
  *  being printed as if they existed. The prototype's sub-line counts bank
  *  payouts; ours counts the payments that made the month, which is the real
  *  number we have. */

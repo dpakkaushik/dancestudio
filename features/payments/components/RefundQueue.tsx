@@ -212,7 +212,7 @@ export function RefundQueue({
                 pill("Mark refunded", GOLD, () => run(() => settleRefundOfflineAction({ refundId: r.id })))}
               {r.status === "pending" && r.hasRailReference && (
                 <span style={{ fontSize: 10.5, color: SUB }}>
-                  With Razorpay — their refund event closes this one.
+                  With Cashfree — its refund event closes this one.
                 </span>
               )}
               {r.status === "declined" &&

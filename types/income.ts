@@ -6,7 +6,7 @@
  *  guessed" (18037-18047). */
 
 /** One payment method's share of a month — the HOW STUDENTS PAID bar. The
- *  `method` is Razorpay's word for it (upi, card, netbanking, wallet, ...),
+ *  `method` is the rail's word for it (Cashfree: upi, credit_card, net_banking, wallet, ...),
  *  normalised to lower case; the UI decides the label and the colour. */
 export interface MethodShare {
   method: string;

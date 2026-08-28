@@ -33,7 +33,7 @@ import {
  *
  *  Money, honestly: the business RECORDS the advance and the balance as
  *  received (Step 13's limit — DanceOS records it, it does not move it). The
- *  sender's "Pay" becomes a real payment when a Razorpay account exists; until
+ *  sender's "Pay" becomes a real payment when the Cashfree rail reaches enquiries; until
  *  then it says so rather than pretending. */
 
 const bizBtn: React.CSSProperties = {

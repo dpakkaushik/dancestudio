@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { isRazorpayConfigured, refundRazorpayPayment } from "@/lib/razorpay/api";
+import { isCashfreeConfigured, refundCashfreePayment } from "@/lib/cashfree/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   attachSettledRefundReference,
@@ -17,7 +17,7 @@ import {
  *  Approving is the only one that touches the rail, and it does so the way
  *  cancelBookingAction already does: the row moves to 'pending' first, then the
  *  API call fires. If the call fails, or no keys are configured, the row stays
- *  'pending' and stays on the queue — ledgered rather than lost. Razorpay's
+ *  'pending' and stays on the queue — ledgered rather than lost. The rail's
  *  refund.processed webhook is what finally closes it (Step 9's rails), so this
  *  action never claims the money has landed. */
 
@@ -83,18 +83,18 @@ export async function decideRefundAction(input: {
     }
 
     // approved: the money is due, so send it
-    if (!decided.razorpayPaymentId || decided.alreadyAttached) {
+    if (!decided.providerPaymentId || !decided.providerOrderId || decided.provider !== "cashfree" || decided.alreadyAttached) {
       return { message: `Approved — ${rupees(decided.amountInr)} is queued`, error: null };
     }
-    if (!isRazorpayConfigured()) {
+    if (!isCashfreeConfigured()) {
       return {
         message: `Approved — ${rupees(decided.amountInr)} is queued (payments aren't switched on yet)`,
         error: null,
       };
     }
     try {
-      const rzp = await refundRazorpayPayment(decided.razorpayPaymentId);
-      await attachSettledRefundReference(supabase, decided.id, rzp.id);
+      const cf = await refundCashfreePayment({ providerOrderId: decided.providerOrderId, refundId: decided.id, amountInr: decided.amountInr, note: "Approved by the studio" });
+      await attachSettledRefundReference(supabase, decided.id, String(cf.cf_refund_id));
       return { message: `Approved — ${rupees(decided.amountInr)} is on its way back`, error: null };
     } catch {
       // the row is already 'pending' and still on the queue, which is the point

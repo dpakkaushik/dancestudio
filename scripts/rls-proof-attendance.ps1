@@ -102,8 +102,8 @@ try {
   $cP = New-TimedClass (Api $a.access_token) $ta.id "Paid One Seat $stamp" 300 1 $soonStart $soonEnd
   $sP = Session-Of $cP.id
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $sP }
-  Rpc (Api $b.access_token) "attach_razorpay_order" @{ p_order_id = $oB.id; p_razorpay_order_id = "order_ATT$stamp" } | Out-Null
-  Rpc $svcH "apply_captured_payment" @{ p_razorpay_order_id = "order_ATT$stamp"; p_razorpay_payment_id = "pay_ATT$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
+  Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_ATT$stamp" } | Out-Null
+  Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_ATT$stamp"; p_provider_payment_id = "pay_ATT$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
   $eA = Rpc (Api $a.access_token) "enroll_in_session" @{ p_session_id = $sP }   # full -> waitlisted
 
   # 6. give_spot respects capacity

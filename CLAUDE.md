@@ -57,6 +57,33 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   with check-in and walk-ins), Discover's **Events** tab with the kind chips
   (S_eventslist), the **Your tickets** shelf on /my-classes, the register's
   **Events ›** chip and the chrome titles. 16-check proof, both e2e specs green.
+  **Rail swap landed 28 Aug 2026 (no new step): Cashfree replaces Razorpay ⚠.**
+  The user chose Cashfree because it does BOTH directions under one account
+  (Payment Gateway in, Payouts out, one sandbox, test keys before KYC) where
+  Razorpay's money-out is a separate RazorpayX current account. Migration
+  `20260828230000_provider_neutral_rail.sql`: the ledger stops naming a vendor —
+  `provider_order_id` / `provider_payment_id` / `provider_refund_id` and a
+  `provider` column on orders, payments and refunds (existing rows stamped
+  'razorpay', new ones 'cashfree'); every function reading those columns
+  recreated (`attach_provider_order`, `apply_*` with `p_provider_*`,
+  `attach_provider_refund`, `cancel_booking`, `decide_refund`,
+  `settle_refund_offline`, `attach_settled_refund_reference`), grants re-stated,
+  no policy touched. The edge is `lib/cashfree/` (orders → payment sessions,
+  fetch an order's payments, refunds; Base64-HMAC webhook verification on
+  timestamp + raw body) and `/api/webhooks/cashfree`; `PayFlow` opens Cashfree's
+  JS SDK v3 modal and the server then asks Cashfree what happened on OUR order —
+  the browser's word is never trusted. **Multi-studio money, decided:** DanceOS
+  must not collect into one account and pay studios out (payment-aggregator
+  territory) — studios are settled by Cashfree **Easy Split** (each tenant a
+  KYC'd vendor, their share to their own bank; needs Cashfree's account manager
+  to enable), and a studio still pays its own people (Step 13). So Payouts is
+  NOT wired: the sandbox pair is valid but IP-gated (403 until this machine's
+  IPv4 is whitelisted). Verified: sandbox smoke proof (order created in our
+  grammar, read back, refunds refused on an unpaid order, wrong key refused),
+  the five money proofs re-run on the renamed RPCs (payments 12, refunds 12,
+  class earnings 9, studio income 13, attendance 10), both e2e specs — the
+  paid-webhook spec now signs as Cashfree and also proves a RETRY with a fresh
+  timestamp is a no-op at the RPC.
   **The desk is
   reachable only by URL until the chip lands.** (The denominator grew from 27 as
   Step 12b was split out of Step 12, and again as Step 13b was split out of
@@ -204,10 +231,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   apply with `npx supabase db push --db-url` over the pooler (Step 13b part 2b's
   environment note). Still parity, tracked in the backlog: 13b **(b)** the
   source bar / SHARE OF GROSS waits for a second PAID source — tickets exist now
-  but every one is free until the rail has an account; **(c)** the fee, GST, TDS
-  and settlement lines wait for a real Razorpay account — printing them first
-  would be the half-truth the prototype's own comment at 18086-18092 was written
-  about.
+  but every one is free until the Cashfree account is live (KYC); **(c)** the
+  fee, GST, TDS and settlement lines wait for that live account and Easy Split —
+  printing them first would be the half-truth the prototype's own comment at
+  18086-18092 was written about. **Money-out for studios is Easy Split, not
+  platform Payouts** (see the rail-swap record); Payouts stays unwired.
 
 | Step | Slice | Status |
 |------|-------|--------|
@@ -220,7 +248,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 6 | Hardening & pilot | ✅ done (24 Aug 2026) — pending ops: Resend domain, pilot invites |
 | 7 | App chrome + Home parity | ✅ done (24 Aug 2026) |
 | 8 | Class detail page + share links | ✅ done (24 Aug 2026) |
-| 9 | Razorpay payments ⚠ | ✅ done (24 Aug 2026) — pending ops: Razorpay account + keys |
+| 9 | Payments ⚠ (Razorpay 24 Aug → **Cashfree** 28 Aug 2026, ledger provider-neutral) | ✅ done — sandbox live; pending ops: Cashfree KYC for live keys, Easy Split enablement |
 | 10 | Attendance + waitlist management | ✅ done (24 Aug 2026) |
 | 11 | Rooms & people (full class form) | ✅ done (25 Aug 2026) |
 | 12 | Studio CRM (leads/trials/conversions) | ✅ done (25 Aug 2026) |
@@ -1435,6 +1463,96 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   `rls-proof-rooms-people.ps1` (13). typecheck / lint / production build / both
   e2e specs green.
 
+### Rail swap — Cashfree replaces Razorpay ⚠ (28 Aug 2026, no new step)
+- **Why.** The user needs money in AND out for many studios. Razorpay's
+  money-out is RazorpayX — a separate current-account onboarding with partner
+  banks — and Route (marketplace splits) is compliance-gated (switched off for
+  merchants who failed review from 1 Jan 2026). Cashfree gives Payment Gateway
+  and Payouts under one account with one sandbox, and its test keys are
+  auto-generated at sign-up before any KYC. The user signed up and pasted the two
+  pairs into `.env.local` (`CASHFREE_ENV`, `CASHFREE_APP_ID`,
+  `CASHFREE_SECRET_KEY`, `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`).
+- **The multi-studio model, decided with the user.** Many studios collect from
+  students and pay their own trainers. Collecting everything into one DanceOS
+  account and paying studios out of it is payment-aggregator activity under RBI
+  rules — a licence, not a feature. So: DanceOS is the merchant, each studio
+  becomes a Cashfree **Easy Split** vendor (Cashfree KYCs the studio and settles
+  its share straight to the studio's bank on every order; our commission stays)
+  — one `vendor_id` per tenant when Cashfree's account manager enables it — and
+  trainer pay stays Step 13's honest record: the studio pays from its own bank.
+  Per-studio Payouts (their wallet, their KYC) only if a studio asks. **Payouts is
+  therefore not wired into the app**; the sandbox pair is valid (a wrong key gives
+  401, this gives `403 IP not whitelisted`) and stays reported, not asserted, by
+  the smoke proof.
+- Migration `20260828230000_provider_neutral_rail.sql` (⚠ money, ⚠ RLS-adjacent):
+  columns renamed `razorpay_* → provider_*` on orders / payments / refunds (their
+  unique indexes renamed with them), `provider text check in ('razorpay','cashfree')`
+  added to all three — existing rows stamped 'razorpay' (they were the first
+  cut's test ids), default 'cashfree' from here. **A plpgsql body is text**: a
+  column rename does not follow it into the functions that read it, so every
+  function touching those columns is recreated in the same transaction —
+  parameters renamed where they named the vendor (`attach_razorpay_order →
+  attach_provider_order(p_order_id, p_provider_order_id)`, `apply_captured_payment /
+  apply_failed_payment / apply_refund_update` with `p_provider_*`,
+  `attach_razorpay_refund → attach_provider_refund`, `attach_settled_refund_reference`
+  with `p_provider_refund_id` — dropped and recreated, Postgres refuses to rename
+  a parameter in place) and bodies-only changes kept by `create or replace`
+  (`cancel_booking` now returns `provider`, `provider_order_id`,
+  `provider_payment_id`; `decide_refund` the same; `settle_refund_offline` reads
+  `provider_refund_id`). Payment and refund rows written by the appliers inherit
+  the order's provider. Grants re-stated verbatim: appliers service_role only,
+  the binds authenticated. No policy changed.
+- **The Cashfree edge.** `lib/cashfree/api.ts`: `createCashfreeOrder` (our order
+  uuid travels as `dos_<hex>` — Cashfree's order_id grammar — with
+  `customer_details`; Cashfree REQUIRES a customer phone, so phone-OTP accounts
+  send theirs and email accounts send a placeholder the sandbox accepts until
+  profiles carry a mobile at Step 26 — the receipt is keyed on OUR user id, never
+  on that), `fetchCashfreeOrderPayments` (the authoritative list after the modal
+  closes), `refundCashfreePayment` (refunds are filed against the ORDER on
+  Cashfree, so `cancel_booking` and `decide_refund` hand back the provider order
+  id); rupees ⇄ paise conversions live there once. `lib/cashfree/signature.ts`:
+  `Base64(HMAC-SHA256(x-webhook-timestamp + rawBody, SECRET_KEY))` — there is no
+  separate webhook secret — plus a ledger id hashed from timestamp + body because
+  Cashfree stamps no event id. `/api/webhooks/cashfree`: verify first (401), the
+  exactly-once ledger, then the idempotent appliers — PAYMENT_SUCCESS_WEBHOOK →
+  `apply_captured_payment` (a seat that cannot be granted fires the refund back),
+  PAYMENT_FAILED / USER_DROPPED → `apply_failed_payment`, REFUND_STATUS_WEBHOOK →
+  `apply_refund_update` on SUCCESS / CANCELLED only (PENDING / ONHOLD are
+  acknowledged and waited out). A Cashfree RETRY carries a fresh timestamp, so it
+  is a new ledger row that lands on an RPC idempotent on the provider payment id
+  — the e2e proves both the replay and the retry are no-ops.
+- **Checkout.** `startCheckoutAction` makes our order, the Cashfree order (amount
+  from the database, never the client) and binds the id; `PayFlow` loads
+  `sdk.cashfree.com/js/v3/cashfree.js` and opens `Cashfree({mode}).checkout({
+  paymentSessionId, redirectTarget: "_modal" })`; when the modal resolves,
+  `confirmCheckoutAction({ orderId })` reads OUR order (`user_id = me` out loud),
+  fetches its payments from Cashfree and applies the SUCCESS one through the same
+  RPC the webhook uses — whichever lands first wins. No signature travels through
+  the browser any more; the browser's word is simply never used. Refund approvals
+  and cancels call `refundCashfreePayment` and bind `cf_refund_id`; the
+  REFUND_STATUS_WEBHOOK closes the row. The Razorpay files are deleted
+  (`lib/razorpay/`, `/api/webhooks/razorpay`); `.env.local.example` documents the
+  Cashfree keys and the webhook URL to register.
+- **Verified:** `scripts/cashfree-sandbox-proof.ps1` — 4 checks + 1 informational
+  against the live sandbox (order created in our grammar with a payment session;
+  read back with 0 payments / 0 refunds; a refund on an unpaid order refused by
+  Cashfree; a wrong secret refused; Payouts pair reported as valid-but-IP-gated).
+  The five money proofs re-run green on the renamed RPCs: payments (12), refunds
+  (12), class earnings (9), studio income (13), attendance (10). typecheck / lint
+  / production build / both e2e specs green — the paid-webhook spec now signs as
+  Cashfree (timestamp + body, Base64), asserts `provider = 'cashfree'` on the
+  order, and adds the retry-with-fresh-timestamp case. **Lessons:** (1) PowerShell
+  5.1 reads a JSON `[]` as ONE item even through a null filter — count off the raw
+  text. (2) A stale `.next/types/validator.ts` from a previous build keeps
+  importing a deleted route and fails `tsc`; delete `.next/types` after removing a
+  route. (3) Cashfree's Payouts sandbox is IP-gated even for a valid pair — a 403
+  "IP not whitelisted" is not a key problem. (4) `powershell -File` from Git Bash
+  trips the execution policy; run proofs through the PowerShell tool.
+- **What still waits on the user (ops):** Cashfree KYC (live PG keys), the
+  webhook registered at `{deployment}/api/webhooks/cashfree` for the payment and
+  refund events, Easy Split enablement via their account manager, and — only if
+  payouts are ever wanted — this machine's IPv4 whitelisted or the 2FA public key.
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -1449,11 +1567,11 @@ remove entries as they close.**
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
 | Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + crews with 22 |
 | Stats tab: placeholder screen today (the Inbox landed with Step 18) | HistPage | Step 25 |
-| Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (notifications, Step 24); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a Razorpay account |
+| Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (notifications, Step 24); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
-| Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Tickets exist since Step 21 but every one is free until the rail has an account, so today it would still be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | with a Razorpay account (paid tickets are the second source) |
+| Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Tickets exist since Step 21 but every one is free until the rail has an account, so today it would still be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | with a live Cashfree account (paid tickets are the second source) |
 | Earnings: the Settled / In transit tiles (they count bank settlements) and the gross card's "Settles T+2 · DanceOS fee 0.9% at source" subtitle. Today the GROSS card's first two tiles read **Net** and **Asked back** — the two real states of this money — beside REFUNDED | S_earn 18014, 18037-18047 | blocked with the deductions panel below |
-| Earnings: the deductions + settlement panel only — `DanceOS fee · 0.9%`, `GST on fee · 18%`, `PAYOUTS TO YOUR BANK`, and the statements' Fee / GST deduction rows (Deductions hold only Refunds today, which is the truth) | S_earn 18156-18183 | blocked on a real Razorpay account (a platform fee that does not exist, and settlements with no account behind them) |
+| Earnings: the deductions + settlement panel only — `DanceOS fee · 0.9%`, `GST on fee · 18%`, `PAYOUTS TO YOUR BANK`, and the statements' Fee / GST deduction rows (Deductions hold only Refunds today, which is the truth) | S_earn 18156-18183 | blocked on a live Cashfree account + Easy Split (a platform fee that does not exist yet, and settlements with no account behind them) |
 | Earnings: the artist's TDS 10% line and WHAT REACHES YOU panel | S_earn 18178-18190 | blocked: needs a withholding rate the studio sets — not a tax engine |
 | Earnings: the statement sub-line counts payments where the prototype counts bank payouts; the earnings period state is component state, not the prototype's `__DOSEARNSTATE` memory across drill-ins | S_earn 18062, 17880 | with the settlement panel above; the memory if a drill-in ever leaves the page |
 | Earnings: "Open invoices" (the past-months view's button) and the ALSO COLLECTED enquiries card | S_earn 18084, 18124 | later slices (invoices, event enquiry desk) |
@@ -1470,7 +1588,7 @@ remove entries as they close.**
 | Discover: style filter rail, sort, crews tab, studio photos, map view (follower counts landed with Step 15) | S_discover 4100+ | Steps 22 (crews), 23 (filters/sort/map), media slice (photos) |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
-| Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a Razorpay account + an `orders` extension |
+| Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a live Cashfree account + an `orders` extension |
 | Events: the duet partner as a person on DanceOS (PeoplePicker) and the crews you LEAD (typed names today), the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule), the events search box | S_event 13362-13420, 13040, 12985, 13273; WalkIn 13904; S_eventslist 13551 | Step 22 (crews / the picker), real scanning, Step 23 (search); the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
@@ -1605,16 +1723,24 @@ the technical detail; this log is the at-a-glance history.
   a second migration, applied over the pooler and re-proven. Three environment
   lessons recorded (Windows command-length ceiling → Write tool + scratchpad
   scripts; `next build` beside `next dev` wedges the dev server; the e2e
-  timeout is 180 s).
+  timeout is 180 s). Then, at the user's decision, **the rail swap — Cashfree
+  replaces Razorpay** (both directions under one account; sandbox keys before
+  KYC): a provider-neutral migration recreating every money function, the
+  Cashfree edge (orders, payment sessions, refunds, webhook signature), the
+  checkout modal, a sandbox smoke proof, the five money proofs re-run, both e2e
+  specs green. The multi-studio money model was decided: Easy Split settles
+  studios, no platform payouts.
 - **Done so far:** 20 / 29 steps (0–15, 18, 21). Live at
   https://dancestudio-orcin.vercel.app. Free seats and entries book end to end;
-  a priced one refuses with Step 9's sentence until the Razorpay account lands.
+  a priced one refuses with Step 9's sentence until the Cashfree account is live (KYC).
 - **Remaining:** Steps 22–26 (crews — scoped without auditions, search,
   notifications, analytics, WhatsApp OTP), then the parity backlog. Ops still
-  open: Razorpay account + keys (paid classes, tickets, entries and enquiry
-  advances all wait on it), a verified Resend domain, pilot invites.
+  open: Cashfree KYC + Easy Split enablement (paid classes, tickets, entries and
+  enquiry advances all wait on the live account), a verified Resend domain,
+  pilot invites.
 - **Next session:** Step 22 — crews, scoped against the prototype first (the
-  tracker's Next block says how). Verify with `npm run typecheck`, `npm run
+  tracker's Next block says how). Register the Cashfree webhook on the live
+  deployment once KYC lands; ask Cashfree for Easy Split. Verify with `npm run typecheck`, `npm run
   lint`, `npm run build`, the proof via `powershell -File`, and `npx playwright
   test` against a FRESH `npm run dev` (recycle it if a build ran beside it).
 
