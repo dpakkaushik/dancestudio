@@ -18,9 +18,11 @@ try {
 
 export default defineConfig({
   testDir: "./e2e",
-  // the happy path is one long story (Steps 6-23) and a dev server compiles each
-  // route on first visit — five minutes is head-room, not slack
-  timeout: 300_000,
+  // the story is told in serial SEGMENTS now (e2e/happy-path.spec.ts), the longest
+  // of which runs in ~35 s against a dev server compiling each route on first
+  // visit. Two minutes is head-room; it was five while the whole story was one
+  // test, and a limit that no longer bites is a limit that hides a hang.
+  timeout: 120_000,
   fullyParallel: false,
   retries: 0,
   reporter: [["list"]],

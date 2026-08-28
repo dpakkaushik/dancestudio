@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 
 /**
  * The MVP happy path (CLAUDE.md Steps 6+8): signup → onboard studio → create
@@ -81,25 +81,76 @@ async function deleteUser(userId: string) {
   });
 }
 
-test("signup → onboard studio → create class → share link → enroll", async ({ browser }) => {
+
+/** ONE STORY, TOLD IN SEGMENTS.
+ *
+ *  Every screen here is reached the way a person reaches it — through the ones
+ *  before — so this stays a single serial story against one seeded world and one
+ *  set of browser contexts. It was a single `test()` until it reached 3.5 minutes
+ *  against a 300-second timeout: a spec that times out proves nothing, and
+ *  "the happy path failed" does not say where. Serial segments keep the story
+ *  and give each part its own budget and its own line in the report.
+ *
+ *  Sign-up uses the admin generate_link API (the technique
+ *  scripts/auth-proof-email.ps1 uses): no inbox needed, and the link still
+ *  exercises the real /auth/confirm route. Everything created carries a unique
+ *  stamp and is deleted in afterAll, so runs do not pile up demo rows. */
+test.describe.serial("DanceOS, end to end", () => {
   test.skip(!supabaseUrl || !serviceKey, "Supabase keys missing (.env.local or env)");
 
-  const stamp = Date.now().toString(36);
-  const studioName = `E2E Studio ${stamp}`;
-  const classTitle = `E2E Bollywood ${stamp}`;
+  const stamp: string = Date.now().toString(36);
+  const studioName: string = `E2E Studio ${stamp}`;
+  const classTitle: string = `E2E Bollywood ${stamp}`;
 
   let ownerId: string | null = null;
   let learnerId: string | null = null;
   let trainerId: string | null = null;
   let tenantId: string | null = null;
 
-  const ownerContext = await browser.newContext();
-  const learnerContext = await browser.newContext();
-  const trainerContext = await browser.newContext();
+  /* the values a later segment needs from an earlier one */
+  let shareSlug = "";
+  let studioUrl = "";
+  let eventTitle = "";
+  let inTwelveDays = "";
+  let battleTitle = "";
+  let crewName = "";
+  let crewId = "";
+  let registerTile: Locator;
 
-  try {
+  let ownerContext: BrowserContext;
+  let learnerContext: BrowserContext;
+  let trainerContext: BrowserContext;
+  let owner: Page;
+  let learner: Page;
+  let trainer: Page;
+  let browserRef: Browser;
+
+  test.beforeAll(async ({ browser }) => {
+    browserRef = browser;
+    ownerContext = await browser.newContext();
+    learnerContext = await browser.newContext();
+    trainerContext = await browser.newContext();
+    owner = await ownerContext.newPage();
+    learner = await learnerContext.newPage();
+    trainer = await trainerContext.newPage();
+  });
+
+  test.afterAll(async () => {
+    /* tenant delete cascades classes → sessions → enrollments; user delete
+       cascades the profiles. Cleanup failures surface but don't mask the test. */
+    if (tenantId) {
+      await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenantId}`, { method: "DELETE", headers: adminHeaders });
+    }
+    if (ownerId) await deleteUser(ownerId);
+    if (learnerId) await deleteUser(learnerId);
+    if (trainerId) await deleteUser(trainerId);
+    await ownerContext.close();
+    await learnerContext.close();
+    await trainerContext.close();
+  });
+
+  test("a studio signs up, onboards, and publishes a class with a room and a trainer", async () => {
     // ---- studio owner: signup → onboarding -------------------------------
-    const owner = await ownerContext.newPage();
     ownerId = await signUp(owner, `e2e-owner-${stamp}@example.com`);
     await onboard(owner, "E2E", "Owner", "Studio", "Pune");
 
@@ -154,7 +205,6 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await qrSheet.getByRole("button", { name: "Done" }).click();
 
     // ---- the trainer signs up and finds the invite waiting for them --------
-    const trainer = await trainerContext.newPage();
     trainerId = await signUp(trainer, trainerEmail);
     await onboard(trainer, "E2E", "Trainer", "Artist / Trainer", "Pune");
     await trainer.goto("/");
@@ -194,7 +244,7 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // headlines the STYLE (a class is its style, per the prototype), so the
     // title only appears in the tile's aria-label (a link now: it opens /c/{slug})
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
-    const registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
+    registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible();
 
     // ---- the studio calendar (Step 14): the same session, on the schedule ---
@@ -236,12 +286,14 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // the teaching side of the same screen, for the person who was asked
     await trainer.goto("/earnings");
     await expect(trainer.getByText(/Paid by each studio on their own cycle/)).toBeVisible();
+  });
 
+  test("the class page, its share link, and a learner booking from it", async () => {
     // ---- the class detail page + its booking link (Step 8) ----------------
     await owner.goto(`/business/${tenantId}/classes`);
     await registerTile.click();
     await owner.waitForURL(/\/c\/[a-z0-9-]+$/);
-    const shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";
+    shareSlug = owner.url().match(/\/c\/([a-z0-9-]+)$/)?.[1] ?? "";
     expect(shareSlug).not.toBe("");
 
     // ---- the class page's own Earnings tab (Step 13b part 2a) -------------
@@ -267,7 +319,6 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await sheet.getByRole("button", { name: "Done" }).click();
 
     // ---- learner: signup → onboard → open the shared link → book ----------
-    const learner = await learnerContext.newPage();
     learnerId = await signUp(learner, `e2e-learner-${stamp}@example.com`);
     await onboard(learner, "E2E", "Learner", null, "Pune");
 
@@ -294,13 +345,15 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     await expect(learner.getByRole("button", { name: "Train: 1" })).toBeVisible();
     await expect(learner.getByRole("button", { name: "Teach: 0" })).toBeVisible();
+  });
 
+  test("follows, the public page and the enquiry loop", async () => {
     // ---- Step 15: the studio's public page — found on Discover, followed, and
     // its schedule opened. The follower figure is counted, not stored.
     await learner.goto("/discover?city=Pune&tab=studios");
     await learner.getByRole("link", { name: `Open ${studioName}` }).click();
     await learner.waitForURL(/\/studio\/[0-9a-f-]+$/);
-    const studioUrl = learner.url();
+    studioUrl = learner.url();
     await expect(learner.getByText(studioName).first()).toBeVisible();
     await expect(learner.getByTestId("followers-count")).toHaveText("0");
     await learner.getByRole("button", { name: "Follow", exact: true }).click();
@@ -360,7 +413,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.reload();
     await owner.getByRole("button", { name: "Mark advance received" }).click();
     await expect(owner.getByTestId("enquiry-stage")).toHaveText("Advance paid");
+  });
 
+  test("events: publish, find on Discover, book a seat, run the door", async () => {
     // ---- Step 21: an event, from the desk to Discover to the door ----
     // The owner publishes a FREE showcase (a showcase is WATCHED: tickets on, no
     // entries) through the two-step form; the learner finds it on Discover's
@@ -368,7 +423,7 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // the payment step (free, so it confirms without a rail), holds the ticket
     // on the page and under Your tickets; the owner opens the manager's
     // Spectators register and checks them in. Seats are COUNTED, never stored.
-    const eventTitle = `E2E Showcase ${stamp}`;
+    eventTitle = `E2E Showcase ${stamp}`;
     await owner.goto(`/business/${tenantId}/classes`);
     await owner.getByRole("link", { name: "Events ›" }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
@@ -377,7 +432,7 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.getByRole("button", { name: "Showcase", exact: true }).click();
     await owner.getByLabel("Event name").fill(eventTitle);
     await owner.getByLabel("Dance style").selectOption("All styles");
-    const inTwelveDays = new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    inTwelveDays = new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await owner.getByLabel("First day").fill(inTwelveDays);
     await owner.getByLabel("Venue name").fill("E2E Hall");
     await owner.getByLabel("City", { exact: true }).selectOption("Pune");
@@ -424,7 +479,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await owner.getByRole("button", { name: "Check in E2E Learner" }).click();
     await expect(owner.getByRole("button", { name: "Check out E2E Learner" })).toBeVisible();
     await expect(owner.getByText("GATE LIST · 1/1 arrived")).toBeVisible();
+  });
 
+  test("crews: ask, confirm, and a crew entry made by its leader", async () => {
     // ---- Step 22: a crew, from the hub to the door of an event ----
     // The learner creates a crew and asks the trainer onto it (a roster is a
     // public page, so being on one is an ASK, never a write); the trainer
@@ -433,7 +490,7 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // battle and the learner enters it AS THE CREW'S LEADER from the crews they
     // lead — a typed name no longer books — the organiser's register says so,
     // and the crew's page carries the entry as its battle record.
-    const crewName = `E2E Crew ${stamp}`;
+    crewName = `E2E Crew ${stamp}`;
     await learner.goto("/crews");
     await expect(learner.getByText("You do not lead a crew yet.")).toBeVisible();
     await learner.getByRole("link", { name: "＋ Create crew" }).click();
@@ -447,7 +504,7 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await learner.getByRole("button", { name: "Save crew" }).click();
     await learner.getByRole("dialog", { name: "Confirm · create crew" }).getByRole("button", { name: "Confirm & create" }).click();
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage$/);
-    const crewId = learner.url().match(/\/crews\/([0-9a-f-]+)\/manage$/)![1];
+    crewId = learner.url().match(/\/crews\/([0-9a-f-]+)\/manage$/)![1];
     // ASKED IS NOT JOINED: the desk says the trainer has not answered, and counts one member
     await expect(learner.getByText("⏳ Waiting on them to confirm")).toBeVisible();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("1");
@@ -477,7 +534,7 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(trainer.getByRole("link", { name: `${crewName} — Crew` })).toBeVisible();
 
     // the owner publishes a FREE crew battle: crews only, eight places, no spectator tickets
-    const battleTitle = `E2E Battle ${stamp}`;
+    battleTitle = `E2E Battle ${stamp}`;
     await owner.goto(`/business/${tenantId}/events/new`);
     await owner.getByRole("button", { name: "Battle Tournament", exact: true }).click();
     await owner.getByLabel("Event name").fill(battleTitle);
@@ -516,7 +573,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     // and the crew's page carries it as its battle record
     await learner.goto(`/crew/${crewId}`);
     await expect(learner.getByRole("link", { name: `Open ${battleTitle}` })).toBeVisible();
+  });
 
+  test("Discover: search, the style rail and the filter sheet", async () => {
     // ---- Step 23: search + Discover filters ----
     // The one search box finds the studio by a prefix of its name and opens its
     // page; the style rail narrows the classes shelf (Bollywood keeps the class,
@@ -560,7 +619,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await learner.waitForURL(/q=E2E/);
     await expect(learner.getByRole("link", { name: `${eventTitle} — Showcase` })).toHaveCount(0);
     await expect(learner.getByRole("link", { name: `${battleTitle} — Battle tournament` })).toBeVisible();
+  });
 
+  test("notifications: the bell, the stacks and what reaches you", async () => {
     // ---- Step 24: notifications ----
     // Nothing in this leg raises a notification: everything the story already did
     // — a seat booked, a person asked onto a class and answering, a crew ask
@@ -601,6 +662,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await trainer.getByRole("button", { name: "Clear all People" }).click();
     await expect(trainer.getByText("People cleared")).toBeVisible();
     await expect(trainer.getByRole("button", { name: /^People — / })).toHaveCount(0);
+  });
+
+  test("stats: the record, the history library and the boards", async () => {
     // ---- Step 25: stats ----
     // Nothing this story creates has ENDED (every session it books is in the future),
     // so the record is honestly empty — and saying so is the assertion. What is real is
@@ -629,6 +693,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(crewRow).toBeVisible();
     await crewRow.click();
     await learner.waitForURL(new RegExp(`/crew/${crewId}$`));
+  });
+
+  test("person pages: the doors that had nowhere to go", async () => {
     // ---- parity slice: person pages ----
     // Every door here was drawn by an earlier step with nowhere to send it: the
     // crew desk's member rows (Step 22 said so in a comment), the crew page's
@@ -638,7 +705,9 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await learner.goto(`/crews/${crewId}/manage`);
     await learner.getByRole("link", { name: "Open E2E Trainer's profile" }).click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
-    await expect(learner.getByText("E2E Trainer")).toBeVisible();
+    // exact: Next's route announcer carries the page TITLE ("E2E Trainer — DanceOS"),
+    // which a loose match picks up as a second element the moment a navigation is fresh
+    await expect(learner.getByText("E2E Trainer", { exact: true })).toBeVisible();
     await expect(learner.getByText("ARTIST")).toBeVisible();
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
@@ -667,7 +736,7 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(trainer.getByRole("link", { name: /This is you/ })).toBeVisible();
     await expect(trainer.getByRole("button", { name: "Follow" })).toHaveCount(0);
     // a stranger — no account at all — reads the same page and is offered Follow
-    const guestContext = await browser.newContext();
+    const guestContext = await browserRef.newContext();
     try {
       const guest = await guestContext.newPage();
       await guest.goto(studioUrl);
@@ -677,20 +746,5 @@ test("signup → onboard studio → create class → share link → enroll", asy
     } finally {
       await guestContext.close();
     }
-  } finally {
-    // tenant delete cascades classes → sessions → enrollments; user delete
-    // cascades the profiles. Cleanup failures surface but don't mask the test.
-    if (tenantId) {
-      await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenantId}`, {
-        method: "DELETE",
-        headers: adminHeaders,
-      });
-    }
-    if (ownerId) await deleteUser(ownerId);
-    if (learnerId) await deleteUser(learnerId);
-    if (trainerId) await deleteUser(trainerId);
-    await ownerContext.close();
-    await learnerContext.close();
-    await trainerContext.close();
-  }
+  });
 });
