@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { BusinessHub } from "@/features/tenants/components/BusinessHub";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyTenants } from "@/repositories/tenants";
+import { countRoomsByTenants } from "@/repositories/rooms";
+import { findMyMemberships } from "@/repositories/tenants";
 
 export default async function BusinessPage() {
   const supabase = await createSupabaseServerClient();
@@ -12,6 +13,12 @@ export default async function BusinessPage() {
   if (!user) {
     redirect("/login");
   }
-  const tenants = await findMyTenants(supabase);
-  return <BusinessHub tenants={tenants} />;
+  // membership is the spine, and the ROLE on it decides which list a business
+  // sits in — owned rows get their room count for the sub-line (prototype 2655)
+  const memberships = await findMyMemberships(supabase);
+  const roomCounts = await countRoomsByTenants(
+    supabase,
+    memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant.id)
+  );
+  return <BusinessHub memberships={memberships} roomCounts={roomCounts} />;
 }

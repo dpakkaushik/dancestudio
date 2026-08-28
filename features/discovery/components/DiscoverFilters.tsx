@@ -19,7 +19,9 @@ import { EV_TINT, type EventCat } from "@/types/event";
  *  app's one style tile in three rows (4596-4620); the Filters button that
  *  shrank to its own width beside the two or three quick chips people actually
  *  reach for (4655-4696); and THE FILTER SHEET (4827-4890) — everything that
- *  narrows a list on one surface, rows only offered when they mean something.
+ *  narrows a list on one surface, rows only offered when they mean something,
+ *  and every chip applies LIVE (4844-4849: a chip sets the state it names, the
+ *  list behind the sheet has already changed by the time it closes).
  *  State is the URL: every change replaces the address and the server page
  *  re-filters, so BACK returns to the same list (the prototype's
  *  __DOSDISCOVERSTATE, 4427). */
@@ -52,7 +54,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 /** DosStyleTile (1754): the style's whole name in white on a tile of its own colour; the ring marks the one you picked */
-export function DosStyleTile({ label, color, on, tap, aria }: { label: string; color: string; on?: boolean; tap?: () => void; aria?: string }) {
+export function DosStyleTile({ label, color, on, tap, aria, small }: { label: string; color: string; on?: boolean; tap?: () => void; aria?: string; small?: boolean }) {
   return (
     <span
       role={tap ? "button" : undefined}
@@ -61,9 +63,9 @@ export function DosStyleTile({ label, color, on, tap, aria }: { label: string; c
       aria-label={aria ?? label}
       aria-pressed={on === undefined ? undefined : Boolean(on)}
       onClick={tap}
-      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxSizing: "border-box", background: toolPaint(color), border: `1px solid ${color}`, borderRadius: 10, padding: "7px 13px", cursor: tap ? "pointer" : "default", WebkitTapHighlightColor: "transparent", transition: "box-shadow .15s", boxShadow: on ? `0 0 0 2px var(--bg), 0 0 0 3.5px ${color}` : "0 1px 3px rgba(0,0,0,.22)" }}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxSizing: "border-box", background: toolPaint(color), border: `1px solid ${color}`, borderRadius: 10, padding: small ? "6px 11px" : "7px 13px", cursor: tap ? "pointer" : "default", WebkitTapHighlightColor: "transparent", transition: "box-shadow .15s", boxShadow: on ? `0 0 0 2px var(--bg), 0 0 0 3.5px ${color}` : "0 1px 3px rgba(0,0,0,.22)" }}
     >
-      <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: -0.2, fontFamily: DOS_DISPLAY, lineHeight: 1.1, whiteSpace: "nowrap", color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,.25)" }}>
+      <span style={{ fontSize: small ? 11.5 : 12.5, fontWeight: 800, letterSpacing: -0.2, fontFamily: DOS_DISPLAY, lineHeight: 1.1, whiteSpace: "nowrap", color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,.25)" }}>
         {label}
         {on ? " ✓" : ""}
       </span>
@@ -71,13 +73,12 @@ export function DosStyleTile({ label, color, on, tap, aria }: { label: string; c
   );
 }
 
-export function DiscoverFilters({ tab, city, filters, styleOrder }: { tab: string; city: string; filters: DiscoverFilters; styleOrder: string[] }) {
+export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab: string; city: string; filters: DiscoverFilters; styleOrder: string[]; tabs?: React.ReactNode }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [searchOn, setSearchOn] = useState(false);
   const [answer, setAnswer] = useState<{ term: string; hits: SearchHit[] }>({ term: "", hits: [] });
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<DiscoverFilters>(filters);
   const [tapped, setTapped] = useState<string | null>(null);
   const term = q.trim();
 
@@ -120,7 +121,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder }: { tab: strin
       : ([["near", "Near me", filters.dist === "5", () => go({ ...filters, dist: filters.dist === "5" ? "any" : "5" })]] as Array<[string, string, boolean, () => void]>)),
   ];
 
-  /* the sheet edits a draft and shows results on close (4890) */
+  /* the sheet's chips apply live (4844-4849); "Show results" only closes it (4874) */
   const pick =<T extends string>(opts: Array<[T, string]>, val: T, set: (v: T) => void) =>
     opts.map(([v, l]) => (
       <div role="button" tabIndex={0} onKeyDown={pressKey(() => set(v))} key={v} aria-pressed={val === v} aria-label={l} onClick={() => set(v)} style={chip(val === v)}>
@@ -186,6 +187,9 @@ export function DiscoverFilters({ tab, city, filters, styleOrder }: { tab: strin
         ) : null}
       </div>
 
+      {/* the five section tabs — the page hands them in, so they sit under the search box as they do in the prototype (4571) */}
+      {tabs}
+
       {/* THE STYLE RAIL — the app's one style tile, in three rows (4596) */}
       <div style={{ overflowX: "auto", scrollbarWidth: "none", padding: "9px 7px 8px", margin: "0 -7px" }}>
         {[0, 1, 2].map((rw) => (
@@ -209,15 +213,9 @@ export function DiscoverFilters({ tab, city, filters, styleOrder }: { tab: strin
         <div
           role="button"
           tabIndex={0}
-          onKeyDown={pressKey(() => {
-            setDraft(filters);
-            setOpen(true);
-          })}
+          onKeyDown={pressKey(() => setOpen(true))}
           aria-label="All filters"
-          onClick={() => {
-            setDraft(filters);
-            setOpen(true);
-          }}
+          onClick={() => setOpen(true)}
           style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: onN ? "var(--text)" : "var(--card)", color: onN ? "var(--solid)" : "var(--text)", border: `1px solid ${onN ? "var(--text)" : "var(--el)"}` }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -265,21 +263,21 @@ export function DiscoverFilters({ tab, city, filters, styleOrder }: { tab: strin
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 14px" }} />
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 16 }}>
               <span style={{ ...shelf, color: "var(--text)" }}>Filters</span>
-              <span role="button" tabIndex={0} onKeyDown={pressKey(() => setDraft({ ...draft, sort: "near", dist: "any", when: "any", dur: "any", prices: [], cats: [], fmt: "all" }))} onClick={() => setDraft({ ...draft, sort: "near", dist: "any", when: "any", dur: "any", prices: [], cats: [], fmt: "all" })} style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 800, color: "var(--sub)", cursor: "pointer" }}>
+              <span role="button" tabIndex={0} aria-label="Reset all" onKeyDown={pressKey(reset)} onClick={reset} style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 800, color: "var(--sub)", cursor: "pointer" }}>
                 Reset all
               </span>
             </div>
-            <Row label="SORT BY">{pick<SortBy>([["near", "Nearest"], ["soon", "Earliest"], ["price", "Cheapest"]], draft.sort, (v) => setDraft({ ...draft, sort: v }))}</Row>
-            {isBiz ? <Row label="DISTANCE">{pick<Dist>([["any", "Any"], ["2", "Within 2 km"], ["5", "Within 5 km"], ["10", "Within 10 km"]], draft.dist, (v) => setDraft({ ...draft, dist: v }))}</Row> : null}
-            {!isBiz && tab !== "crews" ? <Row label="TIME OF DAY">{pick<When>([["any", "Any"], ["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], draft.when, (v) => setDraft({ ...draft, when: v }))}</Row> : null}
-            {tab === "classes" ? <Row label="DURATION">{pick<Dur>([["any", "Any"], ["60", "Up to 1 h"], ["90", "Up to 1½ h"], ["120", "Up to 2 h"]], draft.dur, (v) => setDraft({ ...draft, dur: v }))}</Row> : null}
-            {!isBiz && tab !== "crews" ? <Row label="PRICE">{multi<PriceBand>([["free", "Free"], ["paid", "Paid"]], draft.prices, (v) => setDraft({ ...draft, prices: v }))}</Row> : null}
+            <Row label="SORT BY">{pick<SortBy>([["near", "Nearest"], ["soon", "Earliest"], ["price", "Cheapest"]], filters.sort, (v) => go({ ...filters, sort: v }))}</Row>
+            {isBiz ? <Row label="DISTANCE">{pick<Dist>([["any", "Any"], ["2", "Within 2 km"], ["5", "Within 5 km"], ["10", "Within 10 km"]], filters.dist, (v) => go({ ...filters, dist: v }))}</Row> : null}
+            {!isBiz && tab !== "crews" ? <Row label="TIME OF DAY">{pick<When>([["any", "Any"], ["morning", "Morning"], ["afternoon", "Afternoon"], ["evening", "Evening"]], filters.when, (v) => go({ ...filters, when: v }))}</Row> : null}
+            {tab === "classes" ? <Row label="DURATION">{pick<Dur>([["any", "Any"], ["60", "Up to 1 h"], ["90", "Up to 1½ h"], ["120", "Up to 2 h"]], filters.dur, (v) => go({ ...filters, dur: v }))}</Row> : null}
+            {!isBiz && tab !== "crews" ? <Row label="PRICE">{multi<PriceBand>([["free", "Free"], ["paid", "Paid"]], filters.prices, (v) => go({ ...filters, prices: v }))}</Row> : null}
             {isEv ? (
               <Row label="TYPE OF EVENT">
                 {CATS.map((k) => {
-                  const on = draft.cats.includes(k);
+                  const on = filters.cats.includes(k);
                   const l = k === "showcase" ? "Showcases" : k === "battle" ? "Battles" : "Tournaments";
-                  const flip = () => setDraft({ ...draft, cats: on ? draft.cats.filter((x) => x !== k) : [...draft.cats, k] });
+                  const flip = () => go({ ...filters, cats: on ? filters.cats.filter((x) => x !== k) : [...filters.cats, k] });
                   return (
                     <div role="button" tabIndex={0} onKeyDown={pressKey(flip)} key={k} aria-pressed={on} aria-label={l} onClick={flip} style={{ ...chip(on), display: "inline-flex", alignItems: "center", gap: 6 }}>
                       <EvIcon cat={k as EventCat} size={12} color={on ? "var(--solid)" : EV_TINT[k as EventCat]} sw={2} />
@@ -289,19 +287,13 @@ export function DiscoverFilters({ tab, city, filters, styleOrder }: { tab: strin
                 })}
               </Row>
             ) : null}
-            {isEv ? <Row label="COMPETING AS">{pick<Fmt>([["all", "Any"], ["solo", "Solo"], ["duo", "Duet"], ["crew", "Crew"]], draft.fmt, (v) => setDraft({ ...draft, fmt: v }))}</Row> : null}
+            {isEv ? <Row label="COMPETING AS">{pick<Fmt>([["all", "Any"], ["solo", "Solo"], ["duo", "Duet"], ["crew", "Crew"]], filters.fmt, (v) => go({ ...filters, fmt: v }))}</Row> : null}
             <div
               role="button"
               tabIndex={0}
-              onKeyDown={pressKey(() => {
-                setOpen(false);
-                go(draft);
-              })}
+              onKeyDown={pressKey(() => setOpen(false))}
               aria-label="Show results"
-              onClick={() => {
-                setOpen(false);
-                go(draft);
-              }}
+              onClick={() => setOpen(false)}
               style={{ marginTop: 4, display: "flex", alignItems: "center", justifyContent: "center", height: 48, borderRadius: 14, cursor: "pointer", fontWeight: 900, fontSize: 14, background: "var(--text)", color: "var(--solid)" }}
             >
               Show results

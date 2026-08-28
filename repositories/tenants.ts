@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ProfileRole } from "@/types/profile";
 import type { Tenant, TenantType } from "@/types/tenant";
 
 interface TenantRow {
@@ -44,6 +45,50 @@ interface MembershipRow {
 }
 
 export type MemberRole = "owner" | "trainer" | "staff";
+
+export interface MyMembership {
+  tenant: Tenant;
+  memberRole: MemberRole;
+}
+
+interface MembershipWithRoleRow {
+  member_role: MemberRole;
+  tenants: TenantRow | null;
+}
+
+/** The signed-in user's businesses WITH the relationship — because there are two
+ *  of them (prototype S_bizhub 2595-2603): a studio you own has a roster and a
+ *  payroll to keep; a studio you teach at has a page you read. The hub lists
+ *  them under separate headings and sends them to different places, so it needs
+ *  the role beside the tenant.
+ *
+ *  Says `user_id = auth.uid()` OUT LOUD, like findMyTenants below: since Step 11
+ *  a tenant's members can read each other's membership rows, so leaning on RLS
+ *  to mean "mine" would list one row per teammate. RLS is a ceiling, not a
+ *  scoping mechanism. */
+export async function findMyMemberships(supabase: SupabaseClient): Promise<MyMembership[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("tenant_members")
+    .select(`created_at, member_role, tenants (${TENANT_COLUMNS})`)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true })
+    .limit(50);
+
+  if (error) {
+    throw new Error(`tenants.findMyMemberships failed: ${error.message}`);
+  }
+  return (data as unknown as MembershipWithRoleRow[])
+    .filter((row): row is MembershipWithRoleRow & { tenants: TenantRow } => row.tenants !== null)
+    .map((row) => ({ tenant: toTenant(row.tenants), memberRole: row.member_role }));
+}
 
 /** The signed-in user's role on one tenant, or null when they are not a member.
  *
@@ -115,6 +160,10 @@ export interface TeamMember {
   name: string;
   role: MemberRole;
   city: string | null;
+  /** what they are on DanceOS — the team row prints "· Artist" / "· Dancer" from it (18563) */
+  profileRole: ProfileRole | null;
+  /** a path in the public media bucket, or null for initials on the gradient */
+  avatarPath: string | null;
 }
 
 /** The tenant's own people — the pool the class form's artist and assistant
@@ -145,7 +194,7 @@ export async function findTenantTeam(
 
   const { data: people, error: peopleError } = await supabase
     .from("profiles")
-    .select("id, full_name, city")
+    .select("id, full_name, city, role, avatar_path")
     .in(
       "id",
       rows.map((r) => r.user_id)
@@ -155,14 +204,24 @@ export async function findTenantTeam(
   if (peopleError) {
     throw new Error(`tenants.teamProfiles failed: ${peopleError.message}`);
   }
-  const byId = new Map(
-    (people as Array<{ id: string; full_name: string; city: string | null }>).map((p) => [p.id, p])
-  );
+  interface PersonRow {
+    id: string;
+    full_name: string;
+    city: string | null;
+    role: ProfileRole;
+    avatar_path: string | null;
+  }
+  const byId = new Map((people as PersonRow[]).map((p) => [p.id, p]));
 
-  return rows.map((row) => ({
-    userId: row.user_id,
-    name: byId.get(row.user_id)?.full_name ?? "Teammate",
-    role: row.member_role,
-    city: byId.get(row.user_id)?.city ?? null,
-  }));
+  return rows.map((row) => {
+    const p = byId.get(row.user_id);
+    return {
+      userId: row.user_id,
+      name: p?.full_name ?? "Teammate",
+      role: row.member_role,
+      city: p?.city ?? null,
+      profileRole: p?.role ?? null,
+      avatarPath: p?.avatar_path ?? null,
+    };
+  });
 }

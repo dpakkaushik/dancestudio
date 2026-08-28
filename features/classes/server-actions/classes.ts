@@ -9,6 +9,7 @@ import {
   createClassWithSession,
   softDeleteClass,
   updateClassDetails,
+  updateClassPoster,
   updateClassStatus,
 } from "@/repositories/classes";
 import { reconcileClassPeople } from "@/services/classPeople";
@@ -243,6 +244,36 @@ export async function deleteClassAction(
     await softDeleteClass(supabase, parsed.data.classId);
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not delete" };
+  }
+
+  revalidatePath(`/business/${parsed.data.tenantId}/classes`);
+  return { error: null };
+}
+
+const posterSchema = z.object({
+  classId: z.string().uuid(),
+  tenantId: z.string().uuid(),
+  poster: z.enum(["bold", "split", "quiet", "none"]),
+});
+
+/** The Poster chip on the class page (prototype 11812 → the sheet at 12768-12780):
+ *  one field, set from the page itself. Who may is RLS's call — the update returns
+ *  no row for anybody else, and the repository says so. */
+export async function setClassPosterAction(input: {
+  classId: string;
+  tenantId: string;
+  poster: string;
+}): Promise<ClassActionState> {
+  const parsed = posterSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Pick one of the drawn designs" };
+  }
+
+  const supabase = await requireUser();
+  try {
+    await updateClassPoster(supabase, parsed.data.classId, parsed.data.poster);
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not set the poster" };
   }
 
   revalidatePath(`/business/${parsed.data.tenantId}/classes`);

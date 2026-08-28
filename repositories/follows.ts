@@ -81,6 +81,7 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
     .from("follows")
     .select("id, tenant_id, created_at, tenants (type, name, area, city)")
     .eq("follower_id", user.id)
+    .not("tenant_id", "is", null)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_LIST);
@@ -126,6 +127,63 @@ export async function findTenantFollowers(
     city: r.profiles?.city ?? null,
     followedAt: r.created_at,
   }));
+}
+
+/** One person in a person's Followers / Following sheet (S_profiletab 11335). */
+export interface PersonFollowRow {
+  followId: string;
+  userId: string;
+  name: string;
+  role: "dancer" | "trainer" | "studio";
+  city: string | null;
+  avatarPath: string | null;
+  followedAt: string;
+}
+
+/** The people who follow the signed-in person — their own to read (the
+ *  person-pages policy "people read their own followers"). `followee_id = me`
+ *  is said out loud: the same table holds follows of businesses this person
+ *  may be a member of, and RLS is a ceiling, not a scope. */
+export async function findMyPersonFollowers(supabase: SupabaseClient): Promise<PersonFollowRow[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("follows")
+    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, avatar_path)")
+    .eq("followee_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(MAX_LIST);
+  if (error) {
+    throw new Error(`follows.myFollowers failed: ${error.message}`);
+  }
+  return ((data ?? []) as unknown as Array<{ id: string; follower_id: string; created_at: string; profiles: { full_name: string; role: "dancer" | "trainer" | "studio"; city: string | null; avatar_path: string | null } | null }>)
+    .filter((r) => r.profiles)
+    .map((r) => ({ followId: r.id, userId: r.follower_id, name: r.profiles!.full_name, role: r.profiles!.role, city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
+}
+
+/** The PEOPLE the signed-in person follows (the businesses are findMyFollowing). */
+export async function findMyFollowedPeople(supabase: SupabaseClient): Promise<PersonFollowRow[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("follows")
+    .select("id, followee_id, created_at, profiles!follows_followee_id_fkey (full_name, role, city, avatar_path)")
+    .eq("follower_id", user.id)
+    .not("followee_id", "is", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(MAX_LIST);
+  if (error) {
+    throw new Error(`follows.myFollowedPeople failed: ${error.message}`);
+  }
+  return ((data ?? []) as unknown as Array<{ id: string; followee_id: string; created_at: string; profiles: { full_name: string; role: "dancer" | "trainer" | "studio"; city: string | null; avatar_path: string | null } | null }>)
+    .filter((r) => r.profiles)
+    .map((r) => ({ followId: r.id, userId: r.followee_id, name: r.profiles!.full_name, role: r.profiles!.role, city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
 }
 
 /** Follow or unfollow — the RPC is idempotent and refuses an unlisted business

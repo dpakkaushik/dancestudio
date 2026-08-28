@@ -32,12 +32,16 @@ export function PhotoPicker({
   hasPhoto,
   label = "Change photo",
   onLight = false,
+  overlay = false,
 }: {
   owner: PhotoOwner;
   hasPhoto: boolean;
   label?: string;
   /** drawn on the entity's own colour rather than on the page */
   onLight?: boolean;
+  /** the ＋ on the corner of the profile square (prototype 10600) — one round
+   *  control, absolutely placed inside a relative parent; errors show as a toast */
+  overlay?: boolean;
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -85,6 +89,33 @@ export function PhotoPicker({
     }
     router.refresh();
   };
+
+  if (overlay) {
+    return (
+      <>
+        <label
+          aria-disabled={busy}
+          style={{ position: "absolute", bottom: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,.62)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: busy ? "default" : "pointer", fontSize: 14, border: "1.5px solid rgba(255,255,255,.35)", opacity: busy ? 0.6 : 1 }}
+        >
+          {busy ? "…" : "＋"}
+          <input
+            ref={fileRef}
+            type="file"
+            accept={PHOTO_TYPES.join(",")}
+            aria-label={hasPhoto ? label : "Add a photo"}
+            disabled={busy}
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void pick(f);
+            }}
+          />
+        </label>
+        {error ? <span role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: "1.5px solid #F87171", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 390, textAlign: "center", zIndex: 650, fontFamily: DOS_UI }}>{error}</span> : null}
+      </>
+    );
+  }
 
   const chip: React.CSSProperties = {
     display: "inline-flex",

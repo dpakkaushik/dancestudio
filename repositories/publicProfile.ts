@@ -31,9 +31,18 @@ interface StyleRow {
 interface FacultyRow {
   user_id: string;
   kind: "artist" | "assistant";
-  profiles: { full_name: string; city: string | null } | null;
+  profiles: { full_name: string; city: string | null; avatar_path: string | null } | null;
   classes: { tenant_id: string; status: string } | null;
 }
+
+/** A faculty member with their face: the read already carried `avatar_path`
+ *  (profiles is signed-in readable) and the row now keeps it, so a Faculty row
+ *  can wear the person's picture the way every other people-row does. Named
+ *  here rather than in types/publicProfile.ts, which this slice does not own. */
+export interface PublicFacultyFace extends PublicFacultyMember {
+  avatarPath: string | null;
+}
+export type PublicTenantProfileWithFaces = Omit<PublicTenantProfile, "faculty"> & { faculty: PublicFacultyFace[] };
 
 /** The tenant as the caller may see it — null when it is unlisted and the
  *  caller is not a member (RLS decides, the query does not). */
@@ -58,7 +67,7 @@ export async function findPublicTenantProfile(
   supabase: SupabaseClient,
   tenantId: string,
   nowIso: string
-): Promise<PublicTenantProfile | null> {
+): Promise<PublicTenantProfileWithFaces | null> {
   const tenant = await findPublicTenant(supabase, tenantId);
   if (!tenant) {
     return null;
@@ -107,7 +116,7 @@ export async function findPublicTenantProfile(
      Profiles are readable by signed-in users only (Step 1), so a stranger's
      view names nobody — rows without a name are left out rather than printed
      as "Someone". */
-  const people = new Map<string, PublicFacultyMember>();
+  const people = new Map<string, PublicFacultyFace>();
   for (const r of (facultyRes.data ?? []) as unknown as FacultyRow[]) {
     if (!r.profiles?.full_name) continue;
     const role: PublicFacultyMember["role"] = r.kind === "artist" ? "Artist" : "Assistant";
@@ -122,6 +131,7 @@ export async function findPublicTenantProfile(
         city: r.profiles.city,
         role,
         classCount: 1,
+        avatarPath: r.profiles.avatar_path ?? null,
       });
     }
   }

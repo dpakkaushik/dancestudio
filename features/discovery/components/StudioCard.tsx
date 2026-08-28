@@ -1,71 +1,31 @@
+import Image from "next/image";
 import Link from "next/link";
-import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
+import { gradientOf } from "@/features/profiles/components/PublicProfile";
+import { dosStyleColor } from "@/lib/constants/styles";
+import { DOS_DISPLAY, INK } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import type { NearbyTenant } from "@/repositories/discovery";
+import { DosStyleTile } from "./DiscoverFilters";
+import { DosFollowers, DosWhere, initialsOf, kmLabel } from "./discover-kit";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
 
-/** Every studio wears a gradient of its own until real photos arrive — the same
- *  fallback the prototype's cover strip uses (DanceOSApp.jsx:4323). */
-const GRADS: [string, string][] = [
-  ["#E84393", "#F39C12"],
-  ["#3B82F6", "#7C3AED"],
-  ["#922B21", "#00CEC9"],
-  ["#8E44AD", "#E84393"],
-  ["#7C3AED", "#EC4899"],
-  ["#0D9488", "#3498DB"],
-];
-
-const hashOf = (s: string) => {
-  let h = 0;
-  for (let i = 0; i < s.length; i += 1) {
-    h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  }
-  return h;
-};
-
-const initialsOf = (name: string) =>
-  name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-
-/** "1.2k" — the prototype's fmtF (4189) */
-const fmtF = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n));
-
-/** The follower count, one home (prototype DosFollowers 4277): the two-heads
- *  mark and the number in tabular figures. */
-function Followers({ n, size = 12 }: { n: number; size?: number }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="9" cy="8.4" r="3.2" />
-        <path d="M3 19.5c.7-3.2 3-4.9 6-4.9s5.3 1.7 6 4.9" />
-        <circle cx="17.2" cy="9.4" r="2.4" />
-        <path d="M15.8 14.4c2.4.2 4.1 1.6 4.7 4.3" />
-      </svg>
-      <span style={{ fontSize: size + 1, fontWeight: 900, color: INK, fontVariantNumeric: "tabular-nums", letterSpacing: -0.2 }}>
-        {fmtF(n)}
-      </span>
-    </span>
-  );
-}
-
 /**
- * Discovery card for a studio or trainer business — lifted from the prototype's
- * StudioCard (DanceOSApp.jsx:4306-4351): cover strip, the business's own face
- * riding the cover's bottom-left edge half on and half off, name at full size,
- * the where-line underneath — and, since Step 15, the follower count beside it
- * ("the distance and the follower count sit on one line at the foot, because
- * they are the two numbers you compare cards on", 4260). The card opens the
- * business's public page. Photos arrive with the media slice.
+ * A STUDIO IS A ROOM YOU WALK INTO — the prototype's StudioCard (4306-4369):
+ * a 150px cover strip (the studio's photo when it has put one up, else a quiet
+ * field in its own colours), the count of photos in the corner, THE STUDIO'S
+ * OWN FACE ON THE COVER'S EDGE half on and half off, the name at full size,
+ * then the one foot line — where, as one fact ("Pune  2.4 km"), and the
+ * follower count — and the studio's styles as the app's own tiles, one line
+ * that scrolls. The card opens the business's public page.
  */
-export function StudioCard({ tenant, followers = 0 }: { tenant: NearbyTenant; followers?: number }) {
-  const grad = GRADS[hashOf(tenant.name) % GRADS.length];
-  const sub = [
-    tenant.type === "studio" ? "Studio" : "Trainer business",
-    [tenant.area, tenant.city].filter(Boolean).join(", "),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: NearbyTenant; followers?: number; styles?: string[] }) {
+  const grad = gradientOf(tenant.name);
+  const photo = photoUrl(tenant.photoPath);
+  const photos = photo ? 1 : 0;
+  const place = tenant.city ?? tenant.area ?? "—";
 
   return (
     <Link
@@ -83,41 +43,18 @@ export function StudioCard({ tenant, followers = 0 }: { tenant: NearbyTenant; fo
       }}
     >
       <div style={{ position: "relative" }}>
-        <div
-          style={{
-            height: 110,
-            background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33)`,
-          }}
-        />
-        <span
-          style={{
-            position: "absolute",
-            right: 10,
-            top: 10,
-            fontSize: 9,
-            fontWeight: 800,
-            padding: "2px 8px",
-            borderRadius: 999,
-            background: "rgba(0,0,0,.5)",
-            color: "rgba(255,255,255,.9)",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {tenant.distanceKm} km
-        </span>
+        <div style={{ height: 150, position: "relative", background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }}>
+          {photo ? <Image src={photo} alt="" fill sizes="(max-width: 430px) 100vw, 430px" style={{ objectFit: "cover" }} /> : null}
+        </div>
+        {photos > 0 ? (
+          <span aria-hidden="true" style={{ position: "absolute", right: 10, top: 10, fontSize: 9, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,.5)", color: "rgba(255,255,255,.9)", fontVariantNumeric: "tabular-nums" }}>
+            {photos} photo{photos === 1 ? "" : "s"}
+          </span>
+        ) : null}
       </div>
 
-      <div
-        style={{
-          padding: "0 13px 12px",
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 5,
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
+      {/* position:relative — the cover above is positioned and would otherwise paint over the face that overlaps it */}
+      <div style={{ padding: "0 13px 12px", minWidth: 0, display: "flex", flexDirection: "column", gap: 5, position: "relative", zIndex: 1 }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: -26, marginBottom: 2, minWidth: 0 }}>
           <span
             style={{
@@ -135,7 +72,7 @@ export function StudioCard({ tenant, followers = 0 }: { tenant: NearbyTenant; fo
               fontWeight: 900,
               letterSpacing: 0.5,
               fontFamily: DOS_DISPLAY,
-              border: "3px solid #141414",
+              border: "3px solid var(--card)",
               boxSizing: "border-box",
               boxShadow: "0 6px 16px -6px rgba(0,0,0,.7)",
             }}
@@ -143,26 +80,23 @@ export function StudioCard({ tenant, followers = 0 }: { tenant: NearbyTenant; fo
             {initialsOf(tenant.name)}
           </span>
           <span style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
-            <span
-              style={{
-                display: "block",
-                fontWeight: 900,
-                fontSize: 17,
-                letterSpacing: -0.4,
-                fontFamily: DOS_DISPLAY,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {tenant.name}
-            </span>
+            <span style={{ display: "block", fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <span style={{ fontSize: 11, color: SUB, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</span>
-          <Followers n={followers} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <DosWhere city={place} km={kmLabel(tenant.distanceKm)} />
+          <DosFollowers n={followers} />
         </div>
+        {/* the app's own style tiles — one line that scrolls, not a block that wraps (4360-4366) */}
+        {styles.length ? (
+          <div style={{ display: "flex", gap: 6, marginTop: 1, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 1 }}>
+            {styles.map((s) => (
+              <span key={s} style={{ flexShrink: 0, display: "inline-flex" }}>
+                <DosStyleTile label={s} color={dosStyleColor(s)} small />
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
     </Link>
   );

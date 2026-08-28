@@ -5,6 +5,10 @@ import { findClassesByTenant } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/enrollments";
 import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
+/* the clock lives outside the component (react-hooks/purity) — the register's
+   LIVE filter is arithmetic over the moment the page was served */
+const stampNowIso = (): string => new Date().toISOString();
+
 export default async function TenantClassesPage({
   params,
 }: {
@@ -35,10 +39,10 @@ export default async function TenantClassesPage({
   return (
     <ClassesManager
       tenantId={tenantId}
-      tenantName={tenant.name}
       classes={classes}
       filledBySession={Object.fromEntries(counts)}
       isOwner={role === "owner"}
+      nowIso={stampNowIso()}
     />
   );
 }

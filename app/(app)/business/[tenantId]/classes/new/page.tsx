@@ -19,7 +19,8 @@ export default async function NewClassPage({
   }
 
   const tenants = await findMyTenants(supabase);
-  if (!tenants.some((t) => t.id === tenantId)) {
+  const tenant = tenants.find((t) => t.id === tenantId);
+  if (!tenant) {
     redirect("/business");
   }
 
@@ -30,6 +31,12 @@ export default async function NewClassPage({
   ]);
 
   return (
-    <ClassForm tenantId={tenantId} rooms={rooms} team={team} isOwner={role === "owner"} />
+    <ClassForm
+      tenantId={tenantId}
+      rooms={rooms}
+      team={team}
+      isOwner={role === "owner"}
+      studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
+    />
   );
 }

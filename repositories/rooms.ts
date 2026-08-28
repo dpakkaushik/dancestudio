@@ -43,6 +43,33 @@ export async function findRoomsByTenant(
   return (data as RoomRow[]).map(toRoom);
 }
 
+/** How many live rooms each of several tenants has — the hub's "{area, city} ·
+ *  N rooms" sub-line (prototype 2655). One query for all of them, grouped here;
+ *  a tenant with no rooms is simply absent from the map (read it as 0). */
+export async function countRoomsByTenants(
+  supabase: SupabaseClient,
+  tenantIds: string[]
+): Promise<Record<string, number>> {
+  if (tenantIds.length === 0) {
+    return {};
+  }
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("id, tenant_id")
+    .in("tenant_id", tenantIds)
+    .is("deleted_at", null)
+    .limit(1000);
+
+  if (error) {
+    throw new Error(`rooms.countByTenants failed: ${error.message}`);
+  }
+  const counts: Record<string, number> = {};
+  for (const row of data as Array<{ id: string; tenant_id: string }>) {
+    counts[row.tenant_id] = (counts[row.tenant_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 /** One room by id — used to read amenities onto a public class page. */
 export async function findRoomById(
   supabase: SupabaseClient,

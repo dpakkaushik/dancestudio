@@ -31,6 +31,58 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Parity slice 4 landed 28 Aug 2026: the Profile tab.** The user put the
+  built Home beside the prototype's profile and asked why they looked nothing
+  alike — because `/profile` was still "identity + Following + log out" while the
+  prototype's S_profiletab (own render, 10565-11400) is the richest screen in the
+  file. Lifted whole now as `MyProfilePage`: the profile lit like a player with
+  the ＋ on the square's corner, Edit / Public view top right, the role and the
+  **account number** over the name, the name with the QR, "24, New Delhi", the
+  three figures — Followers and Following opening the segmented sheet, and
+  **where you stand in the metal it earned** (Step 25's place, only once there is
+  one) — then the band under the name: the styles with ＋, the links rail with
+  ＋ Add link, About as prose, Stats · Schedule, and Crews / Teaches at / Runs.
+  Migration `20260830090000_profile_fields.sql`: `about`, `age`, `socials`
+  (jsonb list), `styles` (text[]), `member_no` (identity) on profiles, and ONE
+  door, `update_my_profile`, scoped to `auth.uid()` inside — no p_user_id exists to
+  aim at anybody else — validating what a form cannot be trusted to (an age
+  13–99, a bio ≤ 220, an http(s) URL per platform, one link per platform, short
+  de-duplicated styles). The five sheets are the prototype's (Edit profile, Add
+  a dance style, Add a social link, one platform's editor, Followers/Following).
+  The person page gained the same band read back — styles, links (WhatsApp left
+  off: "a number is not a public handle"), About, the age, the number. **Not**
+  the verified tick (a verification nobody performs is a badge that means
+  nothing), **not** the albums grid and its tab strip (an albums slice), **not**
+  Call. 11-check proof; a twelfth e2e segment — and **the gear opens the Settings
+  sheet** now (YOUR PLAN · Artist tools · Payments · Invoices · Refunds ·
+  Notifications · Language · Privacy · Help · Log out), which is what the user's
+  second screenshot was about.
+- **THE PARITY AUDIT, 28 Aug 2026.** Asked why the built screens and the
+  prototype's looked so different, every built screen was read against its
+  prototype lines — Home, the Profile tab, the person page, the studio/artist
+  page, Discover, the class page and tile, the register, the class form, the
+  learner listings, the calendar, events, crews, the Inbox, notifications,
+  Stats, S_managed, the chrome, auth/onboarding, the business hub and the four
+  desks — and **~170 concrete differences** were written down, then fixed in
+  parallel where the data already existed. **Fixed this run:** all of Home
+  (the photo, "24, New Delhi" opening Maps, the account number, the Artist Tools
+  tile grid, "Today's schedule" with its two doors, the empty-day pills), the
+  chrome (the "Managing {studio}" strip with Exit studio ›, the drill titles,
+  `#dos-main`'s height rule, `--dos-foot`, one global
+  `dosSheetUp`), all of Discover (the pink wash and "Dance near you", the
+  five icon tiles opening on Studios, the "Followed by you" shelf, CompactCard
+  for artists and crews, the studio card's style tiles and its photo cover, the
+  live filter sheet), the class tile (the WHO column with the torn edge, the fill
+  bar, `dosStyleInk`, the note line), the register (LiveBanner, the
+  `bizBtn` pill, the tool hero, Refunds on a completed row, "Delete &
+  manage refunds"), the business hub (STUDIOS YOU OWN / TAUGHT AT, "Manage ›",
+  "· N rooms", **the rooms editor in the New-studio sheet** — a studio is
+  created WITH its floors), the Profile tab and the person page. **The whole
+  audit is now a table at the foot of the parity backlog, one row per finding
+  with its status**, so the next runs close what is left without re-auditing:
+  the class page (10 rows), the class form, the studio/artist page, the learner
+  listings, Stats' record and charts, the desks' heroes, events, the Inbox,
+  onboarding — every one marked (a), fixable with data that exists.
 - **Parity slice 3 landed 28 Aug 2026: S_managed — "everything you manage".**
   The prototype's hub over what a person RUNS (6332-6378): one segmented control
   (All · Classes · Events), the WHAT YOU RUN shelf with its count, and a row per
@@ -442,9 +494,14 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   What is left is the table further down this file, and the honest order is by
   what blocks nothing. **Person pages landed 28 Aug 2026** (with person-follows
   and the search's People section), **photos landed the same day** (a face on
-  a person, a crew and a business; posters and albums stay) and **S_managed
-  landed the same day** (one list over every business you run), so next is
-  **web push** (VAPID keys + a service worker + a subscriptions table, which
+  a person, a crew and a business; posters and albums stay), **S_managed
+  landed the same day** (one list over every business you run), **the
+  Profile tab landed the same day** (S_profiletab's own render, with About /
+  age / links / styles / the account number as real fields, and the Settings
+  sheet behind the gear) and **the parity audit's (a) rows are the queue now**
+  (the table at the foot of the backlog — the class page first, then the class
+  form, the studio/artist page, the learner listings and Stats), so after those
+  come **web push** (VAPID keys + a service worker + a subscriptions table, which
   makes Step 24's first channel switch real), then the **poster uploads**
   (PosterCropper's crop-and-frame flow onto the same bucket), and the calendar /
   crew rows that are a button each. Not
@@ -1663,6 +1720,104 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Parity slice 4 — the Profile tab ✅ (28 Aug 2026, no step number)
+- **Why now.** The user held image 1 (the built Home) beside image 2 (the
+  prototype's profile) and asked why the difference was so drastic. Home was
+  lifted as specified — the prototype's Home is sparse — but the Profile tab
+  had been "identity + the Following list + log out" since Step 7, with a
+  backlog row promising S_profiletab "in Phase 3". Most of its parts already
+  existed as pieces elsewhere (the person page's hero and groups, Stats, the
+  photo picker, the follows reads); what was missing was assembling them into
+  the person's OWN page, plus the five things no column held.
+- **The fields** (migration `20260830090000_profile_fields.sql`): `about`
+  (≤ 220, the sheet's own limit at 11390), `age` (13–99; printed as the number
+  alone — "24, New Delhi", 10664), `socials` (a jsonb list of {platform, url} in
+  the person's order, 10760), `styles` (text[] — dosMyStyles 1719, "saved, not
+  held in this page's head"), `member_no` (an identity column, printed
+  zero-padded — "000482", 10641; assigned once, never reused). **One door**,
+  `update_my_profile`: SECURITY DEFINER, scoped to `auth.uid()` inside — there is
+  no p_user_id, so the caller's row is the only one that can move — and it
+  validates what a form cannot be trusted to: an impossible age, an over-long
+  bio, a link that is not an http(s) address, two links for one platform, an
+  empty style; styles are de-duplicated in the order given; blanks land as
+  null, never as empty strings. No new policy: profiles was already signed-in
+  readable and own-row writable (Step 1). Deliberately NOT a `verified` flag —
+  the prototype draws the tick on everybody, and a verification nobody performs
+  is a badge that means nothing.
+- **The screen** `features/profiles/components/MyProfilePage.tsx`, lifted from
+  S_profiletab's own render: the profile lit like a player (10574 — the role's
+  metal bleeding off the top, the 206px square with the sleeve's thrown shadow,
+  the ＋ on its corner as `PhotoPicker overlay`), the controls top right
+  (10613 — Edit opens the sheet; Public view is a real page here, `/person/{me}`;
+  Share is the QR beside the name, 10688), WHO in the order you read a person
+  (10632 — role, account number, name, "24, New Delhi"), the three figures at
+  the size of figures (10683 — Followers and Following open the segmented sheet;
+  the rank in its metal, `tierOf` from DOS_TIERS 1418, drawn only once
+  `my_chart_place` has a place — Step 25's rule against "#0"), the band under
+  the name (10739 — DosStyleRow with ＋, the links rail with ＋ Add link, About
+  as prose), the two big white buttons (10905 — Stats always; Schedule only when
+  the person runs a business, so it never points nowhere), and the people
+  groups each headed with a count (10990 — Crews / Teaches at / Runs, shared
+  with the person page). The five sheets are the prototype's: Edit profile
+  (11364: name, location, age select, bio with its 220 counter — and the photo
+  picker, so the picture has one home), Add a dance style (11217: ▲▼, Remove,
+  Add more styles from the registry, Done), Add a social link (11161: ▲▼, Edit,
+  Remove, Add a platform, Something else? label + URL), one platform's editor
+  (11140: URL, Remove / Cancel / Save), Followers / Following (11335: the
+  count, All · Dancers · Artists · Studios, a tinted row per account that opens
+  it). Every sheet lands on the ONE record and the page re-reads.
+- **The person page reads the same band back** — styles, the links rail with
+  WhatsApp left off ("a number is not a public handle", 10778), About, the age
+  in the introduction line, the account number — off the one column list
+  `PROFILE_COLUMNS`, which `findPublicPerson` now shares with `findProfileById` so
+  no read can fall behind again (the photos slice's lesson). `findMyFollowing`
+  says `tenant_id is not null` now that the table holds people too;
+  `findMyPersonFollowers` / `findMyFollowedPeople` are the sheet's two lists.
+- **Deliberately not lifted, tracked in the backlog (Rule 12):** the verified
+  tick, the albums grid and its icon tab strip (an albums slice), Call (a person
+  holds no number), the long-press-for-QR gesture on the square (the QR is a
+  button), the settings sheet's switcher / appearance / language rows (the
+  chrome carries the theme; the rest need decisions), "Can't find your style?
+  Request it" (a demo toast in the prototype), and opening Maps from the place
+  (a person's city is a city, not an address).
+- **AND THE GEAR NOW OPENS SOMETHING.** The user's second screenshot was the
+  settings gear doing nothing: it landed on the Profile tab and stopped there,
+  while the prototype's gear opens THE SETTINGS SHEET (11402-11440, and 19263 —
+  "if you are already on the Profile tab, open settings now"). Built as
+  `features/settings/components/SettingsSheet.tsx`: the blue-grey hero
+  ("Settings · profiles · appearance · account"), **YOUR PLAN** with the **Artist
+  tools** strip — one switch over the same profile, because "Dancer is who you
+  are; Artist is a TOOLSET on that same profile, never a second identity"
+  (8850-8870), written through `update_my_profile`'s sibling
+  `setMyRoleAction` — then a card per row: Payments & verification ·
+  Invoices · Refunds · Enquiry types · Subscription · Notifications · Language ·
+  Privacy & data · Help & support · **Log out** (which is where the prototype
+  keeps leaving, so the Profile tab's own button is gone). The gear links to
+  `/profile?settings=1` and closing the sheet takes the parameter back off,
+  so the sheet is a place rather than a mood. **Honesty over theatre:** a row
+  goes where its subject really lives (Refunds → the class's Refunds tab,
+  Invoices/Payments → the earnings desk or All bookings, Notifications → the real
+  prefs with a switch per kind, saved through Step 24's action), and where the
+  prototype fires a demo toast ("request queued", "opening") this sheet says what
+  is true today instead — no PRO badge and no ₹799/mo upsell, because there is no
+  subscription to sell. The rows that need their own screens (S_payments 16531,
+  S_invoices 16691, S_subscr 16935, the enquiry-type prefs) are backlog rows now.
+- Verified: `scripts/rls-proof-profile-fields.ps1` — 11 checks green (a member
+  number at creation, unique; the caller's row takes the sheet's fields and the
+  other person's row is untouched; a signed-in person reads About and the links
+  and the public reads 0 rows; an age of 7, a 221-character bio, a bare handle
+  and two links for one platform are each refused with the door's own sentence;
+  an empty style is refused and a repeat is kept once in order; a direct PATCH
+  of another person's About changes nothing; the public cannot call the door;
+  clearing leaves null, not blanks). e2e: a twelfth segment — the trainer edits
+  age and bio, adds Kathak from the registry, adds Instagram (the chip prints
+  the handle), is refused a bare handle for YouTube with the database's own
+  words, and the learner reads About, "24, Pune", the style and the link on the
+  person page. The follows segment moved its assertion into the Following sheet.
+  typecheck / lint / production build / both specs green. **Lesson:** PowerShell
+  5.1 surfaces a 400's body in `$_.ErrorDetails.Message` on one call and only in
+  the (rewound) response stream on the next — a proof's catch reads both.
+
 ### Parity slice 3 — S_managed, "everything you manage" ✅ (28 Aug 2026, no step number)
 - **What the prototype's screen is** (S_managed 6332-6378, behind the Home
   deck's "Manage" door at 7150-7154 and the empty day's "See everything you
@@ -2529,8 +2684,8 @@ nothing to lift.
 |-----|--------------|-------------|
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
-| Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
-| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **Person pages landed 28 Aug 2026**; what stays open on them: a PUBLIC person page (a decision about somebody else's data), the photo, About / age / experience (no fields), Call and the enquiry sheet, the albums tabs, the rank ladder — and **following a CREW** (follows now names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | bio with a fields slice (photos landed 28 Aug 2026); a follows extension for crews; the rest need a product decision |
+| Profile tab, what the Profile slice left (**S_profiletab's own render landed 28 Aug 2026**): the verified tick (a verification nobody performs), the albums grid and its icon tab strip, Call, the long-press-for-QR gesture, the settings sheet's switcher / appearance / language rows, "Can't find your style? Request it", opening Maps from the place | S_profiletab 10592, 11069-11130, 10879, 10598, 11135, 11251 | an albums slice; a verification process; the rest need a product decision |
+| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **Person pages landed 28 Aug 2026**; what stays open on them: a PUBLIC person page (a decision about somebody else's data), years of experience (no field), Call and the enquiry sheet, the albums tabs — About, age, links and the rank in its metal landed 28 Aug 2026 — and **following a CREW** (follows now names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | About, age, links and the account number landed on the PERSON page 28 Aug 2026 (the Profile slice); a business's About and founding year still need fields; a follows extension for crews; the rest need a product decision |
 | Stats: the metal tier / rank ladder on the hero (`dosTierOf` — a ladder nobody has designed; the hero shows the real place instead), the History library's city / room / provider / assistant filters and its search box (side and style ship), the **Wins** metric and a crew's battle record (both need scoring), the "updated daily" cadence and the 10% monthly decay (a product rule nobody has decided), and the studio-side S_reports / S_reportdetail | S_profiletab 9862-10520, 9610-9707; S_reportdetail | scoring with a later event slice; the rest need a product decision or their own slice |
 | Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (a nudge — buildable on Step 24's `notifications` table now); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
@@ -2562,6 +2717,145 @@ nothing to lift.
 | Tests: **done 28 Aug 2026** — the happy path is nine serial SEGMENTS sharing one seeded world and one set of contexts (`test.describe.serial`), so each part has its own timeout and its own line in the report; the longest runs ~35 s and the per-test limit came back down from 300 s to 120 s. What is still open: the segments share state, so a failure early skips the rest (right for a story, wrong for a suite) — splitting into independently seeded specs needs API-level world builders first | e2e/happy-path.spec.ts | a testing slice, when the story stops being one story |
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099 — **S_managed landed 28 Aug 2026** at `/managed` | as listed | after Step 26: memberships + rentals + invoices need the live **Cashfree** account (they are money screens); people / routines / settings are their own slices, none blocked by anything |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here), the poster on a class row (posters are drawn until the posters slice), and the Today deck's empty-day "See everything you manage" door (Home has no Today deck yet — the door is on the RUN YOUR BUSINESS head) | S_managed 6360-6366, 7171-7175 | Home parity slice (the Today deck); posters slice |
+
+### Parity audit — 28 Aug 2026 (every built screen against its prototype source)
+
+The user put the built Home beside the prototype's profile and asked why they
+looked nothing alike. After the Profile tab was lifted, **every built screen was
+audited against its prototype lines** (four parallel read-only passes: Home /
+Profile / Discover · classes / calendar · events / crews / inbox / stats ·
+chrome / auth / desks), then fixed in parallel where the data already existed.
+This table is the whole result — one row per finding — so the next runs can
+close what is still open without re-auditing. Status words: **fixed** (this
+run), **open (a)** (fixable now, data exists — the next runs take these first),
+**needs field (b)**, **decision (c)** (a product call, or a deliberate,
+documented departure). Prototype refs are `prototype/DanceOSApp.jsx` lines; app
+refs are the file to open.
+
+| # | Screen · finding | Prototype | App | Status |
+|---|-----------------|-----------|-----|--------|
+| H1 | Home: identity square draws the photo; initials #fff not #0A0A0A | 7280-7285 | app/(app)/page.tsx | **fixed** |
+| H2 | Home: meta line "24, New Delhi" as one string, a button opening Maps | 7299-7306 | app/(app)/page.tsx | **fixed** |
+| H3 | Home: account number under the role word | 7317-7323 | app/(app)/page.tsx | **fixed** |
+| H4 | Home: Artist Tools / BizSection 2-column tool-tile grid replaces RUN YOUR BUSINESS rows, the dashed Crews row and the FIND YOUR NEXT CLASS card (neither is in S_homedancer) | 2497-2583, 7344 | app/(app)/page.tsx | **fixed** |
+| H5 | Home: deck head is DosShelfHead "Today's schedule · {n} today" with Manage / All bookings › | 7139-7160, 3446 | app/(app)/page.tsx | **fixed** |
+| H6 | Home: empty-day copy + two pills (See everything you manage / See all bookings) | 7161-7181 | app/(app)/page.tsx | **fixed** |
+| H7 | Home: greeting eyebrow at DOS_TYPE.micro | 7274, 3433 | app/(app)/page.tsx | **fixed** |
+| H8 | Home: the plan badge on Artist Tools ("ARTIST PLAN ACTIVE" / locked) — no subscription exists | 2500-2520 | — | decision (c) |
+| H9 | Home: verified tick beside the name — nothing records a verification | 7292 | — | needs field (b) |
+| H10 | Home: the full PassDeck (swiped 88%-width CalTile rail, dots, today-only slice, QR/invoice on the card) | PassDeck 6863-7204 | app/(app)/page.tsx | open (a) — the tile now exists; the deck is the next Home slice |
+| P1 | Profile tab: age list 13–77 (65 options) | 11384 | MyProfilePage.tsx | **fixed** |
+| P2 | Profile tab: place line underlined, opens Maps | 10694-10698 | MyProfilePage.tsx | **fixed** |
+| P3 | Profile tab: links sheet copy "Drag order with ↑↓ …"; Edit AND Remove words per row | 11165, 11176-11179 | MyProfilePage.tsx | **fixed** |
+| P4 | Profile tab: follow-list rows carry the tinted role badge on the avatar | 11353-11355 | MyProfilePage.tsx | **fixed** |
+| P5 | Profile tab: "Can't find your style? Request it →" (a demo toast in the prototype) | 11241 | — | decision (c) |
+| P6 | Profile tab: About empty state prints a default sentence — the app says "A sentence in your own words — Edit profile ›" | 10831-10838 | MyProfilePage.tsx | decision (c) — the app's is the honest one |
+| P7 | Profile tab: Public view toggles in place with aria-pressed + toast — the app links to /person/{me} | 10638 | MyProfilePage.tsx | decision (c) — a real page beats a fake toggle |
+| P8 | Profile tab: Log out lives in the settings sheet | 11416 | MyProfilePage.tsx | **fixed** |
+| P9 | Profile tab: verified tick; albums grid + icon tab strip; Call; long-press-for-QR; settings switcher/appearance/language rows | 10592, 11069-11130, 10879, 10598 | — | needs field (b) / an albums slice / decision (c) |
+| P10 | Settings sheet behind the gear (YOUR PLAN · Artist tools · Payments · Invoices · Refunds · Enquiry types · Subscription · Notifications · Language · Privacy · Help · Log out) | 11402-11440, 8850-8870, 19263 | features/settings/components/SettingsSheet.tsx | **fixed** |
+| P11 | Settings: Payments & verification, Invoices, Refunds, Subscription screens of their own (S_payments 16531, S_invoices 16691, S_subscr 16935); Enquiry-types prefs (needs a prefs table); Privacy export/delete (DPDP) and Help centre | 16531, 16691, 16935, 9000-9050, 11433-11436 | SettingsSheet.tsx (rows open an honest inline panel) | needs field (b) / decision (c) |
+| N1 | Person page: name at DOS_TYPE.display 34px; group headings 17px | 3428, 3430 | PublicPersonPage.tsx | **fixed** |
+| N2 | Person page: the two big white buttons on both views — Schedule when they run a business; Stats has no per-person board | 10911-10940 | PublicPersonPage.tsx | **fixed** |
+| N3 | Person page: Follow as one of the equal small buttons (38px, 11px, radius 11) | 10875-10888 | PersonFollowButton.tsx | **fixed** |
+| N4 | Person page: 42px row marks filled with the entity's gradient + white initials, faces when present | 11007-11010 | PublicPersonPage.tsx | **fixed** |
+| N5 | Person page: the rank figure in its metal — my_chart_place refuses a p_user_id by design | 10720-10732 | — | decision (c) |
+| N6 | Person page: remove the invented "dancing on DanceOS since" (a person has an age, a business a founding year) | 10594 | PublicPersonPage.tsx | **fixed** |
+| N7 | Person page: the three-tile record grid is an addition (the prototype moved stats off the page) | 11127-11132 | PublicPersonPage.tsx | decision (c) — kept |
+| N8 | Person page: Call, the enquiry sheet, experience field, albums, a PUBLIC person page | 10879, 5051 | — | needs field (b) / decision (c) |
+| B1 | Studio/artist page: name 34px; Faculty heading 17px | 3428, 3430 | PublicProfile.tsx | open (a) |
+| B2 | Studio/artist page: Faculty rows are links to /person with faces and a › | 11004-11016 | PublicProfile.tsx, repositories/publicProfile.ts | open (a) |
+| B3 | Studio/artist page: style row is DosStyleRow tiles, names printed once | 10757 | PublicProfile.tsx | open (a) |
+| B4 | Studio/artist page: owner keeps the actions area; photo changer is the ＋ on the square's corner; corner chips for a member | 10618, 10634-10648 | PublicProfile.tsx | open (a) |
+| B5 | Studio/artist page: the invented "Upcoming" figure; the Following figure and rank (a business has neither) | 10714-10719 | PublicProfile.tsx | open (a) |
+| B6 | Studio/artist page: About (bio field), founding year, Call, albums/plans tabs, Photos grid, Stats, the owner's Followers sheet | 10834, 10691, 11069 | — | needs field (b) |
+| D1 | Discover: page head — pink wash off the top, DISCOVER eyebrow, "Dance near you" 27px, ONE city chip with a select behind it | 4489-4531 | app/(app)/discover/page.tsx | **fixed** |
+| D2 | Discover: entity tabs as five icon tiles (26px icon over 10px label, radius 14); order Studios · Artists · Crews · Classes · Events, default studios | 4571-4584, 4149 | discover/page.tsx | **fixed** |
+| D3 | Discover: "Followed by you" shelf (count + swiped 74px squircle rail) on Studios/Artists | 4112-4144, 4767 | discover/page.tsx | **fixed** |
+| D4 | Discover: Artists (and Crews) drawn as CompactCard two to a row — full-column square face, ARTIST/CREW chip, DosWhere, style tiles, follower count | 4376-4423, 4813 | features/discovery, CrewCard.tsx | **fixed** |
+| D5 | Discover: StudioCard ends with a style-tile row; cover 150px; "{n} photos" chip; distance in DosWhere at the foot; no "Studio ·" type word; avatar ring var(--card) | 4321-4366, 4293-4298 | StudioCard.tsx | **fixed** |
+| D6 | Discover: the filter sheet applies live | 4831, 4844-4872 | DiscoverFilters.tsx | **fixed** |
+| D7 | Discover: DosVerified tick on every card — nothing records a verification | 4352, 4411 | — | needs field (b) |
+| D8 | Discover: the map view; long-press a style tile → S_styleinfo; __DOSNAVHIDE while searching; the studio card's cover-strip photo (the photo exists; the card should draw it) | 4100+, 4611 | StudioCard.tsx | the cover photo is **fixed** (the strip draws it); the map and long-press stay decision (c) / a map slice |
+| C1 | Class page: artist column — 96px on ground + weave, 62×62 r17 avatar with the ${col}44 ring, dashed divider, full name in a two-line box, a door to the person | 11877-11894 | ClassDetail.tsx | open (a) |
+| C2 | Class page: tab-strip aria-live status line | 11974-11991 | ClassDetail.tsx | open (a) |
+| C3 | Class page: "You're assisting on this class" card for a confirmed team member | 11816-11843 | ClassDetail.tsx | open (a) |
+| C4 | Class page (completed): FINAL METRICS bars; WHO ATTENDED chips + NO-SHOW; the card's subline and Refunds › | 12166-12216 | ClassDetail.tsx | open (a) |
+| C5 | Class page: the studio row is a door; "THE ROOM · {ROOM}" when no studio resolves | 12281-12296 | ClassDetail.tsx | open (a) |
+| C6 | Class page: CLASS ASSISTANTS always drawn, 34px gradient avatars, uppercase job grammar, rows are doors, Edit ›/View ›, the dashed add-someone row, the assistant footnote | 12356-12391 | ClassDetail.tsx | open (a) |
+| C7 | Class page: artist "Change" pill (→ the hand-over sheet 12631-12679) | 11938-11946 | ClassDetail.tsx | open (a) |
+| C8 | Class page: register rows' payment meta; waitlist position "you're #3"; three copy lines (booked-card subline, already-booked toast, confirm-sheet identity line) | 12126, 12422, 6426, 12435, 12520 | ClassDetail.tsx | open (a) |
+| C9 | Class page: the Poster chip in the sleeve + the poster sheet (drawn designs) | 11812, 12768-12780 | ClassDetail.tsx | open (a) |
+| C10 | Class page: "Studios can't book · Switch" for a studio-role viewer who is not a member | 12425-12432 | ClassDetail.tsx | decision (c) |
+| T1 | Class tile: the WHO column — 54px artist face / style square, the torn edge with notch discs, the two-line name caption | 8329-8375 | ClassTile.tsx | **fixed** |
+| T2 | Class tile: fill bar in the facts row (amber ≥85%, red ≥100%) | 8467-8476 | ClassTile.tsx | **fixed** |
+| T3 | Class tile: WHAT column on var(--card); headline dosStyleInk 21px/-.85 two lines + ›; under-line 9.5px uppercase muted "{style} · {level}" | 8398-8412 | ClassTile.tsx | **fixed** |
+| T4 | Class tile: price without "per session"; no venue line; DRAFT/COMPLETED as a note line; "Today" / run-of-days fallbacks | 8127, 8443, 8477, 8298 | ClassTile.tsx | **fixed** |
+| R1 | Classes register: LiveBanner (N classes live · ON/OFF filter) | 14992, 3949-3968 | ClassesManager.tsx | **fixed** |
+| R2 | Classes register: Create class as the bizBtn pill; the pinned row at top var(--dos-top); the BizShell tool hero (no tenant eyebrow, no sub) | 2920, 14995, 2964-2976 | ClassesManager.tsx | **fixed** |
+| R3 | Classes register: Completed rows offer Refunds; published-delete copy "N enrolled students must be refunded…" / "Delete & manage refunds" | 15051, 15098-15104 | ClassesManager.tsx | **fixed** |
+| R4 | Classes register: Roster pill + /roster page (the prototype's register is the class page's Attendance tab) | 15050 | ClassesManager.tsx | decision (c) — kept |
+| F1 | Class form: fixed bottom action bar; BEFORE THIS CAN GO ON DISCOVER panel; the confirm sheet with the summary card; Continue names the missing answer | 15551-15625, 15568-15578 | ClassForm.tsx | open (a) |
+| F2 | Class form: ← back arrow; level bar glyphs (not emoji); visible Date/Starts/Ends labels and the studio's address; STEPS names; labelStyle var(--muted) | 15540, 15367-15377, 15320-15381, 15206 | ClassForm.tsx | open (a) — the studio's address landed; the bar, the blockers panel, the confirm sheet, the ← and the level glyphs stay |
+| F3 | Class form: ROOM ALREADY BUSY warning in the confirm sheet (needs a session clash query) | 15650 | ClassForm.tsx | open (a) |
+| F4 | Class form: the CLASS NAME field and the poster step are additions; DosDatePick calendar, searchable style dropdown (also crew + event forms), refund-cutoff + memberships toggles | 15108-15540, 9561, 15950 | ClassForm.tsx, CrewForm.tsx, EventForm.tsx | decision (c) / open (a) for DosStylePicker |
+| L1 | Learner listings: DosShelfHead scale; "N in {city}"; empty state names the city | 3446-3450, 4787, 4806 | app/(app)/classes/page.tsx | open (a) |
+| L2 | My classes (S_bookings): All · Classes · Events filter; "Your bookings" + "N confirmed"; tickets drawn with the same CalTile; BookingActions pill under every row | 6113-6139 | app/(app)/my-classes/page.tsx | open (a) |
+| L3 | Learner listings: EnrollButton under every card (the prototype's card has one job — open the class) | 4805, 15374 | classes/page.tsx, CalendarScreen.tsx | decision (c) — kept |
+| K1 | Calendar: personal empty-day copy "Nothing booked — find a class →" | 9310 | CalendarScreen.tsx | open (a) |
+| K2 | Calendar: a studio's calendar shows Train · Teach · Assist; one empty-day line everywhere; no heading over the public schedule | 9121-9155, 10531 | CalendarScreen.tsx | decision (c) — deliberate departures, revisit with the calendar parity slice |
+| A1 | Chrome: the "Managing {studio}" workspace strip with Exit studio › on /business routes | 19281-19294 | AppChrome.tsx | **fixed** |
+| A2 | Chrome: #dos-main min-height rule; --dos-foot published; dosSheetUp keyframes global | 19206, 19179 | app/globals.css | **fixed** |
+| A3 | Chrome: drill titles — Team, Manage event, Attendance, All bookings, Student record, What you manage, Join the team | 19241 | AppChrome.tsx | **fixed** |
+| A4 | Chrome: bell badge border literal per theme | 19257 | AppChrome.tsx | **fixed** |
+| A5 | Chrome: the global undo bar (needs an undo contract for server actions) | 19300-19307 | — | decision (c) |
+| A6 | Chrome: the gear opens the Settings sheet (on the Profile tab), not just the tab | 19263 | AppChrome.tsx | **fixed** |
+| U1 | Onboarding: heading "Set up your profile", sub, Continue-or-reason button, handle preview, an honest progress bar | 3781-3821 | OnboardingForm.tsx | open (a) |
+| U2 | Onboarding: photo (required), date of birth with the 18+ gate, styles step, socials step, the "Take a bow" finish screen | 3788-3943 | app/onboarding | needs field (b) for DOB; open (a) for styles/socials/photo (fields exist since the Profile slice) and the finish screen |
+| U3 | Onboarding: the role picker and the city field are additions; sign-in's Email/Mobile toggle is an addition; DPDP consent sentence | 3855, 3678, 3746 | features/auth | decision (c) |
+| U4 | OTP: Resend re-requests in place; "Get a call instead" | 3764-3765 | OtpVerify.tsx | open (a) / decision (c) for voice |
+| U5 | AuthShell progress prop | 3683-3694 | AuthShell | open (a) |
+| Z1 | Business hub: hero blob literal; "Studios" / "STUDIOS YOU OWN"; head colour var(--muted) | 2629-2633 | BusinessHub.tsx | **fixed** |
+| Z2 | Business hub: "STUDIOS YOU HAVE TAUGHT AT" list with Profile › | 2643-2646 | BusinessHub.tsx | **fixed** |
+| Z3 | Business hub: owned rows "Manage ›", sub-line "{area, city} · N rooms" | 2621, 2655 | BusinessHub.tsx | **fixed** |
+| Z4 | Business hub: New-studio sheet's rooms editor; "New studio" / "Create studio"; the sheet animates; var(--dos-foot) | 2660-2684 | BusinessHub.tsx | **fixed** |
+| S1 | Desks (Students, Team, Rooms, Earnings): the BizShell tool hero in the tool's colour and nothing else — no tenant eyebrow, no sub-sentence | 2931-2976 | LeadsDesk, StaffDesk, RoomsManager, EarningsDesk, MyEarnings | open (a) |
+| S2 | Desks: primary buttons as the bizBtn pill; the canonical toast (solid, #0EA5E9 border, role=status) everywhere; sheets share one shape (.6 scrim, 24px, handle, dosSheetUp) | 2920, 2977-2982, 2659 | features/leads, staff, rooms, payouts | open (a) |
+| S3 | Team: DosTeamRow (34px gradient chip with the label-coloured ring, the label in its colour, · Artist / · Dancer); three waiting-invite states | 18541-18592, 18575-18579 | StaffDesk.tsx | open (a) |
+| S4 | Team: reordering the roster (needs a sort_order column) | 18530-18540 | StaffDesk.tsx | needs field (b) |
+| S5 | Students: two empty states + Show everyone; search box; sort strip (A–Z · Active; Attendance/Progress need data); stage chips as pills; the Students / Styles switch and its figures | 17368-17512 | LeadsDesk.tsx | open (a) |
+| S6 | Rooms: closing note's "· the calendar filters by room" clause (needs the room filter on the calendar) | 18425 | RoomsManager.tsx | decision (c) |
+| S7 | Earnings: the MONEY OUT half (session pay, what you owe, the record-a-payment sheet) has no prototype counterpart — the prototype deleted its payroll desk | 18195-18196 | EarningsDesk.tsx | decision (c) — a deliberate, documented addition (Step 13) |
+| E1 | Events manager: the BizShell hero above the sleeve | 14047 | EventManager.tsx | open (a) |
+| E2 | Events desk: Share link on a published event; the published-delete sheet's copy and Keep it / Delete & manage refunds; draft delete undoable | 13853-13882 | EventsDesk.tsx | open (a) |
+| E3 | Event page: POLICY rows rewritten ("Full refund until 72 h before" etc. are promises the code does not keep) | 13216-13219 | EventPage.tsx | decision (c) — the app prints only what the code keeps |
+| E4 | Event page: Qualifying row on a tournament; "Entering as" always three cards with the crew card dimmed; the booking bar measured, not padded 130 | 13142, 13337-13348, 12859-12861 | EventPage.tsx | open (a) |
+| E5 | Event form: ← on step 0; publish ends on the ShareSheet; confirm summary rows (Prize pool, Adds to) and "Back"; page-nav pair when editing; "no audience tickets" | 15897, 16286, 16238-16245, 16213, 16127 | EventForm.tsx | open (a) |
+| E6 | Event manager: Judges row in EVENT DETAILS ("none confirmed yet") | 14158 | EventManager.tsx | open (a) |
+| E7 | Event manager: "YOU ARE HELPING WITH THIS ONE" card (needs an event-crew/rights table) | 14076-14084, 13593 | — | needs field (b) |
+| I1 | Inbox: sent-request line "— this class stays a draft until they confirm"; stage chips the prototype's six; off-platform warning on an invite | 5811, 5978, 5797 | InboxScreen.tsx | open (a) |
+| I2 | Inbox: the list card's inline controls (STATUS, Send quote, Take payment) — the detail page supersedes them | 6003-6071 | InboxScreen.tsx | decision (c) — documented |
+| I3 | EnquirySheet: honour the type's `dates` mode; drop the invented footer line | 5121-5135 | EnquirySheet.tsx | open (a) |
+| I4 | Enquiry detail: "Revise the quote" stays offered after won/lost; Call on both sides (needs a business phone field) | 5525, 5406 | EnquiryDetail.tsx | open (a) / needs field (b) for Call |
+| W1 | Crews: CrewCard as CompactCard | 4398-4421 | CrewCard.tsx | **fixed** |
+| W2 | Crews / Events forms: DosStylePicker instead of a native select | 9561, 15950 | CrewForm.tsx, EventForm.tsx | open (a) |
+| O1 | Notifications: the DosHero ramp (#5AC8FA → #6D28D9); "Read all" whenever there are rows | 13723, 13732 | NotificationsScreen.tsx | open (a) |
+| O2 | Notifications: prefs apply immediately; the sheet's second sentence | 13789 | NotificationsScreen.tsx | decision (c) — the app's save-on-Done and its honest sentence are kept |
+| M1 | Managed: shelf head at DOS_TYPE.shelf; no meta row above the card (the card carries its own note) ; empty state two lines only | 6371-6379 | ManagedScreen.tsx | open (a) |
+| X1 | Stats: "The whole record" — On the floor / Competing switch, the stacked SESSIONS chart with Day · Week · Month, group-by Style · Artist · Studio with sortable bars | 10194-10302 | StatsScreen.tsx | open (a) |
+| X2 | Stats: "What you dance most" style shelf with TOP badge and bars | 10077-10102 | StatsScreen.tsx | open (a) |
+| X3 | Stats: Charts' own hero (Global Rankings, violet→pink→amber); metric selector + style filter; the pinned "you" row; top-3 gradient numerals | 9642-9703, 9674-9689 | StatsScreen.tsx | open (a) |
+| X4 | Stats: History as the prototype's page — title + sub, DRAFTS / PUBLISHED · UPCOMING / COMPLETED groups, day headings, the app's ClassTile | 9775-9857 | StatsScreen.tsx | open (a) |
+| X5 | Stats: Assisted for / Trained under as two cards; no Rooms card for a dancer; zero cards not drawn; side tiles' copy, weight and colour (assisted = violet #8B5CF6) | 9958-10040 | StatsScreen.tsx, types/stats.ts | open (a) |
+| X6 | Stats: ▲/▼ movement on the you-row (needs rank history); Wins; the metal tier; daily refresh + decay | 9683 | — | needs field (b) / decision (c) |
+
+**What the next runs take first:** every **open (a)** row above, in this order —
+the Home PassDeck (H10), Discover's cover-strip photo (D8), the class form's
+room-clash warning (F3), DosStylePicker on the three forms (F4/W2), the
+onboarding styles/socials/photo steps and the finish screen (U2) — then the
+**needs field (b)** rows as their own slices (verification, sort_order, event
+rights, DOB, a business phone, enquiry-type prefs, rank history), leaving the
+**decision (c)** rows for the user to rule on.
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 
@@ -2721,7 +3015,24 @@ the technical detail; this log is the at-a-glance history.
   published class as a stranger and gets nothing from the managed read), the
   filter as URL state, one class tile / event card per row with its desk behind
   it, and the Manage › door on Home for whoever runs something. 8-check proof, a
-  tenth e2e segment. Step 24: two migrations — `notifications` +
+  tenth e2e segment. Then, at the user's ask ("why such a drastic difference"),
+  **parity slice 4 — the Profile tab**: S_profiletab's own render lifted whole
+  with five new fields behind one auth.uid()-scoped door (About, age, links,
+  styles, the account number), the five sheets, the person page reading the
+  same band back, and **the Settings sheet behind the gear** (the second
+  screenshot's complaint). 11-check proof, a twelfth e2e segment. Then **the
+  parity audit**: every built screen read against its prototype lines, ~170
+  differences written down, Home / the chrome / Discover / the class tile / the
+  register / the business hub / both profile screens fixed in this run, and the
+  rest left as a table at the foot of the parity backlog with a status per row.
+  **Four of the six fix agents died mid-edit when the Fable 5 credits ran out**
+  — the tree was left half-patched and was recovered by hand (four typecheck
+  errors: a missing `useDosDark` hook, a dropped `initialFollowers`
+  prop, a `studioPlace` prop the callers passed before the form had it).
+  **Lesson: a parallel fix run needs the parent to verify and finish, not to
+  assume — and Playwright's `getByRole({name})` matches by SUBSTRING, so
+  "Kathak" found "Kathakali" and "URL" found "Link URL"; style and field
+  matchers are `exact: true` now.** Step 24: two migrations — `notifications` +
   `notification_prefs` with eight TRIGGERS that raise a notification where the
   fact happens (so every path that writes the fact raises it, and `notify` is
   revoked from every client role and can never break the fact), then a
@@ -2752,8 +3063,8 @@ the technical detail; this log is the at-a-glance history.
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
 - **Done so far:** 25 / 29 steps (0–15, 18, 21–26) — **every step the prototype
-  describes**; 16, 17, 19 and 20 are features it deliberately removed — plus three
-  parity slices (person pages, photos, S_managed). Live at
+  describes**; 16, 17, 19 and 20 are features it deliberately removed — plus four
+  parity slices (person pages, photos, S_managed, the Profile tab). Live at
   https://dancestudio-orcin.vercel.app once this push deploys. The hosted project
   also carries a demo world (`node scripts/demo-data.js seed | status | wipe`).
 - **Remaining:** the parity backlog, in the order the tracker's Next block now

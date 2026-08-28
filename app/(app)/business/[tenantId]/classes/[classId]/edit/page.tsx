@@ -21,7 +21,8 @@ export default async function EditClassPage({
   }
 
   const tenants = await findMyTenants(supabase);
-  if (!tenants.some((t) => t.id === tenantId)) {
+  const tenant = tenants.find((t) => t.id === tenantId);
+  if (!tenant) {
     redirect("/business");
   }
 
@@ -45,6 +46,7 @@ export default async function EditClassPage({
       team={team}
       claims={claims}
       isOwner={role === "owner"}
+      studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
     />
   );
 }

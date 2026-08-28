@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useId, useSyncExternalStore, type ReactNode } from "react";
 import { DOS_UI, INK } from "@/lib/design/tokens";
+import { WorkspaceStrip } from "./WorkspaceStrip";
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round
@@ -106,17 +107,18 @@ const TAB_SET: Array<{ label: string; href: string }> = [
 const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/classes$/, "Classes"],
   [/^\/c\/[^/]+$/, "Class"],
-  [/^\/my-classes$/, "My classes"],
+  [/^\/my-classes$/, "All bookings"],
   [/^\/business$/, "Your business"],
   [/^\/business\/[^/]+\/classes$/, "Classes"],
   [/^\/business\/[^/]+\/classes\/new$/, "Add class"],
   [/^\/business\/[^/]+\/classes\/[^/]+\/edit$/, "Edit class"],
-  [/^\/business\/[^/]+\/classes\/[^/]+\/roster$/, "Roster"],
+  [/^\/business\/[^/]+\/classes\/[^/]+\/roster$/, "Attendance"],
   [/^\/business\/[^/]+\/calendar$/, "Calendar"],
   [/^\/business\/[^/]+\/events$/, "Events"],
   [/^\/business\/[^/]+\/events\/new$/, "Add event"],
   [/^\/business\/[^/]+\/events\/[^/]+\/edit$/, "Edit event"],
-  [/^\/business\/[^/]+\/events\/[^/]+$/, "Event"],
+  [/^\/business\/[^/]+\/events\/[^/]+$/, "Manage event"],
+  [/^\/business\/[^/]+\/staff$/, "Team"],
   [/^\/e\/[^/]+$/, "Event"],
   [/^\/calendar$/, "Calendar"],
   [/^\/studio\/[^/]+$/, "Studio"],
@@ -128,7 +130,9 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/crews\/[^/]+\/manage$/, "Crew"],
   [/^\/crew\/[^/]+$/, "Crew"],
   [/^\/notifications$/, "Notifications"],
-  [/^\/person\/[^/]+$/, "Dancer"],
+  [/^\/person\/[^/]+$/, "Student record"],
+  [/^\/managed$/, "What you manage"],
+  [/^\/join\/[^/]+$/, "Join the team"],
 ];
 
 const titleFor = (pathname: string): string => {
@@ -168,6 +172,9 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
   const router = useRouter();
   const activeTab = TAB_SET.find((t) => t.href === pathname)?.label ?? null;
   const isTab = activeTab !== null;
+  /* a studio is a WORKSPACE you enter from Home (19267): every route under
+     /business/[tenantId] is inside one, and the strip is the way back out */
+  const workspaceId = pathname.match(/^\/business\/([0-9a-f-]{36})(?:\/|$)/i)?.[1] ?? null;
 
   /* theme lives on <html> (set pre-paint by the root layout's boot script) and is
      persisted under the prototype's key — the <html> class IS the store, so the
@@ -192,7 +199,19 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
   };
 
   return (
-    <div style={{ position: "relative", background: "var(--bg)", minHeight: "100vh" }}>
+    <div
+      style={
+        {
+          position: "relative",
+          background: "var(--bg)",
+          minHeight: "100vh",
+          /* how much room a page leaves at the bottom (19173-19180): the tab bar floats
+             over the end of a tab page, so the shell publishes the clearance and a
+             screen reads it as padding-bottom: var(--dos-foot) */
+          "--dos-foot": isTab ? "calc(80px + var(--dos-safe-bottom))" : "calc(16px + var(--dos-safe-bottom))",
+        } as React.CSSProperties
+      }
+    >
       <a href="#dos-main" className="dos-skip">
         Skip to content
       </a>
@@ -285,7 +304,7 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
               <path d="M10.5 19a2 2 0 0 0 3 0" />
             </svg>
             {unread > 0 ? (
-              <span data-testid="bell-badge" style={{ position: "absolute", top: -2, right: -2, minWidth: 14, height: 14, borderRadius: 7, padding: "0 3.5px", background: "#EC4899", color: "#fff", fontSize: 8.5, fontWeight: 900, lineHeight: "14px", textAlign: "center", fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', border: "2px solid var(--bg)", boxSizing: "border-box" }}>
+              <span data-testid="bell-badge" style={{ position: "absolute", top: -2, right: -2, minWidth: 14, height: 14, borderRadius: 7, padding: "0 3.5px", background: "#EC4899", color: "#fff", fontSize: 8.5, fontWeight: 900, lineHeight: "14px", textAlign: "center", fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', border: `2px solid ${theme === "dark" ? "#0A0A0A" : "#FFFFFF"}`, boxSizing: "border-box" }}>
                 {unread > 9 ? "9+" : unread}
               </span>
             ) : null}
@@ -314,7 +333,8 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
               </svg>
             )}
           </span>
-          <Link href="/profile" aria-label="Settings" style={{ ...chipStyle, textDecoration: "none" }}>
+          {/* the gear opens the Settings sheet on the Profile tab (prototype 19263) */}
+          <Link href="/profile?settings=1" aria-label="Settings" style={{ ...chipStyle, textDecoration: "none" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3.2" />
               <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" />
@@ -333,6 +353,7 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
           boxSizing: "border-box",
         }}
       >
+        {workspaceId ? <WorkspaceStrip tenantId={workspaceId} /> : null}
         {children}
       </div>
 

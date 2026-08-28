@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -6,11 +7,11 @@ import { findMyEnrollments } from "@/repositories/enrollments";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { CARD, DOS_DISPLAY, DOS_TINT, DOS_UI, GOLD, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
+import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, PINK, SOLID, SUB } from "@/lib/design/tokens";
+import { BizSection, DosShelfHead, HOME_TYPE } from "@/features/home/components/home-kit";
 import type { MyEnrollment } from "@/types/enrollment";
-import type { ProfileRole } from "@/types/profile";
-import { CREW_TINT } from "@/types/crew";
-import type { Tenant } from "@/types/tenant";
+import { memberNoWords, type ProfileRole } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
 /** Metal rings per role — prototype DOS_RINGS (DanceOSApp.jsx:1462-1463). */
@@ -24,11 +25,6 @@ const ROLE_WORD: Record<ProfileRole, string> = {
   dancer: "Dancer",
   trainer: "Artist",
   studio: "Studio",
-};
-
-const TENANT_WORD: Record<Tenant["type"], string> = {
-  studio: "Studio",
-  trainer_business: "Artist business",
 };
 
 const IST = "Asia/Kolkata";
@@ -51,10 +47,14 @@ const fmtSession = (iso: string): string =>
     .format(new Date(iso))
     .toLowerCase()}`;
 
+/** the IST calendar day a moment falls on — "2026-08-28" */
+const dayKey = (d: Date): string =>
+  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: IST }).format(d);
+
 /** The deck's slice of today: the next few live bookings, live-now ones flagged. */
 const selectUpcoming = (
   enrollments: MyEnrollment[]
-): { upcoming: MyEnrollment[]; liveIds: Set<string> } => {
+): { upcoming: MyEnrollment[]; liveIds: Set<string>; todayN: number } => {
   const now = Date.now();
   const upcoming = enrollments
     .filter((e) => e.status !== "cancelled" && new Date(e.endsAt).getTime() >= now)
@@ -62,13 +62,15 @@ const selectUpcoming = (
   const liveIds = new Set(
     upcoming.filter((e) => new Date(e.startsAt).getTime() <= now).map((e) => e.id)
   );
-  return { upcoming, liveIds };
+  const today = dayKey(new Date(now));
+  const todayN = upcoming.filter((e) => dayKey(new Date(e.startsAt)) === today).length;
+  return { upcoming, liveIds, todayN };
 };
 
 /** Home — the dancer dashboard lifted from prototype S_homedancer (DanceOSApp.jsx:7206-7352):
- *  the identity sleeve with the time-of-day greeting, the deck of booked sessions with a
- *  live-now chip, and the run-your-business section. The full PassDeck (QR codes, invoices,
- *  share) arrives with later slices — see the UI parity backlog. */
+ *  the identity sleeve with the time-of-day greeting, the deck of booked sessions under
+ *  "Today's schedule" with a live-now chip, and the Artist Tools grid (BizSection). The full
+ *  PassDeck (QR codes, invoices, share) arrives with later slices — see the UI parity backlog. */
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -91,16 +93,23 @@ export default async function HomePage() {
     findMyPendingInvites(supabase),
   ]);
 
-  const { upcoming, liveIds } = selectUpcoming(enrollments);
+  const { upcoming, liveIds, todayN } = selectUpcoming(enrollments);
 
   const RG = DOS_RINGS[profile.role];
   const RC = RG[3];
+  const face = photoUrl(profile.avatarPath);
+  /* "24, New Delhi" — one string with a comma, the way you'd introduce somebody (7295-7306) */
+  const place = profile.city ?? "";
+  const metaLine = [profile.age != null ? String(profile.age) : "", place].filter(Boolean).join(", ");
+  /* Manage only appears if you actually run something (7135): the door to what you
+     manage, and offering it to somebody who manages nothing is a door onto an empty room */
+  const canManage = tenants.length > 0;
+  const firstTenant = tenants[0]?.id ?? null;
 
   return (
     <div
       style={{
         background: LILAC,
-        minHeight: "100vh",
         color: INK,
         maxWidth: 430,
         margin: "0 auto",
@@ -108,341 +117,288 @@ export default async function HomePage() {
         boxSizing: "border-box",
       }}
     >
-      {/* identity sleeve — the same object the profile wears (prototype 7248-7339) */}
-      <div
-        style={{
-          background: `linear-gradient(180deg, ${RC}9e 0%, ${RC}4a 46%, ${RC}14 74%, ${LILAC} 100%)`,
-          padding: "16px 16px 12px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 14, minWidth: 0 }}>
-          <Link
-            href="/profile"
-            aria-label="Open your profile"
-            style={{
-              width: 86,
-              height: 86,
-              flexShrink: 0,
-              borderRadius: 0,
-              overflow: "hidden",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: `linear-gradient(150deg, ${RG[0]}, ${RG[1]})`,
-              color: "#0A0A0A",
-              fontSize: 32,
-              fontWeight: 900,
-              letterSpacing: 1,
-              fontFamily: DOS_DISPLAY,
-              textDecoration: "none",
-              boxShadow: "0 0 34px 10px rgba(0,0,0,.28), 0 14px 30px -6px rgba(0,0,0,.6)",
-            }}
-          >
-            {initials(profile.fullName)}
-          </Link>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: "rgba(255,255,255,.9)" }}>
-              {greeting().toUpperCase()}
-            </div>
-            <div
-              style={{
-                minWidth: 0,
-                fontSize: 24,
-                fontWeight: 900,
-                fontFamily: DOS_DISPLAY,
-                letterSpacing: -0.8,
-                lineHeight: 1.08,
-                marginTop: 4,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {profile.fullName}
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: INK, marginTop: 5 }}>
-              {profile.city ?? ""}
-            </div>
-          </div>
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <span style={{ display: "block", fontSize: 20, fontWeight: 900, lineHeight: 1, letterSpacing: -0.5, fontFamily: DOS_DISPLAY }}>
-            {ROLE_WORD[profile.role]}
-          </span>
-        </div>
-      </div>
-
-      <div style={{ padding: "12px 16px 24px" }}>
-        {/* ── the deck of today: your booked sessions, live ones flagged (prototype PassDeck) ── */}
+      <div style={{ padding: "0 16px" }}>
+        {/* identity sleeve — the same object the profile wears (prototype 7248-7339) */}
         <div
           style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            padding: "6px 0 8px",
+            position: "relative",
+            margin: "0 -16px",
+            overflow: "hidden",
+            background: `linear-gradient(180deg, ${RC}9e 0%, ${RC}4a 46%, ${RC}14 74%, ${LILAC} 100%)`,
           }}
         >
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB }}>YOUR CLASSES</div>
-          <Link href="/my-classes" style={{ fontSize: 11.5, fontWeight: 800, color: "#5AC8FA", textDecoration: "none" }}>
-            See all ›
-          </Link>
-        </div>
-        {upcoming.map((e) => {
-          const live = liveIds.has(e.id);
-          const col = dosStyleColor(e.style);
-          return (
-            <Link
-              key={e.id}
-              href={`/c/${e.shareSlug}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                background: CARD,
-                border: `1px solid ${live ? `${col}88` : LINE}`,
-                borderRadius: 18,
-                padding: "13px 14px",
-                marginBottom: 10,
-                color: INK,
-                textDecoration: "none",
-              }}
-            >
-              <span
+          <div style={{ padding: "16px 16px 12px" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 14, minWidth: 0 }}>
+              {/* the picture is square and sharp, with the sleeve's thrown shadow — the same
+                  object the profile puts at the top of itself (7276-7283) */}
+              <Link
+                href="/profile"
+                aria-label="Open your profile"
                 style={{
-                  width: 44,
-                  height: 44,
+                  width: 86,
+                  height: 86,
                   flexShrink: 0,
-                  borderRadius: 12,
+                  borderRadius: 0,
+                  overflow: "hidden",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: `linear-gradient(150deg, ${col}, ${col}88)`,
+                  background: `linear-gradient(150deg, ${RG[0]}, ${RG[1]})`,
                   color: "#fff",
-                  fontSize: 17,
+                  fontSize: 32,
                   fontWeight: 900,
+                  letterSpacing: 1,
                   fontFamily: DOS_DISPLAY,
+                  textDecoration: "none",
+                  boxShadow: "0 0 34px 10px rgba(0,0,0,.28), 0 14px 30px -6px rgba(0,0,0,.6)",
                 }}
               >
-                {e.style.slice(0, 1)}
+                {face ? (
+                  <Image src={face} alt="" width={86} height={86} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  initials(profile.fullName)
+                )}
+              </Link>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...HOME_TYPE.micro, letterSpacing: 2, color: "rgba(255,255,255,.9)" }}>
+                  {greeting().toUpperCase()}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, marginTop: 4 }}>
+                  <span
+                    style={{
+                      minWidth: 0,
+                      fontSize: 24,
+                      fontWeight: 900,
+                      fontFamily: DOS_DISPLAY,
+                      letterSpacing: -0.8,
+                      lineHeight: 1.08,
+                      color: INK,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {profile.fullName}
+                  </span>
+                </div>
+                {metaLine ? (
+                  <div style={{ display: "flex", alignItems: "center", marginTop: 5, minWidth: 0, fontSize: 13, fontWeight: 800, color: INK }}>
+                    {place ? (
+                      <a
+                        href={`https://maps.google.com/?q=${encodeURIComponent(place)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Open this address in Maps"
+                        style={{
+                          minWidth: 0,
+                          cursor: "pointer",
+                          fontVariantNumeric: "tabular-nums",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: "inherit",
+                          textDecoration: "none",
+                        }}
+                      >
+                        {metaLine}
+                      </a>
+                    ) : (
+                      <span style={{ minWidth: 0, fontVariantNumeric: "tabular-nums", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {metaLine}
+                      </span>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* what you are, not what your number is (7308-7323): the role is the word,
+                the account number the small line under it */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
+              <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none", color: INK }}>
+                <span style={{ display: "block", fontSize: 20, fontWeight: 900, lineHeight: 1, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, color: INK }}>
+                  {ROLE_WORD[profile.role]}
+                </span>
+                {profile.memberNo != null ? (
+                  <span style={{ display: "block", ...HOME_TYPE.micro, color: MUTED, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
+                    {memberNoWords(profile.memberNo)}
+                  </span>
+                ) : null}
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* ── the deck of today: your booked sessions, live ones flagged (prototype PassDeck 7139-7200) ── */}
+        <div data-dosfold="deck" style={{ margin: "10px -16px 14px", padding: "0 16px" }}>
+          <DosShelfHead
+            pad="2px 0 8px"
+            right={
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                {canManage ? (
+                  <Link href="/managed" aria-label="Everything you manage" style={{ color: PINK, fontWeight: 800, cursor: "pointer", textDecoration: "none" }}>
+                    Manage
+                  </Link>
+                ) : null}
+                <Link href="/my-classes" aria-label="All bookings" style={{ color: PINK, fontWeight: 800, cursor: "pointer", textDecoration: "none" }}>
+                  All bookings ›
+                </Link>
               </span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: 14,
-                    fontWeight: 900,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
+            }
+          >
+            Today’s schedule
+            <span style={{ ...HOME_TYPE.meta, color: SUB, marginLeft: 8 }}>{todayN} today</span>
+          </DosShelfHead>
+
+          {upcoming.length === 0 ? (
+            <div style={{ background: CARD, border: `1.5px dashed ${LINE}`, borderRadius: 16, padding: "16px", textAlign: "center" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 900 }}>Nothing on today</div>
+              <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>
+                Classes and events you book, assist on or run today all appear here.
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
+                {canManage ? (
+                  <Link
+                    href="/managed"
+                    style={{ display: "inline-block", padding: "9px 18px", borderRadius: 999, background: CARD, border: `1px solid ${LINE}`, fontWeight: 900, fontSize: 11.5, cursor: "pointer", color: INK, textDecoration: "none" }}
+                  >
+                    See everything you manage
+                  </Link>
+                ) : null}
+                <Link
+                  href="/my-classes"
+                  style={{ display: "inline-block", padding: "9px 18px", borderRadius: 999, background: INK, color: SOLID, fontWeight: 900, fontSize: 11.5, cursor: "pointer", textDecoration: "none" }}
                 >
-                  {e.style} — {e.title}
-                </span>
-                <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: SUB, marginTop: 3 }}>
-                  {e.tenantName} · {fmtSession(e.startsAt)}
-                  {e.status === "waitlisted" ? " · waitlist" : ""}
-                </span>
-              </span>
-              {live && (
-                <span
+                  See all bookings
+                </Link>
+              </div>
+            </div>
+          ) : (
+            upcoming.map((e) => {
+              const live = liveIds.has(e.id);
+              const col = dosStyleColor(e.style);
+              return (
+                <Link
+                  key={e.id}
+                  href={`/c/${e.shareSlug}`}
                   style={{
-                    display: "inline-flex",
+                    display: "flex",
                     alignItems: "center",
-                    gap: 6,
-                    flexShrink: 0,
-                    fontSize: 10,
-                    fontWeight: 900,
-                    letterSpacing: 0.8,
-                    color: "#22C55E",
+                    gap: 12,
+                    background: CARD,
+                    border: `1px solid ${live ? `${col}88` : LINE}`,
+                    borderRadius: 18,
+                    padding: "13px 14px",
+                    marginBottom: 10,
+                    color: INK,
+                    textDecoration: "none",
                   }}
                 >
-                  <span style={{ position: "relative", width: 7, height: 7 }}>
+                  <span
+                    style={{
+                      width: 44,
+                      height: 44,
+                      flexShrink: 0,
+                      borderRadius: 12,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: `linear-gradient(150deg, ${col}, ${col}88)`,
+                      color: "#fff",
+                      fontSize: 17,
+                      fontWeight: 900,
+                      fontFamily: DOS_DISPLAY,
+                    }}
+                  >
+                    {e.style.slice(0, 1)}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
                     <span
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        borderRadius: 99,
-                        background: "#22C55E",
-                        animation: "dosPulseH 1.4s ease-out infinite",
+                        display: "block",
+                        fontSize: 14,
+                        fontWeight: 900,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
-                    />
-                    <span style={{ position: "absolute", inset: 0, borderRadius: 99, background: "#22C55E" }} />
+                    >
+                      {e.style} — {e.title}
+                    </span>
+                    <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: SUB, marginTop: 3 }}>
+                      {e.tenantName} · {fmtSession(e.startsAt)}
+                      {e.status === "waitlisted" ? " · waitlist" : ""}
+                    </span>
                   </span>
-                  LIVE
-                </span>
-              )}
-            </Link>
-          );
-        })}
-        {upcoming.length === 0 && (
-          <Link
-            href="/classes"
-            style={{
-              display: "block",
-              textAlign: "center",
-              padding: "22px 20px",
-              color: SUB,
-              border: `1.5px dashed ${LINE}`,
-              borderRadius: 18,
-              fontSize: 13,
-              marginBottom: 10,
-              textDecoration: "none",
-            }}
-          >
-            Nothing booked yet — <b style={{ color: "#5AC8FA" }}>find a class ›</b>
-          </Link>
-        )}
-
-        {/* ── run your business (prototype BizSection, 7342-7344) ── */}
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "16px 0 8px" }}>
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB }}>RUN YOUR BUSINESS</div>
-          {/* the door to everything you manage (prototype 7150-7154) — offered only to
-              somebody who runs something: "offering it to somebody who manages nothing
-              is a door onto an empty room" */}
-          {tenants.length > 0 ? (
-            <Link href="/managed" aria-label="Everything you manage" style={{ fontSize: 11.5, fontWeight: 800, color: "#5AC8FA", textDecoration: "none" }}>
-              Manage ›
-            </Link>
-          ) : null}
+                  {live && (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        flexShrink: 0,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        letterSpacing: 0.8,
+                        color: "#22C55E",
+                      }}
+                    >
+                      <span style={{ position: "relative", width: 7, height: 7 }}>
+                        <span
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            borderRadius: 99,
+                            background: "#22C55E",
+                            animation: "dosPulseH 1.4s ease-out infinite",
+                          }}
+                        />
+                        <span style={{ position: "absolute", inset: 0, borderRadius: 99, background: "#22C55E" }} />
+                      </span>
+                      LIVE
+                    </span>
+                  )}
+                </Link>
+              );
+            })
+          )}
         </div>
 
-        {/* somebody has asked you onto their team, and only you can answer —
-            the same gold ask the class page wears when a class is handed over */}
-        {invites.map((inv) => (
-          <Link
-            key={inv.inviteId}
-            href={`/join/${inv.code}`}
-            style={{
-              display: "block",
-              background: CARD,
-              border: `1px solid ${GOLD}66`,
-              borderLeft: `3px solid ${GOLD}`,
-              borderRadius: 16,
-              padding: "13px 14px",
-              marginBottom: 10,
-              color: INK,
-              textDecoration: "none",
-            }}
-          >
-            <span style={{ display: "block", fontSize: 12.5, fontWeight: 900 }}>
-              {inv.tenantName} wants you on the team
-            </span>
-            <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 3 }}>
-              As {MEMBER_ROLE_WORD[inv.memberRole].toLowerCase()} · you decide
-            </span>
-            <span style={{ display: "block", fontSize: 11.5, fontWeight: 800, color: GOLD, marginTop: 7 }}>
-              Answer this ›
-            </span>
-          </Link>
-        ))}
-
-        {tenants.map((t) => {
-          const tint = t.type === "studio" ? DOS_TINT.studio : DOS_TINT.trainer;
-          return (
-            <Link
-              key={t.id}
-              href={`/business/${t.id}/classes`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                background: CARD,
-                border: `1px solid ${LINE}`,
-                borderLeft: `4px solid ${tint}`,
-                borderRadius: 16,
-                padding: "14px 15px",
-                marginBottom: 10,
-                color: INK,
-                textDecoration: "none",
-              }}
-            >
-              <span style={{ minWidth: 0 }}>
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: 13.5,
-                    fontWeight: 900,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {t.name}
+        {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
+            sheet that covers the deck, so it is opaque and it is above. ── */}
+        <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
+          <BizSection role={profile.role} tenantId={firstTenant}>
+            {/* somebody has asked you onto their team, and only you can answer —
+                the same gold ask the class page wears when a class is handed over */}
+            {invites.map((inv) => (
+              <Link
+                key={inv.inviteId}
+                href={`/join/${inv.code}`}
+                style={{
+                  display: "block",
+                  background: CARD,
+                  border: `1px solid ${GOLD}66`,
+                  borderLeft: `3px solid ${GOLD}`,
+                  borderRadius: 16,
+                  padding: "13px 14px",
+                  marginBottom: 10,
+                  color: INK,
+                  textDecoration: "none",
+                }}
+              >
+                <span style={{ display: "block", fontSize: 12.5, fontWeight: 900 }}>
+                  {inv.tenantName} wants you on the team
                 </span>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: SUB, marginTop: 3 }}>
-                  {TENANT_WORD[t.type]}
-                  {t.area ? ` · ${t.area}` : ""}
-                  {t.city ? ` · ${t.city}` : ""}
+                <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 3 }}>
+                  As {MEMBER_ROLE_WORD[inv.memberRole].toLowerCase()} · you decide
                 </span>
-              </span>
-              <span style={{ color: tint, fontWeight: 800, fontSize: 12, flexShrink: 0 }}>Manage ›</span>
-            </Link>
-          );
-        })}
-        <Link
-          href="/business"
-          style={{
-            display: "block",
-            textAlign: "center",
-            padding: "14px 15px",
-            border: `1.5px dashed ${LINE}`,
-            borderRadius: 16,
-            color: SUB,
-            fontSize: 12.5,
-            fontWeight: 800,
-            textDecoration: "none",
-            marginBottom: 10,
-          }}
-        >
-          {tenants.length === 0 ? "＋ Set up a studio or artist business" : "＋ Add another business"}
-        </Link>
-
-        {/* crews are the other thing a person RUNS (prototype 2495-2512: the Studios
-            and Crews entry tiles) — one door, the same dashed treatment */}
-        <Link
-          href="/crews"
-          aria-label="Crews"
-          style={{
-            display: "block",
-            textAlign: "center",
-            padding: "13px",
-            borderRadius: 16,
-            border: `1.5px dashed ${CREW_TINT}`,
-            color: CREW_TINT,
-            fontWeight: 800,
-            fontSize: 13,
-            textDecoration: "none",
-            marginTop: 10,
-          }}
-        >
-          Crews — the ones you lead and the ones you are in ›
-        </Link>
-
-        {/* ── discover row ── */}
-        <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB, padding: "16px 0 8px" }}>
-          FIND YOUR NEXT CLASS
+                <span style={{ display: "block", fontSize: 11.5, fontWeight: 800, color: GOLD, marginTop: 7 }}>
+                  Answer this ›
+                </span>
+              </Link>
+            ))}
+          </BizSection>
         </div>
-        <Link
-          href="/discover"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: CARD,
-            border: `1px solid ${LINE}`,
-            borderLeft: "4px solid #5AC8FA",
-            borderRadius: 16,
-            padding: "14px 15px",
-            color: INK,
-            textDecoration: "none",
-            fontSize: 13.5,
-            fontWeight: 900,
-          }}
-        >
-          Discover — classes & studios near you
-          <span style={{ color: "#5AC8FA", fontWeight: 800, fontSize: 12 }}>Open ›</span>
-        </Link>
       </div>
     </div>
   );

@@ -1,29 +1,27 @@
-import Image from "next/image";
-import Link from "next/link";
+import { CompactCard } from "@/features/discovery/components/CompactCard";
+import { DosFollowers } from "@/features/discovery/components/discover-kit";
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
-import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { CrewSummary } from "@/types/crew";
-import { initialsOf } from "./crew-kit";
 
-/** Discover's crew card — the prototype's CompactCard (4370-4400), drawn two to
- *  a row under the Crews shelf: the gradient face, CREW over the name, the city
- *  and the style under it, the roster size at the foot. Opens the crew's page. */
+/** Discover's crew card — the prototype's CompactCard (4376-4423) in its CREW
+ *  dress, two to a row under the Crews shelf: the crew's face filling the
+ *  column, CREW in the chip inside it, the name, the city, the style as the
+ *  app's own tile, and the roster size where an artist's follower count sits —
+ *  a crew has no followers to count (crew follows: parity backlog). Opens the
+ *  crew's page. */
 export function CrewCard({ crew }: { crew: CrewSummary }) {
-  const g = gradientOf(crew.name);
   return (
-    <Link href={`/crew/${crew.id}`} aria-label={`${crew.name} — Crew`} style={{ display: "block", background: "var(--card)", border: "1px solid var(--el)", borderRadius: 18, padding: 12, color: INK, textDecoration: "none", minWidth: 0 }}>
-      <div style={{ width: 56, height: 56, borderRadius: 16, overflow: "hidden", background: `linear-gradient(135deg,${g[0]},${g[1]})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: 0.4 }}>
-        {photoUrl(crew.photo) ? <Image src={photoUrl(crew.photo)!} alt="" width={56} height={56} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(crew.name)}
-      </div>
-      <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 1.4, color: "#DC2626", marginTop: 10 }}>CREW</div>
-      <div style={{ fontSize: 13.5, fontWeight: 900, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crew.name}</div>
-      <div style={{ fontSize: 10.5, color: SUB, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {crew.city} · {crew.style}
-      </div>
-      <div style={{ fontSize: 10.5, fontWeight: 800, color: INK, marginTop: 8, fontVariantNumeric: "tabular-nums" }}>
-        {crew.members} member{crew.members === 1 ? "" : "s"}
-      </div>
-    </Link>
+    <CompactCard
+      href={`/crew/${crew.id}`}
+      ariaLabel={`${crew.name} — Crew`}
+      name={crew.name}
+      label="CREW"
+      photo={photoUrl(crew.photo)}
+      grad={gradientOf(crew.name)}
+      city={crew.city}
+      styles={crew.style ? [crew.style] : []}
+      foot={<DosFollowers n={crew.members} size={11} word={crew.members === 1 ? "member" : "members"} />}
+    />
   );
 }

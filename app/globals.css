@@ -60,6 +60,13 @@ body {
   color: var(--text);
 }
 
+/* ── Where a page ends (prototype 19206): the shell guarantees the screenful, once,
+   and counts its own padding as part of it — a page is exactly as tall as what is on it. */
+#dos-main {
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
 /* ── Focus is only useful if you can SEE it — one ring, keyboard-only, never on tap
    (prototype 19207-19212). */
 [role="button"]:focus {
@@ -96,6 +103,16 @@ a:focus-visible {
   color: #fff;
   font-weight: 800;
   font-size: 13px;
+}
+
+/* a sheet rising from the bottom edge — the prototype declares it per module; the app once */
+@keyframes dosSheetUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* the live pulse used on the deck, the calendar and Discover — declared once, app-wide */

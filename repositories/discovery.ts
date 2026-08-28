@@ -46,3 +46,23 @@ export async function findNearbyTenants(
     distanceKm: r.distance_km,
   }));
 }
+
+/** The photo each business has put on its profile, by id. The nearby RPC
+ *  answers with place and distance only, so the faces the cards wear are read
+ *  in one second query — under the same "anyone reads listed tenants" policy
+ *  the public page uses. A business with no photo is simply absent from the map. */
+export async function findTenantPhotoPaths(supabase: SupabaseClient, tenantIds: string[]): Promise<Map<string, string>> {
+  const ids = [...new Set(tenantIds)];
+  const out = new Map<string, string>();
+  if (ids.length === 0) {
+    return out;
+  }
+  const { data, error } = await supabase.from("tenants").select("id, photo_path").in("id", ids).is("deleted_at", null).limit(ids.length);
+  if (error) {
+    throw new Error(`discovery.photos failed: ${error.message}`);
+  }
+  ((data ?? []) as Array<{ id: string; photo_path: string | null }>).forEach((r) => {
+    if (r.photo_path) out.set(r.id, r.photo_path);
+  });
+  return out;
+}

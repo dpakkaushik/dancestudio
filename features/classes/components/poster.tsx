@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 /** The poster kit, lifted from the prototype's shared module (DanceOSApp.jsx:6478-6592
  *  + 128-148 + 3196-3218): every class has a drawn poster — three designs, picked from
@@ -9,6 +9,19 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
  *  and blurred as the light source, the dance's own colour laid over it, the sharp
  *  square on top. Uploading your own poster arrives with Step 11; the pass/QR sheet
  *  behind the poster arrives with Step 10. */
+
+/** Is the page wearing the dark palette? The class tile and the class page both
+ *  walk a style's colour toward the theme's ink (dosStyleInk), so both ask the same
+ *  question the sanctioned way — the html class is DOM-owned state, read through
+ *  useSyncExternalStore rather than during render. */
+const subscribeToHtmlClass = (onChange: () => void): (() => void) => {
+  const ob = new MutationObserver(onChange);
+  ob.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  return () => ob.disconnect();
+};
+const readIsDark = () => document.documentElement.className !== "light";
+const readServerIsDark = () => true;
+export const useDosDark = (): boolean => useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
 
 export const DOS_POSTERS: Array<[string, string]> = [
   ["bold", "Bold"],

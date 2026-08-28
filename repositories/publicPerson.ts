@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Profile, ProfileRole } from "@/types/profile";
+import { PROFILE_COLUMNS, toProfile } from "@/repositories/profiles";
+import type { Profile } from "@/types/profile";
 import type { DanceStats } from "@/types/stats";
 import { EMPTY_STATS } from "@/types/stats";
 
@@ -17,6 +18,8 @@ export interface PersonCrew {
   role: "leader" | "member" | "trainee";
   since: string;
   members: number;
+  /** the crew's picture in the public bucket, or null for its gradient */
+  photo: string | null;
 }
 
 export interface PersonTeachesAt {
@@ -36,7 +39,7 @@ export interface PublicPerson {
   crews: PersonCrew[];
   teachesAt: PersonTeachesAt[];
   /** the businesses this person OWNS, when they are listed (a studio's page is public) */
-  runs: Array<{ tenantId: string; tenantName: string; tenantType: "studio" | "trainer_business"; city: string | null }>;
+  runs: Array<{ tenantId: string; tenantName: string; tenantType: "studio" | "trainer_business"; city: string | null; photoPath: string | null }>;
 }
 
 interface StatsRow {
@@ -102,27 +105,21 @@ export async function setPersonFollow(supabase: SupabaseClient, userId: string, 
 export async function findPublicPerson(supabase: SupabaseClient, userId: string): Promise<PublicPerson | null> {
   const { data: profileRow, error: profileError } = await supabase
     .from("profiles")
-    .select("id, full_name, role, city, avatar_path")
+    .select(PROFILE_COLUMNS)
     .eq("id", userId)
     .is("deleted_at", null)
     .maybeSingle();
   if (profileError || !profileRow) {
     return null;
   }
-  const profile: Profile = {
-    id: (profileRow as { id: string }).id,
-    fullName: (profileRow as { full_name: string }).full_name,
-    role: (profileRow as { role: ProfileRole }).role,
-    city: (profileRow as { city: string | null }).city,
-    avatarPath: (profileRow as { avatar_path?: string | null }).avatar_path ?? null,
-  };
+  const profile: Profile = toProfile(profileRow as Parameters<typeof toProfile>[0]);
 
   const [statsRes, countsMap, crewsRes, teachesRes, runsRes] = await Promise.all([
     supabase.rpc("person_dance_stats", { p_user_id: userId }),
     findPersonFollowerCounts(supabase, [userId]),
     supabase
       .from("crew_members")
-      .select("role, created_at, crews (id, name, city, style, deleted_at)")
+      .select("role, created_at, crews (id, name, city, style, photo, deleted_at)")
       .eq("user_id", userId)
       .eq("status", "confirmed")
       .is("deleted_at", null)
@@ -133,7 +130,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
        anyone, Step 3), so this names nothing private */
     supabase
       .from("tenant_members")
-      .select("member_role, tenants!inner (id, name, type, city, visibility, deleted_at)")
+      .select("member_role, tenants!inner (id, name, type, city, visibility, photo_path, deleted_at)")
       .eq("user_id", userId)
       .eq("member_role", "owner")
       .is("deleted_at", null)
@@ -161,7 +158,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
   const crewRows = ((crewsRes.data ?? []) as unknown as Array<{
     role: "leader" | "member" | "trainee";
     created_at: string;
-    crews: { id: string; name: string; city: string; style: string; deleted_at: string | null } | null;
+    crews: { id: string; name: string; city: string; style: string; photo: string | null; deleted_at: string | null } | null;
   }>).filter((r) => r.crews && !r.crews.deleted_at);
 
   /* the roster size beside each crew, through the aggregate function */
@@ -179,6 +176,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     role: r.role,
     since: r.created_at,
     members: counts.get(r.crews!.id) ?? 0,
+    photo: r.crews!.photo ?? null,
   }));
 
   const teachesAt: PersonTeachesAt[] = ((teachesRes.data ?? []) as Array<{
@@ -198,10 +196,10 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
   }));
 
   const runs = ((runsRes.data ?? []) as unknown as Array<{
-    tenants: { id: string; name: string; type: "studio" | "trainer_business"; city: string | null; visibility: string; deleted_at: string | null } | null;
+    tenants: { id: string; name: string; type: "studio" | "trainer_business"; city: string | null; visibility: string; photo_path: string | null; deleted_at: string | null } | null;
   }>)
     .filter((r) => r.tenants && !r.tenants.deleted_at && r.tenants.visibility === "listed")
-    .map((r) => ({ tenantId: r.tenants!.id, tenantName: r.tenants!.name, tenantType: r.tenants!.type, city: r.tenants!.city }));
+    .map((r) => ({ tenantId: r.tenants!.id, tenantName: r.tenants!.name, tenantType: r.tenants!.type, city: r.tenants!.city, photoPath: r.tenants!.photo_path ?? null }));
 
   const c = countsMap.get(userId) ?? { followers: 0, following: 0 };
   return { profile, stats, followers: c.followers, following: c.following, crews, teachesAt, runs };

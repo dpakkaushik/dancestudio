@@ -354,3 +354,26 @@ export async function findPublishedStylesByTenant(
   });
   return out;
 }
+
+/** One field, from the class page's own poster sheet (prototype 11812 → 12768-12780):
+ *  the design changes without dragging the whole edit form along. RLS-guarded like
+ *  every other write here — no row comes back for anybody who may not. */
+export async function updateClassPoster(
+  supabase: SupabaseClient,
+  classId: string,
+  poster: PosterChoice
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("classes")
+    .update({ poster })
+    .eq("id", classId)
+    .is("deleted_at", null)
+    .select("id");
+
+  if (error) {
+    throw new Error(`classes.updatePoster failed: ${error.message}`);
+  }
+  if (!data || data.length === 0) {
+    throw new Error("Class not found or not yours to edit");
+  }
+}

@@ -104,12 +104,16 @@ export function ClassForm({
   team,
   claims = [],
   isOwner = false,
+  studioPlace = "",
 }: {
   tenantId: string;
   existing?: DanceClass;
   rooms: Room[];
   team: TeamMember[];
   claims?: ClassClaim[];
+  /** the studio's own address, printed above the room list (prototype 15381:
+   *  `ownStudio().loc` — a room means nothing until you know which building) */
+  studioPlace?: string;
   /** Only the owner sets what a session pays (prototype 18434: payout approval
    *  is owner-only and cannot be granted). A trainer sees the people pickers
    *  without the money. */
@@ -331,6 +335,10 @@ export function ClassForm({
                 to a studio, so they are one question — and every room here is
                 already yours ── */}
             <div style={labelStyle}>5 · WHERE</div>
+            {/* the studio's address over its rooms (prototype 15381) */}
+            {studioPlace ? (
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, margin: "-4px 0 8px" }}>{studioPlace}</div>
+            ) : null}
             {rooms.length === 0 ? (
               <div
                 style={{

@@ -162,6 +162,9 @@ test.describe.serial("DanceOS, end to end", () => {
     const citySelect = owner.locator('select[name="city"]');
     await citySelect.selectOption("Pune");
     await expect(citySelect).toHaveValue("Pune");
+    // the sheet carries the studio's rooms — "a studio is created WITH its
+    // floors" (prototype 2675-2683), and Create is refused until one is named
+    await owner.getByLabel("Room 1 name").fill("Studio A");
     await owner.getByRole("button", { name: "Create studio" }).click();
 
     // the action refreshes the hub in place — the new studio is a row now
@@ -173,14 +176,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes/);
     tenantId = owner.url().match(/\/business\/([0-9a-f-]+)\/classes/)?.[1] ?? null;
 
-    // ---- add a room, so the class has somewhere to be (Step 11) -----------
+    // ---- the room came with the studio; give it an amenity (Step 11) ------
     await owner.getByRole("link", { name: "Rooms ›" }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/rooms$/);
-    await owner.getByRole("button", { name: "Add room" }).click();
-    const roomName = owner.getByLabel("Room 1 name");
-    await expect(roomName).toBeVisible();
-    await roomName.fill("Studio A");
-    await roomName.blur();
     // amenities live with the room and show up on the public class page
     await owner.getByRole("button", { name: "Amenities in Studio A" }).click();
     await owner.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
@@ -363,9 +361,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("link", { name: "Schedule" }).click();
     await learner.waitForURL(/\/schedule$/);
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
-    // and the follow shows on their own profile
+    // and the follow shows on their own profile — the Following figure opens the
+    // sheet (S_profiletab 11335), and the studio is a row in it
     await learner.goto("/profile");
-    await expect(learner.getByRole("link", { name: new RegExp(studioName) })).toBeVisible();
+    await learner.getByRole("button", { name: /following$/ }).click();
+    await expect(learner.getByRole("dialog", { name: "Following" }).getByRole("link", { name: new RegExp(studioName) })).toBeVisible();
+    await learner.keyboard.press("Escape").catch(() => {});
 
     // ---- Step 18: an enquiry, from the profile to the studio's Inbox and back ----
     // The learner asks for private sessions; the studio finds it waiting, opens
@@ -798,5 +799,73 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto("/managed");
     await expect(learner.getByText("Nothing here yet")).toBeVisible();
     await expect(learner.getByRole("link", { name: "Set up a business" })).toBeVisible();
+  });
+
+  test("the Profile tab: who you are, in your own words, and what a stranger reads of it", async () => {
+    // ---- parity slice: S_profiletab's own render ----
+    // The role and the account number over the name, the figures, then the band
+    // under the name: the styles you dance, where else to find you, and your
+    // sentence — every one edited from a sheet on this page and landing on one
+    // record; and the same three read back on the person page by somebody else.
+    await trainer.goto("/profile");
+    await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible();
+    await expect(trainer.getByText(/^\d{6}$/)).toBeVisible();
+    await expect(trainer.getByTestId("my-followers")).toHaveText("0");
+    // Edit profile: age and a bio
+    await trainer.getByRole("button", { name: "Edit profile", exact: true }).click();
+    await trainer.getByLabel("Age").selectOption("24");
+    await trainer.getByLabel("Bio").fill("Movement is a language.");
+    await trainer.getByRole("dialog", { name: "Edit profile" }).getByRole("button", { name: "Save" }).click();
+    await expect(trainer.getByText("Movement is a language.")).toBeVisible();
+    await expect(trainer.getByText("24, Pune")).toBeVisible();
+    // a style, from the registry
+    await trainer.getByRole("button", { name: "Add a dance style" }).click();
+    await trainer.getByRole("button", { name: "Add Kathak", exact: true }).click();
+    await expect(trainer.getByRole("dialog", { name: "Add a dance style" }).getByText("Kathak", { exact: true })).toBeVisible();
+    await trainer.getByRole("dialog", { name: "Add a dance style" }).getByRole("button", { name: "Done" }).click();
+    await expect(trainer.getByLabel("Kathak — one of your styles", { exact: true })).toBeVisible();
+    // a link, on a known platform — the chip prints the handle, not the URL
+    await trainer.getByRole("button", { name: "Add a link" }).click();
+    await trainer.getByRole("button", { name: "Add Instagram" }).click();
+    await trainer.getByLabel("URL", { exact: true }).fill("https://instagram.com/rheamoves");
+    await trainer.getByRole("dialog", { name: "Add your Instagram" }).getByRole("button", { name: "Save" }).click();
+    await trainer.getByRole("dialog", { name: "Add a social link" }).getByRole("button", { name: "Done" }).click();
+    await expect(trainer.getByRole("button", { name: "Instagram — @rheamoves" })).toBeVisible();
+    // and a bad address is refused with the database's own sentence, not saved
+    await trainer.getByRole("button", { name: "Add a link" }).click();
+    await trainer.getByRole("button", { name: "Add YouTube" }).click();
+    await trainer.getByLabel("URL", { exact: true }).fill("rheamoves");
+    await trainer.getByRole("dialog", { name: "Add your YouTube" }).getByRole("button", { name: "Save" }).click();
+    await expect(trainer.getByText(/web address|url/i).first()).toBeVisible();
+    await trainer.getByRole("dialog", { name: "Add your YouTube" }).getByRole("button", { name: "Cancel" }).click();
+    await trainer.getByRole("dialog", { name: "Add a social link" }).getByRole("button", { name: "Done" }).click();
+    await expect(trainer.getByRole("button", { name: /^YouTube/ })).toHaveCount(0);
+
+    // ---- the gear, and what is behind it (S_profiletab 11402-11440) ----
+    // The top bar carries the settings gear on every screen; on the Profile tab
+    // it opens the sheet rather than just landing on the tab (19263).
+    await trainer.getByRole("link", { name: "Settings", exact: true }).click();
+    const settings = trainer.getByRole("dialog", { name: "Settings" });
+    await expect(settings).toBeVisible();
+    await expect(settings.getByText("YOUR PLAN")).toBeVisible();
+    await expect(settings.getByRole("button", { name: /Payments/ })).toBeVisible();
+    // a row opens where its subject lives rather than pretending
+    await settings.getByRole("button", { name: /Notifications/ }).click();
+    await expect(settings.getByRole("link", { name: "All notification settings ›" })).toBeVisible();
+    // and Log out is here, where the prototype keeps it
+    await expect(settings.getByRole("button", { name: /Log out/ })).toBeVisible();
+    // Artist tools is one switch over the same profile — it is really the role
+    await settings.getByRole("button", { name: "Artist tools" }).click();
+    await expect(trainer.getByText("DANCER", { exact: true })).toBeVisible({ timeout: 15_000 });
+    // the sheet stays open across the refresh (it is the address), so the switch is right there
+    await trainer.getByRole("dialog", { name: "Settings" }).getByRole("button", { name: "Artist tools" }).click();
+    await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+    // somebody else reads the same three things on the person page — and can open the link
+    await learner.goto(`/person/${trainerId}`);
+    await expect(learner.getByText("Movement is a language.")).toBeVisible();
+    await expect(learner.getByText("24, Pune")).toBeVisible();
+    await expect(learner.getByLabel("Kathak", { exact: true })).toBeVisible();
+    await expect(learner.getByRole("link", { name: "Instagram — @rheamoves" })).toHaveAttribute("href", "https://instagram.com/rheamoves");
   });
 });
