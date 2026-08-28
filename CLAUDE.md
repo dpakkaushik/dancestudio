@@ -31,9 +31,40 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 23 / 29 steps** (Steps 0–15, 18, 21, 22, 23 and 24; 16, 17, 19 and
-  20 are ❌ not in the prototype — see the re-scope below — so the road ahead is
-  25–26). **Step 24 landed 28 Aug 2026: notifications** — the prototype's
+- **Completed: 24 / 29 steps** (Steps 0–15, 18, 21–25; 16, 17, 19 and 20 are ❌
+  not in the prototype — see the re-scope below — so only 26 remains).
+  **Step 25 landed 28 Aug 2026: analytics / Stats** — the prototype's Stats is
+  one screen in three dresses (S_profiletab): YOUR RECORD (`historyOnly` 9862,
+  "A LIBRARY, NOT A DASHBOARD"), HISTORY (`classesOnly` 9708) and GLOBAL
+  RANKINGS (`chartsOnly` 9610). Migration `20260829180000_create_stats.sql`:
+  **no new table** — this is arithmetic over rows the app already keeps — and
+  four functions. `my_dance_stats` and `my_session_history` count the
+  same rows, so the prototype's own rule holds by construction (9950: "a number
+  and the list behind it are THE SAME NUMBER … The grid used to say 86 students
+  and open a list of five, which is how a figure stops being believed").
+  `dance_chart` is the leaderboard for the four segments and
+  `my_chart_place` is where you stand; both are SECURITY DEFINER because a
+  board must see across people RLS rightly hides from each other, and both are
+  **aggregate-only** in the pattern `session_seat_counts` and
+  `follower_counts` set — a name, a place and some counts, never a row of
+  somebody's private data, and **no p_user_id at all**: you can ask for a board,
+  never about a person. **What is real, and what the prototype's points card
+  claims that we cannot:** conducted (a confirmed artist claim on a session that
+  has ENDED), assisted, attended (an attendance row — somebody actually checked
+  in; a booking nobody marked is not a session danced) and the hours those
+  sessions ran are real; a **battle win** needs a score and no table holds one,
+  so wins are NOT in the formula and the screen says so; "refresh daily at
+  midnight" is a job we do not run, so points are counted live; and a **10%
+  monthly decay** is a product rule nobody has decided, so it is absent rather
+  than invented. **A rank is only honest with its denominator**, so every board
+  returns the size of the population it ranked and the screen prints "#2 of 7".
+  Second migration `20260829190000_fix_dance_chart_ambiguity.sql`, **found by
+  the proof**: a set-returning plpgsql function's OUT parameters are variables
+  inside its own body, so the studio and crew branches — which selected `id`,
+  `name`, `city` into CTEs — died on `column reference "id" is
+  ambiguous` (42702). Two of the four boards were dead on arrival and only a
+  call could show it. 14-check proof, both e2e specs green.
+  **Step 24 landed 28 Aug 2026: notifications** — the prototype's
   notifications screen (S_notif 13702) is six KINDS stacked one card each, an
   unread dot per row, Mark read / Clear all per stack, and a settings sheet
   ("What reaches you") with a switch per kind and three channels. Migration
@@ -312,16 +343,19 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   20 are **not built** (nothing to lift — building them would invent UI), and
   **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
   foot of the parity backlog so none is forgotten.
-- **Next: Step 25 — analytics dashboards.** Scope it against the prototype
-  first: the **Stats tab** is a placeholder today and the prototype's screens for
-  it are `S_profiletab`'s `historyOnly` (Your Stats), `classesOnly`
-  (History) and `chartsOnly` (Global Rankings, 8770+) — three dresses of one
-  screen — plus the crew desk's "See crew ranking" and the calendar's History
-  chip, which both point here. Everything it needs is already in the database
-  (attendance, claims, enrollments, event entries, payouts), so expect no
-  migration and a repository of honest aggregates instead; the open question is
-  what a RANK can truthfully be at pilot scale, where one studio's numbers are
-  the whole league. Then 26 (WhatsApp OTP), then the parity backlog.
+- **Next: Step 26 — WhatsApp-first OTP ⚠ (the last step).** It is mostly the
+  user's accounts, not code: the code change is `channel: "whatsapp"` in
+  `signInWithOtp` (Step 1 decided this and parked it), and what it waits on
+  is a Twilio account wired into Supabase's WhatsApp channel, Meta business
+  verification with an approved authentication template, and India DLT
+  registration for the SMS fallback. Scope it against Step 1's record and the
+  existing S_auth screens (the 📱 Mobile tab already exists and works against
+  Supabase's test numbers), decide whether to ship it behind a flag while the
+  verifications are pending, and note that the notification prefs' **WhatsApp**
+  switch (Step 24) becomes real with the same provider. After 26 the roadmap is
+  done and what remains is the **parity backlog** — start with the rows that
+  block nothing: person pages, the media slice (photos and posters), memberships
+  and rentals, S_managed, and web push.
   Migrations apply with `npx supabase db push --db-url` over the pooler through
   the scratchpad `push-migration.js` pattern (spawn `npx` with `shell: true` —
   Node refuses `npx.cmd` without a shell, EINVAL). Still parity, tracked in the backlog: 13b **(b)** the
@@ -361,8 +395,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 22 | Crews (auditions are gone from the prototype, 13520; the open call was declined, 13565) | ✅ done (28 Aug 2026) — crews, rosters by consent, the crew entry and the duet partner as a person; results/points and Follow-a-crew on the backlog |
 | 23 | Search + Discover filters (Postgres, not Typesense — the reason is in the migration) | ✅ done (28 Aug 2026) — the map view stays on the backlog |
 | 24 | Notifications (in-app, raised by triggers where the facts happen; the three delivery channels are stored and wait on their senders) | ✅ done (28 Aug 2026) |
-| 25 | Analytics dashboards | ⬜ ⬅ next |
-| 26 | WhatsApp OTP unpark ⚠ | ⬜ |
+| 25 | Analytics / Stats (Your record · History · Global Rankings; no new table — aggregates over existing rows, with wins and decay honestly absent) | ✅ done (28 Aug 2026) |
+| 26 | WhatsApp OTP unpark ⚠ | ⬜ ⬅ next (mostly the user's accounts: Twilio + Meta verification + DLT) |
 
 Steps 0–6 detail is recorded below; Steps 7–26 detail lives in the
 **Extended roadmap** section. ⚠ = touches money/auth (Rule 9).
@@ -1526,6 +1560,109 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Step 25 — Analytics / Stats ✅ (done 28 Aug 2026)
+- **What the prototype's Stats is** — one screen in three dresses, all of
+  S_profiletab: **YOUR RECORD** (`historyOnly` 9862) whose own comment is the
+  brief ("A LIBRARY, NOT A DASHBOARD … A dashboard is a wall of tiles you scan; a
+  library is a place you spend time in", 9866): the colour bleeds off the top and
+  dies into the page, your name is set like a name, and the numbers open into the
+  lists behind them; **HISTORY** (`classesOnly` 9708), the session library
+  with its side / style filters; and **GLOBAL RANKINGS** (`chartsOnly` 9610):
+  four segments (Studios · Artists · Crews · Dancers), city and style filters, and
+  a HOW POINTS WORK card. The crew desk's "See crew ranking" and the calendar's
+  History chip both pointed here.
+- **The rule this slice is built on** is the prototype's own (9950): "a number
+  and the list behind it are THE SAME NUMBER. The grid used to say 86 students
+  and open a list of five, and 5 studios over a list of four, which is how a
+  figure stops being believed." So `my_dance_stats` and
+  `my_session_history` are two readings of ONE query, and the screen's
+  tallies (styles, studios, the artists you learn from, rooms) are computed off
+  the very rows the History list prints. Nothing is added up twice.
+- Migration `20260829180000_create_stats.sql` — **no new table.** Four
+  functions: `dance_points` (the formula, in one place),
+  `my_dance_stats`, `my_session_history`, `dance_chart` and
+  `my_chart_place`. The two boards are SECURITY DEFINER because a
+  leaderboard has to see across people that RLS rightly hides from each other —
+  and they are **aggregate-only**, the pattern `session_seat_counts` (Step 4)
+  and `follower_counts` (Step 15) set: a name, a place and some counts,
+  never a row of somebody's private data. There is **no `p_user_id`
+  anywhere**: you can ask for a board, never about a person, and the proof asserts
+  the exact column list a chart row carries so a future edit cannot quietly widen
+  it. Nothing is granted to `anon`: a person's activity is not public data.
+- **What is real, and the three things the prototype's points card claims that we
+  cannot.** Real: sessions **conducted** (a confirmed artist claim on a class
+  whose session has ENDED), **assisted** (the same for an assistant claim),
+  **attended** (an `attendance` row — somebody actually checked in) and the
+  hours those sessions ran. Not real, and therefore absent and **said on the
+  screen**: (1) a **battle win** is +10 in the prototype's card, and no table
+  holds a score — Step 21 left brackets, judges and scoring on the backlog — so
+  wins are not counted, and the crew board says a win "would be worth more than
+  either" rather than showing a zero that looks like a result; (2) "refresh daily
+  at midnight" is a scheduled job we do not run, so points are counted **live**,
+  which is better and is what the card now says; (3) a **10% monthly decay** is a
+  product rule nobody has decided, and a decay we invented would quietly change
+  everybody's standing. **And a booking nobody marked is not a session danced** —
+  the record counts check-ins, and the screen prints that sentence, because
+  counting bookings would flatter every figure on the page.
+- **A rank is only honest with its denominator.** "#4" on a pilot with seven
+  dancers in a city is a number pretending to be a league, so every chart row
+  carries the `population` it was ranked out of, the hero prints "#2 of 7
+  dancers in Pune", the shelf prints "5 of 12", and an empty board says "a board
+  of nobody is not a ranking" instead of drawing a podium.
+- Migration `20260829190000_fix_dance_chart_ambiguity.sql` — **the proof
+  found this, and only a call could.** A set-returning plpgsql function's OUT
+  parameters (`id`, `name`, `city`, `style`, `points`)
+  are VARIABLES inside its own body. The people branch happened to alias its
+  columns (`uid`, `full_name`, `pcity`) and ran; the studio and
+  crew branches kept the natural names and Postgres refused both with
+  `column reference "id" is ambiguous — it could refer to either a PL/pgSQL
+  variable or a table column` (42702). Two of the four boards were dead on
+  arrival. Every CTE column inside the function is now named so it cannot
+  collide. **Lesson: name a set-returning plpgsql function's OUT parameters as if
+  they were globals, because inside the body they are.**
+- Repository `repositories/stats.ts` (four reads, nothing summed in
+  TypeScript), `types/stats.ts` (the three sides with the calendar's own
+  words — a dancer TRAINS, a teacher TEACHES, an assistant is on the floor with
+  somebody, DOS_SIDES 6666 — the points rules as data, `hoursWords`). No
+  server action: Stats writes nothing.
+- UI `features/stats/components/StatsScreen.tsx` at `/stats` (the tab's
+  placeholder is gone), the three dresses behind a segment switch as URL state so
+  a board is a link: the room lit in its own metal with your name and your place;
+  the three sides as figures with their hours; **The numbers** — six rows, each
+  opening into the list behind it, numbered like tracks (9990); the sentence that
+  says what is counted and what is not; **History** with the Everything / Taught /
+  Assisted / Danced pills and a style rail, each row opening its class page;
+  **Charts** with the four segments, the city rail, HOW POINTS WORK and the board,
+  every row carrying its place, its numbers and its points, and studios and crews
+  opening their public pages.
+- **Deliberately not lifted, tracked in the backlog (Rule 12):** the metal
+  tier / rank ladder on the hero (the prototype's `dosTierOf` needs a rank
+  ladder nobody has designed — the hero shows the real place instead), the
+  History library's city / room / provider / assistant filters and its search box
+  (the side and style ones ship), the Wins metric and the crew ranking's battle
+  record (scoring), the "updated daily" cadence and the 10% decay, and the
+  studio-side reports (S_reports / S_reportdetail, a different screen).
+- Verified: `scripts/rls-proof-stats.ps1` — 14 checks green (the teacher's
+  two conducted / one assisted and their hours; **the figure and the list are the
+  same number**; an unanswered ask is not teaching and a session still to come is
+  not a record; the dancer's two check-ins count and the third BOOKING does not;
+  the points are the formula on the screen and carry no wins; styles / studios /
+  artists come off those same rows; one record is one person's and there is no
+  call that asks about somebody else; the artist board ranks and carries its
+  population, and **the row carries exactly thirteen aggregate columns**; the
+  dancer board excludes somebody who danced nothing; the studio board counts
+  sessions actually HELD and not the one still to come; the crew board scores what
+  a crew did; **the public cannot read a board, a record or a history**, and an
+  invented segment is refused; a place comes with its denominator and is EMPTY
+  rather than #0 off the board; a style filter narrows a board and an empty city
+  is honestly empty). e2e extended: the learner's record is honestly empty (the
+  story creates no ended session), so the assertion is that it SAYS so, that no
+  number pretends to open a list, and that History says "Nothing on the record
+  yet" — then Charts, where the crew the story built ranks #1 with "1 event
+  entered · 2 members" beside the demo world's crew at #2, place printed with its
+  population, and the row opens the crew's page. typecheck / lint / production
+  build / both specs green.
+
 ### Step 24 — Notifications ✅ (done 28 Aug 2026)
 - **What the prototype's screen is** (S_notif 13702-13812, NOTIF_KINDS 13642):
   six kinds — Enquiries · Bookings · Money · People · Events · Classes — each a
@@ -1988,7 +2125,7 @@ nothing to lift.
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
 | Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype; the crew desk's member rows and the Requests desk's View › would open them) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + person/crew follows as their own slice |
-| Stats tab: placeholder screen today (the Inbox landed with Step 18) | HistPage | Step 25 |
+| Stats: the metal tier / rank ladder on the hero (`dosTierOf` — a ladder nobody has designed; the hero shows the real place instead), the History library's city / room / provider / assistant filters and its search box (side and style ship), the **Wins** metric and a crew's battle record (both need scoring), the "updated daily" cadence and the 10% monthly decay (a product rule nobody has decided), and the studio-side S_reports / S_reportdetail | S_profiletab 9862-10520, 9610-9707; S_reportdetail | scoring with a later event slice; the rest need a product decision or their own slice |
 | Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (a nudge — buildable on Step 24's `notifications` table now); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
 | Earnings: `Earnings by source` / SHARE OF GROSS, the stacked source bar and the source filter chips; the month statement's WHERE IT CAME FROM prints its one real source row (Classes) for the same reason. Tickets exist since Step 21 but every one is free until the rail has an account, so today it would still be one bar reading "Classes 100%" and a filter that filters nothing | S_earn 18020-18026, 18050-18053, 18139-18155 | with a live Cashfree account (paid tickets are the second source) |
@@ -2008,13 +2145,13 @@ nothing to lift.
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
 | Discover: the map view (studios still sit at their city centroid — it needs real addresses), studio photos, long-press a style tile to open the style page (`S_styleinfo` unbuilt), the Dancers section of the search dropdown (person pages), `__DOSNAVHIDE` while searching (our chrome is per-route) | S_discover 4100+, 4611, 4551 | a map/media slice; person pages as their own slice |
-| Crews: the desk's Battles won / Points tiles and "See crew ranking" (results and points need scoring — no table), practice attendance and pay per performance on a member row, the photo/name door to a person's page, Follow a crew (follows target tenants), Enquiry a crew, a crew photo | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | Step 25 (ranking/results); person pages; a follows extension; media slice |
+| Crews: the desk's Battles won / Points tiles (results need scoring — no table holds a score) and its "See crew ranking" button (the board exists since Step 25 at `/stats?tab=charts&seg=crew`; the button is not drawn), practice attendance and pay per performance on a member row, the photo/name door to a person's page, Follow a crew (follows target tenants), Enquiry a crew, a crew photo | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | scoring with a later event slice; person pages; a follows extension; media slice |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
 | Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a live Cashfree account + an `orders` extension |
 | Events: the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule) — the duet partner as a person and the crews you lead landed with Step 22, the events search box with Step 23 | S_event 13040, 12985, 13273; WalkIn 13904 | real scanning; the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
-| Calendar: the History chip in the hero (opens the record page) | 9070-9074 | Step 25 (record / stats) |
+| Calendar: the History chip in the hero — the record page exists since Step 25 (`/stats?tab=history`); the chip is not drawn | 9070-9074 | a calendar parity slice |
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | after Step 26: memberships + rentals + invoices need the live **Cashfree** account (they are money screens); people / routines / settings / S_managed are their own slices, none blocked by anything |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
@@ -2068,7 +2205,7 @@ step names the prototype screens its UI comes from so nothing gets redesigned.
 |---|-------|---------|---------------------|
 | 23 | Search + Discover filters — **Postgres, not Typesense** (the reason is in the migration: tens of rows per table at pilot scale, so a sync pipeline would carry nothing); the map view stays on the backlog | `search_dance_os` (SECURITY INVOKER) + pure URL-state predicates | S_discover 4535, 4596, 4655, 4827; S_eventslist 13551 |
 | 24 | Notifications — in-app, raised by TRIGGERS where the facts happen (a claim, a booking, a freed seat, a refund, a payout, an enquiry, a quote, an event entry, a duet partner, a crew ask); the bell with its badge; the prefs sheet. Delivery channels stored, not yet sending — no OneSignal/FCM dependency taken on | `notifications` + `notification_prefs` + 8 trigger functions | S_notif 13702, NOTIF_KINDS 13642, the bell 19252 |
-| 25 | Analytics: DAU/MAU, retention, GMV dashboards | aggregates | admin/reports |
+| 25 | Analytics / Stats — the person's record (conducted · assisted · attended, in sessions and hours), the History library, and the four Global Rankings boards. Aggregate-only definer functions, no new table; wins, the daily refresh and the monthly decay are absent because nothing behind them is real. DAU/MAU/GMV would be an ADMIN screen the prototype does not have | `dance_points`, `my_dance_stats`, `my_session_history`, `dance_chart`, `my_chart_place` | S_profiletab historyOnly 9862 / classesOnly 9708 / chartsOnly 9610 |
 | 26 | ⚠ WhatsApp-first OTP unpark: Twilio Verify + Meta business verification, SMS/DLT fallback | provider setup; code = `channel:"whatsapp"` in signInWithOtp | existing S_auth screens |
 
 Order rationale: Step 7 first so pilot studios see the prototype's real chrome
@@ -2146,8 +2283,12 @@ the technical detail; this log is the at-a-glance history.
 ### 28 Aug 2026 — third session
 - **This session:** **Step 22 — crews**, **Step 23 — search + Discover
   filters**, one-command **demo data** with **Rule 12** (nothing is deferred
-  without a backlog row) and a dated backlog audit, and **Step 24 —
-  notifications**. Step 24: two migrations — `notifications` +
+  without a backlog row) and a dated backlog audit, **Step 24 —
+  notifications**, and **Step 25 — analytics / Stats** (the record, the History
+  library and the four ranking boards; no new table, aggregate-only definer
+  functions, and wins / daily refresh / monthly decay left out because nothing
+  behind them is real — a second migration fixed two boards the proof found dead
+  on plpgsql OUT-parameter shadowing). 14-check proof. Step 24: two migrations — `notifications` +
   `notification_prefs` with eight TRIGGERS that raise a notification where the
   fact happens (so every path that writes the fact raises it, and `notify` is
   revoked from every client role and can never break the fact), then a
@@ -2177,21 +2318,21 @@ the technical detail; this log is the at-a-glance history.
   re-run (16) on the recreated `book_event`, both e2e specs green with a new crew
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
-- **Done so far:** 23 / 29 steps (0–15, 18, 21–24). Live at
+- **Done so far:** 24 / 29 steps (0–15, 18, 21–25). Live at
   https://dancestudio-orcin.vercel.app once this push deploys. The hosted project
   also carries a demo world (`node scripts/demo-data.js seed | status | wipe`).
-- **Remaining:** Steps 25–26 (analytics, WhatsApp OTP), then the parity backlog
-  (crew results/points wait on scoring; web push, Follow-a-crew, person pages and
-  Discover's map are their own slices). Ops still open: Cashfree KYC + Easy
-  Split, the webhook registration, a verified Resend domain, pilot invites.
-- **Next session:** Step 25 — analytics: the Stats tab is a placeholder and the
-  prototype's screens for it are S_profiletab's `historyOnly`, `classesOnly`
-  and `chartsOnly` (8770+), with the crew desk's "See crew ranking" and the
-  calendar's History chip pointing at it. Expect no migration — the rows exist —
-  and decide honestly what a RANK can mean at pilot scale. Verify with `npm run
-  typecheck`, `npm run lint`, `npm run build` (with nothing on :3000), the
-  proofs through the PowerShell tool, and `npx playwright test` against a FRESH
-  `npm run dev`.
+- **Remaining:** Step 26 (WhatsApp OTP — mostly the user's accounts), then the
+  parity backlog (scoring, web push, person pages, Discover's map, the media
+  slice, memberships and rentals). Ops still open: Cashfree KYC + Easy Split, the
+  webhook registration, a verified Resend domain, pilot invites.
+- **Next session:** Step 26 — the last roadmap step, and mostly ops: the code is
+  `channel: "whatsapp"` in `signInWithOtp`, and it waits on a Twilio
+  account wired into Supabase, Meta business verification with an approved
+  template, and DLT registration for the SMS fallback. Decide whether to ship it
+  behind a flag while those are pending. Then the parity backlog, starting with
+  what blocks nothing. Verify with `npm run typecheck`, `npm run lint`,
+  `npm run build` (with nothing on :3000), the proofs through the PowerShell
+  tool, and `npx playwright test` against a FRESH `npm run dev`.
 
 ### 28 Aug 2026 — second session
 - **This session:** finished **Step 21 — events, competitions, ticketing ⚠** from

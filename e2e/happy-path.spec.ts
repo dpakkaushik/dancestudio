@@ -601,6 +601,34 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await trainer.getByRole("button", { name: "Clear all People" }).click();
     await expect(trainer.getByText("People cleared")).toBeVisible();
     await expect(trainer.getByRole("button", { name: /^People — / })).toHaveCount(0);
+    // ---- Step 25: stats ----
+    // Nothing this story creates has ENDED (every session it books is in the future),
+    // so the record is honestly empty — and saying so is the assertion. What is real is
+    // the crew the story built, which is why the Crews board can rank it, place beside
+    // population.
+    await learner.goto("/stats");
+    await expect(learner.getByTestId("stats-points")).toBeVisible();
+    await expect(learner.getByTestId("stat-attended")).toHaveText("0");
+    await expect(learner.getByText(/Nothing has happened yet/)).toBeVisible();
+    // the numbers open into the lists behind them — with nothing on the record, none opens
+    await expect(learner.getByRole("button", { name: /open the list/ })).toHaveCount(0);
+    await learner.getByRole("link", { name: "History" }).click();
+    await learner.waitForURL(/tab=history/);
+    await expect(learner.getByText("Nothing on the record yet")).toBeVisible();
+    await expect(learner.getByTestId("history-count")).toHaveText("0 of 0");
+    // the charts: the crew the story made is on its board, with the denominator printed
+    await learner.getByRole("link", { name: "Charts" }).click();
+    await learner.waitForURL(/tab=charts/);
+    await expect(learner.getByText("How points work")).toBeVisible();
+    await learner.getByRole("link", { name: "Crews" }).click();
+    await learner.waitForURL(/seg=crew/);
+    // the crew board scores what a crew DID — no wins, because nothing records a score
+    await expect(learner.getByText("Event entered", { exact: true })).toBeVisible();
+    await expect(learner.getByText("Confirmed member", { exact: true })).toBeVisible();
+    const crewRow = learner.getByRole("link", { name: new RegExp(`^${crewName} — place \\d+ of \\d+$`) });
+    await expect(crewRow).toBeVisible();
+    await crewRow.click();
+    await learner.waitForURL(new RegExp(`/crew/${crewId}$`));
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browser.newContext();
     try {
