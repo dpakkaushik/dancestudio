@@ -31,8 +31,35 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 21 / 29 steps** (Steps 0–15, 18, 21 and 22; 16, 17, 19 and 20 are
-  ❌ not in the prototype — see the re-scope below — so the road ahead is 23–26).
+- **Completed: 22 / 29 steps** (Steps 0–15, 18, 21, 22 and 23; 16, 17, 19 and 20
+  are ❌ not in the prototype — see the re-scope below — so the road ahead is
+  24–26). **Step 23 landed 28 Aug 2026: search + Discover filters** — the
+  prototype's Discover is one search box that "searches everything" (4535-4575:
+  Studios · Artists · Crews · Events, three each, matching a name that STARTS
+  with the term or has a WORD that does) plus every way of narrowing a list —
+  THE STYLE RAIL (4596, the app's one style tile in three rows, ordered by how
+  many classes each style has), the **Filters · N** button beside the two or
+  three quick chips people actually reach for (4655), and THE FILTER SHEET
+  (4827: SORT BY · DISTANCE · TIME OF DAY · DURATION · PRICE · TYPE OF EVENT ·
+  COMPETING AS, "rows are only offered when they mean something"). Migration
+  `20260829120000_search_dance_os.sql`: one function, `search_dance_os(q, limit)`,
+  **SECURITY INVOKER** so the caller's own RLS decides what is found — a stranger
+  finds listed businesses, live crews and published events (by title or by the
+  organiser's name), an owner also finds their unlisted business and their
+  drafts, and **people are never returned** (profiles are signed-in-only and
+  there is no person page for a row to open — "a destination that does not exist
+  is worse than no destination"). **Postgres, not Typesense**, and the reason is
+  written into the migration: at pilot scale every searchable table holds tens of
+  rows, so a sync pipeline would be machinery with nothing to carry; the function
+  is the seam if counts ever warrant an index. The filters themselves need no
+  schema — they are pure predicates in `features/discovery/filters.ts`
+  (parse/serialise the URL, `filtersOnCount`, and one filter per list) applied
+  on the server, so **the address IS the state**: BACK returns to the same list
+  (the prototype's `__DOSDISCOVERSTATE`, 4427) and a filtered shelf is a
+  shareable link. Screens: `DiscoverFilters` (the search box with its
+  bifurcated dropdown, the style rail, Filters + quick chips, the sheet, and the
+  events tab's own box — S_eventslist 13551) on a Discover page that now filters
+  and sorts every tab. 8-check proof, both e2e specs green.
   **Step 22 landed 28 Aug 2026: crews** — the prototype's crew is a RECORD, not a
   constant (CREWS 661-708), with two relationships (S_bizhub 2596): the crews you
   LEAD have a desk, the crews you are IN have a page. Migration
@@ -255,11 +282,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   20 are **not built** (nothing to lift — building them would invent UI), and
   **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
   foot of the parity backlog so none is forgotten.
-- **Next: Step 23 — search + Discover filters.** Scope it against the prototype
-  first: S_discover's style filter rail, sort and the filter sheet (4100+,
-  4830-4890), the events search box (S_eventslist 13551), and whether Typesense
-  is warranted at pilot scale or Postgres full-text search does the job (the
-  roadmap says Typesense; the honest question is row counts). Then 24–26.
+- **Next: Step 24 — push notifications.** Scope it against the prototype first:
+  the top bar's notifications bell and `S_notif` (the screen the parity backlog
+  has carried since Step 7), what actually deserves a push (an ask waiting on
+  you, a class tomorrow, an event you hold a ticket for, a quote answered), and
+  the provider question — a web-push subscription table plus the Web Push API is
+  the honest first cut; OneSignal/FCM is a dependency to justify, not a default.
+  Then 25–26.
   Migrations apply with `npx supabase db push --db-url` over the pooler through
   the scratchpad `push-migration.js` pattern (spawn `npx` with `shell: true` —
   Node refuses `npx.cmd` without a shell, EINVAL). Still parity, tracked in the backlog: 13b **(b)** the
@@ -297,8 +326,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 20 | Video/reels (Mux/Cloudflare Stream) | ❌ no reel/post screen in the prototype — not built; photo uploads (posters, studio photos) stay a media slice |
 | 21 | Events, competitions, ticketing ⚠ | ✅ done (28 Aug 2026) — free seats and entries end to end; paid tickets/entries wait on the Razorpay account; bracket/rounds/judges/scoring/earnings/refunds segments on the backlog |
 | 22 | Crews (auditions are gone from the prototype, 13520; the open call was declined, 13565) | ✅ done (28 Aug 2026) — crews, rosters by consent, the crew entry and the duet partner as a person; results/points and Follow-a-crew on the backlog |
-| 23 | Search (Typesense) + Discover filters/map | ⬜ ⬅ next |
-| 24 | Push notifications | ⬜ |
+| 23 | Search + Discover filters (Postgres, not Typesense — the reason is in the migration) | ✅ done (28 Aug 2026) — the map view stays on the backlog |
+| 24 | Push notifications | ⬜ ⬅ next |
 | 25 | Analytics dashboards | ⬜ |
 | 26 | WhatsApp OTP unpark ⚠ | ⬜ |
 
@@ -1464,6 +1493,96 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Step 23 — Search + Discover filters ✅ (done 28 Aug 2026)
+- **Postgres, not Typesense — decided and written down.** The roadmap named
+  Typesense. At pilot scale every searchable table holds tens of rows, so a
+  prefix match over `lower(name)` answers instantly and a sync pipeline would be
+  machinery with nothing to carry (plus a second source of truth to drift). The
+  migration says so in its own comment, and `search_dance_os` is the seam: when
+  row counts ever warrant an index or an engine, the function keeps its shape and
+  the inside changes. No trigger, no reconciliation job, no new dependency.
+- Migration `20260829120000_search_dance_os.sql`: one function,
+  `search_dance_os(p_q text, p_limit integer default 3)` returning
+  `(kind, id, name, sub, href)` — studios, artists, crews and events, at most
+  `p_limit` each, ordered inside each kind. **SECURITY INVOKER on purpose**
+  (unlike every other function in this codebase): the caller's own RLS decides
+  what is found, which is exactly the behaviour a search box needs — a stranger
+  finds listed businesses, live crews and published events; the owner of an
+  unlisted studio finds it; nobody's draft leaks. The match is the prototype's
+  own predicate (`m`, 4546): the name STARTS with the term, or a WORD in it
+  does — `like 'term%' or like '% term%'` — so "kothrud" finds "Zq Studio
+  Kothrud" and "othrud" finds nothing. An event is found by its title **or its
+  organiser's name** (the prototype searches `ev.t` and `ev.org`). The `sub`
+  and `href` are built in SQL, so every row knows what it says and where it
+  goes. **People are not searched**: `profiles` is readable by signed-in users
+  only, and there is no person page for a row to open — the prototype's Dancers
+  section navigates to one, and that page is on the backlog. Granted to anon and
+  authenticated; revoked from public.
+- **The filters are not schema.** `features/discovery/filters.ts` is pure: the
+  parse/serialise pair that makes the URL the state (`parseFilters`,
+  `filtersToParams` — defaults left out so a clean list has a clean address),
+  `filtersOnCount` (what the Filters button counts, 4664), `radiusOf` (the
+  sheet's distance becomes the `nearby_tenants` radius), and one predicate set
+  per list. The prototype's rule is honoured literally (4456-4460): "Distance
+  only bites on records that carry a distance; time-of-day and duration are read
+  off the printed clock … A filter that cannot be evaluated does not silently
+  empty the list — it stands aside." So distance applies to businesses (the one
+  list with a distance), time-of-day and duration to classes (off the IST clock,
+  `hourOf`), price bands to classes and events, kind and format to events, and
+  style everywhere — a business through the styles of its **published** classes
+  (`findPublishedStylesByTenant`, so a draft's style never narrows one in), an
+  event or class or crew through its own. "All styles" is never excluded by a
+  style filter: an event open to everybody is not narrowed out of a Hip-Hop
+  search.
+- **The address IS the state**, which is how the prototype's
+  `__DOSDISCOVERSTATE` (4427: "Discover remembers its tab, city and style filter
+  across drill-ins, so BACK returns exactly where you were") becomes real here
+  without a store: every control replaces the URL, the server page re-reads and
+  re-filters, and a filtered shelf is a link you can send.
+- UI lifted into `features/discovery/components/DiscoverFilters.tsx`: the one
+  **search box** ("Search" — "the placeholder listed the same five things a third
+  time", 4539) with the bifurcated dropdown (sections in the prototype's order,
+  three rows each, "No matches anywhere on DanceOS.", each row a real `Link` to
+  the thing it names); **THE STYLE RAIL** as `DosStyleTile` (1754 — the style's
+  whole name in white on a tile of its own colour, the ring marking the picked
+  one, three rows and a sideways scroll, ordered by class count like
+  `STYLES_ORDERED` 4212, with All first); **Filters · N** and the quick chips
+  (Free, Evening, and Battles on events / Near me elsewhere — "the button shrinks
+  to its own width, and the space it was wasting carries the two or three filters
+  people actually reach for", 4655) with **Clear**; **THE FILTER SHEET** (4827,
+  editing a draft and applying on **Show results**, Reset all, rows offered only
+  where they mean something); and the events tab's own **search box**
+  (S_eventslist 13551 — title, style or organiser, debounced into the URL). The
+  empty state now distinguishes "nothing here yet" from "nothing matches that",
+  the second with a **Clear filters** door.
+- **Deliberately not lifted, tracked in the backlog:** the map view (needs a map
+  and real addresses — studios still sit at their city centroid), long-press on a
+  style tile to open the style page (`S_styleinfo` is unbuilt), the Dancers
+  section of the search dropdown (person pages), and the search box's
+  nav-bar-hiding behaviour (`__DOSNAVHIDE` — our chrome is a fixed bar per route).
+- Verified: `scripts/rls-proof-search.ps1` — 8 checks green (a stranger finds the
+  listed studio, the crew and the published event and neither the unlisted studio
+  nor the draft; **the unlisted studio is its owner's to find and the draft its
+  owner's**, and one owner still cannot find the other's private business; a word
+  that starts with the term matches and a mid-word substring does not; an event is
+  found by its organiser's name; **a dancer's name returns no row**; `p_limit`
+  caps each kind and every row carries the href it opens; an empty or blank term
+  finds nothing; and Discover's style filter reads published classes only, so a
+  draft's style never narrows a business in). e2e extended: the learner searches
+  "E2E Studio", opens the studio from the dropdown, taps Bollywood on the style
+  rail (the URL carries `styles=Bollywood`, the class stays), finds a style the
+  studio does not teach empties the shelf with a Clear filters door, switches to
+  Events and taps **Battles** (the battle stays, the showcase goes), opens the
+  sheet and sorts **Cheapest** (the URL carries `sort=price`, the button reads
+  "Filters · 2"), clears, then narrows by the events box. typecheck / lint /
+  production build / both specs green. **Lessons:** (1) this repo's lint forbids
+  creating a component during render (`react-hooks/static-components`) — the
+  sheet's `Row` and `chip` are module-level. (2) Two style taps in a row raced
+  the URL replace: the second tap read the first render's props and both styles
+  ended up in the address; the e2e drives one tap per control and reaches other
+  filter states by `goto` (a real user waits for the list to redraw). The
+  Playwright test timeout is 300 s now — the story is Steps 6-23 long.
+
 ### Step 22 — Crews ✅ (done 28 Aug 2026)
 - **Scoped against the prototype first, as the tracker asked.** Auditions do not
   exist in this product (13520-13523) and the open call was declined
@@ -1741,7 +1860,7 @@ remove entries as they close.**
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
-| Discover: style filter rail, sort, studio photos, map view (follower counts landed with Step 15, the Crews tab with Step 22) | S_discover 4100+ | Step 23 (filters/sort/map), media slice (photos) |
+| Discover: the map view (studios still sit at their city centroid — it needs real addresses), studio photos, long-press a style tile to open the style page (`S_styleinfo` unbuilt), the Dancers section of the search dropdown (person pages), `__DOSNAVHIDE` while searching (our chrome is per-route) | S_discover 4100+, 4611, 4551 | a map/media slice; person pages as their own slice |
 | Crews: the desk's Battles won / Points tiles and "See crew ranking" (results and points need scoring — no table), practice attendance and pay per performance on a member row, the photo/name door to a person's page, Follow a crew (follows target tenants), Enquiry a crew, a crew photo | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | Step 25 (ranking/results); person pages; a follows extension; media slice |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
@@ -1800,7 +1919,7 @@ step names the prototype screens its UI comes from so nothing gets redesigned.
 
 | # | Slice | Backend | Prototype UI source |
 |---|-------|---------|---------------------|
-| 23 | Typesense search sync (triggers + reconciliation job) → Discover style rail, sort, map view | sync pipeline | S_discover 4100+ |
+| 23 | Search + Discover filters — **Postgres, not Typesense** (the reason is in the migration: tens of rows per table at pilot scale, so a sync pipeline would carry nothing); the map view stays on the backlog | `search_dance_os` (SECURITY INVOKER) + pure URL-state predicates | S_discover 4535, 4596, 4655, 4827; S_eventslist 13551 |
 | 24 | Push notifications (OneSignal/FCM) | fan-out | system-level |
 | 25 | Analytics: DAU/MAU, retention, GMV dashboards | aggregates | admin/reports |
 | 26 | ⚠ WhatsApp-first OTP unpark: Twilio Verify + Meta business verification, SMS/DLT fallback | provider setup; code = `channel:"whatsapp"` in signInWithOtp | existing S_auth screens |
@@ -1867,7 +1986,16 @@ Four lines per session, written when the user ends it. The step records above ho
 the technical detail; this log is the at-a-glance history.
 
 ### 28 Aug 2026 — third session
-- **This session:** **Step 22 — crews**, scoped against the prototype first (no
+- **This session:** **Step 22 — crews** and **Step 23 — search + Discover
+  filters**. Step 23: one migration holding one function
+  (`search_dance_os`, SECURITY INVOKER — the caller's RLS decides what is
+  found; Postgres rather than Typesense, with the reason written into the
+  migration), the filters as pure URL-state predicates
+  (`features/discovery/filters.ts`) applied on the server, and
+  `DiscoverFilters` lifting the prototype's search box + dropdown, the style
+  rail, Filters · N with the quick chips, the filter sheet and the events search
+  box. 8-check proof; the e2e leg searches, filters by style, filters events by
+  kind, sorts Cheapest from the sheet and narrows by the events box. Step 22 — crews, scoped against the prototype first (no
   auditions, no open call): migration `20260829090000_create_crews.sql` — `crews`
   and `crew_members` with rosters by consent (asked → confirmed, only the person
   asked answers, the leader alone asks / withdraws / removes / promotes / hands
@@ -1881,19 +2009,19 @@ the technical detail; this log is the at-a-glance history.
   re-run (16) on the recreated `book_event`, both e2e specs green with a new crew
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
-- **Done so far:** 21 / 29 steps (0–15, 18, 21, 22). Live at
+- **Done so far:** 22 / 29 steps (0–15, 18, 21, 22, 23). Live at
   https://dancestudio-orcin.vercel.app once this push deploys.
-- **Remaining:** Steps 23–26 (search + Discover filters, notifications,
-  analytics, WhatsApp OTP), then the parity backlog (crew results/points wait on
-  scoring; Follow-a-crew and person pages are their own slice). Ops still open:
-  Cashfree KYC + Easy Split, the webhook registration, a verified Resend domain,
-  pilot invites.
-- **Next session:** Step 23 — scope S_discover's filter rail / sort / sheet and
-  the events search against the prototype, decide Typesense vs Postgres FTS on
-  honest row counts, then migration → repository → actions → screens → proof →
-  e2e. Verify with `npm run typecheck`, `npm run lint`, `npm run build` (with
-  nothing on :3000), the proofs through the PowerShell tool, and `npx playwright
-  test` against a FRESH `npm run dev`.
+- **Remaining:** Steps 24–26 (notifications, analytics, WhatsApp OTP), then the
+  parity backlog (crew results/points wait on scoring; Follow-a-crew, person
+  pages and Discover's map are their own slices). Ops still open: Cashfree KYC +
+  Easy Split, the webhook registration, a verified Resend domain, pilot invites.
+- **Next session:** Step 24 — push notifications: scope the bell and `S_notif`
+  against the prototype, decide what deserves a push and whether a
+  `push_subscriptions` table + the Web Push API is the honest first cut before
+  taking on OneSignal/FCM, then migration → repository → actions → screens →
+  proof → e2e. Verify with `npm run typecheck`, `npm run lint`, `npm run build`
+  (with nothing on :3000), the proofs through the PowerShell tool, and `npx
+  playwright test` against a FRESH `npm run dev`.
 
 ### 28 Aug 2026 — second session
 - **This session:** finished **Step 21 — events, competitions, ticketing ⚠** from

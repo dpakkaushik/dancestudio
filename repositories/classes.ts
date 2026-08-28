@@ -298,3 +298,32 @@ export async function softDeleteClass(
     throw new Error(`classes.deleteSessions failed: ${sessionError.message}`);
   }
 }
+
+/** The styles each business teaches, off its PUBLISHED classes — what Discover's
+ *  style rail narrows a studio or artist by (Step 23). Public rows only, by RLS. */
+export async function findPublishedStylesByTenant(
+  supabase: SupabaseClient,
+  tenantIds: string[]
+): Promise<Map<string, string[]>> {
+  const ids = [...new Set(tenantIds)];
+  const out = new Map<string, string[]>();
+  if (ids.length === 0) {
+    return out;
+  }
+  const { data, error } = await supabase
+    .from("classes")
+    .select("tenant_id, style")
+    .in("tenant_id", ids)
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .limit(2000);
+  if (error) {
+    throw new Error(`classes.findPublishedStylesByTenant failed: ${error.message}`);
+  }
+  ((data ?? []) as Array<{ tenant_id: string; style: string }>).forEach((r) => {
+    const cur = out.get(r.tenant_id) ?? [];
+    if (!cur.includes(r.style)) cur.push(r.style);
+    out.set(r.tenant_id, cur);
+  });
+  return out;
+}

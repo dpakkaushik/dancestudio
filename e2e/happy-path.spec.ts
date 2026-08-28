@@ -517,6 +517,50 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await learner.goto(`/crew/${crewId}`);
     await expect(learner.getByRole("link", { name: `Open ${battleTitle}` })).toBeVisible();
 
+    // ---- Step 23: search + Discover filters ----
+    // The one search box finds the studio by a prefix of its name and opens its
+    // page; the style rail narrows the classes shelf (Bollywood keeps the class,
+    // an unrelated style empties it with a Clear filters door); on Events the
+    // Battles quick chip keeps the battle and drops the showcase, the sheet's
+    // Cheapest sort lands in the URL and the button counts two, and the events
+    // box narrows by title.
+    await learner.goto("/discover?city=Pune&tab=classes");
+    await learner.getByLabel("Search DanceOS").fill("E2E Studio");
+    await learner.getByRole("option", { name: `${studioName} — Studio · Pune` }).click();
+    await learner.waitForURL(new RegExp(`/studio/${tenantId}$`));
+
+    await learner.goto("/discover?city=Pune&tab=classes");
+    await expect(learner.getByRole("link", { name: new RegExp(classTitle) })).toBeVisible();
+    await learner.getByRole("button", { name: "Bollywood", exact: true }).click();
+    await learner.waitForURL(/styles=Bollywood/);
+    await expect(learner.getByRole("button", { name: "Bollywood", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(learner.getByRole("link", { name: new RegExp(classTitle) })).toBeVisible();
+    // a style the studio does not teach empties the shelf, with a door back
+    await learner.goto("/discover?city=Pune&tab=classes&styles=Kalbelia");
+    await expect(learner.getByText("Nothing in Pune matches that")).toBeVisible();
+    await learner.getByRole("link", { name: "Clear filters" }).click();
+    await expect(learner.getByRole("link", { name: new RegExp(classTitle) })).toBeVisible();
+
+    await learner.goto("/discover?city=Pune&tab=events");
+    await expect(learner.getByRole("link", { name: `${eventTitle} — Showcase` })).toBeVisible();
+    await learner.getByRole("button", { name: "Battles", exact: true }).click();
+    await learner.waitForURL(/cat=battle/);
+    await expect(learner.getByRole("link", { name: `${battleTitle} — Battle tournament` })).toBeVisible();
+    await expect(learner.getByRole("link", { name: `${eventTitle} — Showcase` })).toHaveCount(0);
+    await learner.getByRole("button", { name: "All filters" }).click();
+    const filterSheet = learner.getByRole("dialog", { name: "Filters" });
+    await filterSheet.getByRole("button", { name: "Cheapest" }).click();
+    await filterSheet.getByRole("button", { name: "Show results" }).click();
+    await learner.waitForURL(/sort=price/);
+    await expect(learner.getByRole("button", { name: "All filters" })).toHaveText(/Filters · 2/);
+    await learner.getByRole("button", { name: "Clear filters" }).click();
+    await learner.waitForURL((url) => !url.search.includes("cat=") && !url.search.includes("sort="));
+    await expect(learner.getByRole("link", { name: `${eventTitle} — Showcase` })).toBeVisible();
+    await learner.getByLabel("Search events").fill(battleTitle);
+    await learner.waitForURL(/q=E2E/);
+    await expect(learner.getByRole("link", { name: `${eventTitle} — Showcase` })).toHaveCount(0);
+    await expect(learner.getByRole("link", { name: `${battleTitle} — Battle tournament` })).toBeVisible();
+
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browser.newContext();
     try {
