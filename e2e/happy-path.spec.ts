@@ -629,6 +629,43 @@ test("signup → onboard studio → create class → share link → enroll", asy
     await expect(crewRow).toBeVisible();
     await crewRow.click();
     await learner.waitForURL(new RegExp(`/crew/${crewId}$`));
+    // ---- parity slice: person pages ----
+    // Every door here was drawn by an earlier step with nowhere to send it: the
+    // crew desk's member rows (Step 22 said so in a comment), the crew page's
+    // roster, and the search dropdown's People section (Step 23 left people out
+    // for exactly this reason). They open now, and the page is made of what the
+    // story already did.
+    await learner.goto(`/crews/${crewId}/manage`);
+    await learner.getByRole("link", { name: "Open E2E Trainer's profile" }).click();
+    await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
+    await expect(learner.getByText("E2E Trainer")).toBeVisible();
+    await expect(learner.getByText("ARTIST")).toBeVisible();
+    // the crew they confirmed into is on their page, and it opens the crew
+    await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
+    // following a person is one bit, and the count moves
+    await expect(learner.getByTestId("person-followers")).toHaveText("0");
+    await learner.getByRole("button", { name: "Follow" }).click();
+    await expect(learner.getByRole("button", { name: /^Following/ })).toBeVisible();
+    await expect(learner.getByTestId("person-followers")).toHaveText("1");
+    // and it is really one bit: pressing again takes it back
+    await learner.getByRole("button", { name: /^Following/ }).click();
+    await expect(learner.getByRole("button", { name: "Follow" })).toBeVisible();
+    await expect(learner.getByTestId("person-followers")).toHaveText("0");
+
+    // the search box offers people now — and the row opens the person
+    await learner.goto("/discover?city=Pune&tab=classes");
+    await learner.getByLabel("Search DanceOS").fill("E2E Trainer");
+    await expect(learner.getByText("People")).toBeVisible();
+    await learner.getByRole("option", { name: /^E2E Trainer — Artist/ }).click();
+    await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
+
+    // the crew's public roster opens its people too, and the trainer's own page
+    // says it is theirs rather than offering them a Follow button
+    await trainer.goto(`/crew/${crewId}`);
+    await trainer.getByRole("link", { name: "Open E2E Trainer's profile" }).click();
+    await trainer.waitForURL(/\/person\/[0-9a-f-]+$/);
+    await expect(trainer.getByRole("link", { name: /This is you/ })).toBeVisible();
+    await expect(trainer.getByRole("button", { name: "Follow" })).toHaveCount(0);
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browser.newContext();
     try {

@@ -31,6 +31,33 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Parity slice 1 landed 28 Aug 2026: person pages + following a person.** The
+  roadmap being finished, this is the first row off the backlog, chosen because it
+  blocks nothing and **three built screens already wanted it**: the crew desk's
+  member rows and the crew page's roster (Step 22 drew the door and wrote that it
+  had nowhere to send it) and the search dropdown's Dancers section (Step 23 left
+  people out for exactly that reason). Migration
+  `20260829210000_person_pages_and_follows.sql`: `follows` learns a
+  second object rather than gaining a table — `tenant_id` becomes nullable,
+  `followee_id` arrives, and a check makes a row name **exactly one** of
+  them, so a follow of both or of nothing cannot be stored; plus
+  `set_person_follow` (idempotent, refuses yourself and somebody not on
+  DanceOS), `person_follower_counts`, `person_dance_stats` (Step 25's
+  arithmetic keyed on somebody else) and `person_teaches_at` (confirmed
+  claims on PUBLISHED classes of LISTED businesses only — a draft or an unlisted
+  studio never puts a name anywhere). `search_dance_os` gained the People
+  section its own comment had promised. **Signed-in only, deliberately:**
+  `profiles` is readable by signed-in users (Step 1) and every figure the
+  page prints is one Step 25's boards already show beside a name, so it publishes
+  nothing new — whether a person page should be PUBLIC is a decision about
+  somebody else's data and stays on the backlog. Screen
+  `/person/{userId}` lifts S_profiletab's person render (the lit square in
+  the role's own metal, the badge, the QR, the figures, then Crews / Teaches at /
+  Runs, each headed with a count). 12-check proof. **And a regression it caused,
+  caught by re-running the older proofs:** two FKs from `follows` into
+  `profiles` make an unqualified `profiles(...)` embed ambiguous
+  (PostgREST 300 Multiple Choices) — `findTenantFollowers` was broken until
+  the embed named its key.
 - **Completed: 25 / 29 steps** (Steps 0–15, 18, 21–26; 16, 17, 19 and 20 are ❌
   not in the prototype — see the re-scope below — so **the roadmap is finished**
   and what remains is the parity backlog). **Step 26 landed 28 Aug 2026:
@@ -367,10 +394,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   prototype actually describes is built (16, 17, 19 and 20 describe features it
   deliberately removed, in its own words, line-referenced in the re-scope below).
   What is left is the table further down this file, and the honest order is by
-  what blocks nothing: **person pages** (a dancer's / artist's public page —
-  `PubTrainer` is a person in the prototype; the crew desk's member rows and
-  the Requests desk's "View ›" both want it, and it unlocks following a person),
-  the **media slice** (poster uploads, studio and crew photos, profile pictures —
+  what blocks nothing. **Person pages landed 28 Aug 2026** (with person-follows
+  and the search's People section), so next is the **media slice** (poster uploads, studio and crew photos, profile pictures —
   Supabase Storage, and it closes rows on six screens), **S_managed** ("everything
   you manage"), **web push** (VAPID keys + a service worker + a subscriptions
   table, which makes Step 24's first channel switch real), and the **calendar and
@@ -1585,6 +1610,96 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Parity slice 1 — person pages + following a person ✅ (28 Aug 2026, no step number)
+- **Why this one first.** The roadmap is finished, so the order is now the
+  backlog's own: what blocks nothing, and what other screens are already waiting
+  for. Three were: the crew desk's member rows (Step 22's comment says "a person
+  page is on the backlog, so the door is drawn and not yet wired"), the crew
+  page's roster, and the search dropdown's **Dancers** section, which Step 23 left
+  out with its reason stated — "a destination that does not exist is worse than no
+  destination". All three open now.
+- **In the prototype a PERSON is `publicEntity="trainer"`** on S_profiletab
+  (PUB 8643: a name, a badge, a place, followers and following) — the same screen
+  a studio and a crew wear, which is why `PublicPersonPage` shares the
+  skeleton of the tenant and crew pages: the person's colour bleeding off the top
+  and dying into the page, the picture as a sharp 206px square with the sleeve's
+  thrown shadow, the role over the name, the QR beside it, the place under it, the
+  figures set like figures, then the groups each headed with a count.
+- Migration `20260829210000_person_pages_and_follows.sql` (⚠ RLS):
+  **`follows` learns a second object instead of gaining a table** — the row
+  is the same fact with a different object, so one table keeps one meaning.
+  `tenant_id` becomes nullable, `followee_id` arrives, and
+  `follows_one_object` makes a row name **exactly one** of them (the proof
+  tries both and neither, and the database refuses both attempts). A live-unique
+  index per (follower, followee), a policy so **the person followed reads their own
+  followers** the way a business's members read theirs, and
+  `set_person_follow` as the one door: idempotent, refusing yourself
+  ("you cannot follow yourself") and somebody who is not on DanceOS.
+- **What the page is made of, and nothing else.** `person_dance_stats` is
+  Step 25's arithmetic keyed on somebody else — the same three sides and hours,
+  the same points formula. `person_teaches_at` reads **public rows only**:
+  confirmed claims on PUBLISHED classes of LISTED businesses (Step 11's policy),
+  so a draft class and an unlisted studio never put a name anywhere — the proof
+  builds all three cases and asserts only the public one appears. The crews are the
+  **confirmed** memberships (Step 22: an unanswered ask is not a membership). The
+  businesses under "Runs" are the listed ones they own.
+- **Signed-in only, and said out loud.** `profiles` is readable by signed-in
+  users (Step 1's policy) and that line is not moved: a stranger gets nothing —
+  not the profile row, not the record, not the teaches list, not the counts, and no
+  people in search. Every figure the page prints is one `dance_chart`
+  already publishes beside a name to any signed-in caller, so the page exposes
+  nothing new; it is that board row, opened. Making person pages PUBLIC is a
+  decision about somebody else's data and is not one to take in passing, so it
+  stays on the backlog with that reasoning attached.
+- **The search's People section arrived because its reason for absence went.**
+  `search_dance_os` gained a `people` branch; it is SECURITY INVOKER,
+  so `profiles`' signed-in-only policy is what keeps a stranger from finding
+  anybody — no extra guard was needed, and the proof asserts both sides.
+- Repository `repositories/publicPerson.ts` (the whole page in one read
+  set), `PersonFollowButton` (the business page's control, for a person),
+  the action beside the tenant one in `features/follows/server-actions`.
+  Doors wired: the crew desk's member rows, the crew page's roster, the search
+  dropdown, and the chrome title.
+- **A regression this caused, and the only reason it was caught: the older proofs
+  were re-run.** Adding `followee_id` gave `follows` **two** foreign
+  keys into `profiles`, and PostgREST answers **300 Multiple Choices** to an
+  unqualified `profiles(...)` embed through an ambiguous relationship — so
+  `findTenantFollowers` (Step 15's Followers read) was broken the moment the
+  migration applied, silently, because no screen calls it yet. Both the repository
+  and the follows proof now name the key
+  (`profiles!follows_follower_id_fkey`). **Lesson: adding a second FK to the
+  same table breaks every existing embed of it — search for embeds of the target
+  table, not just for callers of the new column.**
+- **A deliberate proof change, not a fix:** Step 23's search proof asserted
+  "people are never returned" and gave the reason. The reason is gone, so the check
+  is inverted rather than deleted — a signed-in caller finds the person, a stranger
+  finds none — and it says why in the script.
+- **Deliberately not lifted, tracked in the backlog:** the photo (no media yet —
+  the square is initials on the role's own metal), About / age / years of
+  experience (no fields exist), Call and the enquiry sheet (a person holds no
+  number, and enquiries target businesses), the albums tabs, the rank ladder, and
+  a PUBLIC person page.
+- Verified: `scripts/rls-proof-person-pages.ps1` — 12 checks green (a
+  stranger gets nothing from any of the page's five reads; a signed-in dancer
+  reads the profile and a record that is **not vacuously zero**; teaches-at is the
+  listed studio's published class and neither the draft's nor the unlisted one's;
+  the page's record and the person's own agree; crews are the confirmed ones;
+  following is one bit, idempotent, and the count moves; yourself, a stranger and
+  the public are all refused; **a follow naming both objects or neither is refused
+  by the database**; a person reads their own followers, a follower reads their
+  own row, a bystander and the public read none; unfollow soft-deletes and
+  re-following starts a fresh live row; **following a business still works** — the
+  table learned a second object without forgetting the first; and search offers
+  people to a signed-in caller and never to a stranger). Regressions re-run:
+  follows (12, after the embed fix), search (8, with check 5 inverted), crews (14),
+  stats (14). e2e extended — the learner opens the trainer from the crew desk's
+  member row, sees ARTIST and the crew on their page, follows and unfollows
+  (0 → 1 → 0), finds the person through the search box's People section, and the
+  trainer's own page offers "This is you · Your record ›" instead of a Follow
+  button. typecheck / lint / production build green. **The happy path now takes
+  3.5 minutes** — worth splitting into per-slice specs before it outgrows the
+  300 s timeout.
+
 ### Step 26 — WhatsApp-first OTP ⚠ ✅ (done 28 Aug 2026)
 - **What was actually parked.** Step 1 (18 Aug 2026) decided "production OTP is
   WhatsApp-first (Supabase channel 'whatsapp' via Twilio Verify — needs Meta
@@ -2222,7 +2337,7 @@ nothing to lift.
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
 | Profile tab: full S_profiletab (stats, achievements, reviews, settings, the Followers/Following sheets) — today it is identity + the Following figure and list + log out | S_profiletab | Phase 3 |
-| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **person pages** (dancers, artists as people — `PubTrainer` is a person in the prototype; the crew desk's member rows and the Requests desk's View › would open them) and following a person or a crew | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; Stats with 25; person pages + person/crew follows as their own slice |
+| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **Person pages landed 28 Aug 2026**; what stays open on them: a PUBLIC person page (a decision about somebody else's data), the photo, About / age / experience (no fields), Call and the enquiry sheet, the albums tabs, the rank ladder — and **following a CREW** (follows now names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | bio/photos with the media slice; a follows extension for crews; the rest need fields or a product decision |
 | Stats: the metal tier / rank ladder on the hero (`dosTierOf` — a ladder nobody has designed; the hero shows the real place instead), the History library's city / room / provider / assistant filters and its search box (side and style ship), the **Wins** metric and a crew's battle record (both need scoring), the "updated daily" cadence and the 10% monthly decay (a product rule nobody has decided), and the studio-side S_reports / S_reportdetail | S_profiletab 9862-10520, 9610-9707; S_reportdetail | scoring with a later event slice; the rest need a product decision or their own slice |
 | Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (a nudge — buildable on Step 24's `notifications` table now); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
@@ -2242,7 +2357,7 @@ nothing to lift.
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
 | Class card: poster art, live chips, share action on the home-deck card, undo toasts | BookingCard 7969 | Steps 10-11 |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
-| Discover: the map view (studios still sit at their city centroid — it needs real addresses), studio photos, long-press a style tile to open the style page (`S_styleinfo` unbuilt), the Dancers section of the search dropdown (person pages), `__DOSNAVHIDE` while searching (our chrome is per-route) | S_discover 4100+, 4611, 4551 | a map/media slice; person pages as their own slice |
+| Discover: the map view (studios still sit at their city centroid — it needs real addresses), studio photos, long-press a style tile to open the style page (`S_styleinfo` unbuilt), `__DOSNAVHIDE` while searching (our chrome is per-route) — the search dropdown's People section landed with person pages | S_discover 4100+, 4611, 4551 | a map/media slice |
 | Crews: the desk's Battles won / Points tiles (results need scoring — no table holds a score) and its "See crew ranking" button (the board exists since Step 25 at `/stats?tab=charts&seg=crew`; the button is not drawn), practice attendance and pay per performance on a member row, the photo/name door to a person's page, Follow a crew (follows target tenants), Enquiry a crew, a crew photo | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | scoring with a later event slice; person pages; a follows extension; media slice |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
@@ -2250,6 +2365,7 @@ nothing to lift.
 | Events: the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule) — the duet partner as a person and the crews you lead landed with Step 22, the events search box with Step 23 | S_event 13040, 12985, 13273; WalkIn 13904 | real scanning; the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero — the record page exists since Step 25 (`/stats?tab=history`); the chip is not drawn | 9070-9074 | a calendar parity slice |
+| Tests: the happy-path spec is ONE story covering Steps 6–26 plus the parity slices and takes ~3.5 min against a dev server (the timeout is 300 s). It should be split into per-slice specs sharing a fixture before it outgrows the limit — a spec that times out proves nothing | e2e/happy-path.spec.ts | a testing slice, before the next big screen |
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099, S_managed / G_managed ("everything you manage") | as listed | after Step 26: memberships + rentals + invoices need the live **Cashfree** account (they are money screens); people / routines / settings / S_managed are their own slices, none blocked by anything |
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
@@ -2393,7 +2509,13 @@ the technical detail; this log is the at-a-glance history.
   make — with the live auth config read and reported (phone sign-in on, provider
   twilio, no credentials) so what remains is named: Twilio, a Meta template, DLT.
   6-check proof, whose first run passed a check VACUOUSLY (0 of 0) and is now the
-  session's sharpest lesson. Step 24: two migrations — `notifications` +
+  session's sharpest lesson. Then the **first parity slice — person pages +
+  following a person**: `follows` learns a second object (a row names exactly one
+  of a business or a person), person stats and teaches-at off public rows only,
+  the search's People section, and the three doors earlier steps drew with nowhere
+  to go. 12-check proof — and re-running the older proofs caught a regression it
+  had caused: two FKs into `profiles` make an unqualified embed ambiguous, which
+  had silently broken Step 15's Followers read. Step 24: two migrations — `notifications` +
   `notification_prefs` with eight TRIGGERS that raise a notification where the
   fact happens (so every path that writes the fact raises it, and `notify` is
   revoked from every client role and can never break the fact), then a
@@ -2424,7 +2546,8 @@ the technical detail; this log is the at-a-glance history.
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
 - **Done so far:** 25 / 29 steps (0–15, 18, 21–26) — **every step the prototype
-  describes**; 16, 17, 19 and 20 are features it deliberately removed. Live at
+  describes**; 16, 17, 19 and 20 are features it deliberately removed — plus the
+  first parity slice (person pages). Live at
   https://dancestudio-orcin.vercel.app once this push deploys. The hosted project
   also carries a demo world (`node scripts/demo-data.js seed | status | wipe`).
 - **Remaining:** the parity backlog, in the order the tracker's Next block now
@@ -2434,10 +2557,11 @@ the technical detail; this log is the at-a-glance history.
   invite-by-mobile. Ops the user owns: Cashfree KYC + Easy Split + the webhook
   registration, a verified Resend domain, Twilio + Meta + DLT for real OTP
   delivery, pilot invites.
-- **Next session:** the first parity slice — **person pages** is the honest
-  starting point: it blocks nothing, it is a lift (S_profiletab's person render),
-  and three built screens already want it (the crew desk's member rows, the
-  Requests desk's "View ›", the search dropdown's Dancers section). Then media.
+- **Next session:** the **media slice** — poster uploads (PosterCropper +
+  Storage), studio / crew photos and profile pictures. It closes rows on six
+  screens, and every one of them currently draws initials on a gradient where a
+  picture belongs. Consider splitting the happy-path spec first: it is one 3.5-
+  minute story now, against a 300 s timeout.
   Verify with `npm run typecheck`, `npm run lint`, `npm run build`
   (with nothing on :3000), the proofs through the PowerShell tool, and
   `npx playwright test` against a FRESH `npm run dev`.

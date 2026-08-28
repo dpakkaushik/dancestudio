@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *  back is exactly what the caller may read — a stranger's results and an
  *  owner's differ by the owner's own unlisted business, and nothing else. */
 
-export type SearchKind = "studio" | "artist" | "crew" | "event";
+export type SearchKind = "studio" | "artist" | "crew" | "event" | "person";
 
 export interface SearchHit {
   kind: SearchKind;

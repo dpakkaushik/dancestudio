@@ -128,6 +128,7 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/crews\/[^/]+\/manage$/, "Crew"],
   [/^\/crew\/[^/]+$/, "Crew"],
   [/^\/notifications$/, "Notifications"],
+  [/^\/person\/[^/]+$/, "Dancer"],
 ];
 
 const titleFor = (pathname: string): string => {

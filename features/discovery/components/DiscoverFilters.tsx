@@ -33,8 +33,11 @@ const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
     fn();
   }
 };
-const KIND_LABEL: Record<SearchKind, string> = { studio: "Studios", artist: "Artists", crew: "Crews", event: "Events" };
-const KIND_ORDER: SearchKind[] = ["studio", "artist", "crew", "event"];
+const KIND_LABEL: Record<SearchKind, string> = { studio: "Studios", artist: "Artists", crew: "Crews", event: "Events", person: "People" };
+/* the prototype's own order, with Dancers last (4548-4552). People arrived once
+   there was a page to send them to — Step 23 left the section out for exactly
+   that reason. */
+const KIND_ORDER: SearchKind[] = ["studio", "artist", "crew", "event", "person"];
 const KEYFRAMES = "@keyframes dosPop{0%{transform:scale(1)}35%{transform:scale(1.08)}65%{transform:scale(.97)}100%{transform:scale(1)}}@keyframes dosSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}";
 
 /* the sheet's chip and row (4834-4842) — module-level, so they are not remade on every render */

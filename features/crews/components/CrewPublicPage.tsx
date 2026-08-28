@@ -30,7 +30,9 @@ const monthDay = (iso: string) => {
 function Person({ m, role }: { m: CrewMember; role: string }) {
   const g = gradientOf(m.name);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", minWidth: 0 }}>
+    /* the roster opens the people on it — the person page landed with the first
+       parity slice, and a name you can tap is the whole point of a roster */
+    <Link href={`/person/${m.userId}`} aria-label={`Open ${m.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", minWidth: 0, color: INK, textDecoration: "none" }}>
       <span style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 13, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(150deg,${g[0]},${g[1]})`, color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: 0.4, fontFamily: DOS_DISPLAY }}>
         {initialsOf(m.name)}
       </span>
@@ -41,7 +43,7 @@ function Person({ m, role }: { m: CrewMember; role: string }) {
           {m.city ? ` · ${m.city}` : ""}
         </span>
       </span>
-    </div>
+    </Link>
   );
 }
 

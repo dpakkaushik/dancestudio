@@ -100,14 +100,17 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
     }));
 }
 
-/** Who follows this business — RLS admits its members and nobody else. */
+/** Who follows this business — RLS admits its members and nobody else. The
+ *  embed names its FK: since person-follows landed, `follows` has TWO foreign
+ *  keys into `profiles` (follower and followee) and an unqualified `profiles(...)`
+ *  is ambiguous — PostgREST answers 300 Multiple Choices. */
 export async function findTenantFollowers(
   supabase: SupabaseClient,
   tenantId: string
 ): Promise<TenantFollower[]> {
   const { data, error } = await supabase
     .from("follows")
-    .select("id, follower_id, created_at, profiles (full_name, role, city)")
+    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city)")
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })

@@ -6,7 +6,9 @@
 # NOT find an unlisted studio or a draft event, while the owner of each finds
 # their own; a match is a name that starts with the term or has a word that
 # does (never a substring in the middle of a word); results are capped per
-# kind; people are never returned; an empty term returns nothing. The Discover
+# kind; PEOPLE are returned to a signed-in caller and never to a stranger (the
+# person page landed with the first parity slice, so the Dancers section Step 23
+# left out arrived - see check 5); an empty term returns nothing. The Discover
 # predicates themselves are pure TypeScript (features/discovery/filters.ts) and
 # are exercised by the e2e.
 #
@@ -104,10 +106,18 @@ try {
   $byOrg = @((Search $anonH "$tag Studio") | Where-Object { $_.kind -eq "event" })
   Check 4 "Searching the organiser's name finds its event ($(Names $byOrg))" (($byOrg.Count -eq 1) -and ($byOrg[0].name -eq "Monsoon $tag Battle"))
 
-  # 5. PEOPLE ARE NEVER RETURNED - there is no person page for a row to open
+  # 5. PEOPLE ARE RETURNED TO A SIGNED-IN CALLER, AND NEVER TO A STRANGER.
+  #    Step 23 asserted the opposite and said why: there was no person page, and
+  #    "a destination that does not exist is worse than no destination". The page
+  #    landed with the first parity slice, so the section arrived - and because
+  #    search_dance_os is SECURITY INVOKER, the profiles policy (signed-in only)
+  #    is what keeps a stranger from finding anybody.
   $person = Search (Api $ownerA.token) "$tag Dancer"
-  $personHit = @($person | Where-Object { $_.name -like "*Dancer*" })
-  Check 5 "Searching a dancer's name returns no person row ($($personHit.Count))" ($personHit.Count -eq 0)
+  $personHit = @($person | Where-Object { $_.kind -eq "person" })
+  $anonPerson = Search $anonH "$tag Dancer"
+  $anonPersonHit = @($anonPerson | Where-Object { $_.kind -eq "person" })
+  Check 5 "Signed in, a dancer's name finds $($personHit.Count) person row ($($personHit[0].sub) -> $($personHit[0].href)); a stranger finds $($anonPersonHit.Count)" (
+    ($personHit.Count -eq 1) -and ($personHit[0].href -like "/person/*") -and ($personHit[0].sub -like "Dancer*") -and ($anonPersonHit.Count -eq 0))
 
   # 6. THE CAP PER KIND, AND THE HREF EACH ROW OPENS
   $t2 = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "$tag Studio Two"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }

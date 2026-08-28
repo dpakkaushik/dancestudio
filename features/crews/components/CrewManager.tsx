@@ -128,8 +128,11 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
               return (
                 <div key={m.id} style={{ ...bizCard, borderLeft: `4px solid ${rc}`, padding: "11px 13px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                    {/* THE PHOTO AND THE NAME ARE THE SAME DOOR — a person page is on the backlog, so the door is drawn and not yet wired */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0 }}>
+                    {/* THE PHOTO AND THE NAME ARE THE SAME DOOR (16358): "tapping a
+                        name and expecting nothing to happen is not something anyone
+                        does". The person page landed with the first parity slice, so
+                        both the face and the name open it. */}
+                    <Link href={`/person/${m.userId}`} aria-label={`Open ${m.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 11, flex: 1, minWidth: 0, color: INK, textDecoration: "none" }}>
                       <div style={{ width: 36, height: 36, borderRadius: 11, background: `linear-gradient(135deg,${rc},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
                         {m.name.split(" ").filter(Boolean).map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
                       </div>
@@ -146,7 +149,7 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
                           {m.city ? ` · ${m.city}` : ""}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   </div>
                   <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
                     {/* AND THE LEADER IS NOT OFFERED "MAKE LEADER" — a row only offers what it can actually change */}

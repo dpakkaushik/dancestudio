@@ -112,10 +112,12 @@ try {
   $c2 = Count-Of $anonH $ta.id
   Check 5 "L2 follows -> $($f2.followers); a stranger counts $c2" (([int]$f2.followers -eq 2) -and ($c2 -eq 2))
 
-  # 6. ROWS ARE PRIVATE, THE COUNT IS PUBLIC: L1 reads only their own row, the
+  # 6. ROWS ARE PRIVATE, THE COUNT IS PUBLIC. The profiles embed names its FK:
+  #    since person-follows landed, follows has TWO foreign keys into profiles
+  #    (follower and followee) and an unqualified one is ambiguous (PostgREST 300): L1 reads only their own row, the
   #    owner reads who follows them (with names), a rival owner reads nothing
   $l1Rows = Get-Rows (Api $l1.token) "follows?tenant_id=eq.$($ta.id)&deleted_at=is.null&select=id,follower_id"
-  $ownerRows = Get-Rows (Api $ownerA.token) "follows?tenant_id=eq.$($ta.id)&deleted_at=is.null&select=id,follower_id,profiles(full_name)"
+  $ownerRows = Get-Rows (Api $ownerA.token) "follows?tenant_id=eq.$($ta.id)&deleted_at=is.null&select=id,follower_id,profiles!follows_follower_id_fkey(full_name)"
   $rivalRows = Get-Rows (Api $ownerB.token) "follows?tenant_id=eq.$($ta.id)&select=id"
   $anonRows = Get-Rows $anonH "follows?tenant_id=eq.$($ta.id)&select=id"
   $named = @($ownerRows | Where-Object { $_.profiles -and $_.profiles.full_name }).Count
