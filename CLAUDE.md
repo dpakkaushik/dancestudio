@@ -31,8 +31,28 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **Completed: 24 / 29 steps** (Steps 0–15, 18, 21–25; 16, 17, 19 and 20 are ❌
-  not in the prototype — see the re-scope below — so only 26 remains).
+- **Completed: 25 / 29 steps** (Steps 0–15, 18, 21–26; 16, 17, 19 and 20 are ❌
+  not in the prototype — see the re-scope below — so **the roadmap is finished**
+  and what remains is the parity backlog). **Step 26 landed 28 Aug 2026:
+  WhatsApp-first OTP ⚠** — Step 1 decided this on 18 Aug and parked it, and the
+  code was always one argument. `lib/auth/otpChannel.ts` holds the decision
+  as a pure function of two environment switches — `AUTH_OTP_CHANNEL`
+  (whatsapp | sms, unset behaving as sms) and `AUTH_OTP_FALLBACK_SMS`, which
+  adds the second half of Step 1's decision: a refused WhatsApp send goes by SMS
+  instead. `requestOtpAction` walks that plan and **carries the channel that
+  actually sent through to the verify screen**, so a code that went by SMS is
+  never described as WhatsApp; the sign-in screen says how the code will arrive,
+  and a third switch (`AUTH_OTP_LIVE_NUMBERS`) is what stops it claiming a
+  real number can be reached before one can. **What the live project is
+  configured for, read rather than assumed:** phone sign-in ENABLED, provider
+  `twilio`, **no Twilio credentials**, 6-digit codes expiring in 60 s, test
+  numbers on. So today only 99999 99999 / 88888 88888 (OTP 123456) receive
+  anything on either channel — which is exactly what the screen now says.
+  **Still the user's** (and the only thing between this and real delivery): a
+  Twilio account with an SMS Messaging Service and/or a WhatsApp sender put into
+  Supabase → Authentication → Providers → Phone; Meta business verification with
+  an approved authentication template for WhatsApp; DLT registration for SMS to
+  Indian numbers. 6-check proof, both e2e specs green.
   **Step 25 landed 28 Aug 2026: analytics / Stats** — the prototype's Stats is
   one screen in three dresses (S_profiletab): YOUR RECORD (`historyOnly` 9862,
   "A LIBRARY, NOT A DASHBOARD"), HISTORY (`classesOnly` 9708) and GLOBAL
@@ -343,19 +363,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   20 are **not built** (nothing to lift — building them would invent UI), and
   **18 is the Inbox**. Screens the roadmap never assigned are now listed at the
   foot of the parity backlog so none is forgotten.
-- **Next: Step 26 — WhatsApp-first OTP ⚠ (the last step).** It is mostly the
-  user's accounts, not code: the code change is `channel: "whatsapp"` in
-  `signInWithOtp` (Step 1 decided this and parked it), and what it waits on
-  is a Twilio account wired into Supabase's WhatsApp channel, Meta business
-  verification with an approved authentication template, and India DLT
-  registration for the SMS fallback. Scope it against Step 1's record and the
-  existing S_auth screens (the 📱 Mobile tab already exists and works against
-  Supabase's test numbers), decide whether to ship it behind a flag while the
-  verifications are pending, and note that the notification prefs' **WhatsApp**
-  switch (Step 24) becomes real with the same provider. After 26 the roadmap is
-  done and what remains is the **parity backlog** — start with the rows that
-  block nothing: person pages, the media slice (photos and posters), memberships
-  and rentals, S_managed, and web push.
+- **Next: the parity backlog — the roadmap is finished.** Every step the
+  prototype actually describes is built (16, 17, 19 and 20 describe features it
+  deliberately removed, in its own words, line-referenced in the re-scope below).
+  What is left is the table further down this file, and the honest order is by
+  what blocks nothing: **person pages** (a dancer's / artist's public page —
+  `PubTrainer` is a person in the prototype; the crew desk's member rows and
+  the Requests desk's "View ›" both want it, and it unlocks following a person),
+  the **media slice** (poster uploads, studio and crew photos, profile pictures —
+  Supabase Storage, and it closes rows on six screens), **S_managed** ("everything
+  you manage"), **web push** (VAPID keys + a service worker + a subscriptions
+  table, which makes Step 24's first channel switch real), and the **calendar and
+  crew parity rows** that are now only a button each (the History chip, "See crew
+  ranking"). Blocked and therefore NOT next: memberships / rentals / invoices and
+  every earnings deduction line (a live Cashfree account), event scoring
+  (brackets, judges, scores — its own slice), and invite-by-mobile (needs profiles
+  to carry a mobile number AND real OTP delivery). Ops the user still owns:
+  Cashfree KYC + Easy Split + the webhook registration, a verified Resend domain,
+  the Twilio / Meta / DLT work above, and pilot invites.
   Migrations apply with `npx supabase db push --db-url` over the pooler through
   the scratchpad `push-migration.js` pattern (spawn `npx` with `shell: true` —
   Node refuses `npx.cmd` without a shell, EINVAL). Still parity, tracked in the backlog: 13b **(b)** the
@@ -396,7 +421,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 23 | Search + Discover filters (Postgres, not Typesense — the reason is in the migration) | ✅ done (28 Aug 2026) — the map view stays on the backlog |
 | 24 | Notifications (in-app, raised by triggers where the facts happen; the three delivery channels are stored and wait on their senders) | ✅ done (28 Aug 2026) |
 | 25 | Analytics / Stats (Your record · History · Global Rankings; no new table — aggregates over existing rows, with wins and decay honestly absent) | ✅ done (28 Aug 2026) |
-| 26 | WhatsApp OTP unpark ⚠ | ⬜ ⬅ next (mostly the user's accounts: Twilio + Meta verification + DLT) |
+| 26 | WhatsApp OTP unpark ⚠ | ✅ done (28 Aug 2026) — the channel switch, the fallback and the honest copy are built and proven; **real delivery to a real number waits on the user's Twilio + Meta template + DLT** |
 
 Steps 0–6 detail is recorded below; Steps 7–26 detail lives in the
 **Extended roadmap** section. ⚠ = touches money/auth (Rule 9).
@@ -1560,6 +1585,79 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Step 26 — WhatsApp-first OTP ⚠ ✅ (done 28 Aug 2026)
+- **What was actually parked.** Step 1 (18 Aug 2026) decided "production OTP is
+  WhatsApp-first (Supabase channel 'whatsapp' via Twilio Verify — needs Meta
+  business verification + an approved authentication template) with SMS fallback
+  (needs India DLT registration)" and wrote that the code change is
+  `channel: "whatsapp"` in `signInWithOtp`. That was true, and it is
+  why this step is small: what it waited on was two accounts and a verification,
+  none of which is code.
+- **The decision is a pure module.** `lib/auth/otpChannel.ts`:
+  `preferredOtpChannel` (`AUTH_OTP_CHANNEL`, unset behaving as sms),
+  `smsFallbackEnabled` (`AUTH_OTP_FALLBACK_SMS=true` — literally
+  "true", so a stray "yes" cannot arm a fallback nobody meant),
+  `otpChannelPlan` (the order to try), `OTP_CHANNEL_WORDS` (how each
+  channel is described, in the app's own voice) and `OTP_VERIFY_TYPE` —
+  named so no call site has to remember that Supabase verifies a phone OTP with
+  type "sms" whatever carried it, because the channel is a delivery choice and
+  not a different kind of token. No Supabase import, so the decision is testable
+  on its own, and the proof imports this very file rather than a copy of its
+  rules.
+- **The app says which channel actually sent.** `requestOtpAction` walks the
+  plan; the first channel that Supabase accepts is recorded and travels to
+  `/login/verify?via=…`, and `OtpVerify` prints "Sent on WhatsApp" or
+  "Sent by SMS" from that — so a code that fell back to SMS is never described as
+  WhatsApp, and the Android auto-read line only appears when an SMS is what
+  arrived. The sign-in screen reads the switches server-side and says how the
+  code will come ("we WhatsApp you a code" / "we text you a code").
+- **And it does not pretend a real number can be reached.**
+  `AUTH_OTP_LIVE_NUMBERS` gates the sign-in screen's own claim: unset, the
+  test-number box reads "TEST NUMBERS — NOTHING IS SENT TO A REAL NUMBER YET" and
+  points at the email tab; set, it says a real number gets its code on whichever
+  channel is on. That flag exists because the previous copy ("WhatsApp OTP arrives
+  at launch") was a promise the code could not keep, and the switch that makes it
+  true is the user's to flip when the provider works.
+- **What the live project is configured for** (read from the auth config through
+  the management API, 28 Aug 2026, and reported by the proof rather than assumed):
+  phone sign-in **enabled**, `sms_provider` **twilio**,
+  `sms_twilio_account_sid` **null** — no credentials — 6-digit codes with a
+  60-second expiry, and test numbers configured. So on either channel only
+  99999 99999 / 88888 88888 with OTP 123456 receive anything at all today. Worth
+  knowing: Supabase **accepts** `channel: "whatsapp"` for a test number, so
+  the call shape is right and only delivery is missing.
+- **Still the user's, and the whole of what is left:** a Twilio account with an
+  SMS Messaging Service and/or a WhatsApp sender, its Account SID / Auth Token /
+  Message Service SID entered in Supabase → Authentication → Providers → Phone;
+  **Meta business verification with an approved authentication template** (Twilio
+  Verify or the WhatsApp Business API), without which a WhatsApp send is refused;
+  and **DLT registration** (entity, header, template) for SMS to Indian numbers,
+  without which the carriers drop it. `.env.local.example` documents all of
+  this beside the three switches. The same provider makes Step 24's **WhatsApp**
+  notification switch real.
+- Verified: `scripts/auth-proof-otp-channel.ps1` — 6 checks green (the
+  channel decision over **ten** environments, read from the real module by node —
+  unset, sms, whatsapp, mixed case and spaced, rubbish, the four plans, and the
+  verify type; a real `signInWithOtp` on a test number with an explicit
+  channel; a real `verifyOtp` with type sms returning a session and the
+  right phone; the **whatsapp** channel accepted by the API on the second test
+  number; the live auth config read and reported with the remaining account work
+  named; and the email link path Step 6 shipped still minting links). Both e2e
+  specs green — the paid-webhook spec signs in through the real phone screens, so
+  it is what proves the changed action still works end to end. typecheck / lint /
+  production build green.
+- **Three lessons, all from the proof's first run — and the first is the one that
+  matters.** (1) **Check 1 passed vacuously**: the TypeScript-stripping hack it
+  used threw, and "0 wrong out of 0" printed as OK. A count-based check must
+  assert the count. Node 24 imports a `.ts` module directly, so the matrix
+  now runs the real file. (2) Check 4 asserted Supabase's rate limiter ("you can
+  only request this after 4 seconds") and called it a pass — it uses the second
+  test number now and refuses a rate-limit answer. (3) PowerShell 5.1 turns a
+  native exe writing to stderr into a terminating `NativeCommandError` even
+  with `2>$null`, and it does not ENUMERATE a parsed JSON array down the
+  pipeline — `@()` around the pipeline nests it, and only `foreach`
+  counts the rows.
+
 ### Step 25 — Analytics / Stats ✅ (done 28 Aug 2026)
 - **What the prototype's Stats is** — one screen in three dresses, all of
   S_profiletab: **YOUR RECORD** (`historyOnly` 9862) whose own comment is the
@@ -2136,7 +2234,7 @@ nothing to lift.
 | Earnings: "Open invoices" (the past-months view's button) and the ALSO COLLECTED enquiries card | S_earn 18084, 18124 | later slices (invoices, event enquiry desk) |
 | Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
 | Poster uploads (PosterCropper + Storage) and the "None" poster — the three drawn designs ship | PosterCropper, dosPosterOf 129-135 | media slice (Step 20 rails) |
-| Invite by **mobile** and by QR **scan** — the invite handle is an email (what we authenticate on) and the QR is drawn, not yet scannable | invite sheet 18435 "QR / mobile / search" | Step 26 (WhatsApp OTP) + the camera work |
+| Invite by **mobile** and by QR **scan** — the invite handle is an email, and inviting by mobile needs two things Step 26 did not add: a mobile number ON the profile (nothing stores one today; phone sign-in identifies, it does not record) and real OTP delivery. The QR is drawn, not scannable | invite sheet 18435 "QR / mobile / search" | a profile-fields slice + the Twilio work; the camera separately |
 | Staff & permissions: per-person permission grants (the prototype's "enquiries ✓ scanner ✓ classes ✓" are per-role words today, not individually toggled) | settings 18428-18429 | later slice |
 | Leads: the event-enquiry desk (celebrations/corporate/judge/collab types, quotes, in vs out) — the STUDENT pipeline ships | ENQ_TYPES 4902, S_enqdetail 5380 | later slice |
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
@@ -2206,7 +2304,7 @@ step names the prototype screens its UI comes from so nothing gets redesigned.
 | 23 | Search + Discover filters — **Postgres, not Typesense** (the reason is in the migration: tens of rows per table at pilot scale, so a sync pipeline would carry nothing); the map view stays on the backlog | `search_dance_os` (SECURITY INVOKER) + pure URL-state predicates | S_discover 4535, 4596, 4655, 4827; S_eventslist 13551 |
 | 24 | Notifications — in-app, raised by TRIGGERS where the facts happen (a claim, a booking, a freed seat, a refund, a payout, an enquiry, a quote, an event entry, a duet partner, a crew ask); the bell with its badge; the prefs sheet. Delivery channels stored, not yet sending — no OneSignal/FCM dependency taken on | `notifications` + `notification_prefs` + 8 trigger functions | S_notif 13702, NOTIF_KINDS 13642, the bell 19252 |
 | 25 | Analytics / Stats — the person's record (conducted · assisted · attended, in sessions and hours), the History library, and the four Global Rankings boards. Aggregate-only definer functions, no new table; wins, the daily refresh and the monthly decay are absent because nothing behind them is real. DAU/MAU/GMV would be an ADMIN screen the prototype does not have | `dance_points`, `my_dance_stats`, `my_session_history`, `dance_chart`, `my_chart_place` | S_profiletab historyOnly 9862 / classesOnly 9708 / chartsOnly 9610 |
-| 26 | ⚠ WhatsApp-first OTP unpark: Twilio Verify + Meta business verification, SMS/DLT fallback | provider setup; code = `channel:"whatsapp"` in signInWithOtp | existing S_auth screens |
+| 26 | ⚠ WhatsApp-first OTP unpark — built: the channel switch (`AUTH_OTP_CHANNEL`), the SMS fallback, the "which channel actually sent" line on the verify screen, and copy that refuses to promise delivery the provider cannot make. Provider setup (Twilio + Meta template + DLT) is the user's | `lib/auth/otpChannel.ts` + `requestOtpAction` | existing S_auth screens |
 
 Order rationale: Step 7 first so pilot studios see the prototype's real chrome
 (zero backend risk); then money — Phase 2 — because paying students is a pilot
@@ -2288,7 +2386,14 @@ the technical detail; this log is the at-a-glance history.
   library and the four ranking boards; no new table, aggregate-only definer
   functions, and wins / daily refresh / monthly decay left out because nothing
   behind them is real — a second migration fixed two boards the proof found dead
-  on plpgsql OUT-parameter shadowing). 14-check proof. Step 24: two migrations — `notifications` +
+  on plpgsql OUT-parameter shadowing). 14-check proof. Then **Step 26 —
+  WhatsApp-first OTP**, which finishes the roadmap: the channel switch and its
+  SMS fallback as a pure module, the verify screen saying which channel actually
+  carried the code, and copy that no longer promises delivery the provider cannot
+  make — with the live auth config read and reported (phone sign-in on, provider
+  twilio, no credentials) so what remains is named: Twilio, a Meta template, DLT.
+  6-check proof, whose first run passed a check VACUOUSLY (0 of 0) and is now the
+  session's sharpest lesson. Step 24: two migrations — `notifications` +
   `notification_prefs` with eight TRIGGERS that raise a notification where the
   fact happens (so every path that writes the fact raises it, and `notify` is
   revoked from every client role and can never break the fact), then a
@@ -2318,21 +2423,24 @@ the technical detail; this log is the at-a-glance history.
   re-run (16) on the recreated `book_event`, both e2e specs green with a new crew
   leg (hub → ask → confirm → public page → Discover → a crew battle entered as
   the leader → the organiser's register → the battle record).
-- **Done so far:** 24 / 29 steps (0–15, 18, 21–25). Live at
+- **Done so far:** 25 / 29 steps (0–15, 18, 21–26) — **every step the prototype
+  describes**; 16, 17, 19 and 20 are features it deliberately removed. Live at
   https://dancestudio-orcin.vercel.app once this push deploys. The hosted project
   also carries a demo world (`node scripts/demo-data.js seed | status | wipe`).
-- **Remaining:** Step 26 (WhatsApp OTP — mostly the user's accounts), then the
-  parity backlog (scoring, web push, person pages, Discover's map, the media
-  slice, memberships and rentals). Ops still open: Cashfree KYC + Easy Split, the
-  webhook registration, a verified Resend domain, pilot invites.
-- **Next session:** Step 26 — the last roadmap step, and mostly ops: the code is
-  `channel: "whatsapp"` in `signInWithOtp`, and it waits on a Twilio
-  account wired into Supabase, Meta business verification with an approved
-  template, and DLT registration for the SMS fallback. Decide whether to ship it
-  behind a flag while those are pending. Then the parity backlog, starting with
-  what blocks nothing. Verify with `npm run typecheck`, `npm run lint`,
-  `npm run build` (with nothing on :3000), the proofs through the PowerShell
-  tool, and `npx playwright test` against a FRESH `npm run dev`.
+- **Remaining:** the parity backlog, in the order the tracker's Next block now
+  argues for: person pages, the media slice, S_managed, web push, and the
+  calendar / crew rows that are a button each. Blocked, so not next: memberships
+  and the earnings deduction lines (a live Cashfree account), event scoring, and
+  invite-by-mobile. Ops the user owns: Cashfree KYC + Easy Split + the webhook
+  registration, a verified Resend domain, Twilio + Meta + DLT for real OTP
+  delivery, pilot invites.
+- **Next session:** the first parity slice — **person pages** is the honest
+  starting point: it blocks nothing, it is a lift (S_profiletab's person render),
+  and three built screens already want it (the crew desk's member rows, the
+  Requests desk's "View ›", the search dropdown's Dancers section). Then media.
+  Verify with `npm run typecheck`, `npm run lint`, `npm run build`
+  (with nothing on :3000), the proofs through the PowerShell tool, and
+  `npx playwright test` against a FRESH `npm run dev`.
 
 ### 28 Aug 2026 — second session
 - **This session:** finished **Step 21 — events, competitions, ticketing ⚠** from

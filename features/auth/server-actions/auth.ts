@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { OTP_VERIFY_TYPE, otpChannelPlan, type OtpChannel } from "@/lib/auth/otpChannel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createProfile, findProfileById } from "@/repositories/profiles";
 
@@ -39,15 +40,31 @@ export async function requestOtpAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid number" };
   }
 
+  /* Step 26: WhatsApp-first when it is switched on, SMS otherwise — and if a
+     WhatsApp send is refused (no approved template yet, the number is not on
+     WhatsApp) the fallback carries it by SMS. Whichever one actually sent is
+     what the next screen says; a message that went by SMS is never described as
+     WhatsApp. */
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    phone: toE164(parsed.data),
-  });
-  if (error) {
-    return { error: error.message };
+  const plan = otpChannelPlan();
+  let sentOn: OtpChannel | null = null;
+  let lastError = "";
+  for (const channel of plan) {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: toE164(parsed.data),
+      options: { channel },
+    });
+    if (!error) {
+      sentOn = channel;
+      break;
+    }
+    lastError = error.message;
+  }
+  if (!sentOn) {
+    return { error: lastError || "Could not send the code" };
   }
 
-  redirect(`/login/verify?phone=${parsed.data}`);
+  redirect(`/login/verify?phone=${parsed.data}&via=${sentOn}`);
 }
 
 const emailSchema = z
@@ -102,7 +119,8 @@ export async function verifyOtpAction(
   const { data, error } = await supabase.auth.verifyOtp({
     phone: toE164(phoneParsed.data),
     token: otpParsed.data,
-    type: "sms",
+    /* the channel is a delivery choice, not a different kind of token */
+    type: OTP_VERIFY_TYPE,
   });
   if (error || !data.user) {
     return {

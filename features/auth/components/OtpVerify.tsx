@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { verifyOtpAction, type AuthActionState } from "@/features/auth/server-actions/auth";
+import { OTP_CHANNEL_WORDS, type OtpChannel } from "@/lib/auth/otpChannel";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { DOS_DISPLAY, GREEN, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
 
@@ -10,7 +11,7 @@ const initialState: AuthActionState = { error: null };
 const RESEND_SECONDS = 30;
 
 /** OTP screen lifted from the prototype (DanceOSApp.jsx:3749-3767). */
-export function OtpVerify({ phone }: { phone: string }) {
+export function OtpVerify({ phone, via = "sms" }: { phone: string; /** which channel actually carried the code (Step 26) */ via?: OtpChannel }) {
   const [otp, setOtp] = useState("");
   const [timer, setTimer] = useState(RESEND_SECONDS);
   const otpRef = useRef<HTMLInputElement>(null);
@@ -47,7 +48,7 @@ export function OtpVerify({ phone }: { phone: string }) {
         Enter the code
       </div>
       <div style={{ fontSize: 13.5, color: SUB, marginBottom: 20 }}>
-        Sent to +91 {pretty} · auto-reads on Android
+        Sent {OTP_CHANNEL_WORDS[via].sent} to +91 {pretty}{via === "sms" ? " · auto-reads on Android" : ""}
       </div>
       <form ref={formRef} action={formAction}>
         <input type="hidden" name="phone" value={phone} />

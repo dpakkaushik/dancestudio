@@ -8,6 +8,7 @@ import {
   type AuthActionState,
 } from "@/features/auth/server-actions/auth";
 import { AuthShell } from "@/features/auth/components/AuthShell";
+import { OTP_CHANNEL_WORDS, type OtpChannel } from "@/lib/auth/otpChannel";
 import { BTN_STYLE, DOS_DISPLAY, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
 
 const initialState: AuthActionState = { error: null };
@@ -25,9 +26,22 @@ const inputStyle: React.CSSProperties = {
 };
 
 /** Sign-in screen lifted from the prototype (DanceOSApp.jsx:3726-3747). Email is
- *  the primary channel for now (24 Aug 2026); phone stays for dev test numbers
- *  until WhatsApp OTP is wired. */
-export function PhoneSignIn({ initialError = null }: { initialError?: string | null }) {
+ *  the primary channel for now (24 Aug 2026); the phone tab sends a code on
+ *  whichever channel is switched on (Step 26) — WhatsApp where the provider and
+ *  the Meta template exist, SMS otherwise — and says which, rather than promising
+ *  one and sending the other. `liveNumbers` is false while the project has no
+ *  Twilio credentials, which is the only reason the test-number box is drawn. */
+export function PhoneSignIn({
+  initialError = null,
+  otpChannel = "sms",
+  liveNumbers = false,
+}: {
+  initialError?: string | null;
+  /** what the server will try first */
+  otpChannel?: OtpChannel;
+  /** whether a real number can receive anything at all yet */
+  liveNumbers?: boolean;
+}) {
   const [channel, setChannel] = useState<"phone" | "email">("email");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -49,7 +63,7 @@ export function PhoneSignIn({ initialError = null }: { initialError?: string | n
       </div>
       <div style={{ fontSize: 13.5, color: SUB, marginBottom: 16 }}>
         {isPhone
-          ? "Your mobile number is your account — one OTP and you're in."
+          ? `Your mobile number is your account — we ${OTP_CHANNEL_WORDS[otpChannel].verb} you a code and you're in.`
           : "Your email is your account — we send a sign-in link, no password."}
       </div>
 
@@ -134,7 +148,7 @@ export function PhoneSignIn({ initialError = null }: { initialError?: string | n
             }}
           >
             <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, opacity: 0.65 }}>
-              TEST NUMBERS — NO SMS IS SENT YET
+              {liveNumbers ? `TEST NUMBERS — REAL ONES GET A CODE ${OTP_CHANNEL_WORDS[otpChannel].sent.toUpperCase()}` : "TEST NUMBERS — NOTHING IS SENT TO A REAL NUMBER YET"}
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4, lineHeight: 1.6 }}>
               📱{" "}
@@ -157,7 +171,10 @@ export function PhoneSignIn({ initialError = null }: { initialError?: string | n
               </b>
             </div>
             <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3 }}>
-              OTP <b>123456</b> · real numbers: use ✉️ Email for now — WhatsApp OTP arrives at launch
+              OTP <b>123456</b> ·{" "}
+              {liveNumbers
+                ? `a real number gets its code ${OTP_CHANNEL_WORDS[otpChannel].sent}`
+                : "a real number cannot be reached yet — use ✉️ Email"}
             </div>
           </div>
           <button
