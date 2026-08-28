@@ -3,6 +3,7 @@ import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedClasses } from "@/repositories/classes";
+import { findProfileById } from "@/repositories/profiles";
 import {
   countEnrolledBySession,
   findMyEnrolledSessionIds,
@@ -19,12 +20,15 @@ export default async function ClassesPage() {
 
   const classes = await findPublishedClasses(supabase);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
-  const [counts, mine] = await Promise.all([
+  const [counts, mine, profile] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     user
       ? findMyEnrolledSessionIds(supabase)
       : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
+    user ? findProfileById(supabase, user.id) : Promise.resolve(null),
   ]);
+  /* the shelf counts what is IN the viewer's city (4787) — everywhere else, plainly */
+  const city = profile?.city ?? null;
 
   return (
     <div
@@ -47,10 +51,11 @@ export default async function ClassesPage() {
           padding: "8px 0 10px",
         }}
       >
-        <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
+        {/* DosShelfHead (3446-3450): 17px display, sentence case, the count small and muted at the right */}
+        <div style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2 }}>
           Upcoming classes
         </div>
-        <div style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{classes.length} listed</div>
+        <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)" }}>{city ? `${classes.length} in ${city}` : `${classes.length} listed`}</div>
       </div>
 
       {classes.map((c) => {
@@ -89,7 +94,7 @@ export default async function ClassesPage() {
             fontSize: 13,
           }}
         >
-          No upcoming classes yet — studios are just setting up.
+          {city ? `No upcoming classes in ${city} — try another city or style.` : "No upcoming classes yet — studios are just setting up."}
         </div>
       )}
     </div>

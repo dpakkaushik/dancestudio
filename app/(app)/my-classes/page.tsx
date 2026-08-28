@@ -30,7 +30,13 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
 });
 
 /** The learner's bookings — the prototype's "your calendar" view of booked classes. */
-export default async function MyClassesPage() {
+const KINDS: Array<{ k: "all" | "class" | "event"; label: string }> = [
+  { k: "all", label: "All" },
+  { k: "class", label: "Classes" },
+  { k: "event", label: "Events" },
+];
+
+export default async function MyClassesPage({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -39,7 +45,12 @@ export default async function MyClassesPage() {
     redirect("/login");
   }
 
-  const [enrollments, tickets] = await Promise.all([findMyEnrollments(supabase), findMyEventBookings(supabase, user.id)]);
+  const [{ kind: rawKind }, enrollments, tickets] = await Promise.all([searchParams, findMyEnrollments(supabase), findMyEventBookings(supabase, user.id)]);
+  const k = Array.isArray(rawKind) ? rawKind[0] : rawKind;
+  const kind: "all" | "class" | "event" = k === "class" || k === "event" ? k : "all";
+  const showClasses = kind !== "event";
+  const showEvents = kind !== "class";
+  const confirmed = enrollments.filter((e) => e.status === "enrolled").length + tickets.length;
 
   return (
     <div
@@ -62,11 +73,12 @@ export default async function MyClassesPage() {
           padding: "8px 0 10px",
         }}
       >
-        <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
-          My classes
+        {/* DosShelfHead "Your bookings" · "N confirmed" (6120) */}
+        <div style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2 }}>
+          Your bookings
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{enrollments.length} booked</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)" }}>{confirmed} confirmed</div>
           {/* the same bookings as a calendar (Step 14) — day, week, month, schedule */}
           <Link
             href="/calendar"
@@ -86,7 +98,18 @@ export default async function MyClassesPage() {
         </div>
       </div>
 
-      {enrollments.map((e) => (
+      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
+        {KINDS.map(({ k: key, label }) => {
+          const on = kind === key;
+          return (
+            <Link key={key} href={key === "all" ? "/my-classes" : `/my-classes?kind=${key}`} aria-label={key === "all" ? "Show all bookings" : key === "class" ? "Show classes only" : "Show events only"} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {showClasses && enrollments.map((e) => (
         <ClassTile
           key={e.id}
           danceClass={toTileClass(e)}
@@ -105,7 +128,7 @@ export default async function MyClassesPage() {
           }
         />
       ))}
-      {enrollments.length === 0 && (
+      {showClasses && enrollments.length === 0 && (
         <div
           style={{
             textAlign: "center",
@@ -127,7 +150,7 @@ export default async function MyClassesPage() {
       {/* ── YOUR TICKETS (Step 21) — the seats and entries you hold, soonest first.
           An event booking is a booking too (S_bookings 6099); each row opens the
           event's own page, where the pass and the cancel live. ── */}
-      {tickets.length > 0 && (
+      {showEvents && tickets.length > 0 && (
         <>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "22px 0 10px" }}>
             <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>Your tickets</div>

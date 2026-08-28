@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EventCard } from "@/features/events/components/EventCard";
-import { DOS_TINT, DOS_UI, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
 import { EV_TINT } from "@/types/event";
 import { MANAGED_FILTERS, type ManagedKind, type ManagedListing } from "@/types/managed";
 import type { Tenant } from "@/types/tenant";
@@ -87,8 +87,9 @@ export function ManagedScreen({
         </div>
 
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "2px 0 8px" }}>
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.4, color: SUB }}>WHAT YOU RUN</div>
-          <div data-testid="managed-count" style={{ fontSize: 11.5, fontWeight: 800, color: SUB }}>
+          {/* DosShelfHead (3446-3450, 3430): 17px display, sentence case, the count small and muted */}
+          <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.2, fontFamily: DOS_DISPLAY, color: INK }}>What you run</div>
+          <div data-testid="managed-count" style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)" }}>
             {rows.length} {rows.length === 1 ? "listing" : "listings"}
           </div>
         </div>

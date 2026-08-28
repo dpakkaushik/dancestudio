@@ -36,6 +36,8 @@ export interface DanceClass {
 /** A published class as the learner listing sees it — with the business behind it. */
 export interface PublicClassListing extends DanceClass {
   tenantName: string;
+  /** which public page the studio row opens: /studio or /artist */
+  tenantType: "studio" | "trainer_business";
   tenantArea: string | null;
   tenantCity: string | null;
 }

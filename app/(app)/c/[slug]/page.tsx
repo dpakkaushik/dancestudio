@@ -7,7 +7,7 @@ import { findClassRegister } from "@/repositories/attendance";
 import { findClaimsByClass } from "@/repositories/claims";
 import { findClassBySlug } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
-import { findClassMoney, findPaidReceiptByEnrollment } from "@/repositories/payments";
+import { findClassMoney, findPaidReceiptByEnrollment, findPaidUserIdsBySession } from "@/repositories/payments";
 import { findRefundsByClass } from "@/repositories/refunds";
 import { findRoomById } from "@/repositories/rooms";
 import { findMyMembershipRole } from "@/repositories/tenants";
@@ -90,8 +90,11 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       ? await findPaidReceiptByEnrollment(supabase, myBooking.id)
       : null;
 
-  // the live register + waitlist queue — only people who can run it get it
+  // the live register + waitlist queue — only people who can run it get it —
+  // and, on a priced class, who has paid for their seat (the row's meta line)
   const register = canManage ? await findClassRegister(supabase, danceClass.id) : null;
+  const paidUserIds =
+    canManage && sessionId && danceClass.priceInr > 0 ? await findPaidUserIdsBySession(supabase, sessionId) : new Set<string>();
 
   // who is on the class, and what the room has in it. RLS decides what the
   // viewer may see: the public gets confirmed claims on published classes only.
@@ -136,6 +139,7 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       refunds={refunds}
       canSettleRefunds={canSettleRefunds}
       classMoney={classMoney}
+      paidUserIds={[...paidUserIds]}
     />
   );
 }

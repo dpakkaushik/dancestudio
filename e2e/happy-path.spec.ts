@@ -223,7 +223,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByText("Bollywood", { exact: true }).click();
     await owner.getByLabel("Class name").fill(classTitle);
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
-    await owner.getByRole("button", { name: /Next · people & price/ }).click();
+    // the button reads "Continue" once every answer on the step is given (15573-15578)
+    await owner.getByRole("button", { name: "Continue" }).click();
     // the room now defines the capacity (prototype: "defined by Studio A")
     await expect(owner.getByText(/defined by Studio A/)).toBeVisible();
     // and the payoff of Step 12b: the artist picker finally has somebody to
@@ -236,7 +237,9 @@ test.describe.serial("DanceOS, end to end", () => {
     // step 2 — people & price. Free trial: the ₹300 default would route booking
     // through Razorpay (Step 9), which the paid-webhook spec covers.
     await owner.getByLabel("Price per session").fill("0");
-    await owner.getByRole("button", { name: "Publish" }).click();
+    // Publish asks first — the confirm sheet with the calendar-style card (15586-15625)
+    await owner.getByRole("button", { name: "Publish class" }).click();
+    await owner.getByRole("dialog", { name: "Publish this class?" }).getByRole("button", { name: "Publish it" }).click();
 
     // back on the register, the class sits under the Published tab — the tile
     // headlines the STYLE (a class is its style, per the prototype), so the
@@ -306,8 +309,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(
       owner.getByRole("link", { name: /See it beside everything else you earn/ })
     ).toBeVisible();
+    // the register rows carry the seat's money meta (12126) — this class is free
+    await owner.getByRole("button", { name: "Attendance" }).click();
+    await expect(owner.getByText("Nobody has booked yet.")).toBeVisible();
     // back to Details so the share step below finds the poster
     await owner.getByRole("button", { name: "Details" }).click();
+    // the team section is always drawn (12356), with the owner's door to add somebody
+    await expect(owner.getByText("CLASS ASSISTANTS")).toBeVisible();
+    await expect(owner.getByRole("link", { name: "Add someone to the team" })).toBeVisible();
+    // the artist column is a door to the person (11900), and Change goes to the form
+    await expect(owner.getByRole("link", { name: "Open E2E Trainer" })).toBeVisible();
+    await expect(owner.getByRole("link", { name: "Change the artist taking this class" })).toBeVisible();
+    // the Poster chip in the sleeve opens the drawn designs (11812, 12768)
+    await owner.getByRole("button", { name: "Change the poster" }).click();
+    const posterSheet = owner.getByRole("dialog", { name: "Poster" });
+    await posterSheet.getByRole("button", { name: "Poster design Split" }).click();
+    await expect(owner.getByText("Poster set — Split")).toBeVisible();
+    await posterSheet.getByRole("button", { name: "Done" }).click();
 
     // sharing lives behind the poster now — the pass sheet carries the link (Step 10)
     await owner.getByRole("button", { name: "Open the pass" }).click();
@@ -323,8 +341,9 @@ test.describe.serial("DanceOS, end to end", () => {
     // booking is two steps now (Step 9): the bar opens the confirm sheet, and a
     // free class confirms without payment
     await learner.goto(`/c/${shareSlug}`);
-    // AT THE STUDIO carries what the room has in it (Step 11)
+    // AT THE STUDIO carries what the room has in it (Step 11) — and the studio row is a door (12291)
     await expect(learner.getByText("🪞 Mirrors")).toBeVisible();
+    await expect(learner.getByRole("link", { name: `Open ${studioName}` })).toBeVisible();
     // what the class made is the studio's business, not the room's
     await expect(learner.getByText("WHAT THIS SESSION MADE")).toHaveCount(0);
     await learner.getByRole("button", { name: "Book free trial" }).click();
@@ -332,6 +351,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(confirmSheet).toBeVisible();
     await confirmSheet.getByRole("button", { name: "Confirm free trial" }).click();
     await expect(learner.getByText(/You.re booked/)).toBeVisible();
+    await expect(learner.getByText("Tap the poster above for your code.")).toBeVisible();
+    // and the owner's register now reads the seat's meta: a free seat
+    await owner.reload();
+    await owner.getByRole("button", { name: "Attendance" }).click();
+    await expect(owner.getByText("free seat")).toBeVisible();
+    await owner.getByRole("button", { name: "Details" }).click();
 
     // the booking shows up on the learner's own list too
     await learner.goto("/my-classes");

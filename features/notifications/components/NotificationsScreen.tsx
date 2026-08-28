@@ -76,11 +76,11 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       {/* the hero, in the notifications tint (DosHero) */}
-      <div style={{ margin: "12px 16px 0", borderRadius: 22, padding: "16px 17px 15px", background: "linear-gradient(135deg,#5AC8FA 0%, #5AC8FAcc 55%, #5AC8FA80 100%)", color: "#fff", position: "relative", overflow: "hidden" }}>
+      <div style={{ margin: "12px 16px 0", borderRadius: 22, padding: "15px 17px 14px", background: "linear-gradient(135deg, #5AC8FA, #6D28D9)", color: "#fff", position: "relative", overflow: "hidden" }}>
         <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, position: "relative" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...micro, opacity: 0.85 }}>Notifications</div>
+            <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 1.4, textTransform: "uppercase", opacity: 0.85 }}>Notifications</div>
             <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.18, marginTop: 3 }}>What needs you</div>
             <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 3 }} data-testid="notif-counts">
               {unreadTotal} unread · {notifications.length} total
@@ -106,7 +106,7 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
                 <path d="M4.5 12a7.5 7.5 0 0 1 .3-2l-1.4-1.2 1.8-3.1 1.7.7A7.5 7.5 0 0 1 9 4.9l.3-1.9h3.4l.3 1.9a7.5 7.5 0 0 1 2.1 1.2l1.7-.7 1.8 3.1L17.2 10a7.5 7.5 0 0 1 0 4l1.4 1.2-1.8 3.1-1.7-.7a7.5 7.5 0 0 1-2.1 1.2l-.3 1.9H9.3L9 18.8a7.5 7.5 0 0 1-2.1-1.2l-1.7.7-1.8-3.1L4.8 14a7.5 7.5 0 0 1-.3-2z" />
               </svg>
             </span>
-            {unreadTotal > 0 ? (
+            {notifications.length > 0 ? (
               <span role="button" tabIndex={0} aria-label="Read all" onKeyDown={pressKey(() => void run(() => markNotificationsReadAction({}), "All marked read"))} onClick={() => void run(() => markNotificationsReadAction({}), "All marked read")} style={{ fontSize: 10, fontWeight: 800, padding: "7px 11px", borderRadius: 999, background: "rgba(255,255,255,.2)", cursor: "pointer" }}>
                 Read all
               </span>

@@ -22,6 +22,8 @@ export interface ClassClaim {
   /** The claimed person, for the page that prints them. */
   personName: string;
   personCity: string | null;
+  /** their picture in the media bucket, or null for initials (the photos slice) */
+  avatarPath: string | null;
 }
 
 /** An ask waiting for the signed-in person's answer, with enough of the class

@@ -185,6 +185,23 @@ interface ClassMoneyRow {
  *  orders, payments and refunds, and the public to none. WHO SEES THE TAB is
  *  narrower still and decided by the page — the owner alone, matching the
  *  prototype's own `isMine` gate on the Earnings segment (11757). */
+/** The learners whose order on this session is paid — one read so the register
+ *  can print "paid" / "due" beside a name (prototype 12126-12127). Members read
+ *  their tenant's orders (Step 9); a learner never reaches this. */
+export async function findPaidUserIdsBySession(supabase: SupabaseClient, sessionId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("user_id, status")
+    .eq("session_id", sessionId)
+    .eq("status", "paid")
+    .is("deleted_at", null)
+    .limit(500);
+  if (error) {
+    throw new Error(`payments.paidUsers failed: ${error.message}`);
+  }
+  return new Set(((data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id));
+}
+
 export async function findClassMoney(
   supabase: SupabaseClient,
   classId: string

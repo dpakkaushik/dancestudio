@@ -15,11 +15,11 @@ interface ClaimRow {
   can_refunds: boolean;
   pay_per_session_inr: number;
   created_at: string;
-  profiles: { full_name: string; city: string | null } | null;
+  profiles: { full_name: string; city: string | null; avatar_path?: string | null } | null;
 }
 
 const CLAIM_COLUMNS =
-  "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, created_at, profiles (full_name, city)";
+  "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, created_at, profiles (full_name, city, avatar_path)";
 
 const toClaim = (row: ClaimRow): ClassClaim => ({
   id: row.id,
@@ -33,6 +33,7 @@ const toClaim = (row: ClaimRow): ClassClaim => ({
   createdAt: row.created_at,
   personName: row.profiles?.full_name ?? "Someone",
   personCity: row.profiles?.city ?? null,
+  avatarPath: row.profiles?.avatar_path ?? null,
 });
 
 /** Everybody on one class — what the viewer may see is decided by RLS. */

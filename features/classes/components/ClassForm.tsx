@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useRef, useState } from "react";
 import { PosterBlock } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import {
@@ -8,7 +9,7 @@ import {
   updateClassAction,
   type ClassActionState,
 } from "@/features/classes/server-actions/classes";
-import { DOS_LEVELS, DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
+import { DOS_LEVELS, DOS_LEVEL_LABEL, DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { TeamMember } from "@/repositories/tenants";
 import type { ClassClaim } from "@/types/claim";
@@ -24,7 +25,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
   letterSpacing: 1.1,
-  color: "#707070",
+  color: "var(--muted)",
   margin: "18px 0 8px",
 };
 
@@ -73,7 +74,21 @@ const POSTER_DESIGNS: Array<[PosterChoice, string]> = [
   ["quiet", "Quiet"],
 ];
 
-const STEPS = ["Basics & the room", "People & price"];
+const STEPS = ["The session", "Price & publish"];
+
+/* the level's glyph (15367-15377): one to three ascending bars, a dot for All levels */
+const LEVEL_BARS: Record<string, number> = { all: 4, beginner: 1, intermediate: 2, professional: 3 };
+function LevelGlyph({ code }: { code: string }) {
+  const bars = LEVEL_BARS[code] ?? 1;
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+      {[0, 1, 2].slice(0, Math.min(bars, 3)).map((b) => (
+        <path key={b} d={`M${6 + b * 6} ${19 - b * 5}v${5 + b * 5}`} />
+      ))}
+      {bars === 4 ? <circle cx="12" cy="6" r="1.6" fill="currentColor" stroke="none" /> : null}
+    </svg>
+  );
+}
 
 /* the claim badge the prototype prints beside a named person (15473-15475) */
 const claimWord = (status: string) =>
@@ -120,7 +135,18 @@ export function ClassForm({
   isOwner?: boolean;
 }) {
   const isEdit = Boolean(existing);
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const fire = (m: string) => {
+    setToast(m);
+    setTimeout(() => setToast(null), 2600);
+  };
+  /* the confirm sheet before a publish (15586-15625) — the button sets which
+     status the form will carry, and the sheet's own button submits it */
+  const [confirm, setConfirm] = useState<"draft" | "publish" | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<"draft" | "published">("published");
   const [style, setStyle] = useState<string>(existing?.style ?? "");
   const [level, setLevel] = useState<ClassLevel>(existing?.level ?? "all");
   const [title, setTitle] = useState(existing?.title ?? "");
@@ -160,6 +186,20 @@ export function ClassForm({
   const capacity = room ? room.capacity : capacityInput;
   const basicsOk = title.trim().length > 0 && style.length > 0 && date.length > 0 && endTime > startTime;
   const ok = basicsOk;
+  /* the first missing answer, in the words the button will wear (15573-15578) */
+  const stepOneErr = !style ? "Pick a dance style" : !level ? "Pick a level" : !date ? "Pick a date" : rooms.length > 0 && !roomId ? "Pick a room" : !title.trim() ? "Name the class" : endTime <= startTime ? "End after the start" : null;
+  /* BEFORE THIS CAN GO ON DISCOVER (15551-15563, dosClassBlockers): every reason it
+     cannot go live, named by the field that answers it. Save draft is never blocked
+     by these. */
+  const blockers: string[] = [];
+  if (!style) blockers.push("Pick a dance style");
+  if (!level) blockers.push("Pick a level");
+  if (!date) blockers.push("Give it a date and a time");
+  if (rooms.length > 0 && !roomId) blockers.push("Say where it happens — a room");
+  if (!(capacity > 0)) blockers.push("Say how many people can book — a class with no places cannot be booked");
+  if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
+  if (!title.trim()) blockers.push("Name the class");
+  const canPublish = blockers.length === 0 && ok;
 
   const claimOf = (userId: string) => claims.find((c) => c.userId === userId);
   const assistantOf = (userId: string) => assistants.find((a) => a.userId === userId);
@@ -200,12 +240,15 @@ export function ClassForm({
         margin: "0 auto",
         fontFamily: DOS_UI,
         minHeight: "100vh",
-        padding: "14px 16px 40px",
+        padding: "14px 16px 150px",
         boxSizing: "border-box",
       }}
     >
-      <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, margin: "10px 0 2px" }}>
-        {isEdit ? "Edit class" : "Add class"}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 2px" }}>
+        <button type="button" aria-label={step > 0 ? "Back a step" : "Back"} onClick={() => (step > 0 ? setStep(step - 1) : router.back())} style={{ fontSize: 20, cursor: "pointer", lineHeight: 1, background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
+          ←
+        </button>
+        <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, flex: 1 }}>{isEdit ? "Edit class" : "Add class"}</div>
       </div>
       <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
         {isEdit
@@ -222,7 +265,8 @@ export function ClassForm({
         ))}
       </div>
 
-      <form action={formAction}>
+      <form action={formAction} ref={formRef}>
+        {!isEdit ? <input type="hidden" name="status" value={submitStatus} /> : null}
         {/* every field lives in state and submits as a hidden input, so stepping
             between the two halves never drops what you already answered */}
         <input type="hidden" name="tenantId" value={tenantId} />
@@ -243,6 +287,7 @@ export function ClassForm({
         {step === 0 ? (
           <>
             <div style={labelStyle}>1 · CLASS DATE &amp; TIME</div>
+            <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Date</div>
             <input
               type="date"
               value={date}
@@ -251,6 +296,8 @@ export function ClassForm({
               style={{ ...inputStyle, colorScheme: "dark" }}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Starts</div>
               <select
                 value={startTime}
                 onChange={(e) => {
@@ -262,7 +309,7 @@ export function ClassForm({
                   }
                 }}
                 aria-label="Starts"
-                style={{ ...inputStyle, flex: 1, appearance: "none", cursor: "pointer" }}
+                style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
               >
                 {TIMES.slice(0, -1).map((t) => (
                   <option key={t} value={t}>
@@ -270,11 +317,14 @@ export function ClassForm({
                   </option>
                 ))}
               </select>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Ends</div>
               <select
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 aria-label="Ends"
-                style={{ ...inputStyle, flex: 1, appearance: "none", cursor: "pointer" }}
+                style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
               >
                 {TIMES.filter((t) => t > startTime).map((t) => (
                   <option key={t} value={t}>
@@ -282,6 +332,7 @@ export function ClassForm({
                   </option>
                 ))}
               </select>
+              </div>
             </div>
 
             <div style={labelStyle}>2 · DANCE STYLE</div>
@@ -308,16 +359,17 @@ export function ClassForm({
 
             <div style={labelStyle}>3 · LEVEL</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {DOS_LEVELS.map(([code, word, emoji]) => (
+              {DOS_LEVELS.map(([code, word]) => (
                 <span
                   key={code}
                   role="button"
                   tabIndex={0}
+                  aria-pressed={level === code}
                   onClick={() => setLevel(code)}
                   onKeyDown={dosKey}
-                  style={chipStyle(level === code)}
+                  style={{ ...chipStyle(level === code), display: "inline-flex", alignItems: "center", gap: 7 }}
                 >
-                  {emoji} {word}
+                  <LevelGlyph code={code} /> {word}
                 </span>
               ))}
             </div>
@@ -724,27 +776,47 @@ export function ClassForm({
           <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, marginTop: 14 }}>{state.error}</div>
         )}
 
-        {/* the footer is the step's own: nothing publishes from the first half */}
-        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+        {/* BEFORE THIS CAN GO ON DISCOVER (15551-15563): every reason it cannot go
+            live, named by the field that answers it — recomputed as you type */}
+        {step === STEPS.length - 1 && !isEdit && blockers.length > 0 ? (
+          <div style={{ background: "rgba(248,113,113,.10)", border: "1px solid rgba(248,113,113,.35)", borderRadius: 14, padding: "12px 13px", margin: "16px 0 4px" }}>
+            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, color: "#F87171", marginBottom: 7 }}>BEFORE THIS CAN GO ON DISCOVER</div>
+            {blockers.map((bl, i) => (
+              <div key={bl} style={{ display: "flex", gap: 8, marginTop: i ? 6 : 0 }}>
+                <span aria-hidden="true" style={{ flexShrink: 0, color: "#F87171", fontWeight: 900, fontSize: 12 }}>·</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: SUB, lineHeight: 1.45 }}>{bl}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {/* the sticky action bar, gesture-inset aware (15568-15582): the footer is the
+            step's own — nothing publishes from the first half */}
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 310, boxSizing: "border-box", background: "var(--solid)", borderTop: `1px solid ${EL}`, padding: "12px 16px calc(14px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
           {step === 0 ? (
+            /* the button NAMES the missing answer rather than greying out (15573-15578) */
             <button
               type="button"
-              onClick={() => setStep(1)}
-              disabled={!basicsOk}
+              aria-disabled={Boolean(stepOneErr)}
+              onClick={() => {
+                if (stepOneErr) return fire(stepOneErr);
+                setStep(1);
+              }}
               style={{
                 flex: 1,
-                padding: "13px",
+                padding: "14px",
                 borderRadius: 999,
                 border: "none",
-                background: basicsOk ? INK : EL,
-                color: basicsOk ? LILAC : "#707070",
-                fontWeight: 900,
-                fontSize: 13.5,
-                cursor: basicsOk ? "pointer" : "default",
+                background: stepOneErr ? EL : INK,
+                color: stepOneErr ? "var(--muted)" : LILAC,
+                fontWeight: 700,
+                fontSize: stepOneErr ? 13.5 : 15,
+                cursor: "pointer",
                 fontFamily: "inherit",
+                transition: "all .18s",
               }}
             >
-              Next · people &amp; price
+              {stepOneErr ?? "Continue"}
             </button>
           ) : (
             <>
@@ -788,44 +860,50 @@ export function ClassForm({
               ) : (
                 <>
                   <button
-                    type="submit"
-                    name="status"
-                    value="draft"
+                    type="button"
                     disabled={!ok || isPending}
+                    onClick={() => {
+                      setSubmitStatus("draft");
+                      setConfirm("draft");
+                    }}
                     style={{
                       flex: 1,
-                      padding: "13px",
-                      borderRadius: 999,
-                      border: `1.5px solid ${EL}`,
-                      background: "transparent",
-                      color: ok ? INK : "#707070",
-                      fontWeight: 800,
-                      fontSize: 13.5,
-                      cursor: ok ? "pointer" : "default",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    Save as draft
-                  </button>
-                  <button
-                    type="submit"
-                    name="status"
-                    value="published"
-                    disabled={!ok || isPending}
-                    style={{
-                      flex: 1.3,
-                      padding: "13px",
+                      padding: "14px",
                       borderRadius: 999,
                       border: "none",
-                      background: ok ? INK : EL,
-                      color: ok ? LILAC : "#707070",
-                      fontWeight: 900,
-                      fontSize: 13.5,
+                      background: CARD,
+                      color: ok ? INK : "var(--muted)",
+                      fontWeight: 700,
+                      fontSize: 14,
                       cursor: ok ? "pointer" : "default",
                       fontFamily: "inherit",
                     }}
                   >
-                    {isPending ? "Working…" : "Publish"}
+                    Save draft
+                  </button>
+                  <button
+                    type="button"
+                    aria-disabled={!canPublish}
+                    disabled={isPending}
+                    onClick={() => {
+                      if (!canPublish) return fire(blockers[0] ?? "Finish the session first");
+                      setSubmitStatus("published");
+                      setConfirm("publish");
+                    }}
+                    style={{
+                      flex: 1.4,
+                      padding: "14px",
+                      borderRadius: 999,
+                      border: "none",
+                      background: canPublish ? INK : EL,
+                      color: canPublish ? LILAC : "var(--muted)",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      cursor: canPublish ? "pointer" : "default",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {isPending ? "Working…" : "Publish class"}
                   </button>
                 </>
               )}
@@ -833,6 +911,63 @@ export function ClassForm({
           )}
         </div>
       </form>
+
+      {confirm && !isEdit ? (
+        <div onClick={() => setConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600 }}>
+          <div role="dialog" aria-modal="true" aria-label={confirm === "publish" ? "Publish this class?" : "Save as draft?"} onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "18px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: INK, animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 14px" }} />
+            <b style={{ fontSize: 17 }}>{confirm === "publish" ? "Publish this class?" : "Save as draft?"}</b>
+            <div style={{ fontSize: 12, color: SUB, margin: "3px 0 14px" }}>{confirm === "publish" ? "It'll be added to your calendar and go live on Discover." : "Only you can see drafts — edit anytime from the register's Drafts tab."}</div>
+            {/* the calendar-style card (15595-15617) */}
+            {(() => {
+              const styleColor = dosStyleColor(style);
+              const artistName = team.find((t) => t.userId === artistUserId)?.name ?? null;
+              return (
+                <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1px solid ${EL}` }}>
+                  <div style={{ background: `${styleColor}40`, padding: "9px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 800 }}>🕒 {startTime}–{endTime} · {date}</span>
+                  </div>
+                  <div style={{ background: `${styleColor}22`, padding: "9px 10px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 9, background: CARD, border: `1px solid ${styleColor}55`, borderRadius: 999, padding: "4px 14px 4px 5px" }}>
+                      <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 6, background: styleColor, display: "inline-block" }} />
+                      <span style={{ fontSize: 15, fontWeight: 800, color: styleColor }}>{style}</span>
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
+                  </div>
+                  <div style={{ padding: "10px 12px" }}>
+                    <div style={{ fontSize: 12, color: SUB }}>
+                      👤 {artistName ?? "Not assigned yet"}
+                      {!artistName ? <span style={{ color: "var(--muted)" }}>{" · nobody assigned yet"}</span> : null}
+                    </div>
+                    <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>● {room?.name ?? "—"} · cap {capacity}</div>
+                    {studioPlace ? <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>📍 {studioPlace}</div> : null}
+                    <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: priceInr === 0 ? "#22C55E" : INK }}>{priceInr === 0 ? "FREE" : `₹${priceInr}/session`}</div>
+                    {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ Refund until 48 h before start</div> : null}
+                  </div>
+                </div>
+              );
+            })()}
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: INK }}>
+                Keep editing
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setConfirm(null);
+                  formRef.current?.requestSubmit();
+                }}
+                style={{ flex: 1.4, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
+              >
+                {confirm === "publish" ? "Publish it" : "Save draft"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {toast ? <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650, boxShadow: "0 6px 24px rgba(0,0,0,.45)" }}>{toast}</div> : null}
     </div>
   );
 }

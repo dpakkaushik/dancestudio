@@ -30,7 +30,7 @@ interface ClassRow {
 }
 
 interface PublicClassRow extends ClassRow {
-  tenants: { name: string; area: string | null; city: string | null } | null;
+  tenants: { name: string; area: string | null; city: string | null; type?: "studio" | "trainer_business" } | null;
 }
 
 const CLASS_COLUMNS =
@@ -172,7 +172,7 @@ export async function findPublishedClasses(
 ): Promise<PublicClassListing[]> {
   const { data, error } = await supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, tenants (name, area, city)`)
+    .select(`${CLASS_COLUMNS}, tenants (name, area, city, type)`)
     .eq("status", "published")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -184,6 +184,7 @@ export async function findPublishedClasses(
   return (data as unknown as PublicClassRow[]).map((row) => ({
     ...toClass(row),
     tenantName: row.tenants?.name ?? "",
+    tenantType: row.tenants?.type ?? "studio",
     tenantArea: row.tenants?.area ?? null,
     tenantCity: row.tenants?.city ?? null,
   }));
@@ -198,7 +199,7 @@ export async function findClassBySlug(
 ): Promise<PublicClassListing | null> {
   const { data, error } = await supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, tenants (name, area, city)`)
+    .select(`${CLASS_COLUMNS}, tenants (name, area, city, type)`)
     .eq("share_slug", slug)
     .is("deleted_at", null)
     .maybeSingle();
@@ -213,6 +214,7 @@ export async function findClassBySlug(
   return {
     ...toClass(row),
     tenantName: row.tenants?.name ?? "",
+    tenantType: row.tenants?.type ?? "studio",
     tenantArea: row.tenants?.area ?? null,
     tenantCity: row.tenants?.city ?? null,
   };

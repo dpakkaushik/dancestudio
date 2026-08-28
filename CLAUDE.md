@@ -1,4 +1,4 @@
-# CLAUDE.md — DanceOS
+**fixed** (was already Discover) 
 
 ## What this repo is
 

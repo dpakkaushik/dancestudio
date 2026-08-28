@@ -8,6 +8,9 @@ export interface RegisterRow {
   enrollmentId: string;
   learnerName: string;
   checkedIn: boolean;
+  /** the learner — the row opens their page */
+  userId: string;
+  avatarPath: string | null;
 }
 
 export interface WaitlistRow {
@@ -23,8 +26,9 @@ export interface ClassRegister {
 
 interface RegisterQueryRow {
   id: string;
+  user_id: string;
   status: "enrolled" | "waitlisted";
-  profiles: { full_name: string } | null;
+  profiles: { full_name: string; avatar_path?: string | null } | null;
   attendance: Array<{ id: string; deleted_at: string | null }>;
 }
 
@@ -34,7 +38,7 @@ export async function findClassRegister(
 ): Promise<ClassRegister> {
   const { data, error } = await supabase
     .from("enrollments")
-    .select("id, status, profiles (full_name), attendance (id, deleted_at)")
+    .select("id, user_id, status, profiles (full_name, avatar_path), attendance (id, deleted_at)")
     .eq("class_id", classId)
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
@@ -50,6 +54,8 @@ export async function findClassRegister(
       enrollmentId: r.id,
       learnerName: r.profiles?.full_name ?? "Learner",
       checkedIn: r.attendance.some((a) => a.deleted_at === null),
+      userId: r.user_id,
+      avatarPath: r.profiles?.avatar_path ?? null,
     }));
   const waitlist = all
     .filter((r) => r.status === "waitlisted")

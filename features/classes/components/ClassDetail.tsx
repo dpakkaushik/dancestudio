@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -10,6 +11,7 @@ import {
   undoCheckInAction,
 } from "@/features/attendance/server-actions/attendance";
 import { respondToClaimAction } from "@/features/claims/server-actions/claims";
+import { setClassPosterAction } from "@/features/classes/server-actions/classes";
 import {
   cancelEnrollmentAction,
   enrollAction,
@@ -23,6 +25,7 @@ import { RefundSheet } from "@/features/payments/components/RefundSheet";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
+import { photoUrl } from "@/lib/media/photo";
 import type { ClassRegister } from "@/repositories/attendance";
 import type { ClassClaim } from "@/types/claim";
 import type { PublicClassListing } from "@/types/class";
@@ -30,7 +33,7 @@ import type { EnrollmentStatus } from "@/types/enrollment";
 import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
 import { PassSheet } from "./PassSheet";
-import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "./poster";
+import { DOS_POSTERS, DOS_SLEEVE, DosPosterSleeve, PosterBlock, dosPosterAuto, useDosFold } from "./poster";
 import { dosKey } from "./ShareSheet";
 
 /** The class detail page, lifted from prototype S_class (DanceOSApp.jsx:11626-12807).
@@ -153,6 +156,9 @@ export interface ClassDetailProps {
   classMoney?: ClassMoney | null;
   /** What the room has in it — read off the room the class runs in. */
   roomAmenities: string[];
+  /** on a priced class, the learners whose seat is paid — the register row's
+   *  meta line (12126); empty for a free class and for anyone not running it */
+  paidUserIds?: string[];
 }
 
 export function ClassDetail({
@@ -172,6 +178,7 @@ export function ClassDetail({
   refunds = [],
   canSettleRefunds = false,
   classMoney = null,
+  paidUserIds = [],
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -207,6 +214,23 @@ export function ClassDetail({
   const assistants = claims.filter((cl) => cl.kind === "assistant" && cl.status === "confirmed");
   const pendingAsks = isMember ? claims.filter((cl) => cl.status === "asked") : [];
   const posterItem = { title: c.title, style: c.style, styleColor: col };
+  /* the team's own reading of the page (11822): a confirmed assistant who does not
+     RUN the class sees what is theirs to do, and the register / refunds tabs say so */
+  const assisting = !canManage && myClaim?.status === "confirmed" && myClaim.kind === "assistant";
+  const canAtt = assisting && Boolean(myClaim?.canAttendance);
+  const canRef = assisting && Boolean(myClaim?.canRefunds);
+  const paidSet = new Set(paidUserIds);
+  const [posterOpen, setPosterOpen] = useState(false);
+  const [posterBusy, setPosterBusy] = useState(false);
+  const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
+  const setPoster = async (poster: "bold" | "split" | "quiet" | "none", said: string) => {
+    if (posterBusy) return;
+    setPosterBusy(true);
+    const out = await setClassPosterAction({ classId: c.id, tenantId: c.tenantId, poster });
+    setPosterBusy(false);
+    fire(out.error ?? said);
+    if (!out.error) router.refresh();
+  };
   const levelWord = DOS_LEVEL_LABEL[c.level] ?? c.level;
   const done = c.status === "completed";
   const isDraft = c.status === "draft";
@@ -306,42 +330,58 @@ export function ClassDetail({
         col={col}
         heroGone={heroGone}
         onOpen={!isDraft ? () => setPassOpen(true) : undefined}
-      />
-
-      {/* ── A STATUS IS NOT A BUTTON: a finished class says so once, at the top (11816-11843) ── */}
-      {done && (
-        <div style={{ padding: "14px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 11,
-              padding: "12px 14px",
-              borderRadius: 16,
-              background: "var(--card)",
-              border: "1px solid var(--el)",
+      >
+        {canManage && !done ? (
+          <button
+            type="button"
+            aria-label="Change the poster"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPosterOpen(true);
             }}
+            style={{ position: "absolute", right: 6, top: 6, padding: "4px 9px", borderRadius: 999, cursor: "pointer", background: "rgba(0,0,0,.6)", color: "#fff", fontSize: 9, fontWeight: 800, border: "none", fontFamily: "inherit" }}
           >
-            <span
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "var(--el)",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" strokeWidth="2.4" strokeLinecap="round">
-                <path d="m5 12.5 4.5 4.5L19 7.5" />
-              </svg>
+            Poster
+          </button>
+        ) : null}
+      </DosPosterSleeve>
+
+      {/* ── A STATUS IS NOT A BUTTON: a finished class — or the fact that you are on
+          its team — is said once, at the top, with the rest of what this session is
+          (11816-11843). The one action that was on the old bar came with it: a
+          finished class of your own is where you go looking for what still has to
+          be paid back. ── */}
+      {(done || assisting) && (
+        <div style={{ padding: "14px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16, background: "var(--card)", border: `1px solid ${done ? "var(--el)" : col + "55"}` }}>
+            <span style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, background: done ? "var(--el)" : `${col}22` }}>
+              {done ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" strokeWidth="2.4" strokeLinecap="round">
+                  <path d="m5 12.5 4.5 4.5L19 7.5" />
+                </svg>
+              ) : (
+                "🤝"
+              )}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 900 }}>Class completed</div>
-              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>This session is over.</div>
+              <div style={{ fontSize: 12.5, fontWeight: 900 }}>{done ? "Class completed" : "You're assisting on this class"}</div>
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
+                {done
+                  ? `${when ? `${when.weekday} ${when.day} ${when.month}` : "This session is over"} · final register below`
+                  : canAtt && canRef
+                    ? "You manage attendance and refunds."
+                    : canAtt
+                      ? "You manage attendance."
+                      : canRef
+                        ? "You manage refunds."
+                        : `Assisting ${artist?.personName ?? "the artist"} — no admin tools on this one.`}
+              </div>
             </div>
+            {done && canSettleRefunds ? (
+              <button type="button" aria-label="Open refunds for this class" onClick={() => setOwnerSeg("ref")} style={{ fontSize: 10.5, fontWeight: 800, color: col, cursor: "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}>
+                Refunds ›
+              </button>
+            ) : null}
           </div>
         </div>
       )}
@@ -445,54 +485,20 @@ export function ClassDetail({
               )}
             </div>
 
-            {/* the artist column — who is taking it, beside when it runs. Only a
-                CONFIRMED claim is ever printed here (prototype 11900+). */}
+            {/* the artist column — who is taking it, beside when it runs (11900-11920).
+                Only a CONFIRMED claim is ever printed here; the face is a door to them. */}
             {artist && (
-              <div
-                style={{
-                  width: 62,
-                  flexShrink: 0,
-                  boxSizing: "border-box",
-                  padding: "11px 4px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 5,
-                  borderLeft: `1px solid ${col}33`,
-                }}
-              >
-                <span
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 15,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 10.5,
-                    fontWeight: 900,
-                    color: "#fff",
-                    background: `linear-gradient(135deg,${col},#7C3AED)`,
-                  }}
+              <div style={{ position: "relative", width: 96, flexShrink: 0, boxSizing: "border-box", padding: "11px 6px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, background: ground }}>
+                <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: weave, opacity: 0.5 }} />
+                <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 8, bottom: 8, borderRight: `1.5px dashed ${col}80` }} />
+                <Link
+                  href={`/person/${artist.userId}`}
+                  aria-label={`Open ${artist.personName}`}
+                  style={{ position: "relative", width: 62, height: 62, borderRadius: 17, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(150deg,#2E86DE,#3498DB)", color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY, textDecoration: "none", boxShadow: `0 4px 14px -3px rgba(0,0,0,.55), 0 0 0 2px ${col}44` }}
                 >
-                  {artist.personName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
-                </span>
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 800,
-                    color: "var(--sub)",
-                    textAlign: "center",
-                    lineHeight: 1.2,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    maxWidth: 54,
-                  }}
-                >
-                  {artist.personName.split(" ")[0]}
-                </span>
+                  {photoUrl(artist.avatarPath) ? <Image src={photoUrl(artist.avatarPath)!} alt="" width={62} height={62} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(artist.personName)}
+                </Link>
+                <span style={{ position: "relative", width: "100%", fontSize: 10.5, fontWeight: 800, lineHeight: 1.2, height: 25, color: "var(--text)", textAlign: "center", display: "block", overflow: "hidden" }}>{artist.personName}</span>
               </div>
             )}
 
@@ -559,6 +565,13 @@ export function ClassDetail({
               >
                 {[levelWord, "CLASS"].join(" · ")}
               </div>
+              {canManage && !done ? (
+                <div style={{ display: "flex", alignItems: "center", marginTop: 4, minWidth: 0 }}>
+                  <Link href={`/business/${c.tenantId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: col, padding: "2px 7px", borderRadius: 999, border: `1px solid ${col}66`, textDecoration: "none" }}>
+                    Change
+                  </Link>
+                </div>
+              ) : null}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px 8px", borderTop: `1px solid ${col}33` }}>
@@ -615,6 +628,7 @@ export function ClassDetail({
         {/* ── Details / Attendance belongs to the card, not the page under it
             (prototype 11961-11970) ── */}
         {ownerTabs && (
+          <>
           <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginTop: 8 }}>
             {(
               [
@@ -656,6 +670,30 @@ export function ClassDetail({
               </div>
             ))}
           </div>
+          {/* the count travels with the switch (11974-11991): scroll into a register
+              forty names long and the tabs still say how many of them are in the room */}
+          {(() => {
+            const openRefunds = refunds.filter((r) => r.status === "requested");
+            const owed = openRefunds.reduce((a, r) => a + (r.amountInr ?? 0), 0);
+            const line =
+              ownerSeg === "att"
+                ? `${checkedInCount} of ${c.capacity} in the room · ${sessionPhase === "live" ? "session running" : sessionPhase === "ended" ? "session over" : "not started yet"}`
+                : ownerSeg === "ref"
+                  ? openRefunds.length
+                    ? `${openRefunds.length} to settle · ₹${owed.toLocaleString("en-IN")} owed`
+                    : "Nothing to settle"
+                  : ownerSeg === "money"
+                    ? `${filled} of ${c.capacity} booked · ${price}`
+                    : `${filled} of ${c.capacity} booked · ${c.style} · ${levelWord}`;
+            const dot = ownerSeg === "att" && sessionPhase === "live" ? "#22C55E" : ownerSeg === "ref" && openRefunds.length ? "#F59E0B" : col;
+            return (
+              <div aria-live="polite" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 10, fontWeight: 700, color: "var(--muted)", minWidth: 0 }}>
+                <span style={{ flexShrink: 0, width: 5, height: 5, borderRadius: 3, background: dot }} />
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{line}</span>
+              </div>
+            );
+          })()}
+          </>
         )}
       </div>
 
@@ -755,7 +793,7 @@ export function ClassDetail({
                 {bookingCodeOf(mine.id)}
               </span>
             </div>
-            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>See it on Home and My classes.</div>
+            <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>Tap the poster above for your code.</div>
             {/* one bordered pill, two segments, a hairline between */}
             <div
               style={{
@@ -852,10 +890,88 @@ export function ClassDetail({
 
         {showDetails && (
           <>
+        {/* ── HOW IT WENT, NOT WHAT IT TOOK (12166-12188): two bars, for whoever holds
+            the register — the eye gets the answer before it reads the numbers ── */}
+        {done && register && showDetails && (() => {
+          const present = register.rows.filter((r) => r.checkedIn);
+          const rows: Array<[string, number, number, string]> = [
+            ["Attended", present.length, register.rows.length, register.rows.length && (100 * present.length) / register.rows.length >= 75 ? "#22C55E" : "#F59E0B"],
+            ["Seats filled", filled, c.capacity, col],
+          ];
+          return (
+            <Sec
+              col={col}
+              label="CLASS COMPLETED · FINAL METRICS"
+              icon={
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="8.5" />
+                  <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+                </svg>
+              }
+            >
+              {rows.map(([l, now, max, tone]) => {
+                const p = max ? Math.min(100, Math.round((100 * now) / max)) : 0;
+                return (
+                  <div key={l} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 5 }}>
+                      <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, color: "var(--muted)", textTransform: "uppercase" }}>{l}</span>
+                      <span style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 900, fontFamily: DOS_MONO }}>
+                        {now}
+                        <span style={{ color: "var(--muted)", fontWeight: 700 }}> / {max}</span>
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: tone }}>{p}%</span>
+                    </div>
+                    <div style={{ height: 7, borderRadius: 4, background: "var(--el)", overflow: "hidden" }}>
+                      <div style={{ height: 7, borderRadius: 4, width: `${p}%`, background: tone }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 9, lineHeight: 1.5 }}>
+                This class is finished. Nothing on it can be changed now — the register is final on the Attendance tab{canSettleRefunds ? " and any refunds still open are on the Refunds tab" : ""}.
+              </div>
+            </Sec>
+          );
+        })()}
+        {done && register && ownerTabs && ownerSeg === "att" && (() => {
+          const present = register.rows.filter((r) => r.checkedIn);
+          const absent = register.rows.filter((r) => !r.checkedIn);
+          const chip = (r: (typeof register.rows)[number], on: boolean) => (
+            <Link key={r.enrollmentId} href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--el)", borderRadius: 999, padding: "3px 11px 3px 3px", color: on ? "var(--text)" : "var(--sub)", textDecoration: "none", opacity: on ? 1 : 0.6 }}>
+              <span style={{ width: 22, height: 22, borderRadius: 7, overflow: "hidden", background: on ? "linear-gradient(135deg,#22C55E,#0D9488)" : "var(--card)", border: on ? "none" : "1px solid var(--el)", display: "flex", alignItems: "center", justifyContent: "center", color: on ? "#fff" : "var(--sub)", fontSize: 8.5, fontWeight: 900 }}>
+                {photoUrl(r.avatarPath) ? <Image src={photoUrl(r.avatarPath)!} alt="" width={22} height={22} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(r.learnerName)}
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 800 }}>{r.learnerName}</span>
+            </Link>
+          );
+          return (
+            <Sec
+              col={col}
+              label={`WHO ATTENDED · ${present.length} OF ${register.rows.length}`}
+              icon={
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="8.5" r="3" />
+                  <path d="M3.5 19c.6-2.9 2.8-4.5 5.5-4.5S13.9 16.1 14.5 19" />
+                  <path d="m16 9.5 1.8 1.8 3.2-3.6" />
+                </svg>
+              }
+            >
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginBottom: 9, lineHeight: 1.5 }}>The final register, as it stood when the class ended. It cannot be edited.</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{present.map((r) => chip(r, true))}</div>
+              {absent.length > 0 ? (
+                <>
+                  <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)", margin: "9px 0 5px" }}>NO-SHOW · {absent.length}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{absent.map((r) => chip(r, false))}</div>
+                </>
+              ) : null}
+            </Sec>
+          );
+        })()}
+
         {/* ── AT THE STUDIO — one place says where, and says it properly (12273-12320) ── */}
         <Sec
           col={col}
-          label="AT THE STUDIO"
+          label={c.tenantName ? "AT THE STUDIO" : `THE ROOM · ${(c.room ?? "").toUpperCase()}`}
           icon={
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 3.5h9a1.5 1.5 0 0 1 1.5 1.5v15H6z" />
@@ -874,7 +990,7 @@ export function ClassDetail({
               borderBottom: "1px solid var(--el)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+            <Link href={`/${c.tenantType === "studio" ? "studio" : "artist"}/${c.tenantId}`} aria-label={`Open ${c.tenantName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
               <div
                 style={{
                   width: 34,
@@ -911,7 +1027,7 @@ export function ClassDetail({
                   {whereBits}
                 </div>
               </div>
-            </div>
+            </Link>
             <a
               href={`https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`}
               target="_blank"
@@ -964,63 +1080,65 @@ export function ClassDetail({
           </div>
         </Sec>
 
-        {/* ── THE CLASS TEAM — an assistant is a person with a job (81-91).
-            Confirmed names only; the asks show to the studio's own people. ── */}
-        {(assistants.length > 0 || pendingAsks.length > 0) && (
+        {/* ── THE CLASS TEAM (12356-12391) — an assistant is a person with a job
+            (81-91). Who is on the floor with the artist; the right-hand word is the
+            whole permission model made visible: "Edit ›" only where you may change
+            it, "View ›" everywhere else. Confirmed names only reach a stranger; the
+            studio's own people see the asks too. ── */}
+        {(!isDraft || canManage) && (
           <Sec
             col={col}
             label="CLASS ASSISTANTS"
             icon={
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="10" cy="8" r="3.4" />
-                <path d="M3.8 19.5c.8-3.3 3.2-5 6.2-5 1 0 2 .2 2.9.6" />
-                <path d="M16 11.5a2.6 2.6 0 1 0 0-5.2M17.5 19.5c-.3-1.6-1-2.9-2-3.8" />
+                <circle cx="9" cy="8.5" r="3" />
+                <path d="M3.5 19c.6-2.9 2.8-4.5 5.5-4.5S13.9 16.1 14.5 19" />
+                <circle cx="17" cy="9.5" r="2.4" />
+                <path d="M15.5 14.6c2.5.2 4.3 1.6 5 4.4" />
               </svg>
             }
           >
-            {[...assistants, ...pendingAsks].map((cl) => (
-              <div
-                key={cl.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "7px 0",
-                  borderBottom: "1px solid var(--el)",
-                }}
-              >
-                <span
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 10,
-                    fontWeight: 900,
-                    background: "var(--el)",
-                    color: "var(--sub)",
-                  }}
-                >
-                  {cl.personName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800 }}>{cl.personName}</div>
-                  <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 1 }}>
-                    {cl.kind === "artist"
-                      ? "Taking the class"
-                      : [cl.canAttendance ? "attendance" : null, cl.canRefunds ? "refunds" : null]
-                          .filter(Boolean)
-                          .join(" and ") || "assisting"}
-                  </div>
+            {[...assistants, ...pendingAsks].map((cl) => {
+              const job = cl.kind === "artist" ? "TAKING THE CLASS" : [cl.canAttendance ? "Attendance" : null, cl.canRefunds ? "Refunds" : null].filter(Boolean).join(" · ") || "Assisting";
+              const face = photoUrl(cl.avatarPath);
+              return (
+                <div key={cl.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0" }}>
+                  <Link href={`/person/${cl.userId}`} aria-label={`Open ${cl.personName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 11, overflow: "hidden", background: `linear-gradient(135deg,${col},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>
+                      {face ? <Image src={face} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(cl.personName)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {cl.personName}
+                        {myClaim && cl.id === myClaim.id ? <span style={{ color: "var(--muted)", fontWeight: 700 }}>{"  you"}</span> : null}
+                      </div>
+                      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.5, color: cl.status === "confirmed" ? "var(--muted)" : GOLD, textTransform: "uppercase" }}>
+                        {cl.status === "confirmed" ? job : "⏳ Asked"}
+                      </div>
+                    </div>
+                  </Link>
+                  <Link href={canManage ? `/business/${c.tenantId}/classes/${c.id}/edit` : `/person/${cl.userId}`} aria-label={canManage ? `Edit ${cl.personName}'s job` : `View ${cl.personName}`} style={{ fontSize: 10.5, fontWeight: 800, color: col, flexShrink: 0, textDecoration: "none" }}>
+                    {canManage ? "Edit ›" : "View ›"}
+                  </Link>
                 </div>
-                {cl.status !== "confirmed" && (
-                  <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: GOLD }}>⏳ Asked</span>
-                )}
+              );
+            })}
+            {assistants.length === 0 && pendingAsks.length === 0 && !canManage ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
+            {canManage ? (
+              <Link href={`/business/${c.tenantId}/classes/${c.id}/edit`} aria-label="Add someone to the team" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0 3px", color: col, textDecoration: "none" }}>
+                <div style={{ width: 34, height: 34, borderRadius: 11, border: "1.5px dashed var(--el)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M12 5.5v13M5.5 12h13" />
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800 }}>Add someone to the team</div>
+              </Link>
+            ) : null}
+            {assisting ? (
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--el)" }}>
+                You are assisting on this class{canAtt || canRef ? ` — you hold ${[canAtt ? "attendance" : null, canRef ? "refunds" : null].filter(Boolean).join(" and ")}.` : "."}
               </div>
-            ))}
+            ) : null}
           </Sec>
         )}
 
@@ -1230,26 +1348,33 @@ export function ClassDetail({
                     borderBottom: i === register.rows.length - 1 ? "none" : "1px solid var(--el)",
                   }}
                 >
-                  <span
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 9,
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 10,
-                      fontWeight: 900,
-                      background: r.checkedIn ? `linear-gradient(135deg,${col},#7C3AED)` : "var(--el)",
-                      color: r.checkedIn ? "#fff" : "var(--sub)",
-                    }}
-                  >
-                    {r.learnerName.split(" ").map((x) => x[0]).join("").slice(0, 2)}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800 }}>{r.learnerName}</div>
-                  </div>
+                  <Link href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
+                    <span
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 9,
+                        flexShrink: 0,
+                        overflow: "hidden",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        fontWeight: 900,
+                        background: r.checkedIn ? `linear-gradient(135deg,${col},#7C3AED)` : "var(--el)",
+                        color: r.checkedIn ? "#fff" : "var(--sub)",
+                      }}
+                    >
+                      {photoUrl(r.avatarPath) ? <Image src={photoUrl(r.avatarPath)!} alt="" width={28} height={28} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(r.learnerName)}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800 }}>{r.learnerName}</div>
+                      {/* the payment meta (12126-12127): what the seat cost and whether it is in */}
+                      <div style={{ fontSize: 9.5, color: !isFree && !paidSet.has(r.userId) ? "#F59E0B" : "var(--sub)" }}>
+                        {isFree ? "free seat" : paidSet.has(r.userId) ? `paid · ${price}` : `${price} due`}
+                      </div>
+                    </div>
+                  </Link>
                   {sessionPhase === "ended" ? (
                     <span
                       style={{
@@ -1404,7 +1529,7 @@ export function ClassDetail({
                   role="button"
                   tabIndex={0}
                   onKeyDown={dosKey}
-                  onClick={() => fire("Already booked — it’s on your Home deck")}
+                  onClick={() => fire("Already booked — see it on your calendar")}
                   style={{
                     flex: 1,
                     display: "flex",
@@ -1534,8 +1659,8 @@ export function ClassDetail({
           posterItem={posterItem}
           posterK={posterK}
           col={col}
-          metaTop={`${c.style}${time ? ` · ${time}` : ""}`}
-          metaBottom={`${c.room ?? c.tenantName}${c.tenantCity ? `, ${c.tenantCity}` : ""}`}
+          metaTop={`${c.style} · ${levelWord}${time ? ` · ${time}` : ""}`}
+          metaBottom={`${c.room ?? c.tenantName}${c.tenantCity ? `, ${c.tenantCity}` : ""}${artist ? ` · ${artist.personName}` : ""}`}
           businessName={c.tenantName}
           classLabel={c.title}
           onClose={() => setFlowOpen(false)}
@@ -1544,6 +1669,43 @@ export function ClassDetail({
             fire(msg);
           }}
         />
+      )}
+      {posterOpen && (
+        <div onClick={() => setPosterOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 660 }}>
+          <div role="dialog" aria-modal="true" aria-label="Poster" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: "var(--text)", maxHeight: "82vh", overflowY: "auto", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
+            <b style={{ fontSize: 16, fontFamily: DOS_DISPLAY }}>Poster</b>
+            <div style={{ fontSize: 11, color: "var(--sub)", margin: "3px 0 12px" }}>Drawn from the class itself, so it always says the right date. Pick a design.</div>
+            {/* your own picture sits first in the prototype (12772-12781) — uploads are the posters slice */}
+            <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "0 0 8px" }}>A DRAWN ONE</div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+              {DOS_POSTERS.map(([k, l]) => (
+                <button
+                  type="button"
+                  key={k}
+                  aria-pressed={c.poster === k}
+                  aria-label={`Poster design ${l}`}
+                  disabled={posterBusy}
+                  onClick={() => void setPoster(k as "bold" | "split" | "quiet", `Poster set — ${l}`)}
+                  style={{ flex: 1, minWidth: 0, textAlign: "center", cursor: "pointer", padding: 6, borderRadius: 14, border: `1.5px solid ${c.poster === k ? col : "var(--el)"}`, background: c.poster === k ? "var(--el)" : "var(--card)", fontFamily: "inherit", color: "var(--text)" }}
+                >
+                  <PosterBlock item={posterItem} design={k} size={96} />
+                  <div style={{ fontSize: 10.5, fontWeight: 800, marginTop: 6 }}>{l}</div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {c.poster && c.poster !== "none" ? (
+                <button type="button" disabled={posterBusy} onClick={() => void setPoster("none", "Poster removed")} style={{ flex: 1, textAlign: "center", padding: 12, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", color: "var(--text)" }}>
+                  Remove
+                </button>
+              ) : null}
+              <button type="button" onClick={() => setPosterOpen(false)} style={{ flex: 1.4, textAlign: "center", padding: 12, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {invoiceOpen && mine && (
         <InvoiceSheet

@@ -2,12 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
-import type { PublicTenantProfile } from "@/types/publicProfile";
+
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { enquiryTypesFor } from "@/types/enquiry";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { photoUrl } from "@/lib/media/photo";
 import { FollowButton } from "./FollowButton";
+import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
+import type { PublicTenantProfileWithFaces } from "@/repositories/publicProfile";
+import { TYPE } from "./profile-kit";
 import { ProfileShare } from "./ProfileShare";
 
 /** A business's public page, lifted from prototype S_profiletab with
@@ -55,46 +58,9 @@ export const fmtFollowers = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)
 const joinedYear = (iso: string) =>
   new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(iso));
 
-const styleInitials = (label: string) => {
-  const w = label.replace(/[^A-Za-z0-9 -]/g, " ").trim().split(/[\s-]+/).filter(Boolean);
-  return ((w[0]?.[0] ?? "") + (w[1]?.[0] ?? "")).toUpperCase() || "•";
-};
 
-const toolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
 
-/** The style coin (prototype DosStyleCoin 3400): the style's two letters on its
- *  own colour, the size the row asks for. */
-function StyleCoin({ label, size }: { label: string; size: number }) {
-  const c = dosStyleColor(label);
-  return (
-    <span
-      title={label}
-      aria-label={label}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        flexShrink: 0,
-        boxSizing: "border-box",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#fff",
-        fontWeight: 900,
-        fontSize: Math.max(9, Math.round(size * 0.34)),
-        letterSpacing: 0.3,
-        fontFamily: DOS_DISPLAY,
-        lineHeight: 1,
-        background: toolPaint(c),
-        boxShadow: "0 1px 4px rgba(0,0,0,.35)",
-      }}
-    >
-      {styleInitials(label)}
-    </span>
-  );
-}
-
-const shelf: React.CSSProperties = { fontSize: 15, fontWeight: 900, letterSpacing: -0.3, fontFamily: DOS_DISPLAY };
+const shelf: React.CSSProperties = TYPE.shelf;
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
 
 export function PublicProfile({
@@ -107,7 +73,7 @@ export function PublicProfile({
   scheduleHref,
   manageHref,
 }: {
-  profile: PublicTenantProfile;
+  profile: PublicTenantProfileWithFaces;
   /** this page's own path — what the QR shares */
   path: string;
   following: boolean;
@@ -158,6 +124,7 @@ export function PublicProfile({
               style={{
                 width: SQ,
                 height: SQ,
+                position: "relative",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -172,6 +139,7 @@ export function PublicProfile({
               }}
             >
               {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(tenant.name)}
+              {canEditPhoto ? <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" overlay /> : null}
             </div>
           </div>
 
@@ -179,22 +147,7 @@ export function PublicProfile({
           <div style={{ padding: "10px 16px 2px" }}>
             <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{kind}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <span
-                style={{
-                  fontSize: 24,
-                  fontWeight: 900,
-                  fontFamily: DOS_DISPLAY,
-                  letterSpacing: -0.8,
-                  lineHeight: 1.08,
-                  color: INK,
-                  minWidth: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {tenant.name}
-              </span>
+              <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
               <ProfileShare path={path} name={tenant.name} />
             </div>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 15, fontWeight: 700, color: SUB }}>
@@ -236,12 +189,6 @@ export function PublicProfile({
                 </span>
                 <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
               </span>
-              <span aria-label={`${profile.upcomingSessions} upcoming sessions`}>
-                <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>
-                  {profile.upcomingSessions}
-                </span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Upcoming</span>
-              </span>
             </div>
           </div>
         </div>
@@ -250,11 +197,8 @@ export function PublicProfile({
         {profile.styles.length > 0 ? (
           <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 6px", alignItems: "center" }}>
             {profile.styles.map((s) => (
-              <StyleCoin key={s} label={s} size={34} />
+              <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — a style this business teaches`} />
             ))}
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: SUB, marginLeft: 4, whiteSpace: "nowrap" }}>
-              {profile.styles.join(" · ")}
-            </span>
           </div>
         ) : (
           <div style={{ fontSize: 12, color: MUTED, padding: "14px 0 6px" }}>No published classes yet.</div>
@@ -283,11 +227,7 @@ export function PublicProfile({
               You are on this team · Manage ›
             </Link>
           ) : null}
-          {canEditPhoto ? (
-            <div style={{ marginTop: 8 }}>
-              <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" />
-            </div>
-          ) : (
+          {isMember ? null : (
             /* the things you can do TO a business share one line (10883): follow
                it, and ask it something — Call waits for a number on record */
             <div style={{ display: "grid", gridTemplateColumns: enquiryTypesFor(tenant.type).length ? "1fr 1fr" : "1fr", gap: 6 }}>
@@ -343,14 +283,16 @@ export function PublicProfile({
             <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "2px 11px" }}>
               {profile.faculty.map((p) => {
                 const g = gradientOf(p.name);
+                const pface = photoUrl(p.avatarPath);
                 return (
-                  <div key={p.userId} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", minWidth: 0 }}>
+                  <Link key={p.userId} href={`/person/${p.userId}`} aria-label={`Open ${p.name}`} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", minWidth: 0, color: INK, textDecoration: "none" }}>
                     <span
                       style={{
                         width: 42,
                         height: 42,
                         flexShrink: 0,
                         borderRadius: 13,
+                        overflow: "hidden",
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -362,7 +304,7 @@ export function PublicProfile({
                         fontFamily: DOS_DISPLAY,
                       }}
                     >
-                      {initialsOf(p.name)}
+                      {pface ? <Image src={pface} alt="" width={42} height={42} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(p.name)}
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -372,7 +314,8 @@ export function PublicProfile({
                         {p.role} · {p.classCount} class{p.classCount === 1 ? "" : "es"}
                       </span>
                     </span>
-                  </div>
+                    <span aria-hidden="true" style={{ flexShrink: 0, color: LINE, fontSize: 15, fontWeight: 600 }}>›</span>
+                  </Link>
                 );
               })}
             </div>
