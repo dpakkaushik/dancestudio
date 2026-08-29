@@ -5,7 +5,7 @@ import { useState } from "react";
 import { saveEventAction } from "@/features/events/server-actions/events";
 import type { EventPayload } from "@/repositories/events";
 import { DOS_CITIES } from "@/lib/constants/cities";
-import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
+import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_UI } from "@/lib/design/tokens";
 import {
   EVENT_CATS,
@@ -283,15 +283,7 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
 
             {/* ONE STYLE, OR ALL OF THEM (15948) */}
             <Head n="3">DANCE STYLE</Head>
-            <select value={style} aria-label="Dance style" onChange={(ev) => setStyle(ev.target.value)} style={{ ...inp, WebkitAppearance: "none", appearance: "none", color: style ? "var(--text)" : "var(--sub)" }}>
-              <option value="">Pick the style, or open it to all</option>
-              <option value="All styles">All styles</option>
-              {DOS_STYLE_NAMES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <DosStylePicker value={style} onChange={setStyle} all placeholder="Pick the style, or open it to all" />
 
             <Head n="4">WHEN</Head>
             <div style={{ fontSize: 12, color: "var(--sub)", marginBottom: 4 }}>First day</div>

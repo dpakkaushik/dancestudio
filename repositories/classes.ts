@@ -379,3 +379,39 @@ export async function updateClassPoster(
     throw new Error("Class not found or not yours to edit");
   }
 }
+
+/** IS THE ROOM BUSY THEN? (parity audit F3 — the prototype's dosClash, 4023,
+ *  behind the confirm sheet's ROOM ALREADY BUSY panel, 15628-15632.) The same
+ *  question `assert_room_ok` asks in the database — a PUBLISHED class of this
+ *  room with a live session that overlaps — asked early, so the person reads
+ *  the answer in the confirm sheet instead of as a refusal after pressing
+ *  Publish. Members read their own tenant's classes and sessions (Step 3), so
+ *  this is a plain RLS-shaped read; the class being edited is left out, because
+ *  a class does not clash with itself. Drafts are not in any room yet (Step 11:
+ *  "a draft holds no room at all", 9729), so they never clash. */
+export async function findRoomClash(
+  supabase: SupabaseClient,
+  input: { tenantId: string; roomId: string; startsAt: string; endsAt: string; excludeClassId?: string | null }
+): Promise<{ title: string; startsAt: string } | null> {
+  let q = supabase
+    .from("class_sessions")
+    .select("starts_at, ends_at, class_id, classes!inner (id, title, room_id, status, deleted_at)")
+    .eq("tenant_id", input.tenantId)
+    .is("deleted_at", null)
+    .eq("classes.room_id", input.roomId)
+    .eq("classes.status", "published")
+    .is("classes.deleted_at", null)
+    .lt("starts_at", input.endsAt)
+    .gt("ends_at", input.startsAt)
+    .order("starts_at", { ascending: true })
+    .limit(2);
+  if (input.excludeClassId) {
+    q = q.neq("class_id", input.excludeClassId);
+  }
+  const { data, error } = await q;
+  if (error) {
+    throw new Error(`classes.roomClash failed: ${error.message}`);
+  }
+  const row = ((data ?? []) as unknown as Array<{ starts_at: string; classes: { title: string } | null }>)[0];
+  return row ? { title: row.classes?.title ?? "a session", startsAt: row.starts_at } : null;
+}

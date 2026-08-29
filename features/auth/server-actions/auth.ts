@@ -1,10 +1,11 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { OTP_VERIFY_TYPE, otpChannelPlan, type OtpChannel } from "@/lib/auth/otpChannel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
 import { createProfile, findProfileById } from "@/repositories/profiles";
 
 export interface AuthActionState {
@@ -178,4 +179,55 @@ export async function signOutAction(): Promise<void> {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+/** ONBOARDING'S FIRST STEP, WITHOUT THE REDIRECT (parity audit U2). The
+ *  prototype's onboarding is four screens — profile, styles, socials, take a
+ *  bow (3781-3943) — and the photo, the styles and the links are written onto
+ *  the profile ROW, so the row has to exist before the second screen can start
+ *  (set_my_avatar and update_my_profile both say "finish onboarding first" to a
+ *  person with no row). This creates the row and hands back; the client goes
+ *  on to the next screen, and "Open DanceOS →" is what finally leaves.
+ *  `completeProfileAction` stays for anything that still wants the one-step
+ *  version. */
+export async function saveProfileBasicsAction(input: unknown): Promise<{ error: string | null; created: boolean }> {
+  const parsed = completeProfileSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input", created: false };
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Sign in first", created: false };
+  }
+  const existing = await findProfileById(supabase, user.id);
+  if (existing) {
+    return { error: null, created: false };
+  }
+  try {
+    await createProfile(supabase, {
+      id: user.id,
+      fullName: parsed.data.fullName,
+      role: parsed.data.role,
+      city: parsed.data.city ?? null,
+    });
+    /* WHY A COOKIE: every server action that revalidates a path makes the client
+       refetch the CURRENT route, and /onboarding used to redirect the moment a
+       profile row existed — so the photo landing (set_my_avatar revalidates
+       /profile) threw the person onto Home half-way through. The row now says
+       "there is a person"; this says "and they are still in the door". Cleared by
+       finishOnboardingAction; a day's expiry covers an abandoned flow. */
+    (await cookies()).set(ONBOARDING_COOKIE, "1", { path: "/", maxAge: 60 * 60 * 24, httpOnly: true, sameSite: "lax" });
+    return { error: null, created: true };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not save your profile", created: false };
+  }
+}
+
+/** "Open DanceOS →" (3940): the flow is over, the cookie goes, Home is next. */
+export async function finishOnboardingAction(): Promise<void> {
+  (await cookies()).delete(ONBOARDING_COOKIE);
+  redirect("/");
 }

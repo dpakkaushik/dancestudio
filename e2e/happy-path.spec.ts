@@ -48,8 +48,18 @@ async function signUp(page: Page, email: string): Promise<string> {
   return link.id;
 }
 
-/** Fill the onboarding screen (name → role tile → city) and submit. */
-async function onboard(page: Page, first: string, last: string, role: string | null, city: string) {
+/** a 1×1 PNG — the smallest thing the bucket will call a photo */
+const ONE_PX_PNG = {
+  name: "face.png",
+  mimeType: "image/png",
+  buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
+};
+
+/** Walk the prototype's four onboarding screens (3781-3943): the name, the role
+ *  tile and the city, Continue (the row is made and the photo picker appears —
+ *  the photo is REQUIRED, so Continue names it until one is up), the styles
+ *  grid, the socials (skipped), and "Open DanceOS →" off the Take-a-bow screen. */
+async function onboard(page: Page, first: string, last: string, role: string | null, city: string, style = "Hip-Hop") {
   await expect(page).toHaveURL(/\/onboarding/);
   await page.getByPlaceholder("First name").fill(first);
   await page.getByPlaceholder("Last name").fill(last);
@@ -59,6 +69,23 @@ async function onboard(page: Page, first: string, last: string, role: string | n
   await page.locator('input[name="city"]').fill(city);
   // the button reads "Continue" once the name is in (prototype 3820-3821)
   await page.getByRole("button", { name: "Continue" }).click();
+  // the row exists now, so the picker is offered — and the button says the photo is missing
+  await expect(page.getByRole("button", { name: "Add your profile photo" })).toBeVisible();
+  await expect(page.getByLabel("Add a photo")).toBeAttached();
+  await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+  await expect(page.getByLabel("Your profile photo")).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  // styles: the grid, one picked, and the button counts it
+  await expect(page.getByText("Your dance styles")).toBeVisible();
+  await page.getByRole("button", { name: style, exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 style" }).click();
+  // socials: optional now
+  await expect(page.getByText("Your social links")).toBeVisible();
+  await page.getByRole("button", { name: "Skip for now →" }).click();
+  // take a bow
+  await expect(page.getByText(`Take a bow, ${first}!`)).toBeVisible();
+  await expect(page.getByText(style, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
 
@@ -221,7 +248,10 @@ test.describe.serial("DanceOS, end to end", () => {
     // step 1 — basics: when, what, the name, and the room it runs in
     const inThreeDays = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await owner.getByLabel("Class date").fill(inThreeDays);
-    await owner.getByText("Bollywood", { exact: true }).click();
+    // the style is picked through the app's one picker (F4 / W2): open it, search, choose
+    await owner.getByLabel("Dance style", { exact: true }).click();
+    await owner.getByLabel("Search styles").fill("Bolly");
+    await owner.getByRole("button", { name: "Bollywood", exact: true }).click();
     await owner.getByLabel("Class name").fill(classTitle);
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
     // the button reads "Continue" once every answer on the step is given (15573-15578)
@@ -458,7 +488,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/events\/new$/);
     await owner.getByRole("button", { name: "Showcase", exact: true }).click();
     await owner.getByLabel("Event name").fill(eventTitle);
-    await owner.getByLabel("Dance style").selectOption("All styles");
+    await owner.getByLabel("Dance style", { exact: true }).click();
+    await owner.getByRole("button", { name: "All styles", exact: true }).click();
     inTwelveDays = new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await owner.getByLabel("First day").fill(inTwelveDays);
     await owner.getByLabel("Venue name").fill("E2E Hall");
@@ -523,7 +554,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("link", { name: "＋ Create crew" }).click();
     await learner.waitForURL(/\/crews\/new$/);
     await learner.getByLabel("Crew name").fill(crewName);
-    await learner.getByLabel("Dance style").selectOption("Hip-Hop");
+    await learner.getByLabel("Dance style", { exact: true }).click();
+    await learner.getByRole("button", { name: "Hip-Hop", exact: true }).click();
     await learner.getByRole("button", { name: "Add a member" }).click();
     await learner.getByLabel("Search DanceOS for a dancer").fill("E2E Trainer");
     await learner.getByRole("button", { name: "Add E2E Trainer to the crew" }).click();
@@ -565,7 +597,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/business/${tenantId}/events/new`);
     await owner.getByRole("button", { name: "Battle Tournament", exact: true }).click();
     await owner.getByLabel("Event name").fill(battleTitle);
-    await owner.getByLabel("Dance style").selectOption("All styles");
+    await owner.getByLabel("Dance style", { exact: true }).click();
+    await owner.getByRole("button", { name: "All styles", exact: true }).click();
     await owner.getByLabel("First day").fill(inTwelveDays);
     await owner.getByLabel("Venue name").fill("E2E Arena");
     await owner.getByLabel("City", { exact: true }).selectOption("Pune");
@@ -765,18 +798,17 @@ test.describe.serial("DanceOS, end to end", () => {
     // and the photo: the file goes from THIS browser straight to Storage with the
     // trainer's own session (the proof covers the rules; only a browser can cover
     // the upload), the row records the path, and the square stops being initials
-    await expect(trainer.locator("img")).toHaveCount(0);
-    // the control says "Add a photo" until there is one, and "Change your photo" after
-    await trainer.getByLabel("Add a photo").setInputFiles({
-      name: "face.png",
-      mimeType: "image/png",
-      buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
-    });
-    await expect(trainer.locator("img").first()).toBeVisible({ timeout: 20_000 });
+    // onboarding required a photo (U2), so the square is a face already —
+    // taking it down puts the initials back, and the control turns into "Add a photo"
+    await expect(trainer.locator("img").first()).toBeVisible();
     await expect(trainer.getByLabel("Change your photo")).toBeAttached();
-    // taking it down puts the initials back
     await trainer.getByRole("button", { name: "Remove the photo" }).click();
     await expect(trainer.locator("img")).toHaveCount(0);
+    // and a new one goes up from THIS browser straight to Storage with the trainer's
+    // own session (the proof covers the rules; only a browser can cover the upload)
+    await trainer.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+    await expect(trainer.locator("img").first()).toBeVisible({ timeout: 20_000 });
+    await expect(trainer.getByLabel("Change your photo")).toBeAttached();
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browserRef.newContext();
     try {
@@ -1110,6 +1142,55 @@ test.describe.serial("DanceOS, end to end", () => {
     } else {
       await expect(trainer.getByRole("link", { name: rankLink })).toHaveCount(0);
     }
+  });
+
+  test("the class form asks the room first: ROOM ALREADY BUSY, and what can honestly happen next", async () => {
+    // ---- parity slice 8: F3 (15628-15632) ----
+    // The story's class runs in Studio A. A second class in the same room at the
+    // same hour is asked about BEFORE the confirm sheet opens, and the sheet says
+    // so in the prototype's own words. One departure, stated on the sheet: the
+    // prototype offers to run both, and this database will not double-book a
+    // room (Step 11's trigger — the Rooms footnote's promise), so the honest
+    // second press keeps the class as a draft instead.
+    const [sess] = (await (
+      await fetch(`${supabaseUrl}/rest/v1/class_sessions?select=starts_at,ends_at,classes!inner(share_slug)&classes.share_slug=eq.${shareSlug}`, { headers: adminHeaders })
+    ).json()) as Array<{ starts_at: string; ends_at: string }>;
+    expect(sess).toBeTruthy();
+    const ist = (iso: string) => {
+      const d = new Date(iso);
+      const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+      const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
+      return { date, time };
+    };
+    const when = ist(sess.starts_at);
+
+    await owner.goto(`/business/${tenantId}/classes/new`);
+    await owner.getByLabel("Class date").fill(when.date);
+    // the PassDeck segment moved the story's class onto the clock (today, now), so
+    // its start may be a time the form's half-hour list does not offer — pick the
+    // slot that contains it
+    const slot = when.time.slice(0, 3) + (Number(when.time.slice(3)) >= 30 ? "30" : "00");
+    await owner.getByLabel("Starts").selectOption(slot);
+    await owner.getByLabel("Dance style", { exact: true }).click();
+    await owner.getByRole("button", { name: "Salsa", exact: true }).click();
+    await owner.getByLabel("Class name").fill(`E2E Clash ${stamp}`);
+    await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
+    await owner.getByRole("button", { name: "Continue" }).click();
+    await owner.getByLabel("Price per session").fill("0");
+    await owner.getByRole("button", { name: "Publish class" }).click();
+    const sheet = owner.getByRole("dialog", { name: "Publish this class?" });
+    await expect(sheet.getByText("ROOM ALREADY BUSY")).toBeVisible();
+    await expect(sheet.getByText(new RegExp(`Studio A already has ${classTitle} at`))).toBeVisible();
+    await expect(sheet.getByText(/a room is never double-booked/)).toBeVisible();
+    // the primary button no longer offers what the database would refuse
+    await expect(sheet.getByRole("button", { name: "Publish it" })).toHaveCount(0);
+    await sheet.getByRole("button", { name: "Save as draft instead" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
+    // the draft exists, and it is a DRAFT — not in any room, so it clashed with nothing
+    const rows = (await (
+      await fetch(`${supabaseUrl}/rest/v1/classes?tenant_id=eq.${tenantId}&title=eq.${encodeURIComponent(`E2E Clash ${stamp}`)}&select=status`, { headers: adminHeaders })
+    ).json()) as Array<{ status: string }>;
+    expect(rows.map((r) => r.status)).toEqual(["draft"]);
   });
 
 });

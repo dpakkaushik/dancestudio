@@ -29,6 +29,57 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Parity slice 8 landed 30 Aug 2026: the last three (a) rows — F3, F4/W2, U2.**
+  The audit's remaining open rows, and unlike slice 7's these were builds rather
+  than wiring. **F4 / W2 — one style picker.** `components/ui/DosStyleKit.tsx`
+  lifts the prototype's `DosStylePicker` (3548-3612) and `DosStyleCoin` (3400):
+  a closed row wearing the picked style's coin, opening onto a SEARCHABLE list
+  of the one registry, with "All styles" above it where a form allows one —
+  because "All is not a dance style, it is the absence of a restriction"
+  (3542-3547). It replaced three different controls that had drifted apart: the
+  class form's wall of 66 chips, and a native `<select>` on the crew and event
+  forms. **F3 — ROOM ALREADY BUSY.** `findRoomClash` asks the database the same
+  question `assert_room_ok` asks — a PUBLISHED class of this room whose live
+  session overlaps — but asks it BEFORE the confirm sheet opens, so the answer
+  is read in the sheet (15628-15632) rather than arriving as a refusal after
+  Publish. It is a read, scoped to the caller's own tenant, and **anything that
+  goes wrong answers "no clash"**: the database still refuses a real one, so a
+  failed early check can only lose the warning, never let a double-booking
+  through. One departure, stated on the sheet itself: the prototype offers
+  "confirm again to run both" and **this database will not run both** (Step 11
+  made it a trigger, because the prototype's own Rooms footnote promises it), so
+  the primary button stops offering a publish that would be refused and offers
+  the thing that can actually happen — "Save as draft instead", a draft being in
+  no room at all. **U2 — onboarding is four screens again** (3781-3943): the
+  profile (photo REQUIRED, the name, and this app's own role and city — U3), the
+  styles grid with its ↑↓ order, the socials, and **Take a bow** with its
+  confetti, its orbiting ring and the styles as pills. Every field it collects
+  already existed — the Profile slice added them — so there is no migration.
+  **Two findings, both real:** (1) the profile ROW has to exist before screen
+  two, because `set_my_avatar` and `update_my_profile` both refuse a person
+  with no row ("finish onboarding first") — so the first Continue creates it and
+  STAYS; but then `/onboarding`'s "a profile exists → go Home" guard fired the
+  moment the photo landed (every server action revalidates, the client refetches
+  the current route) and threw people onto Home mid-flow. A row now says "there
+  is a person"; the `dos_onboarding` cookie says "and they are still in the
+  door", and only "Open DanceOS →" clears it. The form also RESUMES from what
+  the row holds, so a reload mid-way loses the ceremony and nothing else.
+  (2) **The confirm sheet's own submit was broken by React batching** and the
+  e2e caught it: `setSubmitStatus("draft")` followed by `requestSubmit()` in
+  one handler submits the PREVIOUS render's value, so "Save as draft instead"
+  sent `status=published` and the database refused it. The status is written
+  straight to a ref'd hidden input now — what is read is what was just decided.
+  **Left with a backlog row (Rule 12):** the date of birth and the 18+ gate stay
+  **needs field (b)** (no column holds a birth date), "Missing a style? Suggest
+  it" is decision (c) (a demo toast in the prototype), and the photo step uses
+  the app's own PhotoPicker rather than the prototype's crop-and-frame cropper,
+  which belongs to the posters slice. A fourteenth e2e segment drives the clash
+  end to end (the sheet names the room, the class and the hour; "Publish it" is
+  ABSENT; the second press writes a draft, and the row is read back as one), and
+  the onboarding helper every other segment already used now walks all four
+  screens, so every account in the story is created the way a real one is.
+  Verified against the prototype with Playwright shots of the picker open and
+  searching, the styles grid, the bow, and the clash sheet.
 - **Parity slice 7 landed 30 Aug 2026: the wiring slice — a tick, two numbers,
   a followers list and two buttons (audit rows D7 · N8/P9 · I4 · B6, the
   calendar's History chip, the crew desk's "See crew ranking", and Home's rank
@@ -641,12 +692,12 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   row H10) and **the wiring slice landed 30 Aug 2026** (parity slice 7 — D7,
   N8/P9, I4, B6's Followers sheet, the History chip, See crew ranking and Home's
   rank row, seven audit rows that were all "a field exists and a screen does not
-  read it"). **What is left of the audit's (a) rows is two builds, not wiring:**
-  the class form's ROOM ALREADY BUSY warning (F3 — a session-clash query) and
-  **DosStylePicker** (F4 / W2 — the component does not exist, then three call
-  sites), plus the part of U2 that fields already support (onboarding's
-  styles / socials / photo steps and the "Take a bow" finish screen). After those
-  come **web push** (VAPID keys + a service worker + a subscriptions table, which
+  read it") **and parity slice 8 the same day** (F3, F4/W2 and U2 — the last
+  three). **The parity audit has no open (a) rows left**: what remains is the
+  **needs field (b)** bucket, each row its own slice (sort_order, event rights,
+  date of birth + the 18+ gate, rank history), and the **decision (c)** rows,
+  which are the user's to rule on. So the queue is now the **posters slice** —
+  the biggest visible gap nothing blocks — then **web push** (VAPID keys + a service worker + a subscriptions table, which
   makes Step 24's first channel switch real), then the **poster uploads**
   (PosterCropper's crop-and-frame flow onto the same bucket), and the calendar /
   crew rows that are a button each. Not
@@ -2991,6 +3042,7 @@ nothing to lift.
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099 — **S_managed landed 28 Aug 2026** at `/managed`; **S_payments, S_invoices, S_refunds and S_subscr landed 29 Aug 2026** (the settings slice) | as listed | memberships + rentals need the live **Cashfree** account (they are money screens); people / routines / settings are their own slices, none blocked by anything |
 | Settings slice, what it left (29 Aug 2026): saved payment instruments (the prototype's YOUR METHODS store, 16594-16611 — Cashfree's token vault; the ADD tiles explain instead), the Artist plan's real charge (a Cashfree order at ₹799 / ₹7,999 — ₹0 during the pilot, said on the screen), KYC document upload (Cashfree-hosted; the checklist names what it collects), the refund row's "Download receipt" (the class page carries the invoice; a PDF waits with Invoices' Download PDF), the Privacy export / delete and the Help centre panels. **The Discover cards' tick (D7) and Call on a person (N8) landed 30 Aug 2026** (parity slice 7) | S_payments 16594-16611, 16563; S_subscr 16960; S_refunds 16680; 11433-11436 | a live Cashfree account (instruments, the charge, KYC); a PDF slice; Privacy and Help need a product decision |
 | **PassDeck slice, what it left (29 Aug 2026):** the "Yours" badge a card wears on a session you run (8460 — the prototype's `manage` mode; our manage powers live on the managed list and the desks), the poster on the deck's class card (posters are drawn until the posters slice — the pass sheet already draws one), and the event card's role chip sits UNDER the card rather than inside it (`EventCard` heads with its kind cap and has no slot on that line). **Home's rank row landed 30 Aug 2026** (parity slice 7) | PassDeck 6863-7204, BookingCard 8460, 7315-7323 | posters slice; the rest decision (c) |
+| **Slice 8, what it left (30 Aug 2026):** onboarding's **date of birth and the 18+ gate** (no column holds a birth date — a needs-field (b) row of its own, and the gate is a product rule as much as a column); "Missing a style? Suggest it →" on the styles step (a demo toast in the prototype, so there is nothing to lift); the photo step uses the app's own `PhotoPicker` rather than `DosCropper`'s crop-and-frame flow; and the picker is single-select everywhere it is used — its `multi` mode (3554) has no call site yet, so it is not built | 3788-3943, 3885, DosCropper 6604, DosStylePicker 3554 | a DOB slice; the cropper with the posters slice; `multi` when a screen wants it |
 | **Wiring slice, what it left (30 Aug 2026):** the owner's Followers sheet has no All · Dancers · Artists · Studios segment strip (the person's own sheet has one; a business's followers are one list and the segments would filter a list that is usually short) and no paging past `MAX_LIST`; the Discover tick is drawn on studios and artists but a **crew** carries none, because no crew is verified by anybody; and the enquiry's Call still says "No number on this enquiry" to the business when the sender typed none — the sender's number is theirs to give, not the app's to look up | S_profiletab 11335; 4352, 4411; S_enqdetail 5406 | the segment strip and paging when a pilot business has enough followers to need them; the rest is decision (c) |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
 
@@ -3073,8 +3125,8 @@ refs are the file to open.
 | R4 | Classes register: Roster pill + /roster page (the prototype's register is the class page's Attendance tab) | 15050 | ClassesManager.tsx | decision (c) — kept |
 | F1 | Class form: fixed bottom action bar; BEFORE THIS CAN GO ON DISCOVER panel; the confirm sheet with the summary card; Continue names the missing answer | 15551-15625, 15568-15578 | ClassForm.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | F2 | Class form: ← back arrow; level bar glyphs (not emoji); visible Date/Starts/Ends labels and the studio's address; STEPS names; labelStyle var(--muted) | 15540, 15367-15377, 15320-15381, 15206 | ClassForm.tsx | **fixed** (29 Aug 2026, second run) |
-| F3 | Class form: ROOM ALREADY BUSY warning in the confirm sheet (needs a session clash query) | 15650 | ClassForm.tsx | open (a) |
-| F4 | Class form: the CLASS NAME field and the poster step are additions; DosDatePick calendar, searchable style dropdown (also crew + event forms), refund-cutoff + memberships toggles | 15108-15540, 9561, 15950 | ClassForm.tsx, CrewForm.tsx, EventForm.tsx | decision (c) / open (a) for DosStylePicker |
+| F3 | Class form: ROOM ALREADY BUSY warning in the confirm sheet | 15628-15650 | ClassForm.tsx, repositories/classes.ts | **fixed** (30 Aug 2026, parity slice 8 — `findRoomClash` asks before the sheet opens; the primary button offers "Save as draft instead", because this database will not run both) |
+| F4 | Class form: the CLASS NAME field and the poster step are additions; DosDatePick calendar, refund-cutoff + memberships toggles. **The searchable style dropdown landed 30 Aug 2026** (parity slice 8 — `DosStylePicker`, on all three forms) | 15108-15540, 9561, 15950 | ClassForm.tsx, components/ui/DosStyleKit.tsx | **fixed** for DosStylePicker; the rest decision (c) |
 | L1 | Learner listings: DosShelfHead scale; "N in {city}"; empty state names the city | 3446-3450, 4787, 4806 | app/(app)/classes/page.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | L2 | My classes (S_bookings): All · Classes · Events filter; "Your bookings" + "N confirmed"; tickets drawn with the same CalTile; BookingActions pill under every row | 6113-6139 | app/(app)/my-classes/page.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | L3 | Learner listings: EnrollButton under every card (the prototype's card has one job — open the class) | 4805, 15374 | classes/page.tsx, CalendarScreen.tsx | decision (c) — kept |
@@ -3087,7 +3139,7 @@ refs are the file to open.
 | A5 | Chrome: the global undo bar (needs an undo contract for server actions) | 19300-19307 | — | decision (c) |
 | A6 | Chrome: the gear opens the Settings sheet (on the Profile tab), not just the tab | 19263 | AppChrome.tsx | **fixed** |
 | U1 | Onboarding: heading "Set up your profile", sub, Continue-or-reason button, handle preview, an honest progress bar | 3781-3821 | OnboardingForm.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
-| U2 | Onboarding: photo (required), date of birth with the 18+ gate, styles step, socials step, the "Take a bow" finish screen | 3788-3943 | app/onboarding | needs field (b) for DOB; open (a) for styles/socials/photo (fields exist since the Profile slice) and the finish screen |
+| U2 | Onboarding: photo (required), styles step, socials step, the "Take a bow" finish screen — **fixed** 30 Aug 2026 (parity slice 8: four screens, the row created at the end of the first so the photo has something to attach to, and a cookie so a mid-flow revalidate cannot end the flow). Date of birth and the 18+ gate are still open | 3788-3943 | app/onboarding, OnboardingForm.tsx | **fixed** for the photo / styles / socials / finish screen; **needs field (b)** for DOB + the 18+ gate |
 | U3 | Onboarding: the role picker and the city field are additions; sign-in's Email/Mobile toggle is an addition; DPDP consent sentence | 3855, 3678, 3746 | features/auth | decision (c) |
 | U4 | OTP: Resend re-requests in place; "Get a call instead" | 3764-3765 | OtpVerify.tsx | **fixed** for Resend in place; "Get a call instead" stays decision (c) — no voice provider |
 | U5 | AuthShell progress prop | 3683-3694 | AuthShell | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
@@ -3114,7 +3166,7 @@ refs are the file to open.
 | I3 | EnquirySheet: honour the type's `dates` mode; drop the invented footer line | 5121-5135 | EnquirySheet.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | I4 | Enquiry detail: "Revise the quote" stays offered after won/lost; Call on both sides | 5525, 5406 | EnquiryDetail.tsx, repositories/enquiries.ts | **fixed** (Call on both sides landed 30 Aug 2026, parity slice 7 — the business's number rides the join that already fetched its name, and the side you are on decides whose number the page dials) |
 | W1 | Crews: CrewCard as CompactCard | 4398-4421 | CrewCard.tsx | **fixed** |
-| W2 | Crews / Events forms: DosStylePicker instead of a native select | 9561, 15950 | CrewForm.tsx, EventForm.tsx | open (a) |
+| W2 | Crews / Events forms: DosStylePicker instead of a native select | 9561, 15950 | CrewForm.tsx, EventForm.tsx, components/ui/DosStyleKit.tsx | **fixed** (30 Aug 2026, parity slice 8 — one picker, three forms) |
 | O1 | Notifications: the DosHero ramp (#5AC8FA → #6D28D9); "Read all" whenever there are rows | 13723, 13732 | NotificationsScreen.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | O2 | Notifications: prefs apply immediately; the sheet's second sentence | 13789 | NotificationsScreen.tsx | decision (c) — the app's save-on-Done and its honest sentence are kept |
 | M1 | Managed: shelf head at DOS_TYPE.shelf; no meta row above the card (the card carries its own note) ; empty state two lines only | 6371-6379 | ManagedScreen.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
@@ -3125,20 +3177,22 @@ refs are the file to open.
 | X5 | Stats: Assisted for / Trained under as two cards; no Rooms card for a dancer; zero cards not drawn; side tiles' copy, weight and colour (assisted = violet #8B5CF6) | 9958-10040 | StatsScreen.tsx, types/stats.ts | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | X6 | Stats: ▲/▼ movement on the you-row (needs rank history); Wins; the metal tier; daily refresh + decay | 9683 | — | needs field (b) / decision (c) |
 
-**What the next runs take first:** **parity slice 7 (30 Aug 2026) closed seven
-of them at once** — D7, N8/P9, I4, B6's Followers sheet, the calendar's History
-chip, the crew desk's See crew ranking and Home's rank row — because they were
-one shape of gap: a field that existed and a screen that never read it. **Two
-open (a) rows are left**, and neither is a wiring job: the class form's
-ROOM ALREADY BUSY warning (**F3** — needs a session-clash query), and
-**DosStylePicker** on the class, crew and event forms (**F4 / W2** — the
-component does not exist yet, so it is a build, then three call sites). **U2**
-is part open: onboarding's styles / socials / photo steps and the "Take a bow"
-finish screen can be built on fields the Profile slice added, while its date of
-birth and the 18+ gate are needs field (b). Then the **needs field (b)** rows as
-their own slices (sort_order, event rights, DOB, rank history — verification, the
-business phone, the person's phone and the enquiry-type prefs have all landed),
-leaving the **decision (c)** rows for the user to rule on.
+**What the next runs take first: THERE ARE NO open (a) ROWS LEFT.** Slice 7
+(30 Aug 2026) closed seven at once — D7, N8/P9, I4, B6's Followers sheet, the
+calendar's History chip, the crew desk's See crew ranking and Home's rank row —
+because they were one shape of gap: a field that existed and a screen that never
+read it. Slice 8, the same day, closed the last three, which were builds rather
+than wiring: **F3** (the room-clash query behind ROOM ALREADY BUSY), **F4 / W2**
+(`DosStylePicker`, built once and landed on the class, crew and event forms) and
+**U2**'s four onboarding screens. **So the queue is now the other two buckets.**
+The **needs field (b)** rows are the buildable ones, each its own slice:
+`sort_order` on a roster (S4), event rights (E7), **date of birth + the 18+
+gate** (the rest of U2) and rank history for the ▲/▼ movement (X6) — verification,
+the business phone, the person's phone and the enquiry-type prefs have all
+landed. The **decision (c)** rows are the user's to rule on, and are listed with
+their reasoning in the rows above. Off the audit entirely, the biggest visible
+gap that nothing blocks is still the **posters slice** (PosterCropper's
+crop-and-frame flow onto the photos bucket), then **web push**.
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 

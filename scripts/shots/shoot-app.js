@@ -51,6 +51,20 @@ async function signUp(page, email) {
     await page.getByText("Artist / Trainer", { exact: true }).click();
     await page.locator('input[name="city"]').fill("New Delhi");
     await page.getByRole("button", { name: "Continue" }).click();
+    /* the four screens (U2): the photo is required, then styles, then socials, then the bow */
+    await page.getByLabel("Add a photo").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64") });
+    await page.getByLabel("Your profile photo").waitFor({ timeout: 20000 });
+    await shot("onboarding-photo");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.getByRole("button", { name: "Kathak", exact: true }).click();
+    await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    await shot("onboarding-styles");
+    await page.getByRole("button", { name: /^Continue · 2 styles$/ }).click();
+    await shot("onboarding-socials");
+    await page.getByRole("button", { name: "Skip for now →" }).click();
+    await page.getByText(/Take a bow/).waitFor();
+    await shot("onboarding-done");
+    await page.getByRole("button", { name: "Open DanceOS →" }).click();
     await page.waitForURL((u) => !u.pathname.startsWith("/onboarding"));
     await page.goto(`${BASE}/`);
     await shot("home-artist-empty");

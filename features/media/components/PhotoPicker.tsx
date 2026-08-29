@@ -33,6 +33,7 @@ export function PhotoPicker({
   label = "Change photo",
   onLight = false,
   overlay = false,
+  onSaved,
 }: {
   owner: PhotoOwner;
   hasPhoto: boolean;
@@ -42,6 +43,10 @@ export function PhotoPicker({
   /** the ＋ on the corner of the profile square (prototype 10600) — one round
    *  control, absolutely placed inside a relative parent; errors show as a toast */
   overlay?: boolean;
+  /** ONBOARDING'S CASE (U2): the page it sits on redirects the moment a profile
+   *  exists, so a refresh there would end the flow. A caller that passes this
+   *  is told the path instead of the page being reloaded. */
+  onSaved?: (path: string | null) => void;
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -72,7 +77,8 @@ export function PhotoPicker({
         setError(out.error);
         return;
       }
-      router.refresh();
+      if (onSaved) onSaved(path);
+      else router.refresh();
     } finally {
       setBusy(false);
     }
@@ -87,7 +93,8 @@ export function PhotoPicker({
       setError(out.error);
       return;
     }
-    router.refresh();
+    if (onSaved) onSaved(null);
+    else router.refresh();
   };
 
   if (overlay) {

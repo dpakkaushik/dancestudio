@@ -5,7 +5,7 @@ import { useState } from "react";
 import { createCrewAction } from "@/features/crews/server-actions/crews";
 import { PeoplePicker, personGradient, personInitials } from "@/features/people/components/PeoplePicker";
 import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
-import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
+import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import type { Profile } from "@/types/profile";
 import { Toast, pressKey } from "./crew-kit";
@@ -69,16 +69,10 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
                 </option>
               ))}
             </select>
-            {/* the app's own style registry — one list of styles, not a sixth */}
-            <select value={style} aria-label="Dance style" onChange={(e) => setStyle(e.target.value)} style={{ ...sel, color: style ? "var(--text)" : "var(--sub)" }}>
-              <option value="">Dance style</option>
-              <option value="All styles">All styles</option>
-              {DOS_STYLE_NAMES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+          </div>
+          {/* the app's one style picker (9561) — searchable, with "All styles" above the list */}
+          <div style={{ marginTop: 8 }}>
+            <DosStylePicker value={style} onChange={setStyle} all placeholder="Dance style" />
           </div>
         </div>
         <div style={card}>

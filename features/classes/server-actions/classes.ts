@@ -10,6 +10,7 @@ import {
   softDeleteClass,
   updateClassDetails,
   updateClassPoster,
+  findRoomClash,
   updateClassStatus,
 } from "@/repositories/classes";
 import { reconcileClassPeople } from "@/services/classPeople";
@@ -278,4 +279,48 @@ export async function setClassPosterAction(input: {
 
   revalidatePath(`/business/${parsed.data.tenantId}/classes`);
   return { error: null };
+}
+
+const clashSchema = z
+  .object({
+    tenantId: z.string().uuid(),
+    roomId: z.string().uuid(),
+    date: z.string().regex(DATE_RE),
+    startTime: z.string().regex(TIME_RE),
+    endTime: z.string().regex(TIME_RE),
+    excludeClassId: z.string().uuid().nullable().optional(),
+  })
+  .refine(endsAfterStart.check, { message: endsAfterStart.message });
+
+export type RoomClash = { title: string; at: string } | null;
+
+/** The confirm sheet's ROOM ALREADY BUSY question (F3). A read, not a write:
+ *  it changes nothing and it is the caller's own tenant's rows. Anything that
+ *  goes wrong here answers "no clash" — the database still refuses a real one
+ *  at publish, so a failed early check can never let a double-booking through;
+ *  it can only lose the early warning. */
+export async function checkRoomClashAction(input: unknown): Promise<RoomClash> {
+  const parsed = clashSchema.safeParse(input);
+  if (!parsed.success) return null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  try {
+    const hit = await findRoomClash(supabase, {
+      tenantId: parsed.data.tenantId,
+      roomId: parsed.data.roomId,
+      startsAt: toIst(parsed.data.date, parsed.data.startTime),
+      endsAt: toIst(parsed.data.date, parsed.data.endTime),
+      excludeClassId: parsed.data.excludeClassId ?? null,
+    });
+    if (!hit) return null;
+    const at = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })
+      .format(new Date(hit.startsAt))
+      .toLowerCase();
+    return { title: hit.title, at };
+  } catch {
+    return null;
+  }
 }

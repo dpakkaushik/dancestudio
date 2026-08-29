@@ -5,11 +5,14 @@ import { useActionState, useRef, useState } from "react";
 import { PosterBlock } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import {
+  checkRoomClashAction,
   createClassAction,
   updateClassAction,
   type ClassActionState,
+  type RoomClash,
 } from "@/features/classes/server-actions/classes";
-import { DOS_LEVELS, DOS_LEVEL_LABEL, DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
+import { DosStylePicker } from "@/components/ui/DosStyleKit";
+import { DOS_LEVELS, DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { TeamMember } from "@/repositories/tenants";
 import type { ClassClaim } from "@/types/claim";
@@ -146,7 +149,21 @@ export function ClassForm({
   /* the confirm sheet before a publish (15586-15625) — the button sets which
      status the form will carry, and the sheet's own button submits it */
   const [confirm, setConfirm] = useState<"draft" | "publish" | null>(null);
-  const [submitStatus, setSubmitStatus] = useState<"draft" | "published">("published");
+  /* ROOM ALREADY BUSY (F3, prototype 15628-15632 / dosClash 4023): asked of the
+     database BEFORE the sheet opens, so the answer is read in the sheet rather
+     than as a refusal after Publish. Held here because the sheet is drawn from
+     this state, not fetched by it. */
+  const [clash, setClash] = useState<RoomClash>(null);
+  const [asking, setAsking] = useState(false);
+  /* WHAT THIS FORM IS ABOUT TO SUBMIT, IN THE DOM RATHER THAN IN STATE. React
+     batches state updates inside a click handler, so setting a status and calling
+     requestSubmit() in the same tick submits the value from the PREVIOUS render —
+     which sent a clashing class as `published` and had the database refuse it.
+     Written straight to the input, so what is read is what was just decided. */
+  const statusRef = useRef<HTMLInputElement>(null);
+  const setSubmitStatus = (v: "draft" | "published") => {
+    if (statusRef.current) statusRef.current.value = v;
+  };
   const [style, setStyle] = useState<string>(existing?.style ?? "");
   const [level, setLevel] = useState<ClassLevel>(existing?.level ?? "all");
   const [title, setTitle] = useState(existing?.title ?? "");
@@ -266,7 +283,7 @@ export function ClassForm({
       </div>
 
       <form action={formAction} ref={formRef}>
-        {!isEdit ? <input type="hidden" name="status" value={submitStatus} /> : null}
+        {!isEdit ? <input type="hidden" name="status" ref={statusRef} defaultValue="published" /> : null}
         {/* every field lives in state and submits as a hidden input, so stepping
             between the two halves never drops what you already answered */}
         <input type="hidden" name="tenantId" value={tenantId} />
@@ -336,26 +353,9 @@ export function ClassForm({
             </div>
 
             <div style={labelStyle}>2 · DANCE STYLE</div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", maxHeight: 168, overflowY: "auto" }}>
-              {DOS_STYLE_REG.map(([name, color]) => {
-                const on = style === name;
-                return (
-                  <span
-                    key={name}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setStyle(name)}
-                    onKeyDown={dosKey}
-                    style={{
-                      ...chipStyle(on),
-                      ...(on ? { borderColor: color, color: "#fff", background: `${color}33` } : {}),
-                    }}
-                  >
-                    {name}
-                  </span>
-                );
-              })}
-            </div>
+            {/* the prototype's searchable picker (15336-15360): the picked style's coin on a
+                closed row, a search box and the registry under it — not a wall of 66 chips */}
+            <DosStylePicker value={style} onChange={setStyle} />
 
             <div style={labelStyle}>3 · LEVEL</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -885,8 +885,15 @@ export function ClassForm({
                     type="button"
                     aria-disabled={!canPublish}
                     disabled={isPending}
-                    onClick={() => {
+                    onClick={async () => {
                       if (!canPublish) return fire(blockers[0] ?? "Finish the session first");
+                      /* the room is asked before the sheet opens (F3); no room, no question */
+                      setAsking(true);
+                      const hit = roomId
+                        ? await checkRoomClashAction({ tenantId, roomId, date, startTime, endTime, excludeClassId: existing?.id ?? null })
+                        : null;
+                      setAsking(false);
+                      setClash(hit);
                       setSubmitStatus("published");
                       setConfirm("publish");
                     }}
@@ -903,7 +910,7 @@ export function ClassForm({
                       fontFamily: "inherit",
                     }}
                   >
-                    {isPending ? "Working…" : "Publish class"}
+                    {isPending || asking ? "Working…" : "Publish class"}
                   </button>
                 </>
               )}
@@ -947,6 +954,21 @@ export function ClassForm({
                 </div>
               );
             })()}
+            {/* ROOM ALREADY BUSY (15628-15632). One departure from the prototype, stated:
+                its second line offers "confirm again to run both", and this database will
+                not run both — Step 11 made "no double-booking" a trigger, because the
+                prototype's own Rooms footnote (18425) promises it. So the sheet says what
+                CAN happen: pick another slot, or keep the class as a draft, which is not
+                in any room yet. */}
+            {clash && confirm === "publish" ? (
+              <div role="alert" style={{ background: "rgba(245,158,11,.14)", border: "1px solid rgba(245,158,11,.4)", borderRadius: 12, padding: "10px 12px", marginTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: "#F59E0B", marginBottom: 3 }}>ROOM ALREADY BUSY</div>
+                <div style={{ fontSize: 11.5, lineHeight: 1.45, color: INK }}>
+                  {room?.name ?? "That room"} already has {clash.title} at {clash.at}.
+                </div>
+                <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>Go back and pick another slot, or save it as a draft — a room is never double-booked.</div>
+              </div>
+            ) : null}
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: INK }}>
                 Keep editing
@@ -955,12 +977,15 @@ export function ClassForm({
                 type="button"
                 disabled={isPending}
                 onClick={() => {
+                  /* a clashing publish is not offered: the database would refuse it, so
+                     the honest second press keeps the class as a draft instead */
+                  if (clash && confirm === "publish") setSubmitStatus("draft");
                   setConfirm(null);
                   formRef.current?.requestSubmit();
                 }}
                 style={{ flex: 1.4, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
               >
-                {confirm === "publish" ? "Publish it" : "Save draft"}
+                {confirm === "publish" ? (clash ? "Save as draft instead" : "Publish it") : "Save draft"}
               </button>
             </div>
           </div>
