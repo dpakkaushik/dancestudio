@@ -12,6 +12,10 @@ import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import type { PublicTenantProfileWithFaces } from "@/repositories/publicProfile";
 import { TYPE } from "./profile-kit";
 import { ProfileShare } from "./ProfileShare";
+import { BusinessEditButton } from "./BusinessEditSheet";
+import { VerifiedTick } from "@/features/settings/components/settings-kit";
+import { PLATFORM_TINT, handleOf, isPlatform } from "@/lib/constants/socials";
+import { PlatformIcon } from "./profile-kit";
 
 /** A business's public page, lifted from prototype S_profiletab with
  *  `publicEntity="studio"|"trainer"` (10565-11060): THE PROFILE, LIT LIKE A
@@ -61,6 +65,20 @@ const joinedYear = (iso: string) =>
 
 
 const shelf: React.CSSProperties = TYPE.shelf;
+
+/** Call — a real tel: hand-off to the number on record (10879); drawn only when there is one */
+function CallButton({ phone }: { phone: string }) {
+  return (
+    <a href={`tel:${phone.replace(/\s+/g, "")}`} aria-label="Call" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", overflow: "hidden", whiteSpace: "nowrap", background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
+      <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6.6 3.6c.5-.5 1.4-.4 1.8.2l1.5 2.1c.4.5.3 1.2-.1 1.7l-.9 1c-.2.3-.3.8-.1 1.1a11 11 0 0 0 3 3c.3.2.8.2 1.1-.1l1-.9c.5-.4 1.2-.5 1.7-.1l2.1 1.5c.6.4.7 1.3.2 1.8l-1 1c-.6.6-1.4.8-2.2.6a15.6 15.6 0 0 1-6.8-4.1 15.6 15.6 0 0 1-4.1-6.8c-.2-.8 0-1.6.6-2.2z" />
+        </svg>
+      </span>
+      Call
+    </a>
+  );
+}
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
 
 export function PublicProfile({
@@ -70,6 +88,7 @@ export function PublicProfile({
   signedIn,
   isMember,
   canEditPhoto = false,
+  canEdit = false,
   scheduleHref,
   manageHref,
 }: {
@@ -82,6 +101,8 @@ export function PublicProfile({
   isMember: boolean;
   /** an owner or trainer — the pair that may change the business's photo */
   canEditPhoto?: boolean;
+  /** the owner — the one who edits About, Since, the number and the links (10613) */
+  canEdit?: boolean;
   scheduleHref: string;
   manageHref: string;
 }) {
@@ -148,6 +169,8 @@ export function PublicProfile({
             <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{kind}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
+              {/* the tick is DanceOS's to give — set when the rail's KYC clears (DosVerified 10592) */}
+              {tenant.verifiedAt ? <VerifiedTick size={18} /> : null}
               <ProfileShare path={path} name={tenant.name} />
             </div>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 15, fontWeight: 700, color: SUB }}>
@@ -156,7 +179,7 @@ export function PublicProfile({
                   <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
                   <path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" />
                 </svg>
-                On DanceOS since {joinedYear(tenant.createdAt)}
+                {tenant.foundedYear ? `Since ${tenant.foundedYear}` : `On DanceOS since ${joinedYear(tenant.createdAt)}`}
               </span>
               {place ? (
                 <>
@@ -204,10 +227,33 @@ export function PublicProfile({
           <div style={{ fontSize: 12, color: MUTED, padding: "14px 0 6px" }}>No published classes yet.</div>
         )}
 
-        {/* ── the actions (10870-10945): follow them; then the one place this
+        {/* ── the links rail (10760): every public handle the business gave, WhatsApp included — a business's number is a public one ── */}
+        {tenant.socials.length ? (
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 6px", alignItems: "center" }}>
+            {tenant.socials.map((l) => (
+              <a key={l.platform} href={l.url} target="_blank" rel="noopener noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, whiteSpace: "nowrap", background: CARD, border: `1px solid ${LINE}`, textDecoration: "none" }}>
+                <span style={{ flexShrink: 0, lineHeight: 0 }}>
+                  <PlatformIcon label={l.platform} size={15} />
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: isPlatform(l.platform) ? PLATFORM_TINT[l.platform] : "#5AC8FA" }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+              </a>
+            ))}
+          </div>
+        ) : null}
+
+        {/* ── About as prose, not a boxed card (10826-10838) ── */}
+        {tenant.about || canEdit ? (
+          <div style={{ margin: "14px 0 4px" }}>
+            <div style={{ ...shelf, color: INK, marginBottom: 6 }}>About</div>
+            {tenant.about ? <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>{tenant.about}</div> : <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.6 }}>A sentence in the business&apos;s own words — Edit ›</div>}
+          </div>
+        ) : null}
+
+        {/* ── the actions (10870-10945): follow, call, ask — one line; then the one place this
             profile goes ── */}
         <div style={{ marginTop: 12 }}>
           {isMember ? (
+            <div style={{ display: "grid", gridTemplateColumns: canEdit ? (tenant.phone ? "2fr 1fr 1fr" : "2fr 1fr") : tenant.phone ? "2fr 1fr" : "1fr", gap: 6 }}>
             <Link
               href={manageHref}
               style={{
@@ -226,11 +272,14 @@ export function PublicProfile({
             >
               You are on this team · Manage ›
             </Link>
+            {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
+            {canEdit ? <BusinessEditButton tenant={tenant} /> : null}
+            </div>
           ) : null}
           {isMember ? null : (
             /* the things you can do TO a business share one line (10883): follow
                it, and ask it something — Call waits for a number on record */
-            <div style={{ display: "grid", gridTemplateColumns: enquiryTypesFor(tenant.type).length ? "1fr 1fr" : "1fr", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${1 + (tenant.phone ? 1 : 0) + (enquiryTypesFor(tenant.type).length ? 1 : 0)}, 1fr)`, gap: 6 }}>
               <FollowButton
                 tenantId={tenant.id}
                 initialFollowing={following}
@@ -238,8 +287,9 @@ export function PublicProfile({
                 accent={RC}
                 signedIn={signedIn}
               />
+              {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
               {enquiryTypesFor(tenant.type).length ? (
-                <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} />
+                <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} enquiryTypes={tenant.enquiryTypes} />
               ) : null}
             </div>
           )}

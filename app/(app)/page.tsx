@@ -6,6 +6,10 @@ import { findProfileById } from "@/repositories/profiles";
 import { findMyEnrollments } from "@/repositories/enrollments";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
+import { findMyArtistPlan } from "@/repositories/plans";
+import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { VerifiedTick } from "@/features/settings/components/settings-kit";
+import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, PINK, SOLID, SUB } from "@/lib/design/tokens";
@@ -85,12 +89,13 @@ export default async function HomePage() {
     redirect("/onboarding");
   }
 
-  const [enrollments, tenants, invites] = await Promise.all([
+  const [enrollments, tenants, invites, plan] = await Promise.all([
     findMyEnrollments(supabase),
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
     findMyPendingInvites(supabase),
+    profile.role === "studio" ? Promise.resolve(null) : findMyArtistPlan(supabase),
   ]);
 
   const { upcoming, liveIds, todayN } = selectUpcoming(enrollments);
@@ -180,6 +185,10 @@ export default async function HomePage() {
                   >
                     {profile.fullName}
                   </span>
+                  {/* the tick is DanceOS's to give (7292) — set when a verification actually clears */}
+                  {profile.verifiedAt ? <VerifiedTick size={16} /> : null}
+                  {/* the QR beside the name shares this person (7288) */}
+                  <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />
                 </div>
                 {metaLine ? (
                   <div style={{ display: "flex", alignItems: "center", marginTop: 5, minWidth: 0, fontSize: 13, fontWeight: 800, color: INK }}>
@@ -207,6 +216,14 @@ export default async function HomePage() {
                         {metaLine}
                       </span>
                     )}
+                  </div>
+                ) : null}
+                {/* the styles you dance, as the app's one style tile (7330, DosStyleRow) */}
+                {profile.styles.length ? (
+                  <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 8, alignItems: "center" }}>
+                    {profile.styles.map((s) => (
+                      <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — a style you dance`} small />
+                    ))}
                   </div>
                 ) : null}
               </div>
@@ -367,7 +384,7 @@ export default async function HomePage() {
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
             sheet that covers the deck, so it is opaque and it is above. ── */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-          <BizSection role={profile.role} tenantId={firstTenant}>
+          <BizSection role={profile.role} tenantId={firstTenant} plan={profile.role === "studio" ? null : plan?.active ? "active" : "locked"}>
             {/* somebody has asked you onto their team, and only you can answer —
                 the same gold ask the class page wears when a class is handed over */}
             {invites.map((inv) => (

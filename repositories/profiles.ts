@@ -12,11 +12,13 @@ interface ProfileRow {
   socials?: unknown;
   styles?: string[] | null;
   member_no?: number | null;
+  verified_at?: string | null;
+  phone?: string | null;
 }
 
 /** every column a profile is drawn from — one list, so no read can forget one
  *  (the photos slice found a read that had its own list and never got avatar_path) */
-export const PROFILE_COLUMNS = "id, full_name, role, city, avatar_path, about, age, socials, styles, member_no";
+export const PROFILE_COLUMNS = "id, full_name, role, city, avatar_path, about, age, socials, styles, member_no, verified_at, phone";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -37,6 +39,8 @@ export const toProfile = (row: ProfileRow): Profile => ({
   socials: toSocials(row.socials),
   styles: Array.isArray(row.styles) ? row.styles : [],
   memberNo: row.member_no == null ? null : Number(row.member_no),
+  verifiedAt: row.verified_at ?? null,
+  phone: row.phone ?? null,
 });
 
 export async function findProfileById(

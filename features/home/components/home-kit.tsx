@@ -101,7 +101,7 @@ const tilesFor = (tenantId: string | null): Tile[] => [
  *  artist-plan lock is a product decision nobody has made, so every tile is
  *  open. `children` sits between the heading and the grid — Home puts the
  *  pending team invites there. */
-export function BizSection({ role, tenantId, children }: { role: ProfileRole; tenantId: string | null; children?: ReactNode }) {
+export function BizSection({ role, tenantId, plan = null, children }: { role: ProfileRole; tenantId: string | null; /** the Artist plan's state — the badge on the head (2500-2520); null draws none (a studio) */ plan?: "active" | "locked" | null; children?: ReactNode }) {
   const tiles = tilesFor(tenantId);
   return (
     <div style={{ marginBottom: 12 }}>
@@ -109,6 +109,15 @@ export function BizSection({ role, tenantId, children }: { role: ProfileRole; te
         <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_DISPLAY }}>
           {role === "studio" ? "Studio Tools" : "Artist Tools"}
         </span>
+        {plan === "active" ? (
+          <Link href="/subscription" aria-label="Artist plan active" style={{ marginLeft: "auto", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "rgba(236,72,153,.16)", color: "#EC4899", textDecoration: "none" }}>
+            ARTIST PLAN ACTIVE
+          </Link>
+        ) : plan === "locked" ? (
+          <Link href="/subscription" aria-label="Unlock the Artist plan" style={{ marginLeft: "auto", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "var(--el)", color: "var(--sub)", textDecoration: "none" }}>
+            🔒 PRO · UNLOCK
+          </Link>
+        ) : null}
       </div>
       {children}
       {/* the glyph keeps its own ground: a black chip outlined in the tile's colour, so

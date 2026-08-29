@@ -19,6 +19,8 @@ import { ROLE_BADGE, memberNoWords, type Profile, type SocialLink } from "@/type
 import { ProfileShare } from "./ProfileShare";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { NotificationPrefs } from "@/types/notification";
+import type { ArtistPlan } from "@/repositories/plans";
+import type { Tenant } from "@/types/tenant";
 import { Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, dangerBtn, fieldInput, fieldLabel, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
@@ -77,7 +79,8 @@ export function MyProfilePage({
   place,
   scheduleHref,
   prefs,
-  businessId,
+  business,
+  plan,
 }: {
   person: PublicPerson;
   followers: PersonFollowRow[];
@@ -88,7 +91,9 @@ export function MyProfilePage({
   /** what reaches you — the settings sheet's Notifications row */
   prefs: NotificationPrefs;
   /** the first business this person runs, for the rows that live on its desk */
-  businessId: string | null;
+  business: Tenant | null;
+  /** the Artist plan, for the settings sheet's switch */
+  plan: ArtistPlan | null;
 }) {
   const router = useRouter();
   const { profile } = person;
@@ -483,7 +488,8 @@ export function MyProfilePage({
         /* leaving takes the parameter back off */
         onClose={() => router.replace("/profile")}
         role={profile.role}
-        businessId={businessId}
+        business={business}
+        plan={plan}
         prefs={prefs}
       />
 

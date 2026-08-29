@@ -1,5 +1,3 @@
-**fixed** for Resend in place; Get a call instead → decision (c) 
-
 ## What this repo is
 
 DanceOS: an app for dance studios and dancers — class management, bookings, crews,
@@ -31,6 +29,54 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Parity slice 5 landed 29 Aug 2026: the settings screens — on the prototype's
+  own terms, and a correction recorded.** Given leave to "make your own
+  decisions … follow what are standards in such an app", the previous run
+  proposed marketplace conventions the prototype does not have (no Pro plan,
+  no Call button, no verified tick, a public artist page) — and the user
+  stopped it: *"are you even following prototype frontend … studio business
+  may get call, whatsapp msg, or direct dms, there are pro plans etc — follow
+  what's in prototype frontend, use playwright to see all screens."* **Those
+  "standards" decisions are withdrawn.** The prototype's own build was
+  screenshotted screen by screen (`scripts/shots/shoot-proto.js` drives
+  `prototype/DanceOS.html` through its `window.__DOS*` hooks — 46 screens;
+  `shoot-app.js` shoots the app's routes with a throwaway account) and the
+  screens were built as drawn, honestly wired. Migration
+  `20260830150000_settings_screens.sql` ⚠: `artist_plans` (DanceOS Pro · Artist,
+  ₹799/mo · ₹7,999/yr, ₹0 during the pilot; own-read RLS, no direct writes;
+  `my_artist_plan` / `activate_artist_plan` — +1 month or year from the
+  current end, and the same profile becomes an artist — / `end_artist_plan`),
+  `tenants.about · founded_year · phone · socials · enquiry_types (null = all) ·
+  accepts_upi/cards/cash/bank · verified_at` behind one owner-only door
+  `update_tenant_profile`, and `profiles.verified_at · phone`. Migration
+  `20260830180000_guard_verified_at.sql` ⚠, **found by the proof**: Step 1 and
+  Step 2's own-row UPDATE policies name no columns, so an owner could have
+  PATCHed the tick onto their own business — a trigger now lets only the
+  service role move `verified_at`. Screens: **Subscription** (S_subscr —
+  `/subscription`), **Payments / Payments & verification** (S_payments —
+  `/payments`, `/business/{id}/payments`: how money actually moved, counted
+  off `payments.method`; the ADD tiles say a card or UPI id is entered on
+  Cashfree's checkout and stored nowhere here; ACCEPTED FROM STUDENTS as real
+  switches; a Verification tab whose checklist names the documents Cashfree's
+  KYC collects and whose tick DanceOS sets), **Invoices** (S_invoices —
+  `/invoices`, `/business/{id}/invoices`, a real CSV), **Refunds** (S_refunds
+  — `/refunds`, `/business/{id}/refunds` with Approve / Decline / Mark
+  refunded through Step 13b's RPCs and `?class=` focus), the **Enquiry types**
+  sheet (ENQUIRIES YOU ACCEPT, saved onto the business and honoured by the
+  public page's Enquiry sheet), and the **Artist tools** switch as the plan's
+  switch (PRO / PRO ACTIVE · until). The public studio / artist page gained the
+  **verified tick**, **Since {year}**, **About**, **Call** (a real `tel:`),
+  the **links rail** (WhatsApp included — a business's number is public) and
+  the owner's **Edit** sheet; Home gained the tick, the QR beside the name,
+  the styles row and the **ARTIST PLAN ACTIVE / PRO · UNLOCK** badge on the
+  Artist Tools head. A third migration, `20260830200000_my_artist_plan_prefers_live.sql`,
+  was **found by the e2e**: take a month, end it, take a month again the same
+  day and the new period ends on the ended row's date — `order by until desc`
+  could hand back the ended row and offer the pitch to somebody who had just
+  subscribed; a live period now outranks an ended one. 13-check proof; the
+  e2e's Profile segment takes the plan, ends it, takes it again, reads the Payments desk and the Enquiry-types
+  sheet, and the owner writes About / Since / phone that a stranger reads with
+  a working Call.
 - **Parity slice 4 landed 28 Aug 2026: the Profile tab.** The user put the
   built Home beside the prototype's profile and asked why they looked nothing
   alike — because `/profile` was still "identity + Following + log out" while the
@@ -1720,6 +1766,134 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   Playwright test timeout is 180 s now, not 90.
 
 
+### Parity slice 5 — the settings screens, on the prototype's terms ✅ (29 Aug 2026, no step number)
+- **The correction first, because it decides the slice.** The user had said
+  "you are good to make your own decisions … follow what are standards in such
+  app", and the previous run answered with marketplace conventions: no Pro plan
+  (nothing to sell), no Call (a person holds no number), no verified tick (a
+  verification nobody performs), a public person page. The user's reply is the
+  rule from here: **"are you even following prototype frontend … follow what's
+  in prototype frontend, use playwright to see all screens how they look what
+  they have."** So the prototype's own HTML build was screenshotted — every
+  tab, drill and sheet, in the dancer's and the artist's dress —
+  and compared with the app's screens shot the same way. The rigs are kept:
+  `scripts/shots/shoot-proto.js` (drives `prototype/DanceOS.html` through
+  `window.__DOSLOGIN / __DOSTAB / __DOSNAV / __DOSSUBSCRIBE /
+  __DOSOPENSETTINGSNOW`; run with `NODE_PATH=$(pwd)/node_modules` so it finds
+  the repo's Playwright) and `scripts/shots/shoot-app.js` (a throwaway account
+  through the e2e's generate_link trick, every route, cleaned up after). Output
+  lands in `scripts/shots/shots/` (gitignored). **Rule 2 was always this; the
+  screenshots are how it is checked now.**
+- **Migration `20260830150000_settings_screens.sql` ⚠ (RLS, money-adjacent).**
+  `artist_plans`: a plan is a RECORD with a period (plan monthly | yearly,
+  started_on, until, amount_inr — **0 during the pilot**, because the charge is a
+  Cashfree order when the account is live and the screen says "free during the
+  pilot" rather than pretending to bill), provider_order_id, ended_at, audit,
+  soft delete. One SELECT policy (`user_id = auth.uid()`), **no insert / update
+  / delete policies**: `my_artist_plan()` (invoker), `activate_artist_plan(p_plan)`
+  (definer — the new period starts at max(current end, today), the prototype's
+  addPeriod 19104; and it sets `profiles.role = 'trainer'` because "Dancer is
+  who you are; Artist is a TOOLSET on that same profile", 8850) and
+  `end_artist_plan()` (ended_at, role back to dancer — "tools lock, your
+  profile stays", 16972). `tenants` gain `about` (≤ 220), `founded_year`
+  (1950–2100), `phone` (8–18 digits), `socials` (jsonb list ≤ 12),
+  `enquiry_types` (text[]; **null means every type the kind allows**, the
+  prototype's default), the four `accepts_*` switches (16612) and
+  `verified_at`; `profiles` gain `verified_at` and `phone`. One door,
+  `update_tenant_profile(...)`, owner-only (the membership row is checked
+  inside), validating the length, the number and every link ("a platform and a
+  web address starting with http:// or https://").
+- **Migration `20260830180000_guard_verified_at.sql` ⚠ — found by the proof.**
+  The first migration's comment said "verified_at is set by DanceOS (service
+  role) — never by the row's owner". It only said it: Step 1's "update own
+  profile" and Step 2's "owners update" policies name no columns, so a plain
+  PATCH of `verified_at` by the owner would have gone through, and the tick
+  would have been a checkbox. A BEFORE UPDATE OF verified_at trigger on both
+  tables raises unless the JWT role is service_role; everything else about the
+  row still moves (check 12 changes the area and then sets the tick as ops).
+  **Lesson: a column comment is not a policy — when a column has an owner other
+  than the row's, write the trigger in the same migration.**
+- **The screens, lifted from the prototype's own lines and wired to what is
+  real.** `features/settings/components/settings-kit.tsx` (BizPage, bizCard,
+  bizBtn, chip, the toast, the tick). **SubscriptionScreen** (S_subscr
+  16935-17000 → `/subscription`): the active card with Plan · Active until ·
+  Charged ₹0 · pilot, "+1 month ₹799" / "+1 year ₹7,999", End subscription;
+  the locked pitch with the two prices, five features and "Subscribe · … — free
+  during the pilot". **PaymentsScreen** (S_payments 16531-16620 →
+  `/payments` for a person, `/business/{id}/payments` for a business):
+  Payments · Verification; YOUR METHODS / HOW STUDENTS PAID as a card per
+  method with its colour on the edge — **counted off `payments.method`**,
+  because the prototype's saved methods are a store its booking sheets read
+  (16534) and ours would be a list nobody could pay with: Cashfree takes the
+  card or UPI id at checkout and DanceOS stores neither, which is what the ADD
+  A METHOD tiles say when pressed; ACCEPTED FROM STUDENTS as four real switches
+  (owner-only; a trainer's press is refused in words); the Verification tab's
+  green card off `verified_at`, the checklist naming the documents Cashfree's
+  KYC collects (none uploaded here — "DanceOS never holds an Aadhaar, a PAN or
+  a bank statement"). **InvoicesScreen** (S_invoices 16691-16720): All · Paid ·
+  Refunded, INV-yyyy-XXXX numbers derived from the row, Export ledger as a real
+  CSV. **RefundsLedger** (S_refunds 16621-16690): "₹X refunded · ₹Y pending",
+  the four counted tiles, the state chips, a card per refund with Approve /
+  Decline (Step 13b's `decide_refund`) and "Mark refunded at the desk"
+  (`settle_refund_offline`) for the owner, `?class=` focus with "Refund all N ·
+  ₹X" — the door the register's "Delete & manage refunds" now opens. **The
+  Enquiry types sheet** (9000-9030) in the Settings sheet: ENQUIRIES YOU ACCEPT
+  · a switch per type · "N of M switched on" · Done, saved onto
+  `tenants.enquiry_types`, and the public page's EnquirySheet offers only
+  those. **The Settings sheet's rows are doors now** — Payments, Invoices,
+  Refunds and Subscription are links to those screens (a person's or the first
+  business's desk), and **Artist tools is the plan's switch** (8855): locked, it
+  opens `/subscription`; active, it wears PRO ACTIVE · until and switching it
+  off ends the plan. Notifications, Language, Privacy and Help keep their
+  panels (the last three are honest about what is not built).
+- **The public business page** (`PublicProfile.tsx`): the tick beside the name
+  when `verified_at` is set, **Since {founded_year}** in place of "On DanceOS
+  since", the links rail (every platform, WhatsApp included — a business's
+  number is a public handle, unlike a person's), **About** as prose, **Call** as
+  a real `tel:` in the action row (10879) beside Follow and Enquiry, and for
+  the owner an **Edit** control opening `BusinessEditSheet` (About with its
+  220 counter, Since, the phone, the links). `PublicTenant` carries
+  `accepts` too, so the edit sheet can round-trip the switches it does not
+  show. **Home**: the tick, the QR beside the name (7288), the styles row as
+  the app's one style tile (7330), and the plan badge on the Artist Tools head —
+  ARTIST PLAN ACTIVE, or 🔒 PRO · UNLOCK opening the plan.
+- **Migration `20260830200000_my_artist_plan_prefers_live.sql` — found by the e2e.**
+  The Profile segment takes a monthly plan, ends it and takes a monthly plan
+  again on the same day, so the new period ends on exactly the date the ended
+  one did — and `my_artist_plan`'s `order by until desc limit 1` could return
+  the ENDED row, drawing the locked pitch for somebody who had just subscribed.
+  The proof had not caught it because it re-took a yearly plan (a later date).
+  Live rows now outrank ended ones whatever their date; proof check 6b re-takes
+  a month after ending one. **Lesson: when a query picks "the latest" of
+  something that can be ended, the tie-break is the state, not the date.**
+- **Deliberately not lifted, each with a backlog row (Rule 12):** saved payment
+  instruments (Cashfree's token vault — the ADD tiles explain instead), the
+  plan's real charge (a Cashfree order; ₹0 until the account is live), KYC
+  document upload (Cashfree-hosted), the refund row's "Download receipt" (the
+  class page carries the invoice; a PDF waits with Invoices' Download PDF),
+  Discover's tick on every card (the field exists; the cards do not read it
+  yet), Call on a PERSON's page (`profiles.phone` exists; no editor offers it
+  yet), the Privacy export / delete and the Help centre.
+- Verified: `scripts/rls-proof-settings-screens.ps1` — 13 checks green (no plan
+  for a fresh dancer; a monthly period from today at ₹0 that makes the profile
+  an artist; **a second period extends from the first's end, +365 days**; a plan
+  is private, has no direct insert, and the public cannot activate; an invented
+  plan is refused in words; ending puts the role back and **re-taking a month the
+  same day reads active**; the owner's About /
+  Since / phone / links / enquiry types / switches are saved and **the public
+  reads them**; a stranger is refused "only an owner" and their PATCH changes
+  nothing; a 221-character About, a bad phone and a bare handle are refused;
+  clearing leaves null; **an owner cannot tick their business and a person
+  cannot tick themselves** while the owner still edits the row and the service
+  role sets the tick). e2e: the Profile segment takes the plan from the locked
+  switch, reads PRO ACTIVE, ends it (DANCER), takes it again (ARTIST), opens the
+  studio's Payments & verification (a trainer's switch press refused; "Not
+  verified yet"), reads "4 of 4 switched on" in the Enquiry types sheet; the
+  owner writes About / Since 2016 / a phone that the learner reads with
+  `tel:+919876543210` behind Call. typecheck / lint / production build green.
+  **Lesson:** `Set-Content -Encoding ASCII` turns a script's box-drawing
+  comment rules into "?" — keep .ps1 comments ASCII from the first write.
+
 ### Parity slice 4 — the Profile tab ✅ (28 Aug 2026, no step number)
 - **Why now.** The user held image 1 (the built Home) beside image 2 (the
   prototype's profile) and asked why the difference was so drastic. Home was
@@ -2684,8 +2858,8 @@ nothing to lift.
 |-----|--------------|-------------|
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
 | Home: QR share sheet, rank row, style row, full PassDeck (session codes, invoices) | Home 7248+, PassDeck | Phase 2-3 slices |
-| Profile tab, what the Profile slice left (**S_profiletab's own render landed 28 Aug 2026**): the verified tick (a verification nobody performs), the albums grid and its icon tab strip, Call, the long-press-for-QR gesture, the settings sheet's switcher / appearance / language rows, "Can't find your style? Request it", opening Maps from the place | S_profiletab 10592, 11069-11130, 10879, 10598, 11135, 11251 | an albums slice; a verification process; the rest need a product decision |
-| Public profile: About (needs a bio field), the founding year (needs a field — the page prints "On DanceOS since {year}" from created_at), Call and Enquiry, Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither); the owner's Followers sheet (`findTenantFollowers` exists, no sheet); **Person pages landed 28 Aug 2026**; what stays open on them: a PUBLIC person page (a decision about somebody else's data), years of experience (no field), Call and the enquiry sheet, the albums tabs — About, age, links and the rank in its metal landed 28 Aug 2026 — and **following a CREW** (follows now names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | About, age, links and the account number landed on the PERSON page 28 Aug 2026 (the Profile slice); a business's About and founding year still need fields; a follows extension for crews; the rest need a product decision |
+| Profile tab, what the Profile slice left (**S_profiletab's own render landed 28 Aug 2026**; the verified tick landed 29 Aug 2026 as `profiles.verified_at`, service-role only): the albums grid and its icon tab strip, Call (a person's `phone` exists now, no editor offers it), the long-press-for-QR gesture, the settings sheet's switcher / appearance / language rows, "Can't find your style? Request it", opening Maps from the place | S_profiletab 11069-11130, 10879, 10598, 11135, 11251 | an albums slice; the Edit profile sheet for the phone; the rest need a product decision |
+| Public profile: **About, Since, Call, the links rail, the verified tick and the owner's Edit sheet landed 29 Aug 2026** (settings slice). Still open: Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither), the owner's Followers sheet (`findTenantFollowers` exists, no sheet); on person pages a PUBLIC person page (a decision about somebody else's data), years of experience (no field), Call (`profiles.phone` exists, the Edit sheet does not offer it), the enquiry sheet, the albums tabs, and **following a CREW** (follows names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | an albums slice; the Followers sheet and the person's phone are open (a); a follows extension for crews; the rest need a product decision |
 | Stats: the metal tier / rank ladder on the hero (`dosTierOf` — a ladder nobody has designed; the hero shows the real place instead), the History library's city / room / provider / assistant filters and its search box (side and style ship), the **Wins** metric and a crew's battle record (both need scoring), the "updated daily" cadence and the 10% monthly decay (a product rule nobody has decided), and the studio-side S_reports / S_reportdetail | S_profiletab 9862-10520, 9610-9707; S_reportdetail | scoring with a later event slice; the rest need a product decision or their own slice |
 | Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (a nudge — buildable on Step 24's `notifications` table now); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
@@ -2715,7 +2889,8 @@ nothing to lift.
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero — the record page exists since Step 25 (`/stats?tab=history`); the chip is not drawn | 9070-9074 | a calendar parity slice |
 | Tests: **done 28 Aug 2026** — the happy path is nine serial SEGMENTS sharing one seeded world and one set of contexts (`test.describe.serial`), so each part has its own timeout and its own line in the report; the longest runs ~35 s and the per-test limit came back down from 300 s to 120 s. What is still open: the segments share state, so a failure early skips the rest (right for a story, wrong for a suite) — splitting into independently seeded specs needs API-level world builders first | e2e/happy-path.spec.ts | a testing slice, when the story stops being one story |
-| **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_invoices 16691 and S_payments 16531 (the studio's payments ledger), S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_subscr (DanceOS Pro · Artist plan ⚠) 16935, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099 — **S_managed landed 28 Aug 2026** at `/managed` | as listed | after Step 26: memberships + rentals + invoices need the live **Cashfree** account (they are money screens); people / routines / settings are their own slices, none blocked by anything |
+| **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099 — **S_managed landed 28 Aug 2026** at `/managed`; **S_payments, S_invoices, S_refunds and S_subscr landed 29 Aug 2026** (the settings slice) | as listed | memberships + rentals need the live **Cashfree** account (they are money screens); people / routines / settings are their own slices, none blocked by anything |
+| Settings slice, what it left (29 Aug 2026): saved payment instruments (the prototype's YOUR METHODS store, 16594-16611 — Cashfree's token vault; the ADD tiles explain instead), the Artist plan's real charge (a Cashfree order at ₹799 / ₹7,999 — ₹0 during the pilot, said on the screen), KYC document upload (Cashfree-hosted; the checklist names what it collects), the refund row's "Download receipt" (the class page carries the invoice; a PDF waits with Invoices' Download PDF), the Discover cards' tick (D7), Call on a person (N8), the Privacy export / delete and the Help centre panels | S_payments 16594-16611, 16563; S_subscr 16960; S_refunds 16680; 11433-11436 | a live Cashfree account (instruments, the charge, KYC); a PDF slice; D7 / N8 are open (a); Privacy and Help need a product decision |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here), the poster on a class row (posters are drawn until the posters slice), and the Today deck's empty-day "See everything you manage" door (Home has no Today deck yet — the door is on the RUN YOUR BUSINESS head) | S_managed 6360-6366, 7171-7175 | Home parity slice (the Today deck); posters slice |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)
@@ -2741,8 +2916,8 @@ refs are the file to open.
 | H5 | Home: deck head is DosShelfHead "Today's schedule · {n} today" with Manage / All bookings › | 7139-7160, 3446 | app/(app)/page.tsx | **fixed** |
 | H6 | Home: empty-day copy + two pills (See everything you manage / See all bookings) | 7161-7181 | app/(app)/page.tsx | **fixed** |
 | H7 | Home: greeting eyebrow at DOS_TYPE.micro | 7274, 3433 | app/(app)/page.tsx | **fixed** |
-| H8 | Home: the plan badge on Artist Tools ("ARTIST PLAN ACTIVE" / locked) — no subscription exists | 2500-2520 | — | decision (c) |
-| H9 | Home: verified tick beside the name — nothing records a verification | 7292 | — | needs field (b) |
+| H8 | Home: the plan badge on Artist Tools ("ARTIST PLAN ACTIVE" / locked) | 2500-2520 | app/(app)/page.tsx, home-kit.tsx | **fixed** (29 Aug 2026 — off `artist_plans`; the earlier "no subscription exists" decision is withdrawn) |
+| H9 | Home: verified tick beside the name | 7292 | app/(app)/page.tsx | **fixed** (29 Aug 2026 — `profiles.verified_at`, set by DanceOS after KYC; drawn when set) |
 | H10 | Home: the full PassDeck (swiped 88%-width CalTile rail, dots, today-only slice, QR/invoice on the card) | PassDeck 6863-7204 | app/(app)/page.tsx | open (a) — the tile now exists; the deck is the next Home slice |
 | P1 | Profile tab: age list 13–77 (65 options) | 11384 | MyProfilePage.tsx | **fixed** |
 | P2 | Profile tab: place line underlined, opens Maps | 10694-10698 | MyProfilePage.tsx | **fixed** |
@@ -2752,9 +2927,9 @@ refs are the file to open.
 | P6 | Profile tab: About empty state prints a default sentence — the app says "A sentence in your own words — Edit profile ›" | 10831-10838 | MyProfilePage.tsx | decision (c) — the app's is the honest one |
 | P7 | Profile tab: Public view toggles in place with aria-pressed + toast — the app links to /person/{me} | 10638 | MyProfilePage.tsx | decision (c) — a real page beats a fake toggle |
 | P8 | Profile tab: Log out lives in the settings sheet | 11416 | MyProfilePage.tsx | **fixed** |
-| P9 | Profile tab: verified tick; albums grid + icon tab strip; Call; long-press-for-QR; settings switcher/appearance/language rows | 10592, 11069-11130, 10879, 10598 | — | needs field (b) / an albums slice / decision (c) |
-| P10 | Settings sheet behind the gear (YOUR PLAN · Artist tools · Payments · Invoices · Refunds · Enquiry types · Subscription · Notifications · Language · Privacy · Help · Log out) | 11402-11440, 8850-8870, 19263 | features/settings/components/SettingsSheet.tsx | **fixed** |
-| P11 | Settings: Payments & verification, Invoices, Refunds, Subscription screens of their own (S_payments 16531, S_invoices 16691, S_subscr 16935); Enquiry-types prefs (needs a prefs table); Privacy export/delete (DPDP) and Help centre | 16531, 16691, 16935, 9000-9050, 11433-11436 | SettingsSheet.tsx (rows open an honest inline panel) | needs field (b) / decision (c) |
+| P9 | Profile tab: albums grid + icon tab strip; Call on a person; long-press-for-QR; settings switcher/appearance/language rows — the verified tick landed 29 Aug 2026 (field + guard) | 11069-11130, 10879, 10598 | — | an albums slice / open (a) for Call (`profiles.phone` exists, no editor yet) / decision (c) |
+| P10 | Settings sheet behind the gear (YOUR PLAN · Artist tools as the PLAN's switch with PRO / PRO ACTIVE · Payments · Invoices · Refunds · Enquiry types · Subscription · Notifications · Language · Privacy · Help · Log out) | 11402-11440, 8850-8870, 19263 | features/settings/components/SettingsSheet.tsx | **fixed** (rows are doors since 29 Aug 2026) |
+| P11 | Settings: Payments & verification, Invoices, Refunds, Subscription as screens of their own; the Enquiry-types sheet | S_payments 16531, S_invoices 16691, S_refunds 16621, S_subscr 16935, 9000-9030 | features/settings/components/*Screen.tsx, RefundsLedger.tsx, SettingsSheet.tsx | **fixed** (29 Aug 2026); Privacy export/delete (DPDP) and the Help centre stay decision (c) |
 | N1 | Person page: name at DOS_TYPE.display 34px; group headings 17px | 3428, 3430 | PublicPersonPage.tsx | **fixed** |
 | N2 | Person page: the two big white buttons on both views — Schedule when they run a business; Stats has no per-person board | 10911-10940 | PublicPersonPage.tsx | **fixed** |
 | N3 | Person page: Follow as one of the equal small buttons (38px, 11px, radius 11) | 10875-10888 | PersonFollowButton.tsx | **fixed** |
@@ -2762,20 +2937,20 @@ refs are the file to open.
 | N5 | Person page: the rank figure in its metal — my_chart_place refuses a p_user_id by design | 10720-10732 | — | decision (c) |
 | N6 | Person page: remove the invented "dancing on DanceOS since" (a person has an age, a business a founding year) | 10594 | PublicPersonPage.tsx | **fixed** |
 | N7 | Person page: the three-tile record grid is an addition (the prototype moved stats off the page) | 11127-11132 | PublicPersonPage.tsx | decision (c) — kept |
-| N8 | Person page: Call, the enquiry sheet, experience field, albums, a PUBLIC person page | 10879, 5051 | — | needs field (b) / decision (c) |
+| N8 | Person page: Call (`profiles.phone` exists since 29 Aug 2026 — the Edit profile sheet does not offer it yet), the enquiry sheet, experience field, albums, a PUBLIC person page | 10879, 5051 | — | open (a) for Call; needs field (b) / decision (c) for the rest |
 | B1 | Studio/artist page: name 34px; Faculty heading 17px | 3428, 3430 | PublicProfile.tsx | open (a) |
 | B2 | Studio/artist page: Faculty rows are links to /person with faces and a › | 11004-11016 | PublicProfile.tsx, repositories/publicProfile.ts | open (a) |
 | B3 | Studio/artist page: style row is DosStyleRow tiles, names printed once | 10757 | PublicProfile.tsx | open (a) |
 | B4 | Studio/artist page: owner keeps the actions area; photo changer is the ＋ on the square's corner; corner chips for a member | 10618, 10634-10648 | PublicProfile.tsx | open (a) |
 | B5 | Studio/artist page: the invented "Upcoming" figure; the Following figure and rank (a business has neither) | 10714-10719 | PublicProfile.tsx | open (a) |
-| B6 | Studio/artist page: About (bio field), founding year, Call, albums/plans tabs, Photos grid, Stats, the owner's Followers sheet | 10834, 10691, 11069 | — | needs field (b) |
+| B6 | Studio/artist page: About, founding year (Since), Call, the links rail, the verified tick, the owner's Edit sheet — **fixed** 29 Aug 2026; still open: albums/plans tabs, Photos grid, Stats, the owner's Followers sheet | 10834, 10691, 10879, 10760, 11069 | PublicProfile.tsx, BusinessEditSheet.tsx | **fixed** for About / Since / Call / links / tick / Edit; the rest an albums slice + open (a) for the Followers sheet |
 | D1 | Discover: page head — pink wash off the top, DISCOVER eyebrow, "Dance near you" 27px, ONE city chip with a select behind it | 4489-4531 | app/(app)/discover/page.tsx | **fixed** |
 | D2 | Discover: entity tabs as five icon tiles (26px icon over 10px label, radius 14); order Studios · Artists · Crews · Classes · Events, default studios | 4571-4584, 4149 | discover/page.tsx | **fixed** |
 | D3 | Discover: "Followed by you" shelf (count + swiped 74px squircle rail) on Studios/Artists | 4112-4144, 4767 | discover/page.tsx | **fixed** |
 | D4 | Discover: Artists (and Crews) drawn as CompactCard two to a row — full-column square face, ARTIST/CREW chip, DosWhere, style tiles, follower count | 4376-4423, 4813 | features/discovery, CrewCard.tsx | **fixed** |
 | D5 | Discover: StudioCard ends with a style-tile row; cover 150px; "{n} photos" chip; distance in DosWhere at the foot; no "Studio ·" type word; avatar ring var(--card) | 4321-4366, 4293-4298 | StudioCard.tsx | **fixed** |
 | D6 | Discover: the filter sheet applies live | 4831, 4844-4872 | DiscoverFilters.tsx | **fixed** |
-| D7 | Discover: DosVerified tick on every card — nothing records a verification | 4352, 4411 | — | needs field (b) |
+| D7 | Discover: DosVerified tick on every card — the field exists since 29 Aug 2026 (`tenants.verified_at`); the cards' reads do not carry it yet | 4352, 4411 | StudioCard.tsx, CompactCard | open (a) |
 | D8 | Discover: the map view; long-press a style tile → S_styleinfo; __DOSNAVHIDE while searching; the studio card's cover-strip photo (the photo exists; the card should draw it) | 4100+, 4611 | StudioCard.tsx | the cover photo is **fixed** (the strip draws it); the map and long-press stay decision (c) / a map slice |
 | C1 | Class page: artist column — 96px on ground + weave, 62×62 r17 avatar with the ${col}44 ring, dashed divider, full name in a two-line box, a door to the person | 11877-11894 | ClassDetail.tsx | open (a) |
 | C2 | Class page: tab-strip aria-live status line | 11974-11991 | ClassDetail.tsx | open (a) |
@@ -2836,7 +3011,7 @@ refs are the file to open.
 | I1 | Inbox: sent-request line "— this class stays a draft until they confirm"; stage chips the prototype's six; off-platform warning on an invite | 5811, 5978, 5797 | InboxScreen.tsx | open (a) |
 | I2 | Inbox: the list card's inline controls (STATUS, Send quote, Take payment) — the detail page supersedes them | 6003-6071 | InboxScreen.tsx | decision (c) — documented |
 | I3 | EnquirySheet: honour the type's `dates` mode; drop the invented footer line | 5121-5135 | EnquirySheet.tsx | open (a) |
-| I4 | Enquiry detail: "Revise the quote" stays offered after won/lost; Call on both sides (needs a business phone field) | 5525, 5406 | EnquiryDetail.tsx | open (a) / needs field (b) for Call |
+| I4 | Enquiry detail: "Revise the quote" stays offered after won/lost; Call on both sides (`tenants.phone` exists since 29 Aug 2026 — the detail page does not read it yet) | 5525, 5406 | EnquiryDetail.tsx | open (a) |
 | W1 | Crews: CrewCard as CompactCard | 4398-4421 | CrewCard.tsx | **fixed** |
 | W2 | Crews / Events forms: DosStylePicker instead of a native select | 9561, 15950 | CrewForm.tsx, EventForm.tsx | open (a) |
 | O1 | Notifications: the DosHero ramp (#5AC8FA → #6D28D9); "Read all" whenever there are rows | 13723, 13732 | NotificationsScreen.tsx | open (a) |
@@ -2853,8 +3028,9 @@ refs are the file to open.
 the Home PassDeck (H10), Discover's cover-strip photo (D8), the class form's
 room-clash warning (F3), DosStylePicker on the three forms (F4/W2), the
 onboarding styles/socials/photo steps and the finish screen (U2) — then the
-**needs field (b)** rows as their own slices (verification, sort_order, event
-rights, DOB, a business phone, enquiry-type prefs, rank history), leaving the
+**needs field (b)** rows as their own slices (sort_order, event rights, DOB,
+rank history — verification, the business phone and the enquiry-type prefs
+landed 29 Aug 2026), leaving the
 **decision (c)** rows for the user to rule on.
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
@@ -3276,6 +3452,9 @@ npx playwright test → both e2e specs, against a FRESH npm run dev
 node scripts/demo-data.js seed     → build the demo world in the live project
 node scripts/demo-data.js status   → what demo data exists right now
 node scripts/demo-data.js wipe     → remove ALL of it, in one step
+
+NODE_PATH=$(pwd)/node_modules node scripts/shots/shoot-proto.js  → screenshot every prototype screen (scripts/shots/shots/proto-*.png)
+NODE_PATH=$(pwd)/node_modules node scripts/shots/shoot-app.js    → screenshot the app's routes with a throwaway account (needs npm run dev)
 ```
 
 ### Demo data — one command in, one command out (28 Aug 2026)

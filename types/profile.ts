@@ -25,6 +25,10 @@ export interface Profile {
   styles: string[];
   /** the account number beside the role — "000482" (10641) */
   memberNo: number | null;
+  /** set by DanceOS after KYC — the tick (10678) */
+  verifiedAt: string | null;
+  /** the Call button's number (10879) — an artist's own */
+  phone: string | null;
 }
 
 /** the prototype's own words for what somebody is (10639) */

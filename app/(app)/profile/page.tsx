@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findMyNotificationPrefs } from "@/repositories/notifications";
 import { findPublicPerson } from "@/repositories/publicPerson";
+import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyPlace } from "@/repositories/stats";
 import { findMyTenants } from "@/repositories/tenants";
 
@@ -27,7 +28,7 @@ export default async function ProfilePage() {
     redirect("/onboarding");
   }
   const role = person.profile.role;
-  const [followers, followingPeople, followingTenants, place, tenants, prefs] = await Promise.all([
+  const [followers, followingPeople, followingTenants, place, tenants, prefs, plan] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -35,6 +36,7 @@ export default async function ProfilePage() {
     role === "studio" ? Promise.resolve(null) : findMyPlace(supabase, role === "trainer" ? "artist" : "dancer"),
     findMyTenants(supabase),
     findMyNotificationPrefs(supabase),
+    findMyArtistPlan(supabase),
   ]);
   /* Schedule goes to the public schedule of the business this person runs —
      a trainer's own (prototype `hasSchedule` = mode === "trainer", 10868); with
@@ -51,7 +53,8 @@ export default async function ProfilePage() {
       place={place ? { place: place.place, population: place.population } : null}
       scheduleHref={scheduleHref}
       prefs={prefs}
-      businessId={biz?.id ?? null}
+      business={biz ?? null}
+      plan={plan}
     />
   );
 }

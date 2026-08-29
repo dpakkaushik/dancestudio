@@ -55,12 +55,15 @@ export function EnquiryButton({
   tenantType,
   signedIn,
   accent,
+  enquiryTypes = null,
 }: {
   tenantId: string;
   tenantName: string;
   tenantType: TenantType;
   signedIn: boolean;
   accent: string;
+  /** the types the business switched on (ENQUIRIES YOU ACCEPT, 9005) — null means every one its kind allows */
+  enquiryTypes?: string[] | null;
 }) {
   const [open, setOpen] = useState(false);
   const box: React.CSSProperties = {
@@ -102,7 +105,7 @@ export function EnquiryButton({
         <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>Enquiry
       </button>
       {open ? (
-        <EnquirySheet tenantId={tenantId} tenantName={tenantName} tenantType={tenantType} accent={accent} onClose={() => setOpen(false)} />
+        <EnquirySheet tenantId={tenantId} tenantName={tenantName} tenantType={tenantType} accent={accent} enquiryTypes={enquiryTypes} onClose={() => setOpen(false)} />
       ) : null}
     </>
   );
@@ -113,15 +116,18 @@ export function EnquirySheet({
   tenantName,
   tenantType,
   onClose,
+  enquiryTypes = null,
 }: {
   tenantId: string;
   tenantName: string;
   tenantType: TenantType;
+  enquiryTypes?: string[] | null;
   /** the business page's colour — the sheet wears each TYPE's own colour instead (5119), so this is accepted and unused */
   accent?: string;
   onClose: () => void;
 }) {
-  const allowed = enquiryTypesFor(tenantType);
+  /* only the types the business switched on appear (9007) */
+  const allowed = enquiryTypesFor(tenantType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
   const [type, setType] = useState<EnquiryType | null>(null);
   const [dateMode, setDateMode] = useState<"single" | "multi">("single");
   const [dates, setDates] = useState<string[]>([""]);

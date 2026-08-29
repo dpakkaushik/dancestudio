@@ -21,7 +21,73 @@ interface RefundRow {
 }
 
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id)";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, tenant_id, classes (title, style, share_slug), tenants (name))";
+
+/** a refund with the class it is against — the ledger's row (16665-16680) */
+export interface RefundLedgerRow extends RefundRequest {
+  classId: string;
+  tenantId: string;
+  classTitle: string;
+  classStyle: string;
+  classShareSlug: string | null;
+  tenantName: string;
+}
+interface LedgerRow extends RefundRow {
+  orders: { class_id: string; tenant_id: string; classes: { title: string; style: string; share_slug: string } | null; tenants: { name: string } | null } | null;
+}
+const toLedger = (r: LedgerRow): RefundLedgerRow => ({
+  id: r.id,
+  userId: r.user_id,
+  learnerName: r.profiles?.full_name ?? "Someone",
+  amountInr: r.amount_inr,
+  reason: r.reason,
+  status: r.status,
+  createdAt: r.created_at,
+  decidedAt: r.decided_at,
+  decisionNote: r.decision_note,
+  settledOffline: r.settled_offline,
+  hasRailReference: r.provider_refund_id !== null,
+  classId: r.orders?.class_id ?? "",
+  tenantId: r.orders?.tenant_id ?? "",
+  classTitle: r.orders?.classes?.title ?? "Class",
+  classStyle: r.orders?.classes?.style ?? "",
+  classShareSlug: r.orders?.classes?.share_slug ?? null,
+  tenantName: r.orders?.tenants?.name ?? "",
+});
+
+/** every refund against a business's classes, newest first — members read it (Step 9) */
+export async function findRefundsByTenant(supabase: SupabaseClient, tenantId: string): Promise<RefundLedgerRow[]> {
+  const { data, error } = await supabase
+    .from("refunds")
+    .select(REFUND_SELECT)
+    .eq("orders.tenant_id", tenantId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error) {
+    throw new Error(`refunds.findByTenant failed: ${error.message}`);
+  }
+  return (data as unknown as LedgerRow[]).map(toLedger);
+}
+
+/** my own refunds — `user_id = auth.uid()` out loud (a member reads their studio's too) */
+export async function findMyRefunds(supabase: SupabaseClient): Promise<RefundLedgerRow[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("refunds")
+    .select(REFUND_SELECT)
+    .eq("user_id", user.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) {
+    throw new Error(`refunds.mine failed: ${error.message}`);
+  }
+  return (data as unknown as LedgerRow[]).map(toLedger);
+}
 
 /** Every refund against this class, oldest request first — the queue is a
  *  queue, so the person who has waited longest is at the top. */

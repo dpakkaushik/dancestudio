@@ -20,6 +20,16 @@ interface TenantRow {
   city: string | null;
   created_at: string;
   photo_path?: string | null;
+  about?: string | null;
+  founded_year?: number | null;
+  phone?: string | null;
+  socials?: unknown;
+  enquiry_types?: string[] | null;
+  accepts_upi?: boolean | null;
+  accepts_cards?: boolean | null;
+  accepts_cash?: boolean | null;
+  accepts_bank?: boolean | null;
+  verified_at?: string | null;
 }
 
 interface StyleRow {
@@ -49,7 +59,7 @@ export type PublicTenantProfileWithFaces = Omit<PublicTenantProfile, "faculty"> 
 export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
   const { data, error } = await supabase
     .from("tenants")
-    .select("id, type, name, area, city, created_at, photo_path")
+    .select("id, type, name, area, city, created_at, photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at")
     .eq("id", tenantId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -60,7 +70,8 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
     return null;
   }
   const row = data as TenantRow;
-  return { id: row.id, type: row.type, name: row.name, area: row.area, city: row.city, createdAt: row.created_at, photoPath: row.photo_path ?? null };
+  const socials = Array.isArray(row.socials) ? (row.socials as Array<{ platform?: unknown; url?: unknown }>).map((x) => ({ platform: String(x.platform ?? ""), url: String(x.url ?? "") })).filter((x) => x.platform && x.url) : [];
+  return { id: row.id, type: row.type, name: row.name, area: row.area, city: row.city, createdAt: row.created_at, photoPath: row.photo_path ?? null, about: row.about ?? null, foundedYear: row.founded_year == null ? null : Number(row.founded_year), phone: row.phone ?? null, socials, enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null, accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false }, verifiedAt: row.verified_at ?? null };
 }
 
 export async function findPublicTenantProfile(

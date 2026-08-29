@@ -1,4 +1,4 @@
-import type { TenantType } from "@/types/tenant";
+import type { AcceptedMethods, TenantType } from "@/types/tenant";
 
 /** A business as a stranger sees it (prototype S_profiletab with
  *  `publicEntity="studio"|"trainer"`, PUB presets 8641-8646). Everything here is
@@ -15,6 +15,14 @@ export interface PublicTenant {
   createdAt: string;
   /** a path in the public media bucket, or null for the business's gradient */
   photoPath: string | null;
+  about: string | null;
+  foundedYear: number | null;
+  phone: string | null;
+  socials: Array<{ platform: string; url: string }>;
+  enquiryTypes: string[] | null;
+  /** what the business takes from students (S_payments 16612) — printed on the page, edited on the desk */
+  accepts: AcceptedMethods;
+  verifiedAt: string | null;
 }
 
 /** Somebody confirmed on one of the business's published classes — the

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ProfileRole } from "@/types/profile";
-import type { Tenant, TenantType } from "@/types/tenant";
+import type { AcceptedMethods, Tenant, TenantType } from "@/types/tenant";
+import type { SocialLink } from "@/types/profile";
 
 interface TenantRow {
   photo_path?: string | null;
@@ -9,18 +10,73 @@ interface TenantRow {
   name: string;
   area: string | null;
   city: string | null;
+  about?: string | null;
+  founded_year?: number | null;
+  phone?: string | null;
+  socials?: unknown;
+  enquiry_types?: string[] | null;
+  accepts_upi?: boolean;
+  accepts_cards?: boolean;
+  accepts_cash?: boolean;
+  accepts_bank?: boolean;
+  verified_at?: string | null;
 }
 
-const TENANT_COLUMNS = "id, type, name, area, city, photo_path";
+export const TENANT_COLUMNS = "id, type, name, area, city, photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at";
 
-const toTenant = (row: TenantRow): Tenant => ({
+const toSocials = (raw: unknown): SocialLink[] =>
+  Array.isArray(raw)
+    ? raw
+        .filter((x): x is { platform: unknown; url: unknown } => Boolean(x) && typeof x === "object")
+        .map((x) => ({ platform: String(x.platform ?? ""), url: String(x.url ?? "") }))
+        .filter((x) => x.platform && x.url)
+    : [];
+
+export const toTenant = (row: TenantRow): Tenant => ({
   id: row.id,
   type: row.type,
   name: row.name,
   area: row.area,
   city: row.city,
   photoPath: row.photo_path ?? null,
+  about: row.about ?? null,
+  foundedYear: row.founded_year == null ? null : Number(row.founded_year),
+  phone: row.phone ?? null,
+  socials: toSocials(row.socials),
+  enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null,
+  accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false },
+  verifiedAt: row.verified_at ?? null,
 });
+
+export interface TenantProfileInput {
+  about: string | null;
+  foundedYear: number | null;
+  phone: string | null;
+  socials: SocialLink[];
+  enquiryTypes: string[] | null;
+  accepts: AcceptedMethods;
+}
+
+/** What a business says about itself and the switches it sets (S_payments 16612,
+ *  the enquiry-types sheet 9000, the public page's About / Since / Call / links):
+ *  one owner-only door, validated inside. */
+export async function updateTenantProfile(supabase: SupabaseClient, tenantId: string, input: TenantProfileInput): Promise<void> {
+  const { error } = await supabase.rpc("update_tenant_profile", {
+    p_tenant_id: tenantId,
+    p_about: input.about,
+    p_founded_year: input.foundedYear,
+    p_phone: input.phone,
+    p_socials: input.socials,
+    p_enquiry_types: input.enquiryTypes,
+    p_accepts_upi: input.accepts.upi,
+    p_accepts_cards: input.accepts.cards,
+    p_accepts_cash: input.accepts.cash,
+    p_accepts_bank: input.accepts.bank,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
 
 /** Atomic create: tenant + owner membership via the create_tenant_with_owner RPC. */
 export async function createTenantWithOwner(

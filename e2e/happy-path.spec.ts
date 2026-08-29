@@ -874,18 +874,61 @@ test.describe.serial("DanceOS, end to end", () => {
     const settings = trainer.getByRole("dialog", { name: "Settings" });
     await expect(settings).toBeVisible();
     await expect(settings.getByText("YOUR PLAN")).toBeVisible();
-    await expect(settings.getByRole("button", { name: /Payments/ })).toBeVisible();
     // a row opens where its subject lives rather than pretending
     await settings.getByRole("button", { name: /Notifications/ }).click();
     await expect(settings.getByRole("link", { name: "All notification settings ›" })).toBeVisible();
     // and Log out is here, where the prototype keeps it
     await expect(settings.getByRole("button", { name: /Log out/ })).toBeVisible();
-    // Artist tools is one switch over the same profile — it is really the role
-    await settings.getByRole("button", { name: "Artist tools" }).click();
-    await expect(trainer.getByText("DANCER", { exact: true })).toBeVisible({ timeout: 15_000 });
-    // the sheet stays open across the refresh (it is the address), so the switch is right there
+    // Enquiry types is the prototype's own sheet (9000-9030) — a studio takes four kinds (no judge, 4934)
+    await settings.getByRole("button", { name: /Enquiry types/ }).click();
+    const enqTypes = trainer.getByRole("dialog", { name: "Enquiry types" });
+    await expect(enqTypes.getByText("4 of 4 switched on")).toBeVisible();
+    await enqTypes.getByRole("button", { name: "Done" }).click();
+    // Payments is a real screen now (S_payments 16531): the trainer's goes to the studio's desk
+    await settings.getByRole("link", { name: /Payments & verification/ }).click();
+    await expect(trainer).toHaveURL(new RegExp(`/business/${tenantId}/payments`));
+    await expect(trainer.getByRole("heading", { name: "Payments & verification" })).toBeVisible();
+    await expect(trainer.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
+    // a trainer is not the owner — the switches are drawn but refuse to move
+    await trainer.getByRole("switch", { name: "Bank transfer" }).click();
+    await expect(trainer.getByText("Only the owner changes what the business accepts")).toBeVisible();
+    await trainer.getByRole("button", { name: "Verification" }).click();
+    await expect(trainer.getByText("Not verified yet")).toBeVisible();
+    // Artist tools is the Artist PLAN's switch (8855): locked, it opens the plan — free during the pilot
+    await trainer.goto("/profile?settings=1");
     await trainer.getByRole("dialog", { name: "Settings" }).getByRole("button", { name: "Artist tools" }).click();
+    await expect(trainer).toHaveURL(/\/subscription/);
+    await trainer.getByRole("button", { name: /^Subscribe · / }).click();
+    await expect(trainer.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByText("Active until")).toBeVisible();
+    await trainer.goto("/profile?settings=1");
+    const settings2 = trainer.getByRole("dialog", { name: "Settings" });
+    await expect(settings2.getByText("PRO ACTIVE")).toBeVisible();
+    await expect(settings2.getByRole("link", { name: /Subscription/ })).toBeVisible();
+    // ending the plan puts the toolset away and the role back to dancing
+    await settings2.getByRole("button", { name: "Artist tools" }).click();
+    await expect(trainer.getByText("DANCER", { exact: true })).toBeVisible({ timeout: 15_000 });
+    // and taking it again makes the same profile an artist again — never a second identity
+    await trainer.goto("/subscription");
+    await trainer.getByRole("button", { name: /^Subscribe · / }).click();
+    await expect(trainer.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await trainer.goto("/profile");
     await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+    // ---- the business's own words on its public page (About 10826, Since 10691, Call 10879) ----
+    await owner.goto(studioUrl);
+    await owner.getByRole("button", { name: "Edit business" }).click();
+    const bizEdit = owner.getByRole("dialog", { name: "Edit business" });
+    await bizEdit.getByLabel("About").fill("Where Pune comes to move.");
+    await bizEdit.getByLabel("Since").selectOption("2016");
+    await bizEdit.getByLabel("Phone (Call button)").fill("+91 98765 43210");
+    await bizEdit.getByRole("button", { name: "Save" }).click();
+    await expect(owner.getByText("Where Pune comes to move.")).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByText("Since 2016")).toBeVisible();
+    // a stranger reads the same words, and Call is a real tel: hand-off
+    await learner.goto(studioUrl);
+    await expect(learner.getByText("Where Pune comes to move.")).toBeVisible();
+    await expect(learner.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+919876543210");
 
     // somebody else reads the same three things on the person page — and can open the link
     await learner.goto(`/person/${trainerId}`);

@@ -27,3 +27,6 @@ playwright-report/
 
 # local Claude Code session config
 .claude/
+
+# screenshot rigs write here (scripts/shots/*.js)
+scripts/shots/shots/
