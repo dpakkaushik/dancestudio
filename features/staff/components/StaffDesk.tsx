@@ -142,14 +142,10 @@ export function StaffDesk({
         boxSizing: "border-box",
       }}
     >
-      <div style={{ margin: "8px 0 2px", fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB }}>
-        {tenantName.toUpperCase()}
-      </div>
-      <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
-        Staff &amp; permissions
-      </div>
-      <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5, marginBottom: 14 }}>
-        Who runs this place with you — and what each of them may do.
+      {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
+      <div aria-label={`${tenantName} — Team`} style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg,#F97316 0%, #F97316cc 55%, #F9731680 100%)` }}>
+        <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Team</div>
       </div>
 
       {/* ── the people who are already here (18428-18433) ── */}

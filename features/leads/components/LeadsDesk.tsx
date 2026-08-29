@@ -107,12 +107,10 @@ export function LeadsDesk({
         boxSizing: "border-box",
       }}
     >
-      <div style={{ margin: "8px 0 2px", fontSize: 10, fontWeight: 900, letterSpacing: 1.2, color: SUB }}>
-        {tenantName.toUpperCase()}
-      </div>
-      <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Students</div>
-      <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5, marginBottom: 12 }}>
-        Everyone who asked about dancing here — and what happened next.
+      {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
+      <div aria-label={`${tenantName} — Students`} style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg,#8B5CF6 0%, #8B5CF6cc 55%, #8B5CF680 100%)` }}>
+        <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Students</div>
       </div>
 
       {/* the funnel, in one line: what is open, and what stuck */}

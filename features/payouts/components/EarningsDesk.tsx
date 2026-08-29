@@ -206,7 +206,7 @@ export function EarningsDesk({
         boxSizing: "border-box",
       }}
     >
-      <EarnHero title="Earnings" sub={tenantName} />
+      <EarnHero title="Earnings" />
 
       {/* period filter — This month is live, past months open their statement */}
       <PeriodChips

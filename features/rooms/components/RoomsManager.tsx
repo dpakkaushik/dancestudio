@@ -8,7 +8,7 @@ import {
   updateRoomAction,
 } from "@/features/rooms/server-actions/rooms";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
-import { DOS_DISPLAY, DOS_UI, PINK, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
 
 /** The studio's rooms — lifted from the prototype's business settings Rooms
@@ -100,11 +100,10 @@ export function RoomsManager({
         color: "var(--text)",
       }}
     >
-      <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, margin: "8px 0 2px" }}>
-        Rooms
-      </div>
-      <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5, marginBottom: 14 }}>
-        The floors you teach on. A room&rsquo;s capacity caps every class held in it.
+      {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
+      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg,#3498DB 0%, #3498DBcc 55%, #3498DB80 100%)` }}>
+        <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Rooms</div>
       </div>
 
       <div style={card}>

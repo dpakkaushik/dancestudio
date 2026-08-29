@@ -65,7 +65,7 @@ export function MyEarnings({ data, monthLabel }: { data: MyEarningsData; monthLa
         boxSizing: "border-box",
       }}
     >
-      <EarnHero title="Earnings" sub="What you have taught, and who has paid you" />
+      <EarnHero title="Earnings" />
 
       <MoneyCard
         label={`TEACHING · ${monthLabel.toUpperCase()}`}

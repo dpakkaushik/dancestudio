@@ -1,4 +1,4 @@
-**fixed** (was already Discover) 
+**fixed** — UPCOMING and COMPLETED under day headings; the rows stay the History row (a HistoryRow is not a DanceClass, so the tile cannot be drawn from it) and drafts belong to a business, not a person 
 
 ## What this repo is
 

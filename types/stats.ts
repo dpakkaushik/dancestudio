@@ -8,7 +8,8 @@ export type Side = "conducted" | "assisted" | "attended";
 
 export const SIDE_WORD: Record<Side, string> = { conducted: "Conducted", assisted: "Assisted", attended: "Attended" };
 export const SIDE_VERB: Record<Side, string> = { conducted: "Taught", assisted: "Assisted", attended: "Danced" };
-export const SIDE_TINT: Record<Side, string> = { conducted: "#F59E0B", assisted: "#0D9488", attended: "#3B82F6" };
+/* the record's three colours (10031-10040): amber for taught, violet for assisted, blue for trained */
+export const SIDE_TINT: Record<Side, string> = { conducted: "#F59E0B", assisted: "#8B5CF6", attended: "#3B82F6" };
 
 export interface DanceStats {
   sessionsConducted: number;
@@ -58,6 +59,17 @@ export interface HistoryRow {
 }
 
 export type ChartSegment = "dancer" | "artist" | "studio" | "crew";
+
+/** the board's metric (9612) — Wins is absent because no score is recorded */
+export type ChartMetric = "overall" | "conducted" | "assisted" | "attended" | "hours";
+export const CHART_METRICS: Array<{ k: ChartMetric; label: string; unit: string }> = [
+  { k: "overall", label: "Overall", unit: "pts" },
+  { k: "conducted", label: "Sessions conducted", unit: "sessions" },
+  { k: "assisted", label: "Sessions assisted", unit: "sessions" },
+  { k: "attended", label: "Sessions attended", unit: "sessions" },
+  { k: "hours", label: "Hours on the floor", unit: "hours" },
+];
+export const parseChartMetric = (raw: string | undefined): ChartMetric => (CHART_METRICS.some((m) => m.k === raw) ? (raw as ChartMetric) : "overall");
 
 export const CHART_SEGMENTS: Array<{ k: ChartSegment; label: string }> = [
   { k: "studio", label: "Studios" },
