@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
 import { dosStyleColor } from "@/lib/constants/styles";
+import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
@@ -19,7 +20,9 @@ const EL = "var(--el)";
  * OWN FACE ON THE COVER'S EDGE half on and half off, the name at full size,
  * then the one foot line — where, as one fact ("Pune  2.4 km"), and the
  * follower count — and the studio's styles as the app's own tiles, one line
- * that scrolls. The card opens the business's public page.
+ * that scrolls. The card opens the business's public page. DanceOS's tick sits
+ * beside the name where the prototype puts it (4348-4353) — the name keeps the
+ * flex so a long one still truncates and the tick is never pushed off.
  */
 export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: NearbyTenant; followers?: number; styles?: string[] }) {
   const grad = gradientOf(tenant.name);
@@ -80,7 +83,10 @@ export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: Nea
             {initialsOf(tenant.name)}
           </span>
           <span style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
-            <span style={{ display: "block", fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
+              {tenant.verifiedAt ? <VerifiedTick size={15} /> : null}
+            </span>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>

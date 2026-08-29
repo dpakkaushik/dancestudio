@@ -10,7 +10,7 @@ import type { PublicPerson } from "@/repositories/publicPerson";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { PersonFollowButton } from "./PersonFollowButton";
 import { ProfileShare } from "./ProfileShare";
-import { fmtFollowers } from "./PublicProfile";
+import { CallButton, fmtFollowers } from "./PublicProfile";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { handleOf, isPlatform } from "@/lib/constants/socials";
 import { memberNoWords } from "@/types/profile";
@@ -41,8 +41,11 @@ export { Group, Row };
  *
  *  Not lifted, tracked in the backlog: the photo (no media yet — the square is
  *  the person's initials on their own gradient), About / age / experience (no
- *  fields), Call and the enquiry sheet (a person holds no number and enquiries
- *  target businesses), the albums tabs, and the rank ladder. */
+ *  fields), the enquiry sheet (enquiries target businesses), the albums tabs,
+ *  and the rank ladder. CALL LANDED 30 Aug 2026 (N8): a person holds a number
+ *  now — one they publish from their own Edit profile sheet and can clear the
+ *  same way — so Follow shares its row with Call whenever there is one to ring,
+ *  and the row is Follow alone when there is not. */
 
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
 const figure: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontWeight: 700, fontVariantNumeric: "tabular-nums" };
@@ -166,6 +169,13 @@ export function PublicPersonPage({ person, isMe, following, signedIn }: { person
                 <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
               </div>
             </>
+          ) : profile.phone ? (
+            /* two things you can do, so they share the row — the same tel: the
+               business page hands off with, from the same component */
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 6 }}>
+              <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} />
+              <CallButton phone={profile.phone} />
+            </div>
           ) : (
             <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} />
           )}

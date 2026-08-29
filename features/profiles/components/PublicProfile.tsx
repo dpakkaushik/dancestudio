@@ -10,9 +10,11 @@ import { photoUrl } from "@/lib/media/photo";
 import { FollowButton } from "./FollowButton";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import type { PublicTenantProfileWithFaces } from "@/repositories/publicProfile";
+import type { TenantFollower } from "@/types/follow";
 import { TYPE } from "./profile-kit";
 import { ProfileShare } from "./ProfileShare";
 import { BusinessEditButton } from "./BusinessEditSheet";
+import { TenantFollowersButton } from "./TenantFollowersButton";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { PLATFORM_TINT, handleOf, isPlatform } from "@/lib/constants/socials";
 import { PlatformIcon } from "./profile-kit";
@@ -66,8 +68,10 @@ const joinedYear = (iso: string) =>
 
 const shelf: React.CSSProperties = TYPE.shelf;
 
-/** Call — a real tel: hand-off to the number on record (10879); drawn only when there is one */
-function CallButton({ phone }: { phone: string }) {
+/** Call — a real tel: hand-off to the number on record (10879); drawn only when
+ *  there is one. Exported because a PERSON's page calls the same way a
+ *  business's does (N8): one Call, not two that drift apart. */
+export function CallButton({ phone }: { phone: string }) {
   return (
     <a href={`tel:${phone.replace(/\s+/g, "")}`} aria-label="Call" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", overflow: "hidden", whiteSpace: "nowrap", background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
       <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>
@@ -89,6 +93,7 @@ export function PublicProfile({
   isMember,
   canEditPhoto = false,
   canEdit = false,
+  followers = null,
   scheduleHref,
   manageHref,
 }: {
@@ -103,6 +108,8 @@ export function PublicProfile({
   canEditPhoto?: boolean;
   /** the owner — the one who edits About, Since, the number and the links (10613) */
   canEdit?: boolean;
+  /** the owner's list — null for everybody else, and the figure stays a figure (B6) */
+  followers?: TenantFollower[] | null;
   scheduleHref: string;
   manageHref: string;
 }) {
@@ -203,15 +210,21 @@ export function PublicProfile({
 
             {/* the figures, at the size of figures */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-              <span aria-label={`${profile.followers} followers`}>
-                <span
-                  data-testid="followers-count"
-                  style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}
-                >
-                  {fmtFollowers(profile.followers)}
+              {/* a number, never a name (Step 15) — unless you are the business
+                  whose followers they are, and then it opens (B6) */}
+              {followers ? (
+                <TenantFollowersButton count={profile.followers} followers={followers} />
+              ) : (
+                <span aria-label={`${profile.followers} followers`}>
+                  <span
+                    data-testid="followers-count"
+                    style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {fmtFollowers(profile.followers)}
+                  </span>
+                  <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
                 </span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
-              </span>
+              )}
             </div>
           </div>
         </div>

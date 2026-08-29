@@ -34,13 +34,13 @@ interface EnquiryRow {
   mobile: string | null;
   status: EnquiryStatus;
   created_at: string;
-  tenants: { name: string; type: TenantType } | null;
+  tenants: { name: string; type: TenantType; phone: string | null } | null;
   profiles: { full_name: string } | null;
   enquiry_quotes: QuoteRow[] | null;
 }
 
 const ENQUIRY_SELECT =
-  "id, tenant_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, tenants (name, type), profiles (full_name), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
+  "id, tenant_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, tenants (name, type, phone), profiles (full_name), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
 
 const toQuote = (q: QuoteRow): EnquiryQuote => ({
   id: q.id,
@@ -66,6 +66,9 @@ const toEnquiry = (r: EnquiryRow): Enquiry => ({
   tenantId: r.tenant_id,
   tenantName: r.tenants?.name ?? "A business",
   tenantType: r.tenants?.type ?? "studio",
+  /* under the policy that already let this join read the name — the same number
+     the business's public page prints, not a private one (I4) */
+  tenantPhone: r.tenants?.phone ?? null,
   fromUserId: r.from_user_id,
   fromName: r.profiles?.full_name ?? "Someone",
   typeKey: r.type_key,

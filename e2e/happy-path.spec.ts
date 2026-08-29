@@ -999,4 +999,117 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toBeVisible();
   });
 
+  test("the wiring slice: a tick, two numbers, a followers list and two buttons that had no door", async () => {
+    // ---- parity slice 7: D7 · N8 · I4 · B6 · the History chip · See crew ranking · the rank row ----
+    // Every row here is the same shape of gap — a FIELD that exists and a SCREEN
+    // that never read it — so they are proved together, in the order a person
+    // would meet them.
+
+    // ── D7: the tick on Discover's cards. Verification is DanceOS's to give
+    // (the guard migration makes that a rule, not a comment), so the story sets
+    // it the only way anything can: through the service role.
+    const ticked = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenantId}`, {
+      method: "PATCH",
+      headers: adminHeaders,
+      body: JSON.stringify({ verified_at: new Date().toISOString() }),
+    });
+    expect(ticked.ok).toBeTruthy();
+    await learner.goto("/discover?city=Pune&tab=studios");
+    const studioCard = learner.getByRole("link", { name: `Open ${studioName}` });
+    await expect(studioCard).toBeVisible();
+    await expect(studioCard.getByLabel("Verified")).toBeVisible();
+
+    // ── N8: a person publishes a number, and their page grows a Call. The field
+    // has existed since the settings slice with no way in — the Edit profile
+    // sheet is that way in, and the same sheet takes it back down.
+    await learner.goto("/profile");
+    await learner.getByLabel("Edit profile").click();
+    const editSheet = learner.getByRole("dialog", { name: "Edit profile" });
+    await editSheet.getByLabel("Phone").fill("+91 98765 43210");
+    await editSheet.getByRole("button", { name: "Save" }).click();
+    await expect(editSheet).toHaveCount(0);
+    // somebody else's read of it: the trainer opens the learner's page and can ring
+    await trainer.goto(`/person/${learnerId}`);
+    await expect(trainer.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+919876543210");
+    // and it is the person's to withdraw: an empty box saves null, and the Call goes
+    await learner.getByLabel("Edit profile").click();
+    await editSheet.getByLabel("Phone").fill("");
+    await editSheet.getByRole("button", { name: "Save" }).click();
+    await expect(editSheet).toHaveCount(0);
+    await trainer.reload();
+    await expect(trainer.getByRole("link", { name: "Call" })).toHaveCount(0);
+
+    // ── I4: the OTHER end of an enquiry can ring too. The business publishes its
+    // number on its own page; the person who asked reads it on the enquiry they sent.
+    await owner.goto(studioUrl);
+    await owner.getByRole("button", { name: "Edit business" }).click();
+    const bizSheet = owner.getByRole("dialog", { name: "Edit business" });
+    await bizSheet.getByLabel("Phone (Call button)").fill("+91 90000 11111");
+    await bizSheet.getByRole("button", { name: "Save" }).click();
+    await expect(bizSheet).toHaveCount(0);
+    await learner.goto("/inbox");
+    await learner.getByRole("button", { name: /^Enquiries/ }).click();
+    await learner.getByRole("button", { name: "Sent enquiries" }).click();
+    await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
+    await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
+    await expect(learner.getByRole("link", { name: `Call ${studioName}` })).toHaveAttribute("href", "tel:+919000011111");
+    // the business's side is unchanged: this enquiry carried no mobile, so it still
+    // says so rather than offering a dead button
+    await owner.goto("/inbox");
+    await owner.getByRole("button", { name: /^Enquiries/ }).click();
+    await owner.getByRole("link", { name: "Private Sessions enquiry from E2E Learner" }).click();
+    await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
+    await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();
+
+    // ── B6: the follower COUNT becomes a list, for the owner and nobody else.
+    await owner.goto(studioUrl);
+    await owner.getByRole("button", { name: "1 follower — see who" }).click();
+    const followersSheet = owner.getByRole("dialog", { name: "Followers" });
+    const learnerRow = followersSheet.getByRole("link", { name: /E2E Learner/ });
+    await expect(learnerRow).toBeVisible();
+    await expect(learnerRow).toHaveAttribute("href", `/person/${learnerId}`);
+    await learnerRow.click();
+    await owner.waitForURL(`**/person/${learnerId}`);
+    // a follower reading the same page gets the figure, not the door
+    await learner.goto(studioUrl);
+    await expect(learner.getByTestId("followers-count")).toHaveText("1");
+    await expect(learner.getByRole("button", { name: /see who/ })).toHaveCount(0);
+
+    // ── the two buttons whose destinations already existed
+    await learner.goto("/calendar");
+    await expect(learner.getByRole("link", { name: "History" })).toHaveAttribute("href", "/stats?tab=history");
+    await learner.getByRole("link", { name: "History" }).click();
+    await learner.waitForURL(/tab=history/);
+    await expect(learner.getByTestId("history-count")).toBeVisible();
+
+    await learner.goto(`/crews/${crewId}/manage`);
+    await learner.getByRole("button", { name: "Battle record" }).click();
+    const rankingBtn = learner.getByRole("link", { name: "See crew ranking" });
+    await expect(rankingBtn).toHaveAttribute("href", "/stats?tab=charts&seg=crew");
+    await rankingBtn.click();
+    await learner.waitForURL(/seg=crew/);
+    await expect(learner.getByRole("link", { name: new RegExp(`^${crewName} — place \\d+ of \\d+$`) })).toBeVisible();
+
+    // ── the rank row on Home's sleeve. It says exactly what the Profile tab says
+    // about where you stand — and where there is no place, BOTH say nothing:
+    // Step 25's rule is that "#0" is not a rank, and a second screen printing one
+    // would be the first place that rule broke.
+    const rankLink = /^Rank \d+ of \d+ — open global rankings$/;
+    await learner.goto("/profile");
+    await expect(learner.getByRole("link", { name: rankLink })).toHaveCount(0);
+    await learner.goto("/");
+    await expect(learner.getByRole("link", { name: rankLink })).toHaveCount(0);
+    // the trainer took a class in the PassDeck segment, so whatever the boards make
+    // of that, the sleeve and the Profile tab give the same answer
+    await trainer.goto("/profile");
+    const onProfile = trainer.getByRole("link", { name: rankLink });
+    const said = (await onProfile.count()) > 0 ? await onProfile.getAttribute("aria-label") : null;
+    await trainer.goto("/");
+    if (said) {
+      await expect(trainer.getByRole("link", { name: said, exact: true })).toBeVisible();
+    } else {
+      await expect(trainer.getByRole("link", { name: rankLink })).toHaveCount(0);
+    }
+  });
+
 });

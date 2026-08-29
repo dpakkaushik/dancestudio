@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { isFollowingTenant } from "@/repositories/follows";
+import { findTenantFollowers, isFollowingTenant } from "@/repositories/follows";
 import { findPublicTenantProfile } from "@/repositories/publicProfile";
 import { findMyMembershipRole } from "@/repositories/tenants";
 import type { TenantType } from "@/types/tenant";
@@ -34,6 +34,11 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
     user ? findMyMembershipRole(supabase, tenantId) : Promise.resolve(null),
   ]);
 
+  /* WHO follows you is the owner's to read (B6). The policy would admit any
+     member; the app asks only when the owner is the one looking, so the second
+     query is not made for the other 99% of visits either. */
+  const followers = role === "owner" ? await findTenantFollowers(supabase, tenantId) : null;
+
   return (
     <PublicProfile
       profile={profile}
@@ -43,6 +48,7 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
       isMember={role !== null}
       canEditPhoto={role === "owner" || role === "trainer"}
       canEdit={role === "owner"}
+      followers={followers}
       scheduleHref={publicSchedulePath(profile.tenant)}
       manageHref={`/business/${tenantId}/classes`}
     />

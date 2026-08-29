@@ -92,7 +92,11 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
     [e.dates.length > 1 ? "Dates" : "Date", e.dates.map(dateWords).join(", ")],
     ...(e.whereText ? ([["Where", e.whereText]] as Array<[string, string]>) : []),
   ];
-  const tel = String(e.mobile ?? "").replace(/[^\d+]/g, "");
+  /* WHOSE NUMBER IS ON THIS PAGE DEPENDS ON WHICH END OF IT YOU ARE (I4).
+     On an enquiry that came IN, the number is the one the sender typed. On one
+     you SENT, it is the business's published number — the same one its public
+     page prints, read through the join that already fetched its name. */
+  const tel = String((mine ? e.mobile : e.tenantPhone) ?? "").replace(/[^\d+]/g, "");
 
   return (
     <div style={{ background: LILAC, maxWidth: 430, margin: "0 auto", color: "var(--text)", paddingBottom: 40, fontFamily: DOS_UI, minHeight: "100vh" }}>
@@ -109,8 +113,11 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
       />
       <div style={{ padding: "12px 16px 0" }}>
         {/* reach them — a toast saying "Calling…" is not a call; with a number on
-            the record this hands off to the dialler, without one it says so */}
-        {mine ? (
+            the record this hands off to the dialler, without one it says so.
+            BOTH SIDES CAN RING NOW (I4): a business could call the person who
+            asked and the person who asked could not call back, which made the
+            conversation one-way for no reason anybody had decided. */}
+        {tel || mine ? (
           <div style={{ display: "flex", gap: 8, marginBottom: 11 }}>
             {tel ? (
               <a

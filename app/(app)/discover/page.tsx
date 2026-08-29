@@ -21,7 +21,7 @@ import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
-import { findNearbyTenants, findTenantPhotoPaths } from "@/repositories/discovery";
+import { findNearbyTenants, findTenantCardFacts, type TenantCardFacts } from "@/repositories/discovery";
 import { findPublishedEvents } from "@/repositories/events";
 import { findFollowerCounts, findMyFollowing } from "@/repositories/follows";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
@@ -111,19 +111,21 @@ export default async function DiscoverPage({
   const followed = following.filter((f) => f.tenantType === (tab === "studios" ? "studio" : "trainer_business"));
   /* the follower count sits at the foot of every business card — a number, never a name (Step 15);
      the faces come from the tenants themselves (the nearby RPC carries none) */
-  const [followerCounts, photos] = await Promise.all([
+  const [followerCounts, facts] = await Promise.all([
     wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
-    wantsBusinesses ? findTenantPhotoPaths(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.tenantId)]) : Promise.resolve(new Map<string, string>()),
+    wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.tenantId)]) : Promise.resolve(new Map<string, TenantCardFacts>()),
   ]);
+  /* the face and the tick reach the cards together — one read, two facts (D7) */
   businesses.forEach((t) => {
-    t.photoPath = photos.get(t.id) ?? null;
+    t.photoPath = facts.get(t.id)?.photoPath ?? null;
+    t.verifiedAt = facts.get(t.id)?.verifiedAt ?? null;
   });
   const followedTiles: FollowedTile[] = followed.map((f) => ({
     id: f.tenantId,
     name: f.tenantName,
     kind: f.tenantType === "studio" ? "studio" : "artist",
     href: publicProfilePath({ id: f.tenantId, type: f.tenantType }),
-    photo: photoUrl(photos.get(f.tenantId)),
+    photo: photoUrl(facts.get(f.tenantId)?.photoPath ?? undefined),
     grad: gradientOf(f.tenantName),
   }));
 
@@ -248,6 +250,7 @@ export default async function DiscoverPage({
               city={t.city ?? t.area ?? "—"}
               km={kmLabel(t.distanceKm)}
               styles={stylesByTenant.get(t.id) ?? []}
+              verified={Boolean(t.verifiedAt)}
               foot={<DosFollowers n={followerCounts.get(t.id) ?? 0} size={11} />}
             />
           ))}

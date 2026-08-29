@@ -29,6 +29,54 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Parity slice 7 landed 30 Aug 2026: the wiring slice — a tick, two numbers,
+  a followers list and two buttons (audit rows D7 · N8/P9 · I4 · B6, the
+  calendar's History chip, the crew desk's "See crew ranking", and Home's rank
+  row).** Seven rows that were all the same shape of gap: **a field that exists
+  and a screen that never read it**, so they were built and proved as one slice.
+  **D7** — Discover's cards draw `VerifiedTick` beside the name (StudioCard at
+  the prototype's size 15, CompactCard at 13); `findTenantPhotoPaths` became
+  `findTenantCardFacts` so the face and the tick reach the cards in ONE query
+  rather than one per fact, and a crew — which nobody verifies — simply never
+  passes the flag. **N8 / P9** — a person's number, which the settings slice
+  added as a column with no way in, so it could only ever be null. Migration
+  `20260830220000_person_phone.sql` ⚠ widens the ONE door rather than letting
+  the app grow a bypass: `update_my_profile` gains `p_phone` with the same
+  check the business phone carries, and **the old six-argument signature is
+  DROPPED, not left beside it** — two overloads of one name is how PostgREST
+  comes to answer "could not find the function without parameters", and this
+  file has been bitten by that before. The Edit profile sheet offers the field
+  with the sentence that says what an empty box means, and `PublicPersonPage`
+  draws `CallButton` — **exported from `PublicProfile` rather than copied**, so
+  a person rings the same way a business does. **I4** — the other end of an
+  enquiry can ring back: the enquiry carries `tenantPhone` through the join
+  that already fetched the business's name, and the Call strip is no longer
+  the business's alone (a business could call the person who asked and the
+  person who asked could not call back, which made the conversation one-way
+  for no reason anybody had decided). **B6** — `findTenantFollowers` has
+  existed since Step 15 with no caller: the page printed how many and never
+  who. The figure is a door now, and **who may open it is the app's decision,
+  not RLS's** — the policy admits every member, the page asks only when the
+  OWNER is looking, which also means the second query is not made on the other
+  99% of visits. Its rows are the person's Followers sheet's rows, drawn by the
+  same kit: `followTint` moved into `profile-kit` so a dancer cannot be pink on
+  one sheet and blue on the other. **The two buttons** both had destinations
+  since Step 25 and no door: the calendar hero's History chip
+  (`/stats?tab=history`) and the crew desk's See crew ranking
+  (`/stats?tab=charts&seg=crew`). **The rank row** on Home's identity sleeve
+  reads `my_chart_place` — and keeps Step 25's rule by construction: no place,
+  no row, because "#0" is not a rank. A thirteenth e2e segment proves the lot
+  end to end (the tick set the only way anything can set it — through the
+  service role, past the guard trigger; a number published, read by somebody
+  else as a real `tel:`, then **taken down again**, which is the half a field
+  like this usually forgets; the enquirer's Call while the business's side
+  still says "No number on this enquiry"; the owner's Followers sheet opening
+  onto the follower's own page while a follower gets the figure and no door;
+  both buttons' hrefs and their destinations; and **Home's sleeve saying
+  exactly what the Profile tab says about where you stand, including saying
+  nothing when there is no place**). **Found while building:** Home already
+  binds `place` to the person's CITY (7295-7306), so the ladder's binding is
+  `rank` — a collision `tsc` caught and a reader would not have.
 - **Parity slice 6 landed 29 Aug 2026: the Home PassDeck (audit row H10).**
   The last thing on Home that was still a summary of the prototype rather than a
   lift. The deck is now what `PassDeck` (6863-7204) is: **today, whole, in one
@@ -589,11 +637,15 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   Profile tab landed the same day** (S_profiletab's own render, with About /
   age / links / styles / the account number as real fields, and the Settings
   sheet behind the gear), **the settings screens landed 29 Aug 2026** (parity
-  slice 5) and **the Home PassDeck landed 29 Aug 2026** (parity slice 6 — audit
-  row H10), so **the parity audit's remaining (a) rows are the queue now**
-  (the table at the foot of the backlog: Discover's verified tick D7, Call on a
-  person N8, the class form's room-clash warning F3, DosStylePicker on the crew
-  and event forms W2, Home's rank row, the onboarding steps U2), so after those
+  slice 5), **the Home PassDeck landed 29 Aug 2026** (parity slice 6 — audit
+  row H10) and **the wiring slice landed 30 Aug 2026** (parity slice 7 — D7,
+  N8/P9, I4, B6's Followers sheet, the History chip, See crew ranking and Home's
+  rank row, seven audit rows that were all "a field exists and a screen does not
+  read it"). **What is left of the audit's (a) rows is two builds, not wiring:**
+  the class form's ROOM ALREADY BUSY warning (F3 — a session-clash query) and
+  **DosStylePicker** (F4 / W2 — the component does not exist, then three call
+  sites), plus the part of U2 that fields already support (onboarding's
+  styles / socials / photo steps and the "Take a bow" finish screen). After those
   come **web push** (VAPID keys + a service worker + a subscriptions table, which
   makes Step 24's first channel switch real), then the **poster uploads**
   (PosterCropper's crop-and-frame flow onto the same bucket), and the calendar /
@@ -2904,9 +2956,9 @@ nothing to lift.
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
-| Home: the **rank row** on the identity sleeve (7315-7323 — `my_chart_place` has a place since Step 25; the sleeve does not read it yet). The QR share sheet and the style row landed 29 Aug 2026 (settings slice); the **PassDeck landed 29 Aug 2026** (parity slice 6) | Home 7248+, PassDeck 6863-7204 | the rank row is open (a) |
-| Profile tab, what the Profile slice left (**S_profiletab's own render landed 28 Aug 2026**; the verified tick landed 29 Aug 2026 as `profiles.verified_at`, service-role only): the albums grid and its icon tab strip, Call (a person's `phone` exists now, no editor offers it), the long-press-for-QR gesture, the settings sheet's switcher / appearance / language rows, "Can't find your style? Request it", opening Maps from the place | S_profiletab 11069-11130, 10879, 10598, 11135, 11251 | an albums slice; the Edit profile sheet for the phone; the rest need a product decision |
-| Public profile: **About, Since, Call, the links rail, the verified tick and the owner's Edit sheet landed 29 Aug 2026** (settings slice). Still open: Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither), the owner's Followers sheet (`findTenantFollowers` exists, no sheet); on person pages a PUBLIC person page (a decision about somebody else's data), years of experience (no field), Call (`profiles.phone` exists, the Edit sheet does not offer it), the enquiry sheet, the albums tabs, and **following a CREW** (follows names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | an albums slice; the Followers sheet and the person's phone are open (a); a follows extension for crews; the rest need a product decision |
+| Home: **nothing open.** The QR share sheet and the style row landed 29 Aug 2026 (settings slice), the **PassDeck** 29 Aug 2026 (parity slice 6) and the **rank row** 30 Aug 2026 (parity slice 7 — `my_chart_place`, drawn only where there is a place, because "#0" is not a rank) | Home 7248+, 7315-7323, PassDeck 6863-7204 | closed |
+| Profile tab, what the Profile slice left (**S_profiletab's own render landed 28 Aug 2026**; the verified tick landed 29 Aug 2026 as `profiles.verified_at`, service-role only): the albums grid and its icon tab strip, Call (a person's `phone` exists now, no editor offers it), the long-press-for-QR gesture, the settings sheet's switcher / appearance / language rows, "Can't find your style? Request it", opening Maps from the place. **Call landed 30 Aug 2026** (the Edit profile sheet's Phone field, parity slice 7) | S_profiletab 11069-11130, 10879, 10598, 11135, 11251 | an albums slice; the rest need a product decision |
+| Public profile: **About, Since, Call, the links rail, the verified tick and the owner's Edit sheet landed 29 Aug 2026** (settings slice). Still open: Photos and the albums/plans tabs, Stats, the Following figure and rank (a business has neither), on person pages a PUBLIC person page (a decision about somebody else's data), years of experience (no field), the enquiry sheet, the albums tabs, and **following a CREW** (follows names a business or a person; a crew would be a third object) | S_profiletab publicEntity 10565-11380 | an albums slice; **the owner's Followers sheet and Call on a person landed 30 Aug 2026** (parity slice 7); a follows extension for crews; the rest need a product decision |
 | Stats: the metal tier / rank ladder on the hero (`dosTierOf` — a ladder nobody has designed; the hero shows the real place instead), the History library's city / room / provider / assistant filters and its search box (side and style ship), the **Wins** metric and a crew's battle record (both need scoring), the "updated daily" cadence and the 10% monthly decay (a product rule nobody has decided), and the studio-side S_reports / S_reportdetail | S_profiletab 9862-10520, 9610-9707; S_reportdetail | scoring with a later event slice; the rest need a product decision or their own slice |
 | Inbox: studio rental requests on the Requests desk (S_rentals unbuilt); the Remind button (a nudge — buildable on Step 24's `notifications` table now); the judge enquiry's "Pick from DanceOS" event picker (events exist since Step 21 — the picker is not wired); the sender's real "Pay the advance" (Razorpay account); the earnings page's ALSO COLLECTED card counted from recorded advances | S_chats 5830, 5798, EnquirySheet 5135, S_enqdetail 5507, S_earn 18124 | an inbox slice / Step 24; the rest with a live Cashfree account |
 | Refunds: the learner's own view of a decision. **No prototype screen exists to lift** — its only learner-side refund UI files the request (RefundSheet); the decision lives business-side. The learner-shaped `REFUNDS` array at 8506 is never rendered (its literals appear nowhere else). Needs a product decision, not a lift. | — (gap in the prototype itself) | unscheduled — decide first |
@@ -2928,17 +2980,18 @@ nothing to lift.
 | Class card: poster art on the tile (the pass sheet draws one), the share action on a home-deck card (the deck's card opens the **pass**, which is where Share lives — 12001), undo toasts. The **live chip and the role chip landed 29 Aug 2026** (parity slice 6, set only by Home's deck) | BookingCard 7969, 8414-8440 | posters slice; the share action is decision (c) — the pass carries it |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
 | Discover: the map view (studios still sit at their city centroid — it needs real addresses), the studio card's cover-strip photo (the business photo exists; the card does not draw it yet), long-press a style tile to open the style page (`S_styleinfo` unbuilt), `__DOSNAVHIDE` while searching (our chrome is per-route) — the search dropdown's People section landed with person pages | S_discover 4100+, 4611, 4551 | a map/media slice |
-| Crews: the desk's Battles won / Points tiles (results need scoring — no table holds a score) and its "See crew ranking" button (the board exists since Step 25 at `/stats?tab=charts&seg=crew`; the button is not drawn), practice attendance and pay per performance on a member row, the photo/name door to a person's page, Follow a crew (follows target tenants), Enquiry a crew, a crew photo | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | scoring with a later event slice; person pages; a follows extension; media slice |
+| Crews: the desk's Battles won / Points tiles (results need scoring — no table holds a score), practice attendance and pay per performance on a member row, Follow a crew (follows target tenants), Enquiry a crew, a crew photo. **"See crew ranking" landed 30 Aug 2026** (parity slice 7 — `/stats?tab=charts&seg=crew`); the photo/name door to a person's page landed with person pages | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | scoring with a later event slice; a follows extension; media slice |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
 | Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a live Cashfree account + an `orders` extension |
 | Events: the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule) — the duet partner as a person and the crews you lead landed with Step 22, the events search box with Step 23 | S_event 13040, 12985, 13273; WalkIn 13904 | real scanning; the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
-| Calendar: the History chip in the hero — the record page exists since Step 25 (`/stats?tab=history`); the chip is not drawn | 9070-9074 | a calendar parity slice |
+| Calendar: the History chip in the hero — **landed 30 Aug 2026** (parity slice 7): the prototype's own chip, opening `/stats?tab=history` | 9070-9074 | closed |
 | Tests: **done 28 Aug 2026** — the happy path is nine serial SEGMENTS sharing one seeded world and one set of contexts (`test.describe.serial`), so each part has its own timeout and its own line in the report; the longest runs ~35 s and the per-test limit came back down from 300 s to 120 s. What is still open: the segments share state, so a failure early skips the rest (right for a story, wrong for a suite) — splitting into independently seeded specs needs API-level world builders first | e2e/happy-path.spec.ts | a testing slice, when the story stops being one story |
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099 — **S_managed landed 28 Aug 2026** at `/managed`; **S_payments, S_invoices, S_refunds and S_subscr landed 29 Aug 2026** (the settings slice) | as listed | memberships + rentals need the live **Cashfree** account (they are money screens); people / routines / settings are their own slices, none blocked by anything |
-| Settings slice, what it left (29 Aug 2026): saved payment instruments (the prototype's YOUR METHODS store, 16594-16611 — Cashfree's token vault; the ADD tiles explain instead), the Artist plan's real charge (a Cashfree order at ₹799 / ₹7,999 — ₹0 during the pilot, said on the screen), KYC document upload (Cashfree-hosted; the checklist names what it collects), the refund row's "Download receipt" (the class page carries the invoice; a PDF waits with Invoices' Download PDF), the Discover cards' tick (D7), Call on a person (N8), the Privacy export / delete and the Help centre panels | S_payments 16594-16611, 16563; S_subscr 16960; S_refunds 16680; 11433-11436 | a live Cashfree account (instruments, the charge, KYC); a PDF slice; D7 / N8 are open (a); Privacy and Help need a product decision |
-| **PassDeck slice, what it left (29 Aug 2026):** the "Yours" badge a card wears on a session you run (8460 — the prototype's `manage` mode; our manage powers live on the managed list and the desks), the poster on the deck's class card (posters are drawn until the posters slice — the pass sheet already draws one), the event card's role chip sits UNDER the card rather than inside it (`EventCard` heads with its kind cap and has no slot on that line), and Home's identity sleeve still has no rank row | PassDeck 6863-7204, BookingCard 8460, 7315-7323 | posters slice; the rank row is open (a); the rest decision (c) |
+| Settings slice, what it left (29 Aug 2026): saved payment instruments (the prototype's YOUR METHODS store, 16594-16611 — Cashfree's token vault; the ADD tiles explain instead), the Artist plan's real charge (a Cashfree order at ₹799 / ₹7,999 — ₹0 during the pilot, said on the screen), KYC document upload (Cashfree-hosted; the checklist names what it collects), the refund row's "Download receipt" (the class page carries the invoice; a PDF waits with Invoices' Download PDF), the Privacy export / delete and the Help centre panels. **The Discover cards' tick (D7) and Call on a person (N8) landed 30 Aug 2026** (parity slice 7) | S_payments 16594-16611, 16563; S_subscr 16960; S_refunds 16680; 11433-11436 | a live Cashfree account (instruments, the charge, KYC); a PDF slice; Privacy and Help need a product decision |
+| **PassDeck slice, what it left (29 Aug 2026):** the "Yours" badge a card wears on a session you run (8460 — the prototype's `manage` mode; our manage powers live on the managed list and the desks), the poster on the deck's class card (posters are drawn until the posters slice — the pass sheet already draws one), and the event card's role chip sits UNDER the card rather than inside it (`EventCard` heads with its kind cap and has no slot on that line). **Home's rank row landed 30 Aug 2026** (parity slice 7) | PassDeck 6863-7204, BookingCard 8460, 7315-7323 | posters slice; the rest decision (c) |
+| **Wiring slice, what it left (30 Aug 2026):** the owner's Followers sheet has no All · Dancers · Artists · Studios segment strip (the person's own sheet has one; a business's followers are one list and the segments would filter a list that is usually short) and no paging past `MAX_LIST`; the Discover tick is drawn on studios and artists but a **crew** carries none, because no crew is verified by anybody; and the enquiry's Call still says "No number on this enquiry" to the business when the sender typed none — the sender's number is theirs to give, not the app's to look up | S_profiletab 11335; 4352, 4411; S_enqdetail 5406 | the segment strip and paging when a pilot business has enough followers to need them; the rest is decision (c) |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)
@@ -2975,7 +3028,7 @@ refs are the file to open.
 | P6 | Profile tab: About empty state prints a default sentence — the app says "A sentence in your own words — Edit profile ›" | 10831-10838 | MyProfilePage.tsx | decision (c) — the app's is the honest one |
 | P7 | Profile tab: Public view toggles in place with aria-pressed + toast — the app links to /person/{me} | 10638 | MyProfilePage.tsx | decision (c) — a real page beats a fake toggle |
 | P8 | Profile tab: Log out lives in the settings sheet | 11416 | MyProfilePage.tsx | **fixed** |
-| P9 | Profile tab: albums grid + icon tab strip; Call on a person; long-press-for-QR; settings switcher/appearance/language rows — the verified tick landed 29 Aug 2026 (field + guard) | 11069-11130, 10879, 10598 | — | an albums slice / open (a) for Call (`profiles.phone` exists, no editor yet) / decision (c) |
+| P9 | Profile tab: albums grid + icon tab strip; long-press-for-QR; settings switcher/appearance/language rows — the verified tick landed 29 Aug 2026 (field + guard) and **Call landed 30 Aug 2026** (the Edit profile sheet's Phone field, parity slice 7) | 11069-11130, 10879, 10598 | MyProfilePage.tsx | **fixed** for Call; an albums slice / decision (c) for the rest |
 | P10 | Settings sheet behind the gear (YOUR PLAN · Artist tools as the PLAN's switch with PRO / PRO ACTIVE · Payments · Invoices · Refunds · Enquiry types · Subscription · Notifications · Language · Privacy · Help · Log out) | 11402-11440, 8850-8870, 19263 | features/settings/components/SettingsSheet.tsx | **fixed** (rows are doors since 29 Aug 2026) |
 | P11 | Settings: Payments & verification, Invoices, Refunds, Subscription as screens of their own; the Enquiry-types sheet | S_payments 16531, S_invoices 16691, S_refunds 16621, S_subscr 16935, 9000-9030 | features/settings/components/*Screen.tsx, RefundsLedger.tsx, SettingsSheet.tsx | **fixed** (29 Aug 2026); Privacy export/delete (DPDP) and the Help centre stay decision (c) |
 | N1 | Person page: name at DOS_TYPE.display 34px; group headings 17px | 3428, 3430 | PublicPersonPage.tsx | **fixed** |
@@ -2985,20 +3038,20 @@ refs are the file to open.
 | N5 | Person page: the rank figure in its metal — my_chart_place refuses a p_user_id by design | 10720-10732 | — | decision (c) |
 | N6 | Person page: remove the invented "dancing on DanceOS since" (a person has an age, a business a founding year) | 10594 | PublicPersonPage.tsx | **fixed** |
 | N7 | Person page: the three-tile record grid is an addition (the prototype moved stats off the page) | 11127-11132 | PublicPersonPage.tsx | decision (c) — kept |
-| N8 | Person page: Call (`profiles.phone` exists since 29 Aug 2026 — the Edit profile sheet does not offer it yet), the enquiry sheet, experience field, albums, a PUBLIC person page | 10879, 5051 | — | open (a) for Call; needs field (b) / decision (c) for the rest |
+| N8 | Person page: Call — **fixed** 30 Aug 2026 (parity slice 7: the Edit profile sheet offers the number through the one widened door, and the page draws `PublicProfile`'s own exported `CallButton`). Still open: the enquiry sheet, experience field, albums, a PUBLIC person page | 10879, 5051 | PublicPersonPage.tsx, MyProfilePage.tsx | **fixed** for Call; needs field (b) / decision (c) for the rest |
 | B1 | Studio/artist page: name 34px; Faculty heading 17px | 3428, 3430 | PublicProfile.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | B2 | Studio/artist page: Faculty rows are links to /person with faces and a › | 11004-11016 | PublicProfile.tsx, repositories/publicProfile.ts | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | B3 | Studio/artist page: style row is DosStyleRow tiles, names printed once | 10757 | PublicProfile.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | B4 | Studio/artist page: owner keeps the actions area; photo changer is the ＋ on the square's corner; corner chips for a member | 10618, 10634-10648 | PublicProfile.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | B5 | Studio/artist page: the invented "Upcoming" figure; the Following figure and rank (a business has neither) | 10714-10719 | PublicProfile.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
-| B6 | Studio/artist page: About, founding year (Since), Call, the links rail, the verified tick, the owner's Edit sheet — **fixed** 29 Aug 2026; still open: albums/plans tabs, Photos grid, Stats, the owner's Followers sheet | 10834, 10691, 10879, 10760, 11069 | PublicProfile.tsx, BusinessEditSheet.tsx | **fixed** for About / Since / Call / links / tick / Edit; the rest an albums slice + open (a) for the Followers sheet |
+| B6 | Studio/artist page: About, founding year (Since), Call, the links rail, the verified tick, the owner's Edit sheet — **fixed** 29 Aug 2026; **the owner's Followers sheet landed 30 Aug 2026** (parity slice 7); still open: albums/plans tabs, Photos grid, Stats | 10834, 10691, 10879, 10760, 11069, 11335 | PublicProfile.tsx, BusinessEditSheet.tsx, TenantFollowersButton.tsx | **fixed** for About / Since / Call / links / tick / Edit / the Followers sheet; the rest an albums slice |
 | D1 | Discover: page head — pink wash off the top, DISCOVER eyebrow, "Dance near you" 27px, ONE city chip with a select behind it | 4489-4531 | app/(app)/discover/page.tsx | **fixed** |
 | D2 | Discover: entity tabs as five icon tiles (26px icon over 10px label, radius 14); order Studios · Artists · Crews · Classes · Events, default studios | 4571-4584, 4149 | discover/page.tsx | **fixed** |
 | D3 | Discover: "Followed by you" shelf (count + swiped 74px squircle rail) on Studios/Artists | 4112-4144, 4767 | discover/page.tsx | **fixed** |
 | D4 | Discover: Artists (and Crews) drawn as CompactCard two to a row — full-column square face, ARTIST/CREW chip, DosWhere, style tiles, follower count | 4376-4423, 4813 | features/discovery, CrewCard.tsx | **fixed** |
 | D5 | Discover: StudioCard ends with a style-tile row; cover 150px; "{n} photos" chip; distance in DosWhere at the foot; no "Studio ·" type word; avatar ring var(--card) | 4321-4366, 4293-4298 | StudioCard.tsx | **fixed** |
 | D6 | Discover: the filter sheet applies live | 4831, 4844-4872 | DiscoverFilters.tsx | **fixed** |
-| D7 | Discover: DosVerified tick on every card — the field exists since 29 Aug 2026 (`tenants.verified_at`); the cards' reads do not carry it yet | 4352, 4411 | StudioCard.tsx, CompactCard | open (a) |
+| D7 | Discover: DosVerified tick on every card | 4352, 4411 | StudioCard.tsx, CompactCard.tsx, repositories/discovery.ts | **fixed** (30 Aug 2026, parity slice 7 — `findTenantCardFacts` carries the face and the tick in ONE query; size 15 on a studio card, 13 on an artist's, and never on a crew, which nobody verifies) |
 | D8 | Discover: the map view; long-press a style tile → S_styleinfo; __DOSNAVHIDE while searching; the studio card's cover-strip photo (the photo exists; the card should draw it) | 4100+, 4611 | StudioCard.tsx | the cover photo is **fixed** (the strip draws it); the map and long-press stay decision (c) / a map slice |
 | C1 | Class page: artist column — 96px on ground + weave, 62×62 r17 avatar with the ${col}44 ring, dashed divider, full name in a two-line box, a door to the person | 11877-11894 | ClassDetail.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | C2 | Class page: tab-strip aria-live status line | 11974-11991 | ClassDetail.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
@@ -3059,7 +3112,7 @@ refs are the file to open.
 | I1 | Inbox: sent-request line "— this class stays a draft until they confirm"; stage chips the prototype's six; off-platform warning on an invite | 5811, 5978, 5797 | InboxScreen.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | I2 | Inbox: the list card's inline controls (STATUS, Send quote, Take payment) — the detail page supersedes them | 6003-6071 | InboxScreen.tsx | decision (c) — documented |
 | I3 | EnquirySheet: honour the type's `dates` mode; drop the invented footer line | 5121-5135 | EnquirySheet.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
-| I4 | Enquiry detail: "Revise the quote" stays offered after won/lost; Call on both sides (`tenants.phone` exists since 29 Aug 2026 — the detail page does not read it yet) | 5525, 5406 | EnquiryDetail.tsx | **fixed** for Revise the quote; Call is open (a) — `tenants.phone` exists, the detail page does not read it yet |
+| I4 | Enquiry detail: "Revise the quote" stays offered after won/lost; Call on both sides | 5525, 5406 | EnquiryDetail.tsx, repositories/enquiries.ts | **fixed** (Call on both sides landed 30 Aug 2026, parity slice 7 — the business's number rides the join that already fetched its name, and the side you are on decides whose number the page dials) |
 | W1 | Crews: CrewCard as CompactCard | 4398-4421 | CrewCard.tsx | **fixed** |
 | W2 | Crews / Events forms: DosStylePicker instead of a native select | 9561, 15950 | CrewForm.tsx, EventForm.tsx | open (a) |
 | O1 | Notifications: the DosHero ramp (#5AC8FA → #6D28D9); "Read all" whenever there are rows | 13723, 13732 | NotificationsScreen.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
@@ -3072,16 +3125,20 @@ refs are the file to open.
 | X5 | Stats: Assisted for / Trained under as two cards; no Rooms card for a dancer; zero cards not drawn; side tiles' copy, weight and colour (assisted = violet #8B5CF6) | 9958-10040 | StatsScreen.tsx, types/stats.ts | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | X6 | Stats: ▲/▼ movement on the you-row (needs rank history); Wins; the metal tier; daily refresh + decay | 9683 | — | needs field (b) / decision (c) |
 
-**What the next runs take first:** every **open (a)** row above, in this order —
-**the Home PassDeck (H10) landed 29 Aug 2026**, so next are Discover's verified
-tick (D7), Call on a person's page (N8 — `profiles.phone` exists, the Edit
-profile sheet does not offer it), the class form's room-clash warning (F3),
-DosStylePicker on the crew and event forms (F4/W2), the Home sleeve's rank row,
-and the onboarding styles/socials/photo steps and the finish screen (U2) — then the
-**needs field (b)** rows as their own slices (sort_order, event rights, DOB,
-rank history — verification, the business phone and the enquiry-type prefs
-landed 29 Aug 2026), leaving the
-**decision (c)** rows for the user to rule on.
+**What the next runs take first:** **parity slice 7 (30 Aug 2026) closed seven
+of them at once** — D7, N8/P9, I4, B6's Followers sheet, the calendar's History
+chip, the crew desk's See crew ranking and Home's rank row — because they were
+one shape of gap: a field that existed and a screen that never read it. **Two
+open (a) rows are left**, and neither is a wiring job: the class form's
+ROOM ALREADY BUSY warning (**F3** — needs a session-clash query), and
+**DosStylePicker** on the class, crew and event forms (**F4 / W2** — the
+component does not exist yet, so it is a build, then three call sites). **U2**
+is part open: onboarding's styles / socials / photo steps and the "Take a bow"
+finish screen can be built on fields the Profile slice added, while its date of
+birth and the 18+ gate are needs field (b). Then the **needs field (b)** rows as
+their own slices (sort_order, event rights, DOB, rank history — verification, the
+business phone, the person's phone and the enquiry-type prefs have all landed),
+leaving the **decision (c)** rows for the user to rule on.
 
 ### Extended roadmap — Steps 7–26 (approved 24 Aug 2026): prototype → full DanceOS
 

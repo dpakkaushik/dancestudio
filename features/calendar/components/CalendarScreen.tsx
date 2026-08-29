@@ -33,7 +33,9 @@ import type { DanceClass } from "@/types/class";
  *  Left out on purpose, and tracked in the parity backlog: the Classes/Events
  *  switch above the sides (events are Step 21), the hold-to-reorder gesture on
  *  the side pills (a saved preference that also drives Home, which is not
- *  built), and the History chip (the record page is Step 25's). */
+ *  built). The History chip LANDED 30 Aug 2026: the record page it waited for
+ *  has existed since Step 25, so the chip is the prototype's own (9071-9075) and
+ *  it opens /stats?tab=history — the library of what you have already danced. */
 
 /* the tile that opens this page is painted in the calendar's own colour, and
    the page wears the same paint (DOS_TOOLS 2932) */
@@ -435,6 +437,19 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
                 Calendar
               </div>
             </div>
+            {/* the calendar looks forward; the chip is the way back (9071-9075) */}
+            <Link
+              href="/stats?tab=history"
+              aria-label="History"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, background: "rgba(0,0,0,.32)", border: "1px solid rgba(255,255,255,.3)", flexShrink: 0, position: "relative", textDecoration: "none" }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 8v4l3 2" />
+                <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+                <path d="M3.5 5v3.5H7" />
+              </svg>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>History</span>
+            </Link>
           </div>
         )}
 

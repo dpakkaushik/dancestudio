@@ -24,6 +24,13 @@ const schema = z.object({
     )
     .max(12),
   styles: z.array(z.string().trim().min(1).max(40)).max(12),
+  /* the same shape the business phone takes (settings slice) — an empty box is
+     null, which is how a person TAKES THEIR NUMBER DOWN without asking anyone */
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9][0-9 ]{7,17}$/, "a phone number is 8 to 18 digits")
+    .nullable(),
 });
 
 export type MyProfileInput = z.infer<typeof schema>;
@@ -46,6 +53,7 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
       ...parsed.data,
       city: parsed.data.city || null,
       about: parsed.data.about || null,
+      phone: parsed.data.phone || null,
     });
     revalidatePath("/profile");
     revalidatePath("/");

@@ -33,8 +33,12 @@ import { CrewFace, Toast, bizBtn, bizCard, pressKey, sinceWords } from "./crew-k
  *  Departures, stated: the tiles read Members / Entered / Upcoming where the
  *  prototype's read Members / Battles won / Points — results and points need
  *  scoring, which no table holds yet (tracked in the backlog); practice
- *  attendance and pay per performance are not columns. "See crew ranking" waits
- *  for Step 25. */
+ *  attendance and pay per performance are not columns. "SEE CREW RANKING"
+ *  LANDED 30 Aug 2026 (16467): the board it wanted has existed since Step 25,
+ *  so the button is the prototype's own and it opens the crew segment of the
+ *  charts — /stats?tab=charts&seg=crew. It is the crews in one order; whether a
+ *  crew WON anything still needs scoring, which is why the tiles beside it
+ *  count what the app can actually count. */
 
 const monthDay = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -270,6 +274,10 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
               );
             })}
             {entries.length === 0 ? <div style={{ ...bizCard, textAlign: "center", fontSize: 11.5, color: "var(--sub)", border: "1.5px dashed var(--el)" }}>No events entered yet — enter one from its page, as the crew&apos;s leader.</div> : null}
+            {/* where this crew stands among the rest (16467) — Step 25's board, crew segment */}
+            <Link href="/stats?tab=charts&seg=crew" aria-label="See crew ranking" style={{ ...bizBtn, marginTop: 4, display: "block", textDecoration: "none" }}>
+              See crew ranking
+            </Link>
           </>
         ) : null}
       </div>

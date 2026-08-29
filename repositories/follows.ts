@@ -26,7 +26,7 @@ interface FollowerRow {
   id: string;
   follower_id: string;
   created_at: string;
-  profiles: { full_name: string; role: "dancer" | "trainer" | "studio"; city: string | null } | null;
+  profiles: { full_name: string; role: "dancer" | "trainer" | "studio"; city: string | null; avatar_path: string | null } | null;
 }
 
 /** Live follower counts — a number, never a name. Listed businesses answer for
@@ -111,7 +111,7 @@ export async function findTenantFollowers(
 ): Promise<TenantFollower[]> {
   const { data, error } = await supabase
     .from("follows")
-    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city)")
+    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, avatar_path)")
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -125,6 +125,7 @@ export async function findTenantFollowers(
     name: r.profiles?.full_name ?? "Someone",
     role: r.profiles?.role ?? "dancer",
     city: r.profiles?.city ?? null,
+    avatarPath: r.profiles?.avatar_path ?? null,
     followedAt: r.created_at,
   }));
 }

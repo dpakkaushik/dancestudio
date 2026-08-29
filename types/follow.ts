@@ -23,6 +23,8 @@ export interface TenantFollower {
   name: string;
   role: "dancer" | "trainer" | "studio";
   city: string | null;
+  /** the face the sheet draws — the same one a person's Followers sheet draws (B6) */
+  avatarPath: string | null;
   followedAt: string;
 }
 

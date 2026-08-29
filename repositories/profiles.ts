@@ -88,6 +88,8 @@ export interface MyProfileInput {
   about: string | null;
   socials: SocialLink[];
   styles: string[];
+  /** the number the person chooses to publish — Call on their page (N8) */
+  phone: string | null;
 }
 
 /** The one door for what a person says about themselves (S_profiletab's Edit
@@ -102,6 +104,7 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
     p_about: input.about,
     p_socials: input.socials,
     p_styles: input.styles,
+    p_phone: input.phone,
   });
   if (error) {
     throw new Error(error.message);

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { dosStyleColor } from "@/lib/constants/styles";
+import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK } from "@/lib/design/tokens";
 import { DosStyleTile } from "./DiscoverFilters";
 import { DosWhere, initialsOf } from "./discover-kit";
@@ -14,7 +15,8 @@ const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpaci
  *  blurred chip; THE NAME GETS THE WHOLE COLUMN; where they are as one fact;
  *  one line of their styles, scrolled, not wrapped; and the figure at the foot.
  *  The Crews tab wears the same card with CREW in the chip and the roster size
- *  where the follower count would be. */
+ *  where the follower count would be — and no tick, because a crew is not a
+ *  business DanceOS verifies. */
 export function CompactCard({
   href,
   ariaLabel,
@@ -26,6 +28,7 @@ export function CompactCard({
   km,
   styles,
   foot,
+  verified = false,
 }: {
   href: string;
   ariaLabel: string;
@@ -37,6 +40,7 @@ export function CompactCard({
   km?: string | null;
   styles: string[];
   foot: ReactNode;
+  verified?: boolean;
 }) {
   return (
     <Link href={href} aria-label={ariaLabel} style={{ minWidth: 0, background: "var(--card)", border: "1px solid var(--el)", borderRadius: 18, padding: 11, display: "flex", flexDirection: "column", gap: 7, color: INK, textDecoration: "none" }}>
@@ -49,7 +53,10 @@ export function CompactCard({
         <span style={{ position: "absolute", left: 8, bottom: 8, ...micro, color: "rgba(255,255,255,.92)", padding: "2px 7px", borderRadius: 999, background: "rgba(0,0,0,.36)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>{label}</span>
       </div>
       <div style={{ minWidth: 0 }}>
-        <span style={{ display: "block", minWidth: 0, fontWeight: 900, fontSize: 14, letterSpacing: -0.3, lineHeight: 1.15, fontFamily: DOS_DISPLAY, color: INK, overflow: "hidden", maxHeight: "2.3em", overflowWrap: "normal" }}>{name}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+          <span style={{ display: "block", flex: 1, minWidth: 0, fontWeight: 900, fontSize: 14, letterSpacing: -0.3, lineHeight: 1.15, fontFamily: DOS_DISPLAY, color: INK, overflow: "hidden", maxHeight: "2.3em", overflowWrap: "normal" }}>{name}</span>
+          {verified ? <VerifiedTick size={13} /> : null}
+        </div>
         <div style={{ marginTop: 3 }}>
           <DosWhere city={city} km={km ?? null} size={10.5} />
         </div>

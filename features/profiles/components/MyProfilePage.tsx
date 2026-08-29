@@ -9,7 +9,7 @@ import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
-import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
+import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { PersonFollowRow } from "@/repositories/follows";
@@ -21,7 +21,7 @@ import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { NotificationPrefs } from "@/types/notification";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
-import { Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, dangerBtn, fieldInput, fieldLabel, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
+import { Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top,
@@ -48,8 +48,8 @@ const sqShadow = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55
 const AGES = Array.from({ length: 65 }, (_, i) => 13 + i);
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
-type Draft = { fullName: string; city: string; age: number | null; about: string; socials: SocialLink[]; styles: string[] };
-const draftOf = (p: Profile): Draft => ({ fullName: p.fullName, city: p.city ?? "", age: p.age, about: p.about ?? "", socials: p.socials, styles: p.styles });
+type Draft = { fullName: string; city: string; age: number | null; about: string; socials: SocialLink[]; styles: string[]; phone: string };
+const draftOf = (p: Profile): Draft => ({ fullName: p.fullName, city: p.city ?? "", age: p.age, about: p.about ?? "", socials: p.socials, styles: p.styles, phone: p.phone ?? "" });
 
 const move = <T,>(arr: T[], i: number, dir: -1 | 1): T[] => {
   const j = i + dir;
@@ -69,7 +69,6 @@ function Arrows({ i, n, onMove }: { i: number; n: number; onMove: (dir: -1 | 1) 
   );
 }
 
-const followTint = (role: PersonFollowRow["role"] | "studio-biz" | "artist-biz") => (role === "dancer" ? PINK : role === "trainer" || role === "artist-biz" ? GOLD : "#3498DB");
 
 export function MyProfilePage({
   person,
@@ -125,7 +124,7 @@ export function MyProfilePage({
   const save = (next: Partial<Draft>, said: string, after?: () => void) => {
     const d = { ...draftOf(profile), ...next };
     start(async () => {
-      const out = await updateMyProfileAction({ fullName: d.fullName, city: d.city.trim() || null, age: d.age, about: d.about.trim() || null, socials: d.socials, styles: d.styles });
+      const out = await updateMyProfileAction({ fullName: d.fullName, city: d.city.trim() || null, age: d.age, about: d.about.trim() || null, socials: d.socials, styles: d.styles, phone: d.phone.trim() || null });
       if (out.error) {
         fire(out.error);
         return;
@@ -310,6 +309,12 @@ export function MyProfilePage({
           <input aria-label="Name" value={edit.fullName} onChange={(e) => setEdit((d) => ({ ...d, fullName: e.target.value }))} style={fieldInput} />
           <div style={fieldLabel}>Location</div>
           <input aria-label="Location" value={edit.city} onChange={(e) => setEdit((d) => ({ ...d, city: e.target.value }))} style={fieldInput} />
+          {/* the number is the person's to publish and theirs to take down: an
+              empty box saves null, and the line under the box says so rather
+              than making them guess (N8 — Call, S_profiletab 10879) */}
+          <div style={fieldLabel}>Phone</div>
+          <input aria-label="Phone" type="tel" inputMode="tel" value={edit.phone} onChange={(e) => setEdit((d) => ({ ...d, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
+          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Shown on your public page as Call. Leave it empty and nobody sees a number.</div>
           <div style={fieldLabel}>Age</div>
           <select aria-label="Age" value={edit.age ?? ""} onChange={(e) => setEdit((d) => ({ ...d, age: e.target.value ? Number(e.target.value) : null }))} style={fieldInput}>
             <option value="">—</option>
@@ -324,7 +329,7 @@ export function MyProfilePage({
           <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
           <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
             <button type="button" onClick={() => setEditOpen(false)} style={sheetBtn(false)}>Cancel</button>
-            <button type="button" disabled={pending} onClick={() => save({ fullName: edit.fullName, city: edit.city, age: edit.age, about: edit.about }, "✓ Profile updated", () => setEditOpen(false))} style={sheetBtn(true)}>{pending ? "Saving…" : "Save"}</button>
+            <button type="button" disabled={pending} onClick={() => save({ fullName: edit.fullName, city: edit.city, age: edit.age, about: edit.about, phone: edit.phone }, "✓ Profile updated", () => setEditOpen(false))} style={sheetBtn(true)}>{pending ? "Saving…" : "Save"}</button>
           </div>
         </Sheet>
       ) : null}

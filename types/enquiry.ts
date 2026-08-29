@@ -151,6 +151,8 @@ export interface Enquiry {
   tenantId: string;
   tenantName: string;
   tenantType: TenantType;
+  /** the business's published number, so the person who ASKED can ring back (I4) */
+  tenantPhone: string | null;
   fromUserId: string;
   fromName: string;
   typeKey: EnquiryTypeKey;

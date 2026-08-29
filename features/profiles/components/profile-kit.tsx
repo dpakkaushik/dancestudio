@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { DOS_DISPLAY, GOLD } from "@/lib/design/tokens";
+import { DOS_DISPLAY, GOLD, PINK } from "@/lib/design/tokens";
 import { isPlatform, type Platform } from "@/lib/constants/socials";
 import type { ProfileRole } from "@/types/profile";
 
@@ -313,6 +313,14 @@ export function RoleGlyph({ kind, size = 11 }: { kind: FollowGlyph; size?: numbe
     </svg>
   );
 }
+/** The colour a follow row wears, by what the follower IS (S_profiletab
+ *  11335). Lives here rather than in either sheet, because a business's
+ *  Followers sheet and a person's are the same list of the same people and a
+ *  dancer who is pink on one and blue on the other is two answers to one
+ *  question. */
+export const followTint = (role: "dancer" | "trainer" | "studio" | "artist" | "studio-biz" | "artist-biz") =>
+  role === "dancer" ? PINK : role === "trainer" || role === "artist-biz" ? GOLD : "#3498DB";
+
 export function RoleBadge({ kind, tint }: { kind: FollowGlyph; tint: string }) {
   return (
     <span aria-hidden="true" style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, background: tint, border: "2px solid var(--bg)", boxSizing: "content-box", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}>

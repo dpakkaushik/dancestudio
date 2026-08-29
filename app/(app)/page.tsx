@@ -7,6 +7,7 @@ import { findMyDeck, findStudioDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
+import { findMyPlace } from "@/repositories/stats";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
@@ -15,6 +16,7 @@ import { photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, PINK, SOLID, SUB } from "@/lib/design/tokens";
 import { BizSection, DosShelfHead, HOME_TYPE } from "@/features/home/components/home-kit";
 import { PassDeck } from "@/features/home/components/PassDeck";
+import { tierOf } from "@/features/profiles/components/profile-kit";
 import { memberNoWords, type ProfileRole } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
@@ -76,6 +78,13 @@ export default async function HomePage() {
     findMyPendingInvites(supabase),
     profile.role === "studio" ? Promise.resolve(null) : findMyArtistPlan(supabase),
   ]);
+
+  /* WHERE YOU STAND, ON THE SLEEVE THAT SAYS WHO YOU ARE (7324-7333). The place
+     is Step 25's own — the same RPC the Profile tab and the boards ask — and a
+     studio is not on a dancer's ladder, so it is not asked for one. */
+  const rank = profile.role === "studio" ? null : await findMyPlace(supabase, profile.role === "trainer" ? "artist" : "dancer");
+  const tier = rank ? tierOf(rank.place) : null;
+  const chartSeg = profile.role === "trainer" ? "artist" : "dancer";
 
   /* a studio's day is not a person's day (7022-7060): a studio owner's Home shows
      what is running in the studio's rooms, drawn by the same card in the same rail */
@@ -224,6 +233,23 @@ export default async function HomePage() {
                   </span>
                 ) : null}
               </Link>
+              {/* the rank, in the metal it earned — drawn only once there IS a place
+                  to stand, because Step 25's rule is that "#0" is not a rank (7324-7333) */}
+              {rank && tier ? (
+                <Link
+                  href={`/stats?tab=charts&seg=${chartSeg}`}
+                  aria-label={`Rank ${rank.place} of ${rank.population} — open global rankings`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <span style={{ display: "flex", alignItems: "baseline", gap: 1, lineHeight: 1, filter: `drop-shadow(0 2px 10px ${tier.text}44)` }}>
+                    <span style={{ fontSize: 13, fontWeight: 900, fontFamily: DOS_DISPLAY, color: tier.text, opacity: 0.8 }}>#</span>
+                    <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.8, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums", background: `linear-gradient(135deg,${tier.ring[0]},${tier.ring[1]})`, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+                      {rank.place}
+                    </span>
+                  </span>
+                  <span style={{ display: "block", ...HOME_TYPE.micro, color: tier.text, marginTop: 4 }}>{tier.label} rank</span>
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>
