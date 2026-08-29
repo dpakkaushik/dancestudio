@@ -341,3 +341,53 @@ export async function markWebhookProcessed(admin: SupabaseClient, eventId: strin
     throw new Error(`webhook_events.mark failed: ${error.message}`);
   }
 }
+
+interface DeckReceiptRow {
+  enrollment_id: string;
+  status: OrderStatus;
+  payments: Array<{
+    provider_payment_id: string;
+    amount_inr: number;
+    method: string | null;
+    status: string;
+    created_at: string;
+  }>;
+}
+
+/** The captured payments behind several bookings at once — Home's deck asks for
+ *  a day's worth in one read rather than one per card. Same rows, same RLS as
+ *  `findPaidReceiptByEnrollment`: the payer and the tenant's members. */
+export async function findPaidReceiptsByEnrollments(
+  supabase: SupabaseClient,
+  enrollmentIds: string[]
+): Promise<Map<string, PaidReceipt>> {
+  const out = new Map<string, PaidReceipt>();
+  if (enrollmentIds.length === 0) {
+    return out;
+  }
+  const { data, error } = await supabase
+    .from("orders")
+    .select("enrollment_id, status, payments (provider_payment_id, amount_inr, method, status, created_at)")
+    .in("enrollment_id", enrollmentIds)
+    .in("status", ["paid", "refund_pending", "refunded"])
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) {
+    throw new Error(`payments.receipts failed: ${error.message}`);
+  }
+  // newest order first, so the first hit per booking is the one that stands
+  for (const order of (data ?? []) as unknown as DeckReceiptRow[]) {
+    if (out.has(order.enrollment_id)) continue;
+    const paid = order.payments.find((p) => p.status === "captured" || p.status === "refunded");
+    if (!paid) continue;
+    out.set(order.enrollment_id, {
+      amountInr: paid.amount_inr,
+      method: paid.method,
+      providerPaymentId: paid.provider_payment_id,
+      paidAt: paid.created_at,
+      orderStatus: order.status,
+    });
+  }
+  return out;
+}

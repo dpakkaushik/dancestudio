@@ -50,6 +50,13 @@ export interface ClassTileProps {
   actions?: ReactNode;
   /** When set, the sleeve opens the class detail page (actions stay outside the link). */
   href?: string;
+  /** WHAT THIS SESSION IS TO YOU — Booked, Assisting, Teaching… Only Home's deck
+   *  sets it (prototype 8430-8432); every other surface passes none and the chip
+   *  is absent, which is why the calendar and Discover are unchanged. */
+  roleLabel?: string | null;
+  /** the ONE running session — a LIST decides which of its rows wears the badge
+   *  (8148-8153); nobody else sets it */
+  live?: boolean;
 }
 
 /**
@@ -61,7 +68,7 @@ export interface ClassTileProps {
  * width of the card, go the two facts that belong to none of them: how full, and
  * what it costs.
  */
-export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isToday = false, actions, href }: ClassTileProps) {
+export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isToday = false, actions, href, roleLabel = null, live = false }: ClassTileProps) {
   const bc = dosStyleColor(c.style);
   const dark = useDosDark();
   const ink = dosStyleInk(bc, dark);
@@ -108,7 +115,26 @@ export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isTod
         }}
       >
         <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: weave, opacity: 0.5, pointerEvents: "none" }} />
-        {when ? (
+        {/* A card on a day you are already looking at says TODAY where the date goes
+            (8290-8293). The prototype's Home rows carry no date at all — the deck IS
+            today — so the block reads "Today" there and the full date everywhere the
+            day is in question (the calendar passes a date and gets one). */}
+        {isToday ? (
+          <span
+            style={{
+              position: "relative",
+              fontSize: 12,
+              fontWeight: 900,
+              letterSpacing: 0.6,
+              textTransform: "uppercase",
+              color: ink,
+              fontFamily: DOS_DISPLAY,
+              lineHeight: 1.2,
+            }}
+          >
+            Today
+          </span>
+        ) : when ? (
           <>
             <span style={{ position: "relative", fontSize: 9, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase", color: ink, lineHeight: 1.2 }}>
               {when.weekday}
@@ -131,23 +157,6 @@ export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isTod
               {when.month}
             </span>
           </>
-        ) : isToday ? (
-          /* a card on your own day carries no date label at all — the block said nothing
-             where the date goes, which read as a missing value rather than as "today" */
-          <span
-            style={{
-              position: "relative",
-              fontSize: 12,
-              fontWeight: 900,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              color: ink,
-              fontFamily: DOS_DISPLAY,
-              lineHeight: 1.2,
-            }}
-          >
-            Today
-          </span>
         ) : null}
         {/* 8px, because "11:00 am – 12:00 pm" is the longest thing a session's clock can
             say and it has to fit on one line or the range stops being a range */}
@@ -321,23 +330,72 @@ export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isTod
             ›
           </span>
         </div>
-        {underLine && (
+        {/* who may enter and in what style, under the name — the level, on a class — and
+            whatever is happening to it right now, on the end of the same line (8414-8440).
+            Wraps rather than truncates: with the role chip added, three things share this
+            line on an 88%-width card, and losing the level to make room for the role is
+            trading one fact for another. */}
+        {(underLine || roleLabel || live) && (
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 2, minWidth: 0, flexWrap: "wrap", rowGap: 3 }}>
-            <span
-              style={{
-                minWidth: 0,
-                fontSize: 9.5,
-                fontWeight: 800,
-                letterSpacing: 0.6,
-                textTransform: "uppercase",
-                color: "var(--muted)",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {underLine}
-            </span>
+            {underLine ? (
+              <span
+                style={{
+                  minWidth: 0,
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  letterSpacing: 0.6,
+                  textTransform: "uppercase",
+                  color: "var(--muted)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {underLine}
+              </span>
+            ) : (
+              <span style={{ flex: 1 }} />
+            )}
+            {roleLabel ? (
+              <span
+                style={{
+                  flexShrink: 0,
+                  fontSize: 8.5,
+                  fontWeight: 900,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  background: "var(--el)",
+                  color: "var(--sub)",
+                }}
+              >
+                {roleLabel}
+              </span>
+            ) : null}
+            {live ? (
+              <span
+                style={{
+                  marginLeft: "auto",
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 8.5,
+                  fontWeight: 800,
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  background: "#22C55E",
+                  color: "#fff",
+                }}
+              >
+                <span style={{ position: "relative", width: 4, height: 4 }}>
+                  <span style={{ position: "absolute", inset: 0, borderRadius: 2, background: "#fff" }} />
+                  <span style={{ position: "absolute", inset: -3, borderRadius: 5, border: "1.5px solid #fff", opacity: 0.5, animation: "dosPulseH 1.4s ease-out infinite" }} />
+                </span>
+                Live
+              </span>
+            ) : null}
           </div>
         )}
       </div>

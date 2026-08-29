@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
-import { findMyEnrollments } from "@/repositories/enrollments";
+import { findMyDeck, findStudioDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
@@ -14,7 +14,7 @@ import { dosStyleColor } from "@/lib/constants/styles";
 import { photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, PINK, SOLID, SUB } from "@/lib/design/tokens";
 import { BizSection, DosShelfHead, HOME_TYPE } from "@/features/home/components/home-kit";
-import type { MyEnrollment } from "@/types/enrollment";
+import { PassDeck } from "@/features/home/components/PassDeck";
 import { memberNoWords, type ProfileRole } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
@@ -37,44 +37,21 @@ const initials = (name: string): string =>
   (name.match(/\b\w/g) || ["D"]).slice(0, 2).join("").toUpperCase();
 
 /** Time-of-day greeting — prototype Home (DanceOSApp.jsx:7212-7213), on the IST clock. */
-const greeting = (): string => {
-  const hr = Number(
-    new Intl.DateTimeFormat("en-IN", { hour: "numeric", hour12: false, timeZone: IST }).format(new Date())
-  );
+const greeting = (now: Date): string => {
+  const hr = Number(new Intl.DateTimeFormat("en-IN", { hour: "numeric", hour12: false, timeZone: IST }).format(now));
   return hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
 };
 
-const fmtSession = (iso: string): string =>
-  `${new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: IST }).format(
-    new Date(iso)
-  )} · ${new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: IST })
-    .format(new Date(iso))
-    .toLowerCase()}`;
-
-/** the IST calendar day a moment falls on — "2026-08-28" */
-const dayKey = (d: Date): string =>
-  new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: IST }).format(d);
-
-/** The deck's slice of today: the next few live bookings, live-now ones flagged. */
-const selectUpcoming = (
-  enrollments: MyEnrollment[]
-): { upcoming: MyEnrollment[]; liveIds: Set<string>; todayN: number } => {
-  const now = Date.now();
-  const upcoming = enrollments
-    .filter((e) => e.status !== "cancelled" && new Date(e.endsAt).getTime() >= now)
-    .slice(0, 4);
-  const liveIds = new Set(
-    upcoming.filter((e) => new Date(e.startsAt).getTime() <= now).map((e) => e.id)
-  );
-  const today = dayKey(new Date(now));
-  const todayN = upcoming.filter((e) => dayKey(new Date(e.startsAt)) === today).length;
-  return { upcoming, liveIds, todayN };
-};
+const headLink = { color: PINK, fontWeight: 800, cursor: "pointer", textDecoration: "none" } as const;
+const pillDark = { display: "inline-block", padding: "9px 18px", borderRadius: 999, background: INK, color: SOLID, fontWeight: 900, fontSize: 11.5, cursor: "pointer", textDecoration: "none" } as const;
+const pillLight = { display: "inline-block", padding: "9px 18px", borderRadius: 999, background: CARD, border: `1px solid ${LINE}`, fontWeight: 900, fontSize: 11.5, cursor: "pointer", color: INK, textDecoration: "none" } as const;
 
 /** Home — the dancer dashboard lifted from prototype S_homedancer (DanceOSApp.jsx:7206-7352):
- *  the identity sleeve with the time-of-day greeting, the deck of booked sessions under
- *  "Today's schedule" with a live-now chip, and the Artist Tools grid (BizSection). The full
- *  PassDeck (QR codes, invoices, share) arrives with later slices — see the UI parity backlog. */
+ *  the identity sleeve with the time-of-day greeting, the PassDeck of today under
+ *  "Today's schedule" (6863-7204 — one swiped rail of the app's own cards, the role chip,
+ *  one Live badge, the QR and the invoice on a booked card), and the Artist Tools grid
+ *  (BizSection). A studio's Home asks the deck the studio's question — what is running
+ *  in its rooms — with its own doors (7022-7060, 7139-7150). */
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -89,8 +66,10 @@ export default async function HomePage() {
     redirect("/onboarding");
   }
 
-  const [enrollments, tenants, invites, plan] = await Promise.all([
-    findMyEnrollments(supabase),
+  const now = new Date();
+  const nowIso = now.toISOString();
+
+  const [tenants, invites, plan] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
@@ -98,7 +77,10 @@ export default async function HomePage() {
     profile.role === "studio" ? Promise.resolve(null) : findMyArtistPlan(supabase),
   ]);
 
-  const { upcoming, liveIds, todayN } = selectUpcoming(enrollments);
+  /* a studio's day is not a person's day (7022-7060): a studio owner's Home shows
+     what is running in the studio's rooms, drawn by the same card in the same rail */
+  const studio = profile.role === "studio" && tenants.length > 0 ? tenants[0] : null;
+  const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, tenants);
 
   const RG = DOS_RINGS[profile.role];
   const RC = RG[3];
@@ -166,7 +148,7 @@ export default async function HomePage() {
               </Link>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ ...HOME_TYPE.micro, letterSpacing: 2, color: "rgba(255,255,255,.9)" }}>
-                  {greeting().toUpperCase()}
+                  {greeting(now).toUpperCase()}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0, marginTop: 4 }}>
                   <span
@@ -246,138 +228,76 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* ── the deck of today: your booked sessions, live ones flagged (prototype PassDeck 7139-7200) ── */}
+        {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
+            live first — under the one shelf head, with both doors named. The wrapper runs the
+            full width so the swiped rail, which reaches past the page's padding, is not clipped. ── */}
         <div data-dosfold="deck" style={{ margin: "10px -16px 14px", padding: "0 16px" }}>
           <DosShelfHead
             pad="2px 0 8px"
             right={
               <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                {canManage ? (
-                  <Link href="/managed" aria-label="Everything you manage" style={{ color: PINK, fontWeight: 800, cursor: "pointer", textDecoration: "none" }}>
-                    Manage
-                  </Link>
-                ) : null}
-                <Link href="/my-classes" aria-label="All bookings" style={{ color: PINK, fontWeight: 800, cursor: "pointer", textDecoration: "none" }}>
-                  All bookings ›
-                </Link>
+                {studio ? (
+                  /* a studio's doors are its own (7143-7150): the register for what is on now,
+                     the calendar for the rest of the week — and the one list of everything it
+                     runs, which the app has and the prototype's single-studio world did not need */
+                  <>
+                    <Link href="/managed" aria-label="Everything you manage" style={headLink}>
+                      Manage
+                    </Link>
+                    <Link href={`/business/${studio.id}/classes`} aria-label="Classes at this studio" style={headLink}>
+                      Classes
+                    </Link>
+                    <Link href={`/business/${studio.id}/calendar`} aria-label="Open the studio calendar" style={headLink}>
+                      Calendar ›
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    {canManage ? (
+                      <Link href="/managed" aria-label="Everything you manage" style={headLink}>
+                        Manage
+                      </Link>
+                    ) : null}
+                    <Link href="/my-classes" aria-label="All bookings" style={headLink}>
+                      All bookings ›
+                    </Link>
+                  </>
+                )}
               </span>
             }
           >
             Today’s schedule
-            <span style={{ ...HOME_TYPE.meta, color: SUB, marginLeft: 8 }}>{todayN} today</span>
+            <span style={{ ...HOME_TYPE.meta, color: SUB, marginLeft: 8 }}>{deck.length} today</span>
           </DosShelfHead>
 
-          {upcoming.length === 0 ? (
+          {deck.length === 0 ? (
             <div style={{ background: CARD, border: `1.5px dashed ${LINE}`, borderRadius: 16, padding: "16px", textAlign: "center" }}>
-              <div style={{ fontSize: 12.5, fontWeight: 900 }}>Nothing on today</div>
+              <div style={{ fontSize: 12.5, fontWeight: 900 }}>{studio ? "Nothing in your rooms today" : "Nothing on today"}</div>
               <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>
-                Classes and events you book, assist on or run today all appear here.
+                {studio
+                  ? "Every class and event running in this studio’s rooms shows up here on the day."
+                  : "Classes and events you book, assist on or run today all appear here."}
               </div>
+              {/* both doors, when both apply (7176-7181) */}
               <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 10, flexWrap: "wrap" }}>
                 {canManage ? (
-                  <Link
-                    href="/managed"
-                    style={{ display: "inline-block", padding: "9px 18px", borderRadius: 999, background: CARD, border: `1px solid ${LINE}`, fontWeight: 900, fontSize: 11.5, cursor: "pointer", color: INK, textDecoration: "none" }}
-                  >
+                  <Link href="/managed" style={pillLight}>
                     See everything you manage
                   </Link>
                 ) : null}
-                <Link
-                  href="/my-classes"
-                  style={{ display: "inline-block", padding: "9px 18px", borderRadius: 999, background: INK, color: SOLID, fontWeight: 900, fontSize: 11.5, cursor: "pointer", textDecoration: "none" }}
-                >
-                  See all bookings
-                </Link>
+                {studio ? (
+                  <Link href={`/business/${studio.id}/calendar`} aria-label="Open the studio calendar" style={pillDark}>
+                    Open the calendar
+                  </Link>
+                ) : (
+                  <Link href="/my-classes" style={pillDark}>
+                    See all bookings
+                  </Link>
+                )}
               </div>
             </div>
           ) : (
-            upcoming.map((e) => {
-              const live = liveIds.has(e.id);
-              const col = dosStyleColor(e.style);
-              return (
-                <Link
-                  key={e.id}
-                  href={`/c/${e.shareSlug}`}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    background: CARD,
-                    border: `1px solid ${live ? `${col}88` : LINE}`,
-                    borderRadius: 18,
-                    padding: "13px 14px",
-                    marginBottom: 10,
-                    color: INK,
-                    textDecoration: "none",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 44,
-                      height: 44,
-                      flexShrink: 0,
-                      borderRadius: 12,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: `linear-gradient(150deg, ${col}, ${col}88)`,
-                      color: "#fff",
-                      fontSize: 17,
-                      fontWeight: 900,
-                      fontFamily: DOS_DISPLAY,
-                    }}
-                  >
-                    {e.style.slice(0, 1)}
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: 14,
-                        fontWeight: 900,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {e.style} — {e.title}
-                    </span>
-                    <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: SUB, marginTop: 3 }}>
-                      {e.tenantName} · {fmtSession(e.startsAt)}
-                      {e.status === "waitlisted" ? " · waitlist" : ""}
-                    </span>
-                  </span>
-                  {live && (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        flexShrink: 0,
-                        fontSize: 10,
-                        fontWeight: 900,
-                        letterSpacing: 0.8,
-                        color: "#22C55E",
-                      }}
-                    >
-                      <span style={{ position: "relative", width: 7, height: 7 }}>
-                        <span
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            borderRadius: 99,
-                            background: "#22C55E",
-                            animation: "dosPulseH 1.4s ease-out infinite",
-                          }}
-                        />
-                        <span style={{ position: "absolute", inset: 0, borderRadius: 99, background: "#22C55E" }} />
-                      </span>
-                      LIVE
-                    </span>
-                  )}
-                </Link>
-              );
-            })
+            <PassDeck items={deck} />
           )}
         </div>
 

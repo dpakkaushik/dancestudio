@@ -796,7 +796,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // is one list of every class and event of every business they belong to, the
     // row being the session's own card with its desk behind it.
     await owner.goto("/");
-    await owner.getByRole("link", { name: "Everything you manage" }).click();
+    await owner.getByRole("link", { name: "Everything you manage", exact: true }).click();
     await owner.waitForURL(/\/managed$/);
     // the class the story published and both events it created are here, whatever their status
     // (a class tile headlines its STYLE; the title lives in the row's Manage link)
@@ -821,7 +821,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // and the learner, who runs nothing, is not offered the door — the room is
     // still honest if they type the address
     await learner.goto("/");
-    await expect(learner.getByRole("link", { name: "Everything you manage" })).toHaveCount(0);
+    await expect(learner.getByRole("link", { name: "Everything you manage", exact: true })).toHaveCount(0);
     await learner.goto("/managed");
     await expect(learner.getByText("Nothing here yet")).toBeVisible();
     await expect(learner.getByRole("link", { name: "Set up a business" })).toBeVisible();
@@ -937,4 +937,66 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByLabel("Kathak", { exact: true })).toBeVisible();
     await expect(learner.getByRole("link", { name: "Instagram — @rheamoves" })).toHaveAttribute("href", "https://instagram.com/rheamoves");
   });
+  test("Home’s PassDeck: today’s sessions as swiped cards, with the pass and the invoice on the card", async () => {
+    // ---- parity slice H10: PassDeck 6863-7204 ----
+    // Nothing the story books is today, so Home's deck has been honest and empty
+    // all along. Put the class the learner booked on the clock — running right
+    // now — the way the demo seed back-dates a session: through the service role,
+    // because no door lets a person move a session into the past.
+    const cls = (await (await fetch(`${supabaseUrl}/rest/v1/classes?share_slug=eq.${shareSlug}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+    expect(cls.length).toBe(1);
+    const nowMs = Date.now();
+    const moved = await fetch(`${supabaseUrl}/rest/v1/class_sessions?class_id=eq.${cls[0].id}`, {
+      method: "PATCH",
+      headers: adminHeaders,
+      body: JSON.stringify({ starts_at: new Date(nowMs - 10 * 60_000).toISOString(), ends_at: new Date(nowMs + 50 * 60_000).toISOString() }),
+    });
+    expect(moved.ok).toBeTruthy();
+
+    // the learner's Home: one card in the rail, saying what the session is to them — and that it is on now
+    await learner.goto("/");
+    await expect(learner.getByText("1 today")).toBeVisible();
+    const card = learner.getByTestId("deck-card").first();
+    await expect(card.getByRole("link", { name: `Open ${classTitle}` })).toBeVisible();
+    await expect(card.getByText("Booked", { exact: true })).toBeVisible();
+    await expect(card.getByText("Live", { exact: true })).toBeVisible();
+    await expect(card.getByText(/You.re booked/)).toBeVisible();
+    // the drawn code on the card opens the ticket — the same pass the class page keeps behind its poster
+    await card.getByRole("button", { name: `Show the entry code for ${classTitle}` }).click();
+    const passSheet = learner.getByRole("dialog", { name: "Class pass" });
+    await expect(passSheet.getByRole("img", { name: /^Entry code DOS-CL-\d{4}$/ })).toBeVisible();
+    await expect(passSheet.getByText("Scan this at the door.")).toBeVisible();
+    await passSheet.getByRole("button", { name: "Done" }).click();
+    await expect(passSheet).toHaveCount(0);
+    // and the invoice, without leaving Home — a free trial prints Free
+    await card.getByRole("button", { name: "Invoice" }).click();
+    const invoice = learner.getByRole("dialog", { name: "Invoice" });
+    await expect(invoice.getByText("Class booking")).toBeVisible();
+    await expect(invoice.getByText("Free", { exact: true })).toBeVisible();
+    await invoice.getByRole("button", { name: "Close" }).click();
+    await expect(invoice).toHaveCount(0);
+    // the deck is the one list; the door to all bookings is still named beside it
+    await expect(learner.getByRole("link", { name: "All bookings", exact: true })).toBeVisible();
+
+    // the trainer, who was ASKED to take the class, is teaching it only once they say yes —
+    // an unanswered ask is not a session you are running, and Home says 0 today until then
+    await trainer.goto("/");
+    await expect(trainer.getByText("0 today")).toBeVisible();
+    await trainer.goto(`/c/${shareSlug}`);
+    await trainer.getByRole("button", { name: "Accept this ask" }).click();
+    await expect(trainer.getByText("You’re on this class")).toBeVisible({ timeout: 15_000 });
+    // now the same session is on their day, wearing Teaching — no pass, no invoice: it is not a booking
+    await trainer.goto("/");
+    const taught = trainer.getByTestId("deck-card").first();
+    await expect(taught.getByText("Teaching", { exact: true })).toBeVisible();
+    await expect(taught.getByRole("button", { name: "Invoice" })).toHaveCount(0);
+
+    // a studio's Home asks the studio's question — what is running in its rooms — with its own doors
+    await owner.goto("/");
+    await expect(owner.getByTestId("deck-card").first().getByText("At your studio", { exact: true })).toBeVisible();
+    await expect(owner.getByRole("link", { name: "Classes at this studio" })).toHaveAttribute("href", `/business/${tenantId}/classes`);
+    await expect(owner.getByRole("link", { name: "Open the studio calendar" })).toHaveAttribute("href", `/business/${tenantId}/calendar`);
+    await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toBeVisible();
+  });
+
 });
