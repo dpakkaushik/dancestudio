@@ -302,20 +302,7 @@ export function RoomsManager({
       </div>
       {toast && (
         <div
-          style={{
-            position: "fixed",
-            bottom: 96,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--el)",
-            border: `1.5px solid ${PINK}`,
-            color: "var(--text)",
-            padding: "11px 18px",
-            borderRadius: 999,
-            fontSize: 13,
-            fontWeight: 700,
-            zIndex: 650,
-          }}
+          role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}
         >
           {toast}
         </div>

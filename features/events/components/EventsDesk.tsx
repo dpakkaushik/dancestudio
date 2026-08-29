@@ -6,6 +6,7 @@ import { useState } from "react";
 import { deleteEventAction, publishEventAction, setEventStatusAction } from "@/features/events/server-actions/events";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { DanceEvent, EventStatus } from "@/types/event";
+import { entriesOf, seatsSoldOf } from "@/types/event";
 import { EventCard } from "./EventCard";
 
 /** The studio's events desk, lifted from prototype S_eventsmod (13811-13945):
@@ -192,29 +193,33 @@ export function EventsDesk({ tenantId, events, todayKey }: { tenantId: string; e
         <div onClick={() => setConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600 }}>
           <div role="dialog" aria-modal="true" aria-label={confirm.kind === "delete" ? "Delete this event?" : confirm.kind === "publish" ? "Publish this event?" : confirm.kind === "complete" ? "Mark this event completed?" : "Take this event back to draft?"} onClick={(ev) => ev.stopPropagation()} style={{ background: "var(--solid)", color: INK, borderRadius: "24px 24px 0 0", padding: "18px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", textAlign: "center" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
-            <b style={{ fontSize: 17 }}>{confirm.kind === "delete" ? "Delete this event?" : confirm.kind === "publish" ? "Publish this event?" : confirm.kind === "complete" ? "Mark this event completed?" : "Take this event back to draft?"}</b>
+            <b style={{ fontSize: 17 }}>{confirm.kind === "delete" ? (confirm.event.status === "published" ? "Delete this published event?" : "Delete this draft?") : confirm.kind === "publish" ? "Publish this event?" : confirm.kind === "complete" ? "Mark this event completed?" : "Take this event back to draft?"}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "4px 0 14px", lineHeight: 1.5 }}>
               {confirm.event.title}
               <br />
-              {confirm.kind === "delete" ? "It leaves the desk and Discover. Bookings already made stay on record." : confirm.kind === "publish" ? "Check the details — this goes live immediately." : confirm.kind === "complete" ? "The page shows the final register instead of a booking bar." : "It comes off Discover until you publish again."}
+              {confirm.kind === "delete"
+                ? confirm.event.status === "published"
+                  ? `${seatsSoldOf(confirm.event) + entriesOf(confirm.event)} booked must be refunded — every one is settled from its booking, and the record stays.`
+                  : "It leaves the desk. Nothing was ever booked on a draft."
+                : confirm.kind === "publish" ? "Check the details — this goes live immediately." : confirm.kind === "complete" ? "The page shows the final register instead of a booking bar." : "It comes off Discover until you publish again."}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
-                Cancel
+                {confirm.kind === "delete" ? "Keep it" : "Cancel"}
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => {
                   const e = confirm.event;
-                  if (confirm.kind === "delete") void run(() => deleteEventAction({ tenantId, eventId: e.id }), "Event deleted");
+                  if (confirm.kind === "delete") void run(() => deleteEventAction({ tenantId, eventId: e.id }), e.status === "draft" ? "Draft deleted" : "Event deleted");
                   else if (confirm.kind === "publish") void run(() => publishEventAction({ tenantId, eventId: e.id }), "🎟 Published — it is on Discover");
                   else if (confirm.kind === "complete") void run(() => setEventStatusAction({ tenantId, eventId: e.id, status: "completed" }), "Marked completed");
                   else void run(() => setEventStatusAction({ tenantId, eventId: e.id, status: "draft" }), "Back to draft");
                 }}
                 style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: confirm.kind === "delete" ? "#EF4444" : "var(--text)", color: confirm.kind === "delete" ? "#fff" : "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: busy ? "wait" : "pointer", border: "none", fontFamily: "inherit" }}
               >
-                {confirm.kind === "delete" ? "Delete" : confirm.kind === "publish" ? "Confirm & publish" : confirm.kind === "complete" ? "Mark completed" : "Back to draft"}
+                {confirm.kind === "delete" ? (confirm.event.status === "published" && seatsSoldOf(confirm.event) + entriesOf(confirm.event) > 0 ? "Delete & manage refunds" : "Delete") : confirm.kind === "publish" ? "Confirm & publish" : confirm.kind === "complete" ? "Mark completed" : "Back to draft"}
               </button>
             </div>
           </div>
@@ -222,7 +227,7 @@ export function EventsDesk({ tenantId, events, todayKey }: { tenantId: string; e
       ) : null}
 
       {toast ? (
-        <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 650, maxWidth: 360, textAlign: "center" }}>
+        <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>
           {toast}
         </div>
       ) : null}

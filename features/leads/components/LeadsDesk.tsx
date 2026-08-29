@@ -65,6 +65,10 @@ export function LeadsDesk({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  /* the search and the sort (17401-17412): A–Z, or most recently touched first */
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState<"name" | "active">("active");
+  const [dir, setDir] = useState<"desc" | "asc">("desc");
 
   const [form, setForm] = useState({ name: "", mobile: "", interest: "", source: "walk_in", note: "" });
 
@@ -87,7 +91,13 @@ export function LeadsDesk({
     return true;
   };
 
-  const shown = stage === "all" ? leads : leads.filter((l) => l.status === stage);
+  const qn = q.trim().toLowerCase();
+  const shown = (stage === "all" ? leads : leads.filter((l) => l.status === stage))
+    .filter((l) => !qn || l.name.toLowerCase().includes(qn) || (l.interest ?? "").toLowerCase().includes(qn))
+    .sort((a, b) => {
+      const v = sort === "name" ? a.name.localeCompare(b.name) : b.createdAt.localeCompare(a.createdAt);
+      return dir === "desc" ? v : -v;
+    });
   const countOf = (s: LeadStatus) => leads.filter((l) => l.status === s).length;
   const open = leads.filter((l) => l.status === "new" || l.status === "quoted" || l.status === "trial_booked");
   const won = countOf("converted");
@@ -150,15 +160,40 @@ export function LeadsDesk({
           gap: 8,
           background: INK,
           color: LILAC,
-          borderRadius: 14,
+          borderRadius: 999,
           padding: "13px",
-          fontWeight: 800,
+          fontWeight: 900,
           fontSize: 13.5,
           cursor: "pointer",
           marginBottom: 12,
         }}
       >
         ＋ Add a lead
+      </div>
+
+      {/* the search (17401) and the sort strip (17406) — A–Z · Active; Attendance and
+          Progress wait for the attendance and progress figures a student record holds */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px", marginBottom: 9 }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="m16 16 4 4" />
+        </svg>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search people or styles…" aria-label="Search people or styles" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: INK, fontSize: 12.5, fontFamily: "inherit" }} />
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {(
+          [
+            ["name", "A–Z"],
+            ["active", "Active"],
+          ] as Array<["name" | "active", string]>
+        ).map(([k, l]) => (
+          <span key={k} role="button" tabIndex={0} onKeyDown={dosKey} aria-pressed={sort === k} onClick={() => setSort(k)} style={{ flex: 1, textAlign: "center", padding: "6px 3px", borderRadius: 10, cursor: "pointer", fontSize: 10, fontWeight: 800, background: sort === k ? EL : "transparent", color: sort === k ? INK : "var(--muted)", border: `1px solid ${sort === k ? INK : EL}` }}>
+            {l}
+          </span>
+        ))}
+        <span role="button" tabIndex={0} onKeyDown={dosKey} aria-label="Sort direction" onClick={() => setDir((d) => (d === "desc" ? "asc" : "desc"))} style={{ width: 34, textAlign: "center", padding: "6px 0", borderRadius: 10, cursor: "pointer", fontSize: 11, fontWeight: 900, background: EL, border: `1px solid ${EL}` }}>
+          {dir === "desc" ? "↓" : "↑"}
+        </span>
       </div>
 
       {/* the stage chips, in the prototype's order and words (5978) */}
@@ -175,13 +210,13 @@ export function LeadsDesk({
               onClick={() => setStage(k)}
               style={{
                 flexShrink: 0,
-                padding: "6px 11px",
-                borderRadius: 10,
+                padding: "7px 12px",
+                borderRadius: 999,
                 cursor: "pointer",
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 800,
-                background: on ? EL : "transparent",
-                color: on ? INK : "var(--muted)",
+                background: on ? INK : CARD,
+                color: on ? LILAC : SUB,
                 border: `1px solid ${on ? INK : EL}`,
               }}
             >
@@ -263,12 +298,28 @@ export function LeadsDesk({
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>
-          <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>
-            {leads.length === 0
-              ? "Nobody has enquired yet — add the first walk-in above."
-              : "No leads at this stage."}
-          </div>
+          {leads.length === 0 ? (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 5 }}>No students yet</div>
+              <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>Anyone who books one of your classes lands here, with their attendance and what they have paid — and anyone who asks at the desk is added above.</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>{qn ? `Nobody matching “${q.trim()}”` : "Nobody in that group"}</div>
+              <span
+                role="button"
+                tabIndex={0}
+                onKeyDown={dosKey}
+                onClick={() => {
+                  setQ("");
+                  setStage("all");
+                }}
+                style={{ display: "inline-block", padding: "8px 16px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: EL, color: INK }}
+              >
+                Show everyone
+              </span>
+            </>
+          )}
         </div>
       )}
 
@@ -599,20 +650,7 @@ export function LeadsDesk({
 
       {toast && (
         <div
-          style={{
-            position: "fixed",
-            bottom: 96,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--el)",
-            border: "1.5px solid #EC4899",
-            color: "var(--text)",
-            padding: "11px 18px",
-            borderRadius: 999,
-            fontSize: 13,
-            fontWeight: 700,
-            zIndex: 650,
-          }}
+          role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}
         >
           {toast}
         </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { verifyOtpAction, type AuthActionState } from "@/features/auth/server-actions/auth";
+import { requestOtpAction, type AuthActionState, verifyOtpAction } from "@/features/auth/server-actions/auth";
 import { OTP_CHANNEL_WORDS, type OtpChannel } from "@/lib/auth/otpChannel";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { DOS_DISPLAY, GREEN, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
@@ -17,6 +17,8 @@ export function OtpVerify({ phone, via = "sms" }: { phone: string; /** which cha
   const otpRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, isPending] = useActionState(verifyOtpAction, initialState);
+  /* the same request the sign-in screen made, on the same number (3764) */
+  const [, resendAction, resendPending] = useActionState(requestOtpAction, { error: null });
 
   useEffect(() => {
     const id = setInterval(() => setTimer((t) => (t > 0 ? t - 1 : 0)), 1000);
@@ -99,9 +101,12 @@ export function OtpVerify({ phone, via = "sms" }: { phone: string; /** which cha
             Resend in <b>0:{String(timer).padStart(2, "0")}</b>
           </>
         ) : (
-          <Link href="/login/phone" style={{ color: PINK, fontWeight: 800, cursor: "pointer", textDecoration: "none" }}>
-            Resend OTP
-          </Link>
+          <form action={resendAction} style={{ display: "inline" }}>
+            <input type="hidden" name="phone" value={phone} />
+            <button type="submit" disabled={resendPending} style={{ color: PINK, fontWeight: 800, cursor: "pointer", background: "none", border: "none", padding: 0, fontSize: "inherit", fontFamily: "inherit" }}>
+              {resendPending ? "Sending…" : "Resend OTP"}
+            </button>
+          </form>
         )}
       </div>
       <div style={{ fontSize: 11.5, color: SUB, textAlign: "center" }}>

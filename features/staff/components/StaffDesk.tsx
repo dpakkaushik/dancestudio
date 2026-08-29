@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useSyncExternalStore } from "react";
 import { QRBlock } from "@/components/ui/QRBlock";
 import { dosKey } from "@/features/classes/components/ShareSheet";
@@ -9,7 +11,8 @@ import {
   revokeInviteAction,
   setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
-import { DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, PINK, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
 import type { MemberRole, TeamMember } from "@/repositories/tenants";
 import {
   INVITABLE_ROLES,
@@ -77,6 +80,16 @@ const sheet: React.CSSProperties = {
   overflowY: "auto",
   fontFamily: DOS_UI,
 };
+
+/* DosTeamRow's marks (18560-18565): the label wears its own colour, the person's kind rides beside it */
+const LEVEL_TINT: Record<string, string> = { Admin: "#F59E0B", Staff: "#F97316" };
+const gradOf = (name: string): [string, string] => {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  const pal: Array<[string, string]> = [["#2E86DE", "#7C3AED"], ["#8E44AD", "#EC4899"], ["#0D9488", "#2E86DE"], ["#F39C12", "#E84393"], ["#22C55E", "#0D9488"]];
+  return pal[h % pal.length];
+};
+const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 
 export function StaffDesk({
   tenantId,
@@ -160,29 +173,32 @@ export function StaffDesk({
             key={m.userId}
             aria-label={isOwner && m.role !== "owner" ? `Manage ${m.name}` : undefined}
             onClick={isOwner && m.role !== "owner" ? () => setOpenMember(m) : undefined}
-            style={{ ...card, cursor: isOwner && m.role !== "owner" ? "pointer" : "default" }}
+            style={{ ...card, borderLeft: `4px solid ${LEVEL_TINT[level] ?? SUB}`, padding: "10px 12px", cursor: isOwner && m.role !== "owner" ? "pointer" : "default" }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              <b style={{ fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {m.name}
-                {mine && <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}> · you</span>}
-              </b>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  color: level === "Admin" ? GOLD : SUB,
-                  background: EL,
-                  padding: "3px 9px",
-                  borderRadius: 999,
-                  flexShrink: 0,
-                }}
-              >
-                {level}
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: SUB, marginTop: 3 }}>
-              {MEMBER_ROLE_WORD[m.role]} · {MEMBER_GRANTS[m.role]}
+            {/* DosTeamRow (18541-18592): the face with the label's ring, the name, the label in its colour, the kind */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {(() => {
+                const g = gradOf(m.name);
+                const face = photoUrl(m.avatarPath);
+                const tint = LEVEL_TINT[level] ?? SUB;
+                return (
+                  <span style={{ width: 34, height: 34, borderRadius: 17, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})`, border: `1.5px solid ${tint}55`, boxSizing: "border-box" }}>
+                    {face ? <Image src={face} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
+                  </span>
+                );
+              })()}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {m.name}
+                  {mine && <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}> · you</span>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: LEVEL_TINT[level] ?? SUB }}>{level} · {MEMBER_ROLE_WORD[m.role]}</span>
+                  <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--muted)" }}>· {m.profileRole === "trainer" ? "Artist" : m.profileRole === "studio" ? "Studio owner" : "Dancer"}</span>
+                  {m.city ? <span style={{ fontSize: 10, color: SUB }}>· {m.city}</span> : null}
+                </div>
+                <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>{MEMBER_GRANTS[m.role]}</div>
+              </div>
             </div>
           </div>
         );
@@ -212,8 +228,8 @@ export function StaffDesk({
           <div style={{ fontSize: 12, color: SUB, marginTop: 3 }}>
             {MEMBER_ROLE_WORD[inv.memberRole]} · {inv.email}
           </div>
-          <div style={{ fontSize: 9.5, fontWeight: 800, marginTop: 3, color: GOLD }}>
-            ⏳ Invited — waiting on them to accept
+          <div style={{ fontSize: 9.5, fontWeight: 800, marginTop: 3, color: inv.status === "declined" ? "#F87171" : "#F59E0B" }}>
+            {inv.status === "declined" ? "✕ They said no to being on your team" : "⏳ Waiting on them to confirm"}
           </div>
           {isOwner && (
             <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
@@ -611,20 +627,7 @@ export function StaffDesk({
 
       {toast && (
         <div
-          style={{
-            position: "fixed",
-            bottom: 96,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--el)",
-            border: "1.5px solid #EC4899",
-            color: "var(--text)",
-            padding: "11px 18px",
-            borderRadius: 999,
-            fontSize: 13,
-            fontWeight: 700,
-            zIndex: 650,
-          }}
+          role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}
         >
           {toast}
         </div>

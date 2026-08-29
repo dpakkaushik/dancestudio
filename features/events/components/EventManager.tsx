@@ -185,20 +185,27 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
 
   return (
     <div style={{ background: "var(--bg)", maxWidth: 430, margin: "0 auto", color: "var(--text)", fontFamily: DOS_UI, paddingBottom: 40, minHeight: "100vh" }}>
-      {/* THE POSTER, THE WAY A BOOKING PAGE SHOWS IT (13998-14015) */}
-      <DosPosterSleeve item={posterItem} design={posterK} col={col} heroGone={heroGone} label={`Poster for ${ev.title}`} onOpen={() => setLinkOpen(true)} />
-
-      <div style={{ position: "relative", zIndex: 1, background: "var(--bg)", padding: "12px 16px 0" }}>
-        {/* BizShell's title and sub (13993) */}
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+      {/* BizShell wide (14047): the manager opens with the tool card — the event's colour
+          into violet, the title, "{kind} · when · venue" — ABOVE the poster sleeve */}
+      <div style={{ margin: "12px 16px 0", borderRadius: 22, padding: "15px 17px 14px", position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg,${col},#7C3AED)` }}>
+        <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, position: "relative" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.15 }}>{ev.title}</div>
-            <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 3 }}>
+            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>{ev.title}</div>
+            <div style={{ fontSize: 11, opacity: 0.9, marginTop: 3 }}>
               {TYPE_LABEL[cat]} · {eventWhen(ev.startDate, ev.endDate)} · {ev.venue}
             </div>
           </div>
           {isLive ? <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, padding: "4px 10px", borderRadius: 999, background: "#22C55E", color: "#fff" }}>● LIVE</span> : null}
         </div>
+      </div>
+
+      {/* THE POSTER, THE WAY A BOOKING PAGE SHOWS IT (13998-14015) */}
+      <div style={{ marginTop: 12 }}>
+        <DosPosterSleeve item={posterItem} design={posterK} col={col} heroGone={heroGone} label={`Poster for ${ev.title}`} onOpen={() => setLinkOpen(true)} />
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1, background: "var(--bg)", padding: "12px 16px 0" }}>
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 12 }}>
           {canRun && ev.status !== "completed" ? (
             <Link href={`/business/${tenantId}/events/${ev.id}/edit`} style={pill}>
@@ -318,6 +325,8 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
                   ["Entry", isShow ? "line-up built by you" : ev.entryTiers.length === 3 ? "All formats" : ev.entryTiers.map((t) => FORMAT_WORD[t.format]).join(" / ") || "—"],
                   ["Styles", ev.style || "—"],
                   ["Organiser", ev.tenantName],
+                  /* who is deciding it (14158) — a fact a page about an event owes you, even when the honest answer is nobody yet */
+                  ["Judges", isShow ? "None — showcase" : "none confirmed yet"],
                   ["Scoring", CRIT.length ? CRIT.join(" · ") : "—"],
                 ] as Array<[string, string]>
               ).map(([k, v]) => (
@@ -475,7 +484,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
       {linkOpen ? <PassSheet posterItem={posterItem} posterK={posterK} col={col} title={ev.title} styleName={ev.style} levelWord={TYPE_LABEL[cat]} pass={pass} slug={ev.shareSlug} path="e" ariaLabel="Event pass" fire={fire} onClose={() => setLinkOpen(false)} /> : null}
 
       {toast ? (
-        <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: `1.5px solid ${col}`, color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 380, textAlign: "center", zIndex: 650 }}>
+        <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>
           {toast}
         </div>
       ) : null}

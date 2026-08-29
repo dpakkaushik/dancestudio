@@ -6,7 +6,7 @@ import { useState } from "react";
 import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
 import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
-import { DOS_DISPLAY, DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
+import { DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
 import {
   ENQ_STAGES,
   ENQ_STAGE_WORD,
@@ -257,7 +257,10 @@ export function InboxScreen({
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 10.5, color: "#F59E0B", margin: "9px 0 0", fontWeight: 800 }}>⏳ Waiting on {r.who}</div>
+            <div style={{ fontSize: 10.5, color: "#F59E0B", margin: "9px 0 0", fontWeight: 800 }}>
+              ⏳ Waiting on {r.who}
+              {r.kind === "claim" ? <span style={{ color: "var(--sub)", fontWeight: 700 }}> — this class stays a draft until they confirm</span> : null}
+            </div>
             <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
               <button
                 type="button"
@@ -478,7 +481,7 @@ export function InboxScreen({
                 </div>
                 <div style={{ display: "flex", gap: 5, marginBottom: 10, overflowX: "auto", scrollbarWidth: "none" }}>
                   {([["all", "Any stage"] as const, ...ENQ_STAGES.map((s) => [s, ENQ_STAGE_WORD[s]] as const)]).map(([k, l]) => (
-                    <span key={k} role="button" tabIndex={0} aria-pressed={enqSt === k} onKeyDown={pressKey(() => setEnqSt(k as "all" | EnquiryStatus))} onClick={() => setEnqSt(k as "all" | EnquiryStatus)} style={{ flexShrink: 0, padding: "6px 11px", borderRadius: 10, cursor: "pointer", fontSize: 10, fontWeight: 800, background: enqSt === k ? "var(--el)" : "transparent", color: enqSt === k ? "var(--text)" : "var(--muted)", border: `1px solid ${enqSt === k ? "var(--text)" : "var(--el)"}` }}>
+                    <span key={k} role="button" tabIndex={0} aria-pressed={enqSt === k} onKeyDown={pressKey(() => setEnqSt(k as "all" | EnquiryStatus))} onClick={() => setEnqSt(k as "all" | EnquiryStatus)} style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: enqSt === k ? "var(--text)" : "var(--card)", color: enqSt === k ? "var(--solid)" : "var(--sub)", border: `1px solid ${enqSt === k ? "var(--text)" : "var(--el)"}` }}>
                       {l}
                     </span>
                   ))}
@@ -534,7 +537,7 @@ export function InboxScreen({
       </div>
 
       {toast ? (
-        <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: `1.5px solid ${PINK}`, color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 390, textAlign: "center", zIndex: 650, fontFamily: DOS_DISPLAY }}>
+        <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>
           {toast}
         </div>
       ) : null}

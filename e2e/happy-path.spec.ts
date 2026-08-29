@@ -57,7 +57,8 @@ async function onboard(page: Page, first: string, last: string, role: string | n
     await page.getByText(role, { exact: true }).click();
   }
   await page.locator('input[name="city"]').fill(city);
-  await page.getByRole("button", { name: "Open DanceOS →" }).click();
+  // the button reads "Continue" once the name is in (prototype 3820-3821)
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
 
@@ -194,8 +195,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await inviteSheet.getByLabel("Their name").fill("E2E Trainer");
     await inviteSheet.getByLabel("Their email").fill(trainerEmail);
     await inviteSheet.getByRole("button", { name: "Send invite" }).click();
-    // they show as asked-but-unanswered, and the QR the prototype promised is here
-    await expect(owner.getByText(/Invited — waiting on them to accept/)).toBeVisible();
+    // they show as asked-but-unanswered (18575, the prototype's own words), and the QR it promised is here
+    await expect(owner.getByText(/Waiting on them to confirm/)).toBeVisible();
     await owner.getByRole("button", { name: "Show the invite for E2E Trainer" }).click();
     const qrSheet = owner.getByRole("dialog", { name: "Invite for E2E Trainer" });
     await expect(qrSheet.getByRole("img", { name: /Invite code/ })).toBeVisible();

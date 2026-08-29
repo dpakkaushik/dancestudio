@@ -417,6 +417,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
             label="FORMAT"
           >
             <Row k="Format" v={cat === "battle" ? `Top ${ev.bracket || 16} knockout` : `${ev.rounds || 3} rounds`} />
+            {cat === "tournament" ? <Row k="Qualifying" v="Top 8 advance each round" /> : null}
             <Row k="Registered" v={`${entered} ${entryFmt === "crew" ? "crews" : "competitors"}${entryCap ? ` of ${entryCap}` : ""}`} />
             {open.map((t) => (
               <Row key={t.format} k={`${FORMAT_WORD[t.format]} entry`} v={t.feeInr > 0 ? `₹${t.feeInr.toLocaleString("en-IN")}` : "Free"} strong={t.feeInr > 0} />
@@ -654,12 +655,15 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
             {bookMode === "participant" && entryFmt === "all" ? (
               <>
                 <div style={eyebrow}>Entering as</div>
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${open.length},1fr)`, gap: 7, marginBottom: 12 }}>
-                  {open.map((t) => {
-                    const k = t.format;
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 7, marginBottom: 12 }}>
+                  {(["solo", "duo", "crew"] as const).map((k) => {
+                    const t = open.find((x) => x.format === k) ?? null;
                     const l = FORMAT_WORD[k];
                     const sub = k === "solo" ? "just you" : k === "duo" ? "you + 1" : "your crew";
                     const on = entryAs === k;
+                    /* a card the event did not open, or a crew you do not lead, is drawn dimmed — the
+                       three cards are the shape of the choice, not a list of what you may pick */
+                    const blocked = !t || (k === "crew" && ledCrews.length === 0);
                     return (
                       <div
                         role="button"
@@ -667,16 +671,18 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                         onKeyDown={dosKey}
                         key={k}
                         aria-pressed={on}
+                        aria-disabled={blocked}
                         aria-label={`Enter as ${l}`}
                         onClick={() => {
+                          if (blocked) return fire(!t ? `This event has no ${l.toLowerCase()} entry` : "Only a crew leader can enter a crew — you do not lead one.");
                           setEntryAs(k);
                           setPartner(null);
                         }}
-                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "11px 4px", borderRadius: 14, cursor: "pointer", boxSizing: "border-box", background: on ? `${col}18` : "var(--card)", border: `2px solid ${on ? col : "var(--el)"}`, color: on ? col : "var(--sub)" }}
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "11px 4px", borderRadius: 14, cursor: blocked ? "default" : "pointer", opacity: blocked ? 0.4 : 1, boxSizing: "border-box", background: on ? `${col}18` : "var(--card)", border: `2px solid ${on ? col : "var(--el)"}`, color: on ? col : "var(--sub)" }}
                       >
                         <EvFormatIcon fmt={k} size={19} />
                         <span style={{ fontSize: 11.5, fontWeight: 900 }}>{l}</span>
-                        <span style={{ fontSize: 8.5, fontWeight: 700, color: "var(--muted)", textAlign: "center" }}>{t.feeInr > 0 ? `₹${t.feeInr}` : sub}</span>
+                        <span style={{ fontSize: 8.5, fontWeight: 700, color: "var(--muted)", textAlign: "center" }}>{!t ? "not open" : k === "crew" && ledCrews.length === 0 ? "lead one first" : t.feeInr > 0 ? `₹${t.feeInr}` : sub}</span>
                       </div>
                     );
                   })}

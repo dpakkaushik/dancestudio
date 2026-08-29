@@ -5,7 +5,7 @@ import { useState } from "react";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DOS_UI } from "@/lib/design/tokens";
-import { ENQ_TYPES, enquiryTypesFor, type EnquiryField, type EnquiryType } from "@/types/enquiry";
+import { enquiryTypesFor, type EnquiryField, type EnquiryType } from "@/types/enquiry";
 import type { TenantType } from "@/types/tenant";
 import { pressKey } from "@/features/inbox/components/inbox-kit";
 
@@ -112,13 +112,13 @@ export function EnquirySheet({
   tenantId,
   tenantName,
   tenantType,
-  accent,
   onClose,
 }: {
   tenantId: string;
   tenantName: string;
   tenantType: TenantType;
-  accent: string;
+  /** the business page's colour — the sheet wears each TYPE's own colour instead (5119), so this is accepted and unused */
+  accent?: string;
   onClose: () => void;
 }) {
   const allowed = enquiryTypesFor(tenantType);
@@ -483,9 +483,6 @@ export function EnquirySheet({
             >
               {busy ? "Sending…" : "Send enquiry"}
             </button>
-            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 8, textAlign: "center" }}>
-              <span style={{ color: accent }}>{ENQ_TYPES.length}</span> kinds of work · they quote, you accept or decline
-            </div>
           </>
         )}
       </div>

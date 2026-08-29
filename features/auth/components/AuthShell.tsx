@@ -7,9 +7,12 @@ import { DARK_THEME_VARS, DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tok
 export function AuthShell({
   children,
   toast,
+  progress,
 }: {
   children: ReactNode;
   toast?: string | null;
+  /** the stepped forms' bar (3692-3694): [step, of] — filled to the step you are on */
+  progress?: [number, number];
 }) {
   return (
     <div
@@ -32,6 +35,13 @@ export function AuthShell({
         @keyframes dosDash{0%,100%{opacity:.55}50%{opacity:1}}
         @media (prefers-reduced-motion:reduce){*{animation:none !important}}
       `}</style>
+      {progress ? (
+        <div style={{ display: "flex", gap: 6, marginBottom: 22 }}>
+          {Array.from({ length: progress[1] }, (_, i) => (
+            <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i < progress[0] ? PINK : "var(--el)" }} />
+          ))}
+        </div>
+      ) : null}
       {children}
       {toast && (
         <div

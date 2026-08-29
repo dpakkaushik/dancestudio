@@ -287,8 +287,9 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
           </Surface>
         ) : null}
 
-        {/* only the side that is being asked can put a price on it */}
-        {mine && stage !== "won" && stage !== "lost" ? (
+        {/* only the side that is being asked can put a price on it — and a quote can be
+            revised whatever the stage (5525); the RPC refuses one on a closed enquiry with its own words */}
+        {mine ? (
           qOpen ? (
             <Surface tint={tint}>
               <Eyebrow tint={tint}>{hist.length ? "REVISE THE QUOTE" : "SEND A QUOTE"}</Eyebrow>
@@ -370,7 +371,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
       </div>
 
       {toast ? (
-        <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: `1.5px solid ${tint}`, color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 650 }}>
+        <div role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}>
           {toast}
         </div>
       ) : null}

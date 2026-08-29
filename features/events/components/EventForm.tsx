@@ -213,6 +213,10 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
       {/* header — mirrors the class form */}
       <div style={{ position: "sticky", top: "var(--dos-top)", zIndex: 20, background: "var(--solid)", padding: "14px 16px 10px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* the ← (15897): exits on step 0, steps back otherwise */}
+          <button type="button" aria-label={step > 0 ? "Back a step" : "Back"} onClick={() => (step > 0 ? setStep(step - 1) : router.back())} style={{ fontSize: 20, cursor: "pointer", lineHeight: 1, background: "none", border: "none", color: "var(--text)", padding: 0, fontFamily: "inherit" }}>
+            ←
+          </button>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 17, fontWeight: 900 }}>{E ? "Edit event" : "Add event"}</div>
             <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 1 }}>
@@ -478,7 +482,7 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 800 }}>{ticketsOn ? "Selling tickets" : "No tickets"}</div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2, lineHeight: 1.45 }}>
-                  {ticketsOn ? "Spectators can book seats — you'll manage them separately from participants." : cat === "showcase" ? "Invite-only showcase — no audience booking or gate list." : "Participants register only — no audience."}
+                  {ticketsOn ? "Spectators can book seats — you'll manage them separately from participants." : cat === "showcase" ? "Invite-only showcase — no audience booking or gate list." : "Participants register only — no audience tickets."}
                 </div>
               </div>
               <span style={{ width: 44, height: 26, borderRadius: 13, background: ticketsOn ? "#22C55E" : "var(--el)", position: "relative", flexShrink: 0, transition: "background .18s" }}>
@@ -624,7 +628,9 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
                   ["Entry", isEntered ? (entryLow === 0 ? "free to compete" : `₹${entryLow.toLocaleString("en-IN")} per competitor`) : "performers added by you"],
                   ...(cat === "battle" ? [["Format", `Top ${bracket} knockout`]] : cat === "tournament" ? [["Format", `${rounds} rounds · advance set by judges`]] : []),
                   ...(isEntered ? [["Entries", openEntryTiers.map((t) => `${FORMAT_WORD[t.format]} ${t.fee_inr === 0 ? "free" : `₹${t.fee_inr}`}`).join(" · ") || "none picked"]] : []),
+                  ...(isEntered && (Number(p1) || Number(p2) || Number(p3)) ? [["Prize pool", `₹${((Number(p1) || 0) + (Number(p2) || 0) + (Number(p3) || 0)).toLocaleString("en-IN")}`]] : []),
                   ["Tickets", ticketsOn && tiers.length ? `${tiers.reduce((a, t) => a + t.cap, 0)} seats · ₹${tiers.reduce((a, t) => a + t.price * t.cap, 0).toLocaleString("en-IN")} max` : "not selling"],
+                  ["Adds to", "your calendar + the events desk"],
                 ] as Array<[string, string]>
               ).map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "4px 0", fontSize: 11.5 }}>
@@ -635,7 +641,7 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--text)", fontFamily: "inherit" }}>
-                Cancel
+                Back
               </button>
               <button type="button" disabled={busy} onClick={() => void submit(confirm === "publish")} style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: busy ? "wait" : "pointer", border: "none", fontFamily: "inherit" }}>
                 {confirm === "publish" ? "Confirm & publish" : "Confirm & save draft"}

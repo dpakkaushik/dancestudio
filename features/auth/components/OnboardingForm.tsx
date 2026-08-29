@@ -35,19 +35,17 @@ export function OnboardingForm() {
   const [role, setRole] = useState<ProfileRole>("dancer");
   const [state, formAction, isPending] = useActionState(completeProfileAction, initialState);
   const ready = fn.trim().length > 0;
+  /* the button says what is missing (3778, 3820): the reason, not a grey nothing */
+  const missing = !fn.trim() ? "Enter your first name" : "";
+  const handle = (fn + ln).toLowerCase().replace(/[^a-z]/g, "") || "you";
 
   return (
-    <AuthShell toast={state.error}>
-      <div style={{ display: "flex", gap: 6, marginBottom: 22 }}>
-        {[0, 1, 2].map((i) => (
-          <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i === 0 ? PINK : LINE }} />
-        ))}
+    <AuthShell toast={state.error} progress={[1, 1]}>
+      <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
+        Set up your profile
       </div>
-      <div style={{ fontSize: 26, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>
-        Take the stage
-      </div>
-      <div style={{ fontSize: 13.5, color: SUB, marginBottom: 20 }}>
-        Tell us who you are — you can add photos and styles later.
+      <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>
+        A photo and your basics — this is how the community sees you. Your photo, your styles and your links are one tap away on your profile.
       </div>
       <form action={formAction}>
         <input type="hidden" name="fullName" value={`${fn.trim()} ${ln.trim()}`.trim()} />
@@ -56,18 +54,23 @@ export function OnboardingForm() {
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <input
             value={fn}
-            onChange={(e) => setFn(e.target.value)}
+            onChange={(e) => setFn(e.target.value.replace(/(^|\s)\S/g, (c) => c.toUpperCase()))}
             placeholder="First name"
             autoFocus
             style={{ ...inputStyle, flex: 1 }}
           />
           <input
             value={ln}
-            onChange={(e) => setLn(e.target.value)}
+            onChange={(e) => setLn(e.target.value.replace(/(^|\s)\S/g, (c) => c.toUpperCase()))}
             placeholder="Last name"
             style={{ ...inputStyle, flex: 1 }}
           />
         </div>
+        {fn.trim() ? (
+          <div style={{ fontSize: 12, color: SUB, margin: "-6px 0 14px" }}>
+            Your handle: <b style={{ color: PINK }}>@{handle}</b> · editable later
+          </div>
+        ) : null}
         <div style={{ fontSize: 12, color: SUB, fontWeight: 700, marginBottom: 8, letterSpacing: 0.5 }}>
           I AM HERE AS A…
         </div>
@@ -118,6 +121,7 @@ export function OnboardingForm() {
         <button
           type="submit"
           disabled={!ready || isPending}
+          aria-disabled={!ready}
           style={{
             ...BTN_STYLE,
             background: ready ? PINK : LINE,
@@ -126,7 +130,7 @@ export function OnboardingForm() {
             transition: "all .2s",
           }}
         >
-          {isPending ? "Saving…" : "Open DanceOS →"}
+          {isPending ? "Saving…" : ready ? "Continue" : missing}
         </button>
       </form>
     </AuthShell>

@@ -1,4 +1,4 @@
-**fixed** — UPCOMING and COMPLETED under day headings; the rows stay the History row (a HistoryRow is not a DanceClass, so the tile cannot be drawn from it) and drafts belong to a business, not a person 
+**fixed** for Resend in place; Get a call instead → decision (c) 
 
 ## What this repo is
 
@@ -77,7 +77,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   `bizBtn` pill, the tool hero, Refunds on a completed row, "Delete &
   manage refunds"), the business hub (STUDIOS YOU OWN / TAUGHT AT, "Manage ›",
   "· N rooms", **the rooms editor in the New-studio sheet** — a studio is
-  created WITH its floors), the Profile tab and the person page. **The whole
+  created WITH its floors), the Profile tab and the person page. **A second run (29 Aug 2026) closed most of the open rows:** the class page (C1-C9), the class form (F1-F2), the studio/artist page (B1-B5), the listings (L1-L2), Stats (X1-X5), the desks (S1-S3, S5), events (E1, E2, E4-E6), the Inbox (I1, I3, I4), onboarding and the OTP screen (U1, U4, U5), the notifications hero (O1) and the managed head (M1) — verified by 12 e2e segments after every batch. **The whole
   audit is now a table at the foot of the parity backlog, one row per finding
   with its status**, so the next runs close what is left without re-auditing:
   the class page (10 rows), the class form, the studio/artist page, the learner
@@ -3032,7 +3032,11 @@ the technical detail; this log is the at-a-glance history.
   **Lesson: a parallel fix run needs the parent to verify and finish, not to
   assume — and Playwright's `getByRole({name})` matches by SUBSTRING, so
   "Kathak" found "Kathakali" and "URL" found "Link URL"; style and field
-  matchers are `exact: true` now.** Step 24: two migrations — `notifications` +
+  matchers are `exact: true` now.**
+  **Second run (29 Aug 2026):** the audit's open (a) rows worked area by area by
+  one agent — class page, class form, studio/artist page, listings, Stats, the
+  desks, events, Inbox, onboarding — each batch verified by the 12-segment e2e
+  before the next; the table's statuses updated after every batch. Step 24: two migrations — `notifications` +
   `notification_prefs` with eight TRIGGERS that raise a notification where the
   fact happens (so every path that writes the fact raises it, and `notify` is
   revoked from every client role and can never break the fact), then a
