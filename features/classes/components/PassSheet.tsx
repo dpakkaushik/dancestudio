@@ -1,6 +1,7 @@
 "use client";
 
 import { QRBlock } from "@/components/ui/QRBlock";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import { PosterBlock } from "./poster";
 import { dosKey } from "./ShareSheet";
@@ -44,6 +45,7 @@ export interface PassSheetProps {
 }
 
 export function PassSheet({ posterItem, posterK, col, title, styleName, levelWord, pass, slug, path = "c", ariaLabel = "Class pass", onClose, fire }: PassSheetProps) {
+  useCloseOnBack(onClose);
   return (
     <div
       onClick={onClose}

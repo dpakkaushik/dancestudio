@@ -7,6 +7,7 @@ import { PeoplePicker, personGradient, personInitials } from "@/features/people/
 import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { Profile } from "@/types/profile";
 import { Toast, pressKey } from "./crew-kit";
 
@@ -32,6 +33,8 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /* system back closes the sheet that is open, exactly as tapping the scrim does */
+  useCloseOnBack(() => setConfirm(false), confirm);
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2300);

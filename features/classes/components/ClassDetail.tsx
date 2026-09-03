@@ -25,6 +25,7 @@ import { RefundSheet } from "@/features/payments/components/RefundSheet";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { ClassRegister } from "@/repositories/attendance";
 import type { ClassClaim } from "@/types/claim";
@@ -222,6 +223,7 @@ export function ClassDetail({
   const paidSet = new Set(paidUserIds);
   const [posterOpen, setPosterOpen] = useState(false);
   const [posterBusy, setPosterBusy] = useState(false);
+  useCloseOnBack(() => setPosterOpen(false), posterOpen);
   const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
   const setPoster = async (poster: "bold" | "split" | "quiet" | "none", said: string) => {
     if (posterBusy) return;

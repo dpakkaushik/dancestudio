@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
 
 /** Enter/Space activate a role="button" span — the prototype's dosKey. */
@@ -33,6 +34,7 @@ export function ShareSheet({
   fire?: (msg: string) => void;
   onClose: () => void;
 }) {
+  useCloseOnBack(onClose);
   const host = useSyncExternalStore(subscribeNever, readHost, readServerHost);
   const link = `${host}/c/${slug}`;
   const [done, setDone] = useState(false);

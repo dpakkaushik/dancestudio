@@ -12,6 +12,7 @@ import {
   setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { MemberRole, TeamMember } from "@/repositories/tenants";
 import {
@@ -119,6 +120,11 @@ export function StaffDesk({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  /* system back closes the sheet that is open, exactly as tapping the scrim does */
+  useCloseOnBack(() => setAddOpen(false), addOpen);
+  useCloseOnBack(() => setShareInvite(null), Boolean(shareInvite));
+  useCloseOnBack(() => setOpenMember(null), Boolean(openMember));
 
   const fire = (m: string) => {
     setToast(m);

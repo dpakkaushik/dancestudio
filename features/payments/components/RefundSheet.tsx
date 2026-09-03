@@ -4,6 +4,7 @@ import { useState } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { cancelBookingAction } from "@/features/payments/server-actions/payments";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 
 /** Cancelling is two things, and only one of them is about money — lifted from
  *  prototype DanceOSApp.jsx:6269-6327. The seat goes back the instant you
@@ -26,6 +27,7 @@ export interface RefundSheetProps {
 }
 
 export function RefundSheet({ enrollmentId, title, timeText, amountInr, onClose, onDone }: RefundSheetProps) {
+  useCloseOnBack(onClose);
   const [own, setOwn] = useState(false);
   const [why, setWhy] = useState("");
   const [busy, setBusy] = useState(false);

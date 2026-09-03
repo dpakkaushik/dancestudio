@@ -14,6 +14,7 @@ import {
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { TeamMember } from "@/repositories/tenants";
 import type { ClassClaim } from "@/types/claim";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
@@ -149,6 +150,8 @@ export function ClassForm({
   /* the confirm sheet before a publish (15586-15625) — the button sets which
      status the form will carry, and the sheet's own button submits it */
   const [confirm, setConfirm] = useState<"draft" | "publish" | null>(null);
+  /* system back closes the confirm sheet, exactly as its scrim does */
+  useCloseOnBack(() => setConfirm(null), Boolean(confirm));
   /* ROOM ALREADY BUSY (F3, prototype 15628-15632 / dosClash 4023): asked of the
      database BEFORE the sheet opens, so the answer is read in the sheet rather
      than as a refusal after Publish. Held here because the sheet is drawn from

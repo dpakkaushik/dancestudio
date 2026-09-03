@@ -15,6 +15,7 @@ import {
   monthOfDay,
   monthShortOf,
 } from "@/lib/format/month";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { CalendarEntry, CalendarMonth, CalendarSide } from "@/types/calendar";
 import type { DanceClass } from "@/types/class";
 
@@ -134,6 +135,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
   const [sel, setSel] = useState(todayKey);
   const [mi, setMi] = useState(Math.max(0, idx(monthOfDay(todayKey))));
   const [panelOpen, setPanelOpen] = useState(false);
+  useCloseOnBack(() => setPanelOpen(false), panelOpen);
   /* ONE ROOM AT A TIME (8655): a studio with more than one room opens on its
      first room, and "All rooms" is a deliberate act rather than the landing state */
   const rooms = [...new Set(entries.map((e) => e.room).filter((r): r is string => !!r))].sort();

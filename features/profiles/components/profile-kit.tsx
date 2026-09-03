@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { DOS_DISPLAY, GOLD, PINK } from "@/lib/design/tokens";
 import { isPlatform, type Platform } from "@/lib/constants/socials";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ProfileRole } from "@/types/profile";
 
 /** The Profile tab's small parts, lifted from the prototype so the own page and
@@ -126,6 +127,7 @@ export function PlatformIcon({ label, size = 19 }: { label: string; size?: numbe
 
 /* ── the sheet chrome every profile sheet shares (11141, 11162, 11218, 11336, 11365) ── */
 export function Sheet({ label, onClose, children, maxHeight = "80vh" }: { label: string; onClose: () => void; children: ReactNode; maxHeight?: string }) {
+  useCloseOnBack(onClose);
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600 }}>
       <div

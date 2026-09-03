@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteEventAction, publishEventAction, setEventStatusAction } from "@/features/events/server-actions/events";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { DanceEvent, EventStatus } from "@/types/event";
 import { entriesOf, seatsSoldOf } from "@/types/event";
 import { EventCard } from "./EventCard";
@@ -58,6 +59,8 @@ export function EventsDesk({ tenantId, events, todayKey }: { tenantId: string; e
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /* system back closes the confirm sheet, exactly as its scrim does */
+  useCloseOnBack(() => setConfirm(null), Boolean(confirm));
 
   const fire = (m: string) => {
     setToast(m);

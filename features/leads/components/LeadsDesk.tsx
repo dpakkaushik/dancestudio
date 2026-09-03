@@ -8,6 +8,7 @@ import {
   updateLeadAction,
 } from "@/features/leads/server-actions/leads";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { DanceClass } from "@/types/class";
 import { LEAD_SOURCES, LEAD_STAGES, LEAD_TINT, type Lead, type LeadStatus } from "@/types/lead";
 
@@ -71,6 +72,10 @@ export function LeadsDesk({
   const [dir, setDir] = useState<"desc" | "asc">("desc");
 
   const [form, setForm] = useState({ name: "", mobile: "", interest: "", source: "walk_in", note: "" });
+
+  /* system back closes the sheet that is open, exactly as tapping the scrim does */
+  useCloseOnBack(() => setAddOpen(false), addOpen);
+  useCloseOnBack(() => setOpenLead(null), Boolean(openLead));
 
   const fire = (m: string) => {
     setToast(m);

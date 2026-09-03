@@ -7,6 +7,7 @@ import { signOutAction } from "@/features/auth/server-actions/auth";
 import { setNotificationPrefsAction } from "@/features/notifications/server-actions/notifications";
 import { endArtistPlanAction, updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ArtistPlan } from "@/repositories/plans";
 import { PLAN_PRICE } from "@/repositories/plans";
 import { enquiryTypesFor } from "@/types/enquiry";
@@ -69,6 +70,8 @@ export function SettingsSheet({
   const [enqOpen, setEnqOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  useCloseOnBack(onClose, open);
+  useCloseOnBack(() => setEnqOpen(false), enqOpen);
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2400);

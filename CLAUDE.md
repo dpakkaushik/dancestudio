@@ -1,3 +1,19 @@
+# CLAUDE.md — DanceOS
+
+## LAST SESSION (3 Sep 2026, office machine) — replaced on every push (Rule 13)
+
+- **The Android APK is IN THIS REPO**: `android/app-release-signed.apk` (sideload it) and `android/app-release-bundle.aab` (Play Store), built as a Bubblewrap Trusted Web Activity over the live Vercel URL — web deploys update the installed app, no rebuild. The whole Gradle project is committed; **the signing keystore + password are NOT** (android/.gitignore) — originals on the office machine at `../danceos-android/`, move them privately, never via GitHub.
+- **System back works app-wide** (the gate before the APK): `lib/hooks/useCloseOnBack.ts` — one shared history entry, prototype 19039 semantics — wired into every role="dialog" sheet (21 files); PayFlow deliberately unwired. First cut's history.back() on button-close raced Next's redirect out of ClassForm's publish (caught by e2e) — the hook never calls back() programmatically now. `e2e/back-navigation.spec.ts` 3/3 green.
+- **PWA shell**: app/manifest.ts, DosMark-drawn icons (scripts/icons/make-icons.js), `.well-known/assetlinks.json` with the real fingerprint — **this push deploying is what makes the installed APK fullscreen** (until then it shows a Chrome bar).
+- Office notes: main was 24 behind + 1 stray commit (saved on `local-step13b-backup`, reset onto origin); office `localhost:3000` is ANOTHER project — use PLAYWRIGHT_BASE_URL (now supported) against `next start -p 3100`; office Wi-Fi dropped three e2e story runs on Supabase `fetch failed` — re-run on stable internet before reading a failure as code. Rebased over parity slices 6–8 pushed the same day by a parallel session.
+
+## NEXT TO DO — replaced on every push (Rule 13)
+
+1. Verify the deploy: https://dancestudio-orcin.vercel.app/manifest.webmanifest and /.well-known/assetlinks.json both 200 → launch the installed APK: Chrome bar gone, back closes sheets.
+2. Full e2e on stable internet: `PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test` against `npx next start -p 3100` — all three specs green is the bar.
+3. Pick work from the tracker's Next block (slices 6–8 closed PassDeck/wiring/F3/F4/W2/U2 on 3 Sep — re-read before assuming a row is open). Web push and posters are the next unblocked slices. Backlog rows still open from this session: PayFlow back-wiring, CalendarScreen's fabOpen/ddOpen popovers.
+4. Ops (user): Cashfree KYC + Easy Split, Resend domain, Twilio/Meta/DLT; keep the keystore pair safe.
+
 ## What this repo is
 
 DanceOS: an app for dance studios and dancers — class management, bookings, crews,
@@ -3314,6 +3330,11 @@ server action → UI, finished and verified before the next begins.
     backlog row for something already built is the same bug pointing the other
     way. Audit the two against each other whenever a step lands (the last audit
     is dated at the head of the table).
+13. **The top of this file is the handoff.** `LAST SESSION` and `NEXT TO DO`
+    sit above everything else and are REPLACED — not appended to — in the same
+    push as the work they describe, so somebody opening this file on another
+    machine starts from what is true now. A stale top block is a bug, exactly
+    as a stale tracker is (Rule 11).
 
 ## Session log
 

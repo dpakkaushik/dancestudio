@@ -1,0 +1,9 @@
+# the signing key and its password NEVER go to GitHub — losing control of them
+# means anybody can ship updates to the installed app. Keep them beside this
+# folder locally (android.keystore + keystore-credentials.txt) and move them
+# between machines privately (USB / private drive), never through the repo.
+android.keystore
+keystore-credentials.txt
+/app/build/
+/.gradle/
+/build/

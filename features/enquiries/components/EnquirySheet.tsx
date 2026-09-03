@@ -5,6 +5,7 @@ import { useState } from "react";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DOS_UI } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, type EnquiryField, type EnquiryType } from "@/types/enquiry";
 import type { TenantType } from "@/types/tenant";
 import { pressKey } from "@/features/inbox/components/inbox-kit";
@@ -126,6 +127,7 @@ export function EnquirySheet({
   accent?: string;
   onClose: () => void;
 }) {
+  useCloseOnBack(onClose);
   /* only the types the business switched on appear (9007) */
   const allowed = enquiryTypesFor(tenantType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
   const [type, setType] = useState<EnquiryType | null>(null);

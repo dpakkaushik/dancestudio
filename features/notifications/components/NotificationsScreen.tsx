@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { clearNotificationsAction, markNotificationsReadAction, setNotificationPrefsAction } from "@/features/notifications/server-actions/notifications";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { NOTIF_KINDS, agoWords, type AppNotification, type NotificationKind, type NotificationPrefs } from "@/types/notification";
 
 /** The notifications screen — prototype S_notif (13702-13812) lifted: the hero
@@ -39,6 +40,8 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /* system back closes the sheet that is open, exactly as tapping the scrim does */
+  useCloseOnBack(() => setPrefOpen(false), prefOpen);
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2000);

@@ -10,6 +10,7 @@ import {
   type ClassActionState,
 } from "@/features/classes/server-actions/classes";
 import { ClassTile } from "@/features/classes/components/ClassTile";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassStatus, DanceClass } from "@/types/class";
 
@@ -168,6 +169,7 @@ function ConfirmSheet({
   onClose: () => void;
   form: (goButton: ReactNode) => ReactNode;
 }) {
+  useCloseOnBack(onClose);
   const goButton = (
     <button
       type="submit"

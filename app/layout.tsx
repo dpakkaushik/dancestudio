@@ -8,6 +8,24 @@ const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-inter-tig
 export const metadata: Metadata = {
   title: "DanceOS",
   description: "Where India dances — classes, studios, crews, and stages.",
+  /* The Android APK is a Trusted Web Activity built from app/manifest.ts, which
+     Next serves at /manifest.webmanifest. These two blocks are what the OTHER
+     installers need: `appleWebApp` is how an iPhone opens it full-screen from
+     "Add to Home Screen" (black-translucent lets the page draw under the status
+     bar, which viewportFit: "cover" below already lays out for), and `icons`
+     names the touch icon, since ours lives in public/ rather than app/. */
+  appleWebApp: {
+    capable: true,
+    title: "DanceOS",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 /** viewport-fit=cover asks the browser to lay the page out under the notch/home

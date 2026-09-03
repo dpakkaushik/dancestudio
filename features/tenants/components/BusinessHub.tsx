@@ -6,6 +6,7 @@ import { dosKey } from "@/features/classes/components/ShareSheet";
 import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import type { MyMembership } from "@/repositories/tenants";
 import type { TenantType } from "@/types/tenant";
@@ -104,6 +105,9 @@ export function BusinessHub({
     },
     initialState
   );
+
+  /* system back closes the sheet that is open, exactly as tapping the scrim does */
+  useCloseOnBack(() => setSheetOpen(false), sheetOpen);
 
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);

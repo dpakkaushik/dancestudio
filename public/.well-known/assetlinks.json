@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.dancestudio_orcin.twa",
+      "sha256_cert_fingerprints": [
+        "19:F2:A9:B2:F6:ED:FD:F4:06:E3:4A:1B:3A:EB:4F:33:E1:B4:8D:69:17:82:38:7E:D9:42:26:DC:6B:EA:80:E9"
+      ]
+    }
+  }
+]

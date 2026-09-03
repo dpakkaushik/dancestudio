@@ -1,0 +1,47 @@
+{
+  "packageId": "app.vercel.dancestudio_orcin.twa",
+  "host": "dancestudio-orcin.vercel.app",
+  "name": "DanceOS",
+  "launcherName": "DanceOS",
+  "display": "standalone",
+  "themeColor": "#0A0A0A",
+  "themeColorDark": "#0A0A0A",
+  "navigationColor": "#0A0A0A",
+  "navigationColorDark": "#0A0A0A",
+  "navigationDividerColor": "#0A0A0A",
+  "navigationDividerColorDark": "#0A0A0A",
+  "backgroundColor": "#0A0A0A",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://dancestudio-orcin.vercel.app/icon-512.png",
+  "maskableIconUrl": "https://dancestudio-orcin.vercel.app/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://dancestudio-orcin.vercel.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://dancestudio-orcin.vercel.app/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [
+    {
+      "name": "release",
+      "value": "19:F2:A9:B2:F6:ED:FD:F4:06:E3:4A:1B:3A:EB:4F:33:E1:B4:8D:69:17:82:38:7E:D9:42:26:DC:6B:EA:80:E9"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}

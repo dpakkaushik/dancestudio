@@ -7,6 +7,7 @@ import type { EventPayload } from "@/repositories/events";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_UI } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import {
   EVENT_CATS,
   EV_MAX_ENTRIES,
@@ -142,6 +143,8 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /* system back closes the confirm sheet, exactly as its scrim does */
+  useCloseOnBack(() => setConfirm(null), Boolean(confirm));
 
   const fire = (m: string) => {
     setToast(m);

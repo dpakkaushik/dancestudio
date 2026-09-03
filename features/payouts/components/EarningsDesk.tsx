@@ -8,6 +8,7 @@ import {
 } from "@/features/payouts/server-actions/payouts";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, GREEN, INK, LILAC, LINE, RED, SUB } from "@/lib/design/tokens";
 import { sessionDayLabel } from "@/lib/format/session";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { TenantIncome } from "@/types/income";
 import {
   PAYOUT_METHOD_LABEL,
@@ -72,6 +73,7 @@ function Sheet({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  useCloseOnBack(onClose);
   return (
     <div
       style={{

@@ -2,6 +2,7 @@
 
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 
 /** Invoice — lifted from prototype DanceOSApp.jsx:6230-6255. The rows are real
  *  now: amount and method come off the captured payment. The prototype's
@@ -36,6 +37,7 @@ export interface InvoiceSheetProps {
 }
 
 export function InvoiceSheet({ title, whenText, whereText, enrollmentId, amountInr, method, onClose }: InvoiceSheetProps) {
+  useCloseOnBack(onClose);
   const code = bookingCodeOf(enrollmentId);
   const num = `INV-2026-${String((dosHash(code) % 9000) + 1000)}`;
   const rows: Array<[string, string]> = [

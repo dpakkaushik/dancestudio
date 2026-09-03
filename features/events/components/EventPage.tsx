@@ -9,6 +9,7 @@ import { dosKey } from "@/features/classes/components/ShareSheet";
 import { bookEventAction, cancelEventBookingAction } from "@/features/events/server-actions/events";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { Profile } from "@/types/profile";
 import {
   EVENT_CRITERIA,
@@ -162,6 +163,10 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
   const [qty, setQty] = useState(1);
   const [busy, setBusy] = useState(false);
   const [cancelAsk, setCancelAsk] = useState<EventBooking | null>(null);
+  /* system back closes the sheet that is open, exactly as its scrim does */
+  useCloseOnBack(() => setConfirm(false), confirm);
+  useCloseOnBack(() => setPayOpen(false), payOpen);
+  useCloseOnBack(() => setCancelAsk(null), Boolean(cancelAsk));
 
   /* a finished event is a record, not a product — no booking, the final figures instead */
   const done = ev.status === "completed" || ev.endDate < todayKey;

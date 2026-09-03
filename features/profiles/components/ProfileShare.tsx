@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { QRBlock } from "@/components/ui/QRBlock";
 import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 
 /* the page's own host, read the sanctioned way (no impure render access) */
 const subscribeNever = () => () => {};
@@ -18,6 +19,7 @@ export function ProfileShare({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
   const origin = useSyncExternalStore(subscribeNever, readHost, readServerHost);
+  useCloseOnBack(() => setOpen(false), open);
   const link = `${origin}${path}`;
 
   const copy = () => {

@@ -16,6 +16,14 @@ try {
   // no .env.local (CI) — the keys must come from real env vars instead
 }
 
+/** Where the suite points. Overridable because port 3000 is not always this app:
+ *  another project's dev server can already hold it — and on Windows `localhost`
+ *  resolves to ::1 first, so with `reuseExistingServer` the suite can silently
+ *  drive somebody else's site and fail on selectors that were never there. Pin
+ *  it with PLAYWRIGHT_BASE_URL, e.g.
+ *  PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 against `next start -p 3100`. */
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+
 export default defineConfig({
   testDir: "./e2e",
   // the story is told in serial SEGMENTS now (e2e/happy-path.spec.ts), the longest
@@ -27,12 +35,12 @@ export default defineConfig({
   retries: 0,
   reporter: [["list"]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: BASE_URL,
     trace: "retain-on-failure",
   },
   webServer: {
     command: "pnpm dev",
-    url: "http://localhost:3000",
+    url: BASE_URL,
     reuseExistingServer: true,
     timeout: 120_000,
   },

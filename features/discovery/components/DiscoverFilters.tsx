@@ -7,6 +7,7 @@ import { searchEverythingAction } from "@/features/discovery/server-actions/sear
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { SearchHit, SearchKind } from "@/repositories/search";
 import { CATS, filtersOnCount, filtersToParams, type DiscoverFilters, type Dist, type Dur, type Fmt, type PriceBand, type SortBy, type When } from "../filters";
 import { EvIcon } from "@/features/events/components/event-kit";
@@ -80,6 +81,9 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
   const [answer, setAnswer] = useState<{ term: string; hits: SearchHit[] }>({ term: "", hits: [] });
   const [open, setOpen] = useState(false);
   const [tapped, setTapped] = useState<string | null>(null);
+  /* system back closes the filter sheet, exactly as its scrim does — the URL is
+     left alone, so the filters themselves are untouched by a back press here */
+  useCloseOnBack(() => setOpen(false), open);
   const term = q.trim();
 
   useEffect(() => {
