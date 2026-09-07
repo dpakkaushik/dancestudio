@@ -21,7 +21,7 @@ plugins {
 }
 
 def twaManifest = [
-    applicationId: 'app.vercel.dancestudio_orcin.twa',
+    applicationId: 'in.danceos.app',
     hostName: 'dancestudio-orcin.vercel.app', // The domain being opened in the TWA.
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
     name: 'DanceOS', // The application name.
@@ -52,13 +52,13 @@ def twaManifest = [
 
 android {
     compileSdkVersion 36
-    namespace "app.vercel.dancestudio_orcin.twa"
+    namespace "in.danceos.app"
     defaultConfig {
-        applicationId "app.vercel.dancestudio_orcin.twa"
+        applicationId "in.danceos.app"
         minSdkVersion 21
         targetSdkVersion 36
-        versionCode 1
-        versionName ""
+        versionCode 2
+        versionName "1.1.0"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

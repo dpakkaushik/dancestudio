@@ -24,9 +24,23 @@
   vercel.json now pins functions to bom1 beside the database. Static ~0.10 s,
   dynamic /login/phone was ~0.36 s TTFB from India before the pin.
 
+- **Overhaul follow-up (same day): a FRESH APK with a fresh identity.** Chrome
+  caches its trust verdict per app package, and the phone first judged the old
+  package before the trust file was live — so the rebuilt APK is
+  **in.danceos.app v1.1.0 (versionCode 2)**, a clean verdict against the live
+  file and a proper permanent id if this ever goes to Play (danceos.in is the
+  domain the prototype itself prints). Same signing keystore; assetlinks now
+  names BOTH packages. Built without bubblewrap build (its spawn trips Git
+  Bash setting NoDefaultCurrentDirectoryInExePath — gradlew must be called as
+  .gradlew.bat): gradle assembleRelease/bundleRelease + zipalign + apksigner
+  by hand. The web side also gained a **boot splash** — the DanceOS wordmark
+  on the app dark, shown ONLY in display-mode: standalone (the installed
+  app), fading when the document is ready — so the app opens onto its own
+  name, never a blank white frame.
+
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **Reinstall the APK on the phone** (uninstall DanceOS → install `android/app-release-signed.apk` again). The deploy is verified live — manifest, assetlinks and fingerprint all check out, including through Google's digitalassetlinks API — but a pre-deploy install cached a failed verification and only a reinstall re-runs it. Expected: no URL bar, back closes sheets. If a bar persists AFTER reinstalling, check Chrome is default and updated.
+1. **On the phone: uninstall the old DanceOS, then install the NEW ** (package in.danceos.app — a different app id, so the old one must be removed by hand or two icons will sit side by side). First-ever launch may show the bar for a few seconds while verification completes; from the second launch it is fullscreen. If a bar persists across launches, check Chrome is the default browser and updated.
 2. **Auth-screen latency, the deeper half (⚠ Rule 9):** `proxy.ts` runs `supabase.auth.getUser()` — a network round trip — on EVERY request, the anonymous auth screens included; consider excluding `/login/*` and public static files from the matcher, and test sign-in end to end after.
 3. Full e2e on stable internet: `PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test` against `npx next start -p 3100` — all three specs green is the bar.
 4. Pick work from the tracker's Next block (slices 6–8 closed PassDeck/wiring/F3/F4/W2/U2 on 3 Sep — re-read before assuming a row is open). Web push and posters are the next unblocked slices. Backlog rows still open from this session: PayFlow back-wiring, CalendarScreen's fabOpen/ddOpen popovers.

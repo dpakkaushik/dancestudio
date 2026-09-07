@@ -40,6 +40,22 @@ export const viewport: Viewport = {
  *  dark flash. The key mirrors the prototype's persisted theme (`dosSet("theme")`). */
 const THEME_BOOT = `try{var t=localStorage.getItem("__DOSTHEME");if(t==="light")document.documentElement.className="light"}catch(e){}`;
 
+/** The boot splash the Android app opens onto. Only `display-mode: standalone`
+ *  (the installed TWA / an installed PWA) ever shows it — a browser tab never
+ *  does — and it paints with the very first HTML bytes, so the app's first
+ *  moments are the wordmark on the app's own dark instead of a blank white
+ *  frame. It fades as soon as the document is ready (held ~650ms so it reads as
+ *  an opening, not a flicker); pointer-events are off so it can never trap a
+ *  tap, and a CSS failsafe removes it at 7s even if scripts never run. */
+const BOOT_CSS = `
+#dos-boot{display:none;position:fixed;inset:0;z-index:9999;background:#0A0A0A;align-items:center;justify-content:center;pointer-events:none;opacity:1;transition:opacity .3s ease;animation:dosBootGone .3s ease 7s forwards}
+@media (display-mode: standalone){#dos-boot{display:flex}}
+#dos-boot span{font-weight:800;font-size:31px;letter-spacing:-.6px;color:#FAFAFA;font-family:Sora,"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:dosBootPulse 1.6s ease infinite}
+@keyframes dosBootPulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes dosBootGone{to{opacity:0;visibility:hidden}}
+`;
+const BOOT_JS = `(function(){var b=document.getElementById("dos-boot");if(!b)return;var t0=Date.now();function go(){setTimeout(function(){b.style.opacity="0";setTimeout(function(){b.style.visibility="hidden"},350)},Math.max(0,650-(Date.now()-t0)))}if(document.readyState!=="loading"){go()}else{document.addEventListener("DOMContentLoaded",go)}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -50,7 +66,17 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
-      <body className={`${sora.variable} ${interTight.variable}`}>{children}</body>
+      <body className={`${sora.variable} ${interTight.variable}`}>
+        <style dangerouslySetInnerHTML={{ __html: BOOT_CSS }} />
+        {/* mutated by BOOT_JS before hydration, so React must not patch it back */}
+        <div id="dos-boot" suppressHydrationWarning>
+          <span>
+            Dance<span style={{ color: "#5AC8FA" }}>OS</span>
+          </span>
+        </div>
+        <script dangerouslySetInnerHTML={{ __html: BOOT_JS }} />
+        {children}
+      </body>
     </html>
   );
 }

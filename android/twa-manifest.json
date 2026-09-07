@@ -1,5 +1,5 @@
 {
-  "packageId": "app.vercel.dancestudio_orcin.twa",
+  "packageId": "in.danceos.app",
   "host": "dancestudio-orcin.vercel.app",
   "name": "DanceOS",
   "launcherName": "DanceOS",
@@ -20,8 +20,8 @@
     "path": "./android.keystore",
     "alias": "android"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionName": "1.1.0",
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://dancestudio-orcin.vercel.app/manifest.webmanifest",
