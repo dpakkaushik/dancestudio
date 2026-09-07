@@ -1,5 +1,68 @@
 @import "tailwindcss";
 
+/* ── shadcn/ui bridge (Step: email-only auth).
+ *
+ *  WHY THE `--color-*` NAMESPACE AND NOT BARE TOKENS: shadcn's stock theme
+ *  declares `--card`, `--background`, `--muted` … but DanceOS has owned `--card`
+ *  and `--muted` since the prototype port, and 50+ screens read them through
+ *  lib/design/tokens (`CARD = "var(--card)"`). Declaring shadcn's versions would
+ *  silently repaint every one of them. Tailwind v4 builds its colour utilities
+ *  from the `--color-*` namespace, so mapping there gives us `bg-background`,
+ *  `text-muted-foreground`, `border-border` etc. without touching a single
+ *  DanceOS variable — and because these point AT the DanceOS vars, the existing
+ *  light/dark toggle on <html> keeps driving them for free.
+ *
+ *  The accent is DanceOS cyan (tokens.ts PINK — misnamed since the palette
+ *  swap, kept for call-site compatibility). It is used semantically: the
+ *  primary path and focus only, never as decoration. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+
+  /* the glassy raised surface — translucent over near-black, which is where the
+     DanceOS depth comes from (flat opaque cards read as a template) */
+  --color-card: var(--card);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--solid);
+  --color-popover-foreground: var(--text);
+
+  --color-primary: var(--dos-accent);
+  --color-primary-foreground: var(--dos-accent-ink);
+  --color-secondary: var(--el);
+  --color-secondary-foreground: var(--text);
+
+  --color-muted: var(--card);
+  --color-muted-foreground: var(--sub);
+  --color-accent: var(--el);
+  --color-accent-foreground: var(--text);
+
+  --color-destructive: var(--dos-danger);
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: var(--el);
+  --color-input: var(--el);
+  --color-ring: var(--dos-accent);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+
+  --font-display: var(--font-sora), Sora, "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: var(--font-inter-tight), "Inter Tight", Inter, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* Accent + semantic colours are theme-independent (the prototype keeps them
+   identical in light and dark), so they live on :root rather than per-theme. */
+:root {
+  --dos-accent: #5ac8fa;
+  --dos-accent-ink: #04222e;
+  --dos-danger: #ef4444;
+  --dos-success: #22c55e;
+}
+
 /* ── DanceOS theme palette — lifted from prototype DOS_PALETTE (DanceOSApp.jsx:41-42).
    The theme class lives on <html> (set pre-paint by the boot script in app/layout.tsx,
    toggled from the top bar); every screen reads these variables via lib/design/tokens. */
@@ -72,12 +135,19 @@ body {
 [role="button"]:focus {
   outline: none;
 }
+/* `:not([data-slot])` exempts the shadcn primitives, which draw their own ring
+   in the accent colour. Two reasons they must be exempt rather than restyled:
+   this block is UNLAYERED css and therefore beats every Tailwind utility
+   (including `outline-none`) whatever the specificity, so a primitive's own ring
+   was landing INSIDE this one — two rings, two colours; and `border-radius`
+   here re-rounds the focused element to 10px, which visibly squashed the 14px
+   field. Everything else on every other screen keeps this ring untouched. */
 [role="button"]:focus-visible,
-input:focus-visible,
+input:focus-visible:not([data-slot]),
 select:focus-visible,
 textarea:focus-visible,
-button:focus-visible,
-a:focus-visible {
+button:focus-visible:not([data-slot]),
+a:focus-visible:not([data-slot]) {
   outline: 2.5px solid #ec4899;
   outline-offset: 2px;
   border-radius: 10px;
@@ -103,6 +173,46 @@ a:focus-visible {
   color: #fff;
   font-weight: 800;
   font-size: 13px;
+}
+
+/* ── The auth screens' count-in motif (prototype 3683-3698). These lived in a
+   <style> tag inside AuthShell, which re-emitted them on every auth render and
+   made the shell the owner of animations its children used by name. Declared
+   here once, next to the app's other keyframes; the prefers-reduced-motion rule
+   above already neutralises them. */
+@keyframes dosBeat {
+  0%,
+  100% {
+    transform: scale(1);
+    color: var(--sub);
+  }
+  12% {
+    transform: scale(1.35);
+    color: var(--dos-accent);
+  }
+  30% {
+    transform: scale(1);
+    color: var(--sub);
+  }
+}
+@keyframes dosRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes dosDash {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* a sheet rising from the bottom edge — the prototype declares it per module; the app once */
