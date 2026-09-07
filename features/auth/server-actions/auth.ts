@@ -140,8 +140,13 @@ export async function requestPasswordResetAction(
 
   const origin = await emailLinkOrigin();
   const supabase = await createSupabaseServerClient();
+  /* `flow=recovery` rather than relying on `type`: the stock email template
+     sends a PKCE `code` and no type at all, so without this stamp /auth/confirm
+     cannot tell a reset link from a signup confirmation and would drop the
+     person on Home — signed in, and still not knowing their password. Supabase
+     keeps the query it is handed and appends its own. */
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${origin}/auth/confirm`,
+    redirectTo: `${origin}/auth/confirm?flow=recovery`,
   });
   if (error) {
     return { error: error.message };

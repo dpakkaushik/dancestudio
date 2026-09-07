@@ -3,52 +3,108 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 
-/** Lands every emailed link: verifies the token hash, then routes on WHAT KIND
- *  of link it was.
+/** Lands every emailed link, in EITHER of the two shapes Supabase can send.
  *
- *  Two kinds exist since auth went email + password (7 Sep 2026):
+ *  THE BUG THIS EXISTS TO PREVENT (7 Sep 2026). This route originally read only
+ *  `token_hash`, which arrives only if the project's email template has been
+ *  customised to `{{ .TokenHash }}`. The hosted project was never customised —
+ *  it still sends the stock `{{ .ConfirmationURL }}`:
  *
- *  - `signup` / `email` — confirming an address. The account already has the
- *    password its owner chose, so the only question left is whether onboarding
- *    ever finished: no profiles row means /onboarding, a row means Home.
- *  - `recovery` — a forgotten password. Redeeming this establishes a session but
- *    does NOT change the password, so sending this person to Home would leave
- *    them signed in and still locked out next time. They go to /login/reset,
- *    which is the only screen that can finish the job.
+ *    {SUPABASE_URL}/auth/v1/verify?token=pkce_…&type=signup
+ *      &redirect_to={origin}/auth/confirm
  *
- *  A bounce goes back to the screen that can retry the same thing: a failed
- *  recovery to /login/reset (whose action reports the expired session), anything
- *  else to sign-in. */
+ *  Supabase's own /verify confirms the address, then redirects here with a
+ *  `code` — never a `token_hash`. So the guard was always false, every link
+ *  fell through to the bounce, and EVERY email path was dead: nobody could
+ *  finish a signup and nobody could reset a password. The account was left
+ *  confirmed but sessionless, so the person saw "that link expired" and then
+ *  "Invalid login credentials", neither of which names the real problem.
+ *
+ *  Both shapes are handled rather than just the one in use, because the
+ *  template is a dashboard setting outside this repo: someone customising it
+ *  later must not break auth again, and someone resetting it must not either.
+ *
+ *  WHY `flow` AND NOT JUST `type`. The token_hash shape carries `type=recovery`;
+ *  the PKCE shape carries no type at all, so a recovery link is indistinguishable
+ *  from a confirmation link by the time it gets here. Sending a recovery to Home
+ *  would leave the person signed in and still unable to remember their password,
+ *  so the sender stamps `?flow=recovery` onto its own redirect URL — Supabase
+ *  preserves the query it was given and appends to it. Either signal counts. */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const isRecovery = type === "recovery";
+  const code = searchParams.get("code");
 
-  if (tokenHash && type) {
+  /* Supabase reports its own refusals this way (expired link, already used). */
+  const providerError =
+    searchParams.get("error_description") ?? searchParams.get("error");
+
+  const isRecovery = type === "recovery" || searchParams.get("flow") === "recovery";
+
+  if (!providerError) {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.verifyOtp({
-      type,
-      token_hash: tokenHash,
-    });
-    if (!error && data.user) {
-      if (isRecovery) {
-        return NextResponse.redirect(new URL("/login/reset", request.url));
+
+    /* Shape 1 — a customised {{ .TokenHash }} template. Preferred when it is
+       configured: it needs nothing from the browser, so it survives the link
+       being opened in a different app from the one that asked for it. */
+    if (tokenHash && type) {
+      const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+      if (!error && data.user) {
+        return land(request, supabase, data.user.id, isRecovery);
       }
-      const profile = await findProfileById(supabase, data.user.id);
-      return NextResponse.redirect(new URL(profile ? "/" : "/onboarding", request.url));
+    }
+
+    /* Shape 2 — the stock template's PKCE code, which is what actually arrives
+       today. The exchange needs the code_verifier cookie set when the link was
+       requested, so this only completes in the browser that started the flow;
+       `land` is unreachable otherwise and the bounce below explains why. */
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error && data.user) {
+        return land(request, supabase, data.user.id, isRecovery);
+      }
+      if (error) {
+        return bounce(
+          request,
+          isRecovery,
+          `That ${isRecovery ? "reset" : "confirmation"} link could not be opened here — open it in the same browser you asked for it from, or ask for a new one.`
+        );
+      }
     }
   }
 
-  /* Build the bounce with URLSearchParams rather than a hand-encoded string:
-     a hand-written literal carried a raw em-dash and `+` separators, which is
-     not what `?error=` means once anything reads it back. */
-  const bounce = new URL(isRecovery ? "/login/reset" : "/login/email", request.url);
-  bounce.searchParams.set(
-    "error",
-    isRecovery
-      ? "That reset link is invalid or has expired — ask for a new one."
-      : "That link is invalid or has expired — request a new one."
+  return bounce(
+    request,
+    isRecovery,
+    providerError ??
+      (isRecovery
+        ? "That reset link is invalid or has expired — ask for a new one."
+        : "That link is invalid or has expired — request a new one.")
   );
-  return NextResponse.redirect(bounce);
+}
+
+/** Where a redeemed link goes: recovery to the only screen that can finish the
+ *  job, anything else to onboarding or Home depending on whether it finished. */
+async function land(
+  request: NextRequest,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  isRecovery: boolean
+) {
+  if (isRecovery) {
+    return NextResponse.redirect(new URL("/login/reset", request.url));
+  }
+  const profile = await findProfileById(supabase, userId);
+  return NextResponse.redirect(new URL(profile ? "/" : "/onboarding", request.url));
+}
+
+/** Back to the screen that can retry the same thing, carrying a message that
+ *  says what to do. Built with URLSearchParams rather than a hand-encoded
+ *  string: a literal carried a raw em-dash and `+` separators, which is not
+ *  what `?error=` means once anything reads it back. */
+function bounce(request: NextRequest, isRecovery: boolean, message: string) {
+  const url = new URL(isRecovery ? "/login/reset" : "/login/email", request.url);
+  url.searchParams.set("error", message);
+  return NextResponse.redirect(url);
 }
