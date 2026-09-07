@@ -381,7 +381,7 @@ async function seed() {
   console.log("Demo world ready. Sign in with any of these:");
   everyone.forEach((u) => console.log(`  ${u.email}   (${u.name} · ${u.role})`));
   console.log(`  password: ${PASSWORD}`);
-  console.log("\nSign-in is by email — use the ✉️ Email tab on /login. The magic");
+  console.log("\nSign-in is by email only — go to /login/email. The magic");
   console.log("link goes to an address nobody reads, so for clicking around use");
   console.log("the password with Supabase's password grant, or invite yourself as");
   console.log("staff from a demo studio.");

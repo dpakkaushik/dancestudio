@@ -3,26 +3,19 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { OTP_VERIFY_TYPE, otpChannelPlan, type OtpChannel } from "@/lib/auth/otpChannel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
+import { emailSchema } from "@/features/auth/types/email";
+import {
+  resetPasswordSchema,
+  signInSchema,
+  signUpSchema,
+} from "@/features/auth/types/password";
 import { createProfile, findProfileById } from "@/repositories/profiles";
 
 export interface AuthActionState {
   error: string | null;
-  phone?: string;
 }
-
-/** Indian mobile: 10 digits starting 6-9. Stored/verified as +91XXXXXXXXXX. */
-const phoneSchema = z
-  .string()
-  .trim()
-  .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number");
-
-const otpSchema = z
-  .string()
-  .trim()
-  .regex(/^\d{6}$/, "The code is 6 digits");
 
 const completeProfileSchema = z.object({
   fullName: z.string().trim().min(1, "Tell us your name").max(120),
@@ -30,55 +23,113 @@ const completeProfileSchema = z.object({
   city: z.string().trim().max(120).optional(),
 });
 
-const toE164 = (tenDigits: string): string => `+91${tenDigits}`;
+/** WHERE A LINK IN AN EMAIL HAS TO POINT.
+ *
+ *  Every emailed link is built from this origin, and it has to be one that
+ *  Supabase's redirect allow-list already contains. The `origin` header is
+ *  whatever host the browser used — a preview deployment, an IP, a tunnel — and
+ *  a link minted for an unlisted origin is refused at /auth/confirm with no
+ *  clue as to why. NEXT_PUBLIC_SITE_URL pins the canonical one; the header is
+ *  the local-dev fallback. */
+async function emailLinkOrigin(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  return configured || (await headers()).get("origin") || "http://127.0.0.1:3000";
+}
 
-export async function requestOtpAction(
+/** SIGN UP — email + password, verified by a link before the account is usable.
+ *
+ *  AUTH IS EMAIL + PASSWORD AS OF 7 SEP 2026. The passwordless magic link that
+ *  used to be the only channel is now the recovery path only
+ *  (`requestPasswordResetAction`) — a returning user signs in with a password
+ *  and needs no email at all, which takes the mailer off the busiest route.
+ *
+ *  WHY THIS ALWAYS REPORTS SUCCESS. With email confirmation on, Supabase
+ *  answers `signUp` for an address that already exists with a user object and
+ *  no identities, and sends nothing — deliberately, so an attacker cannot use
+ *  the signup form to discover who has an account. Surfacing "that email is
+ *  taken" here would hand back exactly the answer Supabase is refusing to give.
+ *  So both cases land on the same check-your-inbox screen: a new address gets a
+ *  verification link, an existing one gets nothing, and neither the person nor
+ *  an attacker learns which happened from the response. Someone who genuinely
+ *  owns the address and forgot they had signed up reaches the same place via
+ *  "Forgot password". */
+export async function signUpAction(
   _prev: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const parsed = phoneSchema.safeParse(formData.get("phone"));
+  const parsed = signUpSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid number" };
+    return { error: parsed.error.issues[0]?.message ?? "Check those details" };
   }
 
-  /* Step 26: WhatsApp-first when it is switched on, SMS otherwise — and if a
-     WhatsApp send is refused (no approved template yet, the number is not on
-     WhatsApp) the fallback carries it by SMS. Whichever one actually sent is
-     what the next screen says; a message that went by SMS is never described as
-     WhatsApp. */
+  const origin = await emailLinkOrigin();
   const supabase = await createSupabaseServerClient();
-  const plan = otpChannelPlan();
-  let sentOn: OtpChannel | null = null;
-  let lastError = "";
-  for (const channel of plan) {
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: toE164(parsed.data),
-      options: { channel },
-    });
-    if (!error) {
-      sentOn = channel;
-      break;
-    }
-    lastError = error.message;
-  }
-  if (!sentOn) {
-    return { error: lastError || "Could not send the code" };
+  const { error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    options: { emailRedirectTo: `${origin}/auth/confirm` },
+  });
+  if (error) {
+    return { error: error.message };
   }
 
-  redirect(`/login/verify?phone=${parsed.data}&via=${sentOn}`);
+  redirect(
+    `/login/check-email?email=${encodeURIComponent(parsed.data.email)}&mode=verify`
+  );
 }
 
-const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .email("Enter a valid email address")
-  .max(254);
+/** SIGN IN — existing account, email + password, no email sent.
+ *
+ *  The error is whatever Supabase says, which for bad credentials is the
+ *  deliberately vague "Invalid login credentials" whether the address exists or
+ *  not. Do not improve on it: distinguishing "no such account" from "wrong
+ *  password" turns this form into a check for whether somebody has an account.
+ *
+ *  An unverified account cannot sign in while `mailer_autoconfirm` is off, and
+ *  Supabase says so ("Email not confirmed") — that one IS worth passing on,
+ *  because the fix is in the person's inbox rather than in their memory. */
+export async function signInWithPasswordAction(
+  _prev: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const parsed = signInSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check those details" };
+  }
 
-/** Interim real sign-in (24 Aug 2026): Supabase email magic link — works on the
- *  current plan with no SMS/SMTP provider. WhatsApp OTP stays the production
- *  phone channel, wired at Step 6. */
-export async function requestEmailLinkAction(
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
+  if (error || !data.user) {
+    return { error: error?.message ?? "Could not sign you in" };
+  }
+
+  /* The same fork /auth/confirm makes: an account whose onboarding never
+     finished has no profiles row, and Home is not usable without one. */
+  const profile = await findProfileById(supabase, data.user.id);
+  redirect(profile ? "/" : "/onboarding");
+}
+
+/** FORGOT PASSWORD — sends a recovery link, which lands on /login/reset.
+ *
+ *  This is `resetPasswordForEmail`, NOT the old `signInWithOtp`. A plain magic
+ *  link would sign the person in and leave the password they cannot remember
+ *  exactly as it was — in the app, but still locked out at the next sign-in.
+ *  The recovery link carries `type=recovery`, which /auth/confirm routes to the
+ *  set-a-new-password screen instead of Home.
+ *
+ *  Reports success for an unknown address too, for the same
+ *  no-account-enumeration reason as signUpAction. */
+export async function requestPasswordResetAction(
   _prev: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
@@ -87,50 +138,53 @@ export async function requestEmailLinkAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid email" };
   }
 
-  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+  const origin = await emailLinkOrigin();
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data,
-    options: { emailRedirectTo: `${origin}/auth/confirm` },
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${origin}/auth/confirm`,
   });
   if (error) {
     return { error: error.message };
   }
 
-  redirect(`/login/check-email?email=${encodeURIComponent(parsed.data)}`);
+  redirect(`/login/check-email?email=${encodeURIComponent(parsed.data)}&mode=reset`);
 }
 
-export async function verifyOtpAction(
+/** SET A NEW PASSWORD, after a recovery link has been redeemed.
+ *
+ *  No email field: the recovery link already established a session, and that
+ *  session is the only thing that says whose password this is. Checking for it
+ *  is the authorization step — without it this action would let anybody who can
+ *  POST set a password, and the form being unreachable is not a control
+ *  (CLAUDE.md Security Rules: never trust the frontend). */
+export async function setNewPasswordAction(
   _prev: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const phoneParsed = phoneSchema.safeParse(formData.get("phone"));
-  const otpParsed = otpSchema.safeParse(formData.get("token"));
-  if (!phoneParsed.success) {
-    return { error: "Missing mobile number — start again from the login page" };
-  }
-  if (!otpParsed.success) {
-    return {
-      error: otpParsed.error.issues[0]?.message ?? "Invalid code",
-      phone: phoneParsed.data,
-    };
+  const parsed = resetPasswordSchema.safeParse({
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check those details" };
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.verifyOtp({
-    phone: toE164(phoneParsed.data),
-    token: otpParsed.data,
-    /* the channel is a delivery choice, not a different kind of token */
-    type: OTP_VERIFY_TYPE,
-  });
-  if (error || !data.user) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return {
-      error: error?.message ?? "Could not verify the code",
-      phone: phoneParsed.data,
+      error: "That reset link has expired — ask for a new one.",
     };
   }
 
-  const profile = await findProfileById(supabase, data.user.id);
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    return { error: error.message };
+  }
+
+  const profile = await findProfileById(supabase, user.id);
   redirect(profile ? "/" : "/onboarding");
 }
 

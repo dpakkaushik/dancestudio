@@ -193,25 +193,44 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     expect(payments[0].provider_payment_id).toBe(String(cfPaymentId));
 
     // 4. the studio's own screen counts that money (Step 13b part 2b): the owner
-    //    signs in through the real screens — test number, OTP 123456 — and the
-    //    GROSS card reads the one captured payment, paid by UPI. This is the
-    //    only place a REAL captured payment meets the income half's queries.
+    //    signs in through the real screens and the GROSS card reads the one
+    //    captured payment, paid by UPI. This is the only place a REAL captured
+    //    payment meets the income half's queries.
+    //
+    //    SIGN-IN IS EMAIL + PASSWORD NOW (7 Sep 2026, second session). The
+    //    phone screens this block used to drive are gone. This test still lands
+    //    a minted link on /auth/confirm rather than typing credentials: it needs
+    //    a session, not a password, and the admin API is the cheapest way to one.
+    //    A link WITHOUT type=recovery still routes to onboarding/Home, which is
+    //    what this needs; only recovery links divert to /login/reset. The route
+    //    under test is the one a real person uses.
     const page = await browser.newPage();
     try {
-      await page.goto("/login/phone");
-      await page.getByRole("button", { name: /Mobile/ }).click();
-      await page.getByPlaceholder("10-digit mobile number").fill("9999999999");
-      // the API half of this spec requested an OTP for the same number moments
-      // ago, and Supabase rate-limits a second request ("you can only request
-      // this after N seconds") — so ask again until the cooldown has passed
-      await expect(async () => {
-        await page.getByRole("button", { name: "Send OTP" }).click();
-        await page.waitForURL(/\/login\/verify/, { timeout: 4_000 });
-      }).toPass({ intervals: [2_500, 3_000, 4_000], timeout: 40_000 });
-      // the code goes into a visually hidden input behind the six boxes
-      await page.getByLabel("One-time password").focus();
-      await page.keyboard.type("123456");
-      await page.waitForURL((url) => !url.pathname.startsWith("/login"));
+      const ownerEmail = `e2e-owner-${Date.now()}@example.com`;
+      const patched = await fetch(`${supabaseUrl}/auth/v1/admin/users/${owner.userId}`, {
+        method: "PUT",
+        headers: serviceHeaders,
+        body: JSON.stringify({ email: ownerEmail, email_confirm: true }),
+      });
+      if (!patched.ok) {
+        throw new Error(`could not set owner email: ${patched.status} ${await patched.text()}`);
+      }
+      const linkRes = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+        method: "POST",
+        headers: serviceHeaders,
+        body: JSON.stringify({ type: "magiclink", email: ownerEmail }),
+      });
+      if (!linkRes.ok) {
+        throw new Error(`generate_link failed: ${linkRes.status} ${await linkRes.text()}`);
+      }
+      const link = (await linkRes.json()) as {
+        hashed_token: string;
+        verification_type?: string;
+      };
+      await page.goto(
+        `/auth/confirm?token_hash=${link.hashed_token}&type=${link.verification_type ?? "magiclink"}`
+      );
+      await page.waitForURL((url) => !url.pathname.startsWith("/auth"));
       await page.goto(`/business/${tenant.id}/earnings`);
       await expect(page.getByText(/^GROSS · [A-Z]+$/)).toBeVisible();
       await expect(page.getByText("₹300", { exact: true }).first()).toBeVisible();

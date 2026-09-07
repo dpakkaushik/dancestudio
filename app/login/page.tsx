@@ -2,14 +2,37 @@ import Link from "next/link";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
 
-/** Welcome screen lifted from the prototype (DanceOSApp.jsx:3700-3724). */
+/** Welcome screen, from the prototype (DanceOSApp.jsx:3700-3724) with three
+ *  deliberate departures, all logged under "Deliberate deviations from the
+ *  prototype" and all consequences of auth being email + password:
+ *
+ *  1. THE TWO BUTTONS NOW GO TO DIFFERENT PLACES. In the prototype both called
+ *     setStep("signin") — one destination, because its model was passwordless
+ *     and joining and returning were the same act. With passwords they are not:
+ *     "Start dancing" creates an account, "Sign in" proves an existing one.
+ *  2. THEY STACK RATHER THAN SIT SIDE BY SIDE. Two 50%-width buttons at the
+ *     bottom of a phone read as equal choices; these are not equal — most
+ *     people arriving here are new. Full width, primary first.
+ *  3. The footer band is a real flex child, not `position:absolute` paired with
+ *     a 150px spacer. The prototype's version left a dead void between the
+ *     dashes and the band on a tall phone; `flex-1` absorbs the slack and drops
+ *     the buttons into thumb reach.
+ *
+ *  The tagline is the user's, replacing the prototype's longer one.
+ */
 export default function LoginWelcomePage() {
   return (
     <AuthShell>
       <div style={{ fontSize: 17, fontWeight: 800, animation: "dosRise .5s ease both" }}>
         Dance<span style={{ color: PINK }}>OS</span>
       </div>
-      <div style={{ display: "flex", gap: 14, marginTop: 52, fontSize: 15, fontWeight: 800, letterSpacing: 1 }}>
+      {/* The slack is SPLIT rather than all dumped below the hero: roughly a
+          third above, two thirds below. All of it in one place left the headline
+          jammed under the logo with a crater beneath it — which is the same
+          "unfinished screen" read as having no spacer at all, just relocated. */}
+      <div style={{ flex: 0.5, minHeight: 18 }} />
+
+      <div style={{ display: "flex", gap: 14, marginTop: 34, fontSize: 15, fontWeight: 800, letterSpacing: 1 }}>
         {["5", "6", "7", "8"].map((n, i) => (
           <span key={n} style={{ animation: `dosBeat 2.4s ease ${i * 0.3}s infinite` }}>
             {n}
@@ -32,16 +55,31 @@ export default function LoginWelcomePage() {
         <br />
         is yours.
       </div>
-      <div style={{ fontSize: 15.5, color: SUB, lineHeight: 1.55, marginBottom: 26, animation: "dosRise .6s .2s ease both" }}>
-        DanceOS is where India dances — find classes near you, run your studio, build your crew, and get paid
-        to do what you love.
+      <div
+        style={{
+          fontSize: 16.5,
+          color: SUB,
+          lineHeight: 1.5,
+          fontWeight: 600,
+          animation: "dosRise .6s .2s ease both",
+        }}
+      >
+        Find classes. Build your crew.
+        <br />
+        Get paid to dance.
       </div>
-      <div style={{ display: "flex", gap: 10, animation: "dosRise .6s .3s ease both" }}>
+
+      {/* absorbs the slack on a tall screen instead of leaving a void above the band */}
+      <div style={{ flex: 1, minHeight: 28 }} />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, animation: "dosRise .6s .3s ease both" }}>
         <Link
-          href="/login/phone"
+          href="/login/signup"
           style={{
             ...BTN_STYLE,
-            flex: 1.25,
+            /* an <a> is inline by default, so BTN_STYLE's width and padding need
+               a block box to land on; its textAlign then centres the label */
+            display: "block",
             background: "#FAFAFA",
             color: "#0A0A0A",
             fontWeight: 900,
@@ -52,10 +90,10 @@ export default function LoginWelcomePage() {
           Start dancing
         </Link>
         <Link
-          href="/login/phone"
+          href="/login/email"
           style={{
             ...BTN_STYLE,
-            flex: 1,
+            display: "block",
             background: "var(--card)",
             color: INK,
             border: `1.5px solid ${LINE}`,
@@ -64,8 +102,12 @@ export default function LoginWelcomePage() {
         >
           Sign in
         </Link>
+        <p style={{ marginTop: 2, fontSize: 12.5, color: SUB, textAlign: "center", lineHeight: 1.5 }}>
+          New here? Start dancing takes a minute.
+        </p>
       </div>
-      <div style={{ display: "flex", gap: 7, margin: "30px 0 0", animation: "dosRise .6s .4s ease both" }}>
+
+      <div style={{ display: "flex", gap: 7, margin: "24px 0 0", animation: "dosRise .6s .4s ease both" }}>
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
@@ -79,14 +121,17 @@ export default function LoginWelcomePage() {
           />
         ))}
       </div>
+
+      {/* full-bleed: cancels AuthShell's 22px gutters and its bottom safe-area pad,
+          then re-applies its own so the band reaches the true bottom edge */}
       <div
         style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
+          marginLeft: -22,
+          marginRight: -22,
+          marginTop: 24,
+          marginBottom: "calc(-2.5rem - env(safe-area-inset-bottom))",
           background: "#0E0A14",
-          padding: "26px 22px calc(30px + env(safe-area-inset-bottom))",
+          padding: "20px 22px calc(22px + env(safe-area-inset-bottom))",
           color: "#B7AECB",
           fontSize: 12.5,
           letterSpacing: 2.6,
@@ -98,7 +143,6 @@ export default function LoginWelcomePage() {
         <br />
         PERFORM <span style={{ color: PINK }}>·</span> EARN <span style={{ color: PINK }}>·</span> GROW
       </div>
-      <div style={{ height: 150 }} />
     </AuthShell>
   );
 }

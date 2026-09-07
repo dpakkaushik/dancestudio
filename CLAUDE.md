@@ -1,50 +1,129 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (3 Sep 2026, office machine) — replaced on every push (Rule 13)
+## LAST SESSION (7 Sep 2026, second session) — replaced on every push (Rule 13)
 
-- **The Android APK is IN THIS REPO**: `android/danceos-1.1.0.apk` (sideload it) and `android/danceos-1.1.0.aab` (Play Store), built as a Bubblewrap Trusted Web Activity over the live Vercel URL — web deploys update the installed app, no rebuild. The whole Gradle project is committed; **the signing keystore + password are NOT** (android/.gitignore) — originals on the office machine at `../danceos-android/`, move them privately, never via GitHub.
-- **System back works app-wide** (the gate before the APK): `lib/hooks/useCloseOnBack.ts` — one shared history entry, prototype 19039 semantics — wired into every role="dialog" sheet (21 files); PayFlow deliberately unwired. First cut's history.back() on button-close raced Next's redirect out of ClassForm's publish (caught by e2e) — the hook never calls back() programmatically now. `e2e/back-navigation.spec.ts` 3/3 green.
-- **PWA shell**: app/manifest.ts, DosMark-drawn icons (scripts/icons/make-icons.js), `.well-known/assetlinks.json` with the real fingerprint — **this push deploying is what makes the installed APK fullscreen** (until then it shows a Chrome bar).
-- Office notes: main was 24 behind + 1 stray commit (saved on `local-step13b-backup`, reset onto origin); office `localhost:3000` is ANOTHER project — use PLAYWRIGHT_BASE_URL (now supported) against `next start -p 3100`; office Wi-Fi dropped three e2e story runs on Supabase `fetch failed` — re-run on stable internet before reading a failure as code. Rebased over parity slices 6–8 pushed the same day by a parallel session.
-
-- **Follow-up (phone testing):** (1) the installed APK showed the Chrome URL
-  bar — the APK was installed BEFORE the assetlinks push deployed, and Android
-  caches the verification verdict at install time; the live chain was checked
-  end to end (manifest 200, assetlinks 200, fingerprint = the APK cert,
-  Google's digitalassetlinks API returns the statement), so the fix is
-  uninstall + reinstall the same APK — no rebuild. (2) "Sign in" felt dead
-  for seconds — the app had NO loading.tsx anywhere, so a tap gave zero
-  feedback for the whole server round trip; `app/login/loading.tsx` now
-  answers instantly with the prototype's 5-6-7-8 count-in.
-
-- **The lag, root-caused with measurements:** X-Vercel-Id read bom1::iad1 —
-  the edge is Mumbai but the FUNCTIONS ran in Washington DC (Vercel default,
-  never overridden), so every server render crossed India-US and every
-  Supabase query crossed US-Mumbai (~250 ms each, several per page).
-  vercel.json now pins functions to bom1 beside the database. Static ~0.10 s,
-  dynamic /login/phone was ~0.36 s TTFB from India before the pin.
-
-- **Overhaul follow-up (same day): a FRESH APK with a fresh identity.** Chrome
-  caches its trust verdict per app package, and the phone first judged the old
-  package before the trust file was live — so the rebuilt APK is
-  **in.danceos.app v1.1.0 (versionCode 2)**, a clean verdict against the live
-  file and a proper permanent id if this ever goes to Play (danceos.in is the
-  domain the prototype itself prints). Same signing keystore; assetlinks now
-  names BOTH packages. Built without bubblewrap build (its spawn trips Git
-  Bash setting NoDefaultCurrentDirectoryInExePath — gradlew must be called as
-  .gradlew.bat): gradle assembleRelease/bundleRelease + zipalign + apksigner
-  by hand. The web side also gained a **boot splash** — the DanceOS wordmark
-  on the app dark, shown ONLY in display-mode: standalone (the installed
-  app), fading when the document is ready — so the app opens onto its own
-  name, never a blank white frame.
+- **AUTH IS EMAIL + PASSWORD NOW ⚠ (Rule 9), and this REPLACES the email-only
+  magic-link model the previous session shipped.** The user asked for "Start
+  dancing" to mean sign-up and "Sign in" to mean an existing user with email and
+  password. There was **zero password auth in the codebase** — `signInWithOtp`
+  was the only auth call — so this was new build, not a rename. Four server
+  actions now exist: `signUpAction`, `signInWithPasswordAction`,
+  `requestPasswordResetAction`, `setNewPasswordAction`.
+- **The magic link survives as FORGOT PASSWORD only, and it is
+  `resetPasswordForEmail`, NOT `signInWithOtp`.** This mattered more than it
+  looks: a plain magic link signs the person in and leaves the password they
+  cannot remember exactly as it was — in the app, but locked out again next
+  time. The recovery link carries `type=recovery`, which `/auth/confirm` now
+  forks on and routes to `/login/reset` instead of Home. `requestEmailLinkAction`
+  is **gone**, replaced by the two named paths.
+- **Routes.** `/login` (welcome, two buttons now going to DIFFERENT places) ·
+  `/login/signup` (new) · `/login/email` (was the magic-link screen, now
+  password sign-in — the route is named for the CHANNEL, and mobile is a later
+  phase) · `/login/forgot` (new) · `/login/reset` (new) ·
+  `/login/check-email?mode=verify|reset` (one screen, two errands).
+- **WHY BOTH FAILURE MESSAGES ARE IDENTICAL, and do not "improve" them.**
+  `signUpAction` reports success for an address that already exists, and
+  sign-in says "Invalid login credentials" whether the account exists or not.
+  Supabase does this deliberately; surfacing "that email is taken" or "no such
+  account" turns either form into a way to discover who has an account. Two e2e
+  tests assert the two messages are the SAME string — that identity is the test.
+- **Password rules live in `features/auth/types/password.ts`, and sign-in
+  deliberately does not use them.** Min 8 (Supabase's 6 is a floor, not a
+  recommendation), max 72 (bcrypt silently truncates past 72 bytes, so a longer
+  one would appear accepted and then match on its first 72). But the SIGN-IN
+  field has no minimum: enforcing one there would lock out every account made
+  before the rule, the demo users included. Length governs what you may CHOOSE,
+  not what you may type to prove who you are.
+- **The two visual defects the user photographed, and what actually caused
+  them.** (1) "Start dancing" and "Sign in" went to the same page — that was
+  faithful to the prototype, which called `setStep("signin")` from both
+  (DanceOSApp.jsx:3710-3712). It was a prototype flaw, ported correctly. (2) The
+  dead void was `position:absolute` footer + a `height:150` spacer fighting each
+  other. Fixed by making the band a real flex child and splitting the slack
+  ~1/3 above the hero, 2/3 below, so the CTA sits in thumb reach.
+- **`AuthShell` gained a `footer` slot, and that is the general fix.** An auth
+  form is short and a phone is tall, so a two-field screen ended half way down
+  with a hole beneath it — which reads as a screen that failed to load. Anchoring
+  the secondary action ("New to DanceOS?", the legal line) to the bottom edge
+  gives the empty space two edges to sit between, and space between two things is
+  composition rather than a hole. Used by sign-up, sign-in, forgot, reset and
+  check-email.
+- **The SMTP dashboard path is `/auth/smtp`** (Authentication → Emails → SMTP
+  Settings tab). `/auth/emails` is a 404. Recording it because finding it cost
+  four screenshots this session.
+- **Custom SMTP was switched OFF by the user this session**, so Supabase's
+  built-in sender is live and the email rate limit dropped from 60/h to the
+  free-tier cap of roughly 2/h. **Delivery was never confirmed** — nobody has
+  reported receiving a message at a non-Resend address, so treat email as
+  unverified rather than working. Password sign-in does not need email at all,
+  which is why this no longer blocks a returning user.
+- **A pre-existing e2e failure, NOT caused by this slice:**
+  `happy-path.spec.ts:180` dies at line 208 on `getByRole("link", { name:
+  "Rooms ›" })`. Verified by stashing the whole slice and re-running — it fails
+  identically on a clean tree. Auth runs fine inside that test; it gets past
+  signup, onboarding and class creation before reaching the Rooms step.
+- **A test-only trap worth knowing:** the Next.js dev overlay injects its own
+  empty `role="alert"` into the page, so `getByRole("alert")` is ambiguous in
+  dev and can resolve to the empty one. Assert error toasts **by text**.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **On the phone: uninstall the old DanceOS, then install the NEW `android/danceos-1.1.0.apk`** (package in.danceos.app — a different app id, so the old one must be removed by hand or two icons will sit side by side). First-ever launch may show the bar for a few seconds while verification completes; from the second launch it is fullscreen. If a bar persists across launches, check Chrome is the default browser and updated.
-2. **Auth-screen latency, the deeper half (⚠ Rule 9):** `proxy.ts` runs `supabase.auth.getUser()` — a network round trip — on EVERY request, the anonymous auth screens included; consider excluding `/login/*` and public static files from the matcher, and test sign-in end to end after.
-3. Full e2e on stable internet: `PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test` against `npx next start -p 3100` — all three specs green is the bar.
-4. Pick work from the tracker's Next block (slices 6–8 closed PassDeck/wiring/F3/F4/W2/U2 on 3 Sep — re-read before assuming a row is open). Web push and posters are the next unblocked slices. Backlog rows still open from this session: PayFlow back-wiring, CalendarScreen's fabOpen/ddOpen popovers.
-5. Ops (user): Cashfree KYC + Easy Split, Resend domain, Twilio/Meta/DLT; keep the keystore pair safe.
+1. **Confirm email actually delivers (user).** Custom SMTP is off, so Supabase's
+   own sender is in play at ~2 messages/hour. Sign up with an address that is
+   NOT the Resend account owner's and check what arrives. The sender tells you
+   which path it took: a `supabase.co` address means the built-in sender is
+   working; `onboarding@resend.dev` means the toggle did not persist. **Signup
+   still needs email** (`mailer_autoconfirm` is off), even though sign-in no
+   longer does.
+2. **For a pilot, verify a domain at resend.com/domains**, point
+   `smtp_admin_email` at it and switch custom SMTP back ON. That restores 60/h
+   and real deliverability. The `onboarding@resend.dev` sender only ever reached
+   the Resend account owner, which is what made auth look broken.
+3. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
+   confirm Supabase's redirect allow-list carries it. Every emailed link is built
+   from `emailLinkOrigin()`, which prefers this over the `origin` header on
+   purpose; unset in production it falls back to whatever host the browser used,
+   which is how a link gets minted for an origin the allow-list refuses.
+4. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
+   requires (`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`,
+   `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`) and still
+   carries `RAZORPAY_WEBHOOK_SECRET` from before the 28 Aug rail swap. Payments
+   cannot work locally until that is fixed.
+5. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
+   screen's Terms and Privacy Policy are bold text, not links, because linking to
+   a 404 on the screen everybody sees is worse. They become `<Link>`s in the same
+   change that adds the pages — which is also where U3's DPDP consent sentence
+   belongs.
+6. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
+   `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
+   while the global ring in `globals.css` is `#ec4899`. Auth is consistent because
+   the shadcn primitives draw the accent; every other screen still rings magenta
+   against cyan buttons. One line to align, ~50 screens repainted, so it is the
+   user's call.
+7. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
+   `supabase.auth.getUser()` — a network round trip — on EVERY request, the
+   anonymous auth screens included. Consider excluding `/login/*` and public
+   static files from the matcher, then test sign-in end to end.
+8. **Fix the pre-existing `happy-path.spec.ts:180` Rooms failure.** It is not
+   auth, and it was failing before this slice. It blocks 13 downstream tests
+   from running at all, which means the suite is not currently a safety net.
+9. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
+   2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
+   Twilio credentials, DLT registration and an approved Meta template.
+10. **The folder reorganization is proposed but NOT started**, and it is blocked
+    on one question: how does the APK reach a phone? `android/danceos-1.1.0.apk`
+    and `.aab` are TRACKED in git (~4 MB per release, and `.git` is 13 MB with a
+    7.6 MB pack), and the Android project exists twice — `files/android/`
+    (tracked, no keystore) and `dancestudio/danceos-android/` (untracked, holds
+    `android.keystore` + `keystore-credentials.txt`, older `app-release-*`
+    outputs). The keystore has never been committed; `files/android/.gitignore`
+    excludes it and `git log --diff-filter=A` across all history confirms it.
+    Also: `files/.claude/settings.json` hardcodes
+    `c:\Users\Admin\Downloads\dancestudio\files` in ~9 permission entries, which
+    is what a rename would silently break. `Downloads/CLAUDE.md` (the stale
+    pre-prototype blueprint) was renamed to
+    `DanceOS-blueprint-SUPERSEDED-2026-07-07.md` so it stops auto-loading over
+    this file.
 
 ## What this repo is
 
@@ -76,6 +155,44 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **Auth rebuilt as EMAIL + PASSWORD, 7 Sep 2026 (second session), no step
+  number — it replaces the email-only magic-link slice from earlier the same
+  day.** The user asked for "Start dancing" to mean sign-up and "Sign in" to
+  mean an existing user with email and password. Nothing password-shaped
+  existed: `signInWithOtp` was the only auth call in the repo, and the only
+  passwords anywhere belonged to demo users made through the admin API. So this
+  was a build, not a rename.
+  **What shipped.** Four server actions — `signUpAction`,
+  `signInWithPasswordAction`, `requestPasswordResetAction`,
+  `setNewPasswordAction` — each re-parsing its own Zod schema server-side
+  (`features/auth/types/password.ts`). Five screens: `SignUpForm`,
+  `PasswordSignIn`, `ForgotPassword`, `SetNewPassword`, plus `check-email`
+  taught to serve two errands via `?mode=verify|reset`. Two extractions,
+  because four screens now share them: `AuthBackLink` and `PasswordField` (the
+  latter carries a reveal toggle, skipped in the tab order so Tab goes to the
+  next field).
+  **The recovery path is the part worth remembering.** "Forgot password" is
+  `resetPasswordForEmail`, NOT the old `signInWithOtp`. A plain magic link
+  signs the person in and leaves the forgotten password untouched — in the app,
+  locked out again next time. The recovery link carries `type=recovery`, so
+  `/auth/confirm` now forks on link KIND rather than assuming every link is a
+  sign-in, and routes recovery to `/login/reset`.
+  **⚠ Two earlier records are now stale, deliberately left as history:** the
+  email-only slice above describes `features/auth/components/EmailSignIn.tsx`
+  at `/login/email` — that component is **deleted**, and `/login/email` is the
+  password sign-in screen now. `requestEmailLinkAction` is gone too.
+  **Deviations from the prototype are logged as a table** under "Deliberate
+  deviations from the prototype — auth", eight rows, because the prototype has
+  no password field anywhere and its two welcome buttons went to one place.
+  **Tests:** `e2e/password-auth.spec.ts`, 7 green — the two buttons go to
+  different screens, a confirmed account signs in, a wrong password and an
+  unknown address produce the SAME message (that identity is the test), a
+  recovery link lands on `/login/reset` rather than Home, and the sign-up form
+  refuses a mismatched pair and a short password. Typecheck and lint clean.
+  **Not covered by tests, and known:** signup's own verification email, because
+  it needs a delivered message. `happy-path.spec.ts:180` fails at the Rooms
+  step — verified pre-existing by stashing this whole slice and re-running.
 
 - **Parity slice 8 landed 30 Aug 2026: the last three (a) rows — F3, F4/W2, U2.**
   The audit's remaining open rows, and unlike slice 7's these were builds rather
@@ -393,9 +510,34 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   `profiles` make an unqualified `profiles(...)` embed ambiguous
   (PostgREST 300 Multiple Choices) — `findTenantFollowers` was broken until
   the embed named its key.
-- **Completed: 25 / 29 steps** (Steps 0–15, 18, 21–26; 16, 17, 19 and 20 are ❌
-  not in the prototype — see the re-scope below — so **the roadmap is finished**
-  and what remains is the parity backlog). **Step 26 landed 28 Aug 2026:
+- **EMAIL-ONLY AUTH landed 7 Sep 2026 ⚠ (Rule 9) — and it un-landed Step 26.**
+  Signup, sign-in and the email verification link had existed since Step 6; what
+  this slice did was scope, repair and re-dress them. The phone channel is
+  **deleted** (not flagged off): `PhoneSignIn`, `OtpVerify`, `/login/phone`,
+  `/login/verify`, `lib/auth/otpChannel.ts`, `requestOtpAction`,
+  `verifyOtpAction`, `auth-proof-otp-channel.ps1`. It could only ever reach
+  Supabase's test numbers, so it was a door that did not open. `profiles.phone`
+  stays — a contact detail, never a credential. The screen is
+  `features/auth/components/EmailSignIn.tsx` at **`/login/email`**, and **Rule 2
+  was honoured by splitting the question**: shadcn PRIMITIVES
+  (`components/ui/{button,input,label}.tsx`, first real use of shadcn in this
+  repo), the prototype's ANATOMY (S_auth 3727-3747, part for part). Dropping the
+  Email/Mobile toggle **improves** parity — audit row U3 called it "an addition".
+  shadcn is wired through Tailwind v4's `--color-*` namespace pointing AT the
+  DanceOS variables, because shadcn's stock theme declares `--card` and
+  `--muted`, which this repo has owned since the prototype port and 50+ screens
+  read. **Two findings:** the prototype's sign-in screen has a dashed box under
+  the field and the email tab was the one tab that never drew one — that hole is
+  why the screen read as unfinished; and `globals.css`'s focus block is
+  UNLAYERED, so it beat `outline-none` and drew a SECOND ring inside the
+  primitives' own (its `border-radius: 10px` also re-rounded the 14px field) —
+  `:not([data-slot])` exempts them. 5-check proof + the repo's own
+  `auth-proof-email.ps1`, both green.
+- **Completed: 25 / 29 steps** (Steps 0–15, 18, 21–25; 16, 17, 19 and 20 are ❌
+  not in the prototype — see the re-scope below; **26 was built and then removed**
+  on 7 Sep 2026 with the phone channel — so **the roadmap is finished**
+  and what remains is the parity backlog). **Step 26 landed 28 Aug 2026 and was
+  REMOVED 7 Sep 2026:
   WhatsApp-first OTP ⚠** — Step 1 decided this on 18 Aug and parked it, and the
   code was always one argument. `lib/auth/otpChannel.ts` holds the decision
   as a pure function of two environment switches — `AUTH_OTP_CHANNEL`
@@ -800,7 +942,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 | 23 | Search + Discover filters (Postgres, not Typesense — the reason is in the migration) | ✅ done (28 Aug 2026) — the map view stays on the backlog |
 | 24 | Notifications (in-app, raised by triggers where the facts happen; the three delivery channels are stored and wait on their senders) | ✅ done (28 Aug 2026) |
 | 25 | Analytics / Stats (Your record · History · Global Rankings; no new table — aggregates over existing rows, with wins and decay honestly absent) | ✅ done (28 Aug 2026) |
-| 26 | WhatsApp OTP unpark ⚠ | ✅ done (28 Aug 2026) — the channel switch, the fallback and the honest copy are built and proven; **real delivery to a real number waits on the user's Twilio + Meta template + DLT** |
+| 26 | ~~WhatsApp OTP unpark~~ ⚠ | ↩️ **REMOVED 7 Sep 2026 — auth is email-only.** It was built and proven on 28 Aug, and it was still a door that did not open: no Twilio credentials, no DLT registration, no approved Meta template, so only Supabase's test numbers could ever receive a code. The whole phone path is deleted rather than flagged off (`PhoneSignIn`, `OtpVerify`, `/login/phone`, `/login/verify`, `lib/auth/otpChannel.ts`, `requestOtpAction`, `verifyOtpAction`, `auth-proof-otp-channel.ps1`). `profiles.phone` stays — a contact detail, never a credential. **Re-adding phone auth is a product decision now, not a pending errand**, and it means rewriting this step; the email-only slice below is what replaced it. |
 
 Steps 0–6 detail is recorded below; Steps 7–26 detail lives in the
 **Extended roadmap** section. ⚠ = touches money/auth (Rule 9).
@@ -3036,6 +3178,38 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
   refund events, Easy Split enablement via their account manager, and — only if
   payouts are ever wanted — this machine's IPv4 whitelisted or the 2FA public key.
 
+### Deliberate deviations from the prototype — auth (7 Sep 2026)
+
+The parity backlog below tracks places the build falls SHORT of the prototype and
+should catch up. This section is the opposite: places the build **overrules** the
+prototype on purpose, at the user's instruction, and should NOT be "fixed" back.
+Rule 2 still holds everywhere else.
+
+All of these follow from one product decision: **auth is email + password, and
+mobile authentication is a later phase.** The prototype's model was passwordless
+phone OTP, so its auth screens cannot be lifted part for part any more.
+
+| # | The prototype does | DanceOS does | Why |
+|---|--------------------|--------------|-----|
+| A1 | One auth screen, "Sign in or join", phone number + OTP (3727-3762) | Separate `/login/signup` and `/login/email`, each email + password | Passwordless made joining and returning the same act. With passwords they are different acts with different fields, and one screen cannot honestly be both. |
+| A2 | "Start dancing" and "Sign in" both call `setStep("signin")` — the same destination (3710-3712) | Two buttons, two destinations: `/login/signup` and `/login/email` | The user reported this as a defect ("taking me at same page thats stupid"). It was ported faithfully; the flaw was the prototype's. Two buttons for one action tells the reader a lie about the product. |
+| A3 | Buttons sit side by side, `flex:1.25` / `flex:1` (3710-3712) | Stacked, both full width, primary first | Two half-width buttons read as equal choices. These are not equal — most people arriving are new. |
+| A4 | Tagline: "DanceOS is where India dances — find classes near you, run your studio, build your crew, and get paid to do what you love." (3708) | "Find classes. Build your crew. Get paid to dance." | The user asked for the long one to go. Three verbs, and it echoes the LEARN · TEACH · CONNECT band. |
+| A5 | Footer band is `position:absolute` with a `height:150` spacer (3719-3723) | Real flex child; slack split ~1/3 above the hero, 2/3 below | The prototype's version leaves a dead void on a tall phone — the space the user photographed. Splitting it puts the CTA in thumb reach and reads as composition. |
+| A6 | No password field anywhere; no sign-up, reset or recovery screen | `/login/forgot` + `/login/reset`, driven by `resetPasswordForEmail` | A password model without recovery locks people out permanently. Not optional. |
+| A7 | No account-enumeration concern (localStorage, no server) | Sign-up reports success for an existing address; sign-in says "Invalid login credentials" either way | Both forms would otherwise become a way to discover who has an account. Two e2e tests assert the two messages are the same string. |
+| A8 | `shell()` never distributes space; content always flows from the top | `AuthShell` gained an optional `footer` slot after a `flex-1` spacer | A short form on a tall phone ends half way down and leaves a hole. Anchoring the secondary action to the bottom edge gives the space two edges to be between. |
+
+**What is NOT a deviation, and was kept on purpose:** the shell, the dark palette
+pinned on the auth root, the ← , the 26px `DOS_DISPLAY` heading at -.5 tracking,
+the sentence under it saying what the account IS, the tracked-out 9.5px eyebrow
+labels, the dashed explainer box under the fields, the grey-until-valid button,
+the legal line, and the 5·6·7·8 counter with its eight dashes. The anatomy is
+still the prototype's; only the credentials changed.
+
+**Removing the Email/Mobile toggle moved auth TOWARDS parity, not away** — it was
+audit row U3, "an addition", never in the prototype at all.
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -3070,7 +3244,11 @@ nothing to lift.
 | Class detail page: WHAT YOU'LL DANCE (routine/notes/songs) | S_class 12278-12354 | later slice (needs a routine field) |
 | Poster uploads (PosterCropper's crop-and-frame flow, 6604) onto the `media` bucket — the bucket, its policies and `next/image` exist since the photos slice; what is left is a `posters/{tenant}/` folder rule, a column on classes and events, the cropper, and the "None" poster | PosterCropper 6604, dosPosterOf 129-135 | a posters slice, on the photos slice's bucket |
 | Photos, what the photos slice left: the albums / photo grid and the swipeable cover (10577, 11093), the Discover studio card's cover-strip photo, a crop step for the squares (`object-fit: cover` stands in) | S_profiletab 10577-10620, 11093, StudioCard 4323 | an albums slice |
-| Invite by **mobile** and by QR **scan** — the invite handle is an email, and inviting by mobile needs two things Step 26 did not add: a mobile number ON the profile (nothing stores one today; phone sign-in identifies, it does not record) and real OTP delivery. The QR is drawn, not scannable | invite sheet 18435 "QR / mobile / search" | a profile-fields slice + the Twilio work; the camera separately |
+| Invite by **mobile** and by QR **scan** — the invite handle is an email, and always will be while auth is email-only (7 Sep 2026). `profiles.phone` DOES exist now (parity slice 7) so a number can be stored, but nothing can deliver to it: phone auth is deleted, so inviting by mobile needs an SMS/WhatsApp provider taken on for messaging alone. The QR is drawn, not scannable | invite sheet 18435 "QR / mobile / search" | a decision to take on a messaging provider; the camera separately |
+| **Terms & Privacy are bold text, not links** (7 Sep 2026) — `/legal/terms` and `/legal/privacy` do not exist, and a 404 on the one screen every single user sees is worse than plain emphasis. U3's DPDP consent sentence belongs in the same change | S_auth 3746 | a legal-pages slice — then turn both into `<Link>`s in that push |
+| **The app-wide focus ring is `#ec4899` while the accent is `#5AC8FA`** — `PINK` in `lib/design/tokens.ts` was swapped to cyan at some point and kept its name; the global `:focus-visible` block in `globals.css` still rings magenta, which is `DOS_TINT.trainer`. The auth screens are internally consistent (the shadcn primitives are exempted from that block and draw the accent), so this is now a visible inconsistency BETWEEN auth and everywhere else | globals.css focus block; tokens.ts:9 | one line to align — but it repaints ~50 screens' focus rings, so it is decision (c), the user's call |
+| **Auth is the only surface on shadcn primitives** (7 Sep 2026) — `components/ui/{button,input,label}.tsx` exist and are used by the sign-in and check-inbox screens; every other screen is still inline styles off `lib/design/tokens`. That is deliberate (one slice, not a sweep) but it means two styling systems now coexist, and a primitive's states are only defined once for the screens that use it | — (an addition, not a prototype gap) | migrate a surface at a time when it is being worked on anyway; never as a standalone sweep |
+| **Email delivery reaches only the Resend account owner** ⚠ — SMTP is wired into the hosted project (24 Aug) but Resend stays in test mode until a sending domain is verified, so every other address gets the check-inbox screen and no email. The screen says so in words rather than implying a rate limit it no longer has. **This is the only thing between the build and a pilot user signing in** | — (ops, not a prototype gap) | the user: verify a domain at resend.com/domains, then move `smtp_admin_email` onto it |
 | Staff & permissions: per-person permission grants (the prototype's "enquiries ✓ scanner ✓ classes ✓" are per-role words today, not individually toggled) | settings 18428-18429 | later slice |
 | Leads: the event-enquiry desk (celebrations/corporate/judge/collab types, quotes, in vs out) — the STUDENT pipeline ships | ENQ_TYPES 4902, S_enqdetail 5380 | later slice |
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
@@ -3188,8 +3366,8 @@ refs are the file to open.
 | A6 | Chrome: the gear opens the Settings sheet (on the Profile tab), not just the tab | 19263 | AppChrome.tsx | **fixed** |
 | U1 | Onboarding: heading "Set up your profile", sub, Continue-or-reason button, handle preview, an honest progress bar | 3781-3821 | OnboardingForm.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | U2 | Onboarding: photo (required), styles step, socials step, the "Take a bow" finish screen — **fixed** 30 Aug 2026 (parity slice 8: four screens, the row created at the end of the first so the photo has something to attach to, and a cookie so a mid-flow revalidate cannot end the flow). Date of birth and the 18+ gate are still open | 3788-3943 | app/onboarding, OnboardingForm.tsx | **fixed** for the photo / styles / socials / finish screen; **needs field (b)** for DOB + the 18+ gate |
-| U3 | Onboarding: the role picker and the city field are additions; sign-in's Email/Mobile toggle is an addition; DPDP consent sentence | 3855, 3678, 3746 | features/auth | decision (c) |
-| U4 | OTP: Resend re-requests in place; "Get a call instead" | 3764-3765 | OtpVerify.tsx | **fixed** for Resend in place; "Get a call instead" stays decision (c) — no voice provider |
+| U3 | Onboarding: the role picker and the city field are additions; **sign-in's Email/Mobile toggle is an addition**; DPDP consent sentence | 3855, 3678, 3746 | features/auth | **the toggle is GONE (7 Sep 2026)** — auth is email-only, so the addition is removed and this row moved toward parity rather than away from it. The role picker and city field stay decision (c) — they are this app's own, not the prototype's. The DPDP sentence waits on the legal-pages slice (its own backlog row) |
+| U4 | ~~OTP: Resend re-requests in place; "Get a call instead"~~ | 3764-3765 | ~~OtpVerify.tsx~~ | **row closed 7 Sep 2026 — there is no OTP screen.** `OtpVerify.tsx` and `/login/verify` are deleted with the phone channel; the email twin is `/login/check-email`, where the equivalent of Resend-in-place is "Use a different email" (asking again replaces the old link, which the screen says). "Get a call instead" needed a voice provider and now needs a phone channel too |
 | U5 | AuthShell progress prop | 3683-3694 | AuthShell | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | Z1 | Business hub: hero blob literal; "Studios" / "STUDIOS YOU OWN"; head colour var(--muted) | 2629-2633 | BusinessHub.tsx | **fixed** |
 | Z2 | Business hub: "STUDIOS YOU HAVE TAUGHT AT" list with Profile › | 2643-2646 | BusinessHub.tsx | **fixed** |
@@ -3334,6 +3512,12 @@ server action → UI, finished and verified before the next begins.
    styles, interactions) is lifted directly from `prototype/DanceOSApp.jsx` into the
    real app. Only the data wiring changes: `dosStorage` reads/writes are replaced
    with server actions. The built screen must look identical to the prototype screen.
+   **The one standing exception is auth**, which the user overruled on 7 Sep 2026:
+   the prototype has no password field anywhere, so its auth screens cannot be
+   lifted part for part. Those departures are enumerated in "Deliberate
+   deviations from the prototype — auth" — eight rows, each with its reason.
+   **Do not "restore parity" on any of them**; they are decisions, not drift. Any
+   NEW deviation still needs the user's say-so and a row in that table.
 3. **Every table ships with**: UUID PK, `tenant_id` (if tenant-scoped), audit columns
    (`created_at`, `updated_at`, `created_by`, `updated_by`), soft delete (`deleted_at`),
    and its RLS policy — all in the same migration.
@@ -3662,6 +3846,18 @@ npm run build       → production build (never beside a running dev server)
 npm run lint        → eslint
 npm run typecheck   → tsc --noEmit
 npx playwright test → both e2e specs, against a FRESH npm run dev
+
+# On a machine where port 3000 is ANOTHER project (both known machines):
+npx next start -p 3100                                          # build first
+PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test    # note: localhost, NOT 127.0.0.1
+$env:DANCEOS_BASE_URL="http://localhost:3100"; powershell -File scripts/auth-proof-email.ps1
+
+# USE localhost, NOT 127.0.0.1 (learned 7 Sep 2026, cost two full e2e runs).
+# They are DIFFERENT COOKIE DOMAINS. `next start` resolves its own redirects to
+# localhost, so a suite pointed at 127.0.0.1:3100 lands the magic link, gets
+# Set-Cookie for 127.0.0.1, is redirected to localhost:3100/onboarding, sends no
+# cookie, and proxy.ts bounces it to /login. It reads exactly like broken auth:
+# "Expected /onboarding, received /login". The cookie was always fine.
 
 node scripts/demo-data.js seed     → build the demo world in the live project
 node scripts/demo-data.js status   → what demo data exists right now

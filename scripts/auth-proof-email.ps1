@@ -1,8 +1,15 @@
 # Proof for email magic-link sign-in: mints a link server-side (admin API — no
 # inbox needed), lands it on the app's /auth/confirm route, and expects to come
-# out signed in. Needs the dev server on http://localhost:3000.
+# out signed in.
 # Run from the repo root: powershell -File scripts/auth-proof-email.ps1
+#
+# Point it with DANCEOS_BASE_URL, the way playwright.config.ts takes
+# PLAYWRIGHT_BASE_URL and for the same reason: port 3000 is not always this app
+# (another project's dev server can hold it), and a proof that drives somebody
+# else's site fails on routes that were never there. e.g.
+#   $env:DANCEOS_BASE_URL="http://127.0.0.1:3100"   # against next start -p 3100
 $ErrorActionPreference = "Stop"
+$baseUrl = if ($env:DANCEOS_BASE_URL) { $env:DANCEOS_BASE_URL.TrimEnd("/") } else { "http://127.0.0.1:3000" }
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a
 # browser, and PowerShell's default user agent starts with "Mozilla/5.0". Name
 # ourselves honestly so the admin and service-role calls are accepted.
@@ -42,14 +49,14 @@ function Land($url) {
 }
 
 # 2. land it on the app's confirm route -> expect a redirect to /onboarding (new user)
-$landed = Land "http://localhost:3000/auth/confirm?token_hash=$hash&type=$vtype"
+$landed = Land "$baseUrl/auth/confirm?token_hash=$hash&type=$vtype"
 $landOk = $landed -like "*/onboarding*"
 "2. Link lands signed in at: $landed $(if ($landOk) {'-- ONBOARDING, OK'} else {'-- !!! FAILED !!!'})"
 if (-not $landOk) { $pass = $false }
 
 # 3. a reused/expired token must bounce to the sign-in screen with an error
-$bounced = Land "http://localhost:3000/auth/confirm?token_hash=$hash&type=$vtype"
-$bounceOk = $bounced -like "*/login/phone?error=*"
+$bounced = Land "$baseUrl/auth/confirm?token_hash=$hash&type=$vtype"
+$bounceOk = $bounced -like "*/login/email?error=*"
 "3. Reused link bounces to: $bounced $(if ($bounceOk) {'-- REJECTED, OK'} else {'-- !!! FAILED !!!'})"
 if (-not $bounceOk) { $pass = $false }
 
