@@ -1,116 +1,124 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (7 Sep 2026, second session) — replaced on every push (Rule 13)
+## LAST SESSION (7 Sep 2026, third session) — replaced on every push (Rule 13)
 
-- **AUTH IS EMAIL + PASSWORD NOW ⚠ (Rule 9), and this REPLACES the email-only
-  magic-link model the previous session shipped.** The user asked for "Start
-  dancing" to mean sign-up and "Sign in" to mean an existing user with email and
-  password. There was **zero password auth in the codebase** — `signInWithOtp`
-  was the only auth call — so this was new build, not a rename. Four server
-  actions now exist: `signUpAction`, `signInWithPasswordAction`,
-  `requestPasswordResetAction`, `setNewPasswordAction`.
-- **The magic link survives as FORGOT PASSWORD only, and it is
-  `resetPasswordForEmail`, NOT `signInWithOtp`.** This mattered more than it
-  looks: a plain magic link signs the person in and leaves the password they
-  cannot remember exactly as it was — in the app, but locked out again next
-  time. The recovery link carries `type=recovery`, which `/auth/confirm` now
-  forks on and routes to `/login/reset` instead of Home. `requestEmailLinkAction`
-  is **gone**, replaced by the two named paths.
-- **Routes.** `/login` (welcome, two buttons now going to DIFFERENT places) ·
-  `/login/signup` (new) · `/login/email` (was the magic-link screen, now
-  password sign-in — the route is named for the CHANNEL, and mobile is a later
-  phase) · `/login/forgot` (new) · `/login/reset` (new) ·
-  `/login/check-email?mode=verify|reset` (one screen, two errands).
-- **WHY BOTH FAILURE MESSAGES ARE IDENTICAL, and do not "improve" them.**
-  `signUpAction` reports success for an address that already exists, and
-  sign-in says "Invalid login credentials" whether the account exists or not.
-  Supabase does this deliberately; surfacing "that email is taken" or "no such
-  account" turns either form into a way to discover who has an account. Two e2e
-  tests assert the two messages are the SAME string — that identity is the test.
-- **Password rules live in `features/auth/types/password.ts`, and sign-in
-  deliberately does not use them.** Min 8 (Supabase's 6 is a floor, not a
-  recommendation), max 72 (bcrypt silently truncates past 72 bytes, so a longer
-  one would appear accepted and then match on its first 72). But the SIGN-IN
-  field has no minimum: enforcing one there would lock out every account made
-  before the rule, the demo users included. Length governs what you may CHOOSE,
-  not what you may type to prove who you are.
-- **The two visual defects the user photographed, and what actually caused
-  them.** (1) "Start dancing" and "Sign in" went to the same page — that was
-  faithful to the prototype, which called `setStep("signin")` from both
-  (DanceOSApp.jsx:3710-3712). It was a prototype flaw, ported correctly. (2) The
-  dead void was `position:absolute` footer + a `height:150` spacer fighting each
-  other. Fixed by making the band a real flex child and splitting the slack
-  ~1/3 above the hero, 2/3 below, so the CTA sits in thumb reach.
-- **`AuthShell` gained a `footer` slot, and that is the general fix.** An auth
-  form is short and a phone is tall, so a two-field screen ended half way down
-  with a hole beneath it — which reads as a screen that failed to load. Anchoring
-  the secondary action ("New to DanceOS?", the legal line) to the bottom edge
-  gives the empty space two edges to sit between, and space between two things is
-  composition rather than a hole. Used by sign-up, sign-in, forgot, reset and
-  check-email.
-- **The SMTP dashboard path is `/auth/smtp`** (Authentication → Emails → SMTP
-  Settings tab). `/auth/emails` is a 404. Recording it because finding it cost
-  four screenshots this session.
-- **Custom SMTP was switched OFF by the user this session**, so Supabase's
-  built-in sender is live and the email rate limit dropped from 60/h to the
-  free-tier cap of roughly 2/h. **Delivery was never confirmed** — nobody has
-  reported receiving a message at a non-Resend address, so treat email as
-  unverified rather than working. Password sign-in does not need email at all,
-  which is why this no longer blocks a returning user.
-- **A pre-existing e2e failure, NOT caused by this slice:**
-  `happy-path.spec.ts:180` dies at line 208 on `getByRole("link", { name:
-  "Rooms ›" })`. Verified by stashing the whole slice and re-running — it fails
-  identically on a clean tree. Auth runs fine inside that test; it gets past
-  signup, onboarding and class creation before reaching the Rooms step.
-- **A test-only trap worth knowing:** the Next.js dev overlay injects its own
-  empty `role="alert"` into the page, so `getByRole("alert")` is ambiguous in
-  dev and can resolve to the empty one. Assert error toasts **by text**.
+- **Two production fixes, both live, both ⚠ Rule 9 (auth and routing).**
+  `219cad2` (redirects for the deleted phone routes) and `7d2cd3d` (the emailed-
+  link route). Nothing else changed. Rules 14 and 15 were added from them.
+- **EVERY EMAILED LINK WAS DEAD, and had been since email auth existed (24 Aug).**
+  `/auth/confirm` read only `token_hash`, which arrives only from a customised
+  `{{ .TokenHash }}` email template. The hosted project has never had one — it
+  sends Supabase's stock `{{ .ConfirmationURL }}`, read from the user's inbox:
+  `https://wonhocebhckjokfssvja.supabase.co/auth/v1/verify?token=pkce_…&type=signup&redirect_to=https://dancestudio-orcin.vercel.app/auth/confirm`.
+  Supabase's own `/verify` confirms the address, then redirects to `/auth/confirm`
+  carrying a **`code`** — never a `token_hash`. The guard was always false, every
+  link fell through to the "invalid or expired" bounce, no signup could complete
+  and no password could reset.
+- **How it was diagnosed, because the symptoms lie.** Account
+  `deepakkaushik8919@gmail.com` (`8a5ab196-…`): `created_at` 24 Aug (magic-link
+  era), `email_confirmed_at` 7 Sep 12:44 (the click), `last_sign_in_at` **null**.
+  Confirmed-but-never-a-session is the exact signature of a link that never
+  reached `verifyOtp`. The person saw "link expired", then "Invalid login
+  credentials", and neither names the cause. Read via the admin API — there is no
+  `psql` or `pg` on this machine, so `auth.users` is reachable only that way.
+- **Why "verification" never caught it.** `scripts/auth-proof-email.ps1` mints a
+  link with the admin `generate_link` API and BUILDS `/auth/confirm?token_hash=…`
+  itself from `hashed_token` (lines 35–52) — it never exercised the URL Supabase
+  emails. `password-auth.spec.ts` creates accounts with `email_confirm: true` and
+  never touches the route; its own header says so. Both green, both blind.
+- **The fix (`7d2cd3d`).** The route handles BOTH shapes: `token_hash` →
+  `verifyOtp` (kept, and preferred when configured — it needs no browser state)
+  and `code` → `exchangeCodeForSession`. Supabase's `error_description` is passed
+  through rather than overwritten. **`requestPasswordResetAction` stamps
+  `?flow=recovery` onto its redirect URL**, because the PKCE shape carries no
+  `type` and without it a reset link lands on Home — signed in, still locked out.
+  `e2e/auth-confirm-route.spec.ts` pins all six branches; 13/13 across both auth
+  suites.
+- **The PKCE shape has a limitation only the template fix removes.** The `code`
+  exchange needs the `code_verifier` cookie set when the link was requested, so
+  it completes only in the browser that asked. A link opened in Gmail's in-app
+  viewer rather than Chrome bounces with "could not be opened here — open it in
+  the same browser you asked for it from" (the message says this). `token_hash`
+  has no such need. That is why NEXT TO DO #2 is the durable fix, and the code
+  already accepts it.
+- **The user's account has NO USABLE PASSWORD.** It pre-dates password auth, and
+  Supabase treats `signUp` on an existing address as a silent no-op (deviation
+  A7). The password chosen on 7 Sep was never stored. Recovery is NEXT TO DO #1.
+- **Email delivery IS confirmed** — the built-in sender reached a gmail.com
+  inbox on 7 Sep, which closes last session's open question. The quota is the
+  hazard: probing `/auth/v1/signup` from a script during diagnosis hit
+  `over_email_send_rate_limit` (429). That limit is shared with real people, so
+  test accounts go through the admin API with `email_confirm: true` — never the
+  public endpoint in a loop.
+- **`/login/phone` and `/login/verify` now 307 → `/login/email` (`219cad2`).**
+  `88ef3bb` deleted both routes; the installed TWA reopens on its last URL, so a
+  phone parked on `/login/phone` came back to a bare 404 that read as a broken
+  APK. Temporary (307), not permanent (308), on purpose: Step 26 records phone
+  auth as an open decision, and a 308 is browser-cached indefinitely — it would
+  plant the same stale-URL bug facing the other way. **The APK did not need
+  rebuilding**; a TWA holds no page code.
+- **Test-harness trap — a SECOND reason for `localhost`:** Next 16 `next dev`
+  blocks its own chunks and HMR for a `127.0.0.1` origin (`allowedDevOrigins`).
+  Nothing hydrates, so every test that needs a button to enable fails the same
+  way and burns its full timeout (5 tests = 6 minutes). SSR-only assertions pass
+  and hide it. Reproduced on a clean stash — not a regression. Commands updated.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **Confirm email actually delivers (user).** Custom SMTP is off, so Supabase's
-   own sender is in play at ~2 messages/hour. Sign up with an address that is
-   NOT the Resend account owner's and check what arrives. The sender tells you
-   which path it took: a `supabase.co` address means the built-in sender is
-   working; `onboarding@resend.dev` means the toggle did not persist. **Signup
-   still needs email** (`mailer_autoconfirm` is off), even though sign-in no
-   longer does.
-2. **For a pilot, verify a domain at resend.com/domains**, point
+1. **Get into your own account (user, 2 minutes — after the email quota resets,
+   roughly an hour after 12:50 IST on 7 Sep).** `deepakkaushik8919@gmail.com`
+   has no usable password (LAST SESSION). Sign in → **Forgot password** → open
+   the emailed link **in Chrome, not Gmail's in-app viewer** → `/login/reset` →
+   set a password → in. "Email rate limit exceeded" means the hour has not
+   rolled over. "Could not be opened here" means the link opened in a different
+   browser from the one that asked: copy it into Chrome, or do #2 first and ask
+   again.
+2. **Customise the Supabase email templates to `token_hash` (dashboard, 3
+   minutes, no code).** Authentication → Email Templates → **Confirm signup**
+   and **Reset password** (Magic Link and Change Email too, for completeness):
+   replace the `{{ .ConfirmationURL }}` href with
+   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`
+   and set Site URL to `https://dancestudio-orcin.vercel.app` (Authentication →
+   URL Configuration). This removes the same-browser limitation entirely — links
+   then work from any app or device. The route already accepts this shape. Then
+   **re-test with a real inbox link, not the proof script** (Rule 15).
+3. **For a pilot, verify a domain at resend.com/domains**, point
    `smtp_admin_email` at it and switch custom SMTP back ON. That restores 60/h
    and real deliverability. The `onboarding@resend.dev` sender only ever reached
    the Resend account owner, which is what made auth look broken.
-3. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
+4. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
    confirm Supabase's redirect allow-list carries it. Every emailed link is built
    from `emailLinkOrigin()`, which prefers this over the `origin` header on
    purpose; unset in production it falls back to whatever host the browser used,
-   which is how a link gets minted for an origin the allow-list refuses.
-4. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
+   which is how a link gets minted for an origin the allow-list refuses. On 7 Sep the `origin`-header fallback happened to yield the right
+   URL (the link's `redirect_to` was the Vercel host); that is luck, not a fix.
+5. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
    requires (`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`,
    `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`) and still
    carries `RAZORPAY_WEBHOOK_SECRET` from before the 28 Aug rail swap. Payments
    cannot work locally until that is fixed.
-5. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
+6. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
    screen's Terms and Privacy Policy are bold text, not links, because linking to
    a 404 on the screen everybody sees is worse. They become `<Link>`s in the same
    change that adds the pages — which is also where U3's DPDP consent sentence
    belongs.
-6. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
+7. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
    `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
    while the global ring in `globals.css` is `#ec4899`. Auth is consistent because
    the shadcn primitives draw the accent; every other screen still rings magenta
    against cyan buttons. One line to align, ~50 screens repainted, so it is the
    user's call.
-7. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
+8. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
    `supabase.auth.getUser()` — a network round trip — on EVERY request, the
    anonymous auth screens included. Consider excluding `/login/*` and public
    static files from the matcher, then test sign-in end to end.
-8. **Fix the pre-existing `happy-path.spec.ts:180` Rooms failure.** It is not
+9. **Fix the pre-existing `happy-path.spec.ts:180` Rooms failure.** It is not
    auth, and it was failing before this slice. It blocks 13 downstream tests
    from running at all, which means the suite is not currently a safety net.
-9. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
+10. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
    2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
    Twilio credentials, DLT registration and an approved Meta template.
-10. **The folder reorganization is proposed but NOT started**, and it is blocked
+11. **The folder reorganization is proposed but NOT started**, and it is blocked
     on one question: how does the APK reach a phone? `android/danceos-1.1.0.apk`
     and `.aab` are TRACKED in git (~4 MB per release, and `.git` is 13 MB with a
     7.6 MB pack), and the Android project exists twice — `files/android/`
@@ -123,7 +131,10 @@
     is what a rename would silently break. `Downloads/CLAUDE.md` (the stale
     pre-prototype blueprint) was renamed to
     `DanceOS-blueprint-SUPERSEDED-2026-07-07.md` so it stops auto-loading over
-    this file.
+    this file. **What actually breaks the installed app is a URL disappearing, not a
+    folder moving** (Rule 14, learned 7 Sep third session) — so the reorg is
+    safer than it looked, provided every route keeps its path or gets a
+    redirect.
 
 ## What this repo is
 
@@ -156,6 +167,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **Auth email links FIXED, 7 Sep 2026 (third session), no step number.** Every
+  link Supabase emailed had been dead since 24 Aug: `/auth/confirm` read
+  `token_hash`, the stock template sends a PKCE `code`. The route now takes both
+  (`7d2cd3d`); `/login/phone` and `/login/verify` redirect instead of 404
+  (`219cad2`). Step count unchanged. Detail at the top of this file.
 - **Auth rebuilt as EMAIL + PASSWORD, 7 Sep 2026 (second session), no step
   number — it replaces the email-only magic-link slice from earlier the same
   day.** The user asked for "Start dancing" to mean sign-up and "Sign in" to
@@ -968,7 +984,10 @@ Tailwind v4 scaffold at repo root; feature-first folders; GitHub Actions CI
 - **Interim real sign-in (added 24 Aug 2026): email magic link** — free tier can't
   customise email templates (no OTP code by email) or send SMS, so the sign-in
   screen has a 📱 Mobile / ✉️ Email toggle: email sends a Supabase magic link →
-  `/auth/confirm` route verifies the token_hash and forks to onboarding/home.
+  `/auth/confirm` route verifies the token_hash and forks to onboarding/home. **(7 Sep 2026: this only ever worked for hand-built links. The templates ARE
+  editable — Authentication → Email Templates, every tier — and the belief to the
+  left is why nobody changed them; real emails carried a PKCE `code`, and the
+  route bounced every one until `7d2cd3d`. See LAST SESSION and Rule 15.)**
   `uri_allow_list=http://localhost:3000/**` (add the Vercel URL at deploy). The
   default mailer sends only ~2 emails/hour — connect custom SMTP (e.g. Resend) at
   Step 6. gotrue quirk: a NEW user's link verifies with type `signup`, a returning
@@ -3551,11 +3570,45 @@ server action → UI, finished and verified before the next begins.
     push as the work they describe, so somebody opening this file on another
     machine starts from what is true now. A stale top block is a bug, exactly
     as a stale tracker is (Rule 11).
+14. **A route is a promise; deleting or moving one needs a redirect in the SAME
+    push.** The installed TWA reopens on the last URL it showed, bookmarks and
+    the back button keep old paths alive, and a removed page becomes a bare 404
+    with no address bar to explain it — indistinguishable from a broken APK.
+    Add a `redirects()` entry in `next.config.ts` for every removed or moved
+    route. Use `permanent: false` (307) unless the path is gone for good: a 308
+    is browser-cached indefinitely and revives as the same stale-URL bug if the
+    route ever returns. (7 Sep 2026: `/login/phone`, `/login/verify`.)
+15. **Verify emailed auth links with the link Supabase actually sends.**
+    `/auth/confirm` must accept whatever the DASHBOARD email template produces —
+    a setting outside this repo — not what the code wishes it produced. A link
+    built by hand from the admin API (`generate_link` → `hashed_token`) proves
+    the route, not the product: `auth-proof-email.ps1` did exactly that while
+    every real link was dead for two weeks. After any change to `/auth/confirm`,
+    the email templates, or the redirect URLs: request a real email, open the
+    real link, land signed in. Test accounts still come from the admin API with
+    `email_confirm: true` — the public signup endpoint spends the shared email
+    quota.
 
 ## Session log
 
 Four lines per session, written when the user ends it. The step records above hold
 the technical detail; this log is the at-a-glance history.
+
+### 7 Sep 2026 — third session
+- **This session:** two production fixes. `/login/phone` and `/login/verify`
+  307 → `/login/email` (the deleted routes broke the installed TWA), and
+  `/auth/confirm` now accepts the PKCE `code` the stock email template sends —
+  every emailed link had been dead since 24 Aug. Root cause, evidence and the
+  test gap are in LAST SESSION. Rules 14 and 15 added.
+- **Done so far:** step count unchanged (see the tracker); auth is email +
+  password and its email links work again — same-browser only until the
+  dashboard template is changed (NEXT TO DO #2).
+- **Remaining:** NEXT TO DO 1–11: the user's own account first, then the
+  template change, then the pilot ops (Resend domain, `NEXT_PUBLIC_SITE_URL`,
+  Cashfree keys, legal pages) and the two open e2e/latency items.
+- **Next session:** starts on another machine — read LAST SESSION and NEXT TO DO
+  first. Do #2 and confirm it with a real inbox link (Rule 15); then the
+  `proxy.ts` matcher for auth-screen latency and the Rooms e2e failure.
 
 ### 28 Aug 2026 — third session
 - **This session:** **Step 22 — crews**, **Step 23 — search + Discover
@@ -3858,6 +3911,11 @@ $env:DANCEOS_BASE_URL="http://localhost:3100"; powershell -File scripts/auth-pro
 # Set-Cookie for 127.0.0.1, is redirected to localhost:3100/onboarding, sends no
 # cookie, and proxy.ts bounces it to /login. It reads exactly like broken auth:
 # "Expected /onboarding, received /login". The cookie was always fine.
+#
+# SECOND reason (7 Sep 2026, third session), and it bites `next dev` too: Next 16
+# blocks its own chunks and HMR for a 127.0.0.1 origin (allowedDevOrigins), so
+# nothing hydrates — every submit button stays disabled, every hydration test
+# burns its full timeout, and SSR-only tests pass and hide it. localhost. Always.
 
 node scripts/demo-data.js seed     → build the demo world in the live project
 node scripts/demo-data.js status   → what demo data exists right now
