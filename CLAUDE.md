@@ -40,7 +40,7 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **On the phone: uninstall the old DanceOS, then install the NEW ** (package in.danceos.app — a different app id, so the old one must be removed by hand or two icons will sit side by side). First-ever launch may show the bar for a few seconds while verification completes; from the second launch it is fullscreen. If a bar persists across launches, check Chrome is the default browser and updated.
+1. **On the phone: uninstall the old DanceOS, then install the NEW `android/app-release-signed.apk`** (package in.danceos.app — a different app id, so the old one must be removed by hand or two icons will sit side by side). First-ever launch may show the bar for a few seconds while verification completes; from the second launch it is fullscreen. If a bar persists across launches, check Chrome is the default browser and updated.
 2. **Auth-screen latency, the deeper half (⚠ Rule 9):** `proxy.ts` runs `supabase.auth.getUser()` — a network round trip — on EVERY request, the anonymous auth screens included; consider excluding `/login/*` and public static files from the matcher, and test sign-in end to end after.
 3. Full e2e on stable internet: `PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test` against `npx next start -p 3100` — all three specs green is the bar.
 4. Pick work from the tracker's Next block (slices 6–8 closed PassDeck/wiring/F3/F4/W2/U2 on 3 Sep — re-read before assuming a row is open). Web push and posters are the next unblocked slices. Backlog rows still open from this session: PayFlow back-wiring, CalendarScreen's fabOpen/ddOpen popovers.
