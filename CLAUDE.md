@@ -17,6 +17,13 @@
   feedback for the whole server round trip; `app/login/loading.tsx` now
   answers instantly with the prototype's 5-6-7-8 count-in.
 
+- **The lag, root-caused with measurements:** X-Vercel-Id read bom1::iad1 —
+  the edge is Mumbai but the FUNCTIONS ran in Washington DC (Vercel default,
+  never overridden), so every server render crossed India-US and every
+  Supabase query crossed US-Mumbai (~250 ms each, several per page).
+  vercel.json now pins functions to bom1 beside the database. Static ~0.10 s,
+  dynamic /login/phone was ~0.36 s TTFB from India before the pin.
+
 ## NEXT TO DO — replaced on every push (Rule 13)
 
 1. **Reinstall the APK on the phone** (uninstall DanceOS → install `android/app-release-signed.apk` again). The deploy is verified live — manifest, assetlinks and fingerprint all check out, including through Google's digitalassetlinks API — but a pre-deploy install cached a failed verification and only a reinstall re-runs it. Expected: no URL bar, back closes sheets. If a bar persists AFTER reinstalling, check Chrome is default and updated.
