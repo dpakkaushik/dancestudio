@@ -7,12 +7,23 @@
 - **PWA shell**: app/manifest.ts, DosMark-drawn icons (scripts/icons/make-icons.js), `.well-known/assetlinks.json` with the real fingerprint — **this push deploying is what makes the installed APK fullscreen** (until then it shows a Chrome bar).
 - Office notes: main was 24 behind + 1 stray commit (saved on `local-step13b-backup`, reset onto origin); office `localhost:3000` is ANOTHER project — use PLAYWRIGHT_BASE_URL (now supported) against `next start -p 3100`; office Wi-Fi dropped three e2e story runs on Supabase `fetch failed` — re-run on stable internet before reading a failure as code. Rebased over parity slices 6–8 pushed the same day by a parallel session.
 
+- **Follow-up (phone testing):** (1) the installed APK showed the Chrome URL
+  bar — the APK was installed BEFORE the assetlinks push deployed, and Android
+  caches the verification verdict at install time; the live chain was checked
+  end to end (manifest 200, assetlinks 200, fingerprint = the APK cert,
+  Google's digitalassetlinks API returns the statement), so the fix is
+  uninstall + reinstall the same APK — no rebuild. (2) "Sign in" felt dead
+  for seconds — the app had NO loading.tsx anywhere, so a tap gave zero
+  feedback for the whole server round trip; `app/login/loading.tsx` now
+  answers instantly with the prototype's 5-6-7-8 count-in.
+
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. Verify the deploy: https://dancestudio-orcin.vercel.app/manifest.webmanifest and /.well-known/assetlinks.json both 200 → launch the installed APK: Chrome bar gone, back closes sheets.
-2. Full e2e on stable internet: `PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test` against `npx next start -p 3100` — all three specs green is the bar.
-3. Pick work from the tracker's Next block (slices 6–8 closed PassDeck/wiring/F3/F4/W2/U2 on 3 Sep — re-read before assuming a row is open). Web push and posters are the next unblocked slices. Backlog rows still open from this session: PayFlow back-wiring, CalendarScreen's fabOpen/ddOpen popovers.
-4. Ops (user): Cashfree KYC + Easy Split, Resend domain, Twilio/Meta/DLT; keep the keystore pair safe.
+1. **Reinstall the APK on the phone** (uninstall DanceOS → install `android/app-release-signed.apk` again). The deploy is verified live — manifest, assetlinks and fingerprint all check out, including through Google's digitalassetlinks API — but a pre-deploy install cached a failed verification and only a reinstall re-runs it. Expected: no URL bar, back closes sheets. If a bar persists AFTER reinstalling, check Chrome is default and updated.
+2. **Auth-screen latency, the deeper half (⚠ Rule 9):** `proxy.ts` runs `supabase.auth.getUser()` — a network round trip — on EVERY request, the anonymous auth screens included; consider excluding `/login/*` and public static files from the matcher, and test sign-in end to end after.
+3. Full e2e on stable internet: `PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test` against `npx next start -p 3100` — all three specs green is the bar.
+4. Pick work from the tracker's Next block (slices 6–8 closed PassDeck/wiring/F3/F4/W2/U2 on 3 Sep — re-read before assuming a row is open). Web push and posters are the next unblocked slices. Backlog rows still open from this session: PayFlow back-wiring, CalendarScreen's fabOpen/ddOpen popovers.
+5. Ops (user): Cashfree KYC + Easy Split, Resend domain, Twilio/Meta/DLT; keep the keystore pair safe.
 
 ## What this repo is
 
