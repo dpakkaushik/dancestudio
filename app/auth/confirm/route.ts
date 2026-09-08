@@ -58,7 +58,18 @@ export async function GET(request: NextRequest) {
     /* Shape 2 — the stock template's PKCE code, which is what actually arrives
        today. The exchange needs the code_verifier cookie set when the link was
        requested, so this only completes in the browser that started the flow;
-       `land` is unreachable otherwise and the bounce below explains why. */
+       `land` is unreachable otherwise.
+
+       WHAT IS TRUE WHEN THE EXCHANGE FAILS (8 Sep 2026, seen by the user). A
+       `code` is minted by Supabase's /verify AFTER it has confirmed the
+       address, so a confirmation code that cannot be exchanged here still
+       leaves a CONFIRMED account with the password its owner chose — the only
+       thing missing is this browser's session. The right next step is to sign
+       in, and the bounce lands on the sign-in screen saying exactly that.
+       "Ask for a new one" would be wrong advice: `auth.resend` for an already
+       confirmed address sends nothing, on purpose. A RECOVERY code is different
+       — the person cannot sign in with a password they have forgotten — so
+       that errand keeps the same-browser explanation and the offer of another. */
     if (code) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error && data.user) {
@@ -68,7 +79,9 @@ export async function GET(request: NextRequest) {
         return bounce(
           request,
           isRecovery,
-          `That ${isRecovery ? "reset" : "confirmation"} link could not be opened here — open it in the same browser you asked for it from, or ask for a new one.`
+          isRecovery
+            ? "That reset link could not be opened here — open it in the same browser you asked for it from, or ask for a new one."
+            : "Your email is confirmed — sign in with your password and we will set your profile up next."
         );
       }
     }

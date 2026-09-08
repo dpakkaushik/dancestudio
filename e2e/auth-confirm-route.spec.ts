@@ -22,6 +22,11 @@ import { test, expect } from "@playwright/test";
 
 const EXPIRED = /invalid or has expired/i;
 const NOT_HERE = /could not be opened here/i;
+/** What a failed CONFIRMATION exchange says since 8 Sep 2026: the address is
+ *  already confirmed by the time a code exists, so the way on is the password,
+ *  not another link. A failed RECOVERY exchange keeps NOT_HERE — a forgotten
+ *  password cannot be signed in with. */
+const CONFIRMED_SIGN_IN = /email is confirmed/i;
 
 /** AuthShell's toast. Next.js injects its own empty `role="alert"` route
  *  announcer (#__next-route-announcer__), so a bare getByRole("alert") matches
@@ -34,10 +39,13 @@ test.describe("/auth/confirm accepts both email-link shapes", () => {
     await page.goto("/auth/confirm?code=bogus-code-for-test");
 
     /* The heart of it: reaching the exchange at all. The old route never did,
-       and answered with the generic expired-link text instead. */
+       and answered with the generic expired-link text instead. And when the
+       exchange fails, the toast says the true next step — sign in — because
+       Supabase confirmed the address before it ever minted the code. */
     await expect(page).toHaveURL(/\/login\/email/);
     const error = toast(page);
-    await expect(error).toHaveText(NOT_HERE);
+    await expect(error).toHaveText(CONFIRMED_SIGN_IN);
+    await expect(error).not.toHaveText(NOT_HERE);
     await expect(error).not.toHaveText(EXPIRED);
   });
 

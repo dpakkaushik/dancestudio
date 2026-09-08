@@ -2,6 +2,31 @@
 
 ## LAST SESSION (8 Sep 2026) — replaced on every push (Rule 13)
 
+- **The confirmation link's dead end, hit by the user and fixed ⚠ (Rule 9).**
+  They opened the emailed link in a different browser from the one that signed
+  up. Supabase's `/verify` confirmed the address and handed `/auth/confirm` a
+  `code` this browser could not exchange (no `code_verifier` cookie — the PKCE
+  shape, 7 Sep), and the bounce read "open it in the same browser … or ask for
+  a new one." Both halves were bad advice at that moment: the address was
+  ALREADY confirmed (`email_confirmed_at` 08:58:56), so the way on was the
+  password they had just chosen — and `auth.resend` for a confirmed address
+  sends nothing, on purpose. **A `code` only exists after `/verify` has
+  confirmed the address**, so the confirmation bounce now says so: *Your email
+  is confirmed — sign in with your password and we will set your profile up
+  next*, landing on `/login/email`. **And the shell's toast was never 380px
+  wide:** a `fixed` element at `left:50%` with only a `max-width` is
+  shrink-to-fit, and shrink-to-fit stops at the viewport edge — half the
+  screen — so on a phone every auth toast wrapped a two-line sentence into
+  four and rounded into the blob over the footer in the user's screenshot.
+  `AuthShell` gives it an explicit `min(380px, 100vw − 44px)` now; the
+  prototype never met this because its toasts are one-liners. Recovery keeps the same-browser
+  message — a forgotten password cannot be signed in with.
+  `auth-confirm-route.spec.ts` re-pinned (`CONFIRMED_SIGN_IN` for a signup
+  code, `NOT_HERE` still for recovery). The user did sign in at 09:02:46 with no
+  `profiles` row, so `/onboarding` is where that landed. **The durable fix is
+  still NEXT TO DO #2** — a `token_hash` link needs no browser state — and the
+  `SUPABASE_ACCESS_TOKEN` in `.env.local` answers 401, so it is the dashboard
+  or a fresh token.
 - **Pulled the 7 Sep work onto this machine** (`03fcd63..c13856f`, twelve
   commits, fast-forward, no conflicts with parity slice 8). **The dependency sync
   is the environment lesson:** the seven new shadcn/ui packages were not in
@@ -43,11 +68,14 @@
   (Supabase dispatched it), `email_confirmed_at` **null** at 08:44, no
   `profiles` row — parked on exactly the screen that was rebuilt.
 - **Tests:** `e2e/check-email.spec.ts`, four render checks, none of which
-  presses Resend (a real resend spends the shared quota). The countdown is
-  driven with Playwright's clock — and **`clock.fastForward` fires each due
-  timer at most once**, so a chained one-second countdown only advances a tick;
-  `clock.runFor` is the call that keeps firing newly scheduled timers. Both
-  auth suites still green (17). Screenshots at 430×932, both errands and the
+  presses Resend (a real resend spends the shared quota). **The countdown is
+  waited out in REAL time, and the fake clock was abandoned after two wrong
+  guesses:** `clock.fastForward` fires each due timer at most once by design,
+  and `clock.runFor(31 s)` left the countdown at 0:24 — a one-second
+  `setTimeout` that re-arms itself in an effect exists only after React has
+  rendered, which is after the clock's run has returned, so neither call can
+  reach it. Thirty real seconds in an otherwise seconds-long suite; the test
+  says why. Both auth suites still green (17). Screenshots at 430×932, both errands and the
   resend-ready state. A scratch script outside the repo must `require`
   `@playwright/test` by absolute path — Node resolves from the script's own
   directory, not the cwd.
@@ -55,14 +83,11 @@
 ## NEXT TO DO — replaced on every push (Rule 13)
 
 1. **Finish signing in (user, 2 minutes).** Two accounts, two states.
-   **`ai@eeetaxi.com`** was created 8 Sep 08:35 UTC from the sign-up form and
-   Supabase dispatched its confirmation at once; it is still unconfirmed. Open
-   that email **in the same browser that asked for it** (the PKCE shape — #2
-   below removes this), tap the link, and you land on `/onboarding`: name,
-   Dancer / Artist-Trainer / Studio, city, photo → styles → socials → Take a
-   bow. Nothing arriving? The check-email screen offers **Resend link** after
-   30 s now; "you can only request this after N seconds" or "rate limit
-   exceeded" is the shared hourly quota talking — wait it out.
+   **`ai@eeetaxi.com`** is confirmed (08:58 UTC, 8 Sep — the link opened in
+   another browser, bounced, and the toast now says to sign in) and signed in
+   once at 09:02. No `profiles` row yet: sign in at `/login/email` and finish
+   `/onboarding` — name, Dancer / Artist-Trainer / Studio, city, photo →
+   styles → socials → Take a bow.
    **`deepakkaushik8919@gmail.com`** still has no usable password (it
    pre-dates password auth, LAST SESSION of 7 Sep): Sign in → **Forgot
    password** → the emailed link in Chrome → `/login/reset` → set one.
@@ -172,6 +197,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   verified in code (`land()` → `/onboarding` for a profile-less account) and
   is unchanged. Also this day: the 7 Sep commits pulled onto this machine, and
   the dependency sync recorded at the top of this file (corepack pnpm, not npm).
+  Same day, after the user hit it: `/auth/confirm`'s failed-exchange bounce for
+  a signup `code` now says the address is confirmed and to sign in — which is
+  what is true once a code exists, and a resend would send nothing. Recovery's
+  bounce is unchanged.
 - **Auth email links FIXED, 7 Sep 2026 (third session), no step number.** Every
   link Supabase emailed had been dead since 24 Aug: `/auth/confirm` read
   `token_hash`, the stock template sends a PKCE `code`. The route now takes both

@@ -69,12 +69,20 @@ export function AuthShell({
 
       {toast && (
         /* role=alert so the message is announced, not just drawn — the old toast
-           was a plain div, so a screen-reader user got no error at all */
+           was a plain div, so a screen-reader user got no error at all.
+
+           AN EXPLICIT WIDTH, NOT A MAX (8 Sep 2026). A fixed element at left:50%
+           with only a max-width gets shrink-to-fit sizing, and shrink-to-fit is
+           bounded by the room between `left` and the viewport edge — half the
+           screen. So the toast never reached 380px: on a phone it wrapped a
+           two-line sentence into four and rounded into a blob over the footer.
+           The prototype never saw this because its toasts are one-liners; ours
+           carry Supabase's sentences. 44px is the shell's own side padding. */
         <div
           role="alert"
           aria-live="assertive"
           className={cn(
-            "fixed bottom-7 left-1/2 z-40 max-w-[380px] -translate-x-1/2",
+            "fixed bottom-7 left-1/2 z-40 w-[min(380px,calc(100vw-44px))] -translate-x-1/2",
             "rounded-full border-[1.5px] border-destructive bg-[var(--el)]",
             "px-[18px] py-[11px] text-center text-[13px] font-bold text-[#FAFAFA]",
             "shadow-[0_10px_30px_-8px_rgba(0,0,0,.7)] backdrop-blur-[10px]"

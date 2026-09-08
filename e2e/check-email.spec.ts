@@ -6,8 +6,8 @@ import { test, expect } from "@playwright/test";
  * Everything here is a RENDER check: the screen is reached with a query string,
  * so no account and no email are involved, and nothing below ever presses
  * "Resend link" — a real resend spends the project's shared email quota
- * (CLAUDE.md Rule 15), and the timer that gates it is driven with Playwright's
- * clock instead of waited out.
+ * (CLAUDE.md Rule 15). The countdown that gates it is waited out in REAL time;
+ * see the note on that test.
  */
 
 const ADDRESS = "someone@example.com";
@@ -37,15 +37,28 @@ test.describe("check your email", () => {
   });
 
   test("the resend control counts down before it can be pressed", async ({ page }) => {
-    await page.clock.install();
+    /* THIRTY REAL SECONDS, ON PURPOSE. Playwright's fake clock was tried and
+       both of its calls failed the same way: fastForward fires each due timer
+       at most once by design, and runFor(31 s) left the countdown at 0:24 —
+       this countdown is a one-second setTimeout that re-arms itself in an
+       effect, i.e. only after React has rendered, which is after the clock's
+       run has already returned. Neither call can reach a timer that does not
+       exist yet. Real time is slower and cannot be fooled; the cost is one
+       half-minute in a suite that is otherwise seconds. */
+    test.setTimeout(90_000);
     await page.goto(`/login/check-email?email=${encodeURIComponent(ADDRESS)}&mode=verify`);
 
     /* while the timer runs there is no button — text, not a disabled control */
-    await expect(page.getByRole("status")).toContainText(/Resend in 0:\d\d/);
+    const status = page.getByRole("status");
+    await expect(status).toContainText(/Resend in 0:\d\d/);
     await expect(page.getByRole("button", { name: "Resend link" })).toHaveCount(0);
 
-    await page.clock.runFor(31_000);
-    await expect(page.getByRole("button", { name: "Resend link" })).toBeVisible();
+    /* the number moves — that is the client running, not the server's 0:30 */
+    await expect(status).toContainText(/0:2\d/, { timeout: 15_000 });
+
+    await expect(page.getByRole("button", { name: "Resend link" })).toBeVisible({
+      timeout: 45_000,
+    });
     /* and it is NOT pressed here — see the file comment */
   });
 
