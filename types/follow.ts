@@ -1,3 +1,4 @@
+import type { ProfileRole } from "@/types/profile";
 import type { TenantType } from "@/types/tenant";
 
 /** Step 15 — follows. A person follows a business; the count is public, the
@@ -16,12 +17,15 @@ export interface FollowedTenant {
 }
 
 /** One person following a business — the Followers sheet's row, readable by
- *  the business's members only. */
+ *  the business's members only. `isArtist` is the plan's word, read once per
+ *  list through `artist_ids`, so the badge on a follower's face is the same
+ *  badge their own page wears. */
 export interface TenantFollower {
   followId: string;
   userId: string;
   name: string;
-  role: "dancer" | "trainer" | "studio";
+  role: ProfileRole;
+  isArtist: boolean;
   city: string | null;
   /** the face the sheet draws — the same one a person's Followers sheet draws (B6) */
   avatarPath: string | null;

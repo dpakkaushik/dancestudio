@@ -92,10 +92,10 @@ function Move-Session($sessionId, $hoursAgo, $lenH) {
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $city = "Chandigarh"   # a city the demo world does not use, so the boards are ours
-$owner = New-EmailUser "st-owner-$stamp@example.com" "Stat Owner $stamp" "studio" $city
-$teacher = New-EmailUser "st-teach-$stamp@example.com" "Stat Teacher $stamp" "trainer" $city
-$dancer = New-EmailUser "st-dancer-$stamp@example.com" "Stat Dancer $stamp" "dancer" $city
-$other = New-EmailUser "st-other-$stamp@example.com" "Stat Other $stamp" "dancer" $city
+$owner = New-EmailUser "st-owner-$stamp@example.com" "Stat Owner $stamp" "org" $city
+$teacher = New-EmailUser "st-teach-$stamp@example.com" "Stat Teacher $stamp" "user" $city
+$dancer = New-EmailUser "st-dancer-$stamp@example.com" "Stat Dancer $stamp" "user" $city
+$other = New-EmailUser "st-other-$stamp@example.com" "Stat Other $stamp" "user" $city
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Stat Proof Studio $stamp"; p_type = "studio"; p_area = "Sector 17"; p_city = $city }
 
 try {

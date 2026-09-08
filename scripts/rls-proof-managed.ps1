@@ -96,9 +96,9 @@ function Titles($rows) { return (@($rows | ForEach-Object { $_.title }) | Sort-O
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "mng-owner-$stamp@example.com" "Owner $stamp" "studio"
-$trainer = New-EmailUser "mng-trainer-$stamp@example.com" "Trainer $stamp" "trainer"
-$stranger = New-EmailUser "mng-stranger-$stamp@example.com" "Stranger $stamp" "dancer"
+$owner = New-EmailUser "mng-owner-$stamp@example.com" "Owner $stamp" "org"
+$trainer = New-EmailUser "mng-trainer-$stamp@example.com" "Trainer $stamp" "user"
+$stranger = New-EmailUser "mng-stranger-$stamp@example.com" "Stranger $stamp" "user"
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Managed A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Managed B $stamp"; p_type = "trainer_business"; p_area = "Baner"; p_city = "Pune" }
 Add-Member $ta.id $trainer.id "trainer" $owner.id

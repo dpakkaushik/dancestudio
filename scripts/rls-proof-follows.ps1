@@ -77,10 +77,10 @@ function Count-Of($headers, $tenantId) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$ownerA = New-EmailUser "follow-ownera-$stamp@example.com" "Owner A $stamp" "studio"
-$ownerB = New-EmailUser "follow-ownerb-$stamp@example.com" "Owner B $stamp" "studio"
-$l1 = New-EmailUser "follow-l1-$stamp@example.com" "Learner One $stamp" "dancer"
-$l2 = New-EmailUser "follow-l2-$stamp@example.com" "Learner Two $stamp" "dancer"
+$ownerA = New-EmailUser "follow-ownera-$stamp@example.com" "Owner A $stamp" "org"
+$ownerB = New-EmailUser "follow-ownerb-$stamp@example.com" "Owner B $stamp" "org"
+$l1 = New-EmailUser "follow-l1-$stamp@example.com" "Learner One $stamp" "user"
+$l2 = New-EmailUser "follow-l2-$stamp@example.com" "Learner Two $stamp" "user"
 
 $ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Follow Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }

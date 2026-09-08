@@ -63,9 +63,9 @@ $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $tag = "Zq$stamp"   # a token no real row carries, so every match is ours
-$ownerA = New-EmailUser "srch-a-$stamp@example.com" "Owner A $stamp" "studio"
-$ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "studio"
-$dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "dancer"
+$ownerA = New-EmailUser "srch-a-$stamp@example.com" "Owner A $stamp" "org"
+$ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "org"
+$dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
 $ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "$tag Studio Kothrud"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "$tag Private Hall"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null

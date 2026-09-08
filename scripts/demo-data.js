@@ -24,8 +24,10 @@
  * world obeys every rule the real one does: consent is real, capacity is real,
  * a waitlist is a real waitlist. The service role is used for exactly three
  * things a user cannot legally do: creating the accounts, back-dating a session
- * so a past class exists, and standing in for the payment webhook
- * (`apply_captured_payment`) so the money screens have real rows.
+ * so a past class exists, standing in for the payment webhook
+ * (`apply_captured_payment`) so the money screens have real rows, and — since
+ * 8 Sep 2026 — standing in for the platform admin who verifies the two demo
+ * organizations, so their studios are public.
  *
  * The cast is the prototype's own (Bounce Dance Academy, EEE Crew, Rhea
  * Kapoor…), so demo data is recognisable as demo data at a glance.
@@ -121,16 +123,29 @@ async function seed() {
 
   /* ── people ── */
   console.log("People");
-  const owner = await makeUser("owner", "Vikram Bhatt", "studio", "New Delhi");
-  const owner2 = await makeUser("studio2", "Isha Dutta", "studio", "Pune");
-  const artist = await makeUser("artist", "Meera Grewal", "trainer", "New Delhi");
-  const trainer = await makeUser("trainer", "Aditya Pillai", "trainer", "New Delhi");
-  const rhea = await makeUser("rhea", "Rhea Kapoor", "dancer", "Pune");
-  const zaid = await makeUser("zaid", "Zaid Khan", "dancer", "Pune");
-  const aki = await makeUser("aki", "Aki Sharma", "dancer", "Pune");
-  const kabir = await makeUser("kabir", "Kabir Mehta", "dancer", "New Delhi");
+  /* two kinds of account since 8 Sep 2026: a person ("user") or an organization ("org") */
+  const owner = await makeUser("owner", "Vikram Bhatt", "org", "New Delhi");
+  const owner2 = await makeUser("studio2", "Isha Dutta", "org", "Pune");
+  const artist = await makeUser("artist", "Meera Grewal", "user", "New Delhi");
+  const trainer = await makeUser("trainer", "Aditya Pillai", "user", "New Delhi");
+  const rhea = await makeUser("rhea", "Rhea Kapoor", "user", "Pune");
+  const zaid = await makeUser("zaid", "Zaid Khan", "user", "Pune");
+  const aki = await makeUser("aki", "Aki Sharma", "user", "Pune");
+  const kabir = await makeUser("kabir", "Kabir Mehta", "user", "New Delhi");
   const everyone = [owner, owner2, artist, trainer, rhea, zaid, aki, kabir];
   everyone.forEach((u) => log(`${u.name} · ${u.email}`));
+
+  /* ── who is what (8 Sep 2026): Pro is the PLAN, and an organization is verified before its studios are public ── */
+  await rpc(artist.h, "activate_artist_plan", { p_plan: "yearly" });
+  await rpc(trainer.h, "activate_artist_plan", { p_plan: "yearly" });
+  log(`${artist.name} and ${trainer.name} took the Artist plan (a yearly period at Rs 0 — the pilot)`);
+  for (const [o, city] of [[owner, "New Delhi"], [owner2, "Pune"]]) {
+    const handle = o.name.toLowerCase().replace(/[^a-z]/g, "");
+    await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: city, p_age: null, p_about: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }], p_styles: [], p_phone: null });
+    /* the service role stands in for the admin here, exactly as it stands in for the webhook below */
+    await patch(H_SERVICE, `profiles?id=eq.${o.id}`, { verified_at: new Date().toISOString() });
+  }
+  log(`${owner.name} and ${owner2.name} are verified organizations — their studios are born public`);
 
   /* ── businesses ── */
   console.log("\nBusinesses");

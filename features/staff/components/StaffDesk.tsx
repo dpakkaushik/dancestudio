@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { KIND_WORD, kindOf } from "@/types/profile";
 
 import { useState, useSyncExternalStore } from "react";
 import { QRBlock } from "@/components/ui/QRBlock";
@@ -200,7 +201,7 @@ export function StaffDesk({
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: LEVEL_TINT[level] ?? SUB }}>{level} · {MEMBER_ROLE_WORD[m.role]}</span>
-                  <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--muted)" }}>· {m.profileRole === "trainer" ? "Artist" : m.profileRole === "studio" ? "Studio owner" : "Dancer"}</span>
+                  <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--muted)" }}>· {m.profileRole ? KIND_WORD[kindOf(m.profileRole, m.isArtist)] : "User"}</span>
                   {m.city ? <span style={{ fontSize: 10, color: SUB }}>· {m.city}</span> : null}
                 </div>
                 <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>{MEMBER_GRANTS[m.role]}</div>

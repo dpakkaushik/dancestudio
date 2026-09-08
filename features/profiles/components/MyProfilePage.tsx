@@ -15,7 +15,7 @@ import type { PublicPerson } from "@/repositories/publicPerson";
 import type { PersonFollowRow } from "@/repositories/follows";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import type { FollowedTenant } from "@/types/follow";
-import { ROLE_BADGE, memberNoWords, type Profile, type SocialLink } from "@/types/profile";
+import { KIND_BADGE, kindOf, memberNoWords, type Profile, type SocialLink } from "@/types/profile";
 import { ProfileShare } from "./ProfileShare";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { NotificationPrefs } from "@/types/notification";
@@ -80,6 +80,7 @@ export function MyProfilePage({
   prefs,
   business,
   plan,
+  isAdmin = false,
 }: {
   person: PublicPerson;
   followers: PersonFollowRow[];
@@ -93,10 +94,14 @@ export function MyProfilePage({
   business: Tenant | null;
   /** the Artist plan, for the settings sheet's switch */
   plan: ArtistPlan | null;
+  /** a platform admin gets the verification queue as a row in the settings sheet */
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const { profile } = person;
-  const ring = ROLE_RING[profile.role];
+  /* the KIND is the plan's answer as much as the role's: an artist while the plan is live */
+  const kind = kindOf(profile.role, Boolean(plan?.active));
+  const ring = ROLE_RING[kind];
   const RC = ring[1];
   const face = photoUrl(profile.avatarPath);
   const followingN = followingPeople.length + followingTenants.length;
@@ -114,7 +119,7 @@ export function MyProfilePage({
       the address is its open state — a state seeded at mount would never see the
       gear, because the gear links to the page it is already on. */
   const settingsOpen = useSearchParams().get("settings") === "1";
-  const [followSeg, setFollowSeg] = useState<"All" | "Dancers" | "Artists" | "Studios">("All");
+  const [followSeg, setFollowSeg] = useState<"All" | "Users" | "Artists" | "Organizations">("All");
 
   const fire = (m: string) => {
     setToast(m);
@@ -139,7 +144,7 @@ export function MyProfilePage({
   const socials = profile.socials;
   const RK = place?.place ?? null;
   const TT = RK ? tierOf(RK) : null;
-  const seg = profile.role === "trainer" ? "artist" : "dancer";
+  const seg = kind === "artist" ? "artist" : "dancer";
 
   const bigWhite: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 42, borderRadius: 12, fontWeight: 900, fontSize: 12.5, boxSizing: "border-box", padding: "0 6px", whiteSpace: "nowrap", overflow: "hidden", background: "var(--text)", color: "var(--solid)", border: "1.5px solid var(--text)", textDecoration: "none" };
   const corner: React.CSSProperties = { width: 36, height: 36, borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,.42)", color: "#fff", border: "1px solid rgba(255,255,255,.28)", textDecoration: "none" };
@@ -147,12 +152,12 @@ export function MyProfilePage({
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
     followList === "followers"
-      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: f.role === "trainer" ? "artist" : f.role === "studio" ? "studio owner" : "dancer", glyph: (f.role === "trainer" ? "artist" : f.role === "studio" ? "studio" : "dancer") as FollowGlyph, tint: followTint(f.role), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
+      ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
       : [
-          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: f.role === "trainer" ? "artist" : f.role === "studio" ? "studio owner" : "dancer", glyph: (f.role === "trainer" ? "artist" : f.role === "studio" ? "studio" : "dancer") as FollowGlyph, tint: followTint(f.role), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "studio" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
+          ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
+          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "org" : "artist", glyph: (t.tenantType === "studio" ? "org" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
         ];
-  const segOf = (kind: string) => (kind === "dancer" ? "Dancers" : kind === "artist" ? "Artists" : "Studios");
+  const segOf = (kind: string) => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : "Organizations");
   const shownFollowRows = followRows.filter((r) => followSeg === "All" || segOf(r.kind) === followSeg);
 
   return (
@@ -184,7 +189,7 @@ export function MyProfilePage({
 
           {/* ── WHO, IN THE ORDER YOU READ A PERSON (10632) ── */}
           <div style={{ padding: "10px 16px 2px" }}>
-            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{ROLE_BADGE[profile.role]}</div>
+            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{KIND_BADGE[kind]}</div>
             <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 3 }}>{memberNoWords(profile.memberNo)}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.fullName}</span>
@@ -463,7 +468,7 @@ export function MyProfilePage({
             <span style={{ fontSize: 13, color: SUB, fontWeight: 700 }}>{followRows.length}</span>
           </div>
           <div style={{ display: "flex", gap: 5, marginBottom: 14, overflowX: "auto", scrollbarWidth: "none" }}>
-            {(["All", "Dancers", "Artists", "Studios"] as const).map((s) => (
+            {(["All", "Users", "Artists", "Organizations"] as const).map((s) => (
               <button type="button" key={s} onClick={() => setFollowSeg(s)} aria-pressed={followSeg === s} style={{ flex: "0 0 auto", textAlign: "center", padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, whiteSpace: "nowrap", background: followSeg === s ? PINK : CARD, color: followSeg === s ? "#fff" : SUB, border: "none", fontFamily: "inherit", boxShadow: followSeg === s ? "0 3px 10px rgba(90,200,250,.35)" : "none" }}>{s}</button>
             ))}
           </div>
@@ -493,6 +498,7 @@ export function MyProfilePage({
         /* leaving takes the parameter back off */
         onClose={() => router.replace("/profile")}
         role={profile.role}
+        isAdmin={isAdmin}
         business={business}
         plan={plan}
         prefs={prefs}

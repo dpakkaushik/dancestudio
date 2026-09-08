@@ -15,7 +15,7 @@ export interface FollowedTile {
 }
 
 const shelf: React.CSSProperties = { fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.2, fontFamily: DOS_DISPLAY };
-const TINT: Record<FollowedKind, string> = { studio: DOS_TINT.studio, artist: DOS_TINT.trainer };
+const TINT: Record<FollowedKind, string> = { studio: DOS_TINT.org, artist: DOS_TINT.artist };
 
 /** "Followed by you" (prototype FollowedRow 4112-4144), heading the Studios and
  *  Artists tabs for a signed-in person: the count beside the heading, then a

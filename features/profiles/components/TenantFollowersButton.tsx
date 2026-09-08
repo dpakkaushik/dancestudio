@@ -7,6 +7,7 @@ import { DOS_DISPLAY, INK, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { TenantFollower } from "@/types/follow";
 import { RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { KIND_WORD, kindOf } from "@/types/profile";
 
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
 const figure: React.CSSProperties = {
@@ -22,10 +23,9 @@ const figure: React.CSSProperties = {
 
 const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n));
 
-const glyphOf = (role: TenantFollower["role"]): FollowGlyph =>
-  role === "trainer" ? "artist" : role === "studio" ? "studio" : "dancer";
-const wordOf = (role: TenantFollower["role"]) =>
-  role === "trainer" ? "artist" : role === "studio" ? "studio owner" : "dancer";
+/* the KIND is the badge, the glyph and the word at once (8 Sep 2026) */
+const kindOfFollower = (f: TenantFollower): FollowGlyph => kindOf(f.role, f.isArtist);
+const wordOf = (f: TenantFollower) => KIND_WORD[kindOf(f.role, f.isArtist)].toLowerCase();
 
 /** THE FIGURE BECOMES A DOOR, BUT ONLY FOR THE OWNER (parity audit B6 —
  *  S_profiletab 11069, 11335). `findTenantFollowers` has existed since Step 15
@@ -66,7 +66,7 @@ export function TenantFollowersButton({ count, followers }: { count: number; fol
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {followers.map((f) => {
-              const tint = followTint(f.role);
+              const tint = followTint(kindOfFollower(f));
               const face = photoUrl(f.avatarPath);
               return (
                 <Link
@@ -79,12 +79,12 @@ export function TenantFollowersButton({ count, followers }: { count: number; fol
                     <span style={{ width: 46, height: 46, borderRadius: 23, display: "flex", overflow: "hidden", background: `linear-gradient(135deg,${tint},${tint}88)`, alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17 }}>
                       {face ? <Image src={face} alt="" width={46} height={46} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(f.name)}
                     </span>
-                    <RoleBadge kind={glyphOf(f.role)} tint={tint} />
+                    <RoleBadge kind={kindOfFollower(f)} tint={tint} />
                   </span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: "block", fontWeight: 750, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                     <span style={{ display: "block", fontSize: 11.5, color: tint, fontWeight: 700, textTransform: "capitalize" }}>
-                      {[wordOf(f.role), f.city].filter(Boolean).join(" · ")}
+                      {[wordOf(f), f.city].filter(Boolean).join(" · ")}
                     </span>
                   </span>
                   <span style={{ fontSize: 16, color: MUTED }}>›</span>

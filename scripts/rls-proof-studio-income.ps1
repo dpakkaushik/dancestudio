@@ -128,11 +128,11 @@ function M($inc, $key, $field) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "income-owner-$stamp@example.com" "Owner $stamp" "studio"
-$trainer = New-EmailUser "income-trainer-$stamp@example.com" "Trainer $stamp" "trainer"
-$rival = New-EmailUser "income-rival-$stamp@example.com" "Rival $stamp" "studio"
+$owner = New-EmailUser "income-owner-$stamp@example.com" "Owner $stamp" "org"
+$trainer = New-EmailUser "income-trainer-$stamp@example.com" "Trainer $stamp" "user"
+$rival = New-EmailUser "income-rival-$stamp@example.com" "Rival $stamp" "org"
 $learners = @()
-foreach ($i in 0..6) { $learners += New-EmailUser "income-l$i-$stamp@example.com" "Learner $i $stamp" "dancer" }
+foreach ($i in 0..6) { $learners += New-EmailUser "income-l$i-$stamp@example.com" "Learner $i $stamp" "user" }
 
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Income Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }

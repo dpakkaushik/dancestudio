@@ -62,11 +62,11 @@ function New-EmailUser($email, $name, $role) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "staffproof-owner-$stamp@example.com" "Owner $stamp" "studio"
-$joiner = New-EmailUser "staffproof-join-$stamp@example.com" "Vikram $stamp" "trainer"
-$rival = New-EmailUser "staffproof-rival-$stamp@example.com" "Rival $stamp" "studio"
+$owner = New-EmailUser "staffproof-owner-$stamp@example.com" "Owner $stamp" "org"
+$joiner = New-EmailUser "staffproof-join-$stamp@example.com" "Vikram $stamp" "user"
+$rival = New-EmailUser "staffproof-rival-$stamp@example.com" "Rival $stamp" "org"
 # checks 16-17: a staff assistant whose seat is pulled out from under them
-$ghost = New-EmailUser "staffproof-ghost-$stamp@example.com" "Priya $stamp" "dancer"
+$ghost = New-EmailUser "staffproof-ghost-$stamp@example.com" "Priya $stamp" "user"
 
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Staff Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }

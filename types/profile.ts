@@ -1,5 +1,15 @@
-/** Mirrors the prototype's __DOSROLE: dancer | trainer | studio. */
-export type ProfileRole = "dancer" | "trainer" | "studio";
+/** Who an account IS (8 Sep 2026): a person, or an organization that runs
+ *  studios. The prototype's dancer | trainer | studio is gone at the user's
+ *  instruction — "Pro" is the artist plan, a ROW on `artist_plans`, never a role
+ *  again. Chosen once at onboarding; only DanceOS may change it afterwards. */
+export type ProfileRole = "user" | "org";
+
+/** What a screen PRINTS beside a name. The role says person-or-organization;
+ *  a live plan is what makes a person an artist, so the word needs both. */
+export type PersonKind = "user" | "artist" | "org";
+
+export const kindOf = (role: ProfileRole, isArtist: boolean): PersonKind =>
+  role === "org" ? "org" : isArtist ? "artist" : "user";
 
 /** One link where else to find a person (S_profiletab 10760): a known
  *  platform's name, or a short custom label, and the URL. Order is the
@@ -10,7 +20,7 @@ export interface SocialLink {
 }
 
 export interface Profile {
-  /** a path in the public media bucket, or null for initials on the role's metal */
+  /** a path in the public media bucket, or null for initials on the kind's metal */
   avatarPath?: string | null;
   id: string;
   fullName: string;
@@ -25,14 +35,18 @@ export interface Profile {
   styles: string[];
   /** the account number beside the role — "000482" (10641) */
   memberNo: number | null;
-  /** set by DanceOS after KYC — the tick (10678) */
+  /** set by DanceOS — the tick (10678). On an organization it is the admin's
+   *  verification, and everything the organization runs is public only once it is set */
   verifiedAt: string | null;
   /** the Call button's number (10879) — an artist's own */
   phone: string | null;
 }
 
-/** the prototype's own words for what somebody is (10639) */
-export const ROLE_BADGE: Record<ProfileRole, string> = { dancer: "DANCER", trainer: "ARTIST", studio: "STUDIO OWNER" };
+/** the word over the name (10639) — by KIND, because the badge on an artist is
+ *  the plan's to give and the badge on an organization is what it is */
+export const KIND_BADGE: Record<PersonKind, string> = { user: "USER", artist: "ARTIST", org: "ORGANIZATION" };
+/** the same three, in a sentence */
+export const KIND_WORD: Record<PersonKind, string> = { user: "User", artist: "Artist", org: "Organization" };
 
 /** the account number as the prototype prints it: six digits, zero-padded */
 export const memberNoWords = (n: number | null | undefined): string => (n == null ? "" : String(n).padStart(6, "0"));

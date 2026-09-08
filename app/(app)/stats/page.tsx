@@ -7,6 +7,7 @@ import { findMyCalendar } from "@/repositories/calendar";
 import { findProfileById } from "@/repositories/profiles";
 import { findChart, findMyHistory, findMyPlace, findMyStats } from "@/repositories/stats";
 import { parseChartMetric, type ChartSegment } from "@/types/stats";
+import { findMyArtistPlan } from "@/repositories/plans";
 
 const TABS = ["record", "history", "charts"] as const;
 const SEGMENTS: ChartSegment[] = ["dancer", "artist", "studio", "crew"];
@@ -38,7 +39,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   const nowIso = new Date().toISOString();
   const aheadIso = new Date(new Date(nowIso).getTime() + 120 * DAY_MS).toISOString();
 
-  const [profile, stats, history, upcoming, chart, myPlace, boardPlace] = await Promise.all([
+  const [profile, stats, history, upcoming, chart, myPlace, boardPlace, plan] = await Promise.all([
     findProfileById(supabase, user.id),
     findMyStats(supabase),
     findMyHistory(supabase),
@@ -48,6 +49,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
     /* where you stand on THIS board — a people board only (the prototype pins a
        "you" row on Dancers and Artists, 9674) */
     tab === "charts" && (segment === "dancer" || segment === "artist") ? findMyPlace(supabase, segment, city) : Promise.resolve(null),
+    findMyArtistPlan(supabase),
   ]);
 
   /* the styles a board can be narrowed by: the ones its rows carry, plus the
@@ -57,7 +59,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   return (
     <StatsScreen
       name={profile?.fullName ?? "You"}
-      role={profile?.role ?? "dancer"}
+      isArtist={Boolean(plan?.active)}
       stats={stats}
       history={history}
       upcoming={upcoming.filter((e) => new Date(e.startsAt).getTime() >= new Date(nowIso).getTime())}

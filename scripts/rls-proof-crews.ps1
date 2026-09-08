@@ -77,11 +77,11 @@ $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$lead = New-EmailUser "crew-lead-$stamp@example.com" "Crew Lead $stamp" "dancer"
-$m1 = New-EmailUser "crew-m1-$stamp@example.com" "Member One $stamp" "dancer"
-$m2 = New-EmailUser "crew-m2-$stamp@example.com" "Member Two $stamp" "dancer"
-$out = New-EmailUser "crew-out-$stamp@example.com" "Outsider $stamp" "dancer"
-$owner = New-EmailUser "crew-owner-$stamp@example.com" "Owner $stamp" "studio"
+$lead = New-EmailUser "crew-lead-$stamp@example.com" "Crew Lead $stamp" "user"
+$m1 = New-EmailUser "crew-m1-$stamp@example.com" "Member One $stamp" "user"
+$m2 = New-EmailUser "crew-m2-$stamp@example.com" "Member Two $stamp" "user"
+$out = New-EmailUser "crew-out-$stamp@example.com" "Outsider $stamp" "user"
+$owner = New-EmailUser "crew-owner-$stamp@example.com" "Owner $stamp" "org"
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Crew Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 
 try {

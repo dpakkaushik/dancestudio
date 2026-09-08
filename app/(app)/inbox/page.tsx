@@ -9,6 +9,8 @@ import { findReceivedEnquiries, findSentEnquiries } from "@/repositories/enquiri
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyTenants } from "@/repositories/tenants";
+import { findMyArtistPlan } from "@/repositories/plans";
+import { kindOf } from "@/types/profile";
 
 const stampNowIso = (): string => new Date().toISOString();
 
@@ -39,7 +41,7 @@ export default async function InboxPage() {
     redirect("/login");
   }
 
-  const [profile, tenants] = await Promise.all([findProfileById(supabase, user.id), findMyTenants(supabase)]);
+  const [profile, tenants, plan] = await Promise.all([findProfileById(supabase, user.id), findMyTenants(supabase), findMyArtistPlan(supabase)]);
   const tenantIds = tenants.map((t) => t.id);
 
   const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesIn, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut] = await Promise.all([
@@ -185,7 +187,7 @@ export default async function InboxPage() {
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
-  const accent = DOS_TINT[profile?.role ?? "dancer"] ?? DOS_TINT.dancer;
+  const accent = DOS_TINT[kindOf(profile?.role ?? "user", Boolean(plan?.active))];
 
   return (
     <InboxScreen

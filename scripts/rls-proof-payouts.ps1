@@ -69,11 +69,11 @@ function Add-Member($tenantId, $userId, $memberRole, $byUser) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "payproof-owner-$stamp@example.com" "Owner $stamp" "studio"
-$artist = New-EmailUser "payproof-artist-$stamp@example.com" "Nikhil $stamp" "trainer"
-$trainer = New-EmailUser "payproof-trainer-$stamp@example.com" "Trainer $stamp" "trainer"
-$ghost = New-EmailUser "payproof-ghost-$stamp@example.com" "Priya $stamp" "dancer"
-$rival = New-EmailUser "payproof-rival-$stamp@example.com" "Rival $stamp" "studio"
+$owner = New-EmailUser "payproof-owner-$stamp@example.com" "Owner $stamp" "org"
+$artist = New-EmailUser "payproof-artist-$stamp@example.com" "Nikhil $stamp" "user"
+$trainer = New-EmailUser "payproof-trainer-$stamp@example.com" "Trainer $stamp" "user"
+$ghost = New-EmailUser "payproof-ghost-$stamp@example.com" "Priya $stamp" "user"
+$rival = New-EmailUser "payproof-rival-$stamp@example.com" "Rival $stamp" "org"
 
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Pay Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }

@@ -43,7 +43,7 @@ export function SubscriptionScreen({ plan, isStudioOwner }: { plan: ArtistPlan |
   const active = Boolean(plan?.active);
 
   return (
-    <BizPage title="Subscription" sub={isStudioOwner ? "DanceOS Pro for studios" : "DanceOS Pro · Artist — one profile, more tools"} grad="linear-gradient(135deg,#F59E0B,#EC4899)">
+    <BizPage title="Subscription" sub={isStudioOwner ? "DanceOS Pro for organizations" : "DanceOS Pro · Artist — one profile, more tools"} grad="linear-gradient(135deg,#F59E0B,#EC4899)">
       {active && plan ? (
         <>
           {/* the active plan — the end date is the rule: nothing schedules past it (16951-16967) */}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EventCard } from "@/features/events/components/EventCard";
-import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, tintForTenantType, DOS_UI, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
 import { EV_TINT } from "@/types/event";
 import { MANAGED_FILTERS, type ManagedKind, type ManagedListing } from "@/types/managed";
 import type { Tenant } from "@/types/tenant";
@@ -21,7 +21,7 @@ const STATUS_TONE: Record<string, string> = { draft: "#F59E0B", published: "#22C
 
 function Meta({ listing, showBusiness }: { listing: ManagedListing; showBusiness: boolean }) {
   const status = listing.kind === "class" ? listing.danceClass.status : listing.event.status;
-  const tint = listing.kind === "class" ? DOS_TINT[listing.tenant.type === "studio" ? "studio" : "trainer"] : EV_TINT[listing.event.cat];
+  const tint = listing.kind === "class" ? tintForTenantType(listing.tenant.type) : EV_TINT[listing.event.cat];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 2px 6px", fontSize: 10.5, fontWeight: 800, color: SUB, minWidth: 0 }}>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: STATUS_TONE[status] ?? SUB, flexShrink: 0 }}>

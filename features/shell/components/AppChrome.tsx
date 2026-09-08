@@ -130,6 +130,7 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/crews\/[^/]+\/manage$/, "Crew"],
   [/^\/crew\/[^/]+$/, "Crew"],
   [/^\/notifications$/, "Notifications"],
+  [/^\/admin\/verifications$/, "Verification queue"],
   [/^\/person\/[^/]+$/, "Student record"],
   [/^\/managed$/, "What you manage"],
   [/^\/join\/[^/]+$/, "Join the team"],

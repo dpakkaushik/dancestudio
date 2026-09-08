@@ -88,11 +88,11 @@ function Money-Of($headers, $classId) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "earnproof-owner-$stamp@example.com" "Owner $stamp" "studio"
-$trainer = New-EmailUser "earnproof-trainer-$stamp@example.com" "Trainer $stamp" "trainer"
-$rival = New-EmailUser "earnproof-rival-$stamp@example.com" "Rival $stamp" "studio"
+$owner = New-EmailUser "earnproof-owner-$stamp@example.com" "Owner $stamp" "org"
+$trainer = New-EmailUser "earnproof-trainer-$stamp@example.com" "Trainer $stamp" "user"
+$rival = New-EmailUser "earnproof-rival-$stamp@example.com" "Rival $stamp" "org"
 $learners = @()
-foreach ($i in 1..5) { $learners += New-EmailUser "earnproof-l$i-$stamp@example.com" "Learner $i $stamp" "dancer" }
+foreach ($i in 1..5) { $learners += New-EmailUser "earnproof-l$i-$stamp@example.com" "Learner $i $stamp" "user" }
 
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Earn Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
@@ -127,7 +127,7 @@ try {
   # 2. THE DEPARTURE FROM THE PROTOTYPE: five seats at Rs 300 is Rs 1500 either
   #    way today - so make them disagree. One seat is comped by hand (an order
   #    that never captured), and price x seats would now over-count by Rs 300.
-  $comped = New-EmailUser "earnproof-comp-$stamp@example.com" "Comped $stamp" "dancer"
+  $comped = New-EmailUser "earnproof-comp-$stamp@example.com" "Comped $stamp" "user"
   $co = Rpc (Api $comped.token) "create_payment_order" @{ p_session_id = $sid }
   Rpc (Api $comped.token) "attach_provider_order" @{ p_order_id = $co.id; p_provider_order_id = "order_COMP$stamp" } | Out-Null
   $m1 = Money-Of (Api $owner.token) $cls.id

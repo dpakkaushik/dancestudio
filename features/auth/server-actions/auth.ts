@@ -19,7 +19,7 @@ export interface AuthActionState {
 
 const completeProfileSchema = z.object({
   fullName: z.string().trim().min(1, "Tell us your name").max(120),
-  role: z.enum(["dancer", "trainer", "studio"]),
+  role: z.enum(["user", "org"]),
   city: z.string().trim().max(120).optional(),
 });
 

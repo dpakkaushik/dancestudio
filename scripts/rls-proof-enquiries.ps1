@@ -81,11 +81,11 @@ $SEL = "select=id,tenant_id,from_user_id,type_key,status,enquiry_quotes(id,n,cos
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$ownerA = New-EmailUser "enq-ownera-$stamp@example.com" "Owner A $stamp" "studio"
-$staffA = New-EmailUser "enq-staffa-$stamp@example.com" "Staff A $stamp" "dancer"
-$ownerB = New-EmailUser "enq-ownerb-$stamp@example.com" "Artist B $stamp" "trainer"
-$l1 = New-EmailUser "enq-l1-$stamp@example.com" "Sender One $stamp" "dancer"
-$l2 = New-EmailUser "enq-l2-$stamp@example.com" "Bystander $stamp" "dancer"
+$ownerA = New-EmailUser "enq-ownera-$stamp@example.com" "Owner A $stamp" "org"
+$staffA = New-EmailUser "enq-staffa-$stamp@example.com" "Staff A $stamp" "user"
+$ownerB = New-EmailUser "enq-ownerb-$stamp@example.com" "Artist B $stamp" "user"
+$l1 = New-EmailUser "enq-l1-$stamp@example.com" "Sender One $stamp" "user"
+$l2 = New-EmailUser "enq-l2-$stamp@example.com" "Bystander $stamp" "user"
 
 $ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Enquiry Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Artist Business $stamp"; p_type = "trainer_business"; p_area = "Baner"; p_city = "Pune" }

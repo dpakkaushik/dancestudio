@@ -36,12 +36,18 @@ export const DOS_DISPLAY =
 export const DOS_UI =
   'var(--font-inter-tight), "Inter Tight", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
-/** Per-role accent — prototype DOS_TINT (line 2704). */
-export const DOS_TINT: Record<string, string> = {
-  studio: "#3B82F6",
-  trainer: "#EC4899",
-  dancer: "#5AC8FA",
+/** Per-KIND accent — prototype DOS_TINT (line 2704), re-keyed 8 Sep 2026 when
+ *  the roles became user | org and "artist" became the plan's word: an
+ *  organization wears the studio blue, an artist the artist pink, a user the
+ *  dancer cyan. Typed on PersonKind so a stale key is a compile error, not an
+ *  undefined colour. */
+export const DOS_TINT: Record<"user" | "artist" | "org", string> = {
+  org: "#3B82F6",
+  artist: "#EC4899",
+  user: "#5AC8FA",
 };
+/** a business wears its owner-kind's colour: a studio is an organization's, an artist page an artist's */
+export const tintForTenantType = (type: "studio" | "trainer_business"): string => (type === "studio" ? DOS_TINT.org : DOS_TINT.artist);
 
 export const BTN_STYLE: React.CSSProperties = {
   padding: "15px",

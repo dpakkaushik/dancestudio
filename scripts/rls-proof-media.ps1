@@ -82,9 +82,9 @@ function Remove-Object($token, $path) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$me = New-EmailUser "media-me-$stamp@example.com" "Media Me $stamp" "dancer"
-$other = New-EmailUser "media-other-$stamp@example.com" "Media Other $stamp" "dancer"
-$owner = New-EmailUser "media-owner-$stamp@example.com" "Media Owner $stamp" "studio"
+$me = New-EmailUser "media-me-$stamp@example.com" "Media Me $stamp" "user"
+$other = New-EmailUser "media-other-$stamp@example.com" "Media Other $stamp" "user"
+$owner = New-EmailUser "media-owner-$stamp@example.com" "Media Owner $stamp" "org"
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Media Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $crew = Rpc (Api $me.token) "create_crew" @{ p_name = "Media Crew $stamp"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
 $uploaded = @()

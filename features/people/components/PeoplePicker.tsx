@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { searchPeopleAction } from "@/features/people/server-actions/people";
 import { DOS_UI } from "@/lib/design/tokens";
-import type { Profile } from "@/types/profile";
+import { KIND_WORD, kindOf, type Profile } from "@/types/profile";
 
 /** SEARCH DANCEOS, THEN ASK THEM — lifted from the crew desk's add panel
  *  (prototype 16413-16447): the eyebrow, the search field with the glass, the
@@ -27,8 +27,6 @@ const hashOf = (s: string) => {
 };
 export const personGradient = (name: string): [string, string] => GRADS[hashOf(name) % GRADS.length];
 export const personInitials = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "D";
-
-const ROLE_WORD: Record<Profile["role"], string> = { dancer: "Dancer", trainer: "Artist", studio: "Studio" };
 
 const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
   if (e.key === "Enter" || e.key === " ") {
@@ -60,7 +58,7 @@ export function PeoplePicker({
 }) {
   const [q, setQ] = useState("");
   /* the answer remembers the term it answers, so a stale answer is never shown for a new term */
-  const [answer, setAnswer] = useState<{ term: string; people: Profile[]; error: string | null }>({ term: "", people: [], error: null });
+  const [answer, setAnswer] = useState<{ term: string; people: Array<Profile & { isArtist: boolean }>; error: string | null }>({ term: "", people: [], error: null });
   const excludeKey = exclude.join(",");
   const term = q.trim();
 
@@ -110,7 +108,7 @@ export function PeoplePicker({
       ) : (
         hits.map((p) => {
           const g = personGradient(p.fullName);
-          const sub = [ROLE_WORD[p.role], p.city].filter(Boolean).join(" · ");
+          const sub = [KIND_WORD[kindOf(p.role, p.isArtist)], p.city].filter(Boolean).join(" · ");
           return (
             <div
               role="button"

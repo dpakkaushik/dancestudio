@@ -97,11 +97,11 @@ $BKSEL = "select=id,event_id,user_id,kind,ticket_tier_id,entry_format,qty,entran
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$ownerA = New-EmailUser "ev-ownera-$stamp@example.com" "Owner A $stamp" "studio"
-$staffA = New-EmailUser "ev-staffa-$stamp@example.com" "Staff A $stamp" "dancer"
-$ownerB = New-EmailUser "ev-ownerb-$stamp@example.com" "Owner B $stamp" "studio"
-$l1 = New-EmailUser "ev-l1-$stamp@example.com" "Dancer One $stamp" "dancer"
-$l2 = New-EmailUser "ev-l2-$stamp@example.com" "Dancer Two $stamp" "dancer"
+$ownerA = New-EmailUser "ev-ownera-$stamp@example.com" "Owner A $stamp" "org"
+$staffA = New-EmailUser "ev-staffa-$stamp@example.com" "Staff A $stamp" "user"
+$ownerB = New-EmailUser "ev-ownerb-$stamp@example.com" "Owner B $stamp" "org"
+$l1 = New-EmailUser "ev-l1-$stamp@example.com" "Dancer One $stamp" "user"
+$l2 = New-EmailUser "ev-l2-$stamp@example.com" "Dancer Two $stamp" "user"
 
 $ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Event Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }

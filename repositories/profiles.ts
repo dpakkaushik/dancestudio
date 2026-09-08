@@ -111,22 +111,18 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
   }
 }
 
-/** The Artist tools switch (prototype 8850-8870): "Dancer is who you are; Artist
- *  is a TOOLSET on that same profile — never a second identity." The role is
- *  the person's own row, writable under Step 1's own-row policy; `id = me` is
- *  said out loud. A studio OWNER's role is not switched here (the prototype hides
- *  the strip on a studio, 8856). */
-export async function setMyRole(supabase: SupabaseClient, role: "dancer" | "trainer"): Promise<void> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    throw new Error("not signed in");
-  }
-  const { error } = await supabase.from("profiles").update({ role }).eq("id", user.id).is("deleted_at", null);
+/** WHO, AMONG THESE PEOPLE, IS AN ARTIST RIGHT NOW. The plan is a row on
+ *  artist_plans, own-rows under RLS, so the badge beside somebody ELSE's name
+ *  goes through the aggregate-only `artist_ids` (ids in, the live subset out).
+ *  One call per list, never one per row. Empty in, empty out, no round trip. */
+export async function findArtistIds(supabase: SupabaseClient, ids: string[]): Promise<Set<string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return new Set();
+  const { data, error } = await supabase.rpc("artist_ids", { p_ids: unique });
   if (error) {
-    throw new Error(`profiles.setRole failed: ${error.message}`);
+    throw new Error(`profiles.artistIds failed: ${error.message}`);
   }
+  return new Set(((data ?? []) as Array<string | { artist_ids: string }>).map((x) => (typeof x === "string" ? x : x.artist_ids)));
 }
 
 /** SEARCH DANCEOS (prototype 16413-16447): live profiles whose name contains the
@@ -137,7 +133,7 @@ export async function searchProfiles(
   supabase: SupabaseClient,
   term: string,
   excludeIds: string[] = []
-): Promise<Profile[]> {
+): Promise<Array<Profile & { isArtist: boolean }>> {
   const q = term.trim();
   if (q.length < 2) {
     return [];
@@ -157,8 +153,7 @@ export async function searchProfiles(
   if (error) {
     throw new Error(`profiles.search failed: ${error.message}`);
   }
-  return ((data ?? []) as ProfileRow[])
-    .filter((r) => !skip.has(r.id))
-    .slice(0, 8)
-    .map(toProfile);
+  const rows = ((data ?? []) as ProfileRow[]).filter((r) => !skip.has(r.id)).slice(0, 8);
+  const artists = await findArtistIds(supabase, rows.map((r) => r.id));
+  return rows.map((r) => ({ ...toProfile(r), isArtist: artists.has(r.id) }));
 }

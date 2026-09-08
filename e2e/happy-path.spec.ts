@@ -55,36 +55,49 @@ const ONE_PX_PNG = {
   buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
 };
 
-/** Walk the prototype's four onboarding screens (3781-3943): the name, the role
- *  tile and the city, Continue (the row is made and the photo picker appears —
- *  the photo is REQUIRED, so Continue names it until one is up), the styles
- *  grid, the socials (skipped), and "Open DanceOS →" off the Take-a-bow screen. */
-async function onboard(page: Page, first: string, last: string, role: string | null, city: string, style = "Hip-Hop") {
+/** Walk onboarding as it stands since 8 Sep 2026: WHO IS HERE first (User is
+ *  the default, Organization is a tap), ONE name, the city, Continue (the row is
+ *  made and the photo picker appears — the photo is REQUIRED, so Continue names
+ *  it until one is up), then a person's styles and optional links — or an
+ *  organization's REQUIRED links, the price of asking to be verified — and
+ *  "Open DanceOS →" off the bow. An organization's bow says it is in review and
+ *  files the verification request as it leaves. */
+async function onboard(page: Page, name: string, role: "User" | "Organization", city: string, style = "Hip-Hop") {
   await expect(page).toHaveURL(/\/onboarding/);
-  await page.getByPlaceholder("First name").fill(first);
-  await page.getByPlaceholder("Last name").fill(last);
-  if (role) {
-    await page.getByText(role, { exact: true }).click();
+  const isOrg = role === "Organization";
+  if (isOrg) {
+    await page.getByText("Organization", { exact: true }).click();
   }
+  await page.locator('input[name="name"]').fill(name);
   await page.locator('input[name="city"]').fill(city);
   // the button reads "Continue" once the name is in (prototype 3820-3821)
   await page.getByRole("button", { name: "Continue" }).click();
   // the row exists now, so the picker is offered — and the button says the photo is missing
-  await expect(page.getByRole("button", { name: "Add your profile photo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: isOrg ? "Add a logo or photo" : "Add your profile photo" })).toBeVisible();
   await expect(page.getByLabel("Add a photo")).toBeAttached();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
-  await expect(page.getByLabel("Your profile photo")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  // styles: the grid, one picked, and the button counts it
-  await expect(page.getByText("Your dance styles")).toBeVisible();
-  await page.getByRole("button", { name: style, exact: true }).click();
-  await page.getByRole("button", { name: "Continue · 1 style" }).click();
-  // socials: optional now
-  await expect(page.getByText("Your social links")).toBeVisible();
-  await page.getByRole("button", { name: "Skip for now →" }).click();
-  // take a bow
-  await expect(page.getByText(`Take a bow, ${first}!`)).toBeVisible();
-  await expect(page.getByText(style, { exact: true })).toBeVisible();
+  if (isOrg) {
+    // an organization is not asked what it dances; its links are mandatory
+    await expect(page.getByText("Your organization's links")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add at least one link" })).toBeDisabled();
+    await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z]/g, "")}`);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
+    await expect(page.getByText("your organization is in review")).toBeVisible();
+  } else {
+    // styles: the grid, one picked, and the button counts it
+    await expect(page.getByText("Your dance styles")).toBeVisible();
+    await page.getByRole("button", { name: style, exact: true }).click();
+    await page.getByRole("button", { name: "Continue · 1 style" }).click();
+    // socials: optional for a person
+    await expect(page.getByText("Your social links")).toBeVisible();
+    await page.getByRole("button", { name: "Skip for now →" }).click();
+    // take a bow — the first word of the one name
+    await expect(page.getByText(`Take a bow, ${name.split(" ")[0]}!`)).toBeVisible();
+    await expect(page.getByText(style, { exact: true })).toBeVisible();
+  }
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
@@ -133,6 +146,7 @@ test.describe.serial("DanceOS, end to end", () => {
   let ownerId: string | null = null;
   let learnerId: string | null = null;
   let trainerId: string | null = null;
+  let adminId: string | null = null;
   let tenantId: string | null = null;
 
   /* the values a later segment needs from an earlier one */
@@ -148,9 +162,11 @@ test.describe.serial("DanceOS, end to end", () => {
   let ownerContext: BrowserContext;
   let learnerContext: BrowserContext;
   let trainerContext: BrowserContext;
+  let adminContext: BrowserContext;
   let owner: Page;
   let learner: Page;
   let trainer: Page;
+  let admin: Page;
   let browserRef: Browser;
 
   test.beforeAll(async ({ browser }) => {
@@ -161,6 +177,8 @@ test.describe.serial("DanceOS, end to end", () => {
     owner = await ownerContext.newPage();
     learner = await learnerContext.newPage();
     trainer = await trainerContext.newPage();
+    adminContext = await browser.newContext();
+    admin = await adminContext.newPage();
   });
 
   test.afterAll(async () => {
@@ -172,19 +190,24 @@ test.describe.serial("DanceOS, end to end", () => {
     if (ownerId) await deleteUser(ownerId);
     if (learnerId) await deleteUser(learnerId);
     if (trainerId) await deleteUser(trainerId);
+    /* the admin row cascades with the account */
+    if (adminId) await deleteUser(adminId);
     await ownerContext.close();
     await learnerContext.close();
     await trainerContext.close();
+    await adminContext.close();
   });
 
-  test("a studio signs up, onboards, and publishes a class with a room and a trainer", async () => {
+  test("an organization signs up, is verified by an admin, and publishes a class with a room and a trainer", async () => {
     // ---- studio owner: signup → onboarding -------------------------------
     ownerId = await signUp(owner, `e2e-owner-${stamp}@example.com`);
-    await onboard(owner, "E2E", "Owner", "Studio", "Pune");
+    await onboard(owner, "E2E Owner", "Organization", "Pune");
 
     // ---- create the studio ------------------------------------------------
     await owner.goto("/business");
-    await owner.getByText("＋ Add studio or business").click();
+    // the ask went in as onboarding ended — the hub says so, and studios are the organization's to add
+    await expect(owner.getByRole("status", { name: "Verification: In review" })).toBeVisible();
+    await owner.getByText("＋ Add studio").click();
     await owner.locator('input[name="name"]').fill(studioName);
     await owner.locator('input[name="area"]').fill("Baner");
     const citySelect = owner.locator('select[name="city"]');
@@ -198,6 +221,30 @@ test.describe.serial("DanceOS, end to end", () => {
     // the action refreshes the hub in place — the new studio is a row now
     const studioRow = owner.getByText(studioName);
     await expect(studioRow).toBeVisible();
+
+    // ---- an admin verifies the organization (8 Sep 2026) ----------------------
+    // The studio was born UNLISTED: nothing an unverified organization runs is
+    // public. A platform admin — named through the service role, never
+    // self-serve — reads the organization's links in the queue and says yes;
+    // the tick and the studio's visibility move in the same transaction, and
+    // the organization's hub reads Verified.
+    adminId = await signUp(admin, `e2e-admin-${stamp}@example.com`);
+    const named = await fetch(`${supabaseUrl}/rest/v1/platform_admins`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: adminId }),
+    });
+    expect(named.ok).toBeTruthy();
+    await admin.goto("/admin/verifications");
+    await expect(admin.getByText("Verification queue", { exact: true })).toBeVisible();
+    const request = admin.getByTestId("verification-request").filter({ hasText: "E2E Owner" });
+    await expect(request).toBeVisible();
+    // the evidence is the link, and it is the one the organization typed
+    await expect(request.getByRole("link", { name: /^Instagram/ })).toHaveAttribute("href", "https://instagram.com/e2eowner");
+    await request.getByRole("button", { name: "Approve E2E Owner" }).click();
+    await expect(admin.getByText("E2E Owner verified — its studios are live")).toBeVisible();
+    await owner.goto("/business");
+    await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
 
     // ---- create + publish a class ----------------------------------------
     await studioRow.click();
@@ -232,7 +279,12 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- the trainer signs up and finds the invite waiting for them --------
     trainerId = await signUp(trainer, trainerEmail);
-    await onboard(trainer, "E2E", "Trainer", "Artist / Trainer", "Pune");
+    await onboard(trainer, "E2E Trainer", "User", "Pune");
+    // Pro is the plan, not a role (8 Sep 2026): the trainer takes it now, so the
+    // word every later screen prints beside their name is ARTIST
+    await trainer.goto("/subscription");
+    await trainer.getByRole("button", { name: /^Subscribe · / }).click();
+    await expect(trainer.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 15_000 });
     await trainer.goto("/");
     const askCard = trainer.getByRole("link", { name: new RegExp(`${studioName} wants you on the team`) });
     await expect(askCard).toBeVisible();
@@ -367,7 +419,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- learner: signup → onboard → open the shared link → book ----------
     learnerId = await signUp(learner, `e2e-learner-${stamp}@example.com`);
-    await onboard(learner, "E2E", "Learner", null, "Pune");
+    await onboard(learner, "E2E Learner", "User", "Pune");
 
     // booking is two steps now (Step 9): the bar opens the confirm sheet, and a
     // free class confirms without payment
@@ -926,24 +978,25 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByText("Only the owner changes what the business accepts")).toBeVisible();
     await trainer.getByRole("button", { name: "Verification" }).click();
     await expect(trainer.getByText("Not verified yet")).toBeVisible();
-    // Artist tools is the Artist PLAN's switch (8855): locked, it opens the plan — free during the pilot
+    // Artist tools is the Artist PLAN's switch (8855), and the plan has been live
+    // since the trainer took it on day one — so the strip reads PRO ACTIVE, and
+    // pressing it ENDS the plan
+    await trainer.goto("/profile?settings=1");
+    const settings2 = trainer.getByRole("dialog", { name: "Settings" });
+    await expect(settings2.getByText("PRO ACTIVE")).toBeVisible();
+    await expect(settings2.getByRole("link", { name: /Subscription/ })).toBeVisible();
+    // ending the plan puts the toolset away — the badge reads USER, and the ROLE
+    // never moved (8 Sep 2026: Pro is a row, not a role)
+    await settings2.getByRole("button", { name: "Artist tools" }).click();
+    await expect(trainer.getByText("USER", { exact: true })).toBeVisible({ timeout: 15_000 });
+    // locked, the strip opens the plan — free during the pilot
     await trainer.goto("/profile?settings=1");
     await trainer.getByRole("dialog", { name: "Settings" }).getByRole("button", { name: "Artist tools" }).click();
     await expect(trainer).toHaveURL(/\/subscription/);
     await trainer.getByRole("button", { name: /^Subscribe · / }).click();
     await expect(trainer.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(trainer.getByText("Active until")).toBeVisible();
-    await trainer.goto("/profile?settings=1");
-    const settings2 = trainer.getByRole("dialog", { name: "Settings" });
-    await expect(settings2.getByText("PRO ACTIVE")).toBeVisible();
-    await expect(settings2.getByRole("link", { name: /Subscription/ })).toBeVisible();
-    // ending the plan puts the toolset away and the role back to dancing
-    await settings2.getByRole("button", { name: "Artist tools" }).click();
-    await expect(trainer.getByText("DANCER", { exact: true })).toBeVisible({ timeout: 15_000 });
     // and taking it again makes the same profile an artist again — never a second identity
-    await trainer.goto("/subscription");
-    await trainer.getByRole("button", { name: /^Subscribe · / }).click();
-    await expect(trainer.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 15_000 });
     await trainer.goto("/profile");
     await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible({ timeout: 15_000 });
 

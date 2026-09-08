@@ -66,7 +66,7 @@ const DAY_MS = 86_400_000;
 
 export function StatsScreen({
   name,
-  role,
+  isArtist,
   stats,
   history,
   upcoming,
@@ -83,7 +83,8 @@ export function StatsScreen({
   nowIso,
 }: {
   name: string;
-  role: "dancer" | "trainer" | "studio";
+  /** the plan's word — an artist reads "Artist" where a learner reads "Taught by" */
+  isArtist: boolean;
   stats: DanceStats;
   history: HistoryRow[];
   /** what is still to come — bookings and confirmed claims (the calendar's rows) */
@@ -193,7 +194,7 @@ export function StatsScreen({
   const mx = Math.max(1, ...groups.map((x) => x[sortKey === "key" ? "sessions" : sortKey]));
   const DIMS: Array<[Dim, string]> = [
     ["style", "Dance style"],
-    ["artist", role === "trainer" ? "Artist" : "Taught by"],
+    ["artist", isArtist ? "Artist" : "Taught by"],
     ["studio", "Studio"],
   ];
 

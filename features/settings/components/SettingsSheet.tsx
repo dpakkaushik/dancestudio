@@ -51,6 +51,7 @@ export function SettingsSheet({
   open,
   onClose,
   role,
+  isAdmin = false,
   business,
   plan,
   prefs,
@@ -58,6 +59,8 @@ export function SettingsSheet({
   open: boolean;
   onClose: () => void;
   role: ProfileRole;
+  /** a platform admin gets the verification queue as a row; nobody else sees it exists */
+  isAdmin?: boolean;
   /** the first business this person runs, for the rows that live on its desk */
   business: Tenant | null;
   /** the Artist plan, when one has been taken */
@@ -78,7 +81,8 @@ export function SettingsSheet({
   };
   if (!open) return null;
 
-  const isDancer = role === "dancer";
+  /* a person with no business pays like a person; an organization's money rows live on its first studio's desk */
+  const isDancer = role === "user";
   const artistOn = Boolean(plan?.active);
   /* the strip is the plan's switch (8855): off → the plan page; on → end it, which puts the role back */
   const flipArtist = () => {
@@ -128,6 +132,7 @@ export function SettingsSheet({
     { l: "🌐 Language", v: "English · हिन्दी coming" },
     { l: "🛡 Privacy & data", v: "Export · Delete (DPDP)" },
     { l: "🆘 Help & support", v: "FAQ · report a problem" },
+    ...(isAdmin ? [{ l: "🛡 Verification queue", v: "organizations waiting on DanceOS", href: "/admin/verifications" }] : []),
   ];
 
   const panelFor = (l: string) => {
@@ -186,7 +191,7 @@ export function SettingsSheet({
         <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: MUTED, margin: "14px 0 8px" }}>YOUR PLAN</div>
 
         {/* ONE profile, no switcher — only the artist toolset lives here (8855) */}
-        {role !== "studio" ? (
+        {role !== "org" ? (
           <button type="button" disabled={pending} onClick={flipArtist} aria-pressed={artistOn} aria-label="Artist tools" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 14, marginBottom: 12, cursor: "pointer", width: "100%", textAlign: "left", fontFamily: "inherit", color: INK, background: artistOn ? "rgba(236,72,153,.10)" : "var(--card)", border: `1px solid ${artistOn ? "rgba(236,72,153,.45)" : "var(--el)"}` }}>
             <span style={{ width: 32, height: 32, borderRadius: 11, flexShrink: 0, background: "rgba(236,72,153,.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="7.5" r="3.2" /><path d="M5.5 20c.8-3.6 3.2-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /></svg>
@@ -203,7 +208,7 @@ export function SettingsSheet({
             </span>
           </button>
         ) : null}
-        <div style={{ fontSize: 9, color: MUTED, margin: "0 2px 10px", lineHeight: 1.5 }}>Your studios and crews live on the Home tab under “Run your business”.</div>
+        <div style={{ fontSize: 9, color: MUTED, margin: "0 2px 10px", lineHeight: 1.5 }}>Your studios and crews live on the Home tab under “Run your business”. An organization sets up its studios there; a person unlocks an artist page with the plan above.</div>
 
         {rows.map((r) =>
           r.href ? (

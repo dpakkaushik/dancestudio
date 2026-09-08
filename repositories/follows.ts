@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findArtistIds } from "@/repositories/profiles";
+import type { ProfileRole } from "@/types/profile";
 import type { FollowState, FollowedTenant, TenantFollower } from "@/types/follow";
 import type { TenantType } from "@/types/tenant";
 
@@ -26,7 +28,7 @@ interface FollowerRow {
   id: string;
   follower_id: string;
   created_at: string;
-  profiles: { full_name: string; role: "dancer" | "trainer" | "studio"; city: string | null; avatar_path: string | null } | null;
+  profiles: { full_name: string; role: ProfileRole; city: string | null; avatar_path: string | null } | null;
 }
 
 /** Live follower counts — a number, never a name. Listed businesses answer for
@@ -119,11 +121,14 @@ export async function findTenantFollowers(
   if (error) {
     throw new Error(`follows.findFollowers failed: ${error.message}`);
   }
-  return ((data ?? []) as unknown as FollowerRow[]).map((r) => ({
+  const rows = (data ?? []) as unknown as FollowerRow[];
+  const artists = await findArtistIds(supabase, rows.map((r) => r.follower_id));
+  return rows.map((r) => ({
     followId: r.id,
     userId: r.follower_id,
     name: r.profiles?.full_name ?? "Someone",
-    role: r.profiles?.role ?? "dancer",
+    role: r.profiles?.role ?? "user",
+    isArtist: artists.has(r.follower_id),
     city: r.profiles?.city ?? null,
     avatarPath: r.profiles?.avatar_path ?? null,
     followedAt: r.created_at,
@@ -135,7 +140,8 @@ export interface PersonFollowRow {
   followId: string;
   userId: string;
   name: string;
-  role: "dancer" | "trainer" | "studio";
+  role: ProfileRole;
+  isArtist: boolean;
   city: string | null;
   avatarPath: string | null;
   followedAt: string;
@@ -160,9 +166,9 @@ export async function findMyPersonFollowers(supabase: SupabaseClient): Promise<P
   if (error) {
     throw new Error(`follows.myFollowers failed: ${error.message}`);
   }
-  return ((data ?? []) as unknown as Array<{ id: string; follower_id: string; created_at: string; profiles: { full_name: string; role: "dancer" | "trainer" | "studio"; city: string | null; avatar_path: string | null } | null }>)
-    .filter((r) => r.profiles)
-    .map((r) => ({ followId: r.id, userId: r.follower_id, name: r.profiles!.full_name, role: r.profiles!.role, city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
+  const rows = ((data ?? []) as unknown as Array<{ id: string; follower_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; avatar_path: string | null } | null }>).filter((r) => r.profiles);
+  const artists = await findArtistIds(supabase, rows.map((r) => r.follower_id));
+  return rows.map((r) => ({ followId: r.id, userId: r.follower_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.follower_id), city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
 }
 
 /** The PEOPLE the signed-in person follows (the businesses are findMyFollowing). */
@@ -182,9 +188,9 @@ export async function findMyFollowedPeople(supabase: SupabaseClient): Promise<Pe
   if (error) {
     throw new Error(`follows.myFollowedPeople failed: ${error.message}`);
   }
-  return ((data ?? []) as unknown as Array<{ id: string; followee_id: string; created_at: string; profiles: { full_name: string; role: "dancer" | "trainer" | "studio"; city: string | null; avatar_path: string | null } | null }>)
-    .filter((r) => r.profiles)
-    .map((r) => ({ followId: r.id, userId: r.followee_id, name: r.profiles!.full_name, role: r.profiles!.role, city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
+  const rows = ((data ?? []) as unknown as Array<{ id: string; followee_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; avatar_path: string | null } | null }>).filter((r) => r.profiles);
+  const artists = await findArtistIds(supabase, rows.map((r) => r.followee_id));
+  return rows.map((r) => ({ followId: r.id, userId: r.followee_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.followee_id), city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
 }
 
 /** Follow or unfollow — the RPC is idempotent and refuses an unlisted business

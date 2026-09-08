@@ -107,7 +107,7 @@ export function BizSection({ role, tenantId, plan = null, children }: { role: Pr
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
         <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_DISPLAY }}>
-          {role === "studio" ? "Studio Tools" : "Artist Tools"}
+          {role === "org" ? "Studio Tools" : "Artist Tools"}
         </span>
         {plan === "active" ? (
           <Link href="/subscription" aria-label="Artist plan active" style={{ marginLeft: "auto", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "rgba(236,72,153,.16)", color: "#EC4899", textDecoration: "none" }}>

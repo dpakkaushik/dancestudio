@@ -76,8 +76,8 @@ $SEL = "select=id,full_name,city,age,about,socials,styles,member_no"
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$rhea = New-EmailUser "prof-a-$stamp@example.com" "Rhea Proof $stamp" "trainer"
-$other = New-EmailUser "prof-b-$stamp@example.com" "Other Proof $stamp" "dancer"
+$rhea = New-EmailUser "prof-a-$stamp@example.com" "Rhea Proof $stamp" "user"
+$other = New-EmailUser "prof-b-$stamp@example.com" "Other Proof $stamp" "user"
 
 try {
   # 1. every profile gets a member number at creation, and no two are the same

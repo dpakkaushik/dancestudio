@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findArtistIds } from "@/repositories/profiles";
 import type { ProfileRole } from "@/types/profile";
 import type { AcceptedMethods, Tenant, TenantType } from "@/types/tenant";
 import type { SocialLink } from "@/types/profile";
@@ -216,8 +217,10 @@ export interface TeamMember {
   name: string;
   role: MemberRole;
   city: string | null;
-  /** what they are on DanceOS — the team row prints "· Artist" / "· Dancer" from it (18563) */
+  /** what they are on DanceOS — the team row prints "· Artist" / "· User" from it (18563) */
   profileRole: ProfileRole | null;
+  /** the plan's word, read once per team through artist_ids */
+  isArtist: boolean;
   /** a path in the public media bucket, or null for initials on the gradient */
   avatarPath: string | null;
 }
@@ -268,6 +271,7 @@ export async function findTenantTeam(
     avatar_path: string | null;
   }
   const byId = new Map((people as PersonRow[]).map((p) => [p.id, p]));
+  const artists = await findArtistIds(supabase, rows.map((r) => r.user_id));
 
   return rows.map((row) => {
     const p = byId.get(row.user_id);
@@ -277,6 +281,7 @@ export async function findTenantTeam(
       role: row.member_role,
       city: p?.city ?? null,
       profileRole: p?.role ?? null,
+      isArtist: artists.has(row.user_id),
       avatarPath: p?.avatar_path ?? null,
     };
   });

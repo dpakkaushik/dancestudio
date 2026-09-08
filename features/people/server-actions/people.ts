@@ -11,7 +11,8 @@ import type { Profile } from "@/types/profile";
  *  else's ask. */
 
 export interface PeopleSearchResult {
-  people: Profile[];
+  /** each with the plan's word, so a picker can print Artist beside the right names */
+  people: Array<Profile & { isArtist: boolean }>;
   error: string | null;
 }
 

@@ -17,5 +17,5 @@ export default async function SubscriptionPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const [plan, profile] = await Promise.all([findMyArtistPlan(supabase), findProfileById(supabase, user.id)]);
-  return <SubscriptionScreen plan={plan} isStudioOwner={profile?.role === "studio"} />;
+  return <SubscriptionScreen plan={plan} isStudioOwner={profile?.role === "org"} />;
 }

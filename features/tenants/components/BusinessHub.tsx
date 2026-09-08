@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useState, useTransition } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
-import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
+import { VerifiedTick } from "@/features/settings/components/settings-kit";
+import { createTenantAction, requestOrgVerificationAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
+import type { VerificationRequest } from "@/repositories/admin";
 import type { MyMembership } from "@/repositories/tenants";
-import type { TenantType } from "@/types/tenant";
+import type { ProfileRole } from "@/types/profile";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
 
 /* Icons lifted from the prototype (DanceOSApp.jsx:3136-3142). */
@@ -64,7 +67,19 @@ const Head = ({ children }: { children: string }) => (
   </div>
 );
 
-/** Studios hub — lifted from the prototype's S_bizhub/Hub (DanceOSApp.jsx:2585-2691).
+const pill: React.CSSProperties = { display: "inline-block", padding: "9px 16px", borderRadius: 999, fontWeight: 900, fontSize: 11.5, cursor: "pointer", textDecoration: "none", border: "none", fontFamily: "inherit" };
+
+/** What an organization's verification is, right now (8 Sep 2026). The tick is
+ *  the answer; the request is the question; both are read, never decided here. */
+export interface HubVerification {
+  verifiedAt: string | null;
+  request: VerificationRequest | null;
+  /** how many links the organization has published — none means it cannot ask yet */
+  socialsCount: number;
+}
+
+/** Studios hub — lifted from the prototype's S_bizhub/Hub (DanceOSApp.jsx:2585-2691),
+ *  re-cut on 8 Sep 2026 for the two kinds of account.
  *
  *  TWO LISTS, BECAUSE THERE ARE TWO RELATIONSHIPS (2595-2603): "A crew you lead
  *  and a crew you dance in are not the same object with a flag on it... Now the
@@ -72,23 +87,38 @@ const Head = ({ children }: { children: string }) => (
  *  ones you belong to sit below under their own heading, opening the public page
  *  instead. Where a row goes decides what pressing it does; nothing else has to."
  *
- *  Documented departures: the sheet keeps a Studio / Independent-trainer toggle
- *  (the app has two business kinds where the prototype's hub has one), and the
- *  add button names both. */
+ *  WHO OPENS WHAT (the user's decision). An ORGANIZATION opens studios — as many
+ *  as it runs, in one city or several — and every one of them stays private
+ *  until a DanceOS admin has verified the organization by its links; the card at
+ *  the top says where that stands. A PERSON with the Artist plan opens ONE
+ *  artist page. A person without the plan opens nothing, and is told what
+ *  unlocks what instead of being shown a button that would be refused. The
+ *  Studio / Independent-trainer toggle the sheet used to carry is gone: the kind
+ *  follows from who is asking, here and in the database. */
 export function BusinessHub({
   memberships,
   /** live rooms per owned tenant id — the "· N rooms" half of the sub-line (2655) */
   roomCounts,
+  role,
+  isArtist,
+  verification,
 }: {
   memberships: MyMembership[];
   roomCounts: Record<string, number>;
+  role: ProfileRole;
+  /** the plan is live — a person may open their artist page */
+  isArtist: boolean;
+  /** an organization's standing with DanceOS; null for a person */
+  verification: HubVerification | null;
 }) {
+  const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [type, setType] = useState<TenantType>("studio");
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
   const [city, setCity] = useState("");
   const [rooms, setRooms] = useState<RoomDraft[]>(seedRooms);
+  const [toast, setToast] = useState<string | null>(null);
+  const [pending, start] = useTransition();
   // the action revalidates in place (no navigation), so the sheet closes itself
   // once a creation lands — prototype behavior after "Create studio"
   const [state, formAction, isPending] = useActionState(
@@ -109,12 +139,31 @@ export function BusinessHub({
   /* system back closes the sheet that is open, exactly as tapping the scrim does */
   useCloseOnBack(() => setSheetOpen(false), sheetOpen);
 
+  const fire = (m: string) => {
+    setToast(m);
+    setTimeout(() => setToast(null), 2600);
+  };
+
+  const isOrg = role === "org";
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);
+  const myStudios = mine.filter((t) => t.type === "studio");
+  const myArtistPage = mine.find((t) => t.type === "trainer_business") ?? null;
 
-  const isStudio = type === "studio";
+  /* what the sheet opens is decided by who is here, not by a toggle */
+  const isStudio = isOrg;
   const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity > 0);
   const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk));
+  const canOpen = isOrg || (isArtist && !myArtistPage);
+  const verified = Boolean(verification?.verifiedAt);
+
+  const ask = () =>
+    start(async () => {
+      const out = await requestOrgVerificationAction();
+      if (out.error) return fire(out.error);
+      fire("Asked — a DanceOS admin will check your links");
+      router.refresh();
+    });
 
   const rowStyle = (own: boolean): React.CSSProperties => ({
     display: "flex",
@@ -135,8 +184,8 @@ export function BusinessHub({
     const loc = [t.area, t.city].filter(Boolean).join(", ");
     const n = roomCounts[t.id] ?? 0;
     const sub = own
-      ? [loc, t.type === "studio" ? `${n} room${n === 1 ? "" : "s"}` : "Independent trainer"].filter(Boolean).join(" · ")
-      : [t.type === "studio" ? "Studio" : "Independent trainer", loc].filter(Boolean).join(" · ");
+      ? [loc, t.type === "studio" ? `${n} room${n === 1 ? "" : "s"}` : "Your artist page"].filter(Boolean).join(" · ")
+      : [t.type === "studio" ? "Studio" : "Artist", loc].filter(Boolean).join(" · ");
     return (
       <Link
         key={t.id}
@@ -190,6 +239,44 @@ export function BusinessHub({
   const setRoom = (i: number, patch: Partial<RoomDraft>) =>
     setRooms((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
+  /* ── the verification card: where an organization stands with DanceOS ── */
+  const verificationCard = () => {
+    if (!isOrg || !verification) return null;
+    const req = verification.request;
+    const tone = verified ? "#22C55E" : req?.status === "pending" ? "#F59E0B" : req?.status === "rejected" ? "#EF4444" : "var(--sub)";
+    const title = verified
+      ? "Verified organization"
+      : req?.status === "pending"
+        ? "In review"
+        : req?.status === "rejected"
+          ? "Not approved"
+          : "Not verified yet";
+    const body = verified
+      ? "Your studios are public on Discover."
+      : req?.status === "pending"
+        ? "A DanceOS admin is checking your links. Your studios stay private until then — you can set them up now."
+        : req?.status === "rejected"
+          ? req.note || "Update your links on the Profile tab, then ask again."
+          : verification.socialsCount === 0
+            ? "Add at least one social link on your Profile tab — that is what DanceOS checks — then ask to be verified."
+            : "Ask DanceOS to check your links. Your studios stay private until an admin says yes.";
+    const canAsk = !verified && req?.status !== "pending" && verification.socialsCount > 0;
+    return (
+      <div role="status" aria-label={`Verification: ${title}`} style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${tone}`, borderRadius: 16, padding: "12px 13px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          {verified ? <VerifiedTick size={15} /> : <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: tone, display: "inline-block" }} />}
+          <b style={{ fontSize: 13 }}>{title}</b>
+        </div>
+        <div style={{ fontSize: 11.5, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{body}</div>
+        {canAsk ? (
+          <button type="button" disabled={pending} onClick={ask} style={{ ...pill, marginTop: 10, background: "var(--text)", color: "var(--solid)" }}>
+            {pending ? "Asking…" : req?.status === "rejected" ? "Ask again" : "Request verification"}
+          </button>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -211,7 +298,7 @@ export function BusinessHub({
             position: "relative",
             overflow: "hidden",
             color: "#fff",
-            background: dosToolPaint(ACCENT),
+            background: dosToolPaint(isOrg ? ACCENT : DOS_TINT.artist),
           }}
         >
           <div
@@ -235,34 +322,97 @@ export function BusinessHub({
               lineHeight: 1.18,
             }}
           >
-            {DOS_TOOLS.studios.name}
+            {isOrg ? DOS_TOOLS.studios.name : "Your business"}
           </div>
         </div>
 
-        <Head>STUDIOS YOU OWN</Head>
-        {mine.length ? (
-          mine.map((t) => row(t, true))
+        {verificationCard()}
+
+        {isOrg ? (
+          <>
+            <Head>YOUR STUDIOS</Head>
+            {myStudios.length ? (
+              myStudios.map((t) => row(t, true))
+            ) : (
+              <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>No studios yet — add the first one below. One studio = one location; add another for each branch.</div>
+            )}
+            <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={dosKey}
+              onClick={() => setSheetOpen(true)}
+              style={{
+                textAlign: "center",
+                padding: "13px",
+                borderRadius: 16,
+                border: `1.5px dashed ${ACCENT}`,
+                color: ACCENT,
+                fontWeight: 800,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              ＋ Add studio
+            </div>
+
+            {/* events belong to a studio (the desk is the studio's) — the hub lists the doors */}
+            <div style={{ marginTop: 20 }}>
+              <Head>EVENTS</Head>
+              {myStudios.length ? (
+                myStudios.map((t) => (
+                  <Link key={t.id} href={`/business/${t.id}/events`} style={{ ...rowStyle(true), borderLeftColor: "#F59E0B" }} aria-label={`Events at ${t.name}`}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Events at {t.name}</div>
+                      <div style={{ fontSize: 10, color: SUB, marginTop: 1 }}>showcases · battles · tournaments</div>
+                    </div>
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: "#F59E0B", flexShrink: 0 }}>Open ›</span>
+                  </Link>
+                ))
+              ) : (
+                <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 4px" }}>An event is held by a studio — add one first, and its events desk opens here.</div>
+              )}
+            </div>
+          </>
         ) : (
-          <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>You do not run a studio yet.</div>
+          <>
+            <Head>YOUR ARTIST PAGE</Head>
+            {myArtistPage ? (
+              row(myArtistPage, true)
+            ) : isArtist ? (
+              <>
+                <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>One page for your classes, bookings and earnings — it goes on Discover&apos;s Artists tab.</div>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={dosKey}
+                  onClick={() => setSheetOpen(true)}
+                  style={{
+                    textAlign: "center",
+                    padding: "13px",
+                    borderRadius: 16,
+                    border: `1.5px dashed ${DOS_TINT.artist}`,
+                    color: DOS_TINT.artist,
+                    fontWeight: 800,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  ＋ Set up your artist page
+                </div>
+              </>
+            ) : (
+              <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "13px 14px" }}>
+                <b style={{ fontSize: 13 }}>Artist tools need the Artist plan</b>
+                <div style={{ fontSize: 11.5, color: SUB, marginTop: 4, lineHeight: 1.5 }}>
+                  Teach, publish classes, get booked and paid — one profile, more tools. Studios are set up by <b style={{ color: INK }}>organizations</b>; if you run one, that is a separate account.
+                </div>
+                <Link href="/subscription" style={{ ...pill, marginTop: 10, background: "var(--text)", color: "var(--solid)" }}>
+                  See the plan ›
+                </Link>
+              </div>
+            )}
+          </>
         )}
-        <div
-          role="button"
-          tabIndex={0}
-          onKeyDown={dosKey}
-          onClick={() => setSheetOpen(true)}
-          style={{
-            textAlign: "center",
-            padding: "13px",
-            borderRadius: 16,
-            border: `1.5px dashed ${ACCENT}`,
-            color: ACCENT,
-            fontWeight: 800,
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          ＋ Add studio or business
-        </div>
 
         {/* and below it, the places that are not yours to run */}
         {theirs.length > 0 && (
@@ -274,7 +424,7 @@ export function BusinessHub({
       </div>
 
       {/* "New studio" bottom sheet — lifted from DanceOSApp.jsx:2659-2685 */}
-      {sheetOpen && (
+      {sheetOpen && canOpen && (
         <div
           onClick={() => setSheetOpen(false)}
           style={{
@@ -290,7 +440,7 @@ export function BusinessHub({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={isStudio ? "New studio" : "New business"}
+            aria-label={isStudio ? "New studio" : "Your artist page"}
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "var(--solid)",
@@ -306,54 +456,18 @@ export function BusinessHub({
             }}
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{isStudio ? "New studio" : "New business"}</b>
+            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{isStudio ? "New studio" : "Your artist page"}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
-              One studio = one location. Opening another branch later? Create it as its own studio — it gets
-              its own profile page and calendar.
+              {isStudio
+                ? `One studio = one location. Opening another branch later? Create it as its own studio — it gets its own profile page and calendar.${verified ? "" : " It stays private until DanceOS has verified your organization."}`
+                : "The page people find you by — your classes, your bookings and your earnings live behind it."}
             </div>
 
             <form action={formAction}>
-              <input type="hidden" name="type" value={type} />
               <input type="hidden" name="rooms" value={JSON.stringify(isStudio ? rooms : [])} />
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                {(
-                  [
-                    { key: "studio", label: "Studio", accent: DOS_TINT.studio },
-                    { key: "trainer_business", label: "Independent trainer", accent: DOS_TINT.trainer },
-                  ] as const
-                ).map((o) => {
-                  const on = type === o.key;
-                  return (
-                    <div
-                      key={o.key}
-                      role="button"
-                      tabIndex={0}
-                      aria-pressed={on}
-                      onClick={() => setType(o.key)}
-                      onKeyDown={dosKey}
-                      style={{
-                        flex: 1,
-                        textAlign: "center",
-                        padding: "11px",
-                        borderRadius: 999,
-                        cursor: "pointer",
-                        fontSize: 12.5,
-                        fontWeight: 800,
-                        background: on ? `${o.accent}14` : EL,
-                        color: on ? o.accent : SUB,
-                        border: `2px solid ${on ? o.accent : "transparent"}`,
-                        transition: "all .15s",
-                      }}
-                    >
-                      {o.label}
-                      {on && " ✓"}
-                    </div>
-                  );
-                })}
-              </div>
 
               <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>
-                {isStudio ? "Studio name" : "Business name"}
+                {isStudio ? "Studio name" : "Page name"}
               </div>
               <input
                 name="name"
@@ -467,12 +581,13 @@ export function BusinessHub({
                   cursor: ok ? "pointer" : "default",
                 }}
               >
-                {isPending ? "Creating…" : isStudio ? "Create studio" : "Create business"}
+                {isPending ? "Creating…" : isStudio ? "Create studio" : "Create my artist page"}
               </button>
             </form>
           </div>
         </div>
       )}
+      {toast ? <div role="status" style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#241B33", color: "#fff", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 700 }}>{toast}</div> : null}
     </div>
   );
 }

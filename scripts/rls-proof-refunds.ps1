@@ -65,12 +65,12 @@ function Buy-Seat($learner, $sessionId, $tag) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "refproof-owner-$stamp@example.com" "Owner $stamp" "studio"
-$settler = New-EmailUser "refproof-settler-$stamp@example.com" "Settler $stamp" "trainer"
-$trainer = New-EmailUser "refproof-trainer-$stamp@example.com" "Trainer $stamp" "trainer"
-$l1 = New-EmailUser "refproof-l1-$stamp@example.com" "Learner One $stamp" "dancer"
-$l2 = New-EmailUser "refproof-l2-$stamp@example.com" "Learner Two $stamp" "dancer"
-$rival = New-EmailUser "refproof-rival-$stamp@example.com" "Rival $stamp" "studio"
+$owner = New-EmailUser "refproof-owner-$stamp@example.com" "Owner $stamp" "org"
+$settler = New-EmailUser "refproof-settler-$stamp@example.com" "Settler $stamp" "user"
+$trainer = New-EmailUser "refproof-trainer-$stamp@example.com" "Trainer $stamp" "user"
+$l1 = New-EmailUser "refproof-l1-$stamp@example.com" "Learner One $stamp" "user"
+$l2 = New-EmailUser "refproof-l2-$stamp@example.com" "Learner Two $stamp" "user"
+$rival = New-EmailUser "refproof-rival-$stamp@example.com" "Rival $stamp" "org"
 
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Refund Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }

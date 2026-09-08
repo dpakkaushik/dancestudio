@@ -17,20 +17,15 @@ import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, PINK, SOLID, 
 import { BizSection, DosShelfHead, HOME_TYPE } from "@/features/home/components/home-kit";
 import { PassDeck } from "@/features/home/components/PassDeck";
 import { tierOf } from "@/features/profiles/components/profile-kit";
-import { memberNoWords, type ProfileRole } from "@/types/profile";
+import { KIND_WORD, kindOf, memberNoWords, type PersonKind } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
-/** Metal rings per role — prototype DOS_RINGS (DanceOSApp.jsx:1462-1463). */
-const DOS_RINGS: Record<ProfileRole, string[]> = {
-  studio: ["#F9E27D", "#B8860B", "#FFF6D5", "#D4AF37"],
-  trainer: ["#F2F2F2", "#8E9BAE", "#FFFFFF", "#C0C0C0"],
-  dancer: ["#F0BC8A", "#8C5A2B", "#F7DDBC", "#CD7F32"],
-};
-
-const ROLE_WORD: Record<ProfileRole, string> = {
-  dancer: "Dancer",
-  trainer: "Artist",
-  studio: "Studio",
+/** Metal rings per KIND — prototype DOS_RINGS (DanceOSApp.jsx:1462-1463): an
+ *  organization wears the gold a studio wore, an artist the silver, a user the bronze. */
+const DOS_RINGS: Record<PersonKind, string[]> = {
+  org: ["#F9E27D", "#B8860B", "#FFF6D5", "#D4AF37"],
+  artist: ["#F2F2F2", "#8E9BAE", "#FFFFFF", "#C0C0C0"],
+  user: ["#F0BC8A", "#8C5A2B", "#F7DDBC", "#CD7F32"],
 };
 
 const IST = "Asia/Kolkata";
@@ -76,22 +71,25 @@ export default async function HomePage() {
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
     findMyPendingInvites(supabase),
-    profile.role === "studio" ? Promise.resolve(null) : findMyArtistPlan(supabase),
+    profile.role === "org" ? Promise.resolve(null) : findMyArtistPlan(supabase),
   ]);
+  /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
+  const isArtist = Boolean(plan?.active);
+  const kind = kindOf(profile.role, isArtist);
 
   /* WHERE YOU STAND, ON THE SLEEVE THAT SAYS WHO YOU ARE (7324-7333). The place
      is Step 25's own — the same RPC the Profile tab and the boards ask — and a
      studio is not on a dancer's ladder, so it is not asked for one. */
-  const rank = profile.role === "studio" ? null : await findMyPlace(supabase, profile.role === "trainer" ? "artist" : "dancer");
+  const chartSeg = isArtist ? "artist" : "dancer";
+  const rank = profile.role === "org" ? null : await findMyPlace(supabase, chartSeg);
   const tier = rank ? tierOf(rank.place) : null;
-  const chartSeg = profile.role === "trainer" ? "artist" : "dancer";
 
   /* a studio's day is not a person's day (7022-7060): a studio owner's Home shows
      what is running in the studio's rooms, drawn by the same card in the same rail */
-  const studio = profile.role === "studio" && tenants.length > 0 ? tenants[0] : null;
+  const studio = profile.role === "org" && tenants.length > 0 ? tenants[0] : null;
   const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, tenants);
 
-  const RG = DOS_RINGS[profile.role];
+  const RG = DOS_RINGS[kind];
   const RC = RG[3];
   const face = photoUrl(profile.avatarPath);
   /* "24, New Delhi" — one string with a comma, the way you'd introduce somebody (7295-7306) */
@@ -225,7 +223,7 @@ export default async function HomePage() {
             <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
               <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none", color: INK }}>
                 <span style={{ display: "block", fontSize: 20, fontWeight: 900, lineHeight: 1, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, color: INK }}>
-                  {ROLE_WORD[profile.role]}
+                  {KIND_WORD[kind]}
                 </span>
                 {profile.memberNo != null ? (
                   <span style={{ display: "block", ...HOME_TYPE.micro, color: MUTED, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
@@ -330,7 +328,7 @@ export default async function HomePage() {
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
             sheet that covers the deck, so it is opaque and it is above. ── */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-          <BizSection role={profile.role} tenantId={firstTenant} plan={profile.role === "studio" ? null : plan?.active ? "active" : "locked"}>
+          <BizSection role={profile.role} tenantId={firstTenant} plan={profile.role === "org" ? null : isArtist ? "active" : "locked"}>
             {/* somebody has asked you onto their team, and only you can answer —
                 the same gold ask the class page wears when a class is handed over */}
             {invites.map((inv) => (

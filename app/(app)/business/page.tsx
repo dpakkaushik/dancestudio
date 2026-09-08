@@ -1,9 +1,14 @@
 import { redirect } from "next/navigation";
 import { BusinessHub } from "@/features/tenants/components/BusinessHub";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findMyVerificationRequest } from "@/repositories/admin";
+import { findMyArtistPlan } from "@/repositories/plans";
+import { findProfileById } from "@/repositories/profiles";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findMyMemberships } from "@/repositories/tenants";
 
+/** /business — an organization's studios (and where its verification stands), or
+ *  a person's one artist page. Who is here decides which hub is drawn (8 Sep 2026). */
 export default async function BusinessPage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -13,12 +18,28 @@ export default async function BusinessPage() {
   if (!user) {
     redirect("/login");
   }
+  const profile = await findProfileById(supabase, user.id);
+  if (!profile) {
+    redirect("/onboarding");
+  }
   // membership is the spine, and the ROLE on it decides which list a business
   // sits in — owned rows get their room count for the sub-line (prototype 2655)
-  const memberships = await findMyMemberships(supabase);
+  const [memberships, plan, request] = await Promise.all([
+    findMyMemberships(supabase),
+    profile.role === "org" ? Promise.resolve(null) : findMyArtistPlan(supabase),
+    profile.role === "org" ? findMyVerificationRequest(supabase) : Promise.resolve(null),
+  ]);
   const roomCounts = await countRoomsByTenants(
     supabase,
     memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant.id)
   );
-  return <BusinessHub memberships={memberships} roomCounts={roomCounts} />;
+  return (
+    <BusinessHub
+      memberships={memberships}
+      roomCounts={roomCounts}
+      role={profile.role}
+      isArtist={Boolean(plan?.active)}
+      verification={profile.role === "org" ? { verifiedAt: profile.verifiedAt, request, socialsCount: profile.socials.length } : null}
+    />
+  );
 }

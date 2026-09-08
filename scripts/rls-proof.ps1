@@ -30,7 +30,7 @@ if ($a.user.id -eq $b.user.id) { $pass = $false }
 
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 
-foreach ($u in @(@{s=$a;n="Priya Test";r="dancer";c="Pune"}, @{s=$b;n="Studio Test";r="studio";c="Delhi"})) {
+foreach ($u in @(@{s=$a;n="Priya Test";r="user";c="Pune"}, @{s=$b;n="Studio Test";r="org";c="Delhi"})) {
   try {
     $body = @{ id = $u.s.user.id; full_name = $u.n; role = $u.r; city = $u.c } | ConvertTo-Json
     Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers (Api $u.s.access_token) -Body $body | Out-Null
@@ -48,7 +48,7 @@ $blocked = (@($upd).Count -eq 0)
 if (-not $blocked) { $pass = $false }
 
 try {
-  $fake = @{ id = "00000000-0000-4000-8000-000000000001"; full_name = "Impostor"; role = "dancer" } | ConvertTo-Json
+  $fake = @{ id = "00000000-0000-4000-8000-000000000001"; full_name = "Impostor"; role = "user" } | ConvertTo-Json
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers (Api $a.access_token) -Body $fake | Out-Null
   "5. A inserts under another id: SUCCEEDED — RLS FAILED"; $pass = $false
 } catch { "5. A inserts under another id: REJECTED — RLS OK" }

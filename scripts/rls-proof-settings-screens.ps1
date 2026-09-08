@@ -75,9 +75,9 @@ function Plain($token) { return @{ apikey = $anon; Authorization = "Bearer $toke
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$dancer = New-EmailUser "set-a-$stamp@example.com" "Plan Proof $stamp" "dancer"
-$owner = New-EmailUser "set-b-$stamp@example.com" "Owner Proof $stamp" "studio"
-$stranger = New-EmailUser "set-c-$stamp@example.com" "Stranger Proof $stamp" "dancer"
+$dancer = New-EmailUser "set-a-$stamp@example.com" "Plan Proof $stamp" "user"
+$owner = New-EmailUser "set-b-$stamp@example.com" "Owner Proof $stamp" "org"
+$stranger = New-EmailUser "set-c-$stamp@example.com" "Stranger Proof $stamp" "user"
 $tenantId = $null
 $TSEL = "select=id,about,founded_year,phone,socials,enquiry_types,accepts_upi,accepts_cards,accepts_cash,accepts_bank,verified_at"
 
@@ -93,8 +93,8 @@ try {
   $prof = Rows (Api $dancer.token) "profiles?select=role&id=eq.$($dancer.id)"
   $today = (Get-Date).ToString("yyyy-MM-dd")
   $untilOk = [datetime]$p1[0].until -gt [datetime]$today
-  Check 2 "activating grants a monthly period to $($p1[0].until) at Rs $($p1[0].amount_inr), active, and the role is now $($prof[0].role)" (
-    $p1.Count -eq 1 -and $p1[0].plan -eq "monthly" -and $p1[0].amount_inr -eq 0 -and $p1[0].active -eq $true -and $untilOk -and $prof[0].role -eq "trainer")
+  Check 2 "activating grants a monthly period to $($p1[0].until) at Rs $($p1[0].amount_inr), active, and the role STAYS $($prof[0].role) (Pro is the plan, not a role)" (
+    $p1.Count -eq 1 -and $p1[0].plan -eq "monthly" -and $p1[0].amount_inr -eq 0 -and $p1[0].active -eq $true -and $untilOk -and $prof[0].role -eq "user")
 
   # 3. activating again extends from the current end, not from today
   $a2 = Rpc (Api $dancer.token) "activate_artist_plan" @{ p_plan = "yearly" }
@@ -116,8 +116,8 @@ try {
   Rpc (Api $dancer.token) "end_artist_plan" @{} | Out-Null
   $p3 = @(Rpc (Api $dancer.token) "my_artist_plan" @{})
   $prof = Rows (Api $dancer.token) "profiles?select=role&id=eq.$($dancer.id)"
-  Check 6 "ending the plan: no active plan (active=$($p3[0].active)), role back to $($prof[0].role)" (
-    ($p3.Count -eq 0 -or $p3[0].active -eq $false) -and $prof[0].role -eq "dancer")
+  Check 6 "ending the plan: no active plan (active=$($p3[0].active)), role still $($prof[0].role)" (
+    ($p3.Count -eq 0 -or $p3[0].active -eq $false) -and $prof[0].role -eq "user")
 
   # 6b. taking it again the same day (the new month ends on the ended row's date) still reads ACTIVE
   Rpc (Api $dancer.token) "activate_artist_plan" @{ p_plan = "monthly" } | Out-Null

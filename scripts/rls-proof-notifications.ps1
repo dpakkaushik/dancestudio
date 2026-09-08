@@ -76,10 +76,10 @@ function Titles($rows) { return (@($rows | ForEach-Object { $_.title }) -join " 
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "ntf-owner-$stamp@example.com" "Owner $stamp" "studio"
-$trainer = New-EmailUser "ntf-trainer-$stamp@example.com" "Trainer $stamp" "trainer"
-$learner = New-EmailUser "ntf-learner-$stamp@example.com" "Learner $stamp" "dancer"
-$rival = New-EmailUser "ntf-rival-$stamp@example.com" "Rival $stamp" "studio"
+$owner = New-EmailUser "ntf-owner-$stamp@example.com" "Owner $stamp" "org"
+$trainer = New-EmailUser "ntf-trainer-$stamp@example.com" "Trainer $stamp" "user"
+$learner = New-EmailUser "ntf-learner-$stamp@example.com" "Learner $stamp" "user"
+$rival = New-EmailUser "ntf-rival-$stamp@example.com" "Rival $stamp" "org"
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Notif Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 $tmr = (Get-Date).AddDays(2)
 
@@ -124,7 +124,7 @@ try {
     ($answered.Count -eq 1) -and ($answered[0].title -like "*confirmed Notif Class*"))
 
   # 5. THE WAITLIST IS TOLD, OR IT IS NOT A WAITLIST (13647): the promoted learner hears it
-  $l2 = New-EmailUser "ntf-l2-$stamp@example.com" "Learner Two $stamp" "dancer"
+  $l2 = New-EmailUser "ntf-l2-$stamp@example.com" "Learner Two $stamp" "user"
   $wait = Rpc (Api $l2.token) "enroll_in_session" @{ p_session_id = $sess.id }
   $firstSeat = (Get-Rows (Api $owner.token) "enrollments?session_id=eq.$($sess.id)&user_id=eq.$($learner.id)&select=id")[0]
   Rpc (Api $learner.token) "cancel_enrollment" @{ p_enrollment_id = $firstSeat.id } | Out-Null
@@ -213,7 +213,7 @@ try {
 
   # 11. A NOTIFICATION NEVER BREAKS THE FACT: the trigger drops a notification for
   #     a profile that is gone, and the booking it observed still lands
-  $ghost = New-EmailUser "ntf-ghost-$stamp@example.com" "Ghost $stamp" "dancer"
+  $ghost = New-EmailUser "ntf-ghost-$stamp@example.com" "Ghost $stamp" "user"
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($ghost.id)" -Headers $svcH -Body (@{ deleted_at = "now()" } | ConvertTo-Json) | Out-Null
   $free = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Ghost Class $stamp";
     p_style = "Kathak"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 4; p_status = "published";

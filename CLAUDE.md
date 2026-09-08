@@ -2,98 +2,108 @@
 
 ## LAST SESSION (8 Sep 2026) — replaced on every push (Rule 13)
 
-- **The confirmation link's dead end, hit by the user and fixed ⚠ (Rule 9).**
-  They opened the emailed link in a different browser from the one that signed
-  up. Supabase's `/verify` confirmed the address and handed `/auth/confirm` a
-  `code` this browser could not exchange (no `code_verifier` cookie — the PKCE
-  shape, 7 Sep), and the bounce read "open it in the same browser … or ask for
-  a new one." Both halves were bad advice at that moment: the address was
-  ALREADY confirmed (`email_confirmed_at` 08:58:56), so the way on was the
-  password they had just chosen — and `auth.resend` for a confirmed address
-  sends nothing, on purpose. **A `code` only exists after `/verify` has
-  confirmed the address**, so the confirmation bounce now says so: *Your email
-  is confirmed — sign in with your password and we will set your profile up
-  next*, landing on `/login/email`. **And the shell's toast was never 380px
-  wide:** a `fixed` element at `left:50%` with only a `max-width` is
-  shrink-to-fit, and shrink-to-fit stops at the viewport edge — half the
-  screen — so on a phone every auth toast wrapped a two-line sentence into
-  four and rounded into the blob over the footer in the user's screenshot.
-  `AuthShell` gives it an explicit `min(380px, 100vw − 44px)` now; the
-  prototype never met this because its toasts are one-liners. Recovery keeps the same-browser
-  message — a forgotten password cannot be signed in with.
-  `auth-confirm-route.spec.ts` re-pinned (`CONFIRMED_SIGN_IN` for a signup
-  code, `NOT_HERE` still for recovery). The user did sign in at 09:02:46 with no
-  `profiles` row, so `/onboarding` is where that landed. **The durable fix is
-  still NEXT TO DO #2** — a `token_hash` link needs no browser state — and the
-  `SUPABASE_ACCESS_TOKEN` in `.env.local` answers 401, so it is the dashboard
-  or a fresh token.
-- **Pulled the 7 Sep work onto this machine** (`03fcd63..c13856f`, twelve
-  commits, fast-forward, no conflicts with parity slice 8). **The dependency sync
-  is the environment lesson:** the seven new shadcn/ui packages were not in
-  `node_modules`, and `npm install` crashes on this tree —
-  `node_modules` is a **pnpm store** (`node_modules/.pnpm/…`) and npm's
-  arborist dies on its symlinks (`Cannot read properties of null (reading
-  'matches')`). pnpm is not on PATH but **corepack is**, so the working command
-  is `corepack pnpm@10 install --config.confirmModulesPurge=false` (stop the
-  dev server first; without the flag pnpm aborts for want of a TTY). Then
-  `rm -rf .next` — the stale `.next/types/validator.ts` still imported the
-  two deleted login pages and failed `tsc`. After that: typecheck and lint
-  clean, every new auth route 200, both redirects 307.
-- **The check-your-inbox screen rebuilt ⚠ (Rule 9 — auth-adjacent), at the
-  user's ask** (`/login/check-email`): the old one was a heading, two short
-  sentences and a dashed box over an empty phone. `features/auth/components/
-  CheckEmail.tsx` (client) keeps the OTP screen's anatomy (3750-3762) and gives
-  the code boxes' room to what a person waiting on an inbox needs: the ADDRESS
-  in its own card, **WHAT HAPPENS NEXT** as three steps — and the third says in
-  words where the link lands: *your name, whether you are a dancer, a trainer or
-  a studio, and your city* — then the OTP screen's **"Resend in 0:30" that
-  becomes a real "Resend link"**. The old screen told people to wait "before
-  asking for another" and offered no way to ask. `resendEmailAction` is that
-  way: `auth.resend({type:"signup"})` on the verify errand,
-  `resetPasswordForEmail` with the `flow=recovery` stamp on the reset one,
-  both through `emailLinkOrigin()`; Supabase's rate-limit refusal comes back
-  as the toast in its own words. The page is a thin guard around it. Lead
-  sentence 15px on this one screen (it has the room); everything else at the
-  siblings' sizes.
-- **Where the link lands was checked in code, not changed.** No trigger creates a
-  `profiles` row, `signUpAction` creates none, `proxy.ts` has no redirect
-  rules of its own, so `/auth/confirm`'s `land()` sends a new account to
-  `/onboarding` — whose first screen is name + Dancer / Artist-Trainer /
-  Studio + city + photo (slice 8). `password-auth.spec.ts` already asserts a
-  confirmed account with no profile lands there. **Not re-verified with a real
-  inbox link this session** (Rule 15): nothing in `/auth/confirm`, the
-  templates or the redirect URLs moved, and the user's own click is the test.
-- **The user's account, read from `auth.users`:** `ai@eeetaxi.com` created
-  8 Sep 08:35:50 UTC from the sign-up form, `confirmation_sent_at` 08:35:50.857
-  (Supabase dispatched it), `email_confirmed_at` **null** at 08:44, no
-  `profiles` row — parked on exactly the screen that was rebuilt.
-- **Tests:** `e2e/check-email.spec.ts`, four render checks, none of which
-  presses Resend (a real resend spends the shared quota). **The countdown is
-  waited out in REAL time, and the fake clock was abandoned after two wrong
-  guesses:** `clock.fastForward` fires each due timer at most once by design,
-  and `clock.runFor(31 s)` left the countdown at 0:24 — a one-second
-  `setTimeout` that re-arms itself in an effect exists only after React has
-  rendered, which is after the clock's run has returned, so neither call can
-  reach it. Thirty real seconds in an otherwise seconds-long suite; the test
-  says why. Both auth suites still green (17). Screenshots at 430×932, both errands and the
-  resend-ready state. A scratch script outside the repo must `require`
-  `@playwright/test` by absolute path — Node resolves from the script's own
-  directory, not the cwd.
+- **THE ACCOUNT MODEL CHANGED, at the user's instruction ⚠ (Rule 9: auth + RLS).**
+  Two kinds of account instead of three roles: a **user** (everyone; "Pro" is an
+  active `artist_plans` row, never a role again) and an **organization** (the
+  account that runs studios — one org, many studios). Plus **platform admins**,
+  who verify an organization by its social links before anything it runs is
+  public. The user's four decisions, in their words: the account IS the org;
+  a Pro user gets ONE artist page; `ai@eeetaxi.com` is the first admin;
+  existing organizations that own studios are grandfathered as verified.
+- **Migration `20260908120000_users_orgs_admins.sql` is WRITTEN AND NOT
+  APPLIED.** The push over the pooler was refused by the auto-mode classifier
+  (a production schema change); it is the user's to run —
+  `npx supabase db push --db-url <pooler url> --include-all` — and NEXT TO DO #1.
+  What it does, in order: `profiles.role` → `user | org` with the data mapped
+  (dancer/trainer → user, studio → org); `platform_admins` (FK auth.users, so
+  the first admin is named before they have a profile) + `is_platform_admin()`;
+  a guard freezing `role` after onboarding (the same hole `guard_verified_at`
+  closed for the tick); `guard_verified_at` now admits an admin;
+  `org_verification_requests` with `request_org_verification()` (org only,
+  ≥1 link, one pending) and `decide_org_verification()` (admins only — sets the
+  tick AND lists/unlists every studio the org owns in one transaction) and a
+  trigger notifying admins / the org (kind `people`); `tenant_owner_verified()`
+  + `guard_tenant_visibility` (a studio may be `listed` only under a verified
+  org — Step 2's UPDATE policy names no columns, so without this an owner could
+  PATCH themselves public); `create_tenant_with_owner` recreated: a studio needs
+  an org (born unlisted until verified), an artist page needs a user with an
+  active plan and there is one per person; the two plan RPCs stop writing
+  `role`; `artist_ids(uuid[])` (aggregate-only, the follower_counts pattern)
+  so a badge beside somebody ELSE's name can read the plan; `search_dance_os`'s
+  people sub-line; and the grandfathering with the guard trigger switched off
+  for exactly those rows (a migration carries no JWT).
+- **The app follows the two words everywhere the three used to be read** (the
+  explorers' inventory: ~20 sites). `types/profile.ts` has `ProfileRole =
+  "user" | "org"` and a display `PersonKind = "user" | "artist" | "org"` with
+  `kindOf(role, isArtist)`; badges, rings and tints key on the KIND, and every
+  list that prints a badge beside other people stamps `isArtist` once per list
+  through `findArtistIds` (followers, following, the team, people search, the
+  public person page). `DOS_TINT` is typed on the kind so a stale key is a
+  compile error. `setMyRoleAction` (dead, and a plain PATCH of role) is deleted.
+- **Onboarding is re-cut** (`OnboardingForm.tsx`): I AM HERE AS… (User |
+  Organization) at the top, ONE name, city, then the photo once the row exists;
+  a user picks styles; links are optional for a user and REQUIRED for an
+  organization (they are what the admin checks); an organization's bow says it
+  is in review and files the request as it leaves. **The hub** (`/business`)
+  is two screens: an organization's studios + a verification card (Not
+  verified / In review / Verified / Not approved + the admin's note, with the
+  ask) + its events doors; a person's one artist page (the plan unlocks it) or
+  the sentence saying what unlocks what. The Studio / Independent-trainer
+  toggle is gone — the kind follows from who is asking, here and in the RPC.
+  **The admin queue** is `/admin/verifications` (404 to anyone else): pending
+  requests with the links as evidence, Approve / Reject with a note, and every
+  organization with Verify / Revoke. The settings sheet offers it to admins.
+- **Tests re-cut, NOT YET RUN** (the schema is not there): the happy path's
+  `onboard()` walks both kinds; the owner is an Organization whose studio is
+  born unlisted and goes public when a FOURTH context — an admin named through
+  the service role — approves it in the queue; the trainer is a User who takes
+  the plan on day one so every ARTIST badge holds; the plan segment ends a live
+  plan (USER), re-takes it (ARTIST) — the role never moves. `demo-data.js`
+  seeds the two kinds, plans for the two artists, links + service-role
+  verification for the two organizations. Proof scripts' role literals are
+  rewritten (only on the lines that set a profile role — 43 tenant-type
+  literals untouched); `rls-proof-settings-screens` asserts the role STAYS.
+  **Proofs that create a studio as an org will now get an UNLISTED one, and
+  proofs that create a trainer_business need an active plan — a backlog row.**
+- **Two tooling lessons, both recorded in memory:** (1) an edit helper that
+  hands the text to its callback as a parameter and assigns the callback's
+  RETURN back discards every mutation the callback made through the closure —
+  the imports (done last, on the returned value) survived and every body swap
+  was silently lost, which is why one typecheck read like the old code; the
+  helper now exposes operations only. (2) Big edit scripts go through the
+  Write tool into the scratchpad and run by path — a heredoc past a few KB is
+  truncated on Windows ("unexpected EOF" that is not in the file) and the Bash
+  tool strips backslashes, so a `\/` in an anchor never matches.
+- **Earlier the same day, pushed and live:** the check-your-inbox screen rebuilt
+  with a real Resend (`fec9f30`); `/auth/confirm`'s failed-exchange bounce
+  for a signup code says the address is confirmed and to sign in, and the auth
+  toast got an explicit width (`5aa916d`). The 7 Sep commits were pulled onto
+  this machine; deps sync with `corepack pnpm@10 install` (Commands).
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **Finish signing in (user, 2 minutes).** Two accounts, two states.
-   **`ai@eeetaxi.com`** is confirmed (08:58 UTC, 8 Sep — the link opened in
-   another browser, bounced, and the toast now says to sign in) and signed in
-   once at 09:02. No `profiles` row yet: sign in at `/login/email` and finish
-   `/onboarding` — name, Dancer / Artist-Trainer / Studio, city, photo →
-   styles → socials → Take a bow.
-   **`deepakkaushik8919@gmail.com`** still has no usable password (it
-   pre-dates password auth, LAST SESSION of 7 Sep): Sign in → **Forgot
-   password** → the emailed link in Chrome → `/login/reset` → set one.
-   "Could not be opened here" means a different browser opened the link than
-   asked for it — copy it into Chrome, or do #2 first and ask again.
-2. **Customise the Supabase email templates to `token_hash` (dashboard, 3
+1. **APPLY THE MIGRATION (user, 1 minute) — nothing below works until it is on.**
+   `supabase/migrations/20260908120000_users_orgs_admins.sql` is written and
+   green locally (typecheck, lint) but the classifier refused the push. Run
+   from the repo: `npx supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<SUPABASE_DB_PASSWORD>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all`
+   (or allow `node …/scratchpad/push-migration.js push`). It maps every
+   profile's role, names `ai@eeetaxi.com` admin, and grandfathers the
+   organizations that own studios as verified.
+2. **Then verify it end to end (me, after #1):** `npx playwright test` against
+   a fresh `npm run dev` — the happy path now has an admin context approving
+   the organization; the three auth suites; `node scripts/demo-data.js wipe`
+   then `seed` (roles, plans, verified organizations); re-run
+   `rls-proof-settings-screens.ps1`, `rls-proof-tenants.ps1`,
+   `rls-proof-discovery.ps1`, `rls-proof-follows.ps1`. Then push — Rules 11
+   and 13 are written for that push already.
+3. **Sign in as the admin (user):** `ai@eeetaxi.com` is confirmed and has a
+   password (signed in 09:02 UTC, 8 Sep). Finish `/onboarding` **as a User**
+   (the admin is a person; the row in `platform_admins` already names the
+   account), then Profile → ⚙ → **Verification queue**, or `/admin/verifications`.
+   `deepakkaushik8919@gmail.com` still has no usable password: Sign in →
+   Forgot password → the link in Chrome → `/login/reset`.
+
+4. **Customise the Supabase email templates to `token_hash` (dashboard, 3
    minutes, no code).** Authentication → Email Templates → **Confirm signup**
    and **Reset password** (Magic Link and Change Email too, for completeness):
    replace the `{{ .ConfirmationURL }}` href with
@@ -102,43 +112,43 @@
    URL Configuration). This removes the same-browser limitation entirely — links
    then work from any app or device. The route already accepts this shape. Then
    **re-test with a real inbox link, not the proof script** (Rule 15).
-3. **For a pilot, verify a domain at resend.com/domains**, point
+5. **For a pilot, verify a domain at resend.com/domains**, point
    `smtp_admin_email` at it and switch custom SMTP back ON. That restores 60/h
    and real deliverability. The `onboarding@resend.dev` sender only ever reached
    the Resend account owner, which is what made auth look broken.
-4. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
+6. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
    confirm Supabase's redirect allow-list carries it. Every emailed link is built
    from `emailLinkOrigin()`, which prefers this over the `origin` header on
    purpose; unset in production it falls back to whatever host the browser used,
    which is how a link gets minted for an origin the allow-list refuses. On 7 Sep the `origin`-header fallback happened to yield the right
    URL (the link's `redirect_to` was the Vercel host); that is luck, not a fix.
-5. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
+7. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
    requires (`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`,
    `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`) and still
    carries `RAZORPAY_WEBHOOK_SECRET` from before the 28 Aug rail swap. Payments
    cannot work locally until that is fixed.
-6. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
+8. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
    screen's Terms and Privacy Policy are bold text, not links, because linking to
    a 404 on the screen everybody sees is worse. They become `<Link>`s in the same
    change that adds the pages — which is also where U3's DPDP consent sentence
    belongs.
-7. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
+9. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
    `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
    while the global ring in `globals.css` is `#ec4899`. Auth is consistent because
    the shadcn primitives draw the accent; every other screen still rings magenta
    against cyan buttons. One line to align, ~50 screens repainted, so it is the
    user's call.
-8. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
+10. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
    `supabase.auth.getUser()` — a network round trip — on EVERY request, the
    anonymous auth screens included. Consider excluding `/login/*` and public
    static files from the matcher, then test sign-in end to end.
-9. **Fix the pre-existing `happy-path.spec.ts:180` Rooms failure.** It is not
+11. **Fix the pre-existing `happy-path.spec.ts:180` Rooms failure.** It is not
    auth, and it was failing before this slice. It blocks 13 downstream tests
    from running at all, which means the suite is not currently a safety net.
-10. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
+12. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
    2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
    Twilio credentials, DLT registration and an approved Meta template.
-11. **The folder reorganization is proposed but NOT started**, and it is blocked
+13. **The folder reorganization is proposed but NOT started**, and it is blocked
     on one question: how does the APK reach a phone? `android/danceos-1.1.0.apk`
     and `.aab` are TRACKED in git (~4 MB per release, and `.git` is 13 MB with a
     7.6 MB pack), and the Android project exists twice — `files/android/`
@@ -187,6 +197,20 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **ACCOUNTS: user | org + platform admins, 8 Sep 2026, no step number ⚠ (Rule 9,
+  auth + RLS) — MIGRATION WRITTEN, NOT YET APPLIED (NEXT TO DO #1).** The
+  prototype's dancer | trainer | studio became two kinds of account at the
+  user's instruction: a user (Pro is the artist plan, a row not a role) and an
+  organization that runs studios (one org, many studios), plus platform admins
+  who verify an organization by its links before anything it runs is public.
+  `20260908120000_users_orgs_admins.sql`; onboarding re-cut (who first, one
+  name, styles for a user, mandatory links for an org, an in-review bow); the
+  hub split by kind with the verification card; `/admin/verifications`;
+  `create_tenant_with_owner` gated (a studio needs an org and is born unlisted;
+  an artist page needs the plan, one per person); every badge, ring and tint
+  keyed on the KIND with `isArtist` stamped once per list. Deviations recorded
+  in their own section below; audit rows U2/U3; a backlog row for what it
+  leaves. Tests re-cut and waiting on the schema. Detail at the top of this file.
 - **The check-your-inbox screen rebuilt, 8 Sep 2026, no step number ⚠ (Rule 9,
   auth-adjacent).** `/login/check-email` is `CheckEmail.tsx` now: the address
   in its own card, WHAT HAPPENS NEXT in three steps (the third names the
@@ -3263,6 +3287,30 @@ still the prototype's; only the credentials changed.
 **Removing the Email/Mobile toggle moved auth TOWARDS parity, not away** — it was
 audit row U3, "an addition", never in the prototype at all.
 
+### Deliberate deviations from the prototype — accounts (8 Sep 2026)
+
+The prototype has three roles — dancer, artist (trainer) and studio — chosen on
+one onboarding tile and, for artist, flipped by the subscription. The user
+replaced that on 8 Sep 2026 with two kinds of account and a platform admin.
+Rule 2 still holds for every screen's anatomy; these rows are what it does NOT
+hold for, each with its reason. **Do not "restore parity" on any of them.**
+
+| # | The prototype does | DanceOS does | Why |
+|---|--------------------|--------------|-----|
+| R1 | Three roles: dancer, artist / trainer, studio (`__DOSROLE`; the onboarding tiles 3855) | Two kinds of account: **user** and **organization** (`profiles.role = 'user' \| 'org'`) | The user's decision. A studio is not a person; an organization runs studios — one or several — and that is a different thing to be. |
+| R2 | The subscription sets the role to artist (8850, "Artist is a TOOLSET on that same profile") | **Pro is the plan, never a role**: an active `artist_plans` row. Badges print ARTIST off the plan (`kindOf`, `artist_ids`) | The two UPDATEs that kept role and plan in step were the only thing keeping them in step, and they drifted (an expired plan left 'trainer' forever). One source of truth. |
+| R3 | Anyone opens a studio or an independent-trainer business from the hub (2660-2684) | **Only an organization opens studios; only a Pro user opens ONE artist page**; enforced in `create_tenant_with_owner` and mirrored by the hub | "Studio profiles will only be created inside the org profile." An artist page is what the artist tools run through, so a Pro user still gets exactly one. |
+| R4 | Every business is public the moment it exists (`visibility` default 'listed') | A studio is **born unlisted and goes public when a platform admin verifies its organization**; `guard_tenant_visibility` refuses 'listed' under an unverified org | "Admin will check social media links, confirm, and then only an org will be visible to all users." Every public policy already hinged on `visibility = 'listed'`, so the gate is one trigger. |
+| R5 | No platform admin exists (the closest thing is a demo toast, 3869) | `platform_admins` (service-role only), `/admin/verifications`, `decide_org_verification`, an admin row in the settings sheet | Somebody has to say yes. Named by DanceOS, never self-serve; a stranger gets a 404, not a 403. |
+| R6 | First name + last name (3798-3802) | **One name** for both kinds | An organization has one name; for this purpose so does a person. The handle preview derives from it. |
+| R7 | Links "optional now — mandatory later if you set up a trainer or studio profile" (3880) | **Mandatory for an organization at onboarding** (≥ 1); optional for a user | The links are what the admin verifies; asking to be verified with nothing to check is refused by the RPC in words. |
+| R8 | Onboarding asks the role LAST, after the photo and the name | **Who is here is asked FIRST** | The user's instruction; the answer decides which fields follow (an organization is not asked what it dances). |
+
+**Not gated, deliberately:** a Pro user's artist page is public immediately (the
+user chose "Pro gets one artist business" without admin verification). **Still
+the service role's:** `tenants.verified_at` (the KYC tick on a business) is
+unchanged; the admin's tick is `profiles.verified_at` on the organization.
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -3323,6 +3371,7 @@ nothing to lift.
 | **PassDeck slice, what it left (29 Aug 2026):** the "Yours" badge a card wears on a session you run (8460 — the prototype's `manage` mode; our manage powers live on the managed list and the desks), the poster on the deck's class card (posters are drawn until the posters slice — the pass sheet already draws one), and the event card's role chip sits UNDER the card rather than inside it (`EventCard` heads with its kind cap and has no slot on that line). **Home's rank row landed 30 Aug 2026** (parity slice 7) | PassDeck 6863-7204, BookingCard 8460, 7315-7323 | posters slice; the rest decision (c) |
 | **Slice 8, what it left (30 Aug 2026):** onboarding's **date of birth and the 18+ gate** (no column holds a birth date — a needs-field (b) row of its own, and the gate is a product rule as much as a column); "Missing a style? Suggest it →" on the styles step (a demo toast in the prototype, so there is nothing to lift); the photo step uses the app's own `PhotoPicker` rather than `DosCropper`'s crop-and-frame flow; and the picker is single-select everywhere it is used — its `multi` mode (3554) has no call site yet, so it is not built | 3788-3943, 3885, DosCropper 6604, DosStylePicker 3554 | a DOB slice; the cropper with the posters slice; `multi` when a screen wants it |
 | **Wiring slice, what it left (30 Aug 2026):** the owner's Followers sheet has no All · Dancers · Artists · Studios segment strip (the person's own sheet has one; a business's followers are one list and the segments would filter a list that is usually short) and no paging past `MAX_LIST`; the Discover tick is drawn on studios and artists but a **crew** carries none, because no crew is verified by anybody; and the enquiry's Call still says "No number on this enquiry" to the business when the sender typed none — the sender's number is theirs to give, not the app's to look up | S_profiletab 11335; 4352, 4411; S_enqdetail 5406 | the segment strip and paging when a pilot business has enough followers to need them; the rest is decision (c) |
+| **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof scripts that create a studio now get an UNLISTED one** unless they stamp the org verified first (service-role PATCH of `profiles.verified_at`), and those creating a `trainer_business` need an active plan — `rls-proof-discovery`, `-follows`, `-search`, `-person-pages`, `-enquiries`, `-events`, `-managed`, `-classes`, `-slugs` and the money proofs need that line added before they read green again; the **date of birth and 18+ gate** stay needs field (b) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)
@@ -3418,8 +3467,8 @@ refs are the file to open.
 | A5 | Chrome: the global undo bar (needs an undo contract for server actions) | 19300-19307 | — | decision (c) |
 | A6 | Chrome: the gear opens the Settings sheet (on the Profile tab), not just the tab | 19263 | AppChrome.tsx | **fixed** |
 | U1 | Onboarding: heading "Set up your profile", sub, Continue-or-reason button, handle preview, an honest progress bar | 3781-3821 | OnboardingForm.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
-| U2 | Onboarding: photo (required), styles step, socials step, the "Take a bow" finish screen — **fixed** 30 Aug 2026 (parity slice 8: four screens, the row created at the end of the first so the photo has something to attach to, and a cookie so a mid-flow revalidate cannot end the flow). Date of birth and the 18+ gate are still open | 3788-3943 | app/onboarding, OnboardingForm.tsx | **fixed** for the photo / styles / socials / finish screen; **needs field (b)** for DOB + the 18+ gate |
-| U3 | Onboarding: the role picker and the city field are additions; **sign-in's Email/Mobile toggle is an addition**; DPDP consent sentence | 3855, 3678, 3746 | features/auth | **the toggle is GONE (7 Sep 2026)** — auth is email-only, so the addition is removed and this row moved toward parity rather than away from it. The role picker and city field stay decision (c) — they are this app's own, not the prototype's. The DPDP sentence waits on the legal-pages slice (its own backlog row) |
+| U2 | Onboarding: photo (required), styles step, socials step, the "Take a bow" finish screen — **fixed** 30 Aug 2026 (parity slice 8), **re-cut 8 Sep 2026** for the two kinds of account (deviations R1, R6-R8: who first, one name, styles only for a user, links mandatory for an organization, an in-review bow). Date of birth and the 18+ gate are still open | 3788-3943 | app/onboarding, OnboardingForm.tsx | **fixed** for the photo / styles / socials / finish screen; **needs field (b)** for DOB + the 18+ gate |
+| U3 | Onboarding: the role picker and the city field are additions; **sign-in's Email/Mobile toggle is an addition**; DPDP consent sentence | 3855, 3678, 3746 | features/auth | **the toggle is GONE (7 Sep 2026)**. **The role picker is DECIDED (8 Sep 2026)**: it asks User \| Organization, first — deviations R1 and R8, the user's own. The city field stays decision (c). The DPDP sentence waits on the legal-pages slice (its own backlog row) |
 | U4 | OTP: Resend re-requests in place; "Get a call instead" | 3764-3765 | CheckEmail.tsx | **Resend-in-place landed 8 Sep 2026 on the email twin** — `/login/check-email` counts down the OTP screen's thirty seconds, then "Resend link" calls `resendEmailAction` (Supabase's rate-limit refusal shown in its own words). The OTP screen itself went with the phone channel on 7 Sep 2026; "Get a call instead" needed a voice provider and now needs a phone channel too — decision (c) |
 | U5 | AuthShell progress prop | 3683-3694 | AuthShell | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | Z1 | Business hub: hero blob literal; "Studios" / "STUDIOS YOU OWN"; head colour var(--muted) | 2629-2633 | BusinessHub.tsx | **fixed** |
@@ -3565,10 +3614,12 @@ server action → UI, finished and verified before the next begins.
    styles, interactions) is lifted directly from `prototype/DanceOSApp.jsx` into the
    real app. Only the data wiring changes: `dosStorage` reads/writes are replaced
    with server actions. The built screen must look identical to the prototype screen.
-   **The one standing exception is auth**, which the user overruled on 7 Sep 2026:
+   **Two standing exceptions: auth, and the account model.** Auth the user overruled on 7 Sep 2026:
    the prototype has no password field anywhere, so its auth screens cannot be
    lifted part for part. Those departures are enumerated in "Deliberate
-   deviations from the prototype — auth" — eight rows, each with its reason.
+   deviations from the prototype — auth" — eight rows, each with its reason. The
+  account model the user overruled on 8 Sep 2026 (user | org, Pro as the plan,
+  admins who verify) — "Deliberate deviations from the prototype — accounts".
    **Do not "restore parity" on any of them**; they are decisions, not drift. Any
    NEW deviation still needs the user's say-so and a row in that table.
 3. **Every table ships with**: UUID PK, `tenant_id` (if tenant-scoped), audit columns

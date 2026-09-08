@@ -7,6 +7,7 @@ import { findPublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyPlace } from "@/repositories/stats";
 import { findMyTenants } from "@/repositories/tenants";
+import { amIPlatformAdmin } from "@/repositories/admin";
 
 /** The Profile tab — prototype S_profiletab's own render, lifted in
  *  `MyProfilePage`, with the Settings sheet behind the chrome's gear
@@ -28,16 +29,18 @@ export default async function ProfilePage() {
     redirect("/onboarding");
   }
   const role = person.profile.role;
-  const [followers, followingPeople, followingTenants, place, tenants, prefs, plan] = await Promise.all([
+  const [followers, followingPeople, followingTenants, tenants, prefs, plan, isAdmin] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
-    /* where you stand — a studio OWNER has no people board (the prototype hides the rank on a studio, 10719) */
-    role === "studio" ? Promise.resolve(null) : findMyPlace(supabase, role === "trainer" ? "artist" : "dancer"),
     findMyTenants(supabase),
     findMyNotificationPrefs(supabase),
     findMyArtistPlan(supabase),
+    amIPlatformAdmin(supabase),
   ]);
+  /* where you stand — an ORGANIZATION has no people board (the prototype hides the
+     rank on a studio, 10719); a person stands on the artists' board while the plan is live */
+  const place = role === "org" ? null : await findMyPlace(supabase, plan?.active ? "artist" : "dancer");
   /* Schedule goes to the public schedule of the business this person runs —
      a trainer's own (prototype `hasSchedule` = mode === "trainer", 10868); with
      none, the button is not drawn rather than pointing nowhere */
@@ -55,6 +58,7 @@ export default async function ProfilePage() {
       prefs={prefs}
       business={biz ?? null}
       plan={plan}
+      isAdmin={isAdmin}
     />
   );
 }

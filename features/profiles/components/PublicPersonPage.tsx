@@ -3,7 +3,6 @@ import Link from "next/link";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { CREW_ROLE_WORD } from "@/types/crew";
-import type { ProfileRole } from "@/types/profile";
 import { SIDE_TINT, SIDE_VERB, hoursWords } from "@/types/stats";
 import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
@@ -13,8 +12,8 @@ import { ProfileShare } from "./ProfileShare";
 import { CallButton, fmtFollowers } from "./PublicProfile";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { handleOf, isPlatform } from "@/lib/constants/socials";
-import { memberNoWords } from "@/types/profile";
-import { Group, PlaceLink, PlatformIcon, Row, SchedIcon, TYPE, bigWhite } from "./profile-kit";
+import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
+import { Group, PlaceLink, PlatformIcon, ROLE_RING, Row, SchedIcon, TYPE, bigWhite } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
@@ -50,21 +49,15 @@ export { Group, Row };
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
 const figure: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontWeight: 700, fontVariantNumeric: "tabular-nums" };
 
-/** the badge over the name — the prototype's own words for what somebody is */
-const ROLE_BADGE: Record<ProfileRole, string> = { dancer: "DANCER", trainer: "ARTIST", studio: "STUDIO OWNER" };
-/** DOS_RINGS (1462): the metal each role wears */
-const ROLE_RING: Record<ProfileRole, [string, string]> = {
-  studio: ["#F9E27D", "#B8860B"],
-  trainer: ["#F2F2F2", "#8E9BAE"],
-  dancer: ["#F0BC8A", "#8C5A2B"],
-};
 
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "D";
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
 export function PublicPersonPage({ person, isMe, following, signedIn }: { person: PublicPerson; isMe: boolean; following: boolean; signedIn: boolean }) {
   const { profile, stats } = person;
-  const ring = ROLE_RING[profile.role];
+  /* the word over the name is the KIND's: an organization, an artist while the plan is live, a user */
+  const kind = kindOf(profile.role, person.isArtist);
+  const ring = ROLE_RING[kind];
   const RC = ring[1];
   const SQ = 206;
   const sqShadow = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.4)";
@@ -86,7 +79,7 @@ export function PublicPersonPage({ person, isMe, following, signedIn }: { person
             </div>
           </div>
           <div style={{ padding: "10px 16px 2px" }}>
-            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{ROLE_BADGE[profile.role]}</div>
+            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{KIND_BADGE[kind]}</div>
             {profile.memberNo ? <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 3 }}>{memberNoWords(profile.memberNo)}</div> : null}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.fullName}</span>

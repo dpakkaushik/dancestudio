@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { PROFILE_COLUMNS, toProfile } from "@/repositories/profiles";
+import { PROFILE_COLUMNS, findArtistIds, toProfile } from "@/repositories/profiles";
 import type { Profile } from "@/types/profile";
 import type { DanceStats } from "@/types/stats";
 import { EMPTY_STATS } from "@/types/stats";
@@ -33,6 +33,8 @@ export interface PersonTeachesAt {
 
 export interface PublicPerson {
   profile: Profile;
+  /** the plan's word, through artist_ids — the badge over the name is the plan's to give */
+  isArtist: boolean;
   stats: DanceStats;
   followers: number;
   following: number;
@@ -114,7 +116,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
   }
   const profile: Profile = toProfile(profileRow as Parameters<typeof toProfile>[0]);
 
-  const [statsRes, countsMap, crewsRes, teachesRes, runsRes] = await Promise.all([
+  const [statsRes, countsMap, crewsRes, teachesRes, runsRes, artistIds] = await Promise.all([
     supabase.rpc("person_dance_stats", { p_user_id: userId }),
     findPersonFollowerCounts(supabase, [userId]),
     supabase
@@ -135,6 +137,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
       .eq("member_role", "owner")
       .is("deleted_at", null)
       .limit(20),
+    findArtistIds(supabase, [userId]),
   ]);
 
   const sRow = (Array.isArray(statsRes.data) ? statsRes.data[0] : statsRes.data) as StatsRow | undefined;
@@ -202,5 +205,5 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     .map((r) => ({ tenantId: r.tenants!.id, tenantName: r.tenants!.name, tenantType: r.tenants!.type, city: r.tenants!.city, photoPath: r.tenants!.photo_path ?? null }));
 
   const c = countsMap.get(userId) ?? { followers: 0, following: 0 };
-  return { profile, stats, followers: c.followers, following: c.following, crews, teachesAt, runs };
+  return { profile, isArtist: artistIds.has(userId), stats, followers: c.followers, following: c.following, crews, teachesAt, runs };
 }

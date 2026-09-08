@@ -81,10 +81,10 @@ function New-EmailUser($email, $name, $role, $city) {
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $city = "Ahmedabad"   # a city the demo world does not use
-$owner = New-EmailUser "pp-owner-$stamp@example.com" "PP Owner $stamp" "studio" $city
-$teacher = New-EmailUser "pp-teacher-$stamp@example.com" "PP Teacher $stamp" "trainer" $city
-$fan = New-EmailUser "pp-fan-$stamp@example.com" "PP Fan $stamp" "dancer" $city
-$other = New-EmailUser "pp-other-$stamp@example.com" "PP Other $stamp" "dancer" $city
+$owner = New-EmailUser "pp-owner-$stamp@example.com" "PP Owner $stamp" "org" $city
+$teacher = New-EmailUser "pp-teacher-$stamp@example.com" "PP Teacher $stamp" "user" $city
+$fan = New-EmailUser "pp-fan-$stamp@example.com" "PP Fan $stamp" "user" $city
+$other = New-EmailUser "pp-other-$stamp@example.com" "PP Other $stamp" "user" $city
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "PP Listed Studio $stamp"; p_type = "studio"; p_area = "Navrangpura"; p_city = $city }
 $tb = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "PP Private Studio $stamp"; p_type = "studio"; p_area = "Bodakdev"; p_city = $city }
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
