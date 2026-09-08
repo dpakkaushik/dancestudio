@@ -57,6 +57,7 @@ export default async function ProfilePage() {
       scheduleHref={scheduleHref}
       prefs={prefs}
       business={biz ?? null}
+      tenants={tenants}
       plan={plan}
       isAdmin={isAdmin}
     />

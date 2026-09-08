@@ -53,7 +53,20 @@ const figure: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular,
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "D";
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
-export function PublicPersonPage({ person, isMe, following, signedIn }: { person: PublicPerson; isMe: boolean; following: boolean; signedIn: boolean }) {
+export function PublicPersonPage({
+  person,
+  isMe,
+  following,
+  signedIn,
+  canFollow = true,
+}: {
+  person: PublicPerson;
+  isMe: boolean;
+  following: boolean;
+  signedIn: boolean;
+  /** false when either side is an organization — one neither follows nor is followed (8 Sep 2026) */
+  canFollow?: boolean;
+}) {
   const { profile, stats } = person;
   /* the word over the name is the KIND's: an organization, an artist while the plan is live, a user */
   const kind = kindOf(profile.role, person.isArtist);
@@ -83,7 +96,8 @@ export function PublicPersonPage({ person, isMe, following, signedIn }: { person
             {profile.memberNo ? <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 3 }}>{memberNoWords(profile.memberNo)}</div> : null}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.fullName}</span>
-              <ProfileShare path={path} name={profile.fullName} />
+              {/* an organization has no page to share — this one is the admin's view of it (8 Sep 2026) */}
+              {kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
             </div>
             {profile.city || profile.age ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7, fontSize: 15, fontWeight: 700, color: SUB }}>
@@ -165,13 +179,13 @@ export function PublicPersonPage({ person, isMe, following, signedIn }: { person
           ) : profile.phone ? (
             /* two things you can do, so they share the row — the same tel: the
                business page hands off with, from the same component */
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 6 }}>
-              <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} />
+            <div style={{ display: "grid", gridTemplateColumns: canFollow ? "2fr 1fr" : "1fr", gap: 6 }}>
+              {canFollow ? <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} /> : null}
               <CallButton phone={profile.phone} />
             </div>
-          ) : (
+          ) : canFollow ? (
             <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} />
-          )}
+          ) : null}
         </div>
 
         {/* THE PLACE THIS PROFILE GOES (10905-10940): a business's schedule is a

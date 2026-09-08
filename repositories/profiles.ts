@@ -147,6 +147,8 @@ export async function searchProfiles(
     .select(PROFILE_COLUMNS)
     .ilike("full_name", `%${q.replace(/[%_]/g, "")}%`)
     .is("deleted_at", null)
+    /* an organization is not a person to pick (8 Sep 2026): a crew member, a duet partner, a trainer are people */
+    .neq("role", "org")
     .order("full_name", { ascending: true })
     .limit(8 + skip.size);
 

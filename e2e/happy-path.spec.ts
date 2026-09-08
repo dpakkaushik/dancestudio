@@ -245,6 +245,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(admin.getByText("E2E Owner verified — its studios are live")).toBeVisible();
     await owner.goto("/business");
     await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
+    // and its own Profile is the ONE place its studios appear together (R9, 8 Sep
+    // 2026): the group, the studio's door, the figure — and no Followers figure,
+    // because nobody follows an organization; people follow its studios
+    await owner.goto("/profile");
+    await expect(owner.getByText("Your studios")).toBeVisible();
+    await expect(owner.getByRole("link", { name: `Open ${studioName}` })).toBeVisible();
+    await expect(owner.getByRole("link", { name: "1 studio — open the hub" })).toBeVisible();
+    await expect(owner.getByRole("button", { name: /followers$/ })).toHaveCount(0);
 
     // ---- create + publish a class ----------------------------------------
     await studioRow.click();
@@ -839,6 +847,19 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByText("People")).toBeVisible();
     await learner.getByRole("option", { name: /^E2E Trainer — Artist/ }).click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
+
+    // an organization is never a result and has no page for anybody else (R9):
+    // the same term finds the trainer and not the owner, and the owner's address
+    // answers 404 — while the admin, who verifies it, still reads it as evidence
+    await learner.goto("/discover?city=Pune&tab=classes");
+    await learner.getByLabel("Search DanceOS").fill("E2E");
+    await expect(learner.getByRole("option", { name: /^E2E Trainer — Artist/ })).toBeVisible();
+    await expect(learner.getByRole("option", { name: /^E2E Owner/ })).toHaveCount(0);
+    const orgPage = await learner.goto(`/person/${ownerId}`);
+    expect(orgPage?.status()).toBe(404);
+    await admin.goto(`/person/${ownerId}`);
+    await expect(admin.getByText("ORGANIZATION", { exact: true })).toBeVisible();
+    await expect(admin.getByRole("button", { name: "Follow" })).toHaveCount(0);
 
     // the crew's public roster opens its people too, and the trainer's own page
     // says it is theirs rather than offering them a Follow button

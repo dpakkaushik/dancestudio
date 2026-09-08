@@ -177,7 +177,8 @@ export default async function HomePage() {
                   {/* the tick is DanceOS's to give (7292) — set when a verification actually clears */}
                   {profile.verifiedAt ? <VerifiedTick size={16} /> : null}
                   {/* the QR beside the name shares this person (7288) */}
-                  <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />
+                  {/* an organization has no public page to share (8 Sep 2026) — its studios have theirs */}
+                  {profile.role === "org" ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
                 </div>
                 {metaLine ? (
                   <div style={{ display: "flex", alignItems: "center", marginTop: 5, minWidth: 0, fontSize: 13, fontWeight: 800, color: INK }}>

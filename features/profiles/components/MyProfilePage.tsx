@@ -79,6 +79,7 @@ export function MyProfilePage({
   scheduleHref,
   prefs,
   business,
+  tenants = [],
   plan,
   isAdmin = false,
 }: {
@@ -92,6 +93,8 @@ export function MyProfilePage({
   prefs: NotificationPrefs;
   /** the first business this person runs, for the rows that live on its desk */
   business: Tenant | null;
+  /** every business this account runs — an ORGANIZATION's studios, under one hood (8 Sep 2026) */
+  tenants?: Tenant[];
   /** the Artist plan, for the settings sheet's switch */
   plan: ArtistPlan | null;
   /** a platform admin gets the verification queue as a row in the settings sheet */
@@ -105,6 +108,9 @@ export function MyProfilePage({
   const RC = ring[1];
   const face = photoUrl(profile.avatarPath);
   const followingN = followingPeople.length + followingTenants.length;
+  /* an organization is not a public entity (8 Sep 2026): no page to share, nobody
+     follows it and it follows nobody, it dances nothing — its figure is its studios */
+  const isOrg = profile.role === "org";
 
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -119,7 +125,7 @@ export function MyProfilePage({
       the address is its open state — a state seeded at mount would never see the
       gear, because the gear links to the page it is already on. */
   const settingsOpen = useSearchParams().get("settings") === "1";
-  const [followSeg, setFollowSeg] = useState<"All" | "Users" | "Artists" | "Organizations">("All");
+  const [followSeg, setFollowSeg] = useState<"All" | "Users" | "Artists" | "Studios">("All");
 
   const fire = (m: string) => {
     setToast(m);
@@ -155,9 +161,10 @@ export function MyProfilePage({
       ? followers.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) }))
       : [
           ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
-          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "org" : "artist", glyph: (t.tenantType === "studio" ? "org" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
+          ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "org" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
         ];
-  const segOf = (kind: string) => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : "Organizations");
+  /* the prototype's segments (11336) in the words for the kinds we have — a followed studio is a business, never an organization */
+  const segOf = (kind: string) => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : "Studios");
   const shownFollowRows = followRows.filter((r) => followSeg === "All" || segOf(r.kind) === followSeg);
 
   return (
@@ -193,7 +200,7 @@ export function MyProfilePage({
             <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 3 }}>{memberNoWords(profile.memberNo)}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.fullName}</span>
-              <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />
+              {isOrg ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
             </div>
             {/* age and place read as one introduction — "24, New Delhi" (10664) */}
             {profile.age || profile.city ? (
@@ -208,6 +215,14 @@ export function MyProfilePage({
 
             {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
+              {isOrg ? (
+                /* an organization's one figure is its studios — it has no followers, follows nobody, and stands on no board */
+                <Link href="/business" aria-label={`${tenants.length} ${tenants.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
+                  <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{tenants.length}</span>
+                  <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>{tenants.length === 1 ? "Studio" : "Studios"}</span>
+                </Link>
+              ) : (
+                <>
               <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
                 <span data-testid="my-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followers.length}</span>
                 <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
@@ -226,13 +241,16 @@ export function MyProfilePage({
                   <span style={{ display: "block", ...micro, color: TT.text, marginTop: 4 }}>{TT.label} rank</span>
                 </Link>
               ) : null}
+                </>
+              )}
             </div>
           </div>
         </div>
 
         {/* ── THE BAND UNDER THE NAME — ONE STRUCTURE, THREE PARTS (10739) ── */}
         <div style={{ textAlign: "left" }}>
-          {/* the styles you dance, and the ＋ that edits them (DosStyleRow 1767) */}
+          {/* the styles you dance, and the ＋ that edits them (DosStyleRow 1767) — an organization dances nothing */}
+          {isOrg ? <div style={{ height: 14 }} /> : (
           <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 6px", alignItems: "center" }}>
             {styleList.map((s) => (
               <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} />
@@ -240,6 +258,7 @@ export function MyProfilePage({
             <button type="button" aria-label="Add a dance style" onClick={() => setStylesOpen(true)} style={{ width: 34, height: 34, borderRadius: 10, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, fontWeight: 800, color: SUB, flexShrink: 0, border: "none", fontFamily: "inherit" }}>＋</button>
             {styleList.length === 0 ? <span style={{ fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance go here.</span> : null}
           </div>
+          )}
 
           {/* THE LINKS, UNDER THE STYLES (10760): one line, swiped sideways */}
           <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "0 0 14px", paddingBottom: 2 }}>
@@ -280,6 +299,17 @@ export function MyProfilePage({
         </div>
 
         {/* ── THE PEOPLE, IN ONE LANGUAGE (10990): a row per person, each group headed with a count ── */}
+        {/* an ORGANIZATION's studios, under one hood (8 Sep 2026): every one it runs, public or
+            not yet, each a door to its desk. Nobody else sees this list — they see each studio
+            on its own page, and never the organization behind it. */}
+        {isOrg ? (
+          <Group title="Your studios" n={tenants.length}>
+            {tenants.map((t) => (
+              <Row key={t.id} href={`/business/${t.id}/classes`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ") || "Studio"} right={profile.verifiedAt ? "Public" : "Not public yet"} />
+            ))}
+            <Row href="/business" title="＋ Add studio" sub={tenants.length === 0 ? "Your first studio is opened from the hub" : "Opened from the hub — the same organization, another address"} />
+          </Group>
+        ) : null}
         {person.crews.length ? (
           <Group title="Crews" n={person.crews.length}>
             {person.crews.map((c) => (
@@ -294,7 +324,7 @@ export function MyProfilePage({
             ))}
           </Group>
         ) : null}
-        {person.runs.length ? (
+        {!isOrg && person.runs.length ? (
           <Group title="Runs" n={person.runs.length}>
             {person.runs.map((t) => (
               <Row key={t.tenantId} href={`/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`} markName={t.tenantName} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.tenantName} sub={[t.tenantType === "studio" ? "Studio" : "Artist business", t.city].filter(Boolean).join(" · ")} />
@@ -468,7 +498,7 @@ export function MyProfilePage({
             <span style={{ fontSize: 13, color: SUB, fontWeight: 700 }}>{followRows.length}</span>
           </div>
           <div style={{ display: "flex", gap: 5, marginBottom: 14, overflowX: "auto", scrollbarWidth: "none" }}>
-            {(["All", "Users", "Artists", "Organizations"] as const).map((s) => (
+            {(["All", "Users", "Artists", "Studios"] as const).map((s) => (
               <button type="button" key={s} onClick={() => setFollowSeg(s)} aria-pressed={followSeg === s} style={{ flex: "0 0 auto", textAlign: "center", padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, whiteSpace: "nowrap", background: followSeg === s ? PINK : CARD, color: followSeg === s ? "#fff" : SUB, border: "none", fontFamily: "inherit", boxShadow: followSeg === s ? "0 3px 10px rgba(90,200,250,.35)" : "none" }}>{s}</button>
             ))}
           </div>

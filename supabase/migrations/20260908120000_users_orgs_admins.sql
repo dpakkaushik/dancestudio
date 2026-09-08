@@ -512,8 +512,10 @@ revoke execute on function public.artist_ids(uuid[]) from public;
 grant execute on function public.artist_ids(uuid[]) to anon, authenticated;
 
 -- ── 10. the search box's second line ────────────────────────────────────────
--- body identical to 20260829210000 except the people sub-line, which read the
--- three old words off the role; the artist word comes off the plan now
+-- body identical to 20260829210000 except the People section: its sub-line
+-- read the three old words off the role (the artist word comes off the plan
+-- now), and an ORGANIZATION is not a result at all — to everyone else it does
+-- not exist; its studios do, each on its own row above
 create or replace function public.search_dance_os(p_q text, p_limit integer default 3)
 returns table (kind text, id uuid, name text, sub text, href text)
 language sql
@@ -570,13 +572,12 @@ as $$
   ),
   people as (
     select 'person'::text as kind, p.id, p.full_name as name,
-           (case when p.role = 'org' then 'Organization'
-                 when exists (select 1 from public.artist_ids(array[p.id])) then 'Artist'
+           (case when exists (select 1 from public.artist_ids(array[p.id])) then 'Artist'
                  else 'User' end)
              || ' · ' || coalesce(p.city, '—') as sub,
            '/person/' || p.id::text as href
     from public.profiles p, q
-    where p.deleted_at is null and q.term <> ''
+    where p.deleted_at is null and p.role <> 'org' and q.term <> ''
       and (lower(p.full_name) like q.term || '%' or lower(p.full_name) like '% ' || q.term || '%')
     order by p.full_name
     limit (select lim from q)
@@ -588,9 +589,143 @@ as $$
   union all select * from people;
 $$;
 comment on function public.search_dance_os(text, integer) is
-  'Discover''s one search box: studios, artists, crews, events and PEOPLE whose name starts with the term or has a word that does, at most p_limit per kind. SECURITY INVOKER — the caller''s RLS decides, so a stranger finds no people (profiles are signed-in only).';
+  'Discover''s one search box: studios, artists, crews, events and PEOPLE whose name starts with the term or has a word that does, at most p_limit per kind. SECURITY INVOKER — the caller''s RLS decides, so a stranger finds no people (profiles are signed-in only). An organization is never a result: it is not a public entity — its studios are.';
 revoke execute on function public.search_dance_os(text, integer) from public;
 grant execute on function public.search_dance_os(text, integer) to anon, authenticated;
+
+-- ── 10b. an organization neither follows nor is followed ────────────────────
+-- The user's rule (8 Sep 2026): to everyone else an organization does not
+-- exist — its studios do, each on its own page, and only the organization sees
+-- them under one hood. Following is a person's act and a person's list: an
+-- organization following a studio would print ORGANIZATION in that studio's
+-- Followers sheet, and following a person would put it in theirs. So both
+-- follow doors refuse an organization as the caller, set_person_follow refuses
+-- one as the target, and every live follow that names one (the old studio
+-- accounts followed people and businesses) is closed the way an unfollow
+-- closes it — soft-deleted, kept on record. The bodies are 20260828120000's
+-- and 20260829210000's with the one check added each.
+create or replace function public.set_follow(p_tenant_id uuid, p_on boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_tenant public.tenants;
+  v_live uuid;
+  v_count bigint;
+begin
+  if v_user is null then
+    raise exception 'not authenticated';
+  end if;
+  if not exists (select 1 from public.profiles p where p.id = v_user and p.deleted_at is null) then
+    raise exception 'finish onboarding before following';
+  end if;
+  -- an organization is not a person: it follows nothing (8 Sep 2026)
+  if exists (select 1 from public.profiles p where p.id = v_user and p.role = 'org') then
+    raise exception 'an organization does not follow — people follow its studios';
+  end if;
+
+  select * into v_tenant from public.tenants t
+    where t.id = p_tenant_id and t.deleted_at is null;
+  if not found then
+    raise exception 'business not found';
+  end if;
+  -- a business that is not open to the public cannot be followed from outside
+  if v_tenant.visibility <> 'listed' then
+    raise exception 'this business is not open to the public';
+  end if;
+  -- you are on this team: a member's follow would count the business's own people
+  if exists (
+    select 1 from public.tenant_members m
+    where m.tenant_id = p_tenant_id and m.user_id = v_user and m.deleted_at is null
+  ) then
+    raise exception 'you already belong to this business';
+  end if;
+
+  select f.id into v_live from public.follows f
+    where f.follower_id = v_user and f.tenant_id = p_tenant_id and f.deleted_at is null;
+
+  if p_on and v_live is null then
+    insert into public.follows (follower_id, tenant_id, created_by, updated_by)
+    values (v_user, p_tenant_id, v_user, v_user);
+  elsif not p_on and v_live is not null then
+    update public.follows
+      set deleted_at = now(), updated_by = v_user
+      where id = v_live;
+  end if;
+
+  select count(*) into v_count from public.follows f
+    where f.tenant_id = p_tenant_id and f.deleted_at is null;
+
+  return jsonb_build_object('following', p_on, 'followers', v_count);
+end;
+$$;
+comment on function public.set_follow(uuid, boolean) is
+  'Follow (true) or unfollow (false) a listed business you do not belong to. Idempotent; returns the new state and the live follower count. An organization account cannot follow (8 Sep 2026).';
+revoke execute on function public.set_follow(uuid, boolean) from public, anon;
+grant execute on function public.set_follow(uuid, boolean) to authenticated;
+
+create or replace function public.set_person_follow(p_user_id uuid, p_on boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_live uuid;
+  v_count bigint;
+begin
+  if v_user is null then
+    raise exception 'not authenticated';
+  end if;
+  if not exists (select 1 from public.profiles p where p.id = v_user and p.deleted_at is null) then
+    raise exception 'finish onboarding before following';
+  end if;
+  -- an organization is not a person: it follows nobody (8 Sep 2026)
+  if exists (select 1 from public.profiles p where p.id = v_user and p.role = 'org') then
+    raise exception 'an organization does not follow people';
+  end if;
+  if p_user_id = v_user then
+    raise exception 'you cannot follow yourself';
+  end if;
+  if not exists (select 1 from public.profiles p where p.id = p_user_id and p.deleted_at is null) then
+    raise exception 'that person is not on DanceOS';
+  end if;
+  -- and it is not a person to follow: its studios are
+  if exists (select 1 from public.profiles p where p.id = p_user_id and p.role = 'org') then
+    raise exception 'that is an organization, not a person — follow its studios';
+  end if;
+
+  select f.id into v_live from public.follows f
+    where f.follower_id = v_user and f.followee_id = p_user_id and f.deleted_at is null;
+
+  if p_on and v_live is null then
+    insert into public.follows (follower_id, followee_id, created_by, updated_by)
+    values (v_user, p_user_id, v_user, v_user);
+  elsif not p_on and v_live is not null then
+    update public.follows set deleted_at = now(), updated_by = v_user where id = v_live;
+  end if;
+
+  select count(*) into v_count from public.follows f
+    where f.followee_id = p_user_id and f.deleted_at is null;
+
+  return jsonb_build_object('following', p_on, 'followers', v_count);
+end;
+$$;
+comment on function public.set_person_follow(uuid, boolean) is
+  'Follow (true) or unfollow (false) a person. Idempotent; refuses yourself, somebody who is not on DanceOS, and an organization on either side (8 Sep 2026). Returns the new state and the live follower count.';
+revoke execute on function public.set_person_follow(uuid, boolean) from public, anon;
+grant execute on function public.set_person_follow(uuid, boolean) to authenticated;
+
+-- the live follows that already name an organization, on either side, are closed
+update public.follows f
+   set deleted_at = now()
+ where f.deleted_at is null
+   and (exists (select 1 from public.profiles p where p.id = f.follower_id and p.role = 'org')
+     or exists (select 1 from public.profiles p where p.id = f.followee_id and p.role = 'org'));
 
 -- ── 11. grandfathering (user's decision, 8 Sep 2026) ────────────────────────
 -- Every organization that already owns a live tenant is verified as of now, so

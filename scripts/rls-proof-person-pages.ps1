@@ -173,6 +173,14 @@ try {
   Check 7 "Following yourself refused ($self); somebody who is not on DanceOS refused ($ghost); the public cannot follow ($anonFollow)" (
     ($self -match "yourself") -and ($ghost -match "not on DanceOS") -and ($anonFollow -ne ""))
 
+  # 7b. AN ORGANIZATION IS ON NEITHER SIDE OF A FOLLOW (8 Sep 2026): the owner is one,
+  #     and search does not offer it as a person - its studios are what people find
+  $orgTarget = Fails { Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $owner.id; p_on = $true } }
+  $orgCaller = Fails { Rpc (Api $owner.token) "set_person_follow" @{ p_user_id = $teacher.id; p_on = $true } }
+  $orgFound = @((Rows (Api $fan.token) "search_dance_os" @{ p_q = "PP Owner"; p_limit = 3 }) | Where-Object { $_.kind -eq "person" }).Count
+  Check "7b" "Following an organization is refused ($orgTarget); an organization following a person is refused ($orgCaller); search offers $orgFound people for its name" (
+    ($orgTarget -match "organization") -and ($orgCaller -match "organization") -and ($orgFound -eq 0))
+
   # 8. A FOLLOW NAMES EXACTLY ONE OBJECT - the table cannot hold anything else
   $both = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/follows" -Headers $svcH -Body (@{
     follower_id = $fan.id; followee_id = $teacher.id; tenant_id = $ta.id; created_by = $fan.id; updated_by = $fan.id } | ConvertTo-Json) }

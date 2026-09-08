@@ -3,6 +3,7 @@ import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfil
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantFollowers, isFollowingTenant } from "@/repositories/follows";
 import { findPublicTenantProfile } from "@/repositories/publicProfile";
+import { findProfileById } from "@/repositories/profiles";
 import { findMyMembershipRole } from "@/repositories/tenants";
 import type { TenantType } from "@/types/tenant";
 import { PublicProfile } from "./PublicProfile";
@@ -29,9 +30,11 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
     redirect(publicProfilePath(profile.tenant));
   }
 
-  const [following, role] = await Promise.all([
+  const [following, role, viewer] = await Promise.all([
     user ? isFollowingTenant(supabase, tenantId) : Promise.resolve(false),
     user ? findMyMembershipRole(supabase, tenantId) : Promise.resolve(null),
+    /* an organization follows nothing (8 Sep 2026) — the button is not drawn for one */
+    user ? findProfileById(supabase, user.id) : Promise.resolve(null),
   ]);
 
   /* WHO follows you is the owner's to read (B6). The policy would admit any
@@ -45,6 +48,7 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
       path={publicProfilePath(profile.tenant)}
       following={following}
       signedIn={Boolean(user)}
+      canFollow={viewer?.role !== "org"}
       isMember={role !== null}
       canEditPhoto={role === "owner" || role === "trainer"}
       canEdit={role === "owner"}

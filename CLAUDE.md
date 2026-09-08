@@ -10,6 +10,21 @@
   public. The user's four decisions, in their words: the account IS the org;
   a Pro user gets ONE artist page; `ai@eeetaxi.com` is the first admin;
   existing organizations that own studios are grandfathered as verified.
+- **Then the user drew the line sharper: an organization is NEVER a public
+  entity (R9).** "User will see individual studios, won't see the org; only the
+  org owner sees the studios he owns under one hood; for a user these are
+  separate entities." So: not a result in search's People; `/person/<org>` is
+  a 404 to everyone but itself and a platform admin (the evidence behind a
+  verification); it neither follows nor is followed — `set_follow` and
+  `set_person_follow` (both recreated in the same migration) refuse it on
+  either side, and the migration closes the old rows; no share QR on Home or
+  Profile; the pickers skip it; Follow buttons are not drawn for an
+  organization viewer. Its own Profile carries **Your studios** (every one it
+  runs, public or not, each a door to its desk, plus ＋ Add studio) in place of
+  the followers / following / rank figures and the styles row, and the
+  Following sheet's segments are the prototype's again — Users · Artists ·
+  Studios. Approval is unchanged: once verified, an organization opens studios
+  that are public at birth, with no second review.
 - **Migration `20260908120000_users_orgs_admins.sql` is WRITTEN AND NOT
   APPLIED.** The push over the pooler was refused by the auto-mode classifier
   (a production schema change); it is the user's to run —
@@ -94,8 +109,11 @@
    the organization; the three auth suites; `node scripts/demo-data.js wipe`
    then `seed` (roles, plans, verified organizations); re-run
    `rls-proof-settings-screens.ps1`, `rls-proof-tenants.ps1`,
-   `rls-proof-discovery.ps1`, `rls-proof-follows.ps1`. Then push — Rules 11
-   and 13 are written for that push already.
+   `rls-proof-discovery.ps1`, `rls-proof-follows.ps1` (check 8 now expects
+   the organization refusal), `rls-proof-person-pages.ps1` (check 7b — an
+   organization on either side of a person-follow, and none in search) and
+   `rls-proof-search.ps1`. Then push — Rules 11 and 13 are written for that
+   push already.
 3. **Sign in as the admin (user):** `ai@eeetaxi.com` is confirmed and has a
    password (signed in 09:02 UTC, 8 Sep). Finish `/onboarding` **as a User**
    (the admin is a person; the row in `platform_admins` already names the
@@ -3305,6 +3323,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R6 | First name + last name (3798-3802) | **One name** for both kinds | An organization has one name; for this purpose so does a person. The handle preview derives from it. |
 | R7 | Links "optional now — mandatory later if you set up a trainer or studio profile" (3880) | **Mandatory for an organization at onboarding** (≥ 1); optional for a user | The links are what the admin verifies; asking to be verified with nothing to check is refused by the RPC in words. |
 | R8 | Onboarding asks the role LAST, after the photo and the name | **Who is here is asked FIRST** | The user's instruction; the answer decides which fields follow (an organization is not asked what it dances). |
+| R9 | A studio account IS the studio: one public profile, searchable, followable (PROFILES type "studio", 4548; Following segments 11336) | **An organization is never a public entity.** Not a result in search's People (`search_dance_os`); `/person/<org>` is a 404 to everyone but itself and a platform admin (who reads it as the evidence behind a verification); it **neither follows nor is followed** — `set_follow` and `set_person_follow` refuse it on either side and the migration closes the old rows; no share QR on Home or Profile; the pickers skip it. Only its **studios** are public, each on its own page; only the organization sees them together — Profile → **Your studios** (every one it runs, public or not) and the hub. The Following sheet's segments are the prototype's words again: Users · Artists · Studios | The user's rule (8 Sep 2026): "user will see individual studios, won't see the org; only the org owner will see the different studios he owns under one hood in the profile section; for a user these are separate entities." |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -3371,7 +3390,7 @@ nothing to lift.
 | **PassDeck slice, what it left (29 Aug 2026):** the "Yours" badge a card wears on a session you run (8460 — the prototype's `manage` mode; our manage powers live on the managed list and the desks), the poster on the deck's class card (posters are drawn until the posters slice — the pass sheet already draws one), and the event card's role chip sits UNDER the card rather than inside it (`EventCard` heads with its kind cap and has no slot on that line). **Home's rank row landed 30 Aug 2026** (parity slice 7) | PassDeck 6863-7204, BookingCard 8460, 7315-7323 | posters slice; the rest decision (c) |
 | **Slice 8, what it left (30 Aug 2026):** onboarding's **date of birth and the 18+ gate** (no column holds a birth date — a needs-field (b) row of its own, and the gate is a product rule as much as a column); "Missing a style? Suggest it →" on the styles step (a demo toast in the prototype, so there is nothing to lift); the photo step uses the app's own `PhotoPicker` rather than `DosCropper`'s crop-and-frame flow; and the picker is single-select everywhere it is used — its `multi` mode (3554) has no call site yet, so it is not built | 3788-3943, 3885, DosCropper 6604, DosStylePicker 3554 | a DOB slice; the cropper with the posters slice; `multi` when a screen wants it |
 | **Wiring slice, what it left (30 Aug 2026):** the owner's Followers sheet has no All · Dancers · Artists · Studios segment strip (the person's own sheet has one; a business's followers are one list and the segments would filter a list that is usually short) and no paging past `MAX_LIST`; the Discover tick is drawn on studios and artists but a **crew** carries none, because no crew is verified by anybody; and the enquiry's Call still says "No number on this enquiry" to the business when the sender typed none — the sender's number is theirs to give, not the app's to look up | S_profiletab 11335; 4352, 4411; S_enqdetail 5406 | the segment strip and paging when a pilot business has enough followers to need them; the rest is decision (c) |
-| **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof scripts that create a studio now get an UNLISTED one** unless they stamp the org verified first (service-role PATCH of `profiles.verified_at`), and those creating a `trainer_business` need an active plan — `rls-proof-discovery`, `-follows`, `-search`, `-person-pages`, `-enquiries`, `-events`, `-managed`, `-classes`, `-slugs` and the money proofs need that line added before they read green again; the **date of birth and 18+ gate** stay needs field (b) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
+| **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **an organization account can still act as a person elsewhere** (book a class, join a crew, enter an event, send an enquiry — nothing refuses it, and where it does it prints as a person; whether it should is open); **RLS still lets any signed-in user read an organization's `profiles` row** (Step 1's policy) — the 404, the search filter and the follow refusals are the app's decisions on that ceiling, not a new policy; **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof scripts that create a studio now get an UNLISTED one** unless they stamp the org verified first (service-role PATCH of `profiles.verified_at`), and those creating a `trainer_business` need an active plan — `rls-proof-discovery`, `-follows`, `-search`, `-person-pages`, `-enquiries`, `-events`, `-managed`, `-classes`, `-slugs` and the money proofs need that line added before they read green again; the **date of birth and 18+ gate** stay needs field (b) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)

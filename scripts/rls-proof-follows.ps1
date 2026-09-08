@@ -134,11 +134,12 @@ try {
   Check 7 "Unfollow -> $($u1.followers) (ended row kept: $($ended.Count), deleted_at set: $([bool]$ended[0].deleted_at)); re-follow -> $($r1.followers) with $($all1.Count) rows, $live1 live" (
     ([int]$u1.followers -eq 1) -and ($ended.Count -eq 1) -and ($null -ne $ended[0].deleted_at) -and ([int]$r1.followers -eq 2) -and ($all1.Count -eq 2) -and ($live1 -eq 1))
 
-  # 8. what cannot be followed: a private business, and a business you belong to
+  # 8. what cannot be followed: a private business; and an ORGANIZATION follows nothing at all
+  #    (8 Sep 2026 — the owner is an organization now, refused one check before "belong")
   $priv = Fails { Rpc (Api $l1.token) "set_follow" @{ p_tenant_id = $tb.id; p_on = $true } }
   $self = Fails { Rpc (Api $ownerA.token) "set_follow" @{ p_tenant_id = $ta.id; p_on = $true } }
-  Check 8 "Following a private business is refused ($priv); following your own is refused ($self)" (
-    ($priv -match "not open") -and ($self -match "belong"))
+  Check 8 "Following a private business is refused ($priv); an organization following anything is refused ($self)" (
+    ($priv -match "not open") -and ($self -match "organization"))
 
   # 9. a stranger cannot follow at all
   $anonFollow = Fails { Rpc $anonH "set_follow" @{ p_tenant_id = $ta.id; p_on = $true } }

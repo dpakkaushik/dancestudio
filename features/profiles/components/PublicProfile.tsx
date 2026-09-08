@@ -90,6 +90,7 @@ export function PublicProfile({
   path,
   following,
   signedIn,
+  canFollow = true,
   isMember,
   canEditPhoto = false,
   canEdit = false,
@@ -102,6 +103,8 @@ export function PublicProfile({
   path: string;
   following: boolean;
   signedIn: boolean;
+  /** false for an organization viewer — one follows nothing (8 Sep 2026) */
+  canFollow?: boolean;
   /** the viewer belongs to this business: no Follow, a Manage door instead */
   isMember: boolean;
   /** an owner or trainer — the pair that may change the business's photo */
@@ -292,14 +295,16 @@ export function PublicProfile({
           {isMember ? null : (
             /* the things you can do TO a business share one line (10883): follow
                it, and ask it something — Call waits for a number on record */
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${1 + (tenant.phone ? 1 : 0) + (enquiryTypesFor(tenant.type).length ? 1 : 0)}, 1fr)`, gap: 6 }}>
-              <FollowButton
-                tenantId={tenant.id}
-                initialFollowing={following}
-                initialFollowers={profile.followers}
-                accent={RC}
-                signedIn={signedIn}
-              />
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${(canFollow ? 1 : 0) + (tenant.phone ? 1 : 0) + (enquiryTypesFor(tenant.type).length ? 1 : 0)}, 1fr)`, gap: 6 }}>
+              {canFollow ? (
+                <FollowButton
+                  tenantId={tenant.id}
+                  initialFollowing={following}
+                  initialFollowers={profile.followers}
+                  accent={RC}
+                  signedIn={signedIn}
+                />
+              ) : null}
               {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
               {enquiryTypesFor(tenant.type).length ? (
                 <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} enquiryTypes={tenant.enquiryTypes} />
