@@ -1,78 +1,73 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (7 Sep 2026, third session) — replaced on every push (Rule 13)
+## LAST SESSION (8 Sep 2026) — replaced on every push (Rule 13)
 
-- **Two production fixes, both live, both ⚠ Rule 9 (auth and routing).**
-  `219cad2` (redirects for the deleted phone routes) and `7d2cd3d` (the emailed-
-  link route). Nothing else changed. Rules 14 and 15 were added from them.
-- **EVERY EMAILED LINK WAS DEAD, and had been since email auth existed (24 Aug).**
-  `/auth/confirm` read only `token_hash`, which arrives only from a customised
-  `{{ .TokenHash }}` email template. The hosted project has never had one — it
-  sends Supabase's stock `{{ .ConfirmationURL }}`, read from the user's inbox:
-  `https://wonhocebhckjokfssvja.supabase.co/auth/v1/verify?token=pkce_…&type=signup&redirect_to=https://dancestudio-orcin.vercel.app/auth/confirm`.
-  Supabase's own `/verify` confirms the address, then redirects to `/auth/confirm`
-  carrying a **`code`** — never a `token_hash`. The guard was always false, every
-  link fell through to the "invalid or expired" bounce, no signup could complete
-  and no password could reset.
-- **How it was diagnosed, because the symptoms lie.** Account
-  `deepakkaushik8919@gmail.com` (`8a5ab196-…`): `created_at` 24 Aug (magic-link
-  era), `email_confirmed_at` 7 Sep 12:44 (the click), `last_sign_in_at` **null**.
-  Confirmed-but-never-a-session is the exact signature of a link that never
-  reached `verifyOtp`. The person saw "link expired", then "Invalid login
-  credentials", and neither names the cause. Read via the admin API — there is no
-  `psql` or `pg` on this machine, so `auth.users` is reachable only that way.
-- **Why "verification" never caught it.** `scripts/auth-proof-email.ps1` mints a
-  link with the admin `generate_link` API and BUILDS `/auth/confirm?token_hash=…`
-  itself from `hashed_token` (lines 35–52) — it never exercised the URL Supabase
-  emails. `password-auth.spec.ts` creates accounts with `email_confirm: true` and
-  never touches the route; its own header says so. Both green, both blind.
-- **The fix (`7d2cd3d`).** The route handles BOTH shapes: `token_hash` →
-  `verifyOtp` (kept, and preferred when configured — it needs no browser state)
-  and `code` → `exchangeCodeForSession`. Supabase's `error_description` is passed
-  through rather than overwritten. **`requestPasswordResetAction` stamps
-  `?flow=recovery` onto its redirect URL**, because the PKCE shape carries no
-  `type` and without it a reset link lands on Home — signed in, still locked out.
-  `e2e/auth-confirm-route.spec.ts` pins all six branches; 13/13 across both auth
-  suites.
-- **The PKCE shape has a limitation only the template fix removes.** The `code`
-  exchange needs the `code_verifier` cookie set when the link was requested, so
-  it completes only in the browser that asked. A link opened in Gmail's in-app
-  viewer rather than Chrome bounces with "could not be opened here — open it in
-  the same browser you asked for it from" (the message says this). `token_hash`
-  has no such need. That is why NEXT TO DO #2 is the durable fix, and the code
-  already accepts it.
-- **The user's account has NO USABLE PASSWORD.** It pre-dates password auth, and
-  Supabase treats `signUp` on an existing address as a silent no-op (deviation
-  A7). The password chosen on 7 Sep was never stored. Recovery is NEXT TO DO #1.
-- **Email delivery IS confirmed** — the built-in sender reached a gmail.com
-  inbox on 7 Sep, which closes last session's open question. The quota is the
-  hazard: probing `/auth/v1/signup` from a script during diagnosis hit
-  `over_email_send_rate_limit` (429). That limit is shared with real people, so
-  test accounts go through the admin API with `email_confirm: true` — never the
-  public endpoint in a loop.
-- **`/login/phone` and `/login/verify` now 307 → `/login/email` (`219cad2`).**
-  `88ef3bb` deleted both routes; the installed TWA reopens on its last URL, so a
-  phone parked on `/login/phone` came back to a bare 404 that read as a broken
-  APK. Temporary (307), not permanent (308), on purpose: Step 26 records phone
-  auth as an open decision, and a 308 is browser-cached indefinitely — it would
-  plant the same stale-URL bug facing the other way. **The APK did not need
-  rebuilding**; a TWA holds no page code.
-- **Test-harness trap — a SECOND reason for `localhost`:** Next 16 `next dev`
-  blocks its own chunks and HMR for a `127.0.0.1` origin (`allowedDevOrigins`).
-  Nothing hydrates, so every test that needs a button to enable fails the same
-  way and burns its full timeout (5 tests = 6 minutes). SSR-only assertions pass
-  and hide it. Reproduced on a clean stash — not a regression. Commands updated.
+- **Pulled the 7 Sep work onto this machine** (`03fcd63..c13856f`, twelve
+  commits, fast-forward, no conflicts with parity slice 8). **The dependency sync
+  is the environment lesson:** the seven new shadcn/ui packages were not in
+  `node_modules`, and `npm install` crashes on this tree —
+  `node_modules` is a **pnpm store** (`node_modules/.pnpm/…`) and npm's
+  arborist dies on its symlinks (`Cannot read properties of null (reading
+  'matches')`). pnpm is not on PATH but **corepack is**, so the working command
+  is `corepack pnpm@10 install --config.confirmModulesPurge=false` (stop the
+  dev server first; without the flag pnpm aborts for want of a TTY). Then
+  `rm -rf .next` — the stale `.next/types/validator.ts` still imported the
+  two deleted login pages and failed `tsc`. After that: typecheck and lint
+  clean, every new auth route 200, both redirects 307.
+- **The check-your-inbox screen rebuilt ⚠ (Rule 9 — auth-adjacent), at the
+  user's ask** (`/login/check-email`): the old one was a heading, two short
+  sentences and a dashed box over an empty phone. `features/auth/components/
+  CheckEmail.tsx` (client) keeps the OTP screen's anatomy (3750-3762) and gives
+  the code boxes' room to what a person waiting on an inbox needs: the ADDRESS
+  in its own card, **WHAT HAPPENS NEXT** as three steps — and the third says in
+  words where the link lands: *your name, whether you are a dancer, a trainer or
+  a studio, and your city* — then the OTP screen's **"Resend in 0:30" that
+  becomes a real "Resend link"**. The old screen told people to wait "before
+  asking for another" and offered no way to ask. `resendEmailAction` is that
+  way: `auth.resend({type:"signup"})` on the verify errand,
+  `resetPasswordForEmail` with the `flow=recovery` stamp on the reset one,
+  both through `emailLinkOrigin()`; Supabase's rate-limit refusal comes back
+  as the toast in its own words. The page is a thin guard around it. Lead
+  sentence 15px on this one screen (it has the room); everything else at the
+  siblings' sizes.
+- **Where the link lands was checked in code, not changed.** No trigger creates a
+  `profiles` row, `signUpAction` creates none, `proxy.ts` has no redirect
+  rules of its own, so `/auth/confirm`'s `land()` sends a new account to
+  `/onboarding` — whose first screen is name + Dancer / Artist-Trainer /
+  Studio + city + photo (slice 8). `password-auth.spec.ts` already asserts a
+  confirmed account with no profile lands there. **Not re-verified with a real
+  inbox link this session** (Rule 15): nothing in `/auth/confirm`, the
+  templates or the redirect URLs moved, and the user's own click is the test.
+- **The user's account, read from `auth.users`:** `ai@eeetaxi.com` created
+  8 Sep 08:35:50 UTC from the sign-up form, `confirmation_sent_at` 08:35:50.857
+  (Supabase dispatched it), `email_confirmed_at` **null** at 08:44, no
+  `profiles` row — parked on exactly the screen that was rebuilt.
+- **Tests:** `e2e/check-email.spec.ts`, four render checks, none of which
+  presses Resend (a real resend spends the shared quota). The countdown is
+  driven with Playwright's clock — and **`clock.fastForward` fires each due
+  timer at most once**, so a chained one-second countdown only advances a tick;
+  `clock.runFor` is the call that keeps firing newly scheduled timers. Both
+  auth suites still green (17). Screenshots at 430×932, both errands and the
+  resend-ready state. A scratch script outside the repo must `require`
+  `@playwright/test` by absolute path — Node resolves from the script's own
+  directory, not the cwd.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **Get into your own account (user, 2 minutes — after the email quota resets,
-   roughly an hour after 12:50 IST on 7 Sep).** `deepakkaushik8919@gmail.com`
-   has no usable password (LAST SESSION). Sign in → **Forgot password** → open
-   the emailed link **in Chrome, not Gmail's in-app viewer** → `/login/reset` →
-   set a password → in. "Email rate limit exceeded" means the hour has not
-   rolled over. "Could not be opened here" means the link opened in a different
-   browser from the one that asked: copy it into Chrome, or do #2 first and ask
-   again.
+1. **Finish signing in (user, 2 minutes).** Two accounts, two states.
+   **`ai@eeetaxi.com`** was created 8 Sep 08:35 UTC from the sign-up form and
+   Supabase dispatched its confirmation at once; it is still unconfirmed. Open
+   that email **in the same browser that asked for it** (the PKCE shape — #2
+   below removes this), tap the link, and you land on `/onboarding`: name,
+   Dancer / Artist-Trainer / Studio, city, photo → styles → socials → Take a
+   bow. Nothing arriving? The check-email screen offers **Resend link** after
+   30 s now; "you can only request this after N seconds" or "rate limit
+   exceeded" is the shared hourly quota talking — wait it out.
+   **`deepakkaushik8919@gmail.com`** still has no usable password (it
+   pre-dates password auth, LAST SESSION of 7 Sep): Sign in → **Forgot
+   password** → the emailed link in Chrome → `/login/reset` → set one.
+   "Could not be opened here" means a different browser opened the link than
+   asked for it — copy it into Chrome, or do #2 first and ask again.
 2. **Customise the Supabase email templates to `token_hash` (dashboard, 3
    minutes, no code).** Authentication → Email Templates → **Confirm signup**
    and **Reset password** (Magic Link and Change Email too, for completeness):
@@ -167,6 +162,16 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **The check-your-inbox screen rebuilt, 8 Sep 2026, no step number ⚠ (Rule 9,
+  auth-adjacent).** `/login/check-email` is `CheckEmail.tsx` now: the address
+  in its own card, WHAT HAPPENS NEXT in three steps (the third names the
+  onboarding that follows — name, dancer / trainer / studio, city), and the OTP
+  screen's countdown-then-Resend made real by `resendEmailAction` (Supabase's
+  own `resend` for a signup, another recovery email for a reset). Four
+  render-only e2e checks; no test presses Resend. The post-confirm landing was
+  verified in code (`land()` → `/onboarding` for a profile-less account) and
+  is unchanged. Also this day: the 7 Sep commits pulled onto this machine, and
+  the dependency sync recorded at the top of this file (corepack pnpm, not npm).
 - **Auth email links FIXED, 7 Sep 2026 (third session), no step number.** Every
   link Supabase emailed had been dead since 24 Aug: `/auth/confirm` read
   `token_hash`, the stock template sends a PKCE `code`. The route now takes both
@@ -3386,7 +3391,7 @@ refs are the file to open.
 | U1 | Onboarding: heading "Set up your profile", sub, Continue-or-reason button, handle preview, an honest progress bar | 3781-3821 | OnboardingForm.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | U2 | Onboarding: photo (required), styles step, socials step, the "Take a bow" finish screen — **fixed** 30 Aug 2026 (parity slice 8: four screens, the row created at the end of the first so the photo has something to attach to, and a cookie so a mid-flow revalidate cannot end the flow). Date of birth and the 18+ gate are still open | 3788-3943 | app/onboarding, OnboardingForm.tsx | **fixed** for the photo / styles / socials / finish screen; **needs field (b)** for DOB + the 18+ gate |
 | U3 | Onboarding: the role picker and the city field are additions; **sign-in's Email/Mobile toggle is an addition**; DPDP consent sentence | 3855, 3678, 3746 | features/auth | **the toggle is GONE (7 Sep 2026)** — auth is email-only, so the addition is removed and this row moved toward parity rather than away from it. The role picker and city field stay decision (c) — they are this app's own, not the prototype's. The DPDP sentence waits on the legal-pages slice (its own backlog row) |
-| U4 | ~~OTP: Resend re-requests in place; "Get a call instead"~~ | 3764-3765 | ~~OtpVerify.tsx~~ | **row closed 7 Sep 2026 — there is no OTP screen.** `OtpVerify.tsx` and `/login/verify` are deleted with the phone channel; the email twin is `/login/check-email`, where the equivalent of Resend-in-place is "Use a different email" (asking again replaces the old link, which the screen says). "Get a call instead" needed a voice provider and now needs a phone channel too |
+| U4 | OTP: Resend re-requests in place; "Get a call instead" | 3764-3765 | CheckEmail.tsx | **Resend-in-place landed 8 Sep 2026 on the email twin** — `/login/check-email` counts down the OTP screen's thirty seconds, then "Resend link" calls `resendEmailAction` (Supabase's rate-limit refusal shown in its own words). The OTP screen itself went with the phone channel on 7 Sep 2026; "Get a call instead" needed a voice provider and now needs a phone channel too — decision (c) |
 | U5 | AuthShell progress prop | 3683-3694 | AuthShell | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | Z1 | Business hub: hero blob literal; "Studios" / "STUDIOS YOU OWN"; head colour var(--muted) | 2629-2633 | BusinessHub.tsx | **fixed** |
 | Z2 | Business hub: "STUDIOS YOU HAVE TAUGHT AT" list with Profile › | 2643-2646 | BusinessHub.tsx | **fixed** |
@@ -3894,7 +3899,11 @@ prototype/      → the reference prototype (read-only)
 ## Commands
 
 ```
-npm run dev         → run locally (http://localhost:3000)  [this machine has no pnpm]
+npm run dev         → run locally (http://localhost:3000)  [this machine has no pnpm on PATH]
+corepack pnpm@10 install --config.confirmModulesPurge=false
+                    → sync deps after a pull that touches package.json. Stop the dev
+                      server first. NOT npm install: node_modules is a pnpm store and
+                      npm's arborist crashes on it (8 Sep 2026). Then rm -rf .next.
 npm run build       → production build (never beside a running dev server)
 npm run lint        → eslint
 npm run typecheck   → tsc --noEmit

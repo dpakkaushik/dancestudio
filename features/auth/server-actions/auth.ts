@@ -290,3 +290,52 @@ export async function finishOnboardingAction(): Promise<void> {
   (await cookies()).delete(ONBOARDING_COOKIE);
   redirect("/");
 }
+
+export interface ResendState extends AuthActionState {
+  /** how many times this screen has re-sent — the client restarts its countdown when it moves */
+  sentCount: number;
+}
+
+/** RESEND — the check-your-inbox screen's "Resend link", which is the OTP
+ *  screen's "Resend OTP" (prototype 3760) on the email rail.
+ *
+ *  Two errands, one control. `mode=verify` asks Supabase to send the signup
+ *  confirmation again (`auth.resend`, which sends nothing for an address that
+ *  is already confirmed or never signed up — the same silence as signUpAction,
+ *  for the same no-enumeration reason). `mode=reset` asks for another recovery
+ *  email, built exactly as requestPasswordResetAction builds the first one —
+ *  the `flow=recovery` stamp included, or /auth/confirm would land the person
+ *  on Home still not knowing their password.
+ *
+ *  Supabase rate-limits both ("you can only request this after N seconds", and
+ *  the project-wide hourly cap) and says so in its error; that message is
+ *  returned as-is, because it names the wait and nothing here knows it better.
+ *  Success does not redirect — the person is already on the right screen — it
+ *  moves `sentCount`, which is what the screen watches. */
+export async function resendEmailAction(
+  prev: ResendState,
+  formData: FormData
+): Promise<ResendState> {
+  const parsed = emailSchema.safeParse(formData.get("email"));
+  if (!parsed.success) {
+    return { ...prev, error: parsed.error.issues[0]?.message ?? "Invalid email" };
+  }
+  const mode = formData.get("mode") === "reset" ? "reset" : "verify";
+
+  const origin = await emailLinkOrigin();
+  const supabase = await createSupabaseServerClient();
+  const { error } =
+    mode === "reset"
+      ? await supabase.auth.resetPasswordForEmail(parsed.data, {
+          redirectTo: `${origin}/auth/confirm?flow=recovery`,
+        })
+      : await supabase.auth.resend({
+          type: "signup",
+          email: parsed.data,
+          options: { emailRedirectTo: `${origin}/auth/confirm` },
+        });
+  if (error) {
+    return { ...prev, error: error.message };
+  }
+  return { error: null, sentCount: prev.sentCount + 1 };
+}
