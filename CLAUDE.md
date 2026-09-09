@@ -3,8 +3,20 @@
 ## LAST SESSION (10 Sep 2026) — replaced on every push (Rule 13)
 
 - **THE ADMIN PANEL, PHASE 1 — support, trust, accountability ⚠ (Rule 9: auth
-  + RLS). `20260910120000_admin_panel.sql` is WRITTEN AND NOT APPLIED
-  (NEXT TO DO #1).** The user asked for three things and then a fourth: an
+  + RLS). `20260910120000_admin_panel.sql` is APPLIED (the user ran it) and
+  `e2e/admin-support.spec.ts` is green (5/5): a stranger 404s on every panel
+  route, the timeline, the conversation both ways with per-side unread, the
+  rejection landing IN the thread and in the audit log, suspend / lift with the
+  reason read back. Two things the spec caught before anybody else did: the
+  organization's thread was not linked to its request (the card's door now
+  carries `?request=<id>` and the compose box opens already about it), and the
+  rejection reason printed twice on the card (the summary line is gone).
+  Immutability was proved on the live database — a superuser UPDATE and DELETE
+  on `admin_audit` are both refused (one `test.probe` row remains, by design).
+  **PHASE 2 — businesses + reports — is WRITTEN and its migration
+  `20260910180000_admin_panel_2.sql` is NOT APPLIED (NEXT TO DO #1); its
+  commit is held back from the push until it is.** The user asked for three
+  things and then a fourth: an
   organization waiting on verification must SEE where it stands; a rejection
   must reach it; both sides must be able to CHAT; and "expand the admin panel
   with all standard admin features, think about it as a developer". They chose
@@ -117,18 +129,27 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **APPLY MIGRATION 3 (user, 1 minute) — the admin panel is dark until it is on.**
-   `supabase/migrations/20260910120000_admin_panel.sql` is written, typechecked,
-   linted and production-built, and NOT applied. Until it runs, `/admin`,
-   `/admin/support`, `/admin/accounts`, `/admin/audit` and `/support` all
-   error on their first read (no such table / function). From the repo:
+1. **APPLY MIGRATION 4 (user, 1 minute) — Businesses and Reports are dark until it is on.**
+   `supabase/migrations/20260910180000_admin_panel_2.sql` — the businesses list
+   with the ONE-business List / Unlist switch (`admin_set_tenant_visibility`,
+   audited, the owner told why), `reports` + `report_content` (anybody signed
+   in; refuses yourself, a suspended caller, a duplicate) + `decide_report`
+   (the reporter is always told) + `admin_reports` (with "N others reported
+   this"), and `admin_dashboard` counting open reports — is written,
+   typechecked and linted, and NOT applied. Migration 3 IS applied and its
+   e2e is green. Until 4 runs, `/admin/businesses` and `/admin/reports` error
+   and the Report control at the foot of every public business and person page
+   fails on Send — which is why the phase 2 commit is held back. From the repo:
    ```
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
    npx.cmd supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<password, @ as %40>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all
    ```
-   Then say so and the e2e spec for the conversation (org writes → admin
-   replies → org reads; approve → the decision lands in the thread; the audit
-   log has the row) gets written and run, and the whole suite re-run.
+   Then say so: the phase 2 e2e (a user reports a studio → it is in the queue
+   with the reason → the admin answers → the reporter is told; the admin takes
+   ONE studio off Discover → the owner is told why → puts it back) gets written
+   and run, the suite re-run, and the held commit pushed. Then phase 3: money
+   oversight (stuck orders, unfinished webhooks, refund disputes),
+   announcements, platform settings.
 2. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
    `activate_artist_plan` records ₹0 and creates no Cashfree order, so "subscribe
    to become Pro" is a switch, not a payment. The orders / payments /
@@ -242,6 +263,28 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE ADMIN PANEL, phases 1–2, 10 Sep 2026, no step number ⚠ (Rule 9, auth +
+  RLS) — phase 1 APPLIED and green, phase 2 WRITTEN (migration 4 pending).**
+  The user asked that an organization waiting on verification SEE where it
+  stands, read a rejection, and TALK to the admin; that the admin can start
+  that talk; and that the panel be "a real admin panel, think about it as a
+  developer". Phase 1: `admin_audit` (insert-only, immutable even to the
+  service role — proved live), `support_threads`/`support_messages` (either
+  side opens, `post_support_message` decides the side from `is_platform_admin()`,
+  unread derived from two read stamps, a verification thread carries its
+  request and the decision is posted INTO it), suspension with its own guard
+  (`guard_verified_at` is hung on `update of verified_at` on TWO tables — it
+  could never have fired), `admin_dashboard`, `admin_audit_log`,
+  `admin_accounts`; routes `/admin` (overview, where a profile-less admin
+  lands), `/admin/support[/id]`, `/admin/accounts`, `/admin/audit`,
+  `/support[/id]`; `AdminShell` nav with live counts; the org's verification
+  card is a four-step TIMELINE with a door to the conversation.
+  `e2e/admin-support.spec.ts` 5/5. Phase 2: `admin_businesses` + the
+  one-business List/Unlist switch, `reports` (closed reason list, one live
+  report per reporter per thing, "N others reported this"), `report_content`,
+  `decide_report` (the reporter is always told), `/admin/businesses`,
+  `/admin/reports`, `ReportButton` at the foot of public business and person
+  pages. Left for phase 3: money oversight, announcements, settings.
 - **ACCOUNTS, second pass — the org rules, the admin-only admin, the schema
   review, 9 Sep 2026, no step number ⚠ (Rule 9, auth + RLS) — BOTH MIGRATIONS
   APPLIED, e2e and proofs green.** R9–R12 in the deviations section: an

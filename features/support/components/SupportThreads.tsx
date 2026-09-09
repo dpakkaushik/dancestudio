@@ -38,16 +38,20 @@ export function SupportThreads({
   isAdmin,
   nowIso,
   canOpen = true,
+  requestId = null,
 }: {
   threads: SupportThread[];
   isAdmin: boolean;
   nowIso: string;
   /** an account with no profile (an admin) has no side to write from */
   canOpen?: boolean;
+  /** arrived from the verification card: the new thread is about that request,
+   *  so the admin's decision is posted into it rather than nowhere */
+  requestId?: string | null;
 }) {
   const router = useRouter();
-  const [composing, setComposing] = useState(false);
-  const [subject, setSubject] = useState("");
+  const [composing, setComposing] = useState(Boolean(requestId));
+  const [subject, setSubject] = useState(requestId ? "About our verification" : "");
   const [body, setBody] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -59,7 +63,7 @@ export function SupportThreads({
 
   const open = () =>
     start(async () => {
-      const out = await openSupportThreadAction({ subject: subject.trim(), body: body.trim() });
+      const out = await openSupportThreadAction({ subject: subject.trim(), body: body.trim(), requestId });
       if (out.error) return fire(out.error);
       setComposing(false);
       setSubject("");
@@ -92,7 +96,11 @@ export function SupportThreads({
           composing ? (
             <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 14 }}>
               <b style={{ fontSize: 13.5 }}>Write to DanceOS</b>
-              <div style={{ fontSize: 11, color: SUB, margin: "3px 0 9px" }}>An admin reads this and replies here.</div>
+              <div style={{ fontSize: 11, color: SUB, margin: "3px 0 9px" }}>
+                {requestId
+                  ? "An admin reads this and replies here — and their decision on your verification lands in this same conversation."
+                  : "An admin reads this and replies here."}
+              </div>
               <input
                 aria-label="Subject"
                 value={subject}

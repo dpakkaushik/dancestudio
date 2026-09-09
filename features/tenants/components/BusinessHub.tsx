@@ -254,15 +254,6 @@ export function BusinessHub({
         : req?.status === "rejected"
           ? "Not approved"
           : "Not verified yet";
-    const body = verified
-      ? "Your studios are public on Discover."
-      : req?.status === "pending"
-        ? "A DanceOS admin is checking your links. Your studios stay private until then — you can set them up now."
-        : req?.status === "rejected"
-          ? req.note || "Update your links on the Profile tab, then ask again."
-          : verification.socialsCount === 0
-            ? "Add at least one social link on your Profile tab — that is what DanceOS checks — then ask to be verified."
-            : "Ask DanceOS to check your links. Your studios stay private until an admin says yes.";
     const canAsk = !verified && req?.status !== "pending" && verification.socialsCount > 0;
     const asked = Boolean(req);
     const decided = req?.status === "approved" || req?.status === "rejected";
@@ -318,8 +309,8 @@ export function BusinessHub({
             </span>
           ) : null}
         </div>
-        <div style={{ fontSize: 11.5, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{body}</div>
-
+        {/* no summary line above the timeline: it said the same sentence twice, and
+            a rejection's reason printed in both places (caught by the e2e, 10 Sep) */}
         <ol style={{ listStyle: "none", padding: 0, margin: "11px 0 2px" }}>
           {steps.map((s) => (
             <li key={s.label} style={{ display: "flex", gap: 9, paddingBottom: 9 }}>
@@ -342,7 +333,15 @@ export function BusinessHub({
           ) : null}
           {/* there is a person on the other side of this decision — always a door to them */}
           <Link
-            href={verification.threadId ? `/support/${verification.threadId}` : "/support"}
+            href={
+              verification.threadId
+                ? `/support/${verification.threadId}`
+                : /* carry the request, so the decision lands in this conversation
+                     rather than a thread nothing is attached to (10 Sep 2026) */
+                  req
+                  ? `/support?request=${req.id}`
+                  : "/support"
+            }
             style={{ ...pill, background: LILAC, border: `1px solid ${EL}`, color: INK, display: "inline-flex", alignItems: "center" }}
           >
             {unread > 0 ? `Read DanceOS's reply (${unread})` : verification.threadId ? "Your conversation with DanceOS" : "Message DanceOS"}
