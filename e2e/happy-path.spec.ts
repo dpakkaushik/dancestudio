@@ -82,7 +82,7 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
     // an organization is not asked what it dances; its links are mandatory
     await expect(page.getByText("Your organization's links")).toBeVisible();
     await expect(page.getByRole("button", { name: "Add at least one link" })).toBeDisabled();
-    await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z]/g, "")}`);
+    await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
     await expect(page.getByText("your organization is in review")).toBeVisible();
@@ -219,7 +219,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Create studio" }).click();
 
     // the action refreshes the hub in place — the new studio is a row now
-    const studioRow = owner.getByText(studioName);
+    // exact: the hub also draws an "Events at {studio}" door under every studio now
+    const studioRow = owner.getByText(studioName, { exact: true });
     await expect(studioRow).toBeVisible();
 
     // ---- an admin verifies the organization (8 Sep 2026) ----------------------
@@ -236,7 +237,8 @@ test.describe.serial("DanceOS, end to end", () => {
     });
     expect(named.ok).toBeTruthy();
     await admin.goto("/admin/verifications");
-    await expect(admin.getByText("Verification queue", { exact: true })).toBeVisible();
+    // the chrome's title says it too — the page's own hero is the one inside main
+    await expect(admin.locator("#dos-main").getByText("Verification queue", { exact: true })).toBeVisible();
     const request = admin.getByTestId("verification-request").filter({ hasText: "E2E Owner" });
     await expect(request).toBeVisible();
     // the evidence is the link, and it is the one the organization typed

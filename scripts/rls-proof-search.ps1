@@ -54,6 +54,10 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
+  if ($role -eq "org") {
+    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
+    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+  }
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -117,7 +121,7 @@ try {
   $anonPerson = Search $anonH "$tag Dancer"
   $anonPersonHit = @($anonPerson | Where-Object { $_.kind -eq "person" })
   Check 5 "Signed in, a dancer's name finds $($personHit.Count) person row ($($personHit[0].sub) -> $($personHit[0].href)); a stranger finds $($anonPersonHit.Count)" (
-    ($personHit.Count -eq 1) -and ($personHit[0].href -like "/person/*") -and ($personHit[0].sub -like "Dancer*") -and ($anonPersonHit.Count -eq 0))
+    ($personHit.Count -eq 1) -and ($personHit[0].href -like "/person/*") -and ($personHit[0].sub -like "User*") -and ($anonPersonHit.Count -eq 0))
 
   # 6. THE CAP PER KIND, AND THE HREF EACH ROW OPENS
   $t2 = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "$tag Studio Two"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }

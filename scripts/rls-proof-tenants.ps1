@@ -24,9 +24,22 @@ function Sign-In($phone) {
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 
 $a = Sign-In "+919999999999"
-$b = Sign-In "+918888888888"
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
+
+# 8 Sep 2026: only an ORGANIZATION opens a studio, and +918888888888 is the proofs' LEARNER (a user).
+# Owner A is the test-number organization (verified — scripts/ensure-test-phone-profiles.js), so its
+# studio is PUBLIC; owner B is an email organization made for this run and NOT verified, so its studio
+# is born UNLISTED — which is exactly the row this proof's isolation claims are about.
+$service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
+if (-not $service) { throw "SUPABASE_SERVICE_ROLE_KEY missing from .env.local" }
+$svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+function New-OrgOwner($email, $name) {
+  $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $u.id; full_name = $name; role = "org"; city = "New Delhi"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
+  return Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
+}
+$b = New-OrgOwner "st-ownerb-$stamp@example.com" "Owner B $stamp"
 
 # each owner creates a studio via the RPC (tenant + owner membership, atomic)
 $ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Studio A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
@@ -38,7 +51,7 @@ if (-not $ta.id -or -not $tb.id) { $pass = $false }
 $mineA = Invoke-RestMethod -Uri "$base/rest/v1/tenants?select=id,name" -Headers (Api $a.access_token)
 $seesOwn = @($mineA | Where-Object { $_.id -eq $ta.id }).Count -eq 1
 $seesB = @($mineA | Where-Object { $_.id -eq $tb.id }).Count -gt 0
-"2. A sees own studio: $seesOwn; A sees B's studio: $seesB $(if ($seesOwn -and -not $seesB) {'-- ISOLATION OK'} else {'-- !!! FAILED !!!'})"
+"2. A sees own studio: $seesOwn; A sees B's UNLISTED studio: $seesB $(if ($seesOwn -and -not $seesB) {'-- ISOLATION OK'} else {'-- !!! FAILED !!!'})"
 if (-not $seesOwn -or $seesB) { $pass = $false }
 
 # A tries to read B's tenant directly by id — must get 0 rows
@@ -60,10 +73,14 @@ try {
   "5. A self-invites into B's tenant: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
 } catch { "5. A self-invites into B's tenant: REJECTED -- RLS OK" }
 
-# anonymous sees no tenants
+# anonymous sees LISTED tenants (Step 5, by design) and never an UNLISTED one
 $anonRead = Invoke-RestMethod -Uri "$base/rest/v1/tenants?select=id" -Headers @{ apikey = $anon }
-$anonBlocked = (@($anonRead).Count -eq 0)
-"6. Anonymous reads tenants: $(if ($anonBlocked) {'0 rows -- RLS OK'} else {'VISIBLE -- !!! FAILED !!!'})"
-if (-not $anonBlocked) { $pass = $false }
+$anonSeesA = @($anonRead | Where-Object { $_.id -eq $ta.id }).Count -eq 1
+$anonSeesB = @($anonRead | Where-Object { $_.id -eq $tb.id }).Count -gt 0
+"6. Anonymous sees A's listed studio: $anonSeesA; B's unlisted one: $anonSeesB $(if ($anonSeesA -and -not $anonSeesB) {'-- RLS OK'} else {'-- !!! FAILED !!!'})"
+if (-not $anonSeesA -or $anonSeesB) { $pass = $false }
+
+# B's owner is this run's; the studio it made stays unlisted and soft-deletable by the cleanup script
+Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($b.user.id)" -Headers $svcH | Out-Null
 
 if ($pass) { "`nALL TENANT RLS CHECKS PASSED"; exit 0 } else { "`nTENANT RLS CHECKS FAILED"; exit 1 }

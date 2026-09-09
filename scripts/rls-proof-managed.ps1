@@ -56,6 +56,10 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
+  if ($role -eq "org") {
+    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
+    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+  }
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -100,7 +104,8 @@ $owner = New-EmailUser "mng-owner-$stamp@example.com" "Owner $stamp" "org"
 $trainer = New-EmailUser "mng-trainer-$stamp@example.com" "Trainer $stamp" "user"
 $stranger = New-EmailUser "mng-stranger-$stamp@example.com" "Stranger $stamp" "user"
 $ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Managed A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
-$tb = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Managed B $stamp"; p_type = "trainer_business"; p_area = "Baner"; p_city = "Pune" }
+# 8 Sep 2026: an organization opens STUDIOS (an artist page is a Pro user's) - B is its second studio
+$tb = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Managed B $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
 Add-Member $ta.id $trainer.id "trainer" $owner.id
 # (a new tenant is listed by default, so a stranger CAN read its published class - the point of check 3)
 

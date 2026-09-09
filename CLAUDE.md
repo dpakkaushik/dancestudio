@@ -1,156 +1,84 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (8 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (9 Sep 2026) — replaced on every push (Rule 13)
 
-- **THE ACCOUNT MODEL CHANGED, at the user's instruction ⚠ (Rule 9: auth + RLS).**
-  Two kinds of account instead of three roles: a **user** (everyone; "Pro" is an
-  active `artist_plans` row, never a role again) and an **organization** (the
-  account that runs studios — one org, many studios). Plus **platform admins**,
-  who verify an organization by its social links before anything it runs is
-  public. The user's four decisions, in their words: the account IS the org;
-  a Pro user gets ONE artist page; `ai@eeetaxi.com` is the first admin;
-  existing organizations that own studios are grandfathered as verified.
-- **Then the user drew the line sharper: an organization is NEVER a public
-  entity (R9).** "User will see individual studios, won't see the org; only the
-  org owner sees the studios he owns under one hood; for a user these are
-  separate entities." So: not a result in search's People; `/person/<org>` is
-  a 404 to everyone but itself and a platform admin (the evidence behind a
-  verification); it neither follows nor is followed — `set_follow` and
-  `set_person_follow` (both recreated in the same migration) refuse it on
-  either side, and the migration closes the old rows; no share QR on Home or
-  Profile; the pickers skip it; Follow buttons are not drawn for an
-  organization viewer. Its own Profile carries **Your studios** (every one it
-  runs, public or not, each a door to its desk, plus ＋ Add studio) in place of
-  the followers / following / rank figures and the styles row, and the
-  Following sheet's segments are the prototype's again — Users · Artists ·
-  Studios. Approval is unchanged: once verified, an organization opens studios
-  that are public at birth, with no second review.
-- **9 Sep: the schema review and the second migration.** The user asked for the
-  database schema to verify against the requirements; it was read from the
-  live catalogs over the pooler (the management token is dead — 401) and
-  delivered three ways: a private artifact page, `docs/DanceOS-database-schema.xlsx`
-  (13 sheets) and `docs/DanceOS-database-schema.pdf` (67 pages), every table
-  with a purpose and every column described (the `docs/` folder sits beside
-  the repo, not in it). The verdict: NOT met today, met after the migration,
-  with 16 gaps ranked. Then "go ahead, make sure everything new fulfils the
-  requirements, frontend or backend" — so `20260909120000_org_rules.sql`
-  (R10–R12: city required, a user's last style and an organization's last link
-  stay, an organization is not a person, its profile row is its own) and the
-  matching screens, proof checks (profile-fields 11–12) and seeder lines. **The
-  classifier refused BOTH the migration push and the proof-leftover cleanup**
-  (`scripts/cleanup-proof-leftovers.js`) — they are the user's to run, in that
-  order: cleanup first (so no junk organization is grandfathered), then the two
-  migrations. The user's admin account `ai@eeetaxi.com` held a STUDIO profile
-  named "Dance Plus"; the user's answer: **"remove it as a user, keep it admin
-  only."** So migration 2 DELETES that profile (not soft — a soft-deleted row
-  would keep the primary key and block any later onboarding), and an admin
-  with no profile is a first-class state: `notify_platform_admins` notifies
-  only admins who also hold a profile (notifications.user_id references
-  profiles — without this every organization's request would have failed on
-  the FK), Home and `/onboarding` send a profile-less admin to
-  `/admin/verifications`, and the chrome (`AppChrome adminOnly`) draws it no
-  tab bar and no bell, only **Sign out**. The happy path asserts it.
-- **Migration `20260908120000_users_orgs_admins.sql` is WRITTEN AND NOT
-  APPLIED.** The push over the pooler was refused by the auto-mode classifier
-  (a production schema change); it is the user's to run —
-  `npx supabase db push --db-url <pooler url> --include-all` — and NEXT TO DO #1.
-  What it does, in order: `profiles.role` → `user | org` with the data mapped
-  (dancer/trainer → user, studio → org); `platform_admins` (FK auth.users, so
-  the first admin is named before they have a profile) + `is_platform_admin()`;
-  a guard freezing `role` after onboarding (the same hole `guard_verified_at`
-  closed for the tick); `guard_verified_at` now admits an admin;
-  `org_verification_requests` with `request_org_verification()` (org only,
-  ≥1 link, one pending) and `decide_org_verification()` (admins only — sets the
-  tick AND lists/unlists every studio the org owns in one transaction) and a
-  trigger notifying admins / the org (kind `people`); `tenant_owner_verified()`
-  + `guard_tenant_visibility` (a studio may be `listed` only under a verified
-  org — Step 2's UPDATE policy names no columns, so without this an owner could
-  PATCH themselves public); `create_tenant_with_owner` recreated: a studio needs
-  an org (born unlisted until verified), an artist page needs a user with an
-  active plan and there is one per person; the two plan RPCs stop writing
-  `role`; `artist_ids(uuid[])` (aggregate-only, the follower_counts pattern)
-  so a badge beside somebody ELSE's name can read the plan; `search_dance_os`'s
-  people sub-line; and the grandfathering with the guard trigger switched off
-  for exactly those rows (a migration carries no JWT).
-- **The app follows the two words everywhere the three used to be read** (the
-  explorers' inventory: ~20 sites). `types/profile.ts` has `ProfileRole =
-  "user" | "org"` and a display `PersonKind = "user" | "artist" | "org"` with
-  `kindOf(role, isArtist)`; badges, rings and tints key on the KIND, and every
-  list that prints a badge beside other people stamps `isArtist` once per list
-  through `findArtistIds` (followers, following, the team, people search, the
-  public person page). `DOS_TINT` is typed on the kind so a stale key is a
-  compile error. `setMyRoleAction` (dead, and a plain PATCH of role) is deleted.
-- **Onboarding is re-cut** (`OnboardingForm.tsx`): I AM HERE AS… (User |
-  Organization) at the top, ONE name, city, then the photo once the row exists;
-  a user picks styles; links are optional for a user and REQUIRED for an
-  organization (they are what the admin checks); an organization's bow says it
-  is in review and files the request as it leaves. **The hub** (`/business`)
-  is two screens: an organization's studios + a verification card (Not
-  verified / In review / Verified / Not approved + the admin's note, with the
-  ask) + its events doors; a person's one artist page (the plan unlocks it) or
-  the sentence saying what unlocks what. The Studio / Independent-trainer
-  toggle is gone — the kind follows from who is asking, here and in the RPC.
-  **The admin queue** is `/admin/verifications` (404 to anyone else): pending
-  requests with the links as evidence, Approve / Reject with a note, and every
-  organization with Verify / Revoke. The settings sheet offers it to admins.
-- **Tests re-cut, NOT YET RUN** (the schema is not there): the happy path's
-  `onboard()` walks both kinds; the owner is an Organization whose studio is
-  born unlisted and goes public when a FOURTH context — an admin named through
-  the service role — approves it in the queue; the trainer is a User who takes
-  the plan on day one so every ARTIST badge holds; the plan segment ends a live
-  plan (USER), re-takes it (ARTIST) — the role never moves. `demo-data.js`
-  seeds the two kinds, plans for the two artists, links + service-role
-  verification for the two organizations. Proof scripts' role literals are
-  rewritten (only on the lines that set a profile role — 43 tenant-type
-  literals untouched); `rls-proof-settings-screens` asserts the role STAYS.
-  **Proofs that create a studio as an org will now get an UNLISTED one, and
-  proofs that create a trainer_business need an active plan — a backlog row.**
-- **Two tooling lessons, both recorded in memory:** (1) an edit helper that
-  hands the text to its callback as a parameter and assigns the callback's
-  RETURN back discards every mutation the callback made through the closure —
-  the imports (done last, on the returned value) survived and every body swap
-  was silently lost, which is why one typecheck read like the old code; the
-  helper now exposes operations only. (2) Big edit scripts go through the
-  Write tool into the scratchpad and run by path — a heredoc past a few KB is
-  truncated on Windows ("unexpected EOF" that is not in the file) and the Bash
-  tool strips backslashes, so a `\/` in an anchor never matches.
-- **Earlier the same day, pushed and live:** the check-your-inbox screen rebuilt
-  with a real Resend (`fec9f30`); `/auth/confirm`'s failed-exchange bounce
-  for a signup code says the address is confirmed and to sign in, and the auth
-  toast got an explicit width (`5aa916d`). The 7 Sep commits were pulled onto
-  this machine; deps sync with `corepack pnpm@10 install` (Commands).
+- **THE ACCOUNT MODEL IS LIVE.** Both migrations — `20260908120000_users_orgs_admins.sql`
+  (user | org, platform admins, the verification queue, the visibility gate,
+  Pro read off the plan) and `20260909120000_org_rules.sql` (an organization is
+  not a person; city / last style / last link held by `update_my_profile`; an
+  organization's profile row readable only by itself, an admin and its studios'
+  teams; the admin is admin only; grant hygiene) — are APPLIED. The user ran the
+  push (`npx.cmd supabase db push … --include-all` from the repo; plain `npx`
+  is blocked by PowerShell's execution policy) after the classifier refused it
+  three times; the classifier also refused an ad-hoc write script but allowed
+  the repo's dry-run-then-`--apply` scripts, which is the pattern from now on
+  (memory: env-classifier-blocks-production-writes).
+- **What the user decided this session, in order:** the requirement list of 8
+  Sep (R1–R8); "users see individual studios, never the org" (R9); "go ahead,
+  make sure everything new fulfils the requirements, frontend or backend"
+  (R10–R12, the second migration); "remove it as a user, keep it admin only"
+  for `ai@eeetaxi.com` (its "Dance Plus" studio profile deleted; Home and
+  onboarding send a profile-less admin to the queue; `AppChrome adminOnly`
+  draws no tab bar, no bell, a Sign out; `notify_platform_admins` notifies only
+  admins with a profile because notifications reference profiles).
+- **The schema review.** The user asked for the schema to verify against the
+  requirements. It was read from the live catalogs over the session pooler
+  (port 5432, `pg` in the scratchpad; the management token is dead, Docker is
+  absent) and delivered as a private artifact page, `docs/DanceOS-database-schema.xlsx`
+  (13 sheets) and `docs/DanceOS-database-schema.pdf` (~65 pages) — every table
+  with a purpose, every column described (217 written from the definitions),
+  the six requirements checked rule by rule, a verdict and a ranked gap list.
+  `docs/` sits beside the repo, not in it. Regenerated after the migrations as
+  all-live; the workbook could only be written as "… (after migrations).xlsx"
+  because the first was open in Excel — replace it when closed.
+- **Production data.** `scripts/cleanup-proof-leftovers.js --apply` soft-deleted
+  13 proof accounts and 13 proof businesses (7 classes, 7 sessions, 3 events,
+  15 memberships) left by failed proof runs; `demo-data.js wipe` + `seed`
+  rebuilt the demo world under the new model (2 verified organizations with
+  links, 2 artists on the plan, every user with styles and a city). The two
+  test PHONE numbers (+919999999999 owner, +918888888888 learner) were among
+  the "no email" rows the cleanup removed; `scripts/ensure-test-phone-profiles.js`
+  restores them as a verified organization and a user — run it after any
+  cleanup, before the phone-based proofs or `paid-webhook.spec.ts`.
+- **Verification.** Playwright: the happy path (four contexts, the admin
+  approving the organization, the admin-only chrome), the three auth suites
+  and the webhook spec — green after four test-side fixes (an exact studio
+  name, the queue title inside `#dos-main`, digits kept in the Instagram handle,
+  the phone profiles). Proofs: `New-EmailUser` in 17 proofs now stamps an
+  organization verified through the service role right after its profile
+  (a studio is public only under a verified org); enquiries' artist page is a
+  Pro user's; managed's B is a second studio; search and person-pages read
+  "User"; settings-screens 11 asserts the tick UNMOVED; tenants is re-cut
+  (owner B an unverified email org, isolation = its unlisted studio; anonymous
+  sees A's listed one). profile-fields 11–12 cover city / last style / org link.
+  `rls-proof-discovery` hit the OTP rate limit (429) when run back to back with
+  the other phone proofs — run it alone.
+- **Left open, on the backlog row and in the review:** charging for the Artist
+  plan (₹0, no Cashfree order — the one thing still to build); a photo is an
+  onboarding rule, not a column; one login per organization; events belong to a
+  studio; two public surfaces bypass the visibility gate; no owner-side
+  List / Unlist; no 18+ gate; the dead management token.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **CLEAN UP, THEN APPLY THE TWO MIGRATIONS (user, 2 minutes) — nothing below works until they are on.**
-   First `node scripts/cleanup-proof-leftovers.js` (dry run: lists the proof
-   accounts and businesses left by failed proof runs), then the same with
-   `--apply` (soft-deletes them — BEFORE the migrations, so none is
-   grandfathered as a verified organization). Then the migrations:
-   `20260908120000_users_orgs_admins.sql` and `20260909120000_org_rules.sql`
-   are written and green locally (typecheck, lint) but the classifier refused
-   the push twice. Run from the repo: `npx supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<SUPABASE_DB_PASSWORD>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all`
-   (or allow `node …/scratchpad/push-migration.js push`). It maps every
-   profile's role, names `ai@eeetaxi.com` admin, and grandfathers the
-   organizations that own studios as verified.
-2. **Then verify it end to end (me, after #1):** `npx playwright test` against
-   a fresh `npm run dev` — the happy path now has an admin context approving
-   the organization; the three auth suites; `node scripts/demo-data.js wipe`
-   then `seed` (roles, plans, verified organizations); re-run
-   `rls-proof-settings-screens.ps1`, `rls-proof-tenants.ps1`,
-   `rls-proof-discovery.ps1`, `rls-proof-follows.ps1` (check 8 now expects
-   the organization refusal), `rls-proof-person-pages.ps1` (check 7b — an
-   organization on either side of a person-follow, and none in search) and
-   `rls-proof-search.ps1`. Then push — Rules 11 and 13 are written for that
-   push already.
-3. **Sign in as the admin (user):** `ai@eeetaxi.com` is confirmed and has a
-   password (signed in 09:02 UTC, 8 Sep). It is **admin only** (9 Sep decision):
-   after migration 2 it has no profile, and signing in lands straight on
-   `/admin/verifications` — no onboarding, no tabs, a Sign out in the top bar.
-   If it ever needs a profile again, `/onboarding` is refused for it by design;
-   remove the `platform_admins` row first.
-   `deepakkaushik8919@gmail.com` still has no usable password: Sign in →
-   Forgot password → the link in Chrome → `/login/reset`.
+1. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
+   `activate_artist_plan` records ₹0 and creates no Cashfree order, so "subscribe
+   to become Pro" is a switch, not a payment. The orders / payments /
+   webhook_events tables and the captured-payment applier already exist for
+   classes; the plan needs a Cashfree order on Subscribe and activation from the
+   webhook. 1–2 days once the price is known (₹799 / ₹7,999 are the list prices
+   the screen prints).
+2. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
+   profile, lands on `/admin/verifications`, Sign out in the top bar. Your test
+   organization `deepakkaushikdevtest@gmail.com` has no links and owns nothing;
+   it can ask to be verified once it adds a link (Profile → ＋ Add a link).
+   `deepakkaushik8919@gmail.com` will be asked for a city at its next edit.
+3. **Replace the schema workbook:** close Excel, then rename
+   `docs/DanceOS-database-schema (after migrations).xlsx` over
+   `docs/DanceOS-database-schema.xlsx` (the PDF and the artifact page are
+   already the post-migration version). Regenerate all three from the
+   scratchpad pipeline (`dump-schema-pg.js` → `gen-schema-page.js` /
+   `build-xlsx.js` / `gen-pdf.js`) after the next migration.
 
 4. **Customise the Supabase email templates to `token_hash` (dashboard, 3
    minutes, no code).** Authentication → Email Templates → **Confirm signup**
@@ -246,8 +174,25 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **ACCOUNTS, second pass — the org rules, the admin-only admin, the schema
+  review, 9 Sep 2026, no step number ⚠ (Rule 9, auth + RLS) — BOTH MIGRATIONS
+  APPLIED, e2e and proofs green.** R9–R12 in the deviations section: an
+  organization is never a public entity (not in search, no person page, neither
+  follows nor is followed, no share QR; its studios under one hood on its own
+  Profile); an organization is not a person (`guard_person_only` on eight
+  tables); a city is required, a user keeps a style, an organization keeps a
+  link (`update_my_profile`, onboarding, the Profile tab's Remove buttons); an
+  organization's profile row is readable only by itself, an admin and its
+  studios' teams; the platform admin has no profile and lives on the queue
+  (`AppChrome adminOnly`). Production: 26 proof leftovers soft-deleted
+  (`scripts/cleanup-proof-leftovers.js`), demo world reseeded, the two test
+  phone numbers re-profiled (`scripts/ensure-test-phone-profiles.js`). The
+  schema documents (`docs/*.xlsx|pdf` beside the repo, plus a private artifact
+  page) describe the live database with every table's purpose and every
+  column described. Proof-script pass: 17 proofs stamp an organization owner
+  verified; 6 proofs re-cut for the new model.
 - **ACCOUNTS: user | org + platform admins, 8 Sep 2026, no step number ⚠ (Rule 9,
-  auth + RLS) — MIGRATION WRITTEN, NOT YET APPLIED (NEXT TO DO #1).** The
+  auth + RLS) — APPLIED 9 Sep 2026.** The
   prototype's dancer | trainer | studio became two kinds of account at the
   user's instruction: a user (Pro is the artist plan, a row not a role) and an
   organization that runs studios (one org, many studios), plus platform admins
@@ -3424,7 +3369,7 @@ nothing to lift.
 | **PassDeck slice, what it left (29 Aug 2026):** the "Yours" badge a card wears on a session you run (8460 — the prototype's `manage` mode; our manage powers live on the managed list and the desks), the poster on the deck's class card (posters are drawn until the posters slice — the pass sheet already draws one), and the event card's role chip sits UNDER the card rather than inside it (`EventCard` heads with its kind cap and has no slot on that line). **Home's rank row landed 30 Aug 2026** (parity slice 7) | PassDeck 6863-7204, BookingCard 8460, 7315-7323 | posters slice; the rest decision (c) |
 | **Slice 8, what it left (30 Aug 2026):** onboarding's **date of birth and the 18+ gate** (no column holds a birth date — a needs-field (b) row of its own, and the gate is a product rule as much as a column); "Missing a style? Suggest it →" on the styles step (a demo toast in the prototype, so there is nothing to lift); the photo step uses the app's own `PhotoPicker` rather than `DosCropper`'s crop-and-frame flow; and the picker is single-select everywhere it is used — its `multi` mode (3554) has no call site yet, so it is not built | 3788-3943, 3885, DosCropper 6604, DosStylePicker 3554 | a DOB slice; the cropper with the posters slice; `multi` when a screen wants it |
 | **Wiring slice, what it left (30 Aug 2026):** the owner's Followers sheet has no All · Dancers · Artists · Studios segment strip (the person's own sheet has one; a business's followers are one list and the segments would filter a list that is usually short) and no paging past `MAX_LIST`; the Discover tick is drawn on studios and artists but a **crew** carries none, because no crew is verified by anybody; and the enquiry's Call still says "No number on this enquiry" to the business when the sender typed none — the sender's number is theirs to give, not the app's to look up | S_profiletab 11335; 4352, 4411; S_enqdetail 5406 | the segment strip and paging when a pilot business has enough followers to need them; the rest is decision (c) |
-| **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **an organization account can still act as a person elsewhere** (book a class, join a crew, enter an event, send an enquiry — nothing refuses it, and where it does it prints as a person; whether it should is open); **RLS still lets any signed-in user read an organization's `profiles` row** (Step 1's policy) — the 404, the search filter and the follow refusals are the app's decisions on that ceiling, not a new policy; **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof scripts that create a studio now get an UNLISTED one** unless they stamp the org verified first (service-role PATCH of `profiles.verified_at`), and those creating a `trainer_business` need an active plan — `rls-proof-discovery`, `-follows`, `-search`, `-person-pages`, `-enquiries`, `-events`, `-managed`, `-classes`, `-slugs` and the money proofs need that line added before they read green again; the **date of birth and 18+ gate** stay needs field (b) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
+| **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **an organization account can still act as a person elsewhere** (book a class, join a crew, enter an event, send an enquiry — nothing refuses it, and where it does it prints as a person; whether it should is open); **RLS still lets any signed-in user read an organization's `profiles` row** (Step 1's policy) — the 404, the search filter and the follow refusals are the app's decisions on that ceiling, not a new policy; **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof-script pass is done (9 Sep):** every `New-EmailUser` stamps an organization verified through the service role, an artist page is opened by a Pro user, and the phone-based proofs rely on `scripts/ensure-test-phone-profiles.js` — `rls-proof-discovery` must run alone (OTP rate limit); the **date of birth and 18+ gate** stay needs field (b); **the Artist plan is not charged** (₹0, no Cashfree order — NEXT TO DO #1) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)

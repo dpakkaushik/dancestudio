@@ -61,6 +61,10 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
+  if ($role -eq "org") {
+    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
+    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+  }
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -88,6 +92,8 @@ $l1 = New-EmailUser "enq-l1-$stamp@example.com" "Sender One $stamp" "user"
 $l2 = New-EmailUser "enq-l2-$stamp@example.com" "Bystander $stamp" "user"
 
 $ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Enquiry Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+# 8 Sep 2026: an artist page is a Pro USER's - the plan comes first
+Rpc (Api $ownerB.token) "activate_artist_plan" @{ p_plan = "yearly" } | Out-Null
 $tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Artist Business $stamp"; p_type = "trainer_business"; p_area = "Baner"; p_city = "Pune" }
 $tc = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tc.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null

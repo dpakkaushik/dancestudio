@@ -73,6 +73,10 @@ function New-EmailUser($email, $name, $role, $city) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = $city; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
+  if ($role -eq "org") {
+    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
+    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+  }
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
@@ -220,7 +224,8 @@ try {
   $anonFound = Rows $anonH "search_dance_os" @{ p_q = "PP Teacher"; p_limit = 3 }
   $anonPeople = @($anonFound | Where-Object { $_.kind -eq "person" }).Count
   Check 12 "Signed in, the search finds the person ($($person.name) -> $($person.href), sub '$($person.sub)'); a stranger finds $anonPeople people" (
-    ($null -ne $person) -and ($person.href -eq "/person/$($teacher.id)") -and ($person.sub -like "Artist*") -and ($anonPeople -eq 0))
+    ($null -ne $person) -and ($person.href -eq "/person/$($teacher.id)") -and ($person.sub -like "User*") -and ($anonPeople -eq 0))
+  # (the sub reads "User" since 8 Sep 2026: ARTIST is the plan's word, and this teacher took no plan)
 }
 finally {
   foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $svcH | Out-Null }
