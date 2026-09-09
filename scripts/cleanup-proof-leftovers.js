@@ -32,6 +32,11 @@ const APPLY = process.argv.includes("--apply");
 
 const JUNK_EMAIL = /^(ev|mng|pp|follow|srch|e2e|prof|st|stats|crew|evt|enq|mgd|pay|rf|wh|inv|cls|near|sl)-[^@]*@example\.com$/i;
 const JUNK_NAMES = new Set(["Studio Test", "Priya Test"]);
+/* the two Supabase TEST PHONE numbers are how paid-webhook.spec.ts and the older
+   proofs sign in. They have no email, so "no email" alone would sweep them up on
+   every run and the next phone-based proof would fail with "finish onboarding
+   first" — they are kept, and scripts/ensure-test-phone-profiles.js shapes them. */
+const KEEP_PHONES = new Set(["919999999999", "918888888888"]);
 
 async function call(method, url, body) {
   const res = await fetch(url, { method, headers: H, body: body ? JSON.stringify(body) : undefined });
@@ -56,10 +61,12 @@ async function allAuthUsers() {
 (async () => {
   const users = await allAuthUsers();
   const emailOf = new Map(users.map((u) => [u.id, u.email || null]));
+  const phoneOf = new Map(users.map((u) => [u.id, (u.phone || "").replace(/^\+/, "")]));
   const profiles = await get("profiles?select=id,full_name,role&deleted_at=is.null");
   const junkProfiles = profiles.filter((p) => {
+    if (KEEP_PHONES.has(phoneOf.get(p.id))) return false;
     const email = emailOf.get(p.id);
-    /* an auth user with no email is one of the two very first test accounts */
+    /* an auth user with no email and no kept phone is an early test account */
     return email === null || (email && JUNK_EMAIL.test(email)) || JUNK_NAMES.has(p.full_name);
   });
   const junkIds = new Set(junkProfiles.map((p) => p.id));

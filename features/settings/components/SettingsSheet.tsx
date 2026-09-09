@@ -82,7 +82,9 @@ export function SettingsSheet({
   if (!open) return null;
 
   /* a person with no business pays like a person; an organization's money rows live on its first studio's desk */
-  const isDancer = role === "user";
+  /* the prototype's "dancer" is the KIND user — a person with no live plan; an artist (the plan) or an
+     organization gets the business desk's rows (Payments & verification, Invoices, Refunds) */
+  const isDancer = role === "user" && !plan?.active;
   const artistOn = Boolean(plan?.active);
   /* the strip is the plan's switch (8855): off → the plan page; on → end it, which puts the role back */
   const flipArtist = () => {
