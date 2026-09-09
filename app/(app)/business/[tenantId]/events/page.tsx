@@ -7,8 +7,11 @@ import { findMyTenants } from "@/repositories/tenants";
 
 const stampNowIso = (): string => new Date().toISOString();
 
-/** The studio's events desk (prototype S_eventsmod). Any member reads it; the
- *  RPCs decide who may create, publish or delete. */
+/** The events desk (prototype S_eventsmod). Since R15 (9 Sep 2026) the tenant
+ *  here is the ORGANIZATION's own hosting row, not one of its studios — an
+ *  event belongs to the organization and carries its own venue. An artist page
+ *  still hosts its own. Any member reads the desk; the RPCs decide who may
+ *  create, publish or delete, and `save_event` refuses a studio outright. */
 export default async function TenantEventsPage({ params }: { params: Promise<{ tenantId: string }> }) {
   const { tenantId } = await params;
   const supabase = await createSupabaseServerClient();

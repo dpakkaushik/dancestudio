@@ -1,4 +1,8 @@
-export type TenantType = "studio" | "trainer_business";
+/** studio | trainer_business (an artist page) | **org** — an organization's own
+ *  hosting row (R15, 9 Sep 2026). An `org` tenant is never listed, never on
+ *  Discover, never in search and has no public page; it exists so an event can
+ *  belong to the organization and print the organization's name as its host. */
+export type TenantType = "studio" | "trainer_business" | "org";
 
 import type { SocialLink } from "@/types/profile";
 

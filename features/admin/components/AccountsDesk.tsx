@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { suspendAccountAction, unsuspendAccountAction } from "@/features/admin/server-actions/accounts";
+import { endOrgSubscriptionAction, grantOrgSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
 import { adminOpenSupportThreadAction } from "@/features/support/server-actions/support";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { AdminAccount } from "@/repositories/adminPanel";
+import type { OrgStandingRow } from "@/repositories/orgStanding";
 import { agoWords } from "@/types/notification";
 
 const CARD = "var(--card)";
@@ -29,19 +31,35 @@ function Face({ name, path }: { name: string; path: string | null }) {
 const chip: React.CSSProperties = { fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, whiteSpace: "nowrap" };
 const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${EL}`, background: CARD, color: INK };
 
-/** ACCOUNTS (10 Sep 2026). Every live account, searchable, with what it holds
- *  and the two things an admin can do about it: write to it, or suspend it.
+/** ACCOUNTS (10 Sep 2026; subscriptions added 9 Sep 2026 for R14). Every live
+ *  account, searchable, with what it holds and what an admin can do about it:
+ *  write to it, suspend it, and — for an organization — set up or end the
+ *  subscription that lets it open studios.
  *
  *  Suspension before deletion, deliberately. A suspended account can still
  *  sign in and read, and is refused every act that touches somebody else; its
  *  studios go dark while it lasts and come back if it is lifted. Deleting an
  *  account cascades a person's whole history and is not offered here. */
-export function AccountsDesk({ accounts, q, nowIso }: { accounts: AdminAccount[]; q: string; nowIso: string }) {
+export function AccountsDesk({
+  accounts,
+  standing,
+  q,
+  nowIso,
+}: {
+  accounts: AdminAccount[];
+  /** R14/R16: subscription and evidence figures, per organization on this page */
+  standing: Record<string, OrgStandingRow>;
+  q: string;
+  nowIso: string;
+}) {
   const router = useRouter();
   const [term, setTerm] = useState(q);
   const [toast, setToast] = useState<string | null>(null);
   const [suspending, setSuspending] = useState<string | null>(null);
   const [writing, setWriting] = useState<string | null>(null);
+  const [granting, setGranting] = useState<string | null>(null);
+  const [ending, setEnding] = useState<string | null>(null);
+  const [months, setMonths] = useState(12);
   const [reason, setReason] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -54,6 +72,8 @@ export function AccountsDesk({ accounts, q, nowIso }: { accounts: AdminAccount[]
   const close = () => {
     setSuspending(null);
     setWriting(null);
+    setGranting(null);
+    setEnding(null);
     setReason("");
     setSubject("");
     setBody("");
@@ -73,6 +93,24 @@ export function AccountsDesk({ accounts, q, nowIso }: { accounts: AdminAccount[]
       const out = await unsuspendAccountAction({ accountId: a.id, note: null });
       if (out.error) return fire(out.error);
       fire(`${a.fullName} is active again`);
+      router.refresh();
+    });
+
+  const grant = (a: AdminAccount) =>
+    start(async () => {
+      const out = await grantOrgSubscriptionAction({ orgId: a.id, months, note: reason.trim() || null });
+      if (out.error) return fire(out.error);
+      close();
+      fire(`${a.fullName} can open studios — ${months} month${months === 1 ? "" : "s"}, nothing charged`);
+      router.refresh();
+    });
+
+  const endSub = (a: AdminAccount) =>
+    start(async () => {
+      const out = await endOrgSubscriptionAction({ orgId: a.id, reason: reason.trim() });
+      if (out.error) return fire(out.error);
+      close();
+      fire(`${a.fullName}'s subscription has ended — they have been told why`);
       router.refresh();
     });
 
@@ -113,6 +151,7 @@ export function AccountsDesk({ accounts, q, nowIso }: { accounts: AdminAccount[]
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {accounts.map((a) => {
             const suspended = Boolean(a.suspendedAt);
+            const sub = a.role === "org" ? (standing[a.id] ?? null) : null;
             return (
               <div key={a.id} data-testid="admin-account" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${suspended ? "#EF4444" : a.isAdmin ? "#7C3AED" : a.role === "org" ? "#3B82F6" : EL}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
@@ -134,6 +173,18 @@ export function AccountsDesk({ accounts, q, nowIso }: { accounts: AdminAccount[]
                       {a.isAdmin ? <span style={{ ...chip, background: "#EDE9FE", color: "#6B21A8" }}>ADMIN</span> : null}
                       {a.owns > 0 ? <span style={{ ...chip, background: "var(--el)", color: SUB }}>{a.owns} BUSINESS{a.owns === 1 ? "" : "ES"}</span> : null}
                       {suspended ? <span style={{ ...chip, background: "#FEE2E2", color: "#B42318" }}>SUSPENDED</span> : null}
+                      {/* R14/R16: an organization's two new facts, on the row where
+                          the decisions about them are made */}
+                      {a.role === "org" && sub ? (
+                        <span style={{ ...chip, background: sub.subscribed ? "#DCFCE7" : "#FEF3C7", color: sub.subscribed ? "#15803D" : "#92400E" }}>
+                          {sub.subscribed ? "SUBSCRIBED" : "NO SUBSCRIPTION"}
+                        </span>
+                      ) : null}
+                      {a.role === "org" && sub ? (
+                        <span style={{ ...chip, background: sub.proofPhotos >= 5 ? "var(--el)" : "#FEF3C7", color: sub.proofPhotos >= 5 ? SUB : "#92400E" }}>
+                          {sub.proofPhotos} PHOTO{sub.proofPhotos === 1 ? "" : "S"}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -162,6 +213,62 @@ export function AccountsDesk({ accounts, q, nowIso }: { accounts: AdminAccount[]
                         {pending ? "Suspending…" : "Suspend"}
                       </button>
                       <button type="button" onClick={close} style={btn}>Cancel</button>
+                    </div>
+                  </div>
+                ) : granting === a.id ? (
+                  <div style={{ marginTop: 9 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>HOW LONG</div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
+                      {[1, 3, 6, 12].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setMonths(m)}
+                          aria-pressed={months === m}
+                          style={{ ...btn, background: months === m ? "var(--text)" : CARD, color: months === m ? "var(--solid)" : SUB, border: `1px solid ${months === m ? "var(--text)" : EL}` }}
+                        >
+                          {m === 12 ? "1 year" : `${m} month${m === 1 ? "" : "s"}`}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      aria-label={`Note on ${a.fullName}'s subscription`}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      maxLength={300}
+                      placeholder="A note for the log (optional)"
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit" }}
+                    />
+                    <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
+                      <button type="button" disabled={pending} onClick={() => grant(a)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Confirm the subscription for ${a.fullName}`}>
+                        {pending ? "Setting up…" : "Set it up"}
+                      </button>
+                      <button type="button" onClick={close} style={btn}>Cancel</button>
+                    </div>
+                    <div style={{ fontSize: 10, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      Nothing is charged — there is no price yet. This is an admin&apos;s grant, and the log says so.
+                    </div>
+                  </div>
+                ) : ending === a.id ? (
+                  <div style={{ marginTop: 9 }}>
+                    <label htmlFor={`endwhy-${a.id}`} style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>WHY — THEY READ THIS</label>
+                    <textarea
+                      id={`endwhy-${a.id}`}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      rows={2}
+                      maxLength={300}
+                      placeholder="Why it is ending, in a sentence."
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
+                    />
+                    <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
+                      <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => endSub(a)} style={{ ...btn, background: "#EF4444", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm ending ${a.fullName}'s subscription`}>
+                        {pending ? "Ending…" : "End it"}
+                      </button>
+                      <button type="button" onClick={close} style={btn}>Cancel</button>
+                    </div>
+                    <div style={{ fontSize: 10, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      Their studios stay exactly as they are. Only opening a NEW one is closed off.
                     </div>
                   </div>
                 ) : writing === a.id ? (
@@ -206,6 +313,15 @@ export function AccountsDesk({ accounts, q, nowIso }: { accounts: AdminAccount[]
                     )}
                     {a.role !== "org" ? null : (
                       <Link href="/admin/verifications" style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Verification</Link>
+                    )}
+                    {a.role !== "org" || suspended ? null : sub?.subscribed ? (
+                      <button type="button" onClick={() => { close(); setEnding(a.id); }} style={{ ...btn, color: "#B42318" }} aria-label={`End ${a.fullName}'s subscription`}>
+                        End subscription
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => { close(); setMonths(12); setGranting(a.id); }} style={{ ...btn, color: "#15803D" }} aria-label={`Set up ${a.fullName}'s subscription`}>
+                        Set up subscription
+                      </button>
                     )}
                   </div>
                 )}

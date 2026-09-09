@@ -7,6 +7,10 @@ import { findMyDeck, findStudioDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
+import { findMyVerificationRequest } from "@/repositories/admin";
+import { findMyOrgSubscription, findMyProofPhotos } from "@/repositories/orgStanding";
+import { findSupportThreads } from "@/repositories/support";
+import { OrgStanding, orgStandingWords } from "@/features/orgs/components/OrgStanding";
 import { findMyPlace } from "@/repositories/stats";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { amIPlatformAdmin } from "@/repositories/admin";
@@ -68,13 +72,24 @@ export default async function HomePage() {
   const now = new Date();
   const nowIso = now.toISOString();
 
-  const [tenants, invites, plan] = await Promise.all([
+  const isOrg = profile.role === "org";
+  /* WHERE AN ORGANIZATION STANDS WITH DANCEOS BELONGS HERE (R13, 9 Sep 2026):
+     the badge on its own name, the steps, and the door to a person — not two
+     taps away behind "Studios". A person's Home asks for none of it. */
+  const [tenants, invites, plan, request, photos, subscription, threads] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
     findMyPendingInvites(supabase),
-    profile.role === "org" ? Promise.resolve(null) : findMyArtistPlan(supabase),
+    isOrg ? Promise.resolve(null) : findMyArtistPlan(supabase),
+    isOrg ? findMyVerificationRequest(supabase) : Promise.resolve(null),
+    isOrg ? findMyProofPhotos(supabase).catch(() => []) : Promise.resolve([]),
+    isOrg ? findMyOrgSubscription(supabase) : Promise.resolve({ active: false, until: null, plan: null }),
+    isOrg ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
   ]);
+  /* the conversation about THIS request if there is one, else the newest */
+  const thread = threads.find((t) => request && t.requestId === request.id) ?? threads[0] ?? null;
+  const standing = isOrg ? orgStandingWords(profile.verifiedAt, request?.status) : null;
   /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
@@ -88,7 +103,7 @@ export default async function HomePage() {
 
   /* a studio's day is not a person's day (7022-7060): a studio owner's Home shows
      what is running in the studio's rooms, drawn by the same card in the same rail */
-  const studio = profile.role === "org" && tenants.length > 0 ? tenants[0] : null;
+  const studio = isOrg ? (tenants.find((t) => t.type === "studio") ?? null) : null;
   const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, tenants);
 
   const RG = DOS_RINGS[kind];
@@ -178,6 +193,18 @@ export default async function HomePage() {
                   </span>
                   {/* the tick is DanceOS's to give (7292) — set when a verification actually clears */}
                   {profile.verifiedAt ? <VerifiedTick size={16} /> : null}
+                  {/* R13 (9 Sep 2026): an organization that is NOT verified yet wears
+                      the word for where it stands, right on its own name. Nobody else
+                      is ever shown this — an organization has no public page, and this
+                      is the organization's own Home. */}
+                  {standing && !profile.verifiedAt ? (
+                    <span
+                      aria-label={`Verification: ${standing.title}`}
+                      style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 7px", borderRadius: 6, background: standing.tone, color: "#fff", whiteSpace: "nowrap" }}
+                    >
+                      {standing.chip}
+                    </span>
+                  ) : null}
                   {/* the QR beside the name shares this person (7288) */}
                   {/* an organization has no public page to share (8 Sep 2026) — its studios have theirs */}
                   {profile.role === "org" ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
@@ -254,6 +281,22 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* ── WHERE YOU STAND WITH DANCEOS (R13, 9 Sep 2026) — an organization only,
+            and on the outside screen rather than inside Studios, because it carries
+            the badge and the only door to a person about the decision. ── */}
+        {isOrg ? (
+          <OrgStanding
+            orgId={profile.id}
+            verifiedAt={profile.verifiedAt}
+            request={request}
+            socialsCount={profile.socials.length}
+            photos={photos}
+            subscription={subscription}
+            threadId={thread?.id ?? null}
+            unread={threads.reduce((n, t) => n + t.unread, 0)}
+          />
+        ) : null}
 
         {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
             live first — under the one shelf head, with both doors named. The wrapper runs the

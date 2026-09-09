@@ -8,7 +8,9 @@ import { decideOrgVerificationAction } from "@/features/admin/server-actions/adm
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { PLATFORM_TINT, handleOf, isPlatform } from "@/lib/constants/socials";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { ProofStrip } from "@/features/admin/components/ProofStrip";
 import { photoUrl } from "@/lib/media/photo";
+import type { ProofPhoto } from "@/lib/media/proof";
 import type { OrganizationRow, VerificationRequest } from "@/repositories/admin";
 import type { SocialLink } from "@/types/profile";
 import { agoWords } from "@/types/notification";
@@ -56,7 +58,20 @@ function Face({ name, path, size = 44 }: { name: string; path: string | null; si
  *  organization's studios; rejecting (with a reason the organization reads
  *  back) or revoking clears the tick and unlists them. Both are the database's
  *  doing in one transaction; this screen only asks. */
-export function VerificationQueue({ queue, orgs, nowIso }: { queue: VerificationRequest[]; orgs: OrganizationRow[]; /** the clock, stamped by the page — never read during render */ nowIso: string }) {
+export function VerificationQueue({
+  queue,
+  orgs,
+  proof,
+  nowIso,
+}: {
+  queue: VerificationRequest[];
+  orgs: OrganizationRow[];
+  /** R16: the photos of the space, per organization in the queue, each URL
+   *  already signed on the server for this admin's own session */
+  proof: Record<string, ProofPhoto[]>;
+  /** the clock, stamped by the page — never read during render */
+  nowIso: string;
+}) {
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
@@ -102,6 +117,11 @@ export function VerificationQueue({ queue, orgs, nowIso }: { queue: Verification
               </div>
               <div style={{ margin: "10px 0 4px" }}>
                 <Links socials={q.socials} />
+              </div>
+              {/* R16 (9 Sep 2026): the links say who they claim to be; the photos say
+                  there is a floor. Both are the evidence, so both are on the card. */}
+              <div style={{ margin: "10px 0 4px" }}>
+                <ProofStrip photos={proof[q.orgId] ?? []} orgName={q.orgName} />
               </div>
               {rejecting === q.orgId ? (
                 <div style={{ marginTop: 10 }}>

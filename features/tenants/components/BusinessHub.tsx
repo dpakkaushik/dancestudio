@@ -1,16 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
-import { VerifiedTick, dateWords } from "@/features/settings/components/settings-kit";
-import { createTenantAction, requestOrgVerificationAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
+import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
-import type { VerificationRequest } from "@/repositories/admin";
 import type { MyMembership } from "@/repositories/tenants";
 import type { ProfileRole } from "@/types/profile";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
@@ -69,18 +66,6 @@ const Head = ({ children }: { children: string }) => (
 
 const pill: React.CSSProperties = { display: "inline-block", padding: "9px 16px", borderRadius: 999, fontWeight: 900, fontSize: 11.5, cursor: "pointer", textDecoration: "none", border: "none", fontFamily: "inherit" };
 
-/** What an organization's verification is, right now (8 Sep 2026). The tick is
- *  the answer; the request is the question; both are read, never decided here. */
-export interface HubVerification {
-  verifiedAt: string | null;
-  request: VerificationRequest | null;
-  /** how many links the organization has published — none means it cannot ask yet */
-  socialsCount: number;
-  /** the conversation with DanceOS about this decision, and what is unread on it */
-  threadId?: string | null;
-  unread?: number;
-}
-
 /** Studios hub — lifted from the prototype's S_bizhub/Hub (DanceOSApp.jsx:2585-2691),
  *  re-cut on 8 Sep 2026 for the two kinds of account.
  *
@@ -91,37 +76,45 @@ export interface HubVerification {
  *  instead. Where a row goes decides what pressing it does; nothing else has to."
  *
  *  WHO OPENS WHAT (the user's decision). An ORGANIZATION opens studios — as many
- *  as it runs, in one city or several — and every one of them stays private
- *  until a DanceOS admin has verified the organization by its links; the card at
- *  the top says where that stands. A PERSON with the Artist plan opens ONE
+ *  as it runs, in one city or several — but only once it is VERIFIED and
+ *  SUBSCRIBED (R14, 9 Sep 2026): a studio is no longer created and left private
+ *  to wait, it cannot be created at all until both are true, and the one it does
+ *  create is public straight away. A PERSON with the Artist plan opens ONE
  *  artist page. A person without the plan opens nothing, and is told what
  *  unlocks what instead of being shown a button that would be refused. The
  *  Studio / Independent-trainer toggle the sheet used to carry is gone: the kind
- *  follows from who is asking, here and in the database. */
+ *  follows from who is asking, here and in the database.
+ *
+ *  WHERE THE VERIFICATION CARD WENT (R13, 9 Sep 2026): to Home. An organization
+ *  waiting on a stranger's decision, and its way of writing to that stranger,
+ *  should not be two taps inside a screen called Studios. This hub keeps only
+ *  the consequence — whether it may add a studio yet, and why not. */
 export function BusinessHub({
   memberships,
   /** live rooms per owned tenant id — the "· N rooms" half of the sub-line (2655) */
   roomCounts,
   role,
   isArtist,
-  verification,
+  whyNoStudio,
+  eventsHostId = null,
 }: {
   memberships: MyMembership[];
   roomCounts: Record<string, number>;
   role: ProfileRole;
   /** the plan is live — a person may open their artist page */
   isArtist: boolean;
-  /** an organization's standing with DanceOS; null for a person */
-  verification: HubVerification | null;
+  /** THE GATE, as the database words it: null when a studio may be created, else
+   *  the one sentence still standing in the way. Asked of `why_no_studio()` so
+   *  this screen cannot drift from what `create_tenant_with_owner` enforces. */
+  whyNoStudio: string | null;
+  /** R15: the organization's own events host — ONE desk, not one per studio */
+  eventsHostId?: string | null;
 }) {
-  const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
   const [city, setCity] = useState("");
   const [rooms, setRooms] = useState<RoomDraft[]>(seedRooms);
-  const [toast, setToast] = useState<string | null>(null);
-  const [pending, start] = useTransition();
   // the action revalidates in place (no navigation), so the sheet closes itself
   // once a creation lands — prototype behavior after "Create studio"
   const [state, formAction, isPending] = useActionState(
@@ -142,11 +135,6 @@ export function BusinessHub({
   /* system back closes the sheet that is open, exactly as tapping the scrim does */
   useCloseOnBack(() => setSheetOpen(false), sheetOpen);
 
-  const fire = (m: string) => {
-    setToast(m);
-    setTimeout(() => setToast(null), 2600);
-  };
-
   const isOrg = role === "org";
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);
@@ -157,16 +145,10 @@ export function BusinessHub({
   const isStudio = isOrg;
   const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity > 0);
   const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk));
-  const canOpen = isOrg || (isArtist && !myArtistPage);
-  const verified = Boolean(verification?.verifiedAt);
-
-  const ask = () =>
-    start(async () => {
-      const out = await requestOrgVerificationAction();
-      if (out.error) return fire(out.error);
-      fire("Asked — a DanceOS admin will check your links");
-      router.refresh();
-    });
+  /* R14: an organization may open the sheet only when the gate is open. A button
+     that would be refused is not offered; the reason is printed in its place. */
+  const gateShut = isOrg ? whyNoStudio : null;
+  const canOpen = isOrg ? gateShut === null : isArtist && !myArtistPage;
 
   const rowStyle = (own: boolean): React.CSSProperties => ({
     display: "flex",
@@ -242,115 +224,6 @@ export function BusinessHub({
   const setRoom = (i: number, patch: Partial<RoomDraft>) =>
     setRooms((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
-  /* ── the verification card: where an organization stands with DanceOS ── */
-  const verificationCard = () => {
-    if (!isOrg || !verification) return null;
-    const req = verification.request;
-    const tone = verified ? "#22C55E" : req?.status === "pending" ? "#F59E0B" : req?.status === "rejected" ? "#EF4444" : "var(--sub)";
-    const title = verified
-      ? "Verified organization"
-      : req?.status === "pending"
-        ? "In review"
-        : req?.status === "rejected"
-          ? "Not approved"
-          : "Not verified yet";
-    const canAsk = !verified && req?.status !== "pending" && verification.socialsCount > 0;
-    const asked = Boolean(req);
-    const decided = req?.status === "approved" || req?.status === "rejected";
-    const rejected = req?.status === "rejected";
-    const inReview = req?.status === "pending";
-    const unread = verification.unread ?? 0;
-
-    /* A TIMELINE, NOT ONE WORD (10 Sep 2026, the user's ask). An organization
-       waiting on a stranger's decision needs to know what has happened, what is
-       happening now, and what it can do — so every step says where it stands,
-       a rejection prints the admin's reason, and there is always a way to ask a
-       person rather than staring at a status. */
-    const steps: Array<{ label: string; note: string; state: "done" | "now" | "todo" }> = [
-      {
-        label: "Your links are published",
-        note:
-          verification.socialsCount > 0
-            ? `${verification.socialsCount} link${verification.socialsCount === 1 ? "" : "s"} on your profile`
-            : "Add at least one on the Profile tab — this is what DanceOS checks",
-        state: verification.socialsCount > 0 ? "done" : "now",
-      },
-      {
-        label: "You asked to be verified",
-        note: req ? `sent ${dateWords(req.createdAt)}` : "press the button below once your links are up",
-        state: asked ? "done" : verification.socialsCount > 0 ? "now" : "todo",
-      },
-      {
-        label: decided ? (rejected ? "DanceOS did not approve it" : "DanceOS approved it") : "A DanceOS admin checks your links",
-        note: decided
-          ? rejected
-            ? req?.note || "No reason was given — ask below and an admin will explain."
-            : `approved ${req?.decidedAt ? dateWords(req.decidedAt) : "just now"}`
-          : asked
-            ? "usually within a day. You can build your studios while you wait."
-            : "nothing to check yet",
-        state: decided ? "done" : inReview ? "now" : "todo",
-      },
-      {
-        label: "Your studios are public",
-        note: verified ? "live on Discover and in search" : "they stay private until the tick lands — nothing you build is lost",
-        state: verified ? "done" : "todo",
-      },
-    ];
-
-    return (
-      <div role="status" aria-label={`Verification: ${title}`} style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${tone}`, borderRadius: 16, padding: "12px 13px", marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          {verified ? <VerifiedTick size={15} /> : <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: tone, display: "inline-block" }} />}
-          <b style={{ fontSize: 13 }}>{title}</b>
-          {unread > 0 ? (
-            <span style={{ marginLeft: "auto", minWidth: 17, height: 17, borderRadius: 9, padding: "0 5px", background: "#EC4899", color: "#fff", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-              {unread}
-            </span>
-          ) : null}
-        </div>
-        {/* no summary line above the timeline: it said the same sentence twice, and
-            a rejection's reason printed in both places (caught by the e2e, 10 Sep) */}
-        <ol style={{ listStyle: "none", padding: 0, margin: "11px 0 2px" }}>
-          {steps.map((s) => (
-            <li key={s.label} style={{ display: "flex", gap: 9, paddingBottom: 9 }}>
-              <span aria-hidden="true" style={{ flexShrink: 0, width: 15, height: 15, borderRadius: 8, marginTop: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, background: s.state === "done" ? "#22C55E" : s.state === "now" ? tone : "var(--el)", color: s.state === "todo" ? "var(--muted)" : "#fff" }}>
-                {s.state === "done" ? "✓" : s.state === "now" ? "●" : ""}
-              </span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 12, fontWeight: s.state === "todo" ? 600 : 800, color: s.state === "todo" ? "var(--muted)" : INK, lineHeight: 1.35 }}>{s.label}</span>
-                <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2, lineHeight: 1.45 }}>{s.note}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-
-        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-          {canAsk ? (
-            <button type="button" disabled={pending} onClick={ask} style={{ ...pill, background: "var(--text)", color: "var(--solid)" }}>
-              {pending ? "Asking…" : rejected ? "Ask again" : "Request verification"}
-            </button>
-          ) : null}
-          {/* there is a person on the other side of this decision — always a door to them */}
-          <Link
-            href={
-              verification.threadId
-                ? `/support/${verification.threadId}`
-                : /* carry the request, so the decision lands in this conversation
-                     rather than a thread nothing is attached to (10 Sep 2026) */
-                  req
-                  ? `/support?request=${req.id}`
-                  : "/support"
-            }
-            style={{ ...pill, background: LILAC, border: `1px solid ${EL}`, color: INK, display: "inline-flex", alignItems: "center" }}
-          >
-            {unread > 0 ? `Read DanceOS's reply (${unread})` : verification.threadId ? "Your conversation with DanceOS" : "Message DanceOS"}
-          </Link>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div
       style={{
@@ -400,51 +273,76 @@ export function BusinessHub({
           </div>
         </div>
 
-        {verificationCard()}
-
         {isOrg ? (
           <>
             <Head>YOUR STUDIOS</Head>
             {myStudios.length ? (
               myStudios.map((t) => row(t, true))
             ) : (
-              <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>No studios yet — add the first one below. One studio = one location; add another for each branch.</div>
+              <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>
+                {gateShut
+                  ? "No studios yet. One studio = one location; add another for each branch."
+                  : "No studios yet — add the first one below. One studio = one location; add another for each branch."}
+              </div>
             )}
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={dosKey}
-              onClick={() => setSheetOpen(true)}
-              style={{
-                textAlign: "center",
-                padding: "13px",
-                borderRadius: 16,
-                border: `1.5px dashed ${ACCENT}`,
-                color: ACCENT,
-                fontWeight: 800,
-                fontSize: 13,
-                cursor: "pointer",
-              }}
-            >
-              ＋ Add studio
-            </div>
+            {/* R14: the gate. Not a greyed control with no explanation — the
+                database's own sentence, and the door to the person who can move
+                it. The dashed button is only drawn when pressing it would work. */}
+            {gateShut ? (
+              <div
+                role="status"
+                aria-label={`Cannot add a studio: ${gateShut}`}
+                style={{ borderRadius: 16, border: `1.5px dashed var(--el)`, padding: "13px 14px", background: CARD }}
+              >
+                <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>＋ Add studio</div>
+                <div style={{ fontSize: 11, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{gateShut}</div>
+                <Link href="/" style={{ display: "inline-block", fontSize: 11, fontWeight: 800, color: ACCENT, marginTop: 7, textDecoration: "none" }}>
+                  Where you stand with DanceOS ›
+                </Link>
+              </div>
+            ) : (
+              <div
+                role="button"
+                tabIndex={0}
+                onKeyDown={dosKey}
+                onClick={() => setSheetOpen(true)}
+                style={{
+                  textAlign: "center",
+                  padding: "13px",
+                  borderRadius: 16,
+                  border: `1.5px dashed ${ACCENT}`,
+                  color: ACCENT,
+                  fontWeight: 800,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                ＋ Add studio
+              </div>
+            )}
 
-            {/* events belong to a studio (the desk is the studio's) — the hub lists the doors */}
+            {/* R15 (9 Sep 2026): AN EVENT IS THE ORGANIZATION'S. It was a desk per
+                studio, which read as though a battle happened in one of your
+                rooms; an event has always carried its own venue, city and map
+                link, so the studio on it was never the place. ONE desk, and the
+                public event page names the organization as its host. */}
             <div style={{ marginTop: 20 }}>
               <Head>EVENTS</Head>
-              {myStudios.length ? (
-                myStudios.map((t) => (
-                  <Link key={t.id} href={`/business/${t.id}/events`} style={{ ...rowStyle(true), borderLeftColor: "#F59E0B" }} aria-label={`Events at ${t.name}`}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Events at {t.name}</div>
-                      <div style={{ fontSize: 10, color: SUB, marginTop: 1 }}>showcases · battles · tournaments</div>
-                    </div>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: "#F59E0B", flexShrink: 0 }}>Open ›</span>
-                  </Link>
-                ))
+              {eventsHostId ? (
+                <Link href={`/business/${eventsHostId}/events`} style={{ ...rowStyle(true), borderLeftColor: "#F59E0B" }} aria-label="Your events">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Your events</div>
+                    <div style={{ fontSize: 10, color: SUB, marginTop: 1 }}>showcases · battles · tournaments — held by your organization, at any venue</div>
+                  </div>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#F59E0B", flexShrink: 0 }}>Open ›</span>
+                </Link>
               ) : (
-                <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 4px" }}>An event is held by a studio — add one first, and its events desk opens here.</div>
+                <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 4px" }}>Your events desk is opening — reload in a moment.</div>
               )}
+              <div style={{ fontSize: 10.5, color: "var(--muted)", padding: "2px 2px 0", lineHeight: 1.5 }}>
+                An event is your organization&apos;s, not a studio&apos;s — it carries its own venue, so it can be
+                anywhere. Your organization&apos;s name is what the public sees on it.
+              </div>
             </div>
           </>
         ) : (
@@ -533,7 +431,7 @@ export function BusinessHub({
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{isStudio ? "New studio" : "Your artist page"}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
               {isStudio
-                ? `One studio = one location. Opening another branch later? Create it as its own studio — it gets its own profile page and calendar.${verified ? "" : " It stays private until DanceOS has verified your organization."}`
+                ? "One studio = one location. Opening another branch later? Create it as its own studio — it gets its own profile page and calendar. It goes on Discover as soon as you create it."
                 : "The page people find you by — your classes, your bookings and your earnings live behind it."}
             </div>
 
@@ -661,7 +559,6 @@ export function BusinessHub({
           </div>
         </div>
       )}
-      {toast ? <div role="status" style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#241B33", color: "#fff", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 700 }}>{toast}</div> : null}
     </div>
   );
 }

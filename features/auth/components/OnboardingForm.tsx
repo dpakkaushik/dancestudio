@@ -6,12 +6,14 @@ import { DosStyleCoin } from "@/components/ui/DosStyleKit";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { finishOnboardingAction, saveProfileBasicsAction } from "@/features/auth/server-actions/auth";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { requestOrgVerificationAction } from "@/features/tenants/server-actions/tenants";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
 import { BTN_STYLE, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
 import { dosToolPaint } from "@/lib/format/styleInk";
 import { photoUrl } from "@/lib/media/photo";
+import { PROOF_MAX, PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
 import type { Profile, ProfileRole, SocialLink } from "@/types/profile";
 
 /** WHO IS HERE (8 Sep 2026, the user's decision): a person, or an organization.
@@ -82,7 +84,7 @@ const asUrl = (v: string): string => {
   return /^https?:\/\//i.test(t) ? t : `https://${t}`;
 };
 
-type Step = "profile" | "styles" | "socials" | "done";
+type Step = "profile" | "styles" | "socials" | "proof" | "done";
 
 /** ONBOARDING — the prototype's screens (3781-3943), re-cut on 8 Sep 2026 for
  *  the two kinds of account the user decided on:
@@ -93,7 +95,11 @@ type Step = "profile" | "styles" | "socials" | "done";
  *  2. STYLES — a person's own; an organization is not asked what it dances.
  *  3. LINKS — optional for a person; REQUIRED for an organization, because the
  *     links are what a DanceOS admin verifies before anything it runs is public.
- *  4. TAKE A BOW — and for an organization, the sentence that says it is now in
+ *  4. PHOTOS — an organization only, and REQUIRED (R16, 9 Sep 2026): five to ten
+ *     pictures of the space it teaches in, which a DanceOS admin reads with the
+ *     links. They go to a PRIVATE bucket; nobody but the organization and an
+ *     admin ever sees them, and the screen says so.
+ *  5. TAKE A BOW — and for an organization, the sentence that says it is now in
  *     review, with its studios private until an admin says yes.
  *
  *  Why the row is created at the end of the FIRST screen rather than the last:
@@ -108,7 +114,16 @@ type Step = "profile" | "styles" | "socials" | "done";
  *  deviations table: the two kinds; one name; the organization's mandatory
  *  links. Still not lifted (U2 needs field (b)): the date of birth and the 18+
  *  gate, and "Missing a style? Suggest it". */
-export function OnboardingForm({ userId, existing = null }: { userId: string; existing?: Profile | null }) {
+export function OnboardingForm({
+  userId,
+  existing = null,
+  proofPhotos = [],
+}: {
+  userId: string;
+  existing?: Profile | null;
+  /** what an organization coming back to a half-finished flow has already shown */
+  proofPhotos?: ProofPhoto[];
+}) {
   const [role, setRole] = useState<ProfileRole>(existing?.role ?? "user");
   const isOrg = role === "org";
   /* RESUMING: a row already exists when the page re-renders mid-flow (every server
@@ -125,6 +140,7 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
   const [fb, setFb] = useState("");
   const [web, setWeb] = useState("");
   const [extras, setExtras] = useState<Array<{ label: string; url: string }>>([]);
+  const [proofCount, setProofCount] = useState(proofPhotos.length);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -136,7 +152,7 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
   const firstWord = fullName.split(" ")[0] ?? "";
   const handle = fullName.toLowerCase().replace(/[^a-z]/g, "") || "you";
   const face = photoUrl(avatarPath);
-  const total = isOrg ? 2 : 3;
+  const total = 3;
 
   /* the button says what is missing (3820-3821): the reason, not a grey nothing */
   /* the city is the user's "location" (requirement 2, 9 Sep 2026): asked before the row is made, required by the database too */
@@ -337,11 +353,37 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
           type="button"
           disabled={pending || !can}
           aria-disabled={!can}
-          onClick={() => can && writeProfile({ styles: mine, socials: socials() }, () => setStep("done"))}
+          onClick={() => can && writeProfile({ styles: mine, socials: socials() }, () => setStep(isOrg ? "proof" : "done"))}
           style={{ ...BTN_STYLE, background: can ? PINK : LINE, color: can ? "#fff" : SUB }}
         >
           {pending ? "Saving…" : isOrg ? (any ? "Continue" : "Add at least one link") : any ? "Continue" : "Skip for now →"}
         </button>
+      </AuthShell>
+    );
+  }
+
+  /* ─── PROOF (R16, 9 Sep 2026) — an organization shows DanceOS its space ─── */
+  if (step === "proof") {
+    const enough = proofCount >= PROOF_MIN;
+    return (
+      <AuthShell toast={toast} progress={[3, total]}>
+        <button type="button" aria-label="Back" onClick={() => setStep("socials")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
+          ←
+        </button>
+        <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Show DanceOS your space</div>
+        <ProofPhotos orgId={userId} initialPhotos={proofPhotos} onCount={setProofCount} refreshRoute={false} />
+        <button
+          type="button"
+          disabled={pending || !enough}
+          aria-disabled={!enough}
+          onClick={() => enough && setStep("done")}
+          style={{ ...BTN_STYLE, marginTop: 18, background: enough ? PINK : LINE, color: enough ? "#fff" : SUB }}
+        >
+          {enough ? "Continue" : `Add ${PROOF_MIN - proofCount} more photo${PROOF_MIN - proofCount === 1 ? "" : "s"}`}
+        </button>
+        <div style={{ fontSize: 11, color: SUB, marginTop: 10, textAlign: "center", lineHeight: 1.5 }}>
+          {PROOF_MIN} is the minimum, {PROOF_MAX} the most DanceOS needs. You can change them later from Home.
+        </div>
       </AuthShell>
     );
   }
@@ -398,7 +440,7 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
       <div style={{ fontSize: 12.5, color: "#B7AECB", marginTop: 22, background: "rgba(255,255,255,.05)", border: "1px solid #241B33", borderRadius: 14, padding: "11px 14px", lineHeight: 1.55, animation: "dosRise .5s .5s ease both", textAlign: "left" }}>
         {isOrg ? (
           <>
-            🛡 <b style={{ color: "#F5F2FA" }}>A DanceOS admin checks your links</b>, then your studios go live on Discover. You can set up studios and events right away from Home → <b style={{ color: "#F5F2FA" }}>Studio Tools</b>; they stay private until then.
+            🛡 <b style={{ color: "#F5F2FA" }}>A DanceOS admin checks your links and photos</b> — usually within a day. Your first studio opens once you are verified and your subscription is active; where you stand is always on <b style={{ color: "#F5F2FA" }}>Home</b>, with a way to message DanceOS about it.
           </>
         ) : (
           <>

@@ -1,6 +1,85 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (10 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (9 Sep 2026, later) — replaced on every push (Rule 13)
+
+- **THE ADMIN PANEL, PHASE 2, IS LIVE**, and then the user gave four new
+  requirements (R13–R16 in the accounts deviations table). Phase 2's migration
+  `20260910180000_admin_panel_2.sql` is APPLIED — verified on the live catalog:
+  the `reports` table with both partial indexes and both policies, all six
+  functions, the updated-at trigger, and `admin_dashboard()` correctly refusing
+  a non-admin connection. `e2e/admin-moderation.spec.ts` is **9/9 green** and
+  proves the whole moderation story: reporting needs an account and says so; a
+  dancer reports a studio with a reason from the closed list; a second report
+  from the same person is refused in words; a SECOND reporter turns one
+  complaint into a case ("1 OTHER REPORTED THIS"); the admin takes that ONE
+  studio off Discover and **RLS takes its page down with it** (the link somebody
+  already has 404s — proved, not assumed); the owner is told why; answering the
+  report tells the reporter in the admin's own words; both decisions read as
+  sentences in the audit log; putting it back is one press.
+- **Four new requirements, and two decisions the user made when asked.** Events:
+  a public event now names the ORGANIZATION as its host ("the organization,
+  events only" — it is still not browsable). The subscription: the full gate is
+  built now and **nothing is charged**, because no price has been set — an
+  admin's grant is what currently writes the plan row, and a Cashfree order will
+  write the same row later without the gate changing.
+- **R13 — where an organization stands moved to HOME.** The verification card
+  used to live two taps inside a screen called Studios. Home's identity sleeve
+  now wears the badge on the organization's own name (UNDER VERIFICATION / NOT
+  APPROVED / the tick), and `OrgStanding` sits under the sleeve: a six-step
+  timeline, the rejection reason in the admin's words, the photo strip while it
+  is still short, and the door to the conversation with its unread badge.
+  `/business` keeps only the consequence — may a studio be created, and why not.
+- **R14 — a studio needs a VERIFIED and SUBSCRIBED organization.** ⚠ Rule 9,
+  money-adjacent. `org_plans` (one live row is the gate's second half),
+  `org_subscription_active()`, and `why_no_studio()` — the ONE sentence the hub
+  prints under a disabled control and `create_tenant_with_owner` raises, so the
+  screen cannot drift from the rule. A studio made by a verified, subscribed
+  organization is **public on creation**; there is nothing left to wait for.
+  `admin_grant_org_subscription` / `admin_end_org_subscription` are audited,
+  notify the organization, and say `amount_inr = 0` because nothing was taken.
+  Ending one leaves every existing studio alone — only opening a NEW one closes
+  off. Every organization already verified was granted twelve months by the
+  migration, with a note on the row saying it is a grandfather clause and not a
+  payment.
+- **R15 — an event belongs to the ORGANIZATION.** Forty `tenant_id` references
+  across thirteen functions and eight policies all work today, so rather than
+  re-plumb them onto a profile id, an organization gets ONE tenant of its own:
+  `tenants.type = 'org'`, `visibility = 'unlisted'` for ever. Every function,
+  policy and the route `/business/<id>/events` keep working, and the event
+  page's "by {name}" line prints the organization. "Listed" therefore keeps
+  meaning "on Discover", and `event_host_is_public()` decides publicness
+  instead: a studio or artist page while LISTED, an organization while VERIFIED
+  and not suspended. `save_event` refuses a studio host outright, the four
+  existing events were moved to their organizations with their tiers and
+  bookings, and the hosting row is excluded from `nearby_tenants`,
+  `admin_businesses`, search (which filters the two public types by name) and
+  every public page.
+- **R16 — five to ten photos of the space, at signup.** A PRIVATE bucket
+  (`org-proof`), because a business is handing pictures of its premises to a
+  stranger who has to judge them; the public `media` bucket would have made
+  them world-readable by URL. Every read is a short-lived signed URL and only
+  the organization or a platform admin can mint one. `org_proof_photos` +
+  `add_org_proof_photo` / `remove_org_proof_photo` (ten is the ceiling, and a
+  removal that would drop the evidence below five while a request is pending is
+  refused), `request_org_verification` refuses a request under five, onboarding
+  gained a fifth screen for an organization, and the admin's queue draws the
+  photos beside the links with a tap-to-enlarge strip.
+- **Also this session:** phase 2's four new audit actions were printing as raw
+  slugs (`business.unlist`) because nobody had given them sentences — fixed,
+  along with two more for the subscription; the dashboard's WHAT EXISTS figures
+  became doors to Businesses; and `decide_report` was logging the REPORTER as
+  the subject with an empty label, so the log read "acted on a report about an
+  account" — a fifth migration makes it name the thing that was reported.
+- **One thing caught by reading the catalog rather than guessing:**
+  `admin_businesses` has a fixed OUT-column ORDER, and Postgres refuses to
+  change a function's return type — a `create or replace` that reshuffled them
+  would have failed the whole migration. Every helper the three new migrations
+  call was also checked against the live catalog for its exact signature.
+- Typecheck 0, lint 0, `next build` green. **THREE MIGRATIONS ARE WRITTEN AND
+  NOT APPLIED** (NEXT TO DO #1). Until they run, Home's organization strip, the
+  studio gate, the photo step and the org-level events desk all error.
+
+## LAST SESSION (10 Sep 2026) — history
 
 - **THE ADMIN PANEL, PHASE 1 — support, trust, accountability ⚠ (Rule 9: auth
   + RLS). `20260910120000_admin_panel.sql` is APPLIED (the user ran it) and
@@ -129,47 +208,59 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **APPLY MIGRATION 4 (user, 1 minute) — Businesses and Reports are dark until it is on.**
-   `supabase/migrations/20260910180000_admin_panel_2.sql` — the businesses list
-   with the ONE-business List / Unlist switch (`admin_set_tenant_visibility`,
-   audited, the owner told why), `reports` + `report_content` (anybody signed
-   in; refuses yourself, a suspended caller, a duplicate) + `decide_report`
-   (the reporter is always told) + `admin_reports` (with "N others reported
-   this"), and `admin_dashboard` counting open reports — is written,
-   typechecked and linted, and NOT applied. Migration 3 IS applied and its
-   e2e is green. Until 4 runs, `/admin/businesses` and `/admin/reports` error
-   and the Report control at the foot of every public business and person page
-   fails on Send — which is why the phase 2 commit is held back. From the repo:
+1. **APPLY THREE MIGRATIONS (user, 1 minute) — R13, R14, R15 and R16 are dark
+   until they run.** One command applies all three, in filename order:
    ```
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
    npx.cmd supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<password, @ as %40>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all
    ```
-   Then say so: the phase 2 e2e (a user reports a studio → it is in the queue
-   with the reason → the admin answers → the reporter is told; the admin takes
-   ONE studio off Discover → the owner is told why → puts it back) gets written
-   and run, the suite re-run, and the held commit pushed. Then phase 3: money
-   oversight (stuck orders, unfinished webhooks, refund disputes),
-   announcements, platform settings.
-2. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
-   `activate_artist_plan` records ₹0 and creates no Cashfree order, so "subscribe
-   to become Pro" is a switch, not a payment. The orders / payments /
-   webhook_events tables and the captured-payment applier already exist for
-   classes; the plan needs a Cashfree order on Subscribe and activation from the
-   webhook. 1–2 days once the price is known (₹799 / ₹7,999 are the list prices
-   the screen prints).
-3. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
-   profile, lands on `/admin/verifications`, Sign out in the top bar. Your test
-   organization `deepakkaushikdevtest@gmail.com` has no links and owns nothing;
-   it can ask to be verified once it adds a link (Profile → ＋ Add a link).
-   `deepakkaushik8919@gmail.com` will be asked for a city at its next edit.
-4. **Replace the schema workbook:** close Excel, then rename
+   * `20260911120000_report_audit_names_the_subject.sql` — the audit row for a
+     report decision names the thing reported, not the reporter (a one-function
+     replace; the rows phase 2 already wrote stay exactly as they are, because
+     the log is insert-only and that is the design working).
+   * `20260911140000_org_gate_and_proof.sql` ⚠ — R14 + R16: `org_plans`,
+     `org_subscription_active`, `why_no_studio`, the gate inside
+     `create_tenant_with_owner`, the two admin subscription decisions,
+     `org_proof_photos` + its two functions, the PRIVATE `org-proof` bucket and
+     its four storage policies, `request_org_verification` requiring five
+     photos, `admin_org_standing`, and `admin_dashboard` counting subscriptions.
+     **It also grants twelve months to every already-verified organization**, so
+     the new rule does not break an account that was playing by the old one.
+   * `20260911160000_events_belong_to_the_organization.sql` ⚠ — R15:
+     `tenants.type` accepts `'org'`, `ensure_org_tenant` / `my_org_tenant`, a
+     trigger giving every new organization one, `event_host_is_public` and the
+     four public event policies recreated on it, `save_event` refusing a studio
+     host, `nearby_tenants` and `admin_businesses` excluding the hosting row,
+     and the four existing events moved to their organizations with their tiers
+     and bookings.
+2. **Then say so, and this happens:** the R13–R16 e2e gets written and run (an
+   organization signs up → five photos → asks to be verified → the admin sees
+   the photos beside the links → approves → the hub still refuses a studio
+   because there is no subscription → the admin grants one → the studio is
+   created and public immediately → one events desk at organization level, and
+   the public event names the organization), the full suite is re-run, and the
+   commit is pushed.
+3. **Re-run the two studio-creation tests, and rewrite them for R14.**
+   `admin-moderation.spec.ts:151` and `happy-path.spec.ts:201` both failed in
+   the full-suite run at the same step with the same symptom, and both pass in
+   isolation — the same machine resource starvation as 10 Sep, not a regression.
+   They also both need updating: a studio now needs a verified AND subscribed
+   organization, so each spec must grant a subscription through the service role
+   before it adds a studio.
+4. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
+   `activate_artist_plan` records ₹0 and creates no Cashfree order. The same is
+   now true of the organization subscription (R14) — the gate is real, the
+   charge is not. One price decision unblocks both, and neither gate changes
+   when the order arrives.
+5. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
+   profile, lands on `/admin/verifications`, Sign out in the top bar.
+6. **Replace the schema workbook:** close Excel, then rename
    `docs/DanceOS-database-schema (after migrations).xlsx` over
-   `docs/DanceOS-database-schema.xlsx` (the PDF and the artifact page are
-   already the post-migration version). Regenerate all three from the
-   scratchpad pipeline (`dump-schema-pg.js` → `gen-schema-page.js` /
-   `build-xlsx.js` / `gen-pdf.js`) after the next migration.
-
-4. **Customise the Supabase email templates to `token_hash` (dashboard, 3
+   `docs/DanceOS-database-schema.xlsx`. Regenerate all three from the scratchpad
+   pipeline after these three migrations land — they add three tables
+   (`reports`, `org_plans`, `org_proof_photos`), a private bucket and a third
+   tenant type.
+7. **Customise the Supabase email templates to `token_hash` (dashboard, 3
    minutes, no code).** Authentication → Email Templates → **Confirm signup**
    and **Reset password** (Magic Link and Change Email too, for completeness):
    replace the `{{ .ConfirmationURL }}` href with
@@ -178,43 +269,39 @@
    URL Configuration). This removes the same-browser limitation entirely — links
    then work from any app or device. The route already accepts this shape. Then
    **re-test with a real inbox link, not the proof script** (Rule 15).
-5. **For a pilot, verify a domain at resend.com/domains**, point
+8. **For a pilot, verify a domain at resend.com/domains**, point
    `smtp_admin_email` at it and switch custom SMTP back ON. That restores 60/h
    and real deliverability. The `onboarding@resend.dev` sender only ever reached
    the Resend account owner, which is what made auth look broken.
-6. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
+9. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
    confirm Supabase's redirect allow-list carries it. Every emailed link is built
    from `emailLinkOrigin()`, which prefers this over the `origin` header on
    purpose; unset in production it falls back to whatever host the browser used,
-   which is how a link gets minted for an origin the allow-list refuses. On 7 Sep the `origin`-header fallback happened to yield the right
-   URL (the link's `redirect_to` was the Vercel host); that is luck, not a fix.
-7. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
+   which is how a link gets minted for an origin the allow-list refuses.
+10. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
    requires (`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`,
    `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`) and still
    carries `RAZORPAY_WEBHOOK_SECRET` from before the 28 Aug rail swap. Payments
    cannot work locally until that is fixed.
-8. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
+11. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
    screen's Terms and Privacy Policy are bold text, not links, because linking to
    a 404 on the screen everybody sees is worse. They become `<Link>`s in the same
    change that adds the pages — which is also where U3's DPDP consent sentence
    belongs.
-9. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
+12. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
    `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
    while the global ring in `globals.css` is `#ec4899`. Auth is consistent because
    the shadcn primitives draw the accent; every other screen still rings magenta
    against cyan buttons. One line to align, ~50 screens repainted, so it is the
    user's call.
-10. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
+13. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
    `supabase.auth.getUser()` — a network round trip — on EVERY request, the
    anonymous auth screens included. Consider excluding `/login/*` and public
    static files from the matcher, then test sign-in end to end.
-11. **Fix the pre-existing `happy-path.spec.ts:180` Rooms failure.** It is not
-   auth, and it was failing before this slice. It blocks 13 downstream tests
-   from running at all, which means the suite is not currently a safety net.
-12. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
+14. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
    2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
    Twilio credentials, DLT registration and an approved Meta template.
-13. **The folder reorganization is proposed but NOT started**, and it is blocked
+15. **The folder reorganization is proposed but NOT started**, and it is blocked
     on one question: how does the APK reach a phone? `android/danceos-1.1.0.apk`
     and `.aab` are TRACKED in git (~4 MB per release, and `.git` is 13 MB with a
     7.6 MB pack), and the Android project exists twice — `files/android/`
@@ -224,13 +311,10 @@
     excludes it and `git log --diff-filter=A` across all history confirms it.
     Also: `files/.claude/settings.json` hardcodes
     `c:\Users\Admin\Downloads\dancestudio\files` in ~9 permission entries, which
-    is what a rename would silently break. `Downloads/CLAUDE.md` (the stale
-    pre-prototype blueprint) was renamed to
-    `DanceOS-blueprint-SUPERSEDED-2026-07-07.md` so it stops auto-loading over
-    this file. **What actually breaks the installed app is a URL disappearing, not a
-    folder moving** (Rule 14, learned 7 Sep third session) — so the reorg is
-    safer than it looked, provided every route keeps its path or gets a
-    redirect.
+    is what a rename would silently break. **What actually breaks the installed
+    app is a URL disappearing, not a folder moving** (Rule 14, learned 7 Sep
+    third session) — so the reorg is safer than it looked, provided every route
+    keeps its path or gets a redirect.
 
 ## What this repo is
 
@@ -263,6 +347,31 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **R13–R16 — the organization's standing, the studio gate, org-level events and
+  the verification photos, 9 Sep 2026, no step number ⚠ (Rule 9, auth + RLS +
+  money-adjacent) — THREE MIGRATIONS WRITTEN, NOT APPLIED (NEXT TO DO #1).**
+  Four requirements the user gave after phase 2 landed, with two decisions taken
+  by asking rather than guessing (whose name a public event carries; whether to
+  charge for the subscription now). **R13:** where an organization stands moved
+  out of the studios hub onto HOME — the badge on its own name, `OrgStanding`'s
+  six-step timeline under the sleeve, the photo strip, and the door to the
+  conversation with DanceOS. **R14:** `org_plans` + `org_subscription_active()`
+  + `why_no_studio()` — the one sentence the hub prints and
+  `create_tenant_with_owner` raises; a studio needs a verified AND subscribed
+  organization and is public on creation; `admin_grant_org_subscription` /
+  `admin_end_org_subscription` are audited and notify, and charge nothing
+  because no price exists yet. **R15:** `tenants.type = 'org'` gives each
+  organization one unlisted hosting row, so forty `tenant_id` references and
+  thirteen functions keep working while the event becomes the organization's and
+  prints its name; `event_host_is_public()` replaces the bare `visibility =
+  'listed'` test in the four public event policies; `save_event` refuses a
+  studio; the hosting row is out of Discover, search, `admin_businesses` and
+  every public page. **R16:** `org_proof_photos` in a PRIVATE `org-proof` bucket
+  read only through signed URLs by the organization or an admin, five to ten
+  enforced at the request, a fifth onboarding screen, and the strip on the
+  admin's queue. Also: phase 2's audit actions got sentences, the dashboard's
+  figures became doors, and `decide_report` now names the reported thing rather
+  than the reporter. Phase 2's own e2e is 9/9.
 - **THE ADMIN PANEL, phases 1–2, 10 Sep 2026, no step number ⚠ (Rule 9, auth +
   RLS) — phase 1 APPLIED and green, phase 2 WRITTEN (migration 4 pending).**
   The user asked that an organization waiting on verification SEE where it
@@ -3414,6 +3523,10 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R10 | Location is a free optional field; styles and links are the person's to empty (11364, 11161) | **A city is required** on every profile (onboarding will not make the row without one; `update_my_profile` refuses an empty one); **a user keeps at least one style**; **an organization keeps at least one link** and carries no styles — the Profile tab's Remove buttons stop at the last one and say why | Requirements 2, 3 and 4 name these as things the account fills; the review of 9 Sep found them held by screens only, so the database holds them now (`20260909120000_org_rules.sql`). |
 | R11 | A studio account books classes, joins crews, enters events like anyone (it was a person) | **An organization is not a person**: one trigger (`guard_person_only`) on enrollments, orders, event_bookings, crews, crew_members, enquiries, class_claims and non-owner tenant_members refuses an organization account in the person's seat | "For a user these are separate entities." The org runs studios and hosts events; people book, dance, ask and teach. |
 | R12 | Every signed-in user reads every profile row (Step 1) | **An organization's profile row is readable only by itself, a platform admin, and the members of the studios it owns** (their Staff desk prints the owner) — the SELECT policy says so | R9 hid the organization in the app; the review found the raw API still handed the row over. Now the ceiling matches the app. |
+| R13 | A studio account's own screens carry everything about it; there is no platform to be verified BY | **Where an organization stands with DanceOS lives on HOME.** The badge — VERIFIED / UNDER VERIFICATION / NOT APPROVED — sits on the organization's own name in the identity sleeve, and under the sleeve `OrgStanding` carries the six-step timeline, the admin's rejection reason, the photo strip while it is still short, and the door to the conversation with its unread badge. `/business` keeps only the consequence: whether a studio may be created, and why not | The user's ask (9 Sep 2026): the badge and the way to message the admin belong on the outside screen. An organization waiting on a stranger's decision should not have to go looking for where it stands, and the only door to that stranger should not be two taps inside a screen called Studios. Visible to the organization alone — it is the organization's own Home |
+| R14 | Any account opens a business the moment it exists (2660-2684) | **A studio needs a VERIFIED and SUBSCRIBED organization.** `why_no_studio()` is the one sentence the hub prints under a disabled control and `create_tenant_with_owner` raises, so the screen and the rule cannot drift apart. A studio created this way is **public immediately** — a studio is no longer made and left private to wait. ⚠ Nothing is charged: no price has been set, so an admin's audited grant is what writes the plan row (`amount_inr = 0`), and a Cashfree order will write the same row later without the gate changing. Ending a subscription leaves every existing studio alone — only opening a NEW one closes off | The user's ask (9 Sep 2026): "studio creation must be after verification and paying for the subscription; until the org is not verified can't create studio." R9 had already said studios come after approval; the first cut let them be created while pending, and this is the correction. Asked about the money, the user chose the full gate now with the charge later, rather than a price nobody had set |
+| R15 | An event belongs to the business hosting it, and a studio account IS that business | **An event belongs to the ORGANIZATION.** Each organization gets one tenant of its own (`tenants.type = 'org'`, unlisted for ever) which hosts its events, so `/business/<id>/events` is ONE desk instead of one per studio, and the public event page prints the organization's name as its host. `save_event` refuses a studio host. The organization stays unbrowsable — the hosting row is excluded from Discover, search, `admin_businesses` and every public page, and cannot be followed; `event_host_is_public()` (a verified organization, or a listed studio / artist page) is what decides an event's publicness now, so "listed" keeps meaning "on Discover" | The user's ask (9 Sep 2026): "right now event is inside studio, though it should be at org level." An event has always carried its own venue, city and map link, so the studio on it was never the place — only the owner. Asked whose name a public event should carry, given R9, the user chose the organization, "events only" |
+| R16 | Onboarding asks for a photo and links; nothing else is evidence | **An organization must attach 5–10 photos of its space at signup**, on a fifth onboarding screen, and `request_org_verification` refuses a request under five. They live in a PRIVATE bucket (`org-proof`) readable only by the organization and a platform admin, through short-lived signed URLs; the admin's queue draws them beside the links | The user's ask (9 Sep 2026): "at the time of signup along with the social media the org must attach min 5 to max 10 pics which will be visible to admin for the verification." The public `media` bucket would have made pictures of somebody's premises readable by anybody who guessed the URL — so this is the one thing in the app with a private bucket, and the screen tells the organization so |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -3482,6 +3595,7 @@ nothing to lift.
 | **Wiring slice, what it left (30 Aug 2026):** the owner's Followers sheet has no All · Dancers · Artists · Studios segment strip (the person's own sheet has one; a business's followers are one list and the segments would filter a list that is usually short) and no paging past `MAX_LIST`; the Discover tick is drawn on studios and artists but a **crew** carries none, because no crew is verified by anybody; and the enquiry's Call still says "No number on this enquiry" to the business when the sender typed none — the sender's number is theirs to give, not the app's to look up | S_profiletab 11335; 4352, 4411; S_enqdetail 5406 | the segment strip and paging when a pilot business has enough followers to need them; the rest is decision (c) |
 | **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **an organization account can still act as a person elsewhere** (book a class, join a crew, enter an event, send an enquiry — nothing refuses it, and where it does it prints as a person; whether it should is open); **RLS still lets any signed-in user read an organization's `profiles` row** (Step 1's policy) — the 404, the search filter and the follow refusals are the app's decisions on that ceiling, not a new policy; **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof-script pass is done (9 Sep):** every `New-EmailUser` stamps an organization verified through the service role, an artist page is opened by a Pro user, and the phone-based proofs rely on `scripts/ensure-test-phone-profiles.js` — `rls-proof-discovery` must run alone (OTP rate limit); the **date of birth and 18+ gate** stay needs field (b); **the Artist plan is not charged** (₹0, no Cashfree order — NEXT TO DO #1) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
+| **R13–R16, what they left (9 Sep 2026):** **the organization subscription is not charged** (⚠ Rule 9 — the gate is real, an admin's grant writes the plan row at ₹0, and a Cashfree order will write the same row; the same open question as the Artist plan, and one price decision closes both); **there is no owner-facing "renew" or "what am I paying" screen** (the standing card on Home says whether it is active and until when, and the door is Message DanceOS — a self-serve renewal needs the charge first); **the verification photos have no cropper and no reordering** (`object-fit: cover` and insertion order stand in; the cropper belongs to the posters slice); **an existing organization verified before R16 has no photos**, so its request was filed under the old rule — the admin's queue says so on the card rather than pretending; **an organization's hosting row (R15) is created for every organization, verified or not**, so an unverified one can draft events it cannot publish (harmless, and it means the desk is never missing); **a studio can no longer host an event at all**, so an artist page and an organization are the only hosts — if a single studio ever needs its own event series that is a new decision, not a bug; **`session_seat_counts` and the public `media` bucket still escape the visibility gate** (unchanged from the accounts slice — aggregate-only and by design, but an unlisted studio's seat count and photos are still readable); **no e2e covers R13–R16 yet** (the migrations are not applied — NEXT TO DO #2) | — (the user's requirements, 9 Sep 2026) | the price decision (⚠ money); a renewal screen after it; the cropper with the posters slice; the R13–R16 e2e once the migrations land |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)
 

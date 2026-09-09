@@ -83,6 +83,12 @@ export async function findPublicTenantProfile(
   if (!tenant) {
     return null;
   }
+  /* R15 (9 Sep 2026): an organization's event-hosting row is not a business
+     anybody browses to. Its members can read it (they own it), so RLS returns
+     it — and "not found" is the honest answer for a page that does not exist. */
+  if (tenant.type === "org") {
+    return null;
+  }
 
   const [classesRes, facultyRes, counts] = await Promise.all([
     supabase

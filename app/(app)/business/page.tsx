@@ -1,15 +1,19 @@
 import { redirect } from "next/navigation";
 import { BusinessHub } from "@/features/tenants/components/BusinessHub";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyVerificationRequest } from "@/repositories/admin";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
+import { findMyOrgTenantId, findWhyNoStudio } from "@/repositories/orgStanding";
 import { countRoomsByTenants } from "@/repositories/rooms";
-import { findSupportThreads } from "@/repositories/support";
 import { findMyMemberships } from "@/repositories/tenants";
 
-/** /business — an organization's studios (and where its verification stands), or
- *  a person's one artist page. Who is here decides which hub is drawn (8 Sep 2026). */
+/** /business — an organization's studios, or a person's one artist page. Who is
+ *  here decides which hub is drawn (8 Sep 2026).
+ *
+ *  WHAT THIS PAGE NO LONGER FETCHES (R13, 9 Sep 2026): the verification request,
+ *  the links count and the support threads. Where an organization stands with
+ *  DanceOS, and its conversation with a DanceOS admin, moved to Home — this page
+ *  asks only for the consequence: may a studio be created, and if not, why not. */
 export default async function BusinessPage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -25,15 +29,14 @@ export default async function BusinessPage() {
   }
   // membership is the spine, and the ROLE on it decides which list a business
   // sits in — owned rows get their room count for the sub-line (prototype 2655)
-  const [memberships, plan, request, threads] = await Promise.all([
+  const [memberships, plan, whyNoStudio, eventsHostId] = await Promise.all([
     findMyMemberships(supabase),
     profile.role === "org" ? Promise.resolve(null) : findMyArtistPlan(supabase),
-    profile.role === "org" ? findMyVerificationRequest(supabase) : Promise.resolve(null),
-    /* the card carries a door to the conversation about this decision (10 Sep 2026) */
-    profile.role === "org" ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
+    /* the gate, in the database's own words (R14) */
+    profile.role === "org" ? findWhyNoStudio(supabase).catch(() => null) : Promise.resolve(null),
+    /* the organization's ONE events host (R15) — made on first ask */
+    profile.role === "org" ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
   ]);
-  /* the thread about THIS request if there is one, else the newest conversation */
-  const thread = threads.find((t) => request && t.requestId === request.id) ?? threads[0] ?? null;
   const roomCounts = await countRoomsByTenants(
     supabase,
     memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant.id)
@@ -44,17 +47,8 @@ export default async function BusinessPage() {
       roomCounts={roomCounts}
       role={profile.role}
       isArtist={Boolean(plan?.active)}
-      verification={
-        profile.role === "org"
-          ? {
-              verifiedAt: profile.verifiedAt,
-              request,
-              socialsCount: profile.socials.length,
-              threadId: thread?.id ?? null,
-              unread: threads.reduce((n, t) => n + t.unread, 0),
-            }
-          : null
-      }
+      whyNoStudio={whyNoStudio}
+      eventsHostId={eventsHostId}
     />
   );
 }

@@ -47,7 +47,10 @@ export const DOS_TINT: Record<"user" | "artist" | "org", string> = {
   user: "#5AC8FA",
 };
 /** a business wears its owner-kind's colour: a studio is an organization's, an artist page an artist's */
-export const tintForTenantType = (type: "studio" | "trainer_business"): string => (type === "studio" ? DOS_TINT.org : DOS_TINT.artist);
+/** A business's colour by what it is. An `org` hosting row (R15) wears the
+ *  organization's gold, the same as a studio, because that is whose it is. */
+export const tintForTenantType = (type: "studio" | "trainer_business" | "org"): string =>
+  type === "trainer_business" ? DOS_TINT.artist : DOS_TINT.org;
 
 export const BTN_STYLE: React.CSSProperties = {
   padding: "15px",

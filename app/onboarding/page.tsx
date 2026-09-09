@@ -4,9 +4,11 @@ import { OnboardingForm } from "@/features/auth/components/OnboardingForm";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
+import { findMyProofPhotos } from "@/repositories/orgStanding";
 import { findProfileById } from "@/repositories/profiles";
 
-/** Onboarding — four screens (prototype 3781-3943). A person with a profile is
+/** Onboarding — four screens for a person, five for an organization since R16
+ *  added the photos (prototype 3781-3943). A person with a profile is
  *  sent to Home UNLESS they are still in the door: the first screen creates the
  *  row (the photo, styles and links are written onto it), and every server
  *  action after that refetches this route — so "a row exists" alone would end
@@ -31,5 +33,8 @@ export default async function OnboardingPage() {
   if (!profile && (await amIPlatformAdmin(supabase))) {
     redirect("/admin/verifications");
   }
-  return <OnboardingForm userId={user.id} existing={profile} />;
+  /* an organization coming back mid-flow keeps the photos it already showed */
+  const proofPhotos =
+    profile?.role === "org" ? await findMyProofPhotos(supabase).catch(() => []) : [];
+  return <OnboardingForm userId={user.id} existing={profile} proofPhotos={proofPhotos} />;
 }
