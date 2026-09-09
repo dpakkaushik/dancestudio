@@ -139,7 +139,8 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
   const total = isOrg ? 2 : 3;
 
   /* the button says what is missing (3820-3821): the reason, not a grey nothing */
-  const missing = !fullName ? (isOrg ? "Enter the organization's name" : "Enter your name") : !avatarPath ? (isOrg ? "Add a logo or photo" : "Add your profile photo") : "";
+  /* the city is the user's "location" (requirement 2, 9 Sep 2026): asked before the row is made, required by the database too */
+  const missing = !fullName ? (isOrg ? "Enter the organization's name" : "Enter your name") : !city.trim() ? (isOrg ? "Enter the organization's city" : "Enter your city") : saved && !avatarPath ? (isOrg ? "Add a logo or photo" : "Add your profile photo") : "";
   const ready = !missing;
 
   /* every later screen lands on the ONE record, through the Profile tab's own door */
@@ -156,7 +157,7 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
   };
   const writeProfile = (next: { styles: string[]; socials: SocialLink[] }, then: () => void) => {
     start(async () => {
-      const out = await updateMyProfileAction({ fullName, city: city.trim() || null, age: null, about: null, phone: null, styles: next.styles, socials: next.socials });
+      const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, about: null, phone: null, styles: next.styles, socials: next.socials });
       if (out.error) return fire(out.error);
       then();
     });
@@ -228,13 +229,13 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
 
         <button
           type="button"
-          disabled={pending || (!saved && !fullName) || (saved && !ready)}
-          aria-disabled={!saved ? !fullName : !ready}
+          disabled={pending || !ready}
+          aria-disabled={!ready}
           onClick={() => {
             if (!saved) {
               /* the first Continue makes the row, and stays — the photo needs it */
               start(async () => {
-                const out = await saveProfileBasicsAction({ fullName, role, city: city.trim() || undefined });
+                const out = await saveProfileBasicsAction({ fullName, role, city: city.trim() });
                 if (out.error) return fire(out.error);
                 setSaved(true);
               });
@@ -242,9 +243,9 @@ export function OnboardingForm({ userId, existing = null }: { userId: string; ex
             }
             if (ready) setStep(isOrg ? "socials" : "styles");
           }}
-          style={{ ...BTN_STYLE, background: (!saved ? fullName : ready) ? PINK : LINE, color: (!saved ? fullName : ready) ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
+          style={{ ...BTN_STYLE, background: ready ? PINK : LINE, color: ready ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
         >
-          {pending ? "Saving…" : !saved ? (fullName ? "Continue" : missing) : ready ? "Continue" : missing}
+          {pending ? "Saving…" : ready ? "Continue" : missing}
         </button>
       </AuthShell>
     );

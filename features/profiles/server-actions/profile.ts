@@ -12,7 +12,7 @@ import { updateMyProfile } from "@/repositories/profiles";
 
 const schema = z.object({
   fullName: z.string().trim().min(1).max(120),
-  city: z.string().trim().max(120).nullable(),
+  city: z.string().trim().min(1, "Add your city").max(120),
   age: z.number().int().min(13).max(99).nullable(),
   about: z.string().trim().max(220).nullable(),
   socials: z

@@ -134,8 +134,13 @@ export function MyProfilePage({
   /* every sheet lands on the one record; the page re-reads after */
   const save = (next: Partial<Draft>, said: string, after?: () => void) => {
     const d = { ...draftOf(profile), ...next };
+    /* the database refuses a profile without a city (9 Sep 2026) — say so before asking it */
+    if (!d.city.trim()) {
+      fire("Add your city first — Edit profile › Location");
+      return;
+    }
     start(async () => {
-      const out = await updateMyProfileAction({ fullName: d.fullName, city: d.city.trim() || null, age: d.age, about: d.about.trim() || null, socials: d.socials, styles: d.styles, phone: d.phone.trim() || null });
+      const out = await updateMyProfileAction({ fullName: d.fullName, city: d.city.trim(), age: d.age, about: d.about.trim() || null, socials: d.socials, styles: d.styles, phone: d.phone.trim() || null });
       if (out.error) {
         fire(out.error);
         return;
@@ -344,6 +349,7 @@ export function MyProfilePage({
           <input aria-label="Name" value={edit.fullName} onChange={(e) => setEdit((d) => ({ ...d, fullName: e.target.value }))} style={fieldInput} />
           <div style={fieldLabel}>Location</div>
           <input aria-label="Location" value={edit.city} onChange={(e) => setEdit((d) => ({ ...d, city: e.target.value }))} style={fieldInput} />
+          {!edit.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
           {/* the number is the person's to publish and theirs to take down: an
               empty box saves null, and the line under the box says so rather
               than making them guess (N8 — Call, S_profiletab 10879) */}
@@ -364,7 +370,7 @@ export function MyProfilePage({
           <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
           <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
             <button type="button" onClick={() => setEditOpen(false)} style={sheetBtn(false)}>Cancel</button>
-            <button type="button" disabled={pending} onClick={() => save({ fullName: edit.fullName, city: edit.city, age: edit.age, about: edit.about, phone: edit.phone }, "✓ Profile updated", () => setEditOpen(false))} style={sheetBtn(true)}>{pending ? "Saving…" : "Save"}</button>
+            <button type="button" disabled={pending || !edit.city.trim()} onClick={() => save({ fullName: edit.fullName, city: edit.city, age: edit.age, about: edit.about, phone: edit.phone }, "✓ Profile updated", () => setEditOpen(false))} style={sheetBtn(true)}>{pending ? "Saving…" : "Save"}</button>
           </div>
         </Sheet>
       ) : null}
@@ -380,7 +386,7 @@ export function MyProfilePage({
                 <Arrows i={i} n={arr.length} onMove={(dir) => save({ styles: move(arr, i, dir) }, "Order saved")} />
                 <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 6, background: dosStyleColor(s), flexShrink: 0 }} />
                 <b style={{ flex: 1, fontSize: 13.5, color: INK }}>{s}</b>
-                <button type="button" aria-label={`Remove ${s}`} onClick={() => save({ styles: arr.filter((x) => x !== s) }, `${s} removed from your styles`)} style={{ fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
+                <button type="button" aria-label={arr.length === 1 ? `${s} is your last style — add another first` : `Remove ${s}`} disabled={arr.length === 1} title={arr.length === 1 ? "A user names at least one style" : undefined} onClick={() => save({ styles: arr.filter((x) => x !== s) }, `${s} removed from your styles`)} style={{ opacity: arr.length === 1 ? 0.35 : 1, fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
               </div>
             ))}
           </div>
@@ -417,7 +423,7 @@ export function MyProfilePage({
                 </button>
                 <span style={{ display: "flex", gap: 10, flexShrink: 0 }}>
                   <button type="button" aria-label={`Edit ${l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={{ fontSize: 12, fontWeight: 700, color: SUB, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Edit</button>
-                  <button type="button" aria-label={`Remove ${l.platform}`} onClick={() => save({ socials: arr.filter((x) => x.platform !== l.platform) }, `${l.platform} removed`)} style={{ fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
+                  <button type="button" aria-label={isOrg && arr.length === 1 ? `${l.platform} is your organization's last link — add another first` : `Remove ${l.platform}`} disabled={isOrg && arr.length === 1} title={isOrg && arr.length === 1 ? "An organization keeps at least one link" : undefined} onClick={() => save({ socials: arr.filter((x) => x.platform !== l.platform) }, `${l.platform} removed`)} style={{ opacity: isOrg && arr.length === 1 ? 0.35 : 1, fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
                 </span>
               </div>
             ))}
@@ -467,7 +473,7 @@ export function MyProfilePage({
           <div style={{ ...fieldLabel, margin: "16px 0 6px" }}>URL</div>
           <input aria-label="URL" value={linkEditor.url} onChange={(e) => setLinkEditor((d) => (d ? { ...d, url: e.target.value } : d))} placeholder="https://…" autoFocus style={fieldInput} />
           <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-            {!linkEditor.isNew ? (
+            {!linkEditor.isNew && !(isOrg && socials.length === 1) ? (
               <button type="button" onClick={() => save({ socials: socials.filter((l) => l.platform !== linkEditor.platform) }, `${linkEditor.platform} removed`, () => setLinkEditor(null))} style={dangerBtn}>Remove</button>
             ) : null}
             <button type="button" onClick={() => setLinkEditor(null)} style={sheetBtn(false)}>Cancel</button>

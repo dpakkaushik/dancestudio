@@ -20,7 +20,7 @@ export interface AuthActionState {
 const completeProfileSchema = z.object({
   fullName: z.string().trim().min(1, "Tell us your name").max(120),
   role: z.enum(["user", "org"]),
-  city: z.string().trim().max(120).optional(),
+  city: z.string().trim().min(1, "Tell us your city").max(120),
 });
 
 /** WHERE A LINK IN AN EMAIL HAS TO POINT.
@@ -221,7 +221,7 @@ export async function completeProfileAction(
         id: user.id,
         fullName: parsed.data.fullName,
         role: parsed.data.role,
-        city: parsed.data.city ?? null,
+        city: parsed.data.city,
       });
     } catch (error: unknown) {
       return {
@@ -270,7 +270,7 @@ export async function saveProfileBasicsAction(input: unknown): Promise<{ error: 
       id: user.id,
       fullName: parsed.data.fullName,
       role: parsed.data.role,
-      city: parsed.data.city ?? null,
+      city: parsed.data.city,
     });
     /* WHY A COOKIE: every server action that revalidates a path makes the client
        refetch the CURRENT route, and /onboarding used to redirect the moment a

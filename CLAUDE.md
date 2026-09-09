@@ -25,6 +25,23 @@
   Following sheet's segments are the prototype's again — Users · Artists ·
   Studios. Approval is unchanged: once verified, an organization opens studios
   that are public at birth, with no second review.
+- **9 Sep: the schema review and the second migration.** The user asked for the
+  database schema to verify against the requirements; it was read from the
+  live catalogs over the pooler (the management token is dead — 401) and
+  delivered three ways: a private artifact page, `docs/DanceOS-database-schema.xlsx`
+  (13 sheets) and `docs/DanceOS-database-schema.pdf` (67 pages), every table
+  with a purpose and every column described (the `docs/` folder sits beside
+  the repo, not in it). The verdict: NOT met today, met after the migration,
+  with 16 gaps ranked. Then "go ahead, make sure everything new fulfils the
+  requirements, frontend or backend" — so `20260909120000_org_rules.sql`
+  (R10–R12: city required, a user's last style and an organization's last link
+  stay, an organization is not a person, its profile row is its own) and the
+  matching screens, proof checks (profile-fields 11–12) and seeder lines. **The
+  classifier refused BOTH the migration push and the proof-leftover cleanup**
+  (`scripts/cleanup-proof-leftovers.js`) — they are the user's to run, in that
+  order: cleanup first (so no junk organization is grandfathered), then the two
+  migrations. The user's admin account `ai@eeetaxi.com` currently holds a
+  STUDIO profile named "Dance Plus" (becomes an organization) — flagged.
 - **Migration `20260908120000_users_orgs_admins.sql` is WRITTEN AND NOT
   APPLIED.** The push over the pooler was refused by the auto-mode classifier
   (a production schema change); it is the user's to run —
@@ -97,10 +114,14 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **APPLY THE MIGRATION (user, 1 minute) — nothing below works until it is on.**
-   `supabase/migrations/20260908120000_users_orgs_admins.sql` is written and
-   green locally (typecheck, lint) but the classifier refused the push. Run
-   from the repo: `npx supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<SUPABASE_DB_PASSWORD>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all`
+1. **CLEAN UP, THEN APPLY THE TWO MIGRATIONS (user, 2 minutes) — nothing below works until they are on.**
+   First `node scripts/cleanup-proof-leftovers.js` (dry run: lists the proof
+   accounts and businesses left by failed proof runs), then the same with
+   `--apply` (soft-deletes them — BEFORE the migrations, so none is
+   grandfathered as a verified organization). Then the migrations:
+   `20260908120000_users_orgs_admins.sql` and `20260909120000_org_rules.sql`
+   are written and green locally (typecheck, lint) but the classifier refused
+   the push twice. Run from the repo: `npx supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<SUPABASE_DB_PASSWORD>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all`
    (or allow `node …/scratchpad/push-migration.js push`). It maps every
    profile's role, names `ai@eeetaxi.com` admin, and grandfathers the
    organizations that own studios as verified.
@@ -3324,6 +3345,9 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R7 | Links "optional now — mandatory later if you set up a trainer or studio profile" (3880) | **Mandatory for an organization at onboarding** (≥ 1); optional for a user | The links are what the admin verifies; asking to be verified with nothing to check is refused by the RPC in words. |
 | R8 | Onboarding asks the role LAST, after the photo and the name | **Who is here is asked FIRST** | The user's instruction; the answer decides which fields follow (an organization is not asked what it dances). |
 | R9 | A studio account IS the studio: one public profile, searchable, followable (PROFILES type "studio", 4548; Following segments 11336) | **An organization is never a public entity.** Not a result in search's People (`search_dance_os`); `/person/<org>` is a 404 to everyone but itself and a platform admin (who reads it as the evidence behind a verification); it **neither follows nor is followed** — `set_follow` and `set_person_follow` refuse it on either side and the migration closes the old rows; no share QR on Home or Profile; the pickers skip it. Only its **studios** are public, each on its own page; only the organization sees them together — Profile → **Your studios** (every one it runs, public or not) and the hub. The Following sheet's segments are the prototype's words again: Users · Artists · Studios | The user's rule (8 Sep 2026): "user will see individual studios, won't see the org; only the org owner will see the different studios he owns under one hood in the profile section; for a user these are separate entities." |
+| R10 | Location is a free optional field; styles and links are the person's to empty (11364, 11161) | **A city is required** on every profile (onboarding will not make the row without one; `update_my_profile` refuses an empty one); **a user keeps at least one style**; **an organization keeps at least one link** and carries no styles — the Profile tab's Remove buttons stop at the last one and say why | Requirements 2, 3 and 4 name these as things the account fills; the review of 9 Sep found them held by screens only, so the database holds them now (`20260909120000_org_rules.sql`). |
+| R11 | A studio account books classes, joins crews, enters events like anyone (it was a person) | **An organization is not a person**: one trigger (`guard_person_only`) on enrollments, orders, event_bookings, crews, crew_members, enquiries, class_claims and non-owner tenant_members refuses an organization account in the person's seat | "For a user these are separate entities." The org runs studios and hosts events; people book, dance, ask and teach. |
+| R12 | Every signed-in user reads every profile row (Step 1) | **An organization's profile row is readable only by itself, a platform admin, and the members of the studios it owns** (their Staff desk prints the owner) — the SELECT policy says so | R9 hid the organization in the app; the review found the raw API still handed the row over. Now the ceiling matches the app. |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still

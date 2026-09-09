@@ -146,6 +146,10 @@ async function seed() {
     await patch(H_SERVICE, `profiles?id=eq.${o.id}`, { verified_at: new Date().toISOString() });
   }
   log(`${owner.name} and ${owner2.name} are verified organizations — their studios are born public`);
+  /* requirement 3 (9 Sep 2026): a user names at least one style, and every profile keeps a city */
+  for (const [u, city, styles] of [[artist, "New Delhi", ["Contemporary", "Kathak"]], [trainer, "New Delhi", ["Hip-Hop", "Bollywood"]], [rhea, "Pune", ["Hip-Hop"]], [zaid, "Pune", ["Breaking"]], [aki, "Pune", ["Salsa"]], [kabir, "New Delhi", ["Bhangra"]]]) {
+    await rpc(u.h, "update_my_profile", { p_full_name: u.name, p_city: city, p_age: null, p_about: null, p_socials: [], p_styles: styles, p_phone: null });
+  }
 
   /* ── businesses ── */
   console.log("\nBusinesses");

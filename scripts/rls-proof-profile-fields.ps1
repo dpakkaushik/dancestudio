@@ -137,14 +137,26 @@ try {
   $r10 = Fails { Rpc $anonH "update_my_profile" (ProfileBody "X" $null $null $null @() @()) }
   Check 10 "the public cannot call update_my_profile" ($null -ne $r10)
 
-  # 11. clearing: null age and an empty About come back as null, not as empty strings
-  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "" $null "   " @() @()) | Out-Null
+  # 11. clearing: null age and an empty About come back as null, not as empty strings -
+  #     but a CITY is required and a USER keeps at least one style (9 Sep 2026, requirements 2 and 3)
+  $r11a = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "" $null $null @() @("Kathak")) }
+  $r11b = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" $null $null @() @()) }
+  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" $null "   " @() @("Kathak")) | Out-Null
   $mine = Rows (Api $rhea.token) "profiles?$SEL&id=eq.$($rhea.id)"
-  Check 11 "clearing leaves null, not blanks (city, age, about all null; 0 links; 0 styles)" (
-    $null -eq $mine[0].city -and $null -eq $mine[0].age -and $null -eq $mine[0].about -and @($mine[0].socials).Count -eq 0 -and @($mine[0].styles).Count -eq 0)
+  Check 11 "an empty city is refused ($r11a); a user with no style is refused ($r11b); age and About clear to null, links to 0, the one style stays" (
+    ($r11a -like "*city is required*") -and ($r11b -like "*at least one dance style*") -and
+    $mine[0].city -eq "New Delhi" -and $null -eq $mine[0].age -and $null -eq $mine[0].about -and @($mine[0].socials).Count -eq 0 -and @($mine[0].styles).Count -eq 1)
+
+  # 12. an ORGANIZATION keeps at least one link (requirement 4) and carries no styles
+  $org = New-EmailUser "prof-o-$stamp@example.com" "Org Proof $stamp" "org"
+  $r12 = Fails { Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null $null @() @()) }
+  Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null $null @(@{ platform = "Instagram"; url = "https://instagram.com/orgproof" }) @("Hip-Hop")) | Out-Null
+  $orgRow = Rows (Api $org.token) "profiles?$SEL&id=eq.$($org.id)"
+  Check 12 "an organization with no link is refused ($r12); with one it saves, and its styles are empty ($(@($orgRow[0].styles).Count))" (
+    ($r12 -like "*at least one link*") -and @($orgRow[0].socials).Count -eq 1 -and @($orgRow[0].styles).Count -eq 0)
 }
 finally {
-  foreach ($u in @($rhea, $other)) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
+  foreach ($u in @($rhea, $other, $org)) { if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null } }
 }
 
 ""
