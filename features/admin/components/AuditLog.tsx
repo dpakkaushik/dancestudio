@@ -17,6 +17,12 @@ const ACTIONS: Record<string, { says: string; tone: string }> = {
   "support.open": { says: "wrote to", tone: "#0EA5E9" },
   "support.closed": { says: "closed the conversation with", tone: MUTED },
   "support.open_again": { says: "reopened the conversation with", tone: "#0EA5E9" },
+  "business.unlist": { says: "took off Discover", tone: "#EF4444" },
+  "business.list": { says: "put back on Discover", tone: "#22C55E" },
+  "report.actioned": { says: "acted on a report about", tone: "#EF4444" },
+  "report.dismissed": { says: "found no problem with", tone: MUTED },
+  "subscription.grant": { says: "set up the subscription for", tone: "#22C55E" },
+  "subscription.end": { says: "ended the subscription for", tone: "#EF4444" },
 };
 
 /** THE AUDIT LOG (10 Sep 2026). Insert-only in the database, and a trigger
@@ -54,8 +60,9 @@ export function AuditLog({ entries, nowIso, filter }: { entries: AuditEntry[]; n
 
       {entries.length === 0 ? (
         <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55, padding: "0 2px" }}>
-          Nothing yet. Approving or rejecting an organization, suspending an account, or opening and closing a support
-          conversation each write one line here, permanently.
+          Nothing yet. Approving or rejecting an organization, setting up or ending a subscription, suspending an
+          account, taking a business off Discover, answering a report, and opening or closing a support conversation
+          each write one line here, permanently.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -37,7 +37,7 @@ const Grid = ({ children }: { children: React.ReactNode }) => (
  *  never reads a person's row to draw a count. */
 export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: string }) {
   const w = pulse.waiting;
-  const todo = w.verifications + w.threads + w.reports + w.refunds + w.stuckWebhooks;
+  const todo = w.verifications + w.threads + w.reports + w.subscriptions + w.refunds + w.stuckWebhooks;
   const day = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" }).format(new Date(nowIso));
 
   return (
@@ -56,6 +56,10 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         <Fig n={w.verifications} label="organizations to verify" href="/admin/verifications" tone={w.verifications > 0 ? "#F59E0B" : undefined} />
         <Fig n={w.threads} label="conversations to answer" href="/admin/support" tone={w.threads > 0 ? "#F59E0B" : undefined} />
         <Fig n={w.reports} label="reports to answer" href="/admin/reports" tone={w.reports > 0 ? "#EF4444" : undefined} />
+        {/* R14 (9 Sep 2026): a verified organization with no live subscription cannot
+            open a studio, and it is the admin who currently sets one up — so it is
+            work waiting, not a statistic. */}
+        <Fig n={w.subscriptions} label="subscriptions to set up" href="/admin/accounts" tone={w.subscriptions > 0 ? "#F59E0B" : undefined} />
         <Fig n={w.refunds} label="refunds in the queue" tone={w.refunds > 0 ? "#EF4444" : undefined} />
       </Grid>
       {w.stuckWebhooks > 0 ? (
@@ -73,17 +77,18 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         <Fig n={pulse.accounts.orgs} label="organizations" href="/admin/accounts" />
         <Fig n={pulse.accounts.artists} label="on the Artist plan" />
         <Fig n={pulse.accounts.verifiedOrgs} label="verified organizations" />
+        <Fig n={pulse.accounts.subscribedOrgs} label="subscribed" href="/admin/accounts" />
         <Fig n={pulse.accounts.newThisWeek} label="new this week" />
         <Fig n={pulse.accounts.suspended} label="suspended" tone={pulse.accounts.suspended > 0 ? "#EF4444" : undefined} href="/admin/accounts" />
       </Grid>
 
       <Head>WHAT EXISTS</Head>
       <Grid>
-        <Fig n={pulse.businesses.studios} label="studios" />
-        <Fig n={pulse.businesses.artistPages} label="artist pages" />
+        <Fig n={pulse.businesses.studios} label="studios" href="/admin/businesses" />
+        <Fig n={pulse.businesses.artistPages} label="artist pages" href="/admin/businesses" />
         <Fig n={pulse.businesses.rooms} label="rooms" />
-        <Fig n={pulse.businesses.listed} label="public" tone="#22C55E" />
-        <Fig n={pulse.businesses.unlisted} label="not public yet" tone={pulse.businesses.unlisted > 0 ? "#F59E0B" : undefined} />
+        <Fig n={pulse.businesses.listed} label="public" tone="#22C55E" href="/admin/businesses" />
+        <Fig n={pulse.businesses.unlisted} label="not public yet" tone={pulse.businesses.unlisted > 0 ? "#F59E0B" : undefined} href="/admin/businesses" />
         <Fig n={pulse.activity.crews} label="crews" />
       </Grid>
 
@@ -110,7 +115,7 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
       ) : null}
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
-        Businesses, Reports and Money get their own screens in a later phase. Every decision you make here is already recorded in{" "}
+        Money gets its own screen in a later phase — the figures above are read-only until then. Every decision you make is recorded in{" "}
         <Link href="/admin/audit" style={{ color: INK, fontWeight: 800 }}>the audit log</Link>.
       </div>
     </div>

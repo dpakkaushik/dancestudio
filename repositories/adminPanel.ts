@@ -9,16 +9,16 @@ import type { ProfileRole } from "@/types/profile";
  *  scoping with a plain query. */
 
 export interface AdminDashboard {
-  waiting: { verifications: number; threads: number; reports: number; refunds: number; stuckWebhooks: number };
-  accounts: { users: number; orgs: number; artists: number; verifiedOrgs: number; suspended: number; admins: number; newThisWeek: number };
+  waiting: { verifications: number; threads: number; reports: number; subscriptions: number; refunds: number; stuckWebhooks: number };
+  accounts: { users: number; orgs: number; artists: number; verifiedOrgs: number; subscribedOrgs: number; suspended: number; admins: number; newThisWeek: number };
   businesses: { studios: number; artistPages: number; listed: number; unlisted: number; rooms: number };
   activity: { classesLive: number; eventsLive: number; crews: number; bookingsWeek: number; eventBookingsWeek: number; enquiriesOpen: number };
   money: { capturedWeekInr: number; capturedAllInr: number; refundedAllInr: number; payoutsPending: number; ordersUnpaid: number };
 }
 
 interface RawDashboard {
-  waiting: { verifications: number; threads: number; reports: number; refunds: number; stuck_webhooks: number };
-  accounts: { users: number; orgs: number; artists: number; verified_orgs: number; suspended: number; admins: number; new_this_week: number };
+  waiting: { verifications: number; threads: number; reports: number; subscriptions: number; refunds: number; stuck_webhooks: number };
+  accounts: { users: number; orgs: number; artists: number; verified_orgs: number; subscribed_orgs: number; suspended: number; admins: number; new_this_week: number };
   businesses: { studios: number; artist_pages: number; listed: number; unlisted: number; rooms: number };
   activity: { classes_live: number; events_live: number; crews: number; bookings_week: number; event_bookings_week: number; enquiries_open: number };
   money: { captured_week_inr: number; captured_all_inr: number; refunded_all_inr: number; payouts_pending: number; orders_unpaid: number };
@@ -33,8 +33,8 @@ export async function findAdminDashboard(supabase: SupabaseClient): Promise<Admi
   }
   const d = data as RawDashboard;
   return {
-    waiting: { verifications: n(d.waiting.verifications), threads: n(d.waiting.threads), reports: n(d.waiting.reports), refunds: n(d.waiting.refunds), stuckWebhooks: n(d.waiting.stuck_webhooks) },
-    accounts: { users: n(d.accounts.users), orgs: n(d.accounts.orgs), artists: n(d.accounts.artists), verifiedOrgs: n(d.accounts.verified_orgs), suspended: n(d.accounts.suspended), admins: n(d.accounts.admins), newThisWeek: n(d.accounts.new_this_week) },
+    waiting: { verifications: n(d.waiting.verifications), threads: n(d.waiting.threads), reports: n(d.waiting.reports), subscriptions: n(d.waiting.subscriptions), refunds: n(d.waiting.refunds), stuckWebhooks: n(d.waiting.stuck_webhooks) },
+    accounts: { users: n(d.accounts.users), orgs: n(d.accounts.orgs), artists: n(d.accounts.artists), verifiedOrgs: n(d.accounts.verified_orgs), subscribedOrgs: n(d.accounts.subscribed_orgs), suspended: n(d.accounts.suspended), admins: n(d.accounts.admins), newThisWeek: n(d.accounts.new_this_week) },
     businesses: { studios: n(d.businesses.studios), artistPages: n(d.businesses.artist_pages), listed: n(d.businesses.listed), unlisted: n(d.businesses.unlisted), rooms: n(d.businesses.rooms) },
     activity: { classesLive: n(d.activity.classes_live), eventsLive: n(d.activity.events_live), crews: n(d.activity.crews), bookingsWeek: n(d.activity.bookings_week), eventBookingsWeek: n(d.activity.event_bookings_week), enquiriesOpen: n(d.activity.enquiries_open) },
     money: { capturedWeekInr: n(d.money.captured_week_inr), capturedAllInr: n(d.money.captured_all_inr), refundedAllInr: n(d.money.refunded_all_inr), payoutsPending: n(d.money.payouts_pending), ordersUnpaid: n(d.money.orders_unpaid) },

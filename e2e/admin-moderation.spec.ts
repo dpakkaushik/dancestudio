@@ -1,0 +1,326 @@
+import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+
+/**
+ * The admin panel, phase 2 (10 Sep 2026): reporting, and taking ONE business
+ * off Discover.
+ *
+ * The claims under test, in the order the story tells them:
+ *   1. a stranger cannot see the two new screens exist — both 404;
+ *   2. a signed-OUT visitor is told reporting needs an account, and is given no
+ *      form — the queue is only worth reading if it is answerable;
+ *   3. a dancer reports a studio from its own public page, with a reason from
+ *      the closed list and a note, and is thanked;
+ *   4. reporting the same studio twice is refused in words, not swallowed;
+ *   5. a SECOND dancer reporting the same studio turns one complaint into a
+ *      case — the card says "1 other reported this";
+ *   6. the admin takes that ONE studio off Discover with a reason: it leaves
+ *      Discover, its owner is told WHY, and the rest of the organization is
+ *      untouched;
+ *   7. answering the report tells the reporter, in the admin's own words;
+ *   8. both decisions are in the audit log, as sentences;
+ *   9. putting it back is one press, and the studio is on Discover again.
+ *
+ * Sign-up uses the admin generate_link API, so no inbox is needed. Everything
+ * created carries a stamp and is deleted in afterAll.
+ */
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+
+const adminHeaders = {
+  apikey: serviceKey,
+  Authorization: `Bearer ${serviceKey}`,
+  "Content-Type": "application/json",
+};
+
+async function signUp(page: Page, email: string): Promise<string> {
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify({ type: "magiclink", email }),
+  });
+  if (!res.ok) throw new Error(`generate_link failed for ${email}: ${res.status} ${await res.text()}`);
+  const link = (await res.json()) as { hashed_token: string; verification_type?: string; id?: string };
+  await page.goto(`/auth/confirm?token_hash=${link.hashed_token}&type=${link.verification_type ?? "magiclink"}`);
+  if (!link.id) throw new Error(`no user id for ${email}`);
+  return link.id;
+}
+
+const ONE_PX_PNG = {
+  name: "face.png",
+  mimeType: "image/png",
+  buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
+};
+
+/** Onboarding, both kinds, as it stands since 8 Sep 2026: who first, one name,
+ *  the city, the required photo, then a person's styles or an organization's
+ *  required links — and an organization's bow files the verification request. */
+async function onboard(page: Page, name: string, role: "User" | "Organization", city: string) {
+  await expect(page).toHaveURL(/\/onboarding/);
+  const isOrg = role === "Organization";
+  if (isOrg) await page.getByText("Organization", { exact: true }).click();
+  await page.locator('input[name="name"]').fill(name);
+  await page.locator('input[name="city"]').fill(city);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+  await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  if (isOrg) {
+    await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+  } else {
+    await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    await page.getByRole("button", { name: "Continue · 1 style" }).click();
+    await page.getByRole("button", { name: "Skip for now →" }).click();
+  }
+  await page.getByRole("button", { name: "Open DanceOS →" }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
+}
+
+/** Land the admin on a panel route. The SSR middleware refreshes the access
+ *  token on EVERY request, and several browser contexts working at once can race
+ *  that refresh — one of them then holds a token another has already rotated. A
+ *  real admin never notices; a test driving four contexts in lockstep does. */
+async function adminGoto(page: Page, email: string, path: string) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await page.goto(path);
+    if (res && res.status() === 200) return;
+    await signUp(page, email);
+  }
+  throw new Error(`the admin could not open ${path} — three attempts`);
+}
+
+/** What reaches somebody is stacked by kind; the title shows collapsed, the
+ *  body only once the stack is open. */
+async function openPeopleStack(page: Page) {
+  await page.goto("/notifications");
+  await page.getByRole("button", { name: /^People — \d+ updates?$/ }).click();
+}
+
+async function deleteUser(id: string) {
+  await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: adminHeaders });
+}
+
+test.describe.serial("the admin panel: businesses and reports", () => {
+  let ownerContext: BrowserContext;
+  let adminContext: BrowserContext;
+  let dancerContext: BrowserContext;
+  let secondContext: BrowserContext;
+  let anonContext: BrowserContext;
+  let owner: Page;
+  let admin: Page;
+  let dancer: Page;
+  let second: Page;
+  let anon: Page;
+  let ownerId: string | null = null;
+  let adminId: string | null = null;
+  let dancerId: string | null = null;
+  let secondId: string | null = null;
+
+  const stamp = Date.now().toString(36).slice(-6);
+  const orgName = `Mod Org ${stamp}`;
+  const studioName = `Mod Studio ${stamp}`;
+  const dancerName = `Mod Dancer ${stamp}`;
+  const secondName = `Mod Witness ${stamp}`;
+  const adminEmail = () => `mod-admin-${stamp}@example.com`;
+  let studioUrl = "";
+
+  test.beforeAll(async ({ browser }) => {
+    test.skip(!supabaseUrl || !serviceKey, "Supabase keys missing (.env.local)");
+    ownerContext = await browser.newContext();
+    adminContext = await browser.newContext();
+    dancerContext = await browser.newContext();
+    secondContext = await browser.newContext();
+    anonContext = await browser.newContext();
+    owner = await ownerContext.newPage();
+    admin = await adminContext.newPage();
+    dancer = await dancerContext.newPage();
+    second = await secondContext.newPage();
+    anon = await anonContext.newPage();
+  });
+
+  test.afterAll(async () => {
+    for (const id of [ownerId, adminId, dancerId, secondId]) if (id) await deleteUser(id);
+    await ownerContext?.close();
+    await adminContext?.close();
+    await dancerContext?.close();
+    await secondContext?.close();
+    await anonContext?.close();
+  });
+
+  test("a verified organization puts one studio on Discover", async () => {
+    ownerId = await signUp(owner, `mod-owner-${stamp}@example.com`);
+    await onboard(owner, orgName, "Organization", "Pune");
+
+    await owner.goto("/business");
+    await owner.getByText("＋ Add studio").click();
+    await owner.locator('input[name="name"]').fill(studioName);
+    await owner.locator('input[name="area"]').fill("Baner");
+    const city = owner.locator('select[name="city"]');
+    await city.selectOption("Pune");
+    await expect(city).toHaveValue("Pune");
+    await owner.getByLabel("Room 1 name").fill("Studio A");
+    await owner.getByRole("button", { name: "Create studio" }).click();
+    await expect(owner.getByText(studioName, { exact: true })).toBeVisible();
+
+    // nothing an unverified organization runs is public, so an admin says yes first
+    adminId = await signUp(admin, adminEmail());
+    const named = await fetch(`${supabaseUrl}/rest/v1/platform_admins`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: adminId }),
+    });
+    expect(named.ok).toBeTruthy();
+    await adminGoto(admin, adminEmail(), "/admin/verifications");
+    await admin.getByTestId("verification-request").filter({ hasText: orgName }).getByRole("button", { name: `Approve ${orgName}` }).click();
+    await expect(admin.getByText(`${orgName} verified — its studios are live`)).toBeVisible({ timeout: 15_000 });
+
+    // the studio is now findable the way a dancer finds it
+    dancerId = await signUp(dancer, `mod-dancer-${stamp}@example.com`);
+    await onboard(dancer, dancerName, "User", "Pune");
+    await dancer.goto("/discover?city=Pune&tab=studios");
+    await dancer.getByRole("link", { name: `Open ${studioName}` }).click();
+    await dancer.waitForURL(/\/studio\/[0-9a-f-]+$/);
+    studioUrl = dancer.url();
+  });
+
+  test("reporting needs an account, and says so", async () => {
+    const res = await anon.goto(studioUrl);
+    expect(res?.status()).toBe(200);
+    await expect(anon.getByText("Sign in to report this page.")).toBeVisible();
+    await expect(anon.getByRole("button", { name: /^Report / })).toHaveCount(0);
+  });
+
+  test("a dancer reports the studio, and cannot report it twice", async () => {
+    await dancer.goto(studioUrl);
+    await dancer.getByRole("button", { name: `Report ${studioName}` }).click();
+    // the reasons are a closed list — a free-text-only report cannot be counted
+    await expect(dancer.getByRole("button", { name: "This is not a real studio" })).toBeVisible();
+    await dancer.getByRole("button", { name: "It is using someone else's photos" }).click();
+    await dancer.getByLabel("ANYTHING ELSE (OPTIONAL)").fill("The room photos are from another studio's Instagram.");
+    await dancer.getByRole("button", { name: "Send report" }).click();
+    await expect(dancer.getByText("Thank you — a DanceOS admin will read this.")).toBeVisible();
+
+    // one live report per person per thing: the second attempt is answered, not swallowed
+    await dancer.goto(studioUrl);
+    await dancer.getByRole("button", { name: `Report ${studioName}` }).click();
+    await dancer.getByRole("button", { name: "Spam" }).click();
+    await dancer.getByRole("button", { name: "Send report" }).click();
+    await expect(dancer.getByText(/already reported this — a DanceOS admin is looking at it/)).toBeVisible();
+  });
+
+  test("a second reporter turns one complaint into a case", async () => {
+    secondId = await signUp(second, `mod-second-${stamp}@example.com`);
+    await onboard(second, secondName, "User", "Pune");
+    await second.goto(studioUrl);
+    await second.getByRole("button", { name: `Report ${studioName}` }).click();
+    await second.getByRole("button", { name: "This is not a real studio" }).click();
+    await second.getByRole("button", { name: "Send report" }).click();
+    await expect(second.getByText("Thank you — a DanceOS admin will read this.")).toBeVisible();
+
+    // the overview counts them as work, and the queue names the case
+    await adminGoto(admin, adminEmail(), "/admin");
+    await expect(admin.getByRole("link", { name: /reports to answer/ })).toContainText("2");
+
+    await adminGoto(admin, adminEmail(), "/admin/reports");
+    const card = admin.getByTestId("report-card").filter({ hasText: studioName }).first();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("1 OTHER REPORTED THIS");
+    await expect(admin.getByTestId("report-card").filter({ hasText: dancerName })).toContainText(
+      "The room photos are from another studio's Instagram."
+    );
+    // the subject is a door to the page being complained about
+    await expect(card.getByRole("link", { name: studioName, exact: true })).toBeVisible();
+  });
+
+  test("the admin takes that one studio off Discover, with a reason its owner reads", async () => {
+    await adminGoto(admin, adminEmail(), `/admin/businesses?q=${encodeURIComponent(studioName)}`);
+    const business = admin.getByTestId("admin-business").filter({ hasText: studioName });
+    await expect(business).toBeVisible();
+    await expect(business).toContainText("PUBLIC");
+    await expect(business).toContainText("1 room");
+    await expect(business.getByRole("link", { name: orgName })).toBeVisible();
+
+    // a reason is not optional — the owner reads it, and so does the log
+    await business.getByRole("button", { name: `Take ${studioName} off Discover` }).click();
+    await expect(admin.getByRole("button", { name: `Confirm taking ${studioName} off Discover` })).toBeDisabled();
+    await admin.getByLabel("WHY — THE OWNER READS THIS").fill("Two people say these photos belong to another studio.");
+    await admin.getByRole("button", { name: `Confirm taking ${studioName} off Discover` }).click();
+    await expect(admin.getByText(`${studioName} is off Discover — the owner has been told why`)).toBeVisible({ timeout: 15_000 });
+
+    // it is gone from Discover — and RLS takes the page itself down with it, so
+    // the link somebody already has stops working too. "Off Discover" is not a
+    // filter a determined visitor can walk around.
+    await dancer.goto("/discover?city=Pune&tab=studios");
+    await expect(dancer.getByRole("link", { name: `Open ${studioName}` })).toHaveCount(0);
+    expect((await dancer.goto(studioUrl))?.status(), "an unlisted studio's page is not found").toBe(404);
+
+    // and its owner knows why, in the admin's words
+    await openPeopleStack(owner);
+    await expect(owner.getByText(`${studioName} has been taken off Discover`)).toBeVisible();
+    await expect(owner.getByText(/Two people say these photos belong to another studio/)).toBeVisible();
+
+    // the organization itself is untouched — this is the whole point of the screen
+    await owner.goto("/business");
+    await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
+  });
+
+  test("answering the report tells the reporter, in the admin's own words", async () => {
+    await adminGoto(admin, adminEmail(), "/admin/reports");
+    const card = admin.getByTestId("report-card").filter({ hasText: dancerName });
+    await card.getByRole("button", { name: `Answer the report about ${studioName}` }).click();
+    await expect(card.getByRole("button", { name: "We acted on it" })).toHaveAttribute("aria-pressed", "true");
+    await card.getByRole("textbox").fill("We have taken the studio off Discover while they replace the photos.");
+    await card.getByRole("button", { name: `Send the answer for ${studioName}` }).click();
+    await expect(admin.getByText("Marked as acted on — the reporter has been told")).toBeVisible({ timeout: 15_000 });
+
+    // the report is closed, and the answer is on the card
+    await adminGoto(admin, adminEmail(), "/admin/reports?status=actioned");
+    await expect(admin.getByTestId("report-card").filter({ hasText: dancerName })).toContainText(
+      "Answered: We have taken the studio off Discover while they replace the photos."
+    );
+
+    // the reporter hears back — a report that vanishes teaches people not to report
+    await openPeopleStack(dancer);
+    await expect(dancer.getByText("DanceOS acted on your report")).toBeVisible();
+    await expect(dancer.getByText(/We have taken the studio off Discover while they replace the photos/)).toBeVisible();
+
+    // the other reporter's report is still open, on its own
+    await adminGoto(admin, adminEmail(), "/admin/reports?status=open");
+    await expect(admin.getByTestId("report-card").filter({ hasText: secondName })).toBeVisible();
+  });
+
+  test("both decisions are in the audit log, as sentences", async () => {
+    await adminGoto(admin, adminEmail(), "/admin/audit?action=business.unlist");
+    const unlisted = admin.getByTestId("audit-entry").filter({ hasText: studioName }).first();
+    await expect(unlisted).toContainText("took off Discover");
+    await expect(unlisted).toContainText("Two people say these photos belong to another studio.");
+
+    await adminGoto(admin, adminEmail(), "/admin/audit?action=report.actioned");
+    await expect(admin.getByTestId("audit-entry").first()).toContainText(
+      "We have taken the studio off Discover while they replace the photos."
+    );
+  });
+
+  test("putting it back is one press", async () => {
+    await adminGoto(admin, adminEmail(), `/admin/businesses?q=${encodeURIComponent(studioName)}`);
+    const business = admin.getByTestId("admin-business").filter({ hasText: studioName });
+    await expect(business).toContainText("NOT PUBLIC");
+    await business.getByRole("button", { name: `Put ${studioName} back on Discover` }).click();
+    await expect(admin.getByText(`${studioName} is public again`)).toBeVisible({ timeout: 15_000 });
+
+    await dancer.goto("/discover?city=Pune&tab=studios");
+    await expect(dancer.getByRole("link", { name: `Open ${studioName}` })).toBeVisible();
+    expect((await dancer.goto(studioUrl))?.status(), "a listed studio's page is back").toBe(200);
+
+    await adminGoto(admin, adminEmail(), "/admin/audit?action=business.list");
+    await expect(admin.getByTestId("audit-entry").filter({ hasText: studioName }).first()).toContainText("put back on Discover");
+  });
+
+  test("a stranger cannot see that the two new screens exist", async () => {
+    for (const path of ["/admin/businesses", "/admin/reports"]) {
+      const res = await dancer.goto(path);
+      expect(res?.status(), `${path} must 404 for a signed-in stranger`).toBe(404);
+    }
+  });
+});
