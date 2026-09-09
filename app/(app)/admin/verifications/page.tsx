@@ -1,28 +1,20 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { AdminShell } from "@/features/admin/components/AdminShell";
+import { requireAdmin } from "@/features/admin/server/adminGuard";
 import { VerificationQueue } from "@/features/admin/components/VerificationQueue";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { amIPlatformAdmin, findOrganizations, findVerificationQueue } from "@/repositories/admin";
+import { findOrganizations, findVerificationQueue } from "@/repositories/admin";
 
 export const metadata: Metadata = { title: "Verification queue — DanceOS" };
 
-const stampNowIso = (): string => new Date().toISOString();
-
-/** /admin/verifications — the platform admin's queue (8 Sep 2026). A stranger
- *  gets a 404, not a 403: that the page exists is not theirs to learn. The RLS
- *  behind the reads would return them nothing anyway; the guard is the app's
- *  own decision on top of that ceiling. */
+/** /admin/verifications — the queue, now inside the admin panel's own nav
+ *  (10 Sep 2026). The guard, and the counts the nav wears, live in
+ *  `requireAdmin`: a stranger gets a 404, not a 403. */
 export default async function VerificationsPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-  if (!(await amIPlatformAdmin(supabase))) {
-    notFound();
-  }
+  const { supabase, badges, nowIso } = await requireAdmin();
   const [queue, orgs] = await Promise.all([findVerificationQueue(supabase), findOrganizations(supabase)]);
-  return <VerificationQueue queue={queue} orgs={orgs} nowIso={stampNowIso()} />;
+  return (
+    <AdminShell badges={badges}>
+      <VerificationQueue queue={queue} orgs={orgs} nowIso={nowIso} />
+    </AdminShell>
+  );
 }

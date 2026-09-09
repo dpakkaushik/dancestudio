@@ -1,6 +1,62 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (9 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (10 Sep 2026) — replaced on every push (Rule 13)
+
+- **THE ADMIN PANEL, PHASE 1 — support, trust, accountability ⚠ (Rule 9: auth
+  + RLS). `20260910120000_admin_panel.sql` is WRITTEN AND NOT APPLIED
+  (NEXT TO DO #1).** The user asked for three things and then a fourth: an
+  organization waiting on verification must SEE where it stands; a rejection
+  must reach it; both sides must be able to CHAT; and "expand the admin panel
+  with all standard admin features, think about it as a developer". They chose
+  the phased build, support and trust first, and this is that phase.
+  - **`admin_audit`** — every platform decision (actor, action, subject, a NAME
+    snapshot so it reads after a deletion, reason, detail, when). Insert-only:
+    a trigger refuses UPDATE and DELETE from **anybody**, service role
+    included. `log_admin_action()` is the one writer and is granted to nobody.
+  - **`support_threads` / `support_messages`** — one conversation between an
+    account and DanceOS. Either side opens it (`open_support_thread`,
+    `admin_open_support_thread`); `post_support_message` decides the side from
+    `is_platform_admin()`, so an account cannot post as DanceOS; an account
+    replying reopens a closed thread. Unread is DERIVED from
+    `account_read_at` / `admin_read_at`, so no counter can drift, and
+    `support_thread_list()` is SECURITY INVOKER — one function, and RLS decides
+    whether you get every thread or only your own. A verification thread
+    carries its `request_id`, and `audit_org_verification` posts the decision
+    INTO that thread, so "why was I rejected" is answered in context.
+  - **Suspension, the reversible sanction before delete.**
+    `profiles.suspended_at` + `suspended_reason`, guarded by its own trigger
+    (`guard_verified_at` is hung `before update of verified_at` on BOTH
+    profiles and tenants — it would never fire for a suspension, and tenants
+    has no such column: that bug was caught before the push).
+    `guard_person_only` now refuses a suspended account outright, which closes
+    all eight person-seat tables at once; four more `before insert` triggers
+    close tenants, classes, events and verification requests.
+    `admin_suspend_account` demands a reason, refuses another admin and
+    yourself, unlists every studio the account owns, tells the account why, and
+    audits. `admin_unsuspend_account` puts a VERIFIED organization's studios
+    back and leaves an unverified one's dark.
+  - **`admin_dashboard()`** — the pulse in one aggregate call: what waits on an
+    admin, what exists, what moved in seven days, what is stuck (unpaid
+    checkouts, unfinished webhooks). Plus `admin_audit_log()` and
+    `admin_accounts()` (searchable, with tick / suspension / plan / how many
+    businesses / last sign-in).
+  - **Eight new routes**, all 404 to a stranger through `requireAdmin()`:
+    `/admin` (overview, and where a profile-less admin lands),
+    `/admin/support`, `/admin/support/[threadId]`, `/admin/accounts`,
+    `/admin/audit`, plus `/support` and `/support/[threadId]` for the account
+    side. `AdminShell` gives the panel its own nav with live counts, since an
+    admin has no tab bar; Businesses, Reports and Money are drawn dim and
+    unlinked so the shape of the panel is visible rather than secret.
+  - **The org's verification card is now a TIMELINE** (links → asked → checked →
+    public), each step done/doing/to-do, a rejection printing the admin's
+    reason, and always a door to the conversation with an unread badge.
+    Settings gained "💬 Message DanceOS" for everybody and "🛡 Admin panel" for
+    an admin.
+  - Typecheck 0, lint 0, `next build` compiles all eight routes. **No e2e yet
+    — the schema is not there.** Later phases: businesses, reports/moderation,
+    money oversight, announcements, settings.
+
+## LAST SESSION (9 Sep 2026) — the accounts model went live
 
 - **THE ACCOUNT MODEL IS LIVE.** Both migrations — `20260908120000_users_orgs_admins.sql`
   (user | org, platform admins, the verification queue, the visibility gate,
@@ -61,19 +117,31 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
+1. **APPLY MIGRATION 3 (user, 1 minute) — the admin panel is dark until it is on.**
+   `supabase/migrations/20260910120000_admin_panel.sql` is written, typechecked,
+   linted and production-built, and NOT applied. Until it runs, `/admin`,
+   `/admin/support`, `/admin/accounts`, `/admin/audit` and `/support` all
+   error on their first read (no such table / function). From the repo:
+   ```
+   cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
+   npx.cmd supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<password, @ as %40>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all
+   ```
+   Then say so and the e2e spec for the conversation (org writes → admin
+   replies → org reads; approve → the decision lands in the thread; the audit
+   log has the row) gets written and run, and the whole suite re-run.
+2. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
    `activate_artist_plan` records ₹0 and creates no Cashfree order, so "subscribe
    to become Pro" is a switch, not a payment. The orders / payments /
    webhook_events tables and the captured-payment applier already exist for
    classes; the plan needs a Cashfree order on Subscribe and activation from the
    webhook. 1–2 days once the price is known (₹799 / ₹7,999 are the list prices
    the screen prints).
-2. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
+3. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
    profile, lands on `/admin/verifications`, Sign out in the top bar. Your test
    organization `deepakkaushikdevtest@gmail.com` has no links and owns nothing;
    it can ask to be verified once it adds a link (Profile → ＋ Add a link).
    `deepakkaushik8919@gmail.com` will be asked for a city at its next edit.
-3. **Replace the schema workbook:** close Excel, then rename
+4. **Replace the schema workbook:** close Excel, then rename
    `docs/DanceOS-database-schema (after migrations).xlsx` over
    `docs/DanceOS-database-schema.xlsx` (the PDF and the artifact page are
    already the post-migration version). Regenerate all three from the

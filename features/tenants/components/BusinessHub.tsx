@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
-import { VerifiedTick } from "@/features/settings/components/settings-kit";
+import { VerifiedTick, dateWords } from "@/features/settings/components/settings-kit";
 import { createTenantAction, requestOrgVerificationAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -76,6 +76,9 @@ export interface HubVerification {
   request: VerificationRequest | null;
   /** how many links the organization has published — none means it cannot ask yet */
   socialsCount: number;
+  /** the conversation with DanceOS about this decision, and what is unread on it */
+  threadId?: string | null;
+  unread?: number;
 }
 
 /** Studios hub — lifted from the prototype's S_bizhub/Hub (DanceOSApp.jsx:2585-2691),
@@ -261,18 +264,90 @@ export function BusinessHub({
             ? "Add at least one social link on your Profile tab — that is what DanceOS checks — then ask to be verified."
             : "Ask DanceOS to check your links. Your studios stay private until an admin says yes.";
     const canAsk = !verified && req?.status !== "pending" && verification.socialsCount > 0;
+    const asked = Boolean(req);
+    const decided = req?.status === "approved" || req?.status === "rejected";
+    const rejected = req?.status === "rejected";
+    const inReview = req?.status === "pending";
+    const unread = verification.unread ?? 0;
+
+    /* A TIMELINE, NOT ONE WORD (10 Sep 2026, the user's ask). An organization
+       waiting on a stranger's decision needs to know what has happened, what is
+       happening now, and what it can do — so every step says where it stands,
+       a rejection prints the admin's reason, and there is always a way to ask a
+       person rather than staring at a status. */
+    const steps: Array<{ label: string; note: string; state: "done" | "now" | "todo" }> = [
+      {
+        label: "Your links are published",
+        note:
+          verification.socialsCount > 0
+            ? `${verification.socialsCount} link${verification.socialsCount === 1 ? "" : "s"} on your profile`
+            : "Add at least one on the Profile tab — this is what DanceOS checks",
+        state: verification.socialsCount > 0 ? "done" : "now",
+      },
+      {
+        label: "You asked to be verified",
+        note: req ? `sent ${dateWords(req.createdAt)}` : "press the button below once your links are up",
+        state: asked ? "done" : verification.socialsCount > 0 ? "now" : "todo",
+      },
+      {
+        label: decided ? (rejected ? "DanceOS did not approve it" : "DanceOS approved it") : "A DanceOS admin checks your links",
+        note: decided
+          ? rejected
+            ? req?.note || "No reason was given — ask below and an admin will explain."
+            : `approved ${req?.decidedAt ? dateWords(req.decidedAt) : "just now"}`
+          : asked
+            ? "usually within a day. You can build your studios while you wait."
+            : "nothing to check yet",
+        state: decided ? "done" : inReview ? "now" : "todo",
+      },
+      {
+        label: "Your studios are public",
+        note: verified ? "live on Discover and in search" : "they stay private until the tick lands — nothing you build is lost",
+        state: verified ? "done" : "todo",
+      },
+    ];
+
     return (
       <div role="status" aria-label={`Verification: ${title}`} style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${tone}`, borderRadius: 16, padding: "12px 13px", marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           {verified ? <VerifiedTick size={15} /> : <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: tone, display: "inline-block" }} />}
           <b style={{ fontSize: 13 }}>{title}</b>
+          {unread > 0 ? (
+            <span style={{ marginLeft: "auto", minWidth: 17, height: 17, borderRadius: 9, padding: "0 5px", background: "#EC4899", color: "#fff", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              {unread}
+            </span>
+          ) : null}
         </div>
         <div style={{ fontSize: 11.5, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{body}</div>
-        {canAsk ? (
-          <button type="button" disabled={pending} onClick={ask} style={{ ...pill, marginTop: 10, background: "var(--text)", color: "var(--solid)" }}>
-            {pending ? "Asking…" : req?.status === "rejected" ? "Ask again" : "Request verification"}
-          </button>
-        ) : null}
+
+        <ol style={{ listStyle: "none", padding: 0, margin: "11px 0 2px" }}>
+          {steps.map((s) => (
+            <li key={s.label} style={{ display: "flex", gap: 9, paddingBottom: 9 }}>
+              <span aria-hidden="true" style={{ flexShrink: 0, width: 15, height: 15, borderRadius: 8, marginTop: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, background: s.state === "done" ? "#22C55E" : s.state === "now" ? tone : "var(--el)", color: s.state === "todo" ? "var(--muted)" : "#fff" }}>
+                {s.state === "done" ? "✓" : s.state === "now" ? "●" : ""}
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 12, fontWeight: s.state === "todo" ? 600 : 800, color: s.state === "todo" ? "var(--muted)" : INK, lineHeight: 1.35 }}>{s.label}</span>
+                <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2, lineHeight: 1.45 }}>{s.note}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+          {canAsk ? (
+            <button type="button" disabled={pending} onClick={ask} style={{ ...pill, background: "var(--text)", color: "var(--solid)" }}>
+              {pending ? "Asking…" : rejected ? "Ask again" : "Request verification"}
+            </button>
+          ) : null}
+          {/* there is a person on the other side of this decision — always a door to them */}
+          <Link
+            href={verification.threadId ? `/support/${verification.threadId}` : "/support"}
+            style={{ ...pill, background: LILAC, border: `1px solid ${EL}`, color: INK, display: "inline-flex", alignItems: "center" }}
+          >
+            {unread > 0 ? `Read DanceOS's reply (${unread})` : verification.threadId ? "Your conversation with DanceOS" : "Message DanceOS"}
+          </Link>
+        </div>
       </div>
     );
   };

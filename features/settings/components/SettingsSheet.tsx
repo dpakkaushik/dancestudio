@@ -134,7 +134,9 @@ export function SettingsSheet({
     { l: "🌐 Language", v: "English · हिन्दी coming" },
     { l: "🛡 Privacy & data", v: "Export · Delete (DPDP)" },
     { l: "🆘 Help & support", v: "FAQ · report a problem" },
-    ...(isAdmin ? [{ l: "🛡 Verification queue", v: "organizations waiting on DanceOS", href: "/admin/verifications" }] : []),
+    /* a person on the other side of DanceOS, for anybody (10 Sep 2026) */
+    { l: "💬 Message DanceOS", v: "ask a question · read our replies", href: "/support" },
+    ...(isAdmin ? [{ l: "🛡 Admin panel", v: "verifications · support · accounts · audit", href: "/admin" }] : []),
   ];
 
   const panelFor = (l: string) => {
