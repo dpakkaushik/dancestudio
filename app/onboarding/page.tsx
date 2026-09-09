@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { OnboardingForm } from "@/features/auth/components/OnboardingForm";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { amIPlatformAdmin } from "@/repositories/admin";
 import { findProfileById } from "@/repositories/profiles";
 
 /** Onboarding — four screens (prototype 3781-3943). A person with a profile is
@@ -24,6 +25,11 @@ export default async function OnboardingPage() {
   const inFlight = (await cookies()).get(ONBOARDING_COOKIE)?.value === "1";
   if (profile && !inFlight) {
     redirect("/");
+  }
+  /* a platform admin is ADMIN ONLY (9 Sep 2026): it never onboards as a person
+     or an organization — the verification queue is its whole app */
+  if (!profile && (await amIPlatformAdmin(supabase))) {
+    redirect("/admin/verifications");
   }
   return <OnboardingForm userId={user.id} existing={profile} />;
 }

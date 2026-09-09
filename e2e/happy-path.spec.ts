@@ -243,6 +243,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(request.getByRole("link", { name: /^Instagram/ })).toHaveAttribute("href", "https://instagram.com/e2eowner");
     await request.getByRole("button", { name: "Approve E2E Owner" }).click();
     await expect(admin.getByText("E2E Owner verified — its studios are live")).toBeVisible();
+    // an admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the queue is
+    // its whole app, and the chrome draws it no tab bar, only a way out
+    await admin.goto("/");
+    await expect(admin).toHaveURL(/\/admin\/verifications/);
+    await expect(admin.getByRole("button", { name: "Sign out" })).toBeVisible();
+    await expect(admin.getByRole("navigation", { name: "Main" })).toHaveCount(0);
     await owner.goto("/business");
     await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
     // and its own Profile is the ONE place its studios appear together (R9, 8 Sep

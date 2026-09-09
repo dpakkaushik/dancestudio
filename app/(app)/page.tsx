@@ -9,6 +9,7 @@ import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyPlace } from "@/repositories/stats";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { amIPlatformAdmin } from "@/repositories/admin";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -60,7 +61,8 @@ export default async function HomePage() {
   }
   const profile = await findProfileById(supabase, user.id);
   if (!profile) {
-    redirect("/onboarding");
+    /* a platform admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the queue is its place */
+    redirect((await amIPlatformAdmin(supabase)) ? "/admin/verifications" : "/onboarding");
   }
 
   const now = new Date();

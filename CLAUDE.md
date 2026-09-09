@@ -40,8 +40,16 @@
   classifier refused BOTH the migration push and the proof-leftover cleanup**
   (`scripts/cleanup-proof-leftovers.js`) — they are the user's to run, in that
   order: cleanup first (so no junk organization is grandfathered), then the two
-  migrations. The user's admin account `ai@eeetaxi.com` currently holds a
-  STUDIO profile named "Dance Plus" (becomes an organization) — flagged.
+  migrations. The user's admin account `ai@eeetaxi.com` held a STUDIO profile
+  named "Dance Plus"; the user's answer: **"remove it as a user, keep it admin
+  only."** So migration 2 DELETES that profile (not soft — a soft-deleted row
+  would keep the primary key and block any later onboarding), and an admin
+  with no profile is a first-class state: `notify_platform_admins` notifies
+  only admins who also hold a profile (notifications.user_id references
+  profiles — without this every organization's request would have failed on
+  the FK), Home and `/onboarding` send a profile-less admin to
+  `/admin/verifications`, and the chrome (`AppChrome adminOnly`) draws it no
+  tab bar and no bell, only **Sign out**. The happy path asserts it.
 - **Migration `20260908120000_users_orgs_admins.sql` is WRITTEN AND NOT
   APPLIED.** The push over the pooler was refused by the auto-mode classifier
   (a production schema change); it is the user's to run —
@@ -136,9 +144,11 @@
    `rls-proof-search.ps1`. Then push — Rules 11 and 13 are written for that
    push already.
 3. **Sign in as the admin (user):** `ai@eeetaxi.com` is confirmed and has a
-   password (signed in 09:02 UTC, 8 Sep). Finish `/onboarding` **as a User**
-   (the admin is a person; the row in `platform_admins` already names the
-   account), then Profile → ⚙ → **Verification queue**, or `/admin/verifications`.
+   password (signed in 09:02 UTC, 8 Sep). It is **admin only** (9 Sep decision):
+   after migration 2 it has no profile, and signing in lands straight on
+   `/admin/verifications` — no onboarding, no tabs, a Sign out in the top bar.
+   If it ever needs a profile again, `/onboarding` is refused for it by design;
+   remove the `platform_admins` row first.
    `deepakkaushik8919@gmail.com` still has no usable password: Sign in →
    Forgot password → the link in Chrome → `/login/reset`.
 

@@ -238,7 +238,49 @@ create policy "signed-in users read live profiles"
 comment on policy "signed-in users read live profiles" on public.profiles is
   'Signed-in users read live PEOPLE. An organization''s row is read only by itself, a platform admin, or a member of a studio it owns (9 Sep 2026).';
 
--- ── 4. grant hygiene ────────────────────────────────────────────────────────
+-- ── 4. the platform admin is ADMIN ONLY (user's decision, 9 Sep 2026) ───────
+-- "Remove it as a user, keep it admin only." The first admin's account had
+-- onboarded as a studio ("Dance Plus"); that profile goes, and the account
+-- keeps only its platform_admins row. An admin with no profile has no Home,
+-- no follows, no bookings — Home and onboarding send it to the queue.
+--
+-- Two things follow. notifications.user_id references profiles, so notifying
+-- an admin who has no profile would fail the INSERT — and with it the
+-- organization's request_org_verification. notify_platform_admins therefore
+-- notifies only admins who also have a live profile; an admin-only account
+-- reads the queue instead. And the profile is DELETED, not soft-deleted: a
+-- soft-deleted row would keep the primary key and refuse any future
+-- onboarding of the same account, while the app treats "no row" as "not
+-- onboarded", which is the honest state.
+delete from public.profiles p
+ where p.id in (select u.id from auth.users u where lower(u.email) = 'ai@eeetaxi.com');
+
+create or replace function public.notify_platform_admins(p_kind text, p_title text, p_body text, p_href text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid;
+begin
+  -- only admins who also hold a profile can carry a notification (the FK);
+  -- an admin-only account reads the queue
+  for v_user in
+    select a.user_id
+    from public.platform_admins a
+    join public.profiles p on p.id = a.user_id and p.deleted_at is null
+    where a.deleted_at is null
+  loop
+    perform public.notify(v_user, p_kind, p_title, p_body, p_href);
+  end loop;
+end;
+$$;
+comment on function public.notify_platform_admins(text, text, text, text) is
+  'Internal: one notification per platform admin who also has a profile (notifications.user_id references profiles). An admin-only account reads the queue instead (9 Sep 2026).';
+revoke execute on function public.notify_platform_admins(text, text, text, text) from public, anon, authenticated;
+
+-- ── 5. grant hygiene ────────────────────────────────────────────────────────
 revoke execute on function public.classes_room_check() from public, anon, authenticated;
 revoke execute on function public.classes_room_guard() from public, anon, authenticated;
 revoke execute on function public.sessions_room_check() from public, anon, authenticated;

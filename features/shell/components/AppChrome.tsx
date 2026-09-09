@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useId, useSyncExternalStore, type ReactNode } from "react";
+import { signOutAction } from "@/features/auth/server-actions/auth";
 import { DOS_UI, INK } from "@/lib/design/tokens";
 import { WorkspaceStrip } from "./WorkspaceStrip";
 
@@ -168,7 +169,17 @@ const chipStyle: React.CSSProperties = {
   border: "1px solid var(--chip-line)",
 };
 
-export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** what the bell says — counted server-side for this render */ unread?: number }) {
+export function AppChrome({
+  children,
+  unread = 0,
+  adminOnly = false,
+}: {
+  children: ReactNode;
+  /** what the bell says — counted server-side for this render */
+  unread?: number;
+  /** a platform admin with no profile (9 Sep 2026): no tab bar, no bell, no gear — a Sign out instead; the queue is its whole app */
+  adminOnly?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const activeTab = TAB_SET.find((t) => t.href === pathname)?.label ?? null;
@@ -298,7 +309,9 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
         </span>
         <span style={{ display: "flex", gap: 7, flexShrink: 0 }}>
           {/* the bell, with what is unread on it (prototype 19252-19257) — a real
-              route, so the badge is whatever the server counted for this render */}
+              route, so the badge is whatever the server counted for this render.
+              Not for an admin-only account: notifications belong to profiles. */}
+          {adminOnly ? null : (
           <Link href="/notifications" aria-label={unread > 0 ? `Notifications — ${unread} unread` : "Notifications"} style={{ ...chipStyle, textDecoration: "none" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5" />
@@ -310,6 +323,7 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
               </span>
             ) : null}
           </Link>
+          )}
           <span
             role="button"
             tabIndex={0}
@@ -334,13 +348,22 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
               </svg>
             )}
           </span>
-          {/* the gear opens the Settings sheet on the Profile tab (prototype 19263) */}
+          {/* the gear opens the Settings sheet on the Profile tab (prototype 19263);
+              an admin-only account has no Profile tab, so its one control is the way out */}
+          {adminOnly ? (
+            <form action={signOutAction} style={{ display: "contents" }}>
+              <button type="submit" aria-label="Sign out" style={{ ...chipStyle, width: "auto", padding: "0 13px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", color: INK, border: "none" }}>
+                Sign out
+              </button>
+            </form>
+          ) : (
           <Link href="/profile?settings=1" aria-label="Settings" style={{ ...chipStyle, textDecoration: "none" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3.2" />
               <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" />
             </svg>
           </Link>
+          )}
         </span>
       </div>
 
@@ -361,7 +384,7 @@ export function AppChrome({ children, unread = 0 }: { children: ReactNode; /** w
       {/* ── the floating pill bar — only a tab draws it (19308-19397). The selected tab
           expands into a filled capsule carrying its icon AND name; the others are their
           icon alone, each keeping its aria-label so a screen reader names all five. ── */}
-      {isTab && (
+      {isTab && !adminOnly && (
         <nav
           aria-label="Main"
           style={{
