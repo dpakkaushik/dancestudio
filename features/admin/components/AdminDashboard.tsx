@@ -37,7 +37,7 @@ const Grid = ({ children }: { children: React.ReactNode }) => (
  *  never reads a person's row to draw a count. */
 export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: string }) {
   const w = pulse.waiting;
-  const todo = w.verifications + w.threads + w.refunds + w.stuckWebhooks;
+  const todo = w.verifications + w.threads + w.reports + w.refunds + w.stuckWebhooks;
   const day = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" }).format(new Date(nowIso));
 
   return (
@@ -55,6 +55,7 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
       <Grid>
         <Fig n={w.verifications} label="organizations to verify" href="/admin/verifications" tone={w.verifications > 0 ? "#F59E0B" : undefined} />
         <Fig n={w.threads} label="conversations to answer" href="/admin/support" tone={w.threads > 0 ? "#F59E0B" : undefined} />
+        <Fig n={w.reports} label="reports to answer" href="/admin/reports" tone={w.reports > 0 ? "#EF4444" : undefined} />
         <Fig n={w.refunds} label="refunds in the queue" tone={w.refunds > 0 ? "#EF4444" : undefined} />
       </Grid>
       {w.stuckWebhooks > 0 ? (

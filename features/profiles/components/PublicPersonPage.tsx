@@ -8,6 +8,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { PersonFollowButton } from "./PersonFollowButton";
+import { ReportButton } from "@/features/reports/components/ReportButton";
 import { ProfileShare } from "./ProfileShare";
 import { CallButton, fmtFollowers } from "./PublicProfile";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
@@ -272,6 +273,8 @@ export function PublicPersonPage({
           </Group>
         ) : null}
       </div>
+      {/* you cannot report yourself, and the RPC refuses it too (10 Sep 2026) */}
+      {isMe ? null : <ReportButton subjectKind="profile" subjectId={profile.id} subjectName={profile.fullName} signedIn={signedIn} />}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import type { PublicTenantProfileWithFaces } from "@/repositories/publicProfile";
 import type { TenantFollower } from "@/types/follow";
 import { TYPE } from "./profile-kit";
+import { ReportButton } from "@/features/reports/components/ReportButton";
 import { ProfileShare } from "./ProfileShare";
 import { BusinessEditButton } from "./BusinessEditSheet";
 import { TenantFollowersButton } from "./TenantFollowersButton";
@@ -390,6 +391,11 @@ export function PublicProfile({
           </div>
         ) : null}
       </div>
+      {/* the quiet control at the foot of a public page (10 Sep 2026) — not for
+          its own members, who have the hub for anything that is wrong */}
+      {isMember ? null : (
+        <ReportButton subjectKind="tenant" subjectId={tenant.id} subjectName={tenant.name} signedIn={signedIn} />
+      )}
     </div>
   );
 }

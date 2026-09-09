@@ -28,9 +28,9 @@ const SECTIONS: Array<{ href: string; label: string; badge?: keyof AdminBadges; 
   { href: "/admin/verifications", label: "Verifications", badge: "verifications" },
   { href: "/admin/support", label: "Support", badge: "support" },
   { href: "/admin/accounts", label: "Accounts" },
+  { href: "/admin/businesses", label: "Businesses" },
+  { href: "/admin/reports", label: "Reports", badge: "reports" },
   { href: "/admin/audit", label: "Audit" },
-  { href: "/admin/businesses", label: "Businesses", soon: true },
-  { href: "/admin/reports", label: "Reports", badge: "reports", soon: true },
   { href: "/admin/money", label: "Money", badge: "money", soon: true },
 ];
 
