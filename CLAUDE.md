@@ -130,6 +130,43 @@
   studio (`leads`, `rooms-people`), which R11 and R3 refuse; each now
   makes the third person or the second organization it actually needs, and
   deletes it after.
+- **THE DEPLOYMENT COULD NOT HAVE RECEIVED A SINGLE WEBHOOK, and that was found
+  by probing it rather than by reading.** `dancestudio-orcin.vercel.app`
+  served every page and answered `/api/webhooks/cashfree` with **503
+  "webhook not configured"**: the project carried only the two
+  `NEXT_PUBLIC_SUPABASE_*` keys, because on 24 Aug "the service role stays
+  local" was the right call — nothing server-side needed it then. The webhook
+  does. The app reads exactly SEVEN environment variables (`grep process.env`
+  over `app` / `features` / `lib` / `repositories`), and five
+  were missing: `CASHFREE_ENV` (unset means PRODUCTION base URL, which test
+  keys fail against), `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY` (the API
+  calls AND the webhook signature — there is no separate webhook secret),
+  **`SUPABASE_SERVICE_ROLE_KEY`** (`createSupabaseAdminClient()` throws
+  without it, so every delivery would 500 — and Subscribe itself would fail,
+  because it reads the price list and mints the Cashfree plan through that
+  client), and `NEXT_PUBLIC_SITE_URL` (Cashfree's return URL after the
+  mandate window, and every emailed auth link). All five are set on production +
+  preview + development now, a redeploy injected them, and the live route was
+  proved end to end: a wrong signature is **401**, a correctly signed
+  `SUBSCRIPTION_STATUS_CHANGED` is **200** answering
+  `{"outcome":"ignored","reason":"unknown subscription"}` — which is
+  `apply_subscription_event` speaking, so the signature, the exactly-once
+  ledger, the service-role client and the routing all work on the deployment.
+- **Which Cashfree keys, settled against the live sandbox rather than assumed.**
+  The dashboard offers five products with five key pairs (Payment Gateway,
+  Payouts, Subscriptions, Secure ID, Cross Border) and the user was right to ask.
+  Ours ride the **Payment Gateway** pair only: our code calls
+  `sandbox.cashfree.com/pg/plans` and `/pg/subscriptions` — the PG
+  namespace, `x-api-version: 2025-01-01` — and a probe proved it (PG keys
+  `GET /pg/plans/<the probe plan>` → 200 with the plan; no keys → 401; a
+  wrong secret → 401). The Subscriptions card's own API Keys belong to the LEGACY
+  standalone subscriptions product, which we do not touch; Payouts stays unwired
+  (Easy Split), and Secure ID and Cross Border are not used at all. **The
+  webhooks, though, are two pages:** the docs confirm a Subscriptions webhooks
+  page separate from the Payment Gateway one, so the same URL is registered on
+  both — payment and refund events on PG, the `SUBSCRIPTION_*` family on
+  Subscriptions. One route takes both, and it is idempotent, so a double
+  registration cannot double-charge anything.
 - **e2e: `paid-webhook` 2/2, and the second test is the new one that
   matters** — it plays Cashfree Subscriptions against the real route over a real
   mandate's life: the authorisation pays the first period and **puts the studio
@@ -396,13 +433,30 @@
    `test.slow()`; the held ticket gets 15 s). A run on an idle machine
    should be green; if the crews pill races again, wait for
    `networkidle` before pressing it.
-1. **Register the Cashfree webhook on the deployment for BOTH families** —
-   `{deployment}/api/webhooks/cashfree`: PAYMENT_SUCCESS / FAILED /
-   USER_DROPPED, REFUND_STATUS, and SUBSCRIPTION_PAYMENT_SUCCESS / FAILED /
-   CANCELLED, SUBSCRIPTION_AUTH_STATUS, SUBSCRIPTION_STATUS_CHANGED. The same
-   secret signs all of them. Without the subscription events a mandate
-   authorised in the window still lands (the server re-reads Cashfree after the
-   window closes) but a RENEWAL or a FAILED charge is never heard.
+1. **Register the webhook in the Cashfree dashboard — TWO pages, one URL.** The
+   deployment is ready for it (env vars set, redeployed, the route proved: 401 on
+   a bad signature, 200 on a good one), so this is the last thing between the
+   subscriptions and a real renewal. At `merchant.cashfree.com`, with the
+   environment toggle on **Sandbox / Test**, put
+   `https://dancestudio-orcin.vercel.app/api/webhooks/cashfree` on BOTH:
+   * **Developers → Payment Gateway → Webhooks** — PAYMENT_SUCCESS_WEBHOOK,
+     PAYMENT_FAILED_WEBHOOK, PAYMENT_USER_DROPPED_WEBHOOK, REFUND_STATUS_WEBHOOK
+     (class bookings, Step 9);
+   * **Developers → Subscriptions → Webhooks** — SUBSCRIPTION_PAYMENT_SUCCESS,
+     SUBSCRIPTION_PAYMENT_FAILED, SUBSCRIPTION_PAYMENT_CANCELLED,
+     SUBSCRIPTION_AUTH_STATUS, SUBSCRIPTION_STATUS_CHANGED.
+   The same secret key signs both families; there is no separate webhook secret.
+   Without the subscription events the FIRST payment still lands (the server
+   re-reads Cashfree when the mandate window closes) but a RENEWAL and a FAILED
+   charge are never heard — and month 2 has no browser to fall back on.
+   **⚠ No real Cashfree delivery has ever reached this app**, because it was
+   never registered: our check is
+   `Base64(HMAC-SHA256(x-webhook-timestamp + rawBody, SECRET_KEY))`, which
+   matches the docs (their `"$timestamp.$payload"` is PHP concatenation, not
+   a literal dot), and our own tests sign it the way we verify it — which proves
+   the pipeline, not Cashfree's format. If the first real delivery comes back 401,
+   read the dashboard's own delivery log for that endpoint and the fix is one
+   line in `lib/cashfree/signature.ts`.
 2. **Try one real sandbox mandate through the app** (⚠ money): Subscribe a
    studio from the hub with the sandbox UPI `testsuccess@gocash`, watch the
    strip turn PUBLIC · RENEWS, then Stop renewing and watch it turn ENDING.
@@ -434,14 +488,19 @@
    `smtp_admin_email` at it and switch custom SMTP back ON. That restores 60/h
    and real deliverability. The `onboarding@resend.dev` sender only ever reached
    the Resend account owner, which is what made auth look broken.
-9. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
-   confirm Supabase's redirect allow-list carries it. Every emailed link — and
-   now Cashfree's return URL after the mandate window — is built from it, with
-   the request's origin as the local-dev fallback.
-10. **`.env.local` must carry all five Cashfree keys** that `.env.local.example`
-   documents (`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`,
-   `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`); a stray
-   `RAZORPAY_WEBHOOK_SECRET` from before the 28 Aug rail swap can go.
+9. **~~Set `NEXT_PUBLIC_SITE_URL` in the Vercel project~~ — DONE 10 Sep 2026**
+   (`https://dancestudio-orcin.vercel.app`, on production + preview +
+   development, with the four other missing variables). Every emailed link and
+   Cashfree's return URL after the mandate window are built from it, with the
+   request's origin as the local-dev fallback. **Still worth confirming:**
+   that Supabase's redirect allow-list carries the same URL
+   (Authentication → URL Configuration).
+10. **~~`.env.local` must carry the Cashfree keys~~ — it does** (all five,
+   verified 10 Sep 2026), and the three the APP reads are on Vercel now too.
+   Only `CASHFREE_ENV` / `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY` are
+   ever read by the app — the `CASHFREE_PAYOUT_*` pair belongs to Payouts,
+   which is deliberately unwired, so it stays local. **Still to tidy:** three
+   dead `RAZORPAY_*` entries from before the 28 Aug rail swap.
 11. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
    screen's Terms and Privacy Policy are bold text, not links, because linking to
    a 404 on the screen everybody sees is worse. They become `<Link>`s in the same
