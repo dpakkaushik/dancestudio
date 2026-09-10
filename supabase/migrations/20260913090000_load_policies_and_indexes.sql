@@ -101,8 +101,25 @@ begin
       v_sql := v_sql || format(' with check (%s)', v_check);
     end if;
 
-    execute v_sql;
-    v_n := v_n + 1;
+    if r.schemaname = 'public' then
+      -- our own tables: a failure here is a real problem and must stop the
+      -- migration rather than leave half the policies rewritten
+      execute v_sql;
+      v_n := v_n + 1;
+    else
+      -- `storage.objects` is Supabase's table, not ours. We created these
+      -- policies, so we should be able to alter them — but the owner of that
+      -- table is outside this repo's control, and a permission change on
+      -- Supabase's side must not take the whole migration down with it. The
+      -- public-schema rewrite and every index below matter more than these
+      -- nine, so a refusal here is reported and stepped over.
+      begin
+        execute v_sql;
+        v_n := v_n + 1;
+      exception when others then
+        raise warning 'left % on %.% alone: %', r.policyname, r.schemaname, r.tablename, sqlerrm;
+      end;
+    end if;
   end loop;
   raise notice 'auth.uid() hoisted out of the row loop in % policies', v_n;
 end $$;

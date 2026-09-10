@@ -38,10 +38,23 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "retain-on-failure",
   },
+  /** `npm run dev`, NOT `pnpm dev` (11 Sep 2026). Neither known machine has
+   *  pnpm on PATH — packages are installed through `corepack pnpm@10` — so this
+   *  line could never start a server here, and the failure it produced said
+   *  nothing useful:
+   *
+   *      [WebServer] 'pnpm' is not recognized as an internal or external command
+   *      Error: Process from config.webServer was not able to start.
+   *
+   *  It stayed hidden because `reuseExistingServer` meant a dev server started
+   *  by hand was always found first, so the command was never reached — until
+   *  the server went away mid-run and every remaining spec failed to boot one,
+   *  looking for all the world like eight broken specs. `npm run dev` runs the
+   *  same `next dev` through the script this repo already documents. */
   webServer: {
-    command: "pnpm dev",
+    command: "npm run dev",
     url: BASE_URL,
     reuseExistingServer: true,
-    timeout: 120_000,
+    timeout: 180_000,
   },
 });
