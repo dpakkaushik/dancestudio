@@ -179,6 +179,18 @@ test.describe.serial("DanceOS, end to end", () => {
   const stamp: string = Date.now().toString(36);
   const studioName: string = `E2E Studio ${stamp}`;
   const classTitle: string = `E2E Bollywood ${stamp}`;
+  /* STAMPED, like the studio and the emails. A constant display name on a
+     database this suite shares means a killed run's leftover is
+     indistinguishable from this run's trainer, and every name-based locator
+     goes ambiguous — it broke the crews picker on 10 Sep 2026, the same failure
+     Step 22 recorded. Declared here because later segments look them up too. */
+  /* TITLE-CASED, because the app title-cases a PERSON's name as it is typed
+     (OnboardingForm: `replace(/(^|s)S/g, c => c.toUpperCase())` — an
+     organization's is left alone). The base36 stamp is lowercase, so the stored
+     name was "E2E Trainer Mtvv43th" while the spec looked for "…mtvv43th": every
+     case-INSENSITIVE locator matched and the one `exact: true` assertion did
+     not (10 Sep 2026). Typing what the app will store keeps them in step. */
+  const trainerName: string = `E2E Trainer ${stamp.charAt(0).toUpperCase()}${stamp.slice(1)}`;
 
   let ownerId: string | null = null;
   let learnerId: string | null = null;
@@ -238,10 +250,16 @@ test.describe.serial("DanceOS, end to end", () => {
   });
 
   test("an organization signs up, is verified by an admin, and publishes a class with a room and a trainer", async () => {
-    // this segment walks onboarding with five photo uploads, the verification,
-    // the studio, its subscription grant, the trainer's, and the class — on a dev
-    // server compiling each route on first visit it runs past the 120 s default
-    test.slow();
+    /* THE LONGEST SEGMENT IN THE SUITE, and it has outgrown `test.slow()` (3x
+       the 120 s default). It walks onboarding with FIVE photo uploads, the
+       verification queue, a studio, that studio's subscription grant through the
+       admin's Businesses desk, the Accounts desk, the trainer's Artist plan, a
+       staff invite and the two-step class form — a dozen routes, each compiling
+       on its first visit on a cold dev server. It timed out at 360 s on the
+       staff invite (10 Sep 2026). The real fix is to split the story into
+       independently seeded specs (it is on the parity backlog); until then the
+       budget says out loud how long the story actually is. */
+    test.setTimeout(900_000);
     // ---- studio owner: signup → onboarding -------------------------------
     /* the stamped address, kept: it is what makes this run's rows findable among
        any a killed run left behind (a name is not unique — "E2E Owner" made the
@@ -396,7 +414,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- the trainer signs up and finds the invite waiting for them --------
     trainerId = await signUp(trainer, trainerEmail);
-    await onboard(trainer, "E2E Trainer", "User", "Pune");
+    await onboard(trainer, trainerName, "User", "Pune");
     // Pro is the plan, not a role (8 Sep 2026): the trainer gets it now, so the
     // word every later screen prints beside their name is ARTIST. Since 10 Sep
     // 2026 the plan is ₹700 a month through Cashfree's mandate window, which no
@@ -404,11 +422,11 @@ test.describe.serial("DanceOS, end to end", () => {
     // Accounts desk, and it charges nothing
     await trainer.goto("/subscription");
     await expect(trainer.getByRole("button", { name: /^Subscribe · ₹700\/mo$/ })).toBeVisible();
-    await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Trainer")}`);
-    const trainerAccount = admin.getByTestId("admin-account").filter({ hasText: "E2E Trainer" });
-    await trainerAccount.getByRole("button", { name: "Grant E2E Trainer the Artist plan" }).click();
-    await admin.getByRole("button", { name: "Confirm the Artist plan for E2E Trainer" }).click();
-    await expect(admin.getByText("E2E Trainer has the Artist plan for 12 months — nothing charged")).toBeVisible({ timeout: 15_000 });
+    await admin.goto(`/admin/accounts?q=${encodeURIComponent(trainerName)}`);
+    const trainerAccount = admin.getByTestId("admin-account").filter({ hasText: trainerName });
+    await trainerAccount.getByRole("button", { name: `Grant ${trainerName} the Artist plan` }).click();
+    await admin.getByRole("button", { name: `Confirm the Artist plan for ${trainerName}` }).click();
+    await expect(admin.getByText(`${trainerName} has the Artist plan for 12 months — nothing charged`)).toBeVisible({ timeout: 15_000 });
     await trainer.goto("/subscription");
     await expect(trainer.getByText("Active · granted")).toBeVisible({ timeout: 15_000 });
     await trainer.goto("/");
@@ -438,10 +456,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText(/defined by Studio A/)).toBeVisible();
     // and the payoff of Step 12b: the artist picker finally has somebody to
     // offer, because a real person accepted a real invite
-    await expect(owner.getByRole("button", { name: "E2E Trainer takes this class" })).toBeVisible();
+    await expect(owner.getByRole("button", { name: `${trainerName} takes this class` })).toBeVisible();
     // Step 13: put them on it AT A RATE. The rate field is the owner's alone —
     // a trainer's form never shows it, and the RPCs refuse it from anybody else.
-    await owner.getByRole("button", { name: "E2E Trainer takes this class" }).click();
+    await owner.getByRole("button", { name: `${trainerName} takes this class` }).click();
     await owner.getByLabel("What a session pays the artist").fill("900");
     // step 2 — people & price. Free trial: the ₹300 default would route booking
     // through Razorpay (Step 9), which the paid-webhook spec covers.
@@ -527,7 +545,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText("CLASS ASSISTANTS")).toBeVisible();
     await expect(owner.getByRole("link", { name: "Add someone to the team" })).toBeVisible();
     // the artist column is a door to the person (11900), and Change goes to the form
-    await expect(owner.getByRole("link", { name: "Open E2E Trainer" })).toBeVisible();
+    await expect(owner.getByRole("link", { name: `Open ${trainerName}` })).toBeVisible();
     await expect(owner.getByRole("link", { name: "Change the artist taking this class" })).toBeVisible();
     // the Poster chip in the sleeve opens the drawn designs (11812, 12768)
     await owner.getByRole("button", { name: "Change the poster" }).click();
@@ -744,8 +762,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByLabel("Dance style", { exact: true }).click();
     await learner.getByRole("button", { name: "Hip-Hop", exact: true }).click();
     await learner.getByRole("button", { name: "Add a member" }).click();
-    await learner.getByLabel("Search DanceOS for a dancer").fill("E2E Trainer");
-    await learner.getByRole("button", { name: "Add E2E Trainer to the crew" }).click();
+    await learner.getByLabel("Search DanceOS for a dancer").fill(trainerName);
+    await learner.getByRole("button", { name: `Add ${trainerName} to the crew` }).click();
     await expect(learner.getByText("MEMBERS · 1 added")).toBeVisible();
     await learner.getByRole("button", { name: "Save crew" }).click();
     await learner.getByRole("dialog", { name: "Confirm · create crew" }).getByRole("button", { name: "Confirm & create" }).click();
@@ -831,7 +849,10 @@ test.describe.serial("DanceOS, end to end", () => {
     // Cheapest sort lands in the URL and the button counts two, and the events
     // box narrows by title.
     await learner.goto("/discover?city=Pune&tab=classes");
-    await learner.getByLabel("Search DanceOS").fill("E2E Studio");
+    /* the STAMPED name, not the shared "E2E Studio" prefix: search_dance_os caps
+       each kind at three ordered by name, so leftovers from a killed run pushed
+       this run own studio out of its own result list (10 Sep 2026) */
+    await learner.getByLabel("Search DanceOS").fill(studioName);
     await learner.getByRole("option", { name: `${studioName} — Studio · Pune` }).click();
     await learner.waitForURL(new RegExp(`/studio/${tenantId}$`));
 
@@ -950,11 +971,11 @@ test.describe.serial("DanceOS, end to end", () => {
     // for exactly this reason). They open now, and the page is made of what the
     // story already did.
     await learner.goto(`/crews/${crewId}/manage`);
-    await learner.getByRole("link", { name: "Open E2E Trainer's profile" }).click();
+    await learner.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
     // exact: Next's route announcer carries the page TITLE ("E2E Trainer — DanceOS"),
     // which a loose match picks up as a second element the moment a navigation is fresh
-    await expect(learner.getByText("E2E Trainer", { exact: true })).toBeVisible();
+    await expect(learner.getByText(trainerName, { exact: true })).toBeVisible();
     await expect(learner.getByText("ARTIST")).toBeVisible();
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
@@ -970,17 +991,20 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // the search box offers people now — and the row opens the person
     await learner.goto("/discover?city=Pune&tab=classes");
-    await learner.getByLabel("Search DanceOS").fill("E2E Trainer");
+    await learner.getByLabel("Search DanceOS").fill(trainerName);
     await expect(learner.getByText("People")).toBeVisible();
-    await learner.getByRole("option", { name: /^E2E Trainer — Artist/ }).click();
+    await learner.getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) }).click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
 
     // an organization is never a result and has no page for anybody else (R9):
     // the same term finds the trainer and not the owner, and the owner's address
     // answers 404 — while the admin, who verifies it, still reads it as evidence
     await learner.goto("/discover?city=Pune&tab=classes");
-    await learner.getByLabel("Search DanceOS").fill("E2E");
-    await expect(learner.getByRole("option", { name: /^E2E Trainer — Artist/ })).toBeVisible();
+    /* two claims, each on a term that cannot be crowded out by a leftover: this
+       run stamp finds the trainer, and the organization name finds nobody */
+    await learner.getByLabel("Search DanceOS").fill(stamp);
+    await expect(learner.getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) })).toBeVisible();
+    await learner.getByLabel("Search DanceOS").fill("E2E Owner");
     await expect(learner.getByRole("option", { name: /^E2E Owner/ })).toHaveCount(0);
     const orgPage = await learner.goto(`/person/${ownerId}`);
     expect(orgPage?.status()).toBe(404);
@@ -991,7 +1015,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // the crew's public roster opens its people too, and the trainer's own page
     // says it is theirs rather than offering them a Follow button
     await trainer.goto(`/crew/${crewId}`);
-    await trainer.getByRole("link", { name: "Open E2E Trainer's profile" }).click();
+    await trainer.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
     await trainer.waitForURL(/\/person\/[0-9a-f-]+$/);
     await expect(trainer.getByRole("link", { name: /This is you/ })).toBeVisible();
     await expect(trainer.getByRole("button", { name: "Follow" })).toHaveCount(0);
@@ -1178,10 +1202,18 @@ test.describe.serial("DanceOS, end to end", () => {
     const cls = (await (await fetch(`${supabaseUrl}/rest/v1/classes?share_slug=eq.${shareSlug}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
     expect(cls.length).toBe(1);
     const nowMs = Date.now();
+    /* THE DECK IS "TODAY" IN IST, so a start ten minutes ago lands YESTERDAY when
+       the suite runs in the first minutes after midnight IST — the card then
+       belongs to neither day and Home honestly reads "0 today" (it did, at 00:06
+       IST on 11 Sep 2026). The start is clamped inside the IST day, which keeps
+       it both today AND already begun, so the Live badge still applies. */
+    const IST_OFFSET = 5.5 * 3600_000;
+    const istMidnightMs = Math.floor((nowMs + IST_OFFSET) / 86_400_000) * 86_400_000 - IST_OFFSET;
+    const startsMs = Math.max(nowMs - 10 * 60_000, istMidnightMs + 60_000);
     const moved = await fetch(`${supabaseUrl}/rest/v1/class_sessions?class_id=eq.${cls[0].id}`, {
       method: "PATCH",
       headers: adminHeaders,
-      body: JSON.stringify({ starts_at: new Date(nowMs - 10 * 60_000).toISOString(), ends_at: new Date(nowMs + 50 * 60_000).toISOString() }),
+      body: JSON.stringify({ starts_at: new Date(startsMs).toISOString(), ends_at: new Date(nowMs + 50 * 60_000).toISOString() }),
     });
     expect(moved.ok).toBeTruthy();
 
@@ -1352,25 +1384,30 @@ test.describe.serial("DanceOS, end to end", () => {
     // prototype offers to run both, and this database will not double-book a
     // room (Step 11's trigger — the Rooms footnote's promise), so the honest
     // second press keeps the class as a draft instead.
-    const [sess] = (await (
-      await fetch(`${supabaseUrl}/rest/v1/class_sessions?select=starts_at,ends_at,classes!inner(share_slug)&classes.share_slug=eq.${shareSlug}`, { headers: adminHeaders })
-    ).json()) as Array<{ starts_at: string; ends_at: string }>;
-    expect(sess).toBeTruthy();
-    const ist = (iso: string) => {
-      const d = new Date(iso);
-      const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-      const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
-      return { date, time };
+    /* THIS SEGMENT SETS ITS OWN SLOT, rather than reading wherever an earlier
+       segment left the session. The PassDeck segment moves that session onto the
+       clock, and "now" is not always a time this form can express — its list runs
+       06:00 to 23:00 in half hours, so a run just after midnight IST left the
+       clash at 00:01 and the dropdown had no such option (10 Sep 2026). Three
+       days out at 19:00 IST is both a real slot and independent of the clock. */
+    const cls = (await (await fetch(`${supabaseUrl}/rest/v1/classes?share_slug=eq.${shareSlug}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+    expect(cls.length).toBe(1);
+    const when = {
+      date: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(
+        new Date(Date.now() + 3 * 86_400_000)
+      ),
+      time: "19:00",
     };
-    const when = ist(sess.starts_at);
+    const parked = await fetch(`${supabaseUrl}/rest/v1/class_sessions?class_id=eq.${cls[0].id}`, {
+      method: "PATCH",
+      headers: adminHeaders,
+      body: JSON.stringify({ starts_at: `${when.date}T19:00:00+05:30`, ends_at: `${when.date}T20:30:00+05:30` }),
+    });
+    expect(parked.ok).toBeTruthy();
 
     await owner.goto(`/business/${tenantId}/classes/new`);
     await owner.getByLabel("Class date").fill(when.date);
-    // the PassDeck segment moved the story's class onto the clock (today, now), so
-    // its start may be a time the form's half-hour list does not offer — pick the
-    // slot that contains it
-    const slot = when.time.slice(0, 3) + (Number(when.time.slice(3)) >= 30 ? "30" : "00");
-    await owner.getByLabel("Starts").selectOption(slot);
+    await owner.getByLabel("Starts").selectOption(when.time);
     await owner.getByLabel("Dance style", { exact: true }).click();
     await owner.getByRole("button", { name: "Salsa", exact: true }).click();
     await owner.getByLabel("Class name").fill(`E2E Clash ${stamp}`);

@@ -1,4 +1,4 @@
-# RLS proof for Step 1 (profiles): two users, cross-user writes must fail.
+﻿# RLS proof for Step 1 (profiles): two users, cross-user writes must fail.
 # Reads keys from .env.local — run from the repo root: pwsh scripts/rls-proof.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a

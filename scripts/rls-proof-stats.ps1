@@ -1,4 +1,4 @@
-# Proof for Step 25 - stats and charts.
+﻿# Proof for Step 25 - stats and charts.
 #
 # The claims under test: a figure is counted off the rows it opens, so my_dance_stats
 # and my_session_history AGREE by construction (the prototype's own rule, 9950: "a

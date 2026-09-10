@@ -1,4 +1,4 @@
-# RLS proof for Step 5 (discovery): nearby search respects visibility.
+﻿# RLS proof for Step 5 (discovery): nearby search respects visibility.
 # Reads keys from .env.local — run from the repo root: powershell -File scripts/rls-proof-discovery.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a

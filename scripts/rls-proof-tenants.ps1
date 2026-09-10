@@ -1,4 +1,4 @@
-# RLS proof for Step 2 (tenants): two owners, each sees ONLY their own tenant.
+﻿# RLS proof for Step 2 (tenants): two owners, each sees ONLY their own tenant.
 # Reads keys from .env.local — run from the repo root: pwsh scripts/rls-proof-tenants.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a

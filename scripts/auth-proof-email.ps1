@@ -1,4 +1,4 @@
-# Proof for email magic-link sign-in: mints a link server-side (admin API — no
+﻿# Proof for email magic-link sign-in: mints a link server-side (admin API — no
 # inbox needed), lands it on the app's /auth/confirm route, and expects to come
 # out signed in.
 # Run from the repo root: powershell -File scripts/auth-proof-email.ps1

@@ -318,3 +318,331 @@ export async function reportContent(
   }
   return data as string;
 }
+
+/* ── phase 3: the money desk and the communication desk (11 Sep 2026) ─────── */
+
+/** THE DESK EXISTS BEFORE ITS MIGRATION DOES.
+ *
+ *  Every read below goes through an RPC that arrives in
+ *  `20260913110000_admin_money_and_communication.sql`. Until that migration is
+ *  pushed the function is simply not there, and PostgREST answers `42883`
+ *  (undefined_function) — which, thrown, is a 500 and a stack trace on a screen
+ *  an admin opened on purpose. That is the wrong answer to "you have not run
+ *  the migration yet": it looks like the app is broken when it is only
+ *  unfinished. So the missing function is caught by its own error code and the
+ *  desk says so in a sentence. Every other error still throws. */
+const UNDEFINED_FUNCTION = "42883";
+
+export interface DeskResult<T> {
+  rows: T;
+  /** the RPC this desk reads is not in the database yet */
+  needsMigration: boolean;
+}
+
+const missingFunction = (error: { code?: string } | null): boolean => error?.code === UNDEFINED_FUNCTION;
+
+export interface AdminPayment {
+  id: string;
+  kind: "order" | "subscription_auth" | "subscription_charge";
+  amountInr: number;
+  status: string;
+  method: string | null;
+  provider: string;
+  providerPaymentId: string | null;
+  createdAt: string;
+  payerId: string | null;
+  payerName: string;
+  payerEmail: string | null;
+  tenantId: string | null;
+  tenantName: string | null;
+  /** what the money was for, in the app's own words */
+  what: string;
+  refundedInr: number;
+}
+
+export async function findAdminPayments(
+  supabase: SupabaseClient,
+  input: { q?: string | null; kind?: string | null; status?: string | null; limit?: number } = {}
+): Promise<DeskResult<AdminPayment[]>> {
+  const { data, error } = await supabase.rpc("admin_payments", {
+    p_q: input.q ?? null,
+    p_kind: input.kind ?? null,
+    p_status: input.status ?? null,
+    p_limit: input.limit ?? 100,
+  });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.payments failed: ${error.message}`);
+  }
+  return {
+    needsMigration: false,
+    rows: ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r.id as string,
+      kind: r.kind as AdminPayment["kind"],
+      amountInr: n(r.amount_inr),
+      status: r.status as string,
+      method: (r.method as string) ?? null,
+      provider: (r.provider as string) ?? "cashfree",
+      providerPaymentId: (r.provider_payment_id as string) ?? null,
+      createdAt: r.created_at as string,
+      payerId: (r.payer_id as string) ?? null,
+      payerName: (r.payer_name as string) ?? "Someone",
+      payerEmail: (r.payer_email as string) ?? null,
+      tenantId: (r.tenant_id as string) ?? null,
+      tenantName: (r.tenant_name as string) ?? null,
+      what: (r.what as string) ?? "",
+      refundedInr: n(r.refunded_inr),
+    })),
+  };
+}
+
+export interface AdminRefund {
+  id: string;
+  amountInr: number;
+  status: string;
+  reason: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  decisionNote: string | null;
+  settledOffline: boolean;
+  providerRefundId: string | null;
+  learnerId: string | null;
+  learnerName: string;
+  tenantId: string | null;
+  tenantName: string | null;
+  classTitle: string;
+  /** days somebody has been waiting — the number that says which one to chase */
+  waitingDays: number;
+}
+
+export async function findAdminRefunds(
+  supabase: SupabaseClient,
+  input: { status?: string | null; limit?: number } = {}
+): Promise<DeskResult<AdminRefund[]>> {
+  const { data, error } = await supabase.rpc("admin_refunds", {
+    p_status: input.status ?? null,
+    p_limit: input.limit ?? 100,
+  });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.refunds failed: ${error.message}`);
+  }
+  return {
+    needsMigration: false,
+    rows: ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r.id as string,
+      amountInr: n(r.amount_inr),
+      status: r.status as string,
+      reason: (r.reason as string) ?? null,
+      createdAt: r.created_at as string,
+      decidedAt: (r.decided_at as string) ?? null,
+      decisionNote: (r.decision_note as string) ?? null,
+      settledOffline: Boolean(r.settled_offline),
+      providerRefundId: (r.provider_refund_id as string) ?? null,
+      learnerId: (r.learner_id as string) ?? null,
+      learnerName: (r.learner_name as string) ?? "Someone",
+      tenantId: (r.tenant_id as string) ?? null,
+      tenantName: (r.tenant_name as string) ?? null,
+      classTitle: (r.class_title as string) ?? "A class",
+      waitingDays: n(r.waiting_days),
+    })),
+  };
+}
+
+export interface AdminPayout {
+  id: string;
+  amountInr: number;
+  status: string;
+  method: string;
+  providerRef: string | null;
+  paidOn: string;
+  createdAt: string;
+  tenantId: string | null;
+  tenantName: string | null;
+  personId: string | null;
+  personName: string;
+}
+
+export async function findAdminPayouts(
+  supabase: SupabaseClient,
+  input: { status?: string | null; limit?: number } = {}
+): Promise<DeskResult<AdminPayout[]>> {
+  const { data, error } = await supabase.rpc("admin_payouts", {
+    p_status: input.status ?? null,
+    p_limit: input.limit ?? 100,
+  });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.payouts failed: ${error.message}`);
+  }
+  return {
+    needsMigration: false,
+    rows: ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r.id as string,
+      amountInr: n(r.amount_inr),
+      status: r.status as string,
+      method: (r.method as string) ?? "bank_transfer",
+      providerRef: (r.provider_ref as string) ?? null,
+      paidOn: r.paid_on as string,
+      createdAt: r.created_at as string,
+      tenantId: (r.tenant_id as string) ?? null,
+      tenantName: (r.tenant_name as string) ?? null,
+      personId: (r.person_id as string) ?? null,
+      personName: (r.person_name as string) ?? "Someone",
+    })),
+  };
+}
+
+export interface AdminMoneySummary {
+  capturedTodayInr: number;
+  capturedWeekInr: number;
+  capturedAllInr: number;
+  platformAllInr: number;
+  classesAllInr: number;
+  refundedAllInr: number;
+  refundsWaiting: number;
+  refundsOldestDays: number;
+  paymentsFailedWeek: number;
+  ordersUnpaid: number;
+  payoutsAllInr: number;
+  payoutsPending: number;
+  webhooksStuck: number;
+}
+
+const ZERO_MONEY: AdminMoneySummary = {
+  capturedTodayInr: 0, capturedWeekInr: 0, capturedAllInr: 0, platformAllInr: 0, classesAllInr: 0,
+  refundedAllInr: 0, refundsWaiting: 0, refundsOldestDays: 0, paymentsFailedWeek: 0,
+  ordersUnpaid: 0, payoutsAllInr: 0, payoutsPending: 0, webhooksStuck: 0,
+};
+
+export async function findAdminMoneySummary(supabase: SupabaseClient): Promise<DeskResult<AdminMoneySummary>> {
+  const { data, error } = await supabase.rpc("admin_money_summary");
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: ZERO_MONEY, needsMigration: true };
+    }
+    throw new Error(`admin.money failed: ${error.message}`);
+  }
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    needsMigration: false,
+    rows: {
+      capturedTodayInr: n(d.captured_today_inr),
+      capturedWeekInr: n(d.captured_week_inr),
+      capturedAllInr: n(d.captured_all_inr),
+      platformAllInr: n(d.platform_all_inr),
+      classesAllInr: n(d.classes_all_inr),
+      refundedAllInr: n(d.refunded_all_inr),
+      refundsWaiting: n(d.refunds_waiting),
+      refundsOldestDays: n(d.refunds_oldest_days),
+      paymentsFailedWeek: n(d.payments_failed_week),
+      ordersUnpaid: n(d.orders_unpaid),
+      payoutsAllInr: n(d.payouts_all_inr),
+      payoutsPending: n(d.payouts_pending),
+      webhooksStuck: n(d.webhooks_stuck),
+    },
+  };
+}
+
+export interface AdminCommunication {
+  notifications: {
+    today: number;
+    week: number;
+    all: number;
+    unread: number;
+    readPct: number;
+    byKind: Array<{ kind: string; n: number; readPct: number }>;
+  };
+  support: { open: number; closed: number; waitingOnUs: number; oldestWaitingDays: number; messagesWeek: number };
+  enquiries: { open: number; week: number; all: number };
+}
+
+const ZERO_COMMS: AdminCommunication = {
+  notifications: { today: 0, week: 0, all: 0, unread: 0, readPct: 0, byKind: [] },
+  support: { open: 0, closed: 0, waitingOnUs: 0, oldestWaitingDays: 0, messagesWeek: 0 },
+  enquiries: { open: 0, week: 0, all: 0 },
+};
+
+export async function findAdminCommunication(supabase: SupabaseClient): Promise<DeskResult<AdminCommunication>> {
+  const { data, error } = await supabase.rpc("admin_communication");
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: ZERO_COMMS, needsMigration: true };
+    }
+    throw new Error(`admin.communication failed: ${error.message}`);
+  }
+  const d = (data ?? {}) as {
+    notifications?: { today?: number; week?: number; all?: number; unread?: number; read_pct?: number; by_kind?: Array<{ kind: string; n: number; read_pct: number }> };
+    support?: { open?: number; closed?: number; waiting_on_us?: number; oldest_waiting_days?: number; messages_week?: number };
+    enquiries?: { open?: number; week?: number; all?: number };
+  };
+  return {
+    needsMigration: false,
+    rows: {
+      notifications: {
+        today: n(d.notifications?.today),
+        week: n(d.notifications?.week),
+        all: n(d.notifications?.all),
+        unread: n(d.notifications?.unread),
+        readPct: n(d.notifications?.read_pct),
+        byKind: (d.notifications?.by_kind ?? []).map((k) => ({ kind: k.kind, n: n(k.n), readPct: n(k.read_pct) })),
+      },
+      support: {
+        open: n(d.support?.open),
+        closed: n(d.support?.closed),
+        waitingOnUs: n(d.support?.waiting_on_us),
+        oldestWaitingDays: n(d.support?.oldest_waiting_days),
+        messagesWeek: n(d.support?.messages_week),
+      },
+      enquiries: { open: n(d.enquiries?.open), week: n(d.enquiries?.week), all: n(d.enquiries?.all) },
+    },
+  };
+}
+
+export interface AdminNotification {
+  id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  href: string | null;
+  readAt: string | null;
+  createdAt: string;
+  personId: string | null;
+  personName: string;
+}
+
+export async function findAdminRecentNotifications(
+  supabase: SupabaseClient,
+  input: { kind?: string | null; limit?: number } = {}
+): Promise<DeskResult<AdminNotification[]>> {
+  const { data, error } = await supabase.rpc("admin_recent_notifications", {
+    p_kind: input.kind ?? null,
+    p_limit: input.limit ?? 50,
+  });
+  if (error) {
+    if (missingFunction(error)) {
+      return { rows: [], needsMigration: true };
+    }
+    throw new Error(`admin.notifications failed: ${error.message}`);
+  }
+  return {
+    needsMigration: false,
+    rows: ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      id: r.id as string,
+      kind: r.kind as string,
+      title: r.title as string,
+      body: (r.body as string) ?? null,
+      href: (r.href as string) ?? null,
+      readAt: (r.read_at as string) ?? null,
+      createdAt: r.created_at as string,
+      personId: (r.person_id as string) ?? null,
+      personName: (r.person_name as string) ?? "Someone",
+    })),
+  };
+}

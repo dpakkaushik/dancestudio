@@ -1,4 +1,4 @@
-# RLS proof for Step 3 (classes): tenant writes own; public reads published only.
+﻿# RLS proof for Step 3 (classes): tenant writes own; public reads published only.
 # Reads keys from .env.local — run from the repo root: powershell -File scripts/rls-proof-classes.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a

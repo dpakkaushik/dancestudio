@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { decideOrgVerificationAction } from "@/features/admin/server-actions/admin";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
-import { PLATFORM_TINT, handleOf, isPlatform } from "@/lib/constants/socials";
+import { PLATFORM_TINT, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { ProofStrip } from "@/features/admin/components/ProofStrip";
 import { photoUrl } from "@/lib/media/photo";
@@ -32,8 +32,16 @@ function Links({ socials }: { socials: SocialLink[] }) {
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
       {socials.map((l) => {
         const tint = isPlatform(l.platform) ? PLATFORM_TINT[l.platform] : "#64748B";
+        /* THE ADMIN'S OWN SCREEN (11 Sep 2026). These links come from a business
+           ASKING to be verified — the least trustworthy source in the app, aimed
+           at the one account that can approve it. An address that is not http(s)
+           is not drawn. */
+        const href = safeHref(l.url);
+        if (!href) {
+          return null;
+        }
         return (
-          <a key={`${l.platform}-${l.url}`} href={l.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: `${tint}18`, border: `1px solid ${tint}55`, color: INK, textDecoration: "none", fontSize: 11.5, fontWeight: 800 }}>
+          <a key={`${l.platform}-${l.url}`} href={href} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: `${tint}18`, border: `1px solid ${tint}55`, color: INK, textDecoration: "none", fontSize: 11.5, fontWeight: 800 }}>
             <span style={{ color: tint }}>{l.platform}</span>
             <span style={{ color: SUB, fontWeight: 600 }}>{handleOf(l.url)}</span>
             <span aria-hidden="true" style={{ color: SUB }}>↗</span>

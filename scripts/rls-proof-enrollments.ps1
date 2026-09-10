@@ -1,4 +1,4 @@
-# RLS proof for Step 4 (enrollments): capacity + waitlist + isolation.
+﻿# RLS proof for Step 4 (enrollments): capacity + waitlist + isolation.
 # Reads keys from .env.local — run from the repo root: powershell -File scripts/rls-proof-enrollments.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a

@@ -77,7 +77,10 @@ export default async function DiscoverPage({
   /* every published class is read on every tab: the classes shelf needs them,
      and the style rail is ORDERED by how many classes each style has (4212) */
   const [allClasses, nearby, mine, following] = await Promise.all([
-    findPublishedClasses(supabase, 200),
+    /* narrowed to the city IN THE QUERY (11 Sep 2026): asking for the newest 200
+       nationally and filtering here made a city's classes disappear once the
+       platform passed 200 published classes — see repositories/classes.ts */
+    findPublishedClasses(supabase, 200, city),
     wantsBusinesses
       ? findNearbyTenants(supabase, {
           ...centre,

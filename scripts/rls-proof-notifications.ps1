@@ -1,4 +1,4 @@
-# Proof for Step 24 - notifications.
+﻿# Proof for Step 24 - notifications.
 #
 # The claims under test: a notification is raised WHERE THE FACT HAPPENS, by a
 # trigger, so every path that writes the fact raises it (this script never calls

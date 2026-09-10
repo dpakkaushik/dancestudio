@@ -165,16 +165,35 @@ export async function findClassById(
   return data ? toClass(data as unknown as ClassRow) : null;
 }
 
-/** Published classes with the business behind them — the learner listing. */
+/** Published classes with the business behind them — the learner listing.
+ *
+ *  `city` NARROWS IN THE QUERY, and it matters more than it looks (11 Sep 2026).
+ *  Discover used to ask for the 200 most recently created published classes
+ *  across the WHOLE COUNTRY and then keep the ones whose city matched, in
+ *  JavaScript. That works while the platform is small and fails silently the
+ *  moment it is not: once there are more than 200 published classes nationally,
+ *  the newest 200 can all be Delhi's, and Pune's classes simply stop appearing —
+ *  no error, no empty state, just a shorter list. The style rail is ordered by
+ *  how many classes each style has, so it goes wrong at the same moment and in
+ *  the same silence. Filtering on the tenant's city with an inner join keeps the
+ *  limit meaning what a limit should mean: the most of THIS list, not the most
+ *  of every list. */
 export async function findPublishedClasses(
   supabase: SupabaseClient,
-  limit = 50
+  limit = 50,
+  city?: string | null
 ): Promise<PublicClassListing[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, tenants (name, area, city, type)`)
+    .select(`${CLASS_COLUMNS}, tenants${city ? "!inner" : ""} (name, area, city, type)`)
     .eq("status", "published")
-    .is("deleted_at", null)
+    .is("deleted_at", null);
+
+  if (city) {
+    query = query.eq("tenants.city", city);
+  }
+
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(limit);
 

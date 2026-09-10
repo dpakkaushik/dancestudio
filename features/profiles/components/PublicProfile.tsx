@@ -17,7 +17,7 @@ import { ProfileShare } from "./ProfileShare";
 import { BusinessEditButton } from "./BusinessEditSheet";
 import { TenantFollowersButton } from "./TenantFollowersButton";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
-import { PLATFORM_TINT, handleOf, isPlatform } from "@/lib/constants/socials";
+import { PLATFORM_TINT, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { PlatformIcon } from "./profile-kit";
 
 /** A business's public page, lifted from prototype S_profiletab with
@@ -247,14 +247,21 @@ export function PublicProfile({
         {/* ── the links rail (10760): every public handle the business gave, WhatsApp included — a business's number is a public one ── */}
         {tenant.socials.length ? (
           <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 6px", alignItems: "center" }}>
-            {tenant.socials.map((l) => (
-              <a key={l.platform} href={l.url} target="_blank" rel="noopener noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, whiteSpace: "nowrap", background: CARD, border: `1px solid ${LINE}`, textDecoration: "none" }}>
-                <span style={{ flexShrink: 0, lineHeight: 0 }}>
-                  <PlatformIcon label={l.platform} size={15} />
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: isPlatform(l.platform) ? PLATFORM_TINT[l.platform] : "#5AC8FA" }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-              </a>
-            ))}
+            {tenant.socials.map((l) => {
+              /* an address that is not http(s) is not drawn at all (11 Sep 2026) */
+              const href = safeHref(l.url);
+              if (!href) {
+                return null;
+              }
+              return (
+                <a key={l.platform} href={href} target="_blank" rel="noopener noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, whiteSpace: "nowrap", background: CARD, border: `1px solid ${LINE}`, textDecoration: "none" }}>
+                  <span style={{ flexShrink: 0, lineHeight: 0 }}>
+                    <PlatformIcon label={l.platform} size={15} />
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: isPlatform(l.platform) ? PLATFORM_TINT[l.platform] : "#5AC8FA" }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+                </a>
+              );
+            })}
           </div>
         ) : null}
 

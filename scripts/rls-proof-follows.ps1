@@ -1,4 +1,4 @@
-# Proof for Step 15 - follows + public profiles.
+﻿# Proof for Step 15 - follows + public profiles.
 #
 # The claims under test: a listed business is readable by anybody and an
 # unlisted one by its members only (Step 3's line, now carrying a public page);

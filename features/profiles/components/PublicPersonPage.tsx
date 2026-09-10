@@ -12,7 +12,7 @@ import { ReportButton } from "@/features/reports/components/ReportButton";
 import { ProfileShare } from "./ProfileShare";
 import { CallButton, fmtFollowers } from "./PublicProfile";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
-import { handleOf, isPlatform } from "@/lib/constants/socials";
+import { handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
 import { Group, PlaceLink, PlatformIcon, ROLE_RING, Row, SchedIcon, TYPE, bigWhite } from "./profile-kit";
 
@@ -151,12 +151,19 @@ export function PublicPersonPage({
           <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "0 0 4px", paddingBottom: 2 }}>
             {profile.socials
               .filter((l) => l.platform !== "WhatsApp")
-              .map((l) => (
-                <a key={l.platform} href={l.url} target="_blank" rel="noopener noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, whiteSpace: "nowrap", background: CARD, border: `1px solid ${LINE}`, textDecoration: "none" }}>
-                  <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: "#5AC8FA" }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-                </a>
-              ))}
+              .map((l) => {
+                /* an address that is not http(s) is not drawn at all (11 Sep 2026) */
+                const href = safeHref(l.url);
+                if (!href) {
+                  return null;
+                }
+                return (
+                  <a key={l.platform} href={href} target="_blank" rel="noopener noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, whiteSpace: "nowrap", background: CARD, border: `1px solid ${LINE}`, textDecoration: "none" }}>
+                    <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#5AC8FA" }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+                  </a>
+                );
+              })}
           </div>
         ) : null}
         {profile.about ? (
