@@ -37,7 +37,7 @@ const Grid = ({ children }: { children: React.ReactNode }) => (
  *  never reads a person's row to draw a count. */
 export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: string }) {
   const w = pulse.waiting;
-  const todo = w.verifications + w.threads + w.reports + w.subscriptions + w.refunds + w.stuckWebhooks;
+  const todo = w.verifications + w.threads + w.reports + w.pastDue + w.refunds + w.stuckWebhooks;
   const day = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" }).format(new Date(nowIso));
 
   return (
@@ -56,10 +56,9 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         <Fig n={w.verifications} label="organizations to verify" href="/admin/verifications" tone={w.verifications > 0 ? "#F59E0B" : undefined} />
         <Fig n={w.threads} label="conversations to answer" href="/admin/support" tone={w.threads > 0 ? "#F59E0B" : undefined} />
         <Fig n={w.reports} label="reports to answer" href="/admin/reports" tone={w.reports > 0 ? "#EF4444" : undefined} />
-        {/* R14 (9 Sep 2026): a verified organization with no live subscription cannot
-            open a studio, and it is the admin who currently sets one up — so it is
-            work waiting, not a statistic. */}
-        <Fig n={w.subscriptions} label="subscriptions to set up" href="/admin/accounts" tone={w.subscriptions > 0 ? "#F59E0B" : undefined} />
+        {/* a renewal the bank refused is work waiting: three days of grace, then the
+            studio comes off Discover — the admin can see it coming (10 Sep 2026) */}
+        <Fig n={w.pastDue} label="renewals failing" href="/admin/subscriptions?status=past_due" tone={w.pastDue > 0 ? "#EF4444" : undefined} />
         <Fig n={w.refunds} label="refunds in the queue" tone={w.refunds > 0 ? "#EF4444" : undefined} />
       </Grid>
       {w.stuckWebhooks > 0 ? (
@@ -77,7 +76,6 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         <Fig n={pulse.accounts.orgs} label="organizations" href="/admin/accounts" />
         <Fig n={pulse.accounts.artists} label="on the Artist plan" />
         <Fig n={pulse.accounts.verifiedOrgs} label="verified organizations" />
-        <Fig n={pulse.accounts.subscribedOrgs} label="subscribed" href="/admin/accounts" />
         <Fig n={pulse.accounts.newThisWeek} label="new this week" />
         <Fig n={pulse.accounts.suspended} label="suspended" tone={pulse.accounts.suspended > 0 ? "#EF4444" : undefined} href="/admin/accounts" />
       </Grid>
@@ -89,6 +87,16 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         <Fig n={pulse.businesses.rooms} label="rooms" />
         <Fig n={pulse.businesses.listed} label="public" tone="#22C55E" href="/admin/businesses" />
         <Fig n={pulse.businesses.unlisted} label="not public yet" tone={pulse.businesses.unlisted > 0 ? "#F59E0B" : undefined} href="/admin/businesses" />
+        <Fig n={pulse.businesses.subscribedStudios} label="studios subscribed" href="/admin/subscriptions" />
+      </Grid>
+
+      <Head>SUBSCRIPTIONS</Head>
+      <Grid>
+        <Fig n={pulse.subscriptions.renewing} label="renewing on their own" href="/admin/subscriptions?status=active" tone="#22C55E" />
+        <Fig n={pulse.subscriptions.granted} label="granted, free" href="/admin/subscriptions" />
+        <Fig n={pulse.subscriptions.canceling} label="ending, not renewing" href="/admin/subscriptions?status=canceled" tone={pulse.subscriptions.canceling > 0 ? "#F59E0B" : undefined} />
+        <Fig n={pulse.subscriptions.pastDue} label="past due" href="/admin/subscriptions?status=past_due" tone={pulse.subscriptions.pastDue > 0 ? "#EF4444" : undefined} />
+        <Fig n={rupees(pulse.subscriptions.mrrInr)} label="a month, if every mandate holds" href="/admin/plans" />
         <Fig n={pulse.activity.crews} label="crews" />
       </Grid>
 
@@ -104,9 +112,9 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
 
       <Head>MONEY, ALL TIME</Head>
       <Grid>
-        <Fig n={rupees(pulse.money.capturedAllInr)} label="captured" />
+        <Fig n={rupees(pulse.money.capturedAllInr)} label="captured, everything" />
+        <Fig n={rupees(pulse.money.plansAllInr)} label="of it from plans — DanceOS's own" href="/admin/subscriptions" tone="#22C55E" />
         <Fig n={rupees(pulse.money.refundedAllInr)} label="refunded" />
-        <Fig n={pulse.money.payoutsPending} label="payouts in flight" />
       </Grid>
       {pulse.money.ordersUnpaid > 0 ? (
         <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8, lineHeight: 1.5 }}>
@@ -115,7 +123,7 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
       ) : null}
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
-        Money gets its own screen in a later phase — the figures above are read-only until then. Every decision you make is recorded in{" "}
+        Plan money has its own screen under Subscriptions; class money oversight (stuck orders, refund disputes) comes in a later phase. Every decision you make is recorded in{" "}
         <Link href="/admin/audit" style={{ color: INK, fontWeight: 800 }}>the audit log</Link>.
       </div>
     </div>

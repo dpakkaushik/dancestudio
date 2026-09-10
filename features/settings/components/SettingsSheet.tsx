@@ -9,7 +9,6 @@ import { endArtistPlanAction, updateTenantProfileAction } from "@/features/setti
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ArtistPlan } from "@/repositories/plans";
-import { PLAN_PRICE } from "@/repositories/plans";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { NotificationPrefs } from "@/types/notification";
 import { NOTIF_KINDS } from "@/types/notification";
@@ -205,7 +204,7 @@ export function SettingsSheet({
                 <span style={{ fontSize: 12, fontWeight: 900 }}>Artist tools</span>
                 {artistOn ? <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 999, background: "rgba(236,72,153,.18)", color: "#EC4899" }}>PRO ACTIVE</span> : <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 999, background: "var(--el)", color: SUB }}>PRO</span>}
               </span>
-              <span style={{ display: "block", fontSize: 9.5, color: SUB, marginTop: 1 }}>{artistOn && plan ? `teach · publish · earnings · until ${dateWords(plan.until)}` : `teach · publish · earnings · students · ${PLAN_PRICE.monthly.words}`}</span>
+              <span style={{ display: "block", fontSize: 9.5, color: SUB, marginTop: 1 }}>{artistOn && plan ? `teach · publish · earnings · until ${dateWords(plan.until)}` : "teach · publish · earnings · students"}</span>
             </span>
             <span aria-hidden="true" style={{ width: 40, height: 22, borderRadius: 11, flexShrink: 0, position: "relative", transition: "background .2s", background: artistOn ? "#EC4899" : "var(--el)", display: "inline-block" }}>
               <span style={{ position: "absolute", top: 2, left: artistOn ? 20 : 2, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .2s" }} />

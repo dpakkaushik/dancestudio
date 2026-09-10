@@ -3,29 +3,12 @@ import { PROOF_BUCKET, PROOF_URL_SECONDS, type ProofPhoto } from "@/lib/media/pr
 
 /** WHERE AN ORGANIZATION STANDS WITH DANCEOS (R13/R14/R16, 9 Sep 2026).
  *
- *  One read for the one strip that says it: the tick, the request and its
- *  reason, the links, the photos it has shown, whether the subscription is
- *  live, and — from the database rather than from arithmetic repeated here —
- *  the single sentence still standing between it and its first studio.
+ *  The reads behind the one strip on HOME that says it: the photos it has shown,
+ *  and — from the database rather than from arithmetic repeated here — the
+ *  single sentence still standing between it and creating a studio.
  *
- *  This lives on HOME, not inside the studios hub (the user's ask, 9 Sep 2026):
- *  where an organization stands, and its way of reaching a person about it, are
- *  the first things it should see, not something to go looking for. */
-
-export interface OrgSubscription {
-  active: boolean;
-  until: string | null;
-  plan: "granted" | "monthly" | "yearly" | null;
-}
-
-export interface OrgStanding {
-  verifiedAt: string | null;
-  socialsCount: number;
-  photos: ProofPhoto[];
-  subscription: OrgSubscription;
-  /** null when a studio may be created; otherwise the reason, from the database */
-  whyNoStudio: string | null;
-}
+ *  Subscriptions moved out of here on 10 Sep 2026: they are per STUDIO now
+ *  (`repositories/studioPlans.ts`), not per organization. */
 
 /** The photos, newest ordering last, each with a signed URL. The signing is one
  *  batched call; a path the bucket no longer holds comes back without a URL
@@ -88,35 +71,7 @@ async function signProof(
   return rows.map((r) => ({ id: r.id, path: r.path, url: urlByPath.get(r.path) ?? null }));
 }
 
-export async function findMyOrgSubscription(supabase: SupabaseClient): Promise<OrgSubscription> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { active: false, until: null, plan: null };
-  const { data, error } = await supabase
-    .from("org_plans")
-    .select("plan, until, ended_at")
-    .eq("org_id", user.id)
-    .is("deleted_at", null)
-    .is("ended_at", null)
-    .order("until", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    throw new Error(`org.subscription failed: ${error.message}`);
-  }
-  if (!data) return { active: false, until: null, plan: null };
-  const row = data as { plan: string; until: string };
-  /* the same clock the database uses: IST, date only */
-  const todayIst = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
-  return {
-    active: row.until >= todayIst,
-    until: row.until,
-    plan: row.plan as OrgSubscription["plan"],
-  };
-}
-
-/** The one sentence left between this organization and its first studio, or
+/** The one sentence left between this organization and CREATING a studio, or
  *  null. Asked of the database so the screen cannot disagree with the gate. */
 export async function findWhyNoStudio(supabase: SupabaseClient): Promise<string | null> {
   const { data, error } = await supabase.rpc("why_no_studio");
@@ -152,39 +107,15 @@ export async function removeProofPhoto(supabase: SupabaseClient, id: string): Pr
   }
 }
 
-export async function grantOrgSubscription(
-  supabase: SupabaseClient,
-  orgId: string,
-  months: number,
-  note: string | null
-): Promise<void> {
-  const { error } = await supabase.rpc("admin_grant_org_subscription", {
-    p_org_id: orgId,
-    p_months: months,
-    p_note: note,
-  });
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
-export async function endOrgSubscription(supabase: SupabaseClient, orgId: string, reason: string): Promise<void> {
-  const { error } = await supabase.rpc("admin_end_org_subscription", { p_org_id: orgId, p_reason: reason });
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
 export interface OrgStandingRow {
   orgId: string;
-  subscribed: boolean;
-  until: string | null;
-  plan: string | null;
   proofPhotos: number;
+  studios: number;
+  subscribedStudios: number;
 }
 
-/** Subscription and evidence figures for a page of organizations, for the
- *  admin accounts desk. One call for the whole page, not one per row. */
+/** Evidence and studio figures for a page of organizations, for the admin
+ *  accounts desk. One call for the whole page, not one per row. */
 export async function findAdminOrgStanding(
   supabase: SupabaseClient,
   orgIds: string[]
@@ -195,16 +126,13 @@ export async function findAdminOrgStanding(
   if (error) {
     throw new Error(`admin.orgStanding failed: ${error.message}`);
   }
-  ((data ?? []) as Array<{ org_id: string; subscribed: boolean; until: string | null; plan: string | null; proof_photos: number }>).forEach(
-    (r) => {
-      out.set(r.org_id, {
-        orgId: r.org_id,
-        subscribed: r.subscribed,
-        until: r.until,
-        plan: r.plan,
-        proofPhotos: r.proof_photos,
-      });
-    }
-  );
+  ((data ?? []) as Array<{ org_id: string; proof_photos: number; studios: number; subscribed_studios: number }>).forEach((r) => {
+    out.set(r.org_id, {
+      orgId: r.org_id,
+      proofPhotos: Number(r.proof_photos),
+      studios: Number(r.studios),
+      subscribedStudios: Number(r.subscribed_studios),
+    });
+  });
   return out;
 }

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setTenantVisibilityAction } from "@/features/admin/server-actions/moderation";
+import { endSubscriptionAction, grantSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
+import { dateWords } from "@/features/settings/components/settings-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -42,6 +44,9 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
   const [term, setTerm] = useState(q);
   const [toast, setToast] = useState<string | null>(null);
   const [unlisting, setUnlisting] = useState<string | null>(null);
+  const [granting, setGranting] = useState<string | null>(null);
+  const [ending, setEnding] = useState<string | null>(null);
+  const [months, setMonths] = useState(12);
   const [reason, setReason] = useState("");
   const [pending, start] = useTransition();
 
@@ -49,6 +54,34 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
     setToast(m);
     setTimeout(() => setToast(null), 2800);
   };
+
+  const closeSheets = () => {
+    setUnlisting(null);
+    setGranting(null);
+    setEnding(null);
+    setReason("");
+  };
+
+  /* comping a studio a period (10 Sep 2026): the row says granted, renews
+     nothing, and the studio goes public if its organization is verified */
+  const grant = (b: AdminBusiness) =>
+    start(async () => {
+      const out = await grantSubscriptionAction({ kind: "studio", subjectId: b.id, months, note: reason.trim() || null });
+      if (out.error) return fire(out.error);
+      closeSheets();
+      fire(`${b.name} is subscribed for ${months} month${months === 1 ? "" : "s"} — nothing charged, the owner has been told`);
+      router.refresh();
+    });
+
+  const endSub = (b: AdminBusiness) =>
+    start(async () => {
+      if (!b.subscriptionId) return fire("That studio has no subscription");
+      const out = await endSubscriptionAction({ subscriptionId: b.subscriptionId, reason: reason.trim() });
+      if (out.error) return fire(out.error);
+      closeSheets();
+      fire(`${b.name}'s subscription has ended — the owner has been told why`);
+      router.refresh();
+    });
 
   const move = (b: AdminBusiness, visibility: "listed" | "unlisted", why?: string) =>
     start(async () => {
@@ -88,7 +121,8 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {businesses.map((b) => {
             const live = b.visibility === "listed";
-            const blockedFromListing = !live && b.type === "studio" && !b.ownerVerified;
+            const blockedFromListing = !live && b.type === "studio" && (!b.ownerVerified || !(b.subStatus && ["active", "past_due", "canceled"].includes(b.subStatus)));
+            const subLive = b.type === "studio" && b.subStatus !== null && ["active", "past_due", "canceled"].includes(b.subStatus);
             return (
               <div key={b.id} data-testid="admin-business" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${live ? "#22C55E" : "#F59E0B"}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
@@ -109,6 +143,17 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
                       </span>
                       <span style={{ ...chip, background: live ? "#DCFCE7" : "#FEF3C7", color: live ? "#15803D" : "#92400E" }}>{live ? "PUBLIC" : "NOT PUBLIC"}</span>
                       {b.ownerSuspended ? <span style={{ ...chip, background: "#FEE2E2", color: "#B42318" }}>OWNER SUSPENDED</span> : null}
+                      {/* the studio's own subscription (10 Sep 2026) */}
+                      {b.type === "studio" ? (
+                        subLive ? (
+                          <span style={{ ...chip, background: b.subStatus === "past_due" ? "#FEE2E2" : "#DCFCE7", color: b.subStatus === "past_due" ? "#B42318" : "#15803D" }}>
+                            {b.subStatus === "past_due" ? "PAST DUE" : b.subGranted ? "GRANTED" : b.subRenews ? "SUBSCRIBED · RENEWS" : "SUBSCRIBED · ENDING"}
+                            {b.subUntil ? ` · ${dateWords(b.subUntil)}` : ""}
+                          </span>
+                        ) : (
+                          <span style={{ ...chip, background: "#FEF3C7", color: "#92400E" }}>{b.subStatus === "pending_auth" ? "MANDATE NOT AUTHORISED" : "NO SUBSCRIPTION"}</span>
+                        )
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -125,7 +170,42 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
                   {b.ownerId ? ` · ${b.ownerRole === "org" ? "organization" : "user"}${b.ownerVerified ? ", verified" : ", not verified"}` : ""}
                 </div>
 
-                {unlisting === b.id ? (
+                {granting === b.id ? (
+                  <div style={{ marginTop: 9 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>HOW LONG</div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
+                      {[1, 3, 6, 12].map((m) => (
+                        <button key={m} type="button" onClick={() => setMonths(m)} aria-pressed={months === m} style={{ ...btn, background: months === m ? "var(--text)" : CARD, color: months === m ? "var(--solid)" : SUB, border: `1px solid ${months === m ? "var(--text)" : EL}` }}>
+                          {m === 12 ? "1 year" : `${m} month${m === 1 ? "" : "s"}`}
+                        </button>
+                      ))}
+                    </div>
+                    <input aria-label={`Note on ${b.name}'s subscription`} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="A note for the log (optional)" style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit" }} />
+                    <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
+                      <button type="button" disabled={pending} onClick={() => grant(b)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Confirm granting ${b.name} a subscription`}>
+                        {pending ? "Granting…" : "Grant it"}
+                      </button>
+                      <button type="button" onClick={closeSheets} style={btn}>Cancel</button>
+                    </div>
+                    <div style={{ fontSize: 10, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      A comp: nothing is charged and it does not renew — the owner is reminded three days before it ends. The log says so.
+                    </div>
+                  </div>
+                ) : ending === b.id ? (
+                  <div style={{ marginTop: 9 }}>
+                    <label htmlFor={`endsub-${b.id}`} style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>WHY — THE OWNER READS THIS</label>
+                    <textarea id={`endsub-${b.id}`} value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} placeholder="Why it is ending now, in a sentence." style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }} />
+                    <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
+                      <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => endSub(b)} style={{ ...btn, background: "#EF4444", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm ending ${b.name}'s subscription`}>
+                        {pending ? "Ending…" : "End it now"}
+                      </button>
+                      <button type="button" onClick={closeSheets} style={btn}>Cancel</button>
+                    </div>
+                    <div style={{ fontSize: 10, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                      A sanction: access stops today, the mandate is cancelled, and the studio comes off Discover.
+                    </div>
+                  </div>
+                ) : unlisting === b.id ? (
                   <div style={{ marginTop: 9 }}>
                     <label htmlFor={`why-${b.id}`} style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>WHY — THE OWNER READS THIS</label>
                     <textarea
@@ -152,13 +232,26 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
                       </button>
                     ) : blockedFromListing ? (
                       <span style={{ fontSize: 10.5, color: MUTED, alignSelf: "center", lineHeight: 1.4 }}>
-                        Its organization is not verified — verify that first, or its studios cannot be public.
+                        {!b.ownerVerified
+                          ? "Its organization is not verified — verify that first, or its studios cannot be public."
+                          : "It has no active subscription — its owner subscribes it, or grant one below."}
                       </span>
                     ) : (
                       <button type="button" disabled={pending} onClick={() => move(b, "listed")} style={{ ...btn, color: "#15803D" }} aria-label={`Put ${b.name} back on Discover`}>
                         Put back on Discover
                       </button>
                     )}
+                    {b.type === "studio" && !b.ownerSuspended ? (
+                      subLive ? (
+                        <button type="button" onClick={() => { closeSheets(); setEnding(b.id); }} style={{ ...btn, color: "#B42318" }} aria-label={`End ${b.name}'s subscription`}>
+                          End subscription
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => { closeSheets(); setMonths(12); setGranting(b.id); }} style={{ ...btn, color: "#15803D" }} aria-label={`Grant ${b.name} a subscription`}>
+                          Grant subscription
+                        </button>
+                      )
+                    ) : null}
                   </div>
                 )}
               </div>

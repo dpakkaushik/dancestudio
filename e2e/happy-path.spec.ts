@@ -261,21 +261,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await request.getByRole("button", { name: "Approve E2E Owner" }).click();
     await expect(admin.getByText("E2E Owner verified — its studios are live")).toBeVisible();
 
-    // ---- R14: verified is HALF the gate — the subscription is the other half -
-    await owner.goto("/business");
-    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toContainText(
-      "Your DanceOS subscription is not active"
-    );
+    // ---- the Accounts desk reads the organization's standing -----------------
     await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Owner")}`);
     const orgAccount = admin.getByTestId("admin-account").filter({ hasText: "E2E Owner" });
-    await expect(orgAccount).toContainText("NO SUBSCRIPTION");
     await expect(orgAccount).toContainText("5 PHOTOS");
-    await orgAccount.getByRole("button", { name: "Set up E2E Owner's subscription" }).click();
-    await admin.getByRole("button", { name: "Confirm the subscription for E2E Owner" }).click();
-    // nothing is charged — no price has been set, and the toast says so
-    await expect(admin.getByText(/can open studios — 12 months, nothing charged/)).toBeVisible({ timeout: 15_000 });
+    await expect(orgAccount).toContainText("0/0 STUDIOS SUBSCRIBED");
 
-    // ---- create the studio, which is public the moment it exists -----------
+    // ---- create the studio: verified opens the door (10 Sep 2026), and the
+    // ---- studio is born PRIVATE until its OWN subscription is live ----------
     await owner.goto("/business");
     await owner.getByRole("button", { name: "Add studio" }).click();
     await owner.locator('input[name="name"]').fill(studioName);
@@ -291,6 +284,29 @@ test.describe.serial("DanceOS, end to end", () => {
     // the action refreshes the hub in place — the new studio is a row now
     const studioRow = owner.getByText(studioName, { exact: true });
     await expect(studioRow).toBeVisible();
+
+    // ---- one subscription PER STUDIO (10 Sep 2026) ---------------------------
+    // Under the row: NOT PUBLIC, the database's own sentence, and Subscribe at
+    // the price list's price. The paid door is Cashfree's mandate window, which
+    // no browser test drives; the admin's grant is the other door, and it
+    // charges nothing — the Businesses desk, one studio at a time.
+    const studioStrip = owner.getByTestId("studio-subscription");
+    await expect(studioStrip.getByText("NOT PUBLIC", { exact: true })).toBeVisible();
+    await expect(studioStrip).toContainText("Each studio has its own subscription");
+    await expect(studioStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
+    await admin.goto(`/admin/businesses?q=${encodeURIComponent(studioName)}`);
+    const studioCard = admin.getByTestId("admin-business").filter({ hasText: studioName });
+    await expect(studioCard).toContainText("NO SUBSCRIPTION");
+    await studioCard.getByRole("button", { name: `Grant ${studioName} a subscription` }).click();
+    await admin.getByRole("button", { name: `Confirm granting ${studioName} a subscription` }).click();
+    await expect(admin.getByText(`${studioName} is subscribed for 12 months — nothing charged, the owner has been told`)).toBeVisible({ timeout: 15_000 });
+    // the studio is public the moment its subscription is, and the row says so
+    await owner.goto("/business");
+    await expect(owner.getByTestId("studio-subscription").getByText("PUBLIC", { exact: true })).toBeVisible();
+    await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
+    // Home's timeline counts it
+    await owner.goto("/");
+    await expect(owner.getByRole("status", { name: /^Verification:/ })).toContainText("your studio is subscribed");
 
     // an admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the panel is
     // its whole app, and the chrome draws it no tab bar, only a way out
@@ -344,11 +360,20 @@ test.describe.serial("DanceOS, end to end", () => {
     // ---- the trainer signs up and finds the invite waiting for them --------
     trainerId = await signUp(trainer, trainerEmail);
     await onboard(trainer, "E2E Trainer", "User", "Pune");
-    // Pro is the plan, not a role (8 Sep 2026): the trainer takes it now, so the
-    // word every later screen prints beside their name is ARTIST
+    // Pro is the plan, not a role (8 Sep 2026): the trainer gets it now, so the
+    // word every later screen prints beside their name is ARTIST. Since 10 Sep
+    // 2026 the plan is ₹700 a month through Cashfree's mandate window, which no
+    // browser test drives — the admin's grant is the other door, from the
+    // Accounts desk, and it charges nothing
     await trainer.goto("/subscription");
-    await trainer.getByRole("button", { name: /^Subscribe · / }).click();
-    await expect(trainer.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByRole("button", { name: /^Subscribe · ₹700\/mo$/ })).toBeVisible();
+    await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Trainer")}`);
+    const trainerAccount = admin.getByTestId("admin-account").filter({ hasText: "E2E Trainer" });
+    await trainerAccount.getByRole("button", { name: "Grant E2E Trainer the Artist plan" }).click();
+    await admin.getByRole("button", { name: "Confirm the Artist plan for E2E Trainer" }).click();
+    await expect(admin.getByText("E2E Trainer has the Artist plan for 12 months — nothing charged")).toBeVisible({ timeout: 15_000 });
+    await trainer.goto("/subscription");
+    await expect(trainer.getByText("Active · granted")).toBeVisible({ timeout: 15_000 });
     await trainer.goto("/");
     const askCard = trainer.getByRole("link", { name: new RegExp(`${studioName} wants you on the team`) });
     await expect(askCard).toBeVisible();
@@ -1064,24 +1089,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("button", { name: "Verification" }).click();
     await expect(trainer.getByText("Not verified yet")).toBeVisible();
     // Artist tools is the Artist PLAN's switch (8855), and the plan has been live
-    // since the trainer took it on day one — so the strip reads PRO ACTIVE, and
+    // since the trainer got it on day one — so the strip reads PRO ACTIVE, and
     // pressing it ENDS the plan
     await trainer.goto("/profile?settings=1");
     const settings2 = trainer.getByRole("dialog", { name: "Settings" });
     await expect(settings2.getByText("PRO ACTIVE")).toBeVisible();
     await expect(settings2.getByRole("link", { name: /Subscription/ })).toBeVisible();
-    // ending the plan puts the toolset away — the badge reads USER, and the ROLE
-    // never moved (8 Sep 2026: Pro is a row, not a role)
+    // 10 Sep 2026: ENDING means stop renewing, the way every real subscription
+    // works — the tools stay on until the period paid for is over, so the badge
+    // still reads ARTIST, and the plan's own screen says it is ending. The ROLE
+    // never moved either way (8 Sep 2026: Pro is a row, not a role)
     await settings2.getByRole("button", { name: "Artist tools" }).click();
-    await expect(trainer.getByText("USER", { exact: true })).toBeVisible({ timeout: 15_000 });
-    // locked, the strip opens the plan — free during the pilot
-    await trainer.goto("/profile?settings=1");
-    await trainer.getByRole("dialog", { name: "Settings" }).getByRole("button", { name: "Artist tools" }).click();
-    await expect(trainer).toHaveURL(/\/subscription/);
-    await trainer.getByRole("button", { name: /^Subscribe · / }).click();
-    await expect(trainer.getByText("ACTIVE", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await expect(trainer.getByText("Active until")).toBeVisible();
-    // and taking it again makes the same profile an artist again — never a second identity
+    await expect(trainer.getByRole("status")).toContainText("Artist tools off", { timeout: 15_000 });
+    await trainer.goto("/subscription");
+    await expect(trainer.getByText("Active · ending")).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByText(/Stays on until .*, then stops\. Nothing more will be charged\./)).toBeVisible();
+    await expect(trainer.getByText("This period does not renew. Once it ends you can subscribe again from here.")).toBeVisible();
+    // what was paid for stands: the same profile is still an artist
     await trainer.goto("/profile");
     await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible({ timeout: 15_000 });
 

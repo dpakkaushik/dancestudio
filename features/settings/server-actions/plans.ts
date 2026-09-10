@@ -4,13 +4,22 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { activateArtistPlan, endArtistPlan } from "@/repositories/plans";
+import { isCashfreeConfigured } from "@/lib/cashfree/api";
+import { cancelCashfreeSubscription } from "@/lib/cashfree/subscriptions";
+import { activateArtistPlan } from "@/repositories/plans";
+import { cancelMySubscription, findMyArtistSubscription } from "@/repositories/subscriptions";
 import { updateTenantProfile } from "@/repositories/tenants";
 
 /** DanceOS Pro · Artist (S_subscr 16935): the plan's two doors, and the
  *  business profile's one (About / Since / phone / links / enquiry types / the
  *  accepted-from-students switches — S_payments 16612, the enquiry-types sheet
- *  9000). The RPCs re-check every rule; the actions check the shape. */
+ *  9000). The RPCs re-check every rule; the actions check the shape.
+ *
+ *  Since 10 Sep 2026 the plan is a recurring subscription. `activate` is only
+ *  the FREE path (the RPC refuses a priced plan, naming the price — a priced
+ *  plan is set up through `startSubscriptionAction`), and `end` means STOP
+ *  RENEWING: the tools stay on until the period paid for is over, and the
+ *  Cashfree mandate is cancelled so nothing more is charged. */
 
 const planSchema = z.object({ plan: z.enum(["monthly", "yearly"]) });
 
@@ -40,7 +49,18 @@ export async function endArtistPlanAction(): Promise<{ error: string | null }> {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   try {
-    await endArtistPlan(supabase);
+    const live = await findMyArtistSubscription(supabase);
+    if (!live || live.status === "expired") {
+      return { error: null };
+    }
+    const row = await cancelMySubscription(supabase, live.id);
+    if (row.providerSubscriptionId && !row.granted && isCashfreeConfigured()) {
+      try {
+        await cancelCashfreeSubscription(row.providerSubscriptionId);
+      } catch {
+        /* our row already says it will not renew; the nightly clock ends it on the date */
+      }
+    }
     revalidatePath("/subscription");
     revalidatePath("/profile");
     revalidatePath("/");

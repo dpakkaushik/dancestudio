@@ -12,6 +12,7 @@ import {
   confirmCheckoutAction,
   startCheckoutAction,
 } from "@/features/payments/server-actions/payments";
+import { openCashfreeCheckout, type CashfreeCheckoutResult } from "@/lib/cashfree/checkout-client";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 
 /** HOW YOU ARE PAYING — the two-step booking flow lifted from prototype S_class
@@ -23,40 +24,8 @@ import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
-/* Cashfree JS SDK v3 (sdk.cashfree.com/js/v3/cashfree.js): a global factory,
-   one checkout() call that opens the modal and resolves when it closes */
-interface CashfreeCheckoutResult {
-  error?: { message?: string };
-  redirect?: boolean;
-  paymentDetails?: { paymentMessage?: string };
-}
-interface CashfreeInstance {
-  checkout: (options: { paymentSessionId: string; redirectTarget: "_modal" | "_self" | "_blank" }) => Promise<CashfreeCheckoutResult>;
-}
-
-declare global {
-  interface Window {
-    Cashfree?: (options: { mode: "sandbox" | "production" }) => CashfreeInstance;
-  }
-}
-
-let checkoutLoader: Promise<void> | null = null;
-const loadCheckoutJs = (): Promise<void> => {
-  if (typeof window !== "undefined" && window.Cashfree) {
-    return Promise.resolve();
-  }
-  checkoutLoader ??= new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
-    script.onload = () => resolve();
-    script.onerror = () => {
-      checkoutLoader = null;
-      reject(new Error("Could not load the payment window — check your connection"));
-    };
-    document.body.appendChild(script);
-  });
-  return checkoutLoader;
-};
+/* the Cashfree JS SDK v3 loader lives in lib/cashfree/checkout-client, shared
+   with the subscription button since 10 Sep 2026 */
 
 const sheetBackdrop: React.CSSProperties = {
   position: "fixed",
@@ -171,23 +140,10 @@ export function PayFlow({
       setError(res.error ?? "Could not start the payment");
       return;
     }
-    try {
-      await loadCheckoutJs();
-    } catch (loadError: unknown) {
-      setBusy(false);
-      setError(loadError instanceof Error ? loadError.message : "Could not load the payment window");
-      return;
-    }
-    if (!window.Cashfree) {
-      setBusy(false);
-      setError("Could not load the payment window");
-      return;
-    }
     const checkout = res.checkout;
-    const cashfree = window.Cashfree({ mode: checkout.mode });
     let result: CashfreeCheckoutResult;
     try {
-      result = await cashfree.checkout({ paymentSessionId: checkout.paymentSessionId, redirectTarget: "_modal" });
+      result = await openCashfreeCheckout(checkout.paymentSessionId, checkout.mode);
     } catch (openError: unknown) {
       setBusy(false);
       setError(openError instanceof Error ? openError.message : "Could not open the payment window");

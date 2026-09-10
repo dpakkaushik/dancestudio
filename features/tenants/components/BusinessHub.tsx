@@ -1,13 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useState, useTransition } from "react";
+import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
+import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
+import { dateWords } from "@/features/settings/components/settings-kit";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { DOS_CITIES } from "@/lib/constants/cities";
 import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
+import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
+import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { MyMembership } from "@/repositories/tenants";
 import type { ProfileRole } from "@/types/profile";
 import { DOS_TOOLS, SHEET_ANIMATION, dosToolPaint } from "./biz-kit";
@@ -97,6 +103,8 @@ export function BusinessHub({
   isArtist,
   whyNoStudio,
   eventsHostId = null,
+  studioSubscriptions = {},
+  studioPrice = null,
 }: {
   memberships: MyMembership[];
   roomCounts: Record<string, number>;
@@ -109,7 +117,27 @@ export function BusinessHub({
   whyNoStudio: string | null;
   /** R15: the organization's own events host — ONE desk, not one per studio */
   eventsHostId?: string | null;
+  /** 10 Sep 2026: each studio's own subscription, and the sentence between it and Discover */
+  studioSubscriptions?: Record<string, StudioSubscriptionState>;
+  /** what one studio costs, from the price list; null when none is on offer */
+  studioPrice?: PlanCatalogRow | null;
 }) {
+  const router = useRouter();
+  const [toast, setToast] = useState<string | null>(null);
+  const [stopping, setStopping] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const fire = (m: string) => {
+    setToast(m);
+    setTimeout(() => setToast(null), 2800);
+  };
+  const stopRenewing = (subscriptionId: string, name: string) =>
+    start(async () => {
+      const out = await cancelSubscriptionAction({ subscriptionId });
+      if (out.error) return fire(out.error);
+      setStopping(null);
+      fire(out.until ? `${name} stays on Discover until ${dateWords(out.until)}, then stops` : "Cancelled");
+      router.refresh();
+    });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
@@ -221,6 +249,68 @@ export function BusinessHub({
     );
   };
 
+  /* ── EACH STUDIO'S OWN SUBSCRIPTION (10 Sep 2026): under its row, where it
+        stands and the one thing to do about it. Public = a live subscription
+        under a verified organization; the sentence is the database's. ── */
+  const studioStrip = (t: MyMembership["tenant"]) => {
+    const st = studioSubscriptions[t.id];
+    if (!st) return null;
+    const s = st.subscription;
+    const live = Boolean(s?.hasAccess);
+    const isPublic = st.whyNotPublic === null;
+    const until = s?.currentPeriodEnd ? dateWords(s.currentPeriodEnd) : null;
+    const standing = !s || !live
+      ? null
+      : s.status === "past_due"
+        ? { word: "PAYMENT PROBLEM", tone: "#EF4444", line: `The renewal did not go through — Cashfree is retrying; you keep Discover for three days past ${until}.` }
+        : s.cancelAtPeriodEnd || s.status === "canceled"
+          ? { word: "ENDING", tone: "#F59E0B", line: `Stays on until ${until}, then stops. Nothing more will be charged.` }
+          : s.granted
+            ? { word: "GRANTED", tone: "#22C55E", line: `DanceOS set this up until ${until}. It does not renew on its own.` }
+            : { word: "RENEWS", tone: "#22C55E", line: `Renews ${s.nextChargeOn ? dateWords(s.nextChargeOn) : until ?? ""} at ${priceWords(s.priceInr, s.period)} — you are told a day before each charge.` };
+    return (
+      <div data-testid="studio-subscription" style={{ margin: "-4px 0 10px", padding: "9px 12px 10px", background: CARD, border: `1px solid ${EL}`, borderTop: "none", borderRadius: "0 0 14px 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: isPublic ? "#DCFCE7" : "#FEF3C7", color: isPublic ? "#15803D" : "#92400E" }}>
+            {isPublic ? "PUBLIC" : "NOT PUBLIC"}
+          </span>
+          {standing ? (
+            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: `${standing.tone}22`, color: standing.tone }}>{standing.word}</span>
+          ) : null}
+        </div>
+        <div style={{ fontSize: 10.5, color: SUB, marginTop: 5, lineHeight: 1.5 }}>
+          {standing ? standing.line : st.whyNotPublic ?? "On Discover."}
+        </div>
+        <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
+          {!live && studioPrice ? (
+            <SubscribeButton
+              planKey={studioPrice.key}
+              tenantId={t.id}
+              label={`Subscribe · ${priceWords(studioPrice.priceInr, studioPrice.period)}`}
+              onDone={fire}
+              style={{ background: ACCENT }}
+            />
+          ) : null}
+          {s && live && s.renews ? (
+            stopping === s.id ? (
+              <>
+                <span style={{ fontSize: 10.5, color: SUB }}>Stop renewing? It stays on until {until}.</span>
+                <button type="button" disabled={pending} onClick={() => stopRenewing(s.id, t.name)} style={{ ...pill, padding: "7px 12px", background: "#EF4444", color: "#fff" }}>
+                  {pending ? "…" : "Yes, stop"}
+                </button>
+                <button type="button" onClick={() => setStopping(null)} style={{ ...pill, padding: "7px 12px", background: LILAC, border: `1px solid ${EL}`, color: INK }}>Keep</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setStopping(s.id)} style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 10.5, fontWeight: 800, color: SUB, textDecoration: "underline", cursor: "pointer" }} aria-label={`Stop ${t.name} renewing`}>
+                Stop renewing
+              </button>
+            )
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   const setRoom = (i: number, patch: Partial<RoomDraft>) =>
     setRooms((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
@@ -277,7 +367,12 @@ export function BusinessHub({
           <>
             <Head>YOUR STUDIOS</Head>
             {myStudios.length ? (
-              myStudios.map((t) => row(t, true))
+              myStudios.map((t) => (
+                <div key={t.id}>
+                  {row(t, true)}
+                  {studioStrip(t)}
+                </div>
+              ))
             ) : (
               <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>
                 {gateShut
@@ -560,6 +655,7 @@ export function BusinessHub({
           </div>
         </div>
       )}
+      {toast ? <div role="status" style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#241B33", color: "#fff", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 700, maxWidth: 360, textAlign: "center" }}>{toast}</div> : null}
     </div>
   );
 }

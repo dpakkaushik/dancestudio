@@ -20,10 +20,13 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
  *   8. both decisions are in the audit log, as sentences;
  *   9. putting it back is one press, and the studio is on Discover again.
  *
- * The first segment also walks R14's gate (9 Sep 2026) in the order a real
- * organization meets it: no studio at all while it is unverified, no studio
- * while it is verified but unsubscribed, and then a studio that is public the
- * moment it exists.
+ * The first segment also walks R14's gate in the order a real organization
+ * meets it (re-cut 10 Sep 2026 for per-studio subscriptions): no studio at all
+ * while it is unverified; once verified, a studio that is born PRIVATE with its
+ * own Subscribe button; and the studio public the moment an admin grants that
+ * studio's subscription — the comp path, which charges nothing. (The paid path
+ * is Cashfree's mandate window, which no browser test drives; the webhook spec
+ * proves what its events do.)
  *
  * Sign-up uses the admin generate_link API, so no inbox is needed. Everything
  * created carries a stamp and is deleted in afterAll.
@@ -188,20 +191,9 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await admin.getByTestId("verification-request").filter({ hasText: orgName }).getByRole("button", { name: `Approve ${orgName}` }).click();
     await expect(admin.getByText(`${orgName} verified — its studios are live`)).toBeVisible({ timeout: 15_000 });
 
-    // verified is only half of the gate: the subscription is the other half
-    await owner.goto("/business");
-    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toContainText(
-      "Your DanceOS subscription is not active"
-    );
-    await adminGoto(admin, adminEmail(), `/admin/accounts?q=${encodeURIComponent(orgName)}`);
-    const account = admin.getByTestId("admin-account").filter({ hasText: orgName });
-    await expect(account).toContainText("NO SUBSCRIPTION");
-    await account.getByRole("button", { name: `Set up ${orgName}'s subscription` }).click();
-    await admin.getByRole("button", { name: `Confirm the subscription for ${orgName}` }).click();
-    await expect(admin.getByText(/can open studios — 12 months, nothing charged/)).toBeVisible({ timeout: 15_000 });
-
-    // now the door exists, and what it makes is public straight away — a studio
-    // is no longer created and left private to wait for something
+    // verified opens the door (10 Sep 2026: verification alone gates CREATING a
+    // studio) — but what it makes is born PRIVATE, and goes public on its OWN
+    // subscription, one per studio
     await owner.goto("/business");
     await owner.getByRole("button", { name: "Add studio" }).click();
     await owner.locator('input[name="name"]').fill(studioName);
@@ -212,6 +204,26 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.getByLabel("Room 1 name").fill("Studio A");
     await owner.getByRole("button", { name: "Create studio" }).click();
     await expect(owner.getByText(studioName, { exact: true })).toBeVisible();
+    // under the row: where the studio stands, in the database's own sentence,
+    // and the one thing to do about it — the real door is Cashfree's mandate
+    const strip = owner.getByTestId("studio-subscription");
+    await expect(strip.getByText("NOT PUBLIC", { exact: true })).toBeVisible();
+    await expect(strip).toContainText("Each studio has its own subscription");
+    await expect(strip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
+
+    // the comp path is the admin's, from the Businesses desk — and it charges nothing
+    await adminGoto(admin, adminEmail(), `/admin/businesses?q=${encodeURIComponent(studioName)}`);
+    const business = admin.getByTestId("admin-business").filter({ hasText: studioName });
+    await expect(business).toContainText("NOT PUBLIC");
+    await expect(business).toContainText("NO SUBSCRIPTION");
+    await business.getByRole("button", { name: `Grant ${studioName} a subscription` }).click();
+    await admin.getByRole("button", { name: `Confirm granting ${studioName} a subscription` }).click();
+    await expect(admin.getByText(`${studioName} is subscribed for 12 months — nothing charged, the owner has been told`)).toBeVisible({ timeout: 15_000 });
+
+    // and the studio is on Discover the moment its subscription is
+    await owner.goto("/business");
+    await expect(owner.getByTestId("studio-subscription").getByText("PUBLIC", { exact: true })).toBeVisible();
+    await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
 
     // the studio is findable the way a dancer finds it, with nothing in between
     dancerId = await signUp(dancer, `mod-dancer-${stamp}@example.com`);

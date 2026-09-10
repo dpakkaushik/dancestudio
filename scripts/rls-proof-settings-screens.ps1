@@ -1,11 +1,14 @@
 # Proof for the settings-screens slice (migrations 20260830150000 + 20260830180000):
 # the Artist plan, the business's own words, and the tick nobody can give themselves.
 #
-# The claims under test: a fresh dancer has no plan; activating one grants a
-# period from today at Rs 0 (the pilot) and makes the same profile an artist;
-# activating again EXTENDS from the current end, never from today; a plan is its
-# holder's to read and nobody else's, and there is no direct write; ending it
-# puts the toolset away and the role back; the business's About / Since / phone /
+# The claims under test (the plan half re-cut 10 Sep 2026, when the Artist plan
+# became a PAID subscription - Rs 700 a month through a Cashfree mandate): a fresh
+# dancer has no plan; the FREE path refuses while the price list says the plan
+# costs money, naming the price; an admin's grant reads active at Rs 0 and the
+# role stays user (Pro is the plan, not a role); a plan is its holder's to read
+# and nobody else's, and there is no direct write; the database itself refuses
+# a second live plan for one person; ENDING means stop renewing - the tools stay
+# on to the end of the period paid for; the business's About / Since / phone /
 # links / enquiry types / accepted methods go through one owner-only door, which
 # refuses a stranger and a trainer, an over-long About, a bad phone and a bare
 # handle, and the PUBLIC reads the words back on a listed business; verified_at
@@ -66,10 +69,6 @@ function New-EmailUser($email, $name, $role) {
   if ($role -eq "org") {
     # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
     Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-    # 9 Sep 2026 (R14): a studio also needs a LIVE SUBSCRIPTION, so the service role grants one here as an admin would
-    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/org_plans" -Headers $svcH -Body (@{
-      org_id = $u.id; plan = "granted"; until = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); amount_inr = 0
-      note = "Granted by a proof script (R14)"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   }
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
@@ -81,6 +80,16 @@ function TenantBody($id, $about, $year, $phone, $socials, $enq, $upi, $cards, $c
 }
 function Plain($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json" } }
 
+# 10 Sep 2026: the Artist plan is a PAID subscription (Rs 700 a month through Cashfree), so the free
+# RPC refuses it. The service role stands in for an admin's grant - the row admin_grant_subscription
+# writes: granted, active, Rs 0, twelve months, no mandate.
+function Grant-ArtistPlan($userId) {
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
+    kind = "artist"; user_id = $userId; plan_key = "artist_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddMonths(12).ToString("yyyy-MM-dd"); granted = $true
+    note = "Granted by a proof script - nothing charged"; created_by = $userId; updated_by = $userId } | ConvertTo-Json) | Out-Null
+}
+
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $dancer = New-EmailUser "set-a-$stamp@example.com" "Plan Proof $stamp" "user"
@@ -90,29 +99,29 @@ $tenantId = $null
 $TSEL = "select=id,about,founded_year,phone,socials,enquiry_types,accepts_upi,accepts_cards,accepts_cash,accepts_bank,verified_at"
 
 try {
-  # -- the Artist plan ---------------------------------------------
+  # -- the Artist plan (10 Sep 2026: a PAID subscription, Rs 700 a month through Cashfree) --
   # 1. a fresh dancer has no plan
   $p0 = Rpc (Api $dancer.token) "my_artist_plan" @{}
   Check 1 "a fresh dancer has no plan (my_artist_plan returns $(@($p0).Count) rows)" (@($p0).Count -eq 0)
 
-  # 2. activating grants a month from today at Rs 0 and makes the same profile an artist
-  $a1 = Rpc (Api $dancer.token) "activate_artist_plan" @{ p_plan = "monthly" }
+  # 2. the FREE path refuses while the price list says the plan costs money, and names the price
+  $cat = Rows (Api $dancer.token) "plan_catalog?select=key,price_inr,active&key=eq.artist_monthly"
+  $r2 = Fails { Rpc (Api $dancer.token) "activate_artist_plan" @{ p_plan = "monthly" } }
+  Check 2 "the price list says Rs $($cat[0].price_inr) a month and the free path is refused naming it ('costs')" (
+    $cat.Count -eq 1 -and $cat[0].price_inr -gt 0 -and $r2 -and $r2 -like "*costs*")
+
+  # 3. an admin's grant (the service role stands in) reads active at Rs 0 for twelve months, and the role STAYS user
+  Grant-ArtistPlan $dancer.id
   $p1 = @(Rpc (Api $dancer.token) "my_artist_plan" @{})
   $prof = Rows (Api $dancer.token) "profiles?select=role&id=eq.$($dancer.id)"
   $today = (Get-Date).ToString("yyyy-MM-dd")
   $untilOk = [datetime]$p1[0].until -gt [datetime]$today
-  Check 2 "activating grants a monthly period to $($p1[0].until) at Rs $($p1[0].amount_inr), active, and the role STAYS $($prof[0].role) (Pro is the plan, not a role)" (
-    $p1.Count -eq 1 -and $p1[0].plan -eq "monthly" -and $p1[0].amount_inr -eq 0 -and $p1[0].active -eq $true -and $untilOk -and $prof[0].role -eq "user")
+  Check 3 "a granted plan reads active until $($p1[0].until) at Rs $($p1[0].amount_inr), and the role STAYS $($prof[0].role) (Pro is the plan, not a role)" (
+    $p1.Count -eq 1 -and $p1[0].amount_inr -eq 0 -and $p1[0].active -eq $true -and $untilOk -and $prof[0].role -eq "user")
 
-  # 3. activating again extends from the current end, not from today
-  $a2 = Rpc (Api $dancer.token) "activate_artist_plan" @{ p_plan = "yearly" }
-  $p2 = @(Rpc (Api $dancer.token) "my_artist_plan" @{})
-  $gap = ([datetime]$p2[0].until - [datetime]$p1[0].until).TotalDays
-  Check 3 "a second period extends from the first's end ($($p1[0].until) -> $($p2[0].until), +$gap days)" ($gap -ge 365 -and $gap -le 366)
-
-  # 4. a plan is its holder's: the stranger reads 0 rows, direct insert is refused, the public cannot activate
-  $seen = Rows (Api $stranger.token) "artist_plans?select=id&user_id=eq.$($dancer.id)"
-  $ins = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/artist_plans" -Headers (Api $stranger.token) -Body (@{ user_id = $stranger.id; plan = "monthly"; until = "2099-01-01" } | ConvertTo-Json) }
+  # 4. a plan is its holder's: the stranger reads 0 rows, a direct insert is refused, the public cannot activate
+  $seen = Rows (Api $stranger.token) "subscriptions?select=id&user_id=eq.$($dancer.id)"
+  $ins = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers (Api $stranger.token) -Body (@{ kind = "artist"; user_id = $stranger.id; plan_key = "artist_monthly"; price_inr = 0; period = "monthly"; status = "active"; current_period_end = "2099-01-01" } | ConvertTo-Json) }
   $pub = Fails { Rpc $anonH "activate_artist_plan" @{ p_plan = "monthly" } }
   Check 4 "a plan is private (stranger reads $($seen.Count)); no direct insert; the public cannot activate" ($seen.Count -eq 0 -and $ins -and $pub)
 
@@ -120,21 +129,33 @@ try {
   $r5 = Fails { Rpc (Api $dancer.token) "activate_artist_plan" @{ p_plan = "forever" } }
   Check 5 "an invented plan is refused ('monthly or yearly')" ($r5 -and $r5 -like "*monthly or yearly*")
 
-  # 6. ending puts the toolset away and the role back
+  # 6. ONE live plan per person: a second live row is refused by the database itself (a partial unique index)
+  $r6 = Fails { Grant-ArtistPlan $dancer.id }
+  Check 6 "a second live Artist plan for the same person is refused by the database" ($null -ne $r6)
+
+  # 6b. ENDING means stop renewing: the row says so and the tools stay on until the period paid for is over (the standard); the role still user
   Rpc (Api $dancer.token) "end_artist_plan" @{} | Out-Null
   $p3 = @(Rpc (Api $dancer.token) "my_artist_plan" @{})
+  $sub3 = Rows (Api $dancer.token) "subscriptions?select=status,cancel_at_period_end&user_id=eq.$($dancer.id)&kind=eq.artist"
   $prof = Rows (Api $dancer.token) "profiles?select=role&id=eq.$($dancer.id)"
-  Check 6 "ending the plan: no active plan (active=$($p3[0].active)), role still $($prof[0].role)" (
-    ($p3.Count -eq 0 -or $p3[0].active -eq $false) -and $prof[0].role -eq "user")
-
-  # 6b. taking it again the same day (the new month ends on the ended row's date) still reads ACTIVE
-  Rpc (Api $dancer.token) "activate_artist_plan" @{ p_plan = "monthly" } | Out-Null
-  $p4 = @(Rpc (Api $dancer.token) "my_artist_plan" @{})
-  Check "6b" "re-taking the plan after ending it reads active (a live period outranks an ended one on the same date)" ($p4.Count -eq 1 -and $p4[0].active -eq $true)
-  Rpc (Api $dancer.token) "end_artist_plan" @{} | Out-Null
+  Check "6b" "ending stops the renewal (status $($sub3[0].status), cancel_at_period_end $($sub3[0].cancel_at_period_end)) while the plan stays active until $($p3[0].until); role still $($prof[0].role)" (
+    $p3.Count -eq 1 -and $p3[0].active -eq $true -and $sub3.Count -eq 1 -and $sub3[0].cancel_at_period_end -eq $true -and $sub3[0].status -eq "canceled" -and $prof[0].role -eq "user")
 
   # -- the business's own words ------------------------------------
+# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
+# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
+# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
+function Subscribe-Studio($tenantId) {
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerId = [string]$ownerRows[0].user_id
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
+    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
+    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+}
   $t = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Settings Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+  Subscribe-Studio ([string]$t.id)
   $tenantId = [string]$t.id
   if (-not $tenantId) { $tenantId = [string]$t }
 

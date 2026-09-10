@@ -15,6 +15,9 @@ Get-Content $envFile | Where-Object { $_ -match "^\s*[A-Z_]+=" } | ForEach-Objec
 $base = $vars["NEXT_PUBLIC_SUPABASE_URL"]
 $anon = $vars["NEXT_PUBLIC_SUPABASE_ANON_KEY"]
 if (-not $base -or -not $anon) { throw "NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY missing from .env.local" }
+$service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
+if (-not $service) { throw "SUPABASE_SERVICE_ROLE_KEY missing from .env.local" }
+$svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
 
 function Sign-In($phone) {
   $h = @{ apikey = $anon; "Content-Type" = "application/json" }
@@ -29,7 +32,20 @@ $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 
 # A owns a fresh studio; a draft class goes on it via the atomic RPC
+# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
+# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
+# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
+function Subscribe-Studio($tenantId) {
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerId = [string]$ownerRows[0].user_id
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
+    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
+    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+}
 $ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Class Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+Subscribe-Studio ([string]$ta.id)
 $clsBody = @{ p_tenant_id = $ta.id; p_title = "Hip-Hop - Beginner $stamp"; p_style = "Hip-Hop"; p_level = "beginner"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 20; p_status = "draft"; p_starts_at = "2026-09-01T19:00:00+05:30"; p_ends_at = "2026-09-01T20:00:00+05:30" }
 $cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body ($clsBody | ConvertTo-Json)
 "1. A created draft class '$($cls.title)' on '$($ta.name)'"

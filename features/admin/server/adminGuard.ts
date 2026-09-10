@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin, findVerificationQueue } from "@/repositories/admin";
 import { findAdminReports } from "@/repositories/adminPanel";
+import { findAdminSubscriptions } from "@/repositories/subscriptions";
 import { findSupportThreads } from "@/repositories/support";
 import type { AdminBadges } from "@/features/admin/components/AdminShell";
 
@@ -25,10 +26,12 @@ export async function requireAdmin(): Promise<{ supabase: SupabaseClient; badges
   if (!(await amIPlatformAdmin(supabase))) {
     notFound();
   }
-  const [queue, threads, reports] = await Promise.all([
+  const [queue, threads, reports, pastDue] = await Promise.all([
     findVerificationQueue(supabase).catch(() => []),
     findSupportThreads(supabase).catch(() => []),
     findAdminReports(supabase, { status: "open", limit: 300 }).catch(() => []),
+    /* a renewal that is failing is work waiting — the owner has three days */
+    findAdminSubscriptions(supabase, { status: "past_due", limit: 300 }).catch(() => []),
   ]);
   return {
     supabase,
@@ -36,6 +39,7 @@ export async function requireAdmin(): Promise<{ supabase: SupabaseClient; badges
       verifications: queue.length,
       support: threads.reduce((n, t) => n + t.unread, 0),
       reports: reports.length,
+      money: pastDue.length,
     },
     nowIso: new Date().toISOString(),
   };

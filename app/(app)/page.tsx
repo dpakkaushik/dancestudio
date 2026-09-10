@@ -8,7 +8,9 @@ import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyVerificationRequest } from "@/repositories/admin";
-import { findMyOrgSubscription, findMyProofPhotos } from "@/repositories/orgStanding";
+import { findMyProofPhotos } from "@/repositories/orgStanding";
+import { findPlanCatalog, pickPlan } from "@/repositories/plans";
+import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
 import { findSupportThreads } from "@/repositories/support";
 import { OrgStanding } from "@/features/orgs/components/OrgStanding";
 import { orgStandingWords } from "@/lib/orgs/standing";
@@ -77,7 +79,7 @@ export default async function HomePage() {
   /* WHERE AN ORGANIZATION STANDS WITH DANCEOS BELONGS HERE (R13, 9 Sep 2026):
      the badge on its own name, the steps, and the door to a person — not two
      taps away behind "Studios". A person's Home asks for none of it. */
-  const [tenants, invites, plan, request, photos, subscription, threads] = await Promise.all([
+  const [tenants, invites, plan, request, photos, catalog, threads] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
@@ -85,12 +87,21 @@ export default async function HomePage() {
     isOrg ? Promise.resolve(null) : findMyArtistPlan(supabase),
     isOrg ? findMyVerificationRequest(supabase) : Promise.resolve(null),
     isOrg ? findMyProofPhotos(supabase).catch(() => []) : Promise.resolve([]),
-    isOrg ? findMyOrgSubscription(supabase) : Promise.resolve({ active: false, until: null, plan: null }),
+    isOrg ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
     isOrg ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
   ]);
   /* the conversation about THIS request if there is one, else the newest */
   const thread = threads.find((t) => request && t.requestId === request.id) ?? threads[0] ?? null;
   const standing = isOrg ? orgStandingWords(profile.verifiedAt, request?.status) : null;
+  /* each studio's own subscription (10 Sep 2026) — the card counts them */
+  const studioIds = isOrg ? tenants.filter((t) => t.type === "studio").map((t) => t.id) : [];
+  const studioSubs: Record<string, StudioSubscriptionState> = isOrg
+    ? await findMyStudioSubscriptions(supabase, studioIds).catch(() => ({}) as Record<string, StudioSubscriptionState>)
+    : {};
+  const studios = {
+    total: studioIds.length,
+    subscribed: studioIds.filter((id) => studioSubs[id]?.subscription?.hasAccess).length,
+  };
   /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
@@ -297,7 +308,8 @@ export default async function HomePage() {
             request={request}
             socialsCount={profile.socials.length}
             photos={photos}
-            subscription={subscription}
+            studios={studios}
+            studioPriceInr={pickPlan(catalog, "studio")?.priceInr ?? null}
             threadId={thread?.id ?? null}
             unread={threads.reduce((n, t) => n + t.unread, 0)}
           />

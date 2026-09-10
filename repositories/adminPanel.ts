@@ -9,19 +9,22 @@ import type { ProfileRole } from "@/types/profile";
  *  scoping with a plain query. */
 
 export interface AdminDashboard {
-  waiting: { verifications: number; threads: number; reports: number; subscriptions: number; refunds: number; stuckWebhooks: number };
-  accounts: { users: number; orgs: number; artists: number; verifiedOrgs: number; subscribedOrgs: number; suspended: number; admins: number; newThisWeek: number };
-  businesses: { studios: number; artistPages: number; listed: number; unlisted: number; rooms: number };
+  waiting: { verifications: number; threads: number; reports: number; pastDue: number; refunds: number; stuckWebhooks: number };
+  accounts: { users: number; orgs: number; artists: number; verifiedOrgs: number; suspended: number; admins: number; newThisWeek: number };
+  businesses: { studios: number; artistPages: number; listed: number; unlisted: number; subscribedStudios: number; rooms: number };
+  /** the recurring plans, the way a billing desk counts them (10 Sep 2026) */
+  subscriptions: { active: number; renewing: number; granted: number; canceling: number; pastDue: number; mrrInr: number };
   activity: { classesLive: number; eventsLive: number; crews: number; bookingsWeek: number; eventBookingsWeek: number; enquiriesOpen: number };
-  money: { capturedWeekInr: number; capturedAllInr: number; refundedAllInr: number; payoutsPending: number; ordersUnpaid: number };
+  money: { capturedWeekInr: number; capturedAllInr: number; plansAllInr: number; refundedAllInr: number; payoutsPending: number; ordersUnpaid: number };
 }
 
 interface RawDashboard {
-  waiting: { verifications: number; threads: number; reports: number; subscriptions: number; refunds: number; stuck_webhooks: number };
-  accounts: { users: number; orgs: number; artists: number; verified_orgs: number; subscribed_orgs: number; suspended: number; admins: number; new_this_week: number };
-  businesses: { studios: number; artist_pages: number; listed: number; unlisted: number; rooms: number };
+  waiting: { verifications: number; threads: number; reports: number; past_due: number; refunds: number; stuck_webhooks: number };
+  accounts: { users: number; orgs: number; artists: number; verified_orgs: number; suspended: number; admins: number; new_this_week: number };
+  businesses: { studios: number; artist_pages: number; listed: number; unlisted: number; subscribed_studios: number; rooms: number };
+  subscriptions: { active: number; renewing: number; granted: number; canceling: number; past_due: number; mrr_inr: number };
   activity: { classes_live: number; events_live: number; crews: number; bookings_week: number; event_bookings_week: number; enquiries_open: number };
-  money: { captured_week_inr: number; captured_all_inr: number; refunded_all_inr: number; payouts_pending: number; orders_unpaid: number };
+  money: { captured_week_inr: number; captured_all_inr: number; plans_all_inr: number; refunded_all_inr: number; payouts_pending: number; orders_unpaid: number };
 }
 
 const n = (v: unknown) => Number(v ?? 0);
@@ -33,11 +36,12 @@ export async function findAdminDashboard(supabase: SupabaseClient): Promise<Admi
   }
   const d = data as RawDashboard;
   return {
-    waiting: { verifications: n(d.waiting.verifications), threads: n(d.waiting.threads), reports: n(d.waiting.reports), subscriptions: n(d.waiting.subscriptions), refunds: n(d.waiting.refunds), stuckWebhooks: n(d.waiting.stuck_webhooks) },
-    accounts: { users: n(d.accounts.users), orgs: n(d.accounts.orgs), artists: n(d.accounts.artists), verifiedOrgs: n(d.accounts.verified_orgs), subscribedOrgs: n(d.accounts.subscribed_orgs), suspended: n(d.accounts.suspended), admins: n(d.accounts.admins), newThisWeek: n(d.accounts.new_this_week) },
-    businesses: { studios: n(d.businesses.studios), artistPages: n(d.businesses.artist_pages), listed: n(d.businesses.listed), unlisted: n(d.businesses.unlisted), rooms: n(d.businesses.rooms) },
+    waiting: { verifications: n(d.waiting.verifications), threads: n(d.waiting.threads), reports: n(d.waiting.reports), pastDue: n(d.waiting.past_due), refunds: n(d.waiting.refunds), stuckWebhooks: n(d.waiting.stuck_webhooks) },
+    accounts: { users: n(d.accounts.users), orgs: n(d.accounts.orgs), artists: n(d.accounts.artists), verifiedOrgs: n(d.accounts.verified_orgs), suspended: n(d.accounts.suspended), admins: n(d.accounts.admins), newThisWeek: n(d.accounts.new_this_week) },
+    businesses: { studios: n(d.businesses.studios), artistPages: n(d.businesses.artist_pages), listed: n(d.businesses.listed), unlisted: n(d.businesses.unlisted), subscribedStudios: n(d.businesses.subscribed_studios), rooms: n(d.businesses.rooms) },
+    subscriptions: { active: n(d.subscriptions?.active), renewing: n(d.subscriptions?.renewing), granted: n(d.subscriptions?.granted), canceling: n(d.subscriptions?.canceling), pastDue: n(d.subscriptions?.past_due), mrrInr: n(d.subscriptions?.mrr_inr) },
     activity: { classesLive: n(d.activity.classes_live), eventsLive: n(d.activity.events_live), crews: n(d.activity.crews), bookingsWeek: n(d.activity.bookings_week), eventBookingsWeek: n(d.activity.event_bookings_week), enquiriesOpen: n(d.activity.enquiries_open) },
-    money: { capturedWeekInr: n(d.money.captured_week_inr), capturedAllInr: n(d.money.captured_all_inr), refundedAllInr: n(d.money.refunded_all_inr), payoutsPending: n(d.money.payouts_pending), ordersUnpaid: n(d.money.orders_unpaid) },
+    money: { capturedWeekInr: n(d.money.captured_week_inr), capturedAllInr: n(d.money.captured_all_inr), plansAllInr: n(d.money.plans_all_inr), refundedAllInr: n(d.money.refunded_all_inr), payoutsPending: n(d.money.payouts_pending), ordersUnpaid: n(d.money.orders_unpaid) },
   };
 }
 
@@ -169,6 +173,13 @@ export interface AdminBusiness {
   events: number;
   followers: number;
   createdAt: string;
+  /** a studio's own subscription (10 Sep 2026); null on an artist page or none */
+  subscriptionId: string | null;
+  subStatus: "pending_auth" | "active" | "past_due" | "canceled" | "expired" | null;
+  subUntil: string | null;
+  subGranted: boolean;
+  /** will charge again on its own: active, not granted, not cancelling */
+  subRenews: boolean;
 }
 
 export async function findAdminBusinesses(
@@ -198,6 +209,11 @@ export async function findAdminBusinesses(
     events: n(r.events),
     followers: n(r.followers),
     createdAt: r.created_at as string,
+    subscriptionId: (r.subscription_id as string) ?? null,
+    subStatus: (r.sub_status as AdminBusiness["subStatus"]) ?? null,
+    subUntil: (r.sub_until as string) ?? null,
+    subGranted: Boolean(r.sub_granted),
+    subRenews: Boolean(r.sub_renews),
   }));
 }
 

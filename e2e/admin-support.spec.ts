@@ -160,8 +160,9 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await expect(standing.getByText("DanceOS has photos of your space")).toBeVisible();
     await expect(standing.getByText("You asked to be verified")).toBeVisible();
     await expect(standing.getByText("A DanceOS admin checks them")).toBeVisible();
-    await expect(standing.getByText("Your subscription is active")).toBeVisible();
-    await expect(standing.getByText("You can open studios")).toBeVisible();
+    // 10 Sep 2026: a subscription is per STUDIO, so the last two steps say so
+    await expect(standing.getByText("Each studio has its own subscription")).toBeVisible();
+    await expect(standing.getByText("Your studios are on Discover")).toBeVisible();
 
     // and there is a person on the other side of it
     await standing.getByRole("link", { name: "Message DanceOS" }).click();

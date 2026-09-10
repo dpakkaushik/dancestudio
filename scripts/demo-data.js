@@ -136,29 +136,28 @@ async function seed() {
   everyone.forEach((u) => log(`${u.name} · ${u.email}`));
 
   /* ── who is what (8 Sep 2026): Pro is the PLAN, and an organization is verified before its studios are public ── */
-  await rpc(artist.h, "activate_artist_plan", { p_plan: "yearly" });
-  await rpc(trainer.h, "activate_artist_plan", { p_plan: "yearly" });
-  log(`${artist.name} and ${trainer.name} took the Artist plan (a yearly period at Rs 0 — the pilot)`);
+  /* 10 Sep 2026: both plans are PAID subscriptions (₹700 a month for an artist, ₹1,200 a month
+     per studio, through a Cashfree mandate), so the free RPC refuses them. The service role
+     stands in for an admin's grant — the row admin_grant_subscription writes: granted, active,
+     ₹0, twelve months, no mandate. */
+  const grantPlan = (kind, userId, tenantId, note) =>
+    insert(H_SERVICE, "subscriptions", {
+      kind, user_id: userId, tenant_id: tenantId, plan_key: kind === "studio" ? "studio_monthly" : "artist_monthly",
+      price_inr: 0, period: "monthly", status: "active",
+      current_period_start: new Date().toISOString().slice(0, 10),
+      current_period_end: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+      granted: true, note, created_by: userId, updated_by: userId,
+    });
+  await grantPlan("artist", artist.id, null, "Granted by the demo seeder — nothing charged");
+  await grantPlan("artist", trainer.id, null, "Granted by the demo seeder — nothing charged");
+  log(`${artist.name} and ${trainer.name} hold the Artist plan (granted for a year at ₹0 — nothing charged)`);
   for (const [o, city] of [[owner, "New Delhi"], [owner2, "Pune"]]) {
     const handle = o.name.toLowerCase().replace(/[^a-z]/g, "");
     await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: city, p_age: null, p_about: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }], p_styles: [], p_phone: null });
     /* the service role stands in for the admin here, exactly as it stands in for the webhook below */
     await patch(H_SERVICE, `profiles?id=eq.${o.id}`, { verified_at: new Date().toISOString() });
-    /* R14 (9 Sep 2026): a studio needs a verified AND SUBSCRIBED organization.
-       This is the row an admin's grant writes — at zero, because nothing is
-       charged yet — and without it create_tenant_with_owner refuses the studio
-       in words rather than making one nobody can publish. */
-    await insert(H_SERVICE, "org_plans", {
-      org_id: o.id,
-      plan: "granted",
-      until: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
-      amount_inr: 0,
-      note: "Granted by the demo seeder (R14) — nothing charged",
-      created_by: o.id,
-      updated_by: o.id,
-    });
   }
-  log(`${owner.name} and ${owner2.name} are verified AND subscribed organizations — their studios are born public`);
+  log(`${owner.name} and ${owner2.name} are verified organizations — each studio they open gets its own subscription below`);
   /* requirement 3 (9 Sep 2026): a user names at least one style, and every profile keeps a city */
   for (const [u, city, styles] of [[artist, "New Delhi", ["Contemporary", "Kathak"]], [trainer, "New Delhi", ["Hip-Hop", "Bollywood"]], [rhea, "Pune", ["Hip-Hop"]], [zaid, "Pune", ["Breaking"]], [aki, "Pune", ["Salsa"]], [kabir, "New Delhi", ["Bhangra"]]]) {
     await rpc(u.h, "update_my_profile", { p_full_name: u.name, p_city: city, p_age: null, p_about: null, p_socials: [], p_styles: styles, p_phone: null });
@@ -172,6 +171,13 @@ async function seed() {
   log(`${bounce.name} (studio · New Delhi)`);
   log(`${eee.name} (studio · Pune)`);
   log(`${meera.name} (artist business · New Delhi)`);
+  /* each studio's OWN subscription (10 Sep 2026): a studio is born private and goes public when
+     its subscription is live. Granted here as an admin would, and listed the way the grant lists it. */
+  for (const [o, t] of [[owner, bounce], [owner2, eee]]) {
+    await grantPlan("studio", o.id, t.id, "Granted by the demo seeder — nothing charged");
+    await patch(H_SERVICE, `tenants?id=eq.${t.id}`, { visibility: "listed" });
+  }
+  log("Bounce and EEE each hold their own studio subscription (granted, ₹0) and are on Discover");
 
   /* ── rooms ── */
   await insert(owner.h, "rooms", { tenant_id: bounce.id, name: "Hall 1", capacity: 30, amenities: ["🪞 Mirrors", "🪵 Sprung floor", "🔊 Sound", "❄️ AC"] });

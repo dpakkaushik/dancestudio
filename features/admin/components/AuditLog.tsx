@@ -21,8 +21,11 @@ const ACTIONS: Record<string, { says: string; tone: string }> = {
   "business.list": { says: "put back on Discover", tone: "#22C55E" },
   "report.actioned": { says: "acted on a report about", tone: "#EF4444" },
   "report.dismissed": { says: "found no problem with", tone: MUTED },
-  "subscription.grant": { says: "set up the subscription for", tone: "#22C55E" },
-  "subscription.end": { says: "ended the subscription for", tone: "#EF4444" },
+  "subscription.grant": { says: "granted a subscription to", tone: "#22C55E" },
+  "subscription.end": { says: "ended the subscription of", tone: "#EF4444" },
+  "plan.grant": { says: "granted the Artist plan to", tone: "#22C55E" },
+  "plan.end": { says: "ended the Artist plan of", tone: "#EF4444" },
+  "plan.price": { says: "changed the price of", tone: "#F59E0B" },
 };
 
 /** THE AUDIT LOG (10 Sep 2026). Insert-only in the database, and a trigger

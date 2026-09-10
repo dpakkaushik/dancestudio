@@ -10,7 +10,6 @@ import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import { PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
 import { orgStandingWords } from "@/lib/orgs/standing";
 import type { VerificationRequest } from "@/repositories/admin";
-import type { OrgSubscription } from "@/repositories/orgStanding";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -33,7 +32,10 @@ export interface OrgStandingProps {
   request: VerificationRequest | null;
   socialsCount: number;
   photos: ProofPhoto[];
-  subscription: OrgSubscription;
+  /** how many studios it runs, and how many of those are subscribed (10 Sep 2026) */
+  studios: { total: number; subscribed: number };
+  /** what one studio costs a month, from the price list; null when none is on offer */
+  studioPriceInr: number | null;
   threadId: string | null;
   unread: number;
 }
@@ -49,7 +51,7 @@ export interface OrgStandingProps {
  *  photos, the ask, the decision, the subscription, and the studios going
  *  public. Every step says where it stands and what would move it; a rejection
  *  prints the admin's own words; and there is always a door to a person. */
-export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, subscription, threadId, unread }: OrgStandingProps) {
+export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, studios, studioPriceInr, threadId, unread }: OrgStandingProps) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -109,23 +111,24 @@ export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, 
       state: decided ? "done" : inReview ? "now" : "todo",
     },
     {
-      label: "Your subscription is active",
-      note: subscription.active
-        ? subscription.until
-          ? `until ${dateWords(subscription.until)}`
-          : "active"
-        : verified
-          ? "message DanceOS below and an admin will set it up"
-          : "set up once you are verified",
-      state: subscription.active ? "done" : verified ? "now" : "todo",
+      label: "Each studio has its own subscription",
+      note:
+        studios.total === 0
+          ? `${studioPriceInr != null ? `₹${studioPriceInr.toLocaleString("en-IN")} a month per studio, ` : ""}set up from Your business once you add one — it renews on its own until you cancel`
+          : studios.subscribed === studios.total
+            ? `${studios.total === 1 ? "your studio is" : `all ${studios.total} are`} subscribed`
+            : `${studios.subscribed} of ${studios.total} subscribed — the rest are private until they are`,
+      state: studios.total > 0 && studios.subscribed === studios.total ? "done" : verified ? "now" : "todo",
     },
     {
-      label: "You can open studios",
+      label: "Your studios are on Discover",
       note:
-        verified && subscription.active
-          ? "add one from Your business — it goes on Discover straight away"
-          : "a studio needs the tick and a live subscription",
-      state: verified && subscription.active ? "done" : "todo",
+        verified && studios.subscribed > 0
+          ? `${studios.subscribed} live on Discover and in search`
+          : verified
+            ? "a studio goes public the moment its subscription is authorised"
+            : "the tick first, then each studio's own subscription",
+      state: verified && studios.subscribed > 0 ? "done" : "todo",
     },
   ];
 

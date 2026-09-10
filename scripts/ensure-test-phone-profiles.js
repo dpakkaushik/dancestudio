@@ -9,10 +9,11 @@
  * write these). Run it once after a cleanup, or whenever a phone-number proof
  * says "finish onboarding first".
  *
- * SINCE 9 SEP 2026 (R14) a studio needs a verified AND SUBSCRIBED organization,
- * so this also grants the owner a year's subscription — the same row an admin's
- * grant writes, at zero, because nothing is charged yet. Without it every
- * phone-number proof that creates a studio is refused in words.
+ * 9 Sep 2026 (R14): a studio needs a VERIFIED organization, so the owner is
+ * stamped verified here. 10 Sep 2026: the subscription is per STUDIO now (one
+ * `subscriptions` row each, ₹1,200 a month through Cashfree), so there is nothing
+ * to grant per organization any more — every proof subscribes the studio it
+ * makes (Subscribe-Studio in the .ps1 files) and deletes it afterwards.
  *
  *   node scripts/ensure-test-phone-profiles.js
  */
@@ -61,22 +62,8 @@ async function findUserByPhone(phone) {
       console.log(`+${w.phone}: profile created — ${w.role}${w.verified ? " · verified" : ""} (${u.id})`);
     }
 
-    /* R14: the subscription half of the studio gate. Idempotent — a live row is
-       left alone rather than stacked on, so rerunning this does not extend it. */
-    if (w.role === "org") {
-      const live = await call("GET", `${BASE}/rest/v1/org_plans?org_id=eq.${u.id}&deleted_at=is.null&ended_at=is.null&select=id,until`);
-      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
-      if (Array.isArray(live) && live.some((r) => r.until >= today)) {
-        console.log(`+${w.phone}: subscription already live until ${live[0].until}`);
-      } else {
-        const until = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-        await call("POST", `${BASE}/rest/v1/org_plans`, {
-          org_id: u.id, plan: "granted", until, amount_inr: 0,
-          note: "Granted by ensure-test-phone-profiles (R14) — nothing charged",
-          created_by: u.id, updated_by: u.id,
-        });
-        console.log(`+${w.phone}: subscription granted until ${until} (nothing charged)`);
-      }
-    }
+    /* 10 Sep 2026: a subscription is per STUDIO now (`subscriptions`, kind 'studio'),
+       not per organization, so there is nothing to grant here — each proof
+       subscribes the studio it makes (Subscribe-Studio) and deletes it after. */
   }
 })().catch((e) => { console.error(e.message); process.exit(1); });

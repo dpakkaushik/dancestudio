@@ -47,8 +47,22 @@ $b = Sign-In "+918888888888"   # front desk staff / other studio's owner
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 
+# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
+# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
+# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
+function Subscribe-Studio($tenantId) {
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerId = [string]$ownerRows[0].user_id
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
+    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
+    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+}
 $ta = Rpc (Api $a.access_token) "create_tenant_with_owner" @{ p_name = "Leads Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+Subscribe-Studio ([string]$ta.id)
 $tb = Rpc (Api $b.access_token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+Subscribe-Studio ([string]$tb.id)
 
 try {
   # 1. the owner opens a lead

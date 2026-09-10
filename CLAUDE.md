@@ -1,6 +1,108 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (9 Sep 2026, later) — replaced on every push (Rule 13)
+## LAST SESSION (10 Sep 2026, later) — replaced on every push (Rule 13)
+
+- **PAID SUBSCRIPTIONS, THE STANDARD WAY ⚠ (Rule 9: money + RLS) — WRITTEN,
+  TYPECHECKED, BUILT, AND NOT YET RUN AGAINST THE DATABASE.** Migration 9
+  (`20260912140000_paid_plans_per_studio.sql`) is NOT APPLIED, and neither is
+  migration 8 — see NEXT TO DO #0. The user's decisions, in order: **two Pro
+  plans** — ₹1,200 a month **per STUDIO** ("if an org has two studios it will
+  need two subscriptions, each linked to a studio"; without one a studio cannot
+  be public) and ₹700 a month for the **Artist plan**; both **through the
+  Cashfree gateway we already have** (the sandbox until KYC); **the admin changes
+  the prices from the console**; and *"make sure this subscription follows
+  standard approach how it is dealt in real apps"* — which threw away a first cut
+  (prepaid periods sold as one-off orders) for a **recurring-mandate model**.
+- **The model.** `plan_catalog` is the price list (`artist_monthly` ₹700,
+  `studio_monthly` ₹1,200; `admin_set_plan_price` audited as `plan.price`; a
+  price change creates a NEW Cashfree plan and every existing mandate keeps the
+  price it started at — the price is snapshotted on the subscription).
+  `subscriptions` is ONE row per subscription: kind (artist | studio), the payer,
+  the studio, `price_inr`, the status machine `pending_auth → active → past_due
+  (three days' grace) → canceled | expired`, `current_period_start/end`,
+  `cancel_at_period_end` (**cancel = stop renewing, keep what was paid for** —
+  the standard, and the opposite of the old "End now"), `granted` (an admin's
+  comp: no mandate, no renewal, reminded three days before it ends), and the
+  Cashfree ids. Partial unique indexes keep ONE live subscription per artist and
+  per studio; RLS is own-rows + admins; there are no insert/update/delete
+  policies — the functions are the only doors. **Cashfree Subscriptions API**
+  (`lib/cashfree/subscriptions.ts`): `/pg/plans`, `/pg/subscriptions` — the
+  **authorisation amount IS the first period's fee** (not refunded), so the plan
+  is live the moment the mandate is, and `subscription_first_charge_time` is
+  the start of the NEXT period; RBI's pre-debit notice is Cashfree's job; the JS
+  SDK's `subscriptionsCheckout({ subsSessionId })`; `/manage` CANCEL. Every
+  `SUBSCRIPTION_*` webhook lands on ONE idempotent applier,
+  `apply_subscription_event`: PAYMENT_SUCCESS with `payment_type = AUTH` and
+  AUTH_STATUS ACTIVE both mean "the first period" and are keyed on the
+  SUBSCRIPTION (`sub_auth_<cf_subscription_id>`) so it is never paid twice; a
+  CHARGE is keyed on the provider payment id; a FAILED charge → `past_due` + a
+  notification; STATUS_CHANGED to CANCELLED / EXPIRED / … → what was paid for
+  stands, nothing renews. `payments` gained `kind` (order | subscription_auth
+  | subscription_charge) and `subscription_id`; `order_id` is nullable. The
+  same secret signs PG and Subscription webhooks. A nightly pg_cron job
+  (`run_subscription_clock`, 21:00 UTC) expires ended periods, takes their
+  studios off Discover, and reminds granted ones three days out.
+- **The gate, re-cut.** `why_no_studio()` is **verification alone** now — a
+  verified organization can CREATE a studio; `why_not_public(tenant)` is the
+  sentence between a studio and Discover ("Each studio has its own subscription
+  — ₹1200 a month, renewing on its own. Subscribe to put it on Discover.");
+  `create_tenant_with_owner` makes a studio **UNLISTED**;
+  `guard_tenant_visibility` refuses listing without a live plan;
+  `decide_org_verification` lists only the subscribed studios; the
+  authorisation webhook lists the studio the moment its mandate is live. The
+  Artist plan: `activate_artist_plan` is the FREE path only and refuses naming
+  the price while the catalog says ₹700; `end_artist_plan` is cancel at period
+  end. Every live `artist_plans` and `org_plans` row is carried into
+  `subscriptions` as a granted row (nothing anybody has is shortened);
+  `org_plans` is dropped; `artist_plans` is history.
+- **Screens.** `SubscribeButton` opens Cashfree's mandate window; after it
+  closes the SERVER asks Cashfree what happened and applies it through the same
+  RPC the webhook uses — the browser's word is never trusted (`startSubscription
+  / confirmSubscription / cancelSubscriptionAction`). `/subscription` says which
+  state the plan is in (renews / ending / granted / payment problem) with Cancel
+  behind a confirm; the hub draws a strip under EACH studio (PUBLIC / NOT PUBLIC,
+  the database's sentence, `Subscribe · ₹1,200/mo`, Stop renewing);
+  OrgStanding's last two steps count studios subscribed. Admin:
+  `/admin/subscriptions` (status filters, End now with a reason — cancels the
+  mandate too), `/admin/plans` (the price editor, take a plan on/off offer),
+  the Businesses desk's chips and Grant / End sheets (a comp is per STUDIO), the
+  Accounts desk's "Grant Artist plan" and `N/M STUDIOS SUBSCRIBED`, the
+  dashboard's SUBSCRIPTIONS grid (active / renewing / granted / canceling /
+  past_due / MRR) and "renewals failing" in what waits, badges on the shell.
+  Audit actions `plan.price`, `subscription.grant` / `.end`, `plan.grant` /
+  `.end` all read as sentences.
+- **Verified against the Cashfree sandbox rather than assumed:** a plan is
+  created and read back, a subscription is created with a session id, a cancel
+  goes through, and `plan_note` refuses an em dash ("allows only alpha
+  numerics & few special characters" — names and notes are sanitised). A probe
+  plan (`dos_probe_plan_mtv80140`) and one cancelled probe subscription remain
+  in the sandbox; harmless.
+- **The harness is re-cut for per-studio subscriptions, none of it run yet:**
+  25 proof scripts (a `Subscribe-Studio` helper after every studio they make —
+  the service role standing in for the admin's grant, then listing it; the
+  organization-wide grant is gone; the four phone-only proofs gained service-role
+  headers), `rls-proof-settings-screens` checks 1–6b re-cut for a PAID plan (the
+  free path refuses naming ₹700; a grant reads active at ₹0 with the role
+  unmoved; the database refuses a second live plan; ending = stop renewing),
+  `rls-proof-tenants` (B's studio is now the UNSUBSCRIBED one), `rls-proof-
+  enquiries` (the artist page's plan granted, not taken free), `demo-data.js`
+  (two artists granted, one subscription per studio), `ensure-test-phone-
+  profiles.js` (nothing to grant per organization). e2e: `happy-path` and
+  `admin-moderation` walk the gate the new way — verified → a PRIVATE studio
+  with its Subscribe button → the admin's grant from the Businesses desk → PUBLIC
+  · GRANTED; the trainer's Artist plan granted from the Accounts desk (the paid
+  door is Cashfree's own window, which no browser test drives); ending reads
+  "Active · ending" with ARTIST kept; `admin-support`'s two step labels;
+  `paid-webhook.spec.ts` gained a SUBSCRIPTIONS test — the authorisation lists
+  the studio, AUTH_STATUS is a duplicate, a CHARGE moves the period, FAILED is
+  past_due, CANCELLED keeps the period.
+- **What passed:** typecheck 0, lint 0, `next build` green, every `.ps1`
+  parses, `node --check` on the two scripts. **What could not run:** anything
+  that touches the database — the tables do not exist until migration 9 lands.
+  Expect the first e2e run to want small adjustments in the new segments; they
+  were written against the components, not driven.
+
+## LAST SESSION (9 Sep 2026, later) — history
 
 - **THE ADMIN PANEL, PHASE 2, IS LIVE**, and then the user gave four new
   requirements (R13–R16 in the accounts deviations table). Phase 2's migration
@@ -225,102 +327,62 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **⚠ APPLY MIGRATION 8 NOW — EVENT BOOKING IS BROKEN ON PRODUCTION.**
-   `supabase/migrations/20260912100000_event_host_in_the_functions.sql`. The
-   R15 migration moved the four PUBLIC event policies onto
-   `event_host_is_public()` and **did not sweep the function bodies**, where no
-   policy reaches. Two functions still ask "is the host LISTED", which an
-   organization's hosting row never is:
-   * `book_event` refuses every booking with "this event is not open to the
-     public" — **proved against the live database on 10 Sep: three published
-     events are visible and unbookable**;
-   * `event_counts` leaves an organization's event out of its own "N booked ·
-     M still available" for anybody who is not a member of the host.
-   The same migration also stops the panel's WHAT EXISTS grid counting each
-   organization's hosting row under "not public yet", which is a number no
-   admin can act on. Both bodies were GENERATED from the applied definitions
-   with one predicate swapped, so the only difference from what is running is
-   the difference intended. **The e2e is what caught this** — a learner could
-   see the event and not buy a seat, and nothing short of a real booking would
-   have shown it. One command:
+0. **⚠ APPLY MIGRATIONS 8 AND 9 — one command applies both**, then run what
+   could not be run. Migration 8
+   (`20260912100000_event_host_in_the_functions.sql`) fixes **event booking,
+   broken on production since R15** (`book_event` and `event_counts` still ask
+   "is the host LISTED", which an organization's hosting row never is — proved
+   live: three published events visible and unbookable). Migration 9
+   (`20260912140000_paid_plans_per_studio.sql`) is the whole subscription
+   model above ⚠ (money + RLS): it creates `plan_catalog` and `subscriptions`,
+   carries every live `artist_plans` / `org_plans` row over as a granted
+   subscription, **drops `org_plans`**, extends `payments`, replaces
+   `create_tenant_with_owner`, `why_no_studio`, `activate_artist_plan`,
+   `end_artist_plan`, `my_artist_plan`, `artist_ids`, `guard_tenant_visibility`,
+   `decide_org_verification`, `admin_unsuspend_account`,
+   `admin_set_tenant_visibility`, `admin_accounts`, `admin_org_standing`,
+   `admin_dashboard`, DROPS and recreates `admin_businesses` (new OUT columns),
+   and schedules the nightly clock with pg_cron (guarded — skipped if the
+   extension is absent).
    ```
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
    npx.cmd supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<password, @ as %40>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all
    ```
-   Then `e2e/happy-path.spec.ts`'s events segment goes green and the suite is
-   whole again.
-
-1. **~~APPLY THREE MIGRATIONS~~ — DONE 10 Sep 2026.** The three below are
-   APPLIED and verified against the live catalog: three tables, eleven
-   functions, `tenants.type` accepting `'org'`, the private `org-proof` bucket
-   with its four storage policies, the four public event policies recreated,
-   three grandfathered subscriptions, four organization hosting rows, and all
-   four existing events moved from studio to organization. Kept here as the
-   record of what landed:
-   * `20260911120000_report_audit_names_the_subject.sql` — the audit row for a
-     report decision names the thing reported, not the reporter (a one-function
-     replace; the rows phase 2 already wrote stay exactly as they are, because
-     the log is insert-only and that is the design working).
-   * `20260911140000_org_gate_and_proof.sql` ⚠ — R14 + R16: `org_plans`,
-     `org_subscription_active`, `why_no_studio`, the gate inside
-     `create_tenant_with_owner`, the two admin subscription decisions,
-     `org_proof_photos` + its two functions, the PRIVATE `org-proof` bucket and
-     its four storage policies, `request_org_verification` requiring five
-     photos, `admin_org_standing`, and `admin_dashboard` counting subscriptions.
-     **It also grants twelve months to every already-verified organization**, so
-     the new rule does not break an account that was playing by the old one.
-   * `20260911160000_events_belong_to_the_organization.sql` ⚠ — R15:
-     `tenants.type` accepts `'org'`, `ensure_org_tenant` / `my_org_tenant`, a
-     trigger giving every new organization one, `event_host_is_public` and the
-     four public event policies recreated on it, `save_event` refusing a studio
-     host, `nearby_tenants` and `admin_businesses` excluding the hosting row,
-     and the four existing events moved to their organizations with their tiers
-     and bookings.
-2. **~~The R13–R16 e2e~~ — WRITTEN AND GREEN, except one segment waiting on #0.**
-   `e2e/admin-support.spec.ts` **5/5** (the standing on Home, the badge on the
-   organization's own name, the photos on the admin's queue) and
-   `e2e/admin-moderation.spec.ts` **9/9** — and its first segment now walks
-   R14's gate in the order a real organization meets it: no studio at all while
-   unverified, no studio while verified but unsubscribed, then a studio that is
-   public the moment it exists. `e2e/happy-path.spec.ts` passes segments 1–4
-   (the gate, the class, the share link, follows and the enquiry loop) and its
-   **events segment fails until #0 is applied**, because `book_event` refuses
-   the booking. Re-run it after the push.
-   **What the tests caught that nothing else did:** `orgStandingWords` was
-   exported from a `"use client"` module and called by Home on the server —
-   typecheck and `next build` were both clean and every organization's Home
-   threw at runtime ("attempted to call orgStandingWords() from the server").
-   It lives in `lib/orgs/standing.ts` now. And R15's hosting row leaked into
-   three lists that assumed a tenant is a business: Home's Studio Tools doors
-   (`tenants[0]` was the hosting row), the Profile tab's "Your studios" count,
-   and the Schedule button's href.
-3. **The rest of the suite is repaired for R14/R15/R16 too, not just the e2e.**
-   `scripts/ensure-test-phone-profiles.js` grants the test organization a
-   subscription (idempotently — a live row is left alone rather than extended);
-   seventeen `rls-proof-*.ps1` scripts that stamp their organization verified
-   now grant one as well; `scripts/demo-data.js` grants both and hosts its four
-   events on the organizations rather than their studios; and
-   `rls-proof-tenants.ps1` was **re-cut, not patched** — its premise was an
-   unverified organization owning an unlisted studio, which R14 makes
-   impossible, so B is verified and subscribed and an admin takes its studio off
-   Discover instead, which is the only way a studio is unlisted now.
-   **Still to do: `scripts/shots/shoot-app.js`** walks onboarding and the hub as
-   an organization for the prototype-comparison screenshots, so it needs the
-   photo step and the verify-plus-subscribe dance before it can reach the studio
-   screens. It is a developer tool, not part of the product or the suite.
-4. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
-   `activate_artist_plan` records ₹0 and creates no Cashfree order. The same is
-   now true of the organization subscription (R14) — the gate is real, the
-   charge is not. One price decision unblocks both, and neither gate changes
-   when the order arrives.
+   **Then, in this order:** `node scripts/ensure-test-phone-profiles.js`; a
+   FRESH `npm run dev`; `npx playwright test` (the new segments in
+   `happy-path`, `admin-moderation`, `admin-support` and the second test in
+   `paid-webhook` were written against the components and have not been
+   driven — fix what they find); the proofs the model touched first
+   (`rls-proof-settings-screens`, `rls-proof-tenants`, `rls-proof-enquiries`,
+   `rls-proof-crews`), then the rest; `node scripts/demo-data.js wipe` and
+   `seed`. The dev deployment needs `CASHFREE_*` in `.env.local` for the
+   Subscribe button and the webhook test (they skip / say "not switched on"
+   without them).
+1. **Register the Cashfree webhook on the deployment for BOTH families** —
+   `{deployment}/api/webhooks/cashfree`: PAYMENT_SUCCESS / FAILED /
+   USER_DROPPED, REFUND_STATUS, and SUBSCRIPTION_PAYMENT_SUCCESS / FAILED /
+   CANCELLED, SUBSCRIPTION_AUTH_STATUS, SUBSCRIPTION_STATUS_CHANGED. The same
+   secret signs all of them. Without the subscription events a mandate
+   authorised in the window still lands (the server re-reads Cashfree after the
+   window closes) but a RENEWAL or a FAILED charge is never heard.
+2. **Try one real sandbox mandate through the app** (⚠ money): Subscribe a
+   studio from the hub with the sandbox UPI `testsuccess@gocash`, watch the
+   strip turn PUBLIC · RENEWS, then Stop renewing and watch it turn ENDING.
+   Then `/admin/plans`: change a price and confirm a NEW subscription picks it
+   up while the old one keeps its own.
+3. **Cashfree KYC → live keys** and Easy Split for studios' class money; the
+   price list lives in the database (`/admin/plans`), so going live needs no
+   deploy for a price.
+4. **`scripts/shots/shoot-app.js`** still walks the OLD onboarding and hub; it
+   needs the photo step and the verify → create → grant dance before it reaches
+   the studio screens. A developer tool, not the product.
 5. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
    profile, lands on `/admin/verifications`, Sign out in the top bar.
 6. **Replace the schema workbook:** close Excel, then rename
    `docs/DanceOS-database-schema (after migrations).xlsx` over
    `docs/DanceOS-database-schema.xlsx`. Regenerate all three from the scratchpad
-   pipeline after these three migrations land — they add three tables
-   (`reports`, `org_plans`, `org_proof_photos`), a private bucket and a third
-   tenant type.
+   pipeline after migrations 8 and 9 land — they add `plan_catalog`,
+   `subscriptions`, the `payments` columns, and drop `org_plans`.
 7. **Customise the Supabase email templates to `token_hash` (dashboard, 3
    minutes, no code).** Authentication → Email Templates → **Confirm signup**
    and **Reset password** (Magic Link and Change Email too, for completeness):
@@ -335,15 +397,13 @@
    and real deliverability. The `onboarding@resend.dev` sender only ever reached
    the Resend account owner, which is what made auth look broken.
 9. **Set `NEXT_PUBLIC_SITE_URL` in the Vercel project** to the production URL and
-   confirm Supabase's redirect allow-list carries it. Every emailed link is built
-   from `emailLinkOrigin()`, which prefers this over the `origin` header on
-   purpose; unset in production it falls back to whatever host the browser used,
-   which is how a link gets minted for an origin the allow-list refuses.
-10. **`.env.local` is missing all five Cashfree keys** that `.env.local.example`
-   requires (`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`,
-   `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`) and still
-   carries `RAZORPAY_WEBHOOK_SECRET` from before the 28 Aug rail swap. Payments
-   cannot work locally until that is fixed.
+   confirm Supabase's redirect allow-list carries it. Every emailed link — and
+   now Cashfree's return URL after the mandate window — is built from it, with
+   the request's origin as the local-dev fallback.
+10. **`.env.local` must carry all five Cashfree keys** that `.env.local.example`
+   documents (`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV`,
+   `CASHFREE_PAYOUT_CLIENT_ID`, `CASHFREE_PAYOUT_CLIENT_SECRET`); a stray
+   `RAZORPAY_WEBHOOK_SECRET` from before the 28 Aug rail swap can go.
 11. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
    screen's Terms and Privacy Policy are bold text, not links, because linking to
    a 404 on the screen everybody sees is worse. They become `<Link>`s in the same
@@ -408,10 +468,32 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **PAID SUBSCRIPTIONS, the standard way — ₹1,200 a month PER STUDIO and ₹700 a
+  month for the Artist plan, through Cashfree Subscriptions, 10 Sep 2026, no
+  step number ⚠ (Rule 9, money + RLS) — WRITTEN AND BUILT, MIGRATION 9 NOT
+  APPLIED (NEXT TO DO #0).** The user's decisions: two plans, per studio and per
+  artist; the gateway we already have; prices the admin changes from the console;
+  and "follow the standard approach how it is dealt in real apps". So: a
+  `plan_catalog` the admin edits (a price change makes a NEW Cashfree plan;
+  existing mandates keep theirs); `subscriptions` with the status machine every
+  real product has (`pending_auth → active → past_due → canceled | expired`,
+  cancel-at-period-end, a granted comp); the authorisation pays the first period
+  and the mandate charges the next; ONE idempotent applier for every
+  `SUBSCRIPTION_*` webhook; `payments` extended with `kind` and
+  `subscription_id`; a nightly clock. The gate is re-cut: verification opens
+  the door to CREATE a studio, a studio is born private, and its OWN
+  subscription puts it on Discover (`why_not_public`). Screens: SubscribeButton
+  → Cashfree's window → server-verified confirm; `/subscription`; a strip under
+  each studio in the hub; `/admin/subscriptions`, `/admin/plans`, Grant / End
+  on the Businesses desk, Grant Artist plan on Accounts, MRR on the dashboard.
+  The harness (25 proofs, the seeder, the restorer) and the e2e (four specs, one
+  new webhook test) are re-cut and NOT yet run — the database has none of it
+  until the push.
 - **R13–R16 — the organization's standing, the studio gate, org-level events and
   the verification photos, 9 Sep 2026, no step number ⚠ (Rule 9, auth + RLS +
-  money-adjacent) — THREE MIGRATIONS WRITTEN, NOT APPLIED (NEXT TO DO #1).**
-  Four requirements the user gave after phase 2 landed, with two decisions taken
+  money-adjacent) — ALL THREE MIGRATIONS APPLIED 10 Sep 2026 and green; R14's
+  org-wide subscription was superseded the same day by per-studio subscriptions
+  (the bullet above).** Four requirements the user gave after phase 2 landed, with two decisions taken
   by asking rather than guessing (whose name a public event carries; whether to
   charge for the subscription now). **R13:** where an organization stands moved
   out of the studios hub onto HOME — the badge on its own name, `OrgStanding`'s
@@ -3573,7 +3655,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | # | The prototype does | DanceOS does | Why |
 |---|--------------------|--------------|-----|
 | R1 | Three roles: dancer, artist / trainer, studio (`__DOSROLE`; the onboarding tiles 3855) | Two kinds of account: **user** and **organization** (`profiles.role = 'user' \| 'org'`) | The user's decision. A studio is not a person; an organization runs studios — one or several — and that is a different thing to be. |
-| R2 | The subscription sets the role to artist (8850, "Artist is a TOOLSET on that same profile") | **Pro is the plan, never a role**: an active `artist_plans` row. Badges print ARTIST off the plan (`kindOf`, `artist_ids`) | The two UPDATEs that kept role and plan in step were the only thing keeping them in step, and they drifted (an expired plan left 'trainer' forever). One source of truth. |
+| R2 | The subscription sets the role to artist (8850, "Artist is a TOOLSET on that same profile") | **Pro is the plan, never a role**: a live `subscriptions` row of kind `artist` (`artist_plans` is history since 10 Sep 2026). Badges print ARTIST off the plan (`kindOf`, `artist_ids`) | The two UPDATEs that kept role and plan in step were the only thing keeping them in step, and they drifted (an expired plan left 'trainer' forever). One source of truth. |
 | R3 | Anyone opens a studio or an independent-trainer business from the hub (2660-2684) | **Only an organization opens studios; only a Pro user opens ONE artist page**; enforced in `create_tenant_with_owner` and mirrored by the hub | "Studio profiles will only be created inside the org profile." An artist page is what the artist tools run through, so a Pro user still gets exactly one. |
 | R4 | Every business is public the moment it exists (`visibility` default 'listed') | A studio is **born unlisted and goes public when a platform admin verifies its organization**; `guard_tenant_visibility` refuses 'listed' under an unverified org | "Admin will check social media links, confirm, and then only an org will be visible to all users." Every public policy already hinged on `visibility = 'listed'`, so the gate is one trigger. |
 | R5 | No platform admin exists (the closest thing is a demo toast, 3869) | `platform_admins` (service-role only), `/admin/verifications`, `decide_org_verification`, an admin row in the settings sheet | Somebody has to say yes. Named by DanceOS, never self-serve; a stranger gets a 404, not a 403. |
@@ -3585,7 +3667,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R11 | A studio account books classes, joins crews, enters events like anyone (it was a person) | **An organization is not a person**: one trigger (`guard_person_only`) on enrollments, orders, event_bookings, crews, crew_members, enquiries, class_claims and non-owner tenant_members refuses an organization account in the person's seat | "For a user these are separate entities." The org runs studios and hosts events; people book, dance, ask and teach. |
 | R12 | Every signed-in user reads every profile row (Step 1) | **An organization's profile row is readable only by itself, a platform admin, and the members of the studios it owns** (their Staff desk prints the owner) — the SELECT policy says so | R9 hid the organization in the app; the review found the raw API still handed the row over. Now the ceiling matches the app. |
 | R13 | A studio account's own screens carry everything about it; there is no platform to be verified BY | **Where an organization stands with DanceOS lives on HOME.** The badge — VERIFIED / UNDER VERIFICATION / NOT APPROVED — sits on the organization's own name in the identity sleeve, and under the sleeve `OrgStanding` carries the six-step timeline, the admin's rejection reason, the photo strip while it is still short, and the door to the conversation with its unread badge. `/business` keeps only the consequence: whether a studio may be created, and why not | The user's ask (9 Sep 2026): the badge and the way to message the admin belong on the outside screen. An organization waiting on a stranger's decision should not have to go looking for where it stands, and the only door to that stranger should not be two taps inside a screen called Studios. Visible to the organization alone — it is the organization's own Home |
-| R14 | Any account opens a business the moment it exists (2660-2684) | **A studio needs a VERIFIED and SUBSCRIBED organization.** `why_no_studio()` is the one sentence the hub prints under a disabled control and `create_tenant_with_owner` raises, so the screen and the rule cannot drift apart. A studio created this way is **public immediately** — a studio is no longer made and left private to wait. ⚠ Nothing is charged: no price has been set, so an admin's audited grant is what writes the plan row (`amount_inr = 0`), and a Cashfree order will write the same row later without the gate changing. Ending a subscription leaves every existing studio alone — only opening a NEW one closes off | The user's ask (9 Sep 2026): "studio creation must be after verification and paying for the subscription; until the org is not verified can't create studio." R9 had already said studios come after approval; the first cut let them be created while pending, and this is the correction. Asked about the money, the user chose the full gate now with the charge later, rather than a price nobody had set |
+| R14 | Any account opens a business the moment it exists (2660-2684) | **A studio needs a VERIFIED organization to be CREATED, and ITS OWN paid subscription to be PUBLIC** (re-cut 10 Sep 2026 from "a verified and subscribed organization"). `why_no_studio()` is the one sentence the hub prints under a disabled control and `create_tenant_with_owner` raises — verification alone. A studio is born UNLISTED; `why_not_public(tenant)` is the sentence between it and Discover; `guard_tenant_visibility` refuses listing without a live plan; the authorisation webhook (or an admin's audited grant, which charges nothing) lists it. ⚠ **₹1,200 a month per studio, ₹700 a month for the Artist plan, through a Cashfree Subscriptions mandate** — the authorisation pays the first period, the mandate charges each next one, cancel = stop renewing and keep what was paid for, three days' grace on a failed charge; prices are the admin's to change (`/admin/plans`) and snapshotted on every subscription | The user's asks: "studio creation must be after verification and paying for the subscription" (9 Sep 2026), then "keep 1200 for an org … each studio need a subscription … if an org has two studios will need two subscription each linked to studio … keep 700 as artist subscription and link gateway … keep the subscription amount dynamic, admin has the access to change" and "make sure this subscription follows standard approach how it is dealt in real apps" (10 Sep 2026). The first cut sold prepaid periods as one-off orders; a real subscription is a mandate with a status machine, so that is what was built |
 | R15 | An event belongs to the business hosting it, and a studio account IS that business | **An event belongs to the ORGANIZATION.** Each organization gets one tenant of its own (`tenants.type = 'org'`, unlisted for ever) which hosts its events, so `/business/<id>/events` is ONE desk instead of one per studio, and the public event page prints the organization's name as its host. `save_event` refuses a studio host. The organization stays unbrowsable — the hosting row is excluded from Discover, search, `admin_businesses` and every public page, and cannot be followed; `event_host_is_public()` (a verified organization, or a listed studio / artist page) is what decides an event's publicness now, so "listed" keeps meaning "on Discover" | The user's ask (9 Sep 2026): "right now event is inside studio, though it should be at org level." An event has always carried its own venue, city and map link, so the studio on it was never the place — only the owner. Asked whose name a public event should carry, given R9, the user chose the organization, "events only" |
 | R16 | Onboarding asks for a photo and links; nothing else is evidence | **An organization must attach 5–10 photos of its space at signup**, on a fifth onboarding screen, and `request_org_verification` refuses a request under five. They live in a PRIVATE bucket (`org-proof`) readable only by the organization and a platform admin, through short-lived signed URLs; the admin's queue draws them beside the links | The user's ask (9 Sep 2026): "at the time of signup along with the social media the org must attach min 5 to max 10 pics which will be visible to admin for the verification." The public `media` bucket would have made pictures of somebody's premises readable by anybody who guessed the URL — so this is the one thing in the app with a private bucket, and the screen tells the organization so |
 
@@ -3650,13 +3732,14 @@ nothing to lift.
 | Calendar: the History chip in the hero — **landed 30 Aug 2026** (parity slice 7): the prototype's own chip, opening `/stats?tab=history` | 9070-9074 | closed |
 | Tests: **done 28 Aug 2026** — the happy path is nine serial SEGMENTS sharing one seeded world and one set of contexts (`test.describe.serial`), so each part has its own timeout and its own line in the report; the longest runs ~35 s and the per-test limit came back down from 300 s to 120 s. What is still open: the segments share state, so a failure early skips the rest (right for a story, wrong for a suite) — splitting into independently seeded specs needs API-level world builders first | e2e/happy-path.spec.ts | a testing slice, when the story stops being one story |
 | **Prototype screens no roadmap step names** (inventoried 28 Aug 2026), so they are not lost: S_memberships (class packs / plans ⚠) 16846, S_rentals (room rental rates + requests ⚠) 16489, S_expenses 16720, S_assets 16791, S_choreos + S_routinedetail (routines) 17115/17215, S_people + S_persondetail (the student pool and a person's record) 17293/17516, S_settings (the studio settings segments beyond Rooms) 18352, S_bookings (the learner's bookings list — /my-classes stands in) 6099 — **S_managed landed 28 Aug 2026** at `/managed`; **S_payments, S_invoices, S_refunds and S_subscr landed 29 Aug 2026** (the settings slice) | as listed | memberships + rentals need the live **Cashfree** account (they are money screens); people / routines / settings are their own slices, none blocked by anything |
-| Settings slice, what it left (29 Aug 2026): saved payment instruments (the prototype's YOUR METHODS store, 16594-16611 — Cashfree's token vault; the ADD tiles explain instead), the Artist plan's real charge (a Cashfree order at ₹799 / ₹7,999 — ₹0 during the pilot, said on the screen), KYC document upload (Cashfree-hosted; the checklist names what it collects), the refund row's "Download receipt" (the class page carries the invoice; a PDF waits with Invoices' Download PDF), the Privacy export / delete and the Help centre panels. **The Discover cards' tick (D7) and Call on a person (N8) landed 30 Aug 2026** (parity slice 7) | S_payments 16594-16611, 16563; S_subscr 16960; S_refunds 16680; 11433-11436 | a live Cashfree account (instruments, the charge, KYC); a PDF slice; Privacy and Help need a product decision |
+| Settings slice, what it left (29 Aug 2026): saved payment instruments (the prototype's YOUR METHODS store, 16594-16611 — Cashfree's token vault; the ADD tiles explain instead), ~~the Artist plan's real charge~~ (**landed 10 Sep 2026** — ₹700 a month through a Cashfree Subscriptions mandate; the price is the admin's on `/admin/plans`), KYC document upload (Cashfree-hosted; the checklist names what it collects), the refund row's "Download receipt" (the class page carries the invoice; a PDF waits with Invoices' Download PDF), the Privacy export / delete and the Help centre panels. **The Discover cards' tick (D7) and Call on a person (N8) landed 30 Aug 2026** (parity slice 7) | S_payments 16594-16611, 16563; S_subscr 16960; S_refunds 16680; 11433-11436 | a live Cashfree account (instruments, the charge, KYC); a PDF slice; Privacy and Help need a product decision |
 | **PassDeck slice, what it left (29 Aug 2026):** the "Yours" badge a card wears on a session you run (8460 — the prototype's `manage` mode; our manage powers live on the managed list and the desks), the poster on the deck's class card (posters are drawn until the posters slice — the pass sheet already draws one), and the event card's role chip sits UNDER the card rather than inside it (`EventCard` heads with its kind cap and has no slot on that line). **Home's rank row landed 30 Aug 2026** (parity slice 7) | PassDeck 6863-7204, BookingCard 8460, 7315-7323 | posters slice; the rest decision (c) |
 | **Slice 8, what it left (30 Aug 2026):** onboarding's **date of birth and the 18+ gate** (no column holds a birth date — a needs-field (b) row of its own, and the gate is a product rule as much as a column); "Missing a style? Suggest it →" on the styles step (a demo toast in the prototype, so there is nothing to lift); the photo step uses the app's own `PhotoPicker` rather than `DosCropper`'s crop-and-frame flow; and the picker is single-select everywhere it is used — its `multi` mode (3554) has no call site yet, so it is not built | 3788-3943, 3885, DosCropper 6604, DosStylePicker 3554 | a DOB slice; the cropper with the posters slice; `multi` when a screen wants it |
 | **Wiring slice, what it left (30 Aug 2026):** the owner's Followers sheet has no All · Dancers · Artists · Studios segment strip (the person's own sheet has one; a business's followers are one list and the segments would filter a list that is usually short) and no paging past `MAX_LIST`; the Discover tick is drawn on studios and artists but a **crew** carries none, because no crew is verified by anybody; and the enquiry's Call still says "No number on this enquiry" to the business when the sender typed none — the sender's number is theirs to give, not the app's to look up | S_profiletab 11335; 4352, 4411; S_enqdetail 5406 | the segment strip and paging when a pilot business has enough followers to need them; the rest is decision (c) |
-| **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **an organization account can still act as a person elsewhere** (book a class, join a crew, enter an event, send an enquiry — nothing refuses it, and where it does it prints as a person; whether it should is open); **RLS still lets any signed-in user read an organization's `profiles` row** (Step 1's policy) — the 404, the search filter and the follow refusals are the app's decisions on that ceiling, not a new policy; **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof-script pass is done (9 Sep):** every `New-EmailUser` stamps an organization verified through the service role, an artist page is opened by a Pro user, and the phone-based proofs rely on `scripts/ensure-test-phone-profiles.js` — `rls-proof-discovery` must run alone (OTP rate limit); the **date of birth and 18+ gate** stay needs field (b); **the Artist plan is not charged** (₹0, no Cashfree order — NEXT TO DO #1) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
+| **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **an organization account can still act as a person elsewhere** (book a class, join a crew, enter an event, send an enquiry — nothing refuses it, and where it does it prints as a person; whether it should is open); **RLS still lets any signed-in user read an organization's `profiles` row** (Step 1's policy) — the 404, the search filter and the follow refusals are the app's decisions on that ceiling, not a new policy; **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof-script pass is done (9 Sep):** every `New-EmailUser` stamps an organization verified through the service role, an artist page is opened by a Pro user, and the phone-based proofs rely on `scripts/ensure-test-phone-profiles.js` — `rls-proof-discovery` must run alone (OTP rate limit); the **date of birth and 18+ gate** stay needs field (b); **the Artist plan IS charged since 10 Sep 2026** (₹700 a month through a Cashfree mandate — the subscriptions slice; `activate_artist_plan` is only the free path, refusing while the price list says otherwise) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
-| **R13–R16, what they left (9 Sep 2026):** **the organization subscription is not charged** (⚠ Rule 9 — the gate is real, an admin's grant writes the plan row at ₹0, and a Cashfree order will write the same row; the same open question as the Artist plan, and one price decision closes both); **there is no owner-facing "renew" or "what am I paying" screen** (the standing card on Home says whether it is active and until when, and the door is Message DanceOS — a self-serve renewal needs the charge first); **the verification photos have no cropper and no reordering** (`object-fit: cover` and insertion order stand in; the cropper belongs to the posters slice); **an existing organization verified before R16 has no photos**, so its request was filed under the old rule — the admin's queue says so on the card rather than pretending; **an organization's hosting row (R15) is created for every organization, verified or not**, so an unverified one can draft events it cannot publish (harmless, and it means the desk is never missing); **a studio can no longer host an event at all**, so an artist page and an organization are the only hosts — if a single studio ever needs its own event series that is a new decision, not a bug; **`session_seat_counts` and the public `media` bucket still escape the visibility gate** (unchanged from the accounts slice — aggregate-only and by design, but an unlisted studio's seat count and photos are still readable); **no e2e covers R13–R16 yet** (the migrations are not applied — NEXT TO DO #2) | — (the user's requirements, 9 Sep 2026) | the price decision (⚠ money); a renewal screen after it; the cropper with the posters slice; the R13–R16 e2e once the migrations land |
+| **R13–R16, what they left (9 Sep 2026), re-read 10 Sep 2026 after the subscriptions slice:** ~~the organization subscription is not charged~~ — **charged now, per studio** (see the row below); **there is an owner-facing "what am I paying" screen now** (`/subscription` for an artist, the strip under each studio for an organization); **the verification photos have no cropper and no reordering** (`object-fit: cover` and insertion order stand in; the cropper belongs to the posters slice); **an existing organization verified before R16 has no photos**, so its request was filed under the old rule — the admin's queue says so on the card rather than pretending; **an organization's hosting row (R15) is created for every organization, verified or not**, so an unverified one can draft events it cannot publish (harmless, and it means the desk is never missing); **a studio can no longer host an event at all**, so an artist page and an organization are the only hosts — if a single studio ever needs its own event series that is a new decision, not a bug; **`session_seat_counts` and the public `media` bucket still escape the visibility gate** (unchanged from the accounts slice — aggregate-only and by design, but an unlisted studio's seat count and photos are still readable) | — (the user's requirements, 9 Sep 2026) | the cropper with the posters slice; the rest are decisions (c) |
+| **The subscriptions slice, what it left (10 Sep 2026) ⚠:** **yearly plans** exist in the schema (`plan_catalog.period`, `plan_months`) and none is seeded or offered — monthly only, by the user's prices; **a plan change** (monthly → yearly, or a price the customer moves to) is not built — a customer cancels and subscribes again; **proration and GST lines** on a subscription payment are not built (the payment row carries the rupee amount only); **the pre-debit notice before each charge is Cashfree's** (RBI e-mandate rules), not ours — the hub's "you are told a day before each charge" is Cashfree's notice, and our own reminder is only for GRANTED periods (three days out, from the nightly clock); **`/invoices` and the studio income screens count class money only** — subscription payments (`payments.kind` = subscription_*) have no receipt screen of their own yet; **a mandate authorised but never reported** (window closed without a webhook and without the return) stays `pending_auth` until the customer presses Subscribe again — the nightly clock does not poll Cashfree; **the nightly clock depends on pg_cron** being enabled on the project (the migration guards the schedule, so the rest applies without it — but then nothing expires on its own); **the Cashfree return URL** is `NEXT_PUBLIC_SITE_URL` or the request's origin — set it in Vercel (NEXT TO DO #9); **`scripts/shots/shoot-app.js`** is still on the old onboarding and hub | — (the user's asks, 10 Sep 2026) | yearly and plan changes when a customer asks; receipts with the Invoices PDF slice; polling only if a real mandate ever goes missing; pg_cron is a dashboard switch |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)
 

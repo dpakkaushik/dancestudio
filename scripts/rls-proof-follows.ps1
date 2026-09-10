@@ -67,10 +67,6 @@ function New-EmailUser($email, $name, $role) {
   if ($role -eq "org") {
     # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
     Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-    # 9 Sep 2026 (R14): a studio also needs a LIVE SUBSCRIPTION, so the service role grants one here as an admin would
-    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/org_plans" -Headers $svcH -Body (@{
-      org_id = $u.id; plan = "granted"; until = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); amount_inr = 0
-      note = "Granted by a proof script (R14)"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   }
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
@@ -90,8 +86,22 @@ $ownerB = New-EmailUser "follow-ownerb-$stamp@example.com" "Owner B $stamp" "org
 $l1 = New-EmailUser "follow-l1-$stamp@example.com" "Learner One $stamp" "user"
 $l2 = New-EmailUser "follow-l2-$stamp@example.com" "Learner Two $stamp" "user"
 
+# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
+# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
+# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
+function Subscribe-Studio($tenantId) {
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerId = [string]$ownerRows[0].user_id
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
+    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
+    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+}
 $ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Follow Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+Subscribe-Studio ([string]$ta.id)
 $tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+Subscribe-Studio ([string]$tb.id)
 # B goes private - the one state a listed/unlisted line can be tested against
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { suspendAccountAction, unsuspendAccountAction } from "@/features/admin/server-actions/accounts";
-import { endOrgSubscriptionAction, grantOrgSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
+import { grantSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
 import { adminOpenSupportThreadAction } from "@/features/support/server-actions/support";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
@@ -58,7 +58,6 @@ export function AccountsDesk({
   const [suspending, setSuspending] = useState<string | null>(null);
   const [writing, setWriting] = useState<string | null>(null);
   const [granting, setGranting] = useState<string | null>(null);
-  const [ending, setEnding] = useState<string | null>(null);
   const [months, setMonths] = useState(12);
   const [reason, setReason] = useState("");
   const [subject, setSubject] = useState("");
@@ -73,7 +72,6 @@ export function AccountsDesk({
     setSuspending(null);
     setWriting(null);
     setGranting(null);
-    setEnding(null);
     setReason("");
     setSubject("");
     setBody("");
@@ -96,21 +94,14 @@ export function AccountsDesk({
       router.refresh();
     });
 
+  /* comping a PERSON the Artist plan (10 Sep 2026): a studio's comp lives on
+     Businesses, because a subscription is per studio */
   const grant = (a: AdminAccount) =>
     start(async () => {
-      const out = await grantOrgSubscriptionAction({ orgId: a.id, months, note: reason.trim() || null });
+      const out = await grantSubscriptionAction({ kind: "artist", subjectId: a.id, months, note: reason.trim() || null });
       if (out.error) return fire(out.error);
       close();
-      fire(`${a.fullName} can open studios — ${months} month${months === 1 ? "" : "s"}, nothing charged`);
-      router.refresh();
-    });
-
-  const endSub = (a: AdminAccount) =>
-    start(async () => {
-      const out = await endOrgSubscriptionAction({ orgId: a.id, reason: reason.trim() });
-      if (out.error) return fire(out.error);
-      close();
-      fire(`${a.fullName}'s subscription has ended — they have been told why`);
+      fire(`${a.fullName} has the Artist plan for ${months} month${months === 1 ? "" : "s"} — nothing charged`);
       router.refresh();
     });
 
@@ -173,11 +164,11 @@ export function AccountsDesk({
                       {a.isAdmin ? <span style={{ ...chip, background: "#EDE9FE", color: "#6B21A8" }}>ADMIN</span> : null}
                       {a.owns > 0 ? <span style={{ ...chip, background: "var(--el)", color: SUB }}>{a.owns} BUSINESS{a.owns === 1 ? "" : "ES"}</span> : null}
                       {suspended ? <span style={{ ...chip, background: "#FEE2E2", color: "#B42318" }}>SUSPENDED</span> : null}
-                      {/* R14/R16: an organization's two new facts, on the row where
-                          the decisions about them are made */}
-                      {a.role === "org" && sub ? (
-                        <span style={{ ...chip, background: sub.subscribed ? "#DCFCE7" : "#FEF3C7", color: sub.subscribed ? "#15803D" : "#92400E" }}>
-                          {sub.subscribed ? "SUBSCRIBED" : "NO SUBSCRIPTION"}
+                      {/* an organization's studios and how many are subscribed (10 Sep
+                          2026: a subscription is per studio, comped on Businesses) */}
+                      {a.role === "org" && sub && sub.studios > 0 ? (
+                        <span style={{ ...chip, background: sub.subscribedStudios === sub.studios ? "#DCFCE7" : "#FEF3C7", color: sub.subscribedStudios === sub.studios ? "#15803D" : "#92400E" }}>
+                          {sub.subscribedStudios}/{sub.studios} STUDIOS SUBSCRIBED
                         </span>
                       ) : null}
                       {a.role === "org" && sub ? (
@@ -232,7 +223,7 @@ export function AccountsDesk({
                       ))}
                     </div>
                     <input
-                      aria-label={`Note on ${a.fullName}'s subscription`}
+                      aria-label={`Note on ${a.fullName}'s Artist plan`}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                       maxLength={300}
@@ -240,35 +231,13 @@ export function AccountsDesk({
                       style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit" }}
                     />
                     <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
-                      <button type="button" disabled={pending} onClick={() => grant(a)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Confirm the subscription for ${a.fullName}`}>
-                        {pending ? "Setting up…" : "Set it up"}
+                      <button type="button" disabled={pending} onClick={() => grant(a)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Confirm the Artist plan for ${a.fullName}`}>
+                        {pending ? "Granting…" : "Grant it"}
                       </button>
                       <button type="button" onClick={close} style={btn}>Cancel</button>
                     </div>
                     <div style={{ fontSize: 10, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
-                      Nothing is charged — there is no price yet. This is an admin&apos;s grant, and the log says so.
-                    </div>
-                  </div>
-                ) : ending === a.id ? (
-                  <div style={{ marginTop: 9 }}>
-                    <label htmlFor={`endwhy-${a.id}`} style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>WHY — THEY READ THIS</label>
-                    <textarea
-                      id={`endwhy-${a.id}`}
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      rows={2}
-                      maxLength={300}
-                      placeholder="Why it is ending, in a sentence."
-                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
-                    />
-                    <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
-                      <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => endSub(a)} style={{ ...btn, background: "#EF4444", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm ending ${a.fullName}'s subscription`}>
-                        {pending ? "Ending…" : "End it"}
-                      </button>
-                      <button type="button" onClick={close} style={btn}>Cancel</button>
-                    </div>
-                    <div style={{ fontSize: 10, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
-                      Their studios stay exactly as they are. Only opening a NEW one is closed off.
+                      A comp: nothing is charged and it does not renew — they are reminded three days before it ends. The log says so.
                     </div>
                   </div>
                 ) : writing === a.id ? (
@@ -314,15 +283,14 @@ export function AccountsDesk({
                     {a.role !== "org" ? null : (
                       <Link href="/admin/verifications" style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Verification</Link>
                     )}
-                    {a.role !== "org" || suspended ? null : sub?.subscribed ? (
-                      <button type="button" onClick={() => { close(); setEnding(a.id); }} style={{ ...btn, color: "#B42318" }} aria-label={`End ${a.fullName}'s subscription`}>
-                        End subscription
+                    {a.role === "org" && sub && sub.studios > 0 ? (
+                      <Link href={`/admin/businesses?q=${encodeURIComponent(a.fullName)}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Studios</Link>
+                    ) : null}
+                    {a.role === "user" && !a.isAdmin && !suspended && !a.hasPlan ? (
+                      <button type="button" onClick={() => { close(); setMonths(12); setGranting(a.id); }} style={{ ...btn, color: "#15803D" }} aria-label={`Grant ${a.fullName} the Artist plan`}>
+                        Grant Artist plan
                       </button>
-                    ) : (
-                      <button type="button" onClick={() => { close(); setMonths(12); setGranting(a.id); }} style={{ ...btn, color: "#15803D" }} aria-label={`Set up ${a.fullName}'s subscription`}>
-                        Set up subscription
-                      </button>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>

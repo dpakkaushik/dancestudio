@@ -10,6 +10,7 @@ import {
   markWebhookProcessed,
   recordWebhookEvent,
 } from "@/repositories/payments";
+import { applySubscriptionEvent } from "@/repositories/subscriptions";
 
 /** Cashfree webhook — the authority on payment state (build plan: all
  *  payment-affecting changes ride verified webhooks; the checkout confirmation
@@ -21,7 +22,12 @@ import {
  *  payment / refund id, so even a crash between ledger and RPC re-runs safely.
  *
  *  Events (Cashfree PG): PAYMENT_SUCCESS_WEBHOOK, PAYMENT_FAILED_WEBHOOK,
- *  PAYMENT_USER_DROPPED_WEBHOOK, REFUND_STATUS_WEBHOOK. */
+ *  PAYMENT_USER_DROPPED_WEBHOOK, REFUND_STATUS_WEBHOOK.
+ *  Events (Cashfree Subscriptions, since 10 Sep 2026): every SUBSCRIPTION_*
+ *  type lands on one applier that maps the provider's words onto our small
+ *  status machine — an authorisation pays the first period and puts a studio on
+ *  Discover, a charge buys the next period, a failure is three days of grace, a
+ *  cancellation keeps what was paid for. The same secret signs both families. */
 
 interface CfWebhookBody {
   type?: string;
@@ -42,8 +48,29 @@ interface CfWebhookBody {
       refund_status?: string;
       refund_amount?: number;
     };
+    /* the Subscriptions family */
+    subscription_details?: {
+      cf_subscription_id?: number | string;
+      subscription_id?: string;
+      subscription_status?: string;
+      next_schedule_date?: string | null;
+    };
+    payment_id?: string;
+    cf_payment_id?: number | string;
+    payment_type?: string;
+    payment_amount?: number;
+    payment_status?: string;
+    failure_details?: { failure_reason?: string | null };
+    authorization_details?: {
+      authorization_amount?: number;
+      authorization_status?: string | null;
+      payment_group?: string | null;
+      payment_method?: unknown;
+    };
   };
 }
+
+const dateOnly = (iso: string | null | undefined): string | null => (iso && iso.length >= 10 ? iso.slice(0, 10) : null);
 
 export async function POST(req: Request) {
   const secret = process.env.CASHFREE_SECRET_KEY;
@@ -125,6 +152,35 @@ export async function POST(req: Request) {
       } else {
         result = { outcome: "waiting", refund_status: r.refund_status };
       }
+    } else if (eventType.startsWith("SUBSCRIPTION_")) {
+      const d = body.data ?? {};
+      const sd = d.subscription_details;
+      if (!sd?.subscription_id && sd?.cf_subscription_id === undefined) {
+        return NextResponse.json({ error: "malformed subscription entity" }, { status: 400 });
+      }
+      const auth = d.authorization_details;
+      const amount = typeof d.payment_amount === "number" ? d.payment_amount : typeof auth?.authorization_amount === "number" ? auth.authorization_amount : null;
+      const applied = await applySubscriptionEvent(admin, {
+        type: eventType,
+        providerSubscriptionId: sd.subscription_id ?? null,
+        cfSubscriptionId: sd.cf_subscription_id === undefined ? null : String(sd.cf_subscription_id),
+        providerStatus: sd.subscription_status ?? null,
+        authStatus: auth?.authorization_status ?? null,
+        paymentId: d.payment_id ?? null,
+        cfPaymentId: d.cf_payment_id === undefined ? null : String(d.cf_payment_id),
+        paymentType: d.payment_type ?? null,
+        paymentStatus: d.payment_status ?? null,
+        amountPaise: amount === null ? null : rupeesToPaise(amount),
+        method: auth?.payment_group ?? null,
+        failureReason: d.failure_details?.failure_reason ?? null,
+        nextScheduleDate: dateOnly(sd.next_schedule_date),
+      });
+      result = applied;
+      revalidatePath("/");
+      revalidatePath("/business");
+      revalidatePath("/subscription");
+      revalidatePath("/profile");
+      revalidatePath("/discover");
     }
 
     await markWebhookProcessed(admin, eventId);

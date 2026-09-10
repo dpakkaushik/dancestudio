@@ -29,9 +29,10 @@ const SECTIONS: Array<{ href: string; label: string; badge?: keyof AdminBadges; 
   { href: "/admin/support", label: "Support", badge: "support" },
   { href: "/admin/accounts", label: "Accounts" },
   { href: "/admin/businesses", label: "Businesses" },
+  { href: "/admin/subscriptions", label: "Subscriptions", badge: "money" },
+  { href: "/admin/plans", label: "Plans" },
   { href: "/admin/reports", label: "Reports", badge: "reports" },
   { href: "/admin/audit", label: "Audit" },
-  { href: "/admin/money", label: "Money", badge: "money", soon: true },
 ];
 
 export function AdminShell({ badges = {}, children }: { badges?: AdminBadges; children: ReactNode }) {
