@@ -21,17 +21,27 @@ export interface AdminBadges {
   support?: number;
   reports?: number;
   money?: number;
+  /** refunds somebody is still waiting on — the money desk's own number */
+  refunds?: number;
 }
 
+/** THE ORDER IS THE JOB, NOT THE ALPHABET (11 Sep 2026). The three sections
+ *  that carry work an admin owes somebody come first — an organization waiting
+ *  to be verified, a person waiting for a reply, a report waiting for a
+ *  decision. Then money, which is watched rather than worked. Then the
+ *  registers — who and what exists. Audit is last because it is read after the
+ *  fact, never before. */
 const SECTIONS: Array<{ href: string; label: string; badge?: keyof AdminBadges; soon?: boolean }> = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/verifications", label: "Verifications", badge: "verifications" },
   { href: "/admin/support", label: "Support", badge: "support" },
-  { href: "/admin/accounts", label: "Accounts" },
-  { href: "/admin/businesses", label: "Businesses" },
+  { href: "/admin/reports", label: "Reports", badge: "reports" },
+  { href: "/admin/payments", label: "Money", badge: "refunds" },
   { href: "/admin/subscriptions", label: "Subscriptions", badge: "money" },
   { href: "/admin/plans", label: "Plans" },
-  { href: "/admin/reports", label: "Reports", badge: "reports" },
+  { href: "/admin/communication", label: "Communication" },
+  { href: "/admin/accounts", label: "Accounts" },
+  { href: "/admin/businesses", label: "Businesses" },
   { href: "/admin/audit", label: "Audit" },
 ];
 

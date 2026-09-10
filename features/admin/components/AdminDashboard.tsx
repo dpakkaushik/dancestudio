@@ -29,6 +29,38 @@ const Grid = ({ children }: { children: React.ReactNode }) => (
   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>{children}</div>
 );
 
+/** ONE SEGMENT, AS A DOOR (11 Sep 2026). The nav is a row of words that has to
+ *  scroll; this is the same panel laid out so its SHAPE is visible — what the
+ *  desk is for, in a line, and the number waiting on it if there is one. */
+function Segment({ href, name, what, waiting, tone }: { href: string; name: string; what: string; waiting?: number; tone?: string }) {
+  const n = waiting ?? 0;
+  return (
+    <Link
+      href={href}
+      style={{
+        display: "block",
+        background: CARD,
+        border: `1px solid ${EL}`,
+        borderLeft: n > 0 ? `4px solid ${tone ?? "#F59E0B"}` : `1px solid ${EL}`,
+        borderRadius: 16,
+        padding: "11px 12px",
+        textDecoration: "none",
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <b style={{ fontSize: 13, color: INK, flex: 1, minWidth: 0 }}>{name}</b>
+        {n > 0 ? (
+          <span style={{ minWidth: 17, height: 17, borderRadius: 9, padding: "0 5px", background: tone ?? "#F59E0B", color: "#fff", fontSize: 9.5, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+            {n > 99 ? "99+" : n}
+          </span>
+        ) : null}
+      </div>
+      <div style={{ fontSize: 10.5, color: SUB, marginTop: 3, lineHeight: 1.45 }}>{what}</div>
+    </Link>
+  );
+}
+
 /** THE OVERVIEW (10 Sep 2026): what is waiting on an admin first, because that
  *  is the only part of a dashboard that is work rather than reading. Then what
  *  the platform is, what moved in the last seven days, and what is stuck.
@@ -59,8 +91,29 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         {/* a renewal the bank refused is work waiting: three days of grace, then the
             studio comes off Discover — the admin can see it coming (10 Sep 2026) */}
         <Fig n={w.pastDue} label="renewals failing" href="/admin/subscriptions?status=past_due" tone={w.pastDue > 0 ? "#EF4444" : undefined} />
-        <Fig n={w.refunds} label="refunds in the queue" tone={w.refunds > 0 ? "#EF4444" : undefined} />
+        {/* a door at last (11 Sep 2026): the money desk shows who has been waiting,
+            and for how many days, which is the number that says which one to chase */}
+        <Fig n={w.refunds} label="refunds in the queue" href="/admin/payments?tab=refunds" tone={w.refunds > 0 ? "#EF4444" : undefined} />
       </Grid>
+
+      {/* ── THE PANEL, AS ITS SEGMENTS (11 Sep 2026) ──────────────────────────
+          The nav above is a row of words that has to scroll on a phone, so the
+          shape of the panel was only ever visible to somebody who already knew
+          it. Here it is laid out: every desk, what it is for, and what is
+          waiting on it. Each one opens its own page. */}
+      <Head>THE DESKS</Head>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Segment href="/admin/verifications" name="Verifications" what="Organizations asking to be trusted" waiting={w.verifications} />
+        <Segment href="/admin/support" name="Support" what="DanceOS and one account, talking" waiting={w.threads} />
+        <Segment href="/admin/reports" name="Reports" what="What somebody says is wrong" waiting={w.reports} tone="#EF4444" />
+        <Segment href="/admin/payments" name="Money" what="In, back, and on to trainers" waiting={w.refunds} tone="#EF4444" />
+        <Segment href="/admin/subscriptions" name="Subscriptions" what="Every recurring plan and its state" waiting={w.pastDue} tone="#EF4444" />
+        <Segment href="/admin/plans" name="Plans" what="What a plan costs, and whether it is on offer" />
+        <Segment href="/admin/communication" name="Communication" what="What the platform said, and who read it" />
+        <Segment href="/admin/accounts" name="Accounts" what="Every person and organization" />
+        <Segment href="/admin/businesses" name="Businesses" what="Every studio and artist page" />
+        <Segment href="/admin/audit" name="Audit" what="Every decision an admin has made" />
+      </div>
       {w.stuckWebhooks > 0 ? (
         <div style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 14, padding: "10px 12px", marginTop: 8 }}>
           <b style={{ fontSize: 12 }}>{w.stuckWebhooks} payment webhook{w.stuckWebhooks === 1 ? "" : "s"} never finished</b>
@@ -123,7 +176,9 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
       ) : null}
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
-        Plan money has its own screen under Subscriptions; class money oversight (stuck orders, refund disputes) comes in a later phase. Every decision you make is recorded in{" "}
+        Every payment, refund and payout now has a screen of its own on{" "}
+        <Link href="/admin/payments" style={{ color: INK, fontWeight: 800 }}>Money</Link> — read-only, because settling a
+        refund belongs to the studio whose class it was. Every decision you make is recorded in{" "}
         <Link href="/admin/audit" style={{ color: INK, fontWeight: 800 }}>the audit log</Link>.
       </div>
     </div>

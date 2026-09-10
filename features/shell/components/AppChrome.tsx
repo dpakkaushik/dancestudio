@@ -138,6 +138,14 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/admin\/accounts$/, "Accounts"],
   [/^\/admin\/businesses$/, "Businesses"],
   [/^\/admin\/reports$/, "Reports"],
+  /* the bar says what the NAV says, not what the URL says (11 Sep 2026): the
+     money desk lives at /admin/payments — the word the panel was asked for —
+     and without these four the bar fell back to the path segment, so the desk
+     the nav calls "Money" opened with "Payments" written over it */
+  [/^\/admin\/payments$/, "Money"],
+  [/^\/admin\/subscriptions$/, "Subscriptions"],
+  [/^\/admin\/plans$/, "Plans"],
+  [/^\/admin\/communication$/, "Communication"],
   [/^\/admin\/audit$/, "Audit log"],
   [/^\/support$/, "DanceOS support"],
   [/^\/support\/[^/]+$/, "Conversation"],

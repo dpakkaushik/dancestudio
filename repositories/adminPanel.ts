@@ -325,13 +325,21 @@ export async function reportContent(
  *
  *  Every read below goes through an RPC that arrives in
  *  `20260913110000_admin_money_and_communication.sql`. Until that migration is
- *  pushed the function is simply not there, and PostgREST answers `42883`
- *  (undefined_function) — which, thrown, is a 500 and a stack trace on a screen
- *  an admin opened on purpose. That is the wrong answer to "you have not run
- *  the migration yet": it looks like the app is broken when it is only
- *  unfinished. So the missing function is caught by its own error code and the
- *  desk says so in a sentence. Every other error still throws. */
-const UNDEFINED_FUNCTION = "42883";
+ *  pushed the function is not there, and the desk should say so in a sentence
+ *  rather than throw — "you have not run the migration" and "the app is broken"
+ *  look identical from a stack trace, and only one of them is true.
+ *
+ *  WHICH ERROR THAT IS, learned by running it (11 Sep 2026): NOT Postgres's
+ *  `42883` (undefined_function). The call never reaches Postgres. PostgREST
+ *  resolves a function against its own SCHEMA CACHE and, failing, answers
+ *  **`PGRST202`** — "Could not find the function public.admin_payments(...) in
+ *  the schema cache". `42883` is checked too, because that is what a direct
+ *  connection would say, but the one that actually fires here is PGRST202.
+ *
+ *  This also means a genuinely deployed function can look missing for a few
+ *  seconds after a migration until PostgREST reloads its cache — the same
+ *  notice is the right answer to that too. Every other error still throws. */
+const MISSING_FUNCTION_CODES = new Set(["PGRST202", "42883"]);
 
 export interface DeskResult<T> {
   rows: T;
@@ -339,7 +347,8 @@ export interface DeskResult<T> {
   needsMigration: boolean;
 }
 
-const missingFunction = (error: { code?: string } | null): boolean => error?.code === UNDEFINED_FUNCTION;
+const missingFunction = (error: { code?: string } | null): boolean =>
+  Boolean(error?.code && MISSING_FUNCTION_CODES.has(error.code));
 
 export interface AdminPayment {
   id: string;
