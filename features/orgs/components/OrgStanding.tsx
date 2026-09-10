@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
+import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { VerifiedTick, dateWords } from "@/features/settings/components/settings-kit";
 import { requestOrgVerificationAction } from "@/features/tenants/server-actions/tenants";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -36,6 +37,10 @@ export interface OrgStandingProps {
   studios: { total: number; subscribed: number };
   /** what one studio costs a month, from the price list; null when none is on offer */
   studioPriceInr: number | null;
+  /** the first studio still waiting on its own subscription — the next step, once verified */
+  nextStudio: { id: string; name: string } | null;
+  /** which plan that studio would be put on; null when none is on offer */
+  studioPlanKey: string | null;
   threadId: string | null;
   unread: number;
 }
@@ -51,7 +56,7 @@ export interface OrgStandingProps {
  *  photos, the ask, the decision, the subscription, and the studios going
  *  public. Every step says where it stands and what would move it; a rejection
  *  prints the admin's own words; and there is always a door to a person. */
-export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, studios, studioPriceInr, threadId, unread }: OrgStandingProps) {
+export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, studios, studioPriceInr, nextStudio, studioPlanKey, threadId, unread }: OrgStandingProps) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -144,13 +149,17 @@ export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, 
       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
         {verified ? <VerifiedTick size={15} /> : <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: tone, display: "inline-block" }} />}
         <b style={{ fontSize: 13 }}>{title}</b>
-        {/* the journey in one figure, so the timeline below is read rather than counted */}
+        {/* the journey in one figure, so the timeline below is read rather than
+            counted. Once verified there is no timeline to count — the card
+            carries the next step instead. */}
+        {verified ? null : (
         <span
           aria-hidden="true"
           style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.3, padding: "2px 7px", borderRadius: 999, background: doneCount === steps.length ? "#DCFCE7" : LILAC, color: doneCount === steps.length ? "#15803D" : MUTED, border: `1px solid ${doneCount === steps.length ? "#BBF7D0" : EL}` }}
         >
           {doneCount} of {steps.length} done
         </span>
+        )}
         {unread > 0 ? (
           <span style={{ marginLeft: "auto", minWidth: 17, height: 17, borderRadius: 9, padding: "0 5px", background: "#EC4899", color: "#fff", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             {unread}
@@ -158,6 +167,60 @@ export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, 
         ) : null}
       </div>
 
+      {/* ── VERIFIED: ONE NEXT STEP, WITH THE BUTTON THAT TAKES IT (10 Sep 2026).
+             The six-step list is the story of a decision already made; what an
+             organization needs here is the thing to do now. ── */}
+      {verified ? (
+        <div style={{ marginTop: 10 }}>
+          {studios.total === 0 ? (
+            <>
+              <div style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.35 }}>Next: open your first studio</div>
+              <div style={{ fontSize: 10.5, color: SUB, marginTop: 4, lineHeight: 1.5 }}>
+                DanceOS has verified you, so studios are yours to open. Each one carries its own subscription
+                {studioPriceInr != null ? <> — <b style={{ color: INK }}>₹{studioPriceInr.toLocaleString("en-IN")} a month</b>, renewing on its own until you cancel</> : null}, and that is
+                what puts it on Discover.
+              </div>
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 10 }}>
+                <Link href="/business" style={{ ...pill, background: "var(--text)", color: "var(--solid)", display: "inline-flex", alignItems: "center" }}>
+                  Add your first studio ›
+                </Link>
+              </div>
+            </>
+          ) : nextStudio && studioPlanKey ? (
+            <>
+              <div style={{ fontSize: 12.5, fontWeight: 900, lineHeight: 1.35 }}>
+                Next: subscribe {nextStudio.name} to put it on Discover
+              </div>
+              <div style={{ fontSize: 10.5, color: SUB, marginTop: 4, lineHeight: 1.5 }}>
+                {studios.total > 1 ? `${studios.subscribed} of ${studios.total} of your studios are live. ` : ""}
+                Nothing inside a studio is lost while it waits — it simply is not public yet. The first month is paid
+                when you authorise; every renewal is notified a day before.
+              </div>
+              <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
+                <SubscribeButton
+                  planKey={studioPlanKey}
+                  tenantId={nextStudio.id}
+                  label={studioPriceInr != null ? `Subscribe · ₹${studioPriceInr.toLocaleString("en-IN")}/mo` : "Subscribe"}
+                  onDone={(m) => setError(m)}
+                  style={{ background: "var(--text)", color: "var(--solid)" }}
+                />
+                <Link href="/business" style={{ ...pill, background: LILAC, border: `1px solid ${EL}`, color: INK, display: "inline-flex", alignItems: "center" }}>
+                  Your business ›
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
+              {studios.subscribed === 1
+                ? "Your studio is subscribed and on Discover."
+                : `All ${studios.total} of your studios are subscribed and on Discover.`}{" "}
+              <Link href="/business" style={{ color: INK, fontWeight: 800 }}>
+                Your business ›
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : (
       <ol style={{ listStyle: "none", padding: 0, margin: "11px 0 2px" }}>
         {steps.map((s, i) => (
           <li key={s.label} style={{ display: "flex", gap: 9, paddingBottom: i === steps.length - 1 ? 9 : 0 }}>
@@ -179,6 +242,7 @@ export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, 
           </li>
         ))}
       </ol>
+      )}
 
       {/* the photos are managed here too, because this is where their step is —
           open by default while they are still missing, tucked away once they are not */}

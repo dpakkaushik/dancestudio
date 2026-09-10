@@ -338,7 +338,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(admin.getByTestId("admin-account").filter({ hasText: ownerEmail })).toContainText("1/1 STUDIOS SUBSCRIBED");
     // Home's timeline counts it
     await owner.goto("/");
-    await expect(owner.getByRole("status", { name: /^Verification:/ })).toContainText("your studio is subscribed");
+    /* 10 Sep 2026: once verified the card stops listing the six steps and carries
+       the next thing to do instead — and with the studio subscribed there is
+       nothing left to do, so it says so. */
+    await expect(owner.getByRole("status", { name: /^Verification:/ })).toContainText(
+      "Your studio is subscribed and on Discover."
+    );
 
     // an admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the panel is
     // its whole app, and the chrome draws it no tab bar, only a way out

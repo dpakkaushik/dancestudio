@@ -102,6 +102,11 @@ export default async function HomePage() {
     total: studioIds.length,
     subscribed: studioIds.filter((id) => studioSubs[id]?.subscription?.hasAccess).length,
   };
+  /* the next thing a VERIFIED organization has to do: the first studio still
+     waiting on its own subscription, so the standing card can carry the button
+     rather than a list of what already happened (10 Sep 2026, the user's ask) */
+  const nextStudio =
+    tenants.find((t) => t.type === "studio" && !studioSubs[t.id]?.subscription?.hasAccess) ?? null;
   /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
@@ -317,6 +322,8 @@ export default async function HomePage() {
             photos={photos}
             studios={studios}
             studioPriceInr={pickPlan(catalog, "studio")?.priceInr ?? null}
+            nextStudio={nextStudio ? { id: nextStudio.id, name: nextStudio.name } : null}
+            studioPlanKey={pickPlan(catalog, "studio")?.key ?? null}
             threadId={thread?.id ?? null}
             unread={threads.reduce((n, t) => n + t.unread, 0)}
           />
