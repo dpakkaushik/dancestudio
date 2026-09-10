@@ -216,6 +216,10 @@ test.describe.serial("DanceOS, end to end", () => {
   });
 
   test("an organization signs up, is verified by an admin, and publishes a class with a room and a trainer", async () => {
+    // this segment walks onboarding with five photo uploads, the verification,
+    // the studio, its subscription grant, the trainer's, and the class — on a dev
+    // server compiling each route on first visit it runs past the 120 s default
+    test.slow();
     // ---- studio owner: signup → onboarding -------------------------------
     ownerId = await signUp(owner, `e2e-owner-${stamp}@example.com`);
     await onboard(owner, "E2E Owner", "Organization", "Pune");
@@ -265,7 +269,6 @@ test.describe.serial("DanceOS, end to end", () => {
     await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Owner")}`);
     const orgAccount = admin.getByTestId("admin-account").filter({ hasText: "E2E Owner" });
     await expect(orgAccount).toContainText("5 PHOTOS");
-    await expect(orgAccount).toContainText("0/0 STUDIOS SUBSCRIBED");
 
     // ---- create the studio: verified opens the door (10 Sep 2026), and the
     // ---- studio is born PRIVATE until its OWN subscription is live ----------
@@ -304,6 +307,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/business");
     await expect(owner.getByTestId("studio-subscription").getByText("PUBLIC", { exact: true })).toBeVisible();
     await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
+    // the Accounts desk counts it for the organization (the chip appears with the first studio)
+    await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Owner")}`);
+    await expect(admin.getByTestId("admin-account").filter({ hasText: "E2E Owner" })).toContainText("1/1 STUDIOS SUBSCRIBED");
     // Home's timeline counts it
     await owner.goto("/");
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toContainText("your studio is subscribed");
@@ -669,7 +675,8 @@ test.describe.serial("DanceOS, end to end", () => {
     const paySheet = learner.getByRole("dialog", { name: "Confirm your booking" });
     await expect(paySheet.getByText("Free", { exact: true })).toBeVisible();
     await paySheet.getByRole("button", { name: "Confirm booking" }).click();
-    await expect(learner.getByTestId("held-booking")).toBeVisible();
+    // the first booking on this route compiles its action on a dev server — allow for it
+    await expect(learner.getByTestId("held-booking")).toBeVisible({ timeout: 15_000 });
     await expect(learner.getByText(/You.re booked/)).toBeVisible();
     await expect(learner.getByText("1 booked · 149 still available")).toBeVisible();
     // and it sits under Your tickets on My classes

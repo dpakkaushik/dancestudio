@@ -57,6 +57,13 @@ $a = Sign-In "+919999999999"   # studio owner
 $b = Sign-In "+918888888888"   # learner
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
+# 9 Sep 2026 (R11): the test-number owner is an ORGANIZATION, and an organization is not a person -
+# it cannot take a seat (guard_person_only). The waitlisted seat below is a third PERSON's, made
+# for this run through the admin API and deleted after.
+$cEmail = "att-c-$stamp@example.com"
+$cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $cUser.id; full_name = "Waitlisted $stamp"; role = "user"; city = "Pune"; created_by = $cUser.id; updated_by = $cUser.id } | ConvertTo-Json) | Out-Null
+$c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $cEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 # a session inside the check-in window (opens 30 min before start)
 $soonStart = (Get-Date).AddMinutes(10).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $soonEnd = (Get-Date).AddMinutes(70).ToString("yyyy-MM-ddTHH:mm:sszzz")
@@ -117,7 +124,7 @@ try {
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $sP }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_ATT$stamp" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_ATT$stamp"; p_provider_payment_id = "pay_ATT$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
-  $eA = Rpc (Api $a.access_token) "enroll_in_session" @{ p_session_id = $sP }   # full -> waitlisted
+  $eA = Rpc (Api $c.access_token) "enroll_in_session" @{ p_session_id = $sP }   # full -> waitlisted (a person; the owner is an organization)
 
   # 6. give_spot respects capacity
   $fullBlocked = Expect-Fail { Rpc (Api $a.access_token) "give_spot" @{ p_enrollment_id = $eA.id } }
@@ -149,7 +156,8 @@ try {
 }
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  "   (cleanup: proof studio deleted)"
+  try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}
+  "   (cleanup: proof studio and the throwaway person deleted)"
 }
 
 if ($pass) { "`nALL ATTENDANCE CHECKS PASSED"; exit 0 } else { "`nATTENDANCE CHECKS FAILED"; exit 1 }

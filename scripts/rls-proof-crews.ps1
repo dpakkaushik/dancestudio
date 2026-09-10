@@ -182,7 +182,10 @@ try {
     ($leaderLeaves -match "cannot leave") -and ($outRemoves -match "leader") -and ($c2 -eq 2) -and ($ordered[0].user_id -eq $m1.id))
 
   # 10. STEP 21's DEBT, PART ONE - a crew entry is the LEADER's, from a crew they lead
-  $ev = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = @{
+  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
+  # tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+  $orgA = [string](Rpc (Api $owner.token) "my_org_tenant" @{})
+  $ev = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = @{
     cat = "battle"; title = "Crew Battle $stamp"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof"
     entry_format = "mixed"; bracket = 16; rounds = 0; prizes = @(); tickets_on = $false; ticket_tiers = @()

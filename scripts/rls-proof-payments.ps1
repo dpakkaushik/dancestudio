@@ -62,6 +62,13 @@ $a = Sign-In "+919999999999"   # studio owner
 $b = Sign-In "+918888888888"   # learner
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
+# 9 Sep 2026 (R11): the test-number owner is an ORGANIZATION, and an organization is not a person -
+# it cannot take a seat or place an order (guard_person_only). The second buyer of the one seat, and the waitlisted dancer, is a third PERSON, made for
+# this run through the admin API and deleted after.
+$cEmail = "proof-c-$stamp@example.com"
+$cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $cUser.id; full_name = "Third Person $stamp"; role = "user"; city = "Pune"; created_by = $cUser.id; updated_by = $cUser.id } | ConvertTo-Json) | Out-Null
+$c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $cEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 
 # 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
@@ -127,12 +134,12 @@ try {
   $s2 = Session-Of $c2.id
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s2 }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_B2$stamp" } | Out-Null
-  $oA = Rpc (Api $a.access_token) "create_payment_order" @{ p_session_id = $s2 }
-  Rpc (Api $a.access_token) "attach_provider_order" @{ p_order_id = $oA.id; p_provider_order_id = "order_A2$stamp" } | Out-Null
+  $oA = Rpc (Api $c.access_token) "create_payment_order" @{ p_session_id = $s2 }
+  Rpc (Api $c.access_token) "attach_provider_order" @{ p_order_id = $oA.id; p_provider_order_id = "order_A2$stamp" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_B2$stamp"; p_provider_payment_id = "pay_B2$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
   $capLate = Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_A2$stamp"; p_provider_payment_id = "pay_A2$stamp"; p_amount_paise = 30000; p_method = "card" }
   $refA = Get-Rows (Api $a.access_token) "refunds?order_id=eq.$($oA.id)&select=id,status,reason"
-  $enrA = Get-Rows (Api $a.access_token) "enrollments?session_id=eq.$s2&user_id=eq.$($a.user.id)&status=eq.enrolled&select=id"
+  $enrA = Get-Rows (Api $a.access_token) "enrollments?session_id=eq.$s2&user_id=eq.$($c.user.id)&status=eq.enrolled&select=id"
   Check 8 "Late capture on a full class refunds (outcome $($capLate.outcome), refund $($refA[0].status), not enrolled)" (($capLate.outcome -eq "refund_pending") -and ($refA.Count -eq 1) -and ($refA[0].status -eq "pending") -and ($enrA.Count -eq 0))
 
   # 9. cancelling outside 48h: seat freed, full refund pending
@@ -161,15 +168,16 @@ try {
   $c4 = New-Class (Api $a.access_token) $ta.id "Free Cypher $stamp" 0 1 7
   $s4 = Session-Of $c4.id
   $e4b = Rpc (Api $b.access_token) "enroll_in_session" @{ p_session_id = $s4 }
-  Rpc (Api $a.access_token) "enroll_in_session" @{ p_session_id = $s4 } | Out-Null
+  Rpc (Api $c.access_token) "enroll_in_session" @{ p_session_id = $s4 } | Out-Null
   Rpc (Api $b.access_token) "cancel_enrollment" @{ p_enrollment_id = $e4b.id } | Out-Null
-  $e4a = Get-Rows (Api $a.access_token) "enrollments?session_id=eq.$s4&user_id=eq.$($a.user.id)&select=status"
+  $e4a = Get-Rows (Api $a.access_token) "enrollments?session_id=eq.$s4&user_id=eq.$($c.user.id)&select=status"
   Check 12 "Free-class cancel still promotes the waitlist (now $($e4a[0].status))" ($e4a[0].status -eq "enrolled")
 }
 finally {
   # the proof cleans up after itself - service role removes the studio, children cascade
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  "   (cleanup: proof studio deleted)"
+  try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}
+  "   (cleanup: proof studio and the throwaway person deleted)"
 }
 
 if ($pass) { "`nALL PAYMENT CHECKS PASSED"; exit 0 } else { "`nPAYMENT CHECKS FAILED"; exit 1 }

@@ -67,7 +67,9 @@ $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $tag = "Zq$stamp"   # a token no real row carries, so every match is ours
-$ownerA = New-EmailUser "srch-a-$stamp@example.com" "Owner A $stamp" "org"
+# the organization's NAME is what its events are found by (R15: the organiser is the organization,
+# hosted by its own tenant row, which the profile trigger names after the organization)
+$ownerA = New-EmailUser "srch-a-$stamp@example.com" "$tag Organization Kothrud" "org"
 $ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "org"
 $dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
 # 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
@@ -94,10 +96,13 @@ try {
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof"
     entry_format = "solo"; bracket = 16; rounds = 0; prizes = @(); tickets_on = $false; ticket_tiers = @()
     entry_tiers = @(@{ format = "solo"; fee_inr = 0; capacity = 8 }) }
-  $pubId = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = $ev }
+  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
+  # tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+  $orgA = [string](Rpc (Api $ownerA.token) "my_org_tenant" @{})
+  $pubId = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = $ev }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $pubId } | Out-Null
   $ev.title = "Draft $tag Battle"
-  Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = $ev } | Out-Null
+  Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = $ev } | Out-Null
 
   # 1. A STRANGER FINDS THE PUBLIC THINGS - the listed studio, the crew, the published event - and only those
   $anonHits = Search $anonH $tag
@@ -112,16 +117,17 @@ try {
   Check 2 "Owner B also finds the private studio ($(($bHits | Where-Object { $_.name -like '*Private*' }).Count)); Owner A also finds the draft ($(($aHits | Where-Object { $_.name -like 'Draft*' }).Count)); A does not find B's private studio ($(($aHits | Where-Object { $_.name -like '*Private*' }).Count))" (
     ((@($bHits | Where-Object { $_.name -like "*Private*" })).Count -eq 1) -and ((@($aHits | Where-Object { $_.name -like "Draft*" })).Count -eq 1) -and ((@($aHits | Where-Object { $_.name -like "*Private*" })).Count -eq 0))
 
-  # 3. A WORD THAT STARTS WITH THE TERM MATCHES (the studio, and its event through the organiser's
-  #    name); a substring inside a word does not (the prototype's `m`, 4546)
+  # 3. A WORD THAT STARTS WITH THE TERM MATCHES (the studio, and the organization's event through the
+  #    organiser's name - both carry "Kothrud"); a substring inside a word does not (the prototype's `m`, 4546).
+  #    The organization's own hosting row is NEVER a result (R15: it is unbrowsable) - only its event is.
   $word = Search $anonH "kothrud"
   $mid = Search $anonH "othrud"
   $wordKinds = @($word | ForEach-Object { $_.kind } | Sort-Object) -join ","
   Check 3 "'kothrud' (second word) finds $($word.Count) ($(Names $word)); 'othrud' (mid-word) finds $($mid.Count)" (
     ($word.Count -eq 2) -and ($wordKinds -eq "event,studio") -and ($mid.Count -eq 0))
 
-  # 4. AN EVENT IS FOUND BY ITS ORGANISER'S NAME TOO
-  $byOrg = @((Search $anonH "$tag Studio") | Where-Object { $_.kind -eq "event" })
+  # 4. AN EVENT IS FOUND BY ITS ORGANISER'S NAME TOO - the ORGANIZATION's, since R15
+  $byOrg = @((Search $anonH "$tag Organization") | Where-Object { $_.kind -eq "event" })
   Check 4 "Searching the organiser's name finds its event ($(Names $byOrg))" (($byOrg.Count -eq 1) -and ($byOrg[0].name -eq "Monsoon $tag Battle"))
 
   # 5. PEOPLE ARE RETURNED TO A SIGNED-IN CALLER, AND NEVER TO A STRANGER.

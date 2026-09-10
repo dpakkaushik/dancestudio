@@ -31,6 +31,13 @@ $a = Sign-In "+919999999999"
 $b = Sign-In "+918888888888"
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
+# 9 Sep 2026 (R11): the test-number owner is an ORGANIZATION, and an organization is not a person -
+# it cannot take a seat (guard_person_only). The waitlisted dancer is a third PERSON, made for this
+# run through the admin API and deleted after.
+$cEmail = "enroll-c-$stamp@example.com"
+$cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $cUser.id; full_name = "Waitlisted $stamp"; role = "user"; city = "Pune"; created_by = $cUser.id; updated_by = $cUser.id } | ConvertTo-Json) | Out-Null
+$c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $cEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 
 # A: studio + published class with capacity 1 (so the SECOND booking waitlists)
 # 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
@@ -68,9 +75,9 @@ try {
   "2. B books twice: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
 } catch { "2. B books twice: REJECTED -- OK" }
 
-# 3. A (full class) enrolls -> waitlisted
-$e2 = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/enroll_in_session" -Headers (Api $a.access_token) -Body (@{ p_session_id = $sid } | ConvertTo-Json)
-"3. A books the FULL class: status=$($e2.status) $(if ($e2.status -eq 'waitlisted') {'-- WAITLISTED, OK'} else {'-- !!! FAILED !!!'})"
+# 3. C, a third person (the owner is an organization and cannot take a seat), books the full class -> waitlisted
+$e2 = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/enroll_in_session" -Headers (Api $c.access_token) -Body (@{ p_session_id = $sid } | ConvertTo-Json)
+"3. C books the FULL class: status=$($e2.status) $(if ($e2.status -eq 'waitlisted') {'-- WAITLISTED, OK'} else {'-- !!! FAILED !!!'})"
 if ($e2.status -ne "waitlisted") { $pass = $false }
 
 # 4. anonymous cannot enroll (no execute grant)
@@ -85,18 +92,18 @@ try {
   "5. B inserts an enrollment directly: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
 } catch { "5. B inserts an enrollment directly: REJECTED -- RLS OK" }
 
-# 6. B cancels -> A is promoted off the waitlist
+# 6. B cancels -> C is promoted off the waitlist
 Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/cancel_enrollment" -Headers (Api $b.access_token) -Body (@{ p_enrollment_id = $e1.id } | ConvertTo-Json) | Out-Null
 $aRow = Invoke-RestMethod -Uri "$base/rest/v1/enrollments?id=eq.$($e2.id)&select=status" -Headers (Api $a.access_token)
 $promoted = ($aRow[0].status -eq "enrolled")
-"6. B cancels; A's waitlist row is now: $($aRow[0].status) $(if ($promoted) {'-- PROMOTED, OK'} else {'-- !!! FAILED !!!'})"
+"6. B cancels; C's waitlist row is now: $($aRow[0].status) $(if ($promoted) {'-- PROMOTED, OK'} else {'-- !!! FAILED !!!'})"
 if (-not $promoted) { $pass = $false }
 
-# 7. B cannot cancel A's booking
+# 7. B cannot cancel C's booking
 try {
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/cancel_enrollment" -Headers (Api $b.access_token) -Body (@{ p_enrollment_id = $e2.id } | ConvertTo-Json) | Out-Null
-  "7. B cancels A's booking: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
-} catch { "7. B cancels A's booking: REJECTED -- OK" }
+  "7. B cancels C's booking: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
+} catch { "7. B cancels C's booking: REJECTED -- OK" }
 
 # 8. roster: A (studio) sees B's cancelled row + own; a stranger sees nothing
 $roster = Invoke-RestMethod -Uri "$base/rest/v1/enrollments?class_id=eq.$($cls.id)&select=id" -Headers (Api $a.access_token)
@@ -125,5 +132,10 @@ try {
 }
 "10. A priced class refuses this door: $paidMsg $(if ($paidMsg -match 'takes payment') {'-- OK'} else {'-- !!! FAILED !!!'})"
 if ($paidMsg -notmatch "takes payment") { $pass = $false }
+
+# cleanup: the studio cascades its class, session and enrollments; the third person takes their profile
+try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null } catch {}
+try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}
+"   (cleanup: proof studio and the throwaway person deleted)"
 
 if ($pass) { "`nALL ENROLLMENT CHECKS PASSED"; exit 0 } else { "`nENROLLMENT CHECKS FAILED"; exit 1 }

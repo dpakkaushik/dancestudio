@@ -50,6 +50,20 @@ $a = Sign-In "+919999999999"   # studio owner
 $b = Sign-In "+918888888888"   # teammate / assistant
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
+# 9 Sep 2026 (R11): the test-number owner is an ORGANIZATION, and an organization is not a person -
+# it cannot take a seat or place an order (guard_person_only). The learner the assistant checks in is a third PERSON, made for
+# this run through the admin API and deleted after.
+$cEmail = "proof-c-$stamp@example.com"
+$cUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $cEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $cUser.id; full_name = "Third Person $stamp"; role = "user"; city = "Pune"; created_by = $cUser.id; updated_by = $cUser.id } | ConvertTo-Json) | Out-Null
+$c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $cEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
+# 8 Sep 2026 (R3): only an ORGANIZATION opens a studio, and +918888888888 is a person - so the other
+# studio is an organization's, made for this run (verified by the service role, as an admin would).
+$orgBEmail = "rooms-orgb-$stamp@example.com"
+$orgBUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $orgBEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $orgBUser.id; full_name = "Other Org $stamp"; role = "org"; city = "Mumbai"; created_by = $orgBUser.id; updated_by = $orgBUser.id } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($orgBUser.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+$orgB = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $orgBEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 $soonStart = (Get-Date).AddMinutes(10).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $soonEnd = (Get-Date).AddMinutes(70).ToString("yyyy-MM-ddTHH:mm:sszzz")
 $farStart = (Get-Date).AddDays(9).ToString("yyyy-MM-ddT19:00:00zzz")
@@ -71,7 +85,7 @@ function Subscribe-Studio($tenantId) {
 }
 $ta = Rpc (Api $a.access_token) "create_tenant_with_owner" @{ p_name = "Rooms Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $b.access_token) "create_tenant_with_owner" @{ p_name = "Other Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $orgB.access_token) "create_tenant_with_owner" @{ p_name = "Other Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 
 try {
@@ -150,7 +164,7 @@ try {
   $soonSession = (Get-Rows $svcH "class_sessions?class_id=eq.$($soon.id)&select=id")[0].id
   $claim2 = Rpc (Api $a.access_token) "claim_person" @{ p_class_id = $soon.id; p_user_id = $b.user.id; p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
   Rpc (Api $b.access_token) "respond_to_claim" @{ p_claim_id = $claim2.id; p_accept = $true } | Out-Null
-  $enr = Rpc (Api $a.access_token) "enroll_in_session" @{ p_session_id = $soonSession }
+  $enr = Rpc (Api $c.access_token) "enroll_in_session" @{ p_session_id = $soonSession }
   Rpc (Api $b.access_token) "check_in" @{ p_enrollment_id = $enr.id } | Out-Null
   $att = Get-Rows (Api $b.access_token) "attendance?enrollment_id=eq.$($enr.id)&deleted_at=is.null&select=id"
   Check 11 "Assistant holding attendance checks somebody in ($($att.Count))" ($att.Count -eq 1)
@@ -170,7 +184,9 @@ try {
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
-  "   (cleanup: proof studios deleted)"
+  try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}
+  try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($orgBUser.id)" -Headers $svcH | Out-Null } catch {}
+  "   (cleanup: proof studios, the throwaway person and organization deleted)"
 }
 
 if ($pass) { "`nALL ROOMS AND PEOPLE CHECKS PASSED"; exit 0 } else { "`nROOMS AND PEOPLE CHECKS FAILED"; exit 1 }

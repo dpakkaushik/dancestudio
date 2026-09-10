@@ -124,6 +124,12 @@ Subscribe-Studio ([string]$ta.id)
 $tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $staffA.id "staff" $ownerA.id
+# R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
+# tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+# The organization is ONE login: its studio's staff are on the studio's team, not on the host's, so
+# they neither run the event nor its door - and they are not "people who run it" at the box office
+# either. The checks below say exactly that (the accounts backlog row records the limitation).
+$orgA = [string](Rpc (Api $ownerA.token) "my_org_tenant" @{})
 
 try {
   # 1. the owner saves a battle as a DRAFT: three ways in (solo has ONE place), a
@@ -135,7 +141,7 @@ try {
     @{ format = "solo"; fee_inr = 0; capacity = 1 },
     @{ format = "duo"; fee_inr = 0; capacity = 5 },
     @{ format = "crew"; fee_inr = 0; capacity = 5 })
-  $bId = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = $battle }
+  $bId = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = $battle }
   $bRow = (Get-Rows (Api $ownerA.token) "events?$EVSEL&id=eq.$bId")[0]
   $slug = $bRow.share_slug
   $anonDraft = Get-Rows $anonH "events?$EVSEL&share_slug=eq.$slug"
@@ -146,11 +152,11 @@ try {
   # 2. PUBLISH BLOCKERS, IN THE PROTOTYPE'S WORDS (dosEventBlockers 3061): a
   #    showcase with tickets off, a battle with tickets on and no tier, and the
   #    same battle with tickets off and no way in
-  $showOff = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = (Ev "showcase" "Proof Showcase $stamp" $false @() @()) }
+  $showOff = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Proof Showcase $stamp" $false @() @()) }
   $b1 = Fails { Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $showOff } }
-  $bare = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = (Ev "battle" "Bare Battle $stamp" $true @() @()) }
+  $bare = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "battle" "Bare Battle $stamp" $true @() @()) }
   $b2 = Fails { Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $bare } }
-  Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $bare; p_event = (Ev "battle" "Bare Battle $stamp" $false @() @()) } | Out-Null
+  Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $bare; p_event = (Ev "battle" "Bare Battle $stamp" $false @() @()) } | Out-Null
   $b3 = Fails { Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $bare } }
   # the sentence must be the WHOLE message: the first cut of event_blockers appended
   # with text[] || literal, which Postgres read as array || array, so the caller got
@@ -158,16 +164,18 @@ try {
   Check 2 "Blockers: showcase [$b1]; no tier [$b2]; no way in [$b3]" (
     ($b1 -match "^A showcase is watched") -and ($b2 -match "^Add a ticket tier") -and ($b3 -match "^Open at least one way in"))
 
-  # 3. WHO MAY RUN EVENTS: a rival owner cannot publish it, staff cannot save
-  #    one; the owner publishes, and now the public reads it WITH its tiers
+  # 3. WHO MAY RUN EVENTS: a rival owner cannot publish it, the studio's staff cannot save one (they
+  #    are not on the HOST's team - R15), and a studio cannot host one at all; the owner publishes,
+  #    and now the public reads it WITH its tiers
   $rivalPub = Fails { Rpc (Api $ownerB.token) "publish_event" @{ p_event_id = $bId } }
-  $staffSave = Fails { Rpc (Api $staffA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = (Ev "showcase" "Staff Try $stamp" $true @(@{ name = "X"; price_inr = 0; capacity = 5; sort = 0 }) @()) } }
+  $staffSave = Fails { Rpc (Api $staffA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Staff Try $stamp" $true @(@{ name = "X"; price_inr = 0; capacity = 5; sort = 0 }) @()) } }
+  $studioHost = Fails { Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = (Ev "showcase" "Studio Try $stamp" $true @(@{ name = "X"; price_inr = 0; capacity = 5; sort = 0 }) @()) } }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $bId } | Out-Null
   $pub = Get-Rows $anonH "events?$EVSEL&share_slug=eq.$slug"
   $general = @($pub[0].event_ticket_tiers | Where-Object { $_.name -eq "General" })[0]
   $vip = @($pub[0].event_ticket_tiers | Where-Object { $_.name -eq "VIP" })[0]
-  Check 3 "Rival publish refused ($rivalPub); staff save refused ($staffSave); published: public reads $($pub.Count) with $(@($pub[0].event_ticket_tiers).Count) tiers and $(@($pub[0].event_entry_tiers).Count) ways in" (
-    ($rivalPub -match "owner or a trainer") -and ($staffSave -match "owner or a trainer") -and ($pub.Count -eq 1) -and ($pub[0].status -eq "published") -and (@($pub[0].event_ticket_tiers).Count -eq 2) -and (@($pub[0].event_entry_tiers).Count -eq 3))
+  Check 3 "Rival publish refused ($rivalPub); studio staff save refused ($staffSave); a studio as host refused ($studioHost); published: public reads $($pub.Count) with $(@($pub[0].event_ticket_tiers).Count) tiers and $(@($pub[0].event_entry_tiers).Count) ways in" (
+    ($rivalPub -match "owner or a trainer|run its events") -and ($staffSave -match "owner or a trainer|run its events") -and ($studioHost -match "belongs to the organization") -and ($pub.Count -eq 1) -and ($pub[0].status -eq "published") -and (@($pub[0].event_ticket_tiers).Count -eq 2) -and (@($pub[0].event_entry_tiers).Count -eq 3))
 
   # 4. A FREE SEAT UNDER CAPACITY BOOKS; the count is public, the name is not
   $t1 = Book $l1 $bId "spectator" $general.id 1 $null $null $null
@@ -179,14 +187,15 @@ try {
   $priced = Fails { Book $l1 $bId "spectator" $vip.id 1 $null $null $null }
   Check 5 "VIP (Rs 500) refused: $priced" ($priced -match "switched on")
 
-  # 6. THE PEOPLE WHO RUN IT DO NOT BOOK IT (13273) - owner and staff alike
+  # 6. THE PEOPLE WHO RUN IT DO NOT BOOK IT (13273) - the organization; its studio's staff are not on
+  #    the host's team (R15), so a staff member is a person here and is refused only by the duet rule
   $ownerBooks = Fails { Book $ownerA $bId "spectator" $general.id 1 $null $null $null }
   $staffBooks = Fails { Book $staffA $bId "participant" $null 1 "duo" $null $null }
-  Check 6 "Owner refused ($ownerBooks); staff refused ($staffBooks)" (
-    ($ownerBooks -match "run this event") -and ($staffBooks -match "run this event"))
+  Check 6 "Owner refused ($ownerBooks); studio staff, not on the host's team, meet only the partner rule ($staffBooks)" (
+    ($ownerBooks -match "run this event") -and ($staffBooks -match "needs your partner"))
 
   # 7. A SHOWCASE TAKES NO ENTRIES (13245): publish one with a free tier, then try
-  $show = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = (Ev "showcase" "Open Showcase $stamp" $true @(@{ name = "Free entry"; price_inr = 0; capacity = 50; sort = 0 }) @()) }
+  $show = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Open Showcase $stamp" $true @(@{ name = "Free entry"; price_inr = 0; capacity = 50; sort = 0 }) @()) }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $show } | Out-Null
   $showEntry = Fails { Book $l1 $show "participant" $null 1 "solo" $null $null }
   $showRow = (Get-Rows $anonH "events?$EVSEL&id=eq.$show")[0]
@@ -217,30 +226,31 @@ try {
   Check 10 "L2 refused while full ($noSeat); after L1 cancels, L2 books ($($t2.status)); L2 cancelling L1's entry refused ($crossCancel)" (
     ($noSeat -match "only 0 left") -and ($t2.status -eq "booked") -and ($crossCancel -match "booking not found"))
 
-  # 11. WHO READS WHAT: a holder their own rows (live and cancelled), every member
-  #     of the organiser the register, a rival and the public nothing
+  # 11. WHO READS WHAT: a holder their own rows (live and cancelled), the organiser the register - and
+  #     ONLY the organiser: its studio's staff are not on the host's team (R15) - a rival and the public nothing
   $l1Rows = Get-Rows (Api $l1.token) "event_bookings?$BKSEL&event_id=eq.$bId"
   $l2Rows = Get-Rows (Api $l2.token) "event_bookings?$BKSEL&event_id=eq.$bId"
   $ownerRows = Get-Rows (Api $ownerA.token) "event_bookings?$BKSEL&event_id=eq.$bId"
   $staffRows = Get-Rows (Api $staffA.token) "event_bookings?$BKSEL&event_id=eq.$bId"
   $rivalRows = Get-Rows (Api $ownerB.token) "event_bookings?$BKSEL&event_id=eq.$bId"
   $anonRows = Get-Rows $anonH "event_bookings?$BKSEL&event_id=eq.$bId"
-  Check 11 "L1 reads $($l1Rows.Count) (own ticket + entry), L2 $($l2Rows.Count), owner $($ownerRows.Count), staff $($staffRows.Count), rival $($rivalRows.Count), public $($anonRows.Count)" (
-    ($l1Rows.Count -eq 2) -and ($l2Rows.Count -eq 1) -and ($ownerRows.Count -eq 3) -and ($staffRows.Count -eq 3) -and ($rivalRows.Count -eq 0) -and ($anonRows.Count -eq 0))
+  Check 11 "L1 reads $($l1Rows.Count) (own ticket + entry), L2 $($l2Rows.Count), owner $($ownerRows.Count), the studio's staff $($staffRows.Count) (not the host's team), rival $($rivalRows.Count), public $($anonRows.Count)" (
+    ($l1Rows.Count -eq 2) -and ($l2Rows.Count -eq 1) -and ($ownerRows.Count -eq 3) -and ($staffRows.Count -eq 0) -and ($rivalRows.Count -eq 0) -and ($anonRows.Count -eq 0))
 
-  # 12. THE DOOR IS THE ORGANISER'S: a holder cannot check themselves in, staff can;
-  #     the holder reads their own check-in
+  # 12. THE DOOR IS THE ORGANISER'S: a holder cannot check themselves in, nor can the studio's staff
+  #     (R15 - not the host's team); the organization does; the holder reads their own check-in
   $selfIn = Fails { Rpc (Api $l2.token) "check_in_event_booking" @{ p_booking_id = $t2.id; p_in = $true } }
-  Rpc (Api $staffA.token) "check_in_event_booking" @{ p_booking_id = $t2.id; p_in = $true } | Out-Null
+  $staffIn = Fails { Rpc (Api $staffA.token) "check_in_event_booking" @{ p_booking_id = $t2.id; p_in = $true } }
+  Rpc (Api $ownerA.token) "check_in_event_booking" @{ p_booking_id = $t2.id; p_in = $true } | Out-Null
   $t2Now = (Get-Rows (Api $l2.token) "event_bookings?$BKSEL&id=eq.$($t2.id)")[0]
-  Rpc (Api $staffA.token) "check_in_event_booking" @{ p_booking_id = $t2.id; p_in = $false } | Out-Null
+  Rpc (Api $ownerA.token) "check_in_event_booking" @{ p_booking_id = $t2.id; p_in = $false } | Out-Null
   $t2Out = (Get-Rows (Api $ownerA.token) "event_bookings?$BKSEL&id=eq.$($t2.id)")[0]
-  Check 12 "Self check-in refused ($selfIn); staff checks L2 in (checked_in_at set: $($null -ne $t2Now.checked_in_at)) and out again (cleared: $($null -eq $t2Out.checked_in_at))" (
-    ($selfIn -match "run the door") -and ($null -ne $t2Now.checked_in_at) -and ($null -eq $t2Out.checked_in_at))
+  Check 12 "Self check-in refused ($selfIn); the studio's staff refused too ($staffIn); the organization checks L2 in (checked_in_at set: $($null -ne $t2Now.checked_in_at)) and out again (cleared: $($null -eq $t2Out.checked_in_at))" (
+    ($selfIn -match "run the door") -and ($staffIn -match "run the door") -and ($null -ne $t2Now.checked_in_at) -and ($null -eq $t2Out.checked_in_at))
 
   # 13. A WALK-IN IS RECORDED, NOT ASKED: by name, no account, checked in on the
   #     spot; a holder cannot add one
-  $walk = Rpc (Api $staffA.token) "add_event_walk_in" @{ p_event_id = $bId; p_kind = "spectator"; p_name = "Gate Walkin"; p_ticket_tier_id = $vip.id }
+  $walk = Rpc (Api $ownerA.token) "add_event_walk_in" @{ p_event_id = $bId; p_kind = "spectator"; p_name = "Gate Walkin"; p_ticket_tier_id = $vip.id }
   $l1Walk = Fails { Rpc (Api $l1.token) "add_event_walk_in" @{ p_event_id = $bId; p_kind = "spectator"; p_name = "Sneak"; p_ticket_tier_id = $vip.id } }
   Check 13 "Walk-in: user_id null=$($null -eq $walk.user_id), name '$($walk.entrant_name)', checked in=$($null -ne $walk.checked_in_at), Rs $($walk.amount_inr); a holder adding one refused ($l1Walk)" (
     ($null -eq $walk.user_id) -and ($walk.entrant_name -eq "Gate Walkin") -and ($null -ne $walk.checked_in_at) -and ($walk.amount_inr -eq 0) -and ($l1Walk -match "run the door"))
@@ -267,10 +277,11 @@ try {
   $anonShow = Get-Rows $anonH "events?$EVSEL&id=eq.$show"
   $ownerShow = (Get-Rows (Api $ownerA.token) "events?$EVSEL&id=eq.$show")[0]
   Check 16 "Rival delete refused ($rivalDel); deleted: public reads $($anonShow.Count), owner still reads it with deleted_at set ($($null -ne $ownerShow.deleted_at))" (
-    ($rivalDel -match "owner or a trainer") -and ($anonShow.Count -eq 0) -and ($null -ne $ownerShow.deleted_at))
+    ($rivalDel -match "owner or a trainer|run its events") -and ($anonShow.Count -eq 0) -and ($null -ne $ownerShow.deleted_at))
 }
 finally {
-  # tenants cascade events -> tiers -> bookings; users cascade profiles
+  # tenants cascade events -> tiers -> bookings; users cascade profiles (and the organization's
+  # hosting row, with the events on it, goes with its profile)
   foreach ($t in @($ta, $tb)) {
     try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $svcH | Out-Null } catch {}
   }

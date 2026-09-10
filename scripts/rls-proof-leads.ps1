@@ -43,9 +43,17 @@ function Check($n, $label, $ok) {
 }
 
 $a = Sign-In "+919999999999"   # studio owner
-$b = Sign-In "+918888888888"   # front desk staff / other studio's owner
+$b = Sign-In "+918888888888"   # a person: first a rival's bystander, then the front-desk staff
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
+# 8 Sep 2026 (R3): only an ORGANIZATION opens a studio, and +918888888888 is a person - so the rival
+# studio is an organization's, made for this run through the admin API (verified by the service role,
+# as an admin would) and deleted after.
+$orgBEmail = "leads-orgb-$stamp@example.com"
+$orgBUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $orgBEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $orgBUser.id; full_name = "Rival Org $stamp"; role = "org"; city = "Mumbai"; created_by = $orgBUser.id; updated_by = $orgBUser.id } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($orgBUser.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+$orgB = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $orgBEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 
 # 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
@@ -61,7 +69,7 @@ function Subscribe-Studio($tenantId) {
 }
 $ta = Rpc (Api $a.access_token) "create_tenant_with_owner" @{ p_name = "Leads Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $b.access_token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $orgB.access_token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 
 try {
@@ -129,7 +137,8 @@ try {
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
-  "   (cleanup: proof studios deleted)"
+  try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($orgBUser.id)" -Headers $svcH | Out-Null } catch {}
+  "   (cleanup: proof studios and the throwaway organization deleted)"
 }
 
 if ($pass) { "`nALL LEAD CHECKS PASSED"; exit 0 } else { "`nLEAD CHECKS FAILED"; exit 1 }

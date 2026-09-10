@@ -126,8 +126,12 @@ Add-Member $ta.id $trainer.id "trainer" $owner.id
 $cA1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $ta.id "A Published $stamp" "published")
 $cA2 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $ta.id "A Draft $stamp" "draft")
 $cB1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $tb.id "B Draft $stamp" "draft")
-$eA = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = (Ev "A Event $stamp") }
-$eB = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $tb.id; p_event_id = $null; p_event = (Ev "B Event $stamp") }
+# R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
+# tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+# The owner's two events are both the organization's, whichever studio they are "for".
+$orgT = [string](Rpc (Api $owner.token) "my_org_tenant" @{})
+$eA = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgT; p_event_id = $null; p_event = (Ev "A Event $stamp") }
+$eB = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgT; p_event_id = $null; p_event = (Ev "B Event $stamp") }
 
 try {
   # 1. the owner of both businesses gets both businesses' classes in ONE read, drafts included
@@ -135,9 +139,9 @@ try {
   Check 1 "owner reads both businesses' classes at once, drafts included (got: $(Titles $oc))" (
     $oc.Count -eq 3 -and (Titles $oc) -eq "A Draft $stamp, A Published $stamp, B Draft $stamp")
 
-  # 2. ... and both businesses' events, drafts included
+  # 2. ... and the organization's events, drafts included (R15: hosted by its own row, which the owner alone is a member of)
   $oe = ManagedEvents $owner
-  Check 2 "owner reads both businesses' events at once (got: $(Titles $oe))" (
+  Check 2 "owner reads the organization's events at once (got: $(Titles $oe))" (
     $oe.Count -eq 2 -and (Titles $oe) -eq "A Event $stamp, B Event $stamp")
 
   # 3. a stranger CAN read the listed studio's published class (Discover needs that) ...
@@ -153,9 +157,11 @@ try {
   Check 5 "a trainer on A reads A's classes, draft included, and none of B's (got: $(Titles $tc))" (
     $tc.Count -eq 2 -and (Titles $tc) -eq "A Draft $stamp, A Published $stamp")
 
-  # 6. ... and A's event only
+  # 6. ... and NONE of the events: since R15 an event is the organization's, hosted by its own row,
+  #    and a studio's trainer is on the studio's team, not the organization's (one login - see the
+  #    accounts backlog row). The managed read is scoped by membership, so the trainer runs no event.
   $te = ManagedEvents $trainer
-  Check 6 "a trainer on A reads A's event and not B's (got: $(Titles $te))" ($te.Count -eq 1 -and $te[0].title -eq "A Event $stamp")
+  Check 6 "a trainer on A reads none of the organization's events - they are the organization's, not the studio's (got: $(Titles $te))" ($te.Count -eq 0)
 
   # 7. a soft-deleted class drops out of the list
   # the way the repository does it: an UPDATE of deleted_at under the owner's own session, no RETURNING
