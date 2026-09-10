@@ -27,7 +27,15 @@ import { applySubscriptionEvent } from "@/repositories/subscriptions";
  *  type lands on one applier that maps the provider's words onto our small
  *  status machine — an authorisation pays the first period and puts a studio on
  *  Discover, a charge buys the next period, a failure is three days of grace, a
- *  cancellation keeps what was paid for. The same secret signs both families. */
+ *  cancellation keeps what was paid for. The same secret signs both families.
+ *
+ *  ⚠ TWO PAYLOAD SHAPES, learned from a real delivery (10 Sep 2026): a payment
+ *  or authorisation event carries the subscription's identity at the TOP of
+ *  `data` (`data.subscription_id`, `data.cf_subscription_id`), while
+ *  SUBSCRIPTION_STATUS_CHANGED nests it under `data.subscription_details`.
+ *  Reading only the nested shape left an authorised, PAID mandate at
+ *  `pending_auth` — money in and nothing granted — and answered 400, so the
+ *  ledger row's null `processed_at` was the only trace. Read both. */
 
 interface CfWebhookBody {
   type?: string;
@@ -48,13 +56,21 @@ interface CfWebhookBody {
       refund_status?: string;
       refund_amount?: number;
     };
-    /* the Subscriptions family */
+    /* the Subscriptions family. Cashfree sends TWO shapes: a payment or
+       authorisation event carries the subscription's identity at the top of
+       `data`, while SUBSCRIPTION_STATUS_CHANGED nests it under
+       `subscription_details`. Both are read below (10 Sep 2026 — a real
+       delivery is what showed it). */
     subscription_details?: {
       cf_subscription_id?: number | string;
       subscription_id?: string;
       subscription_status?: string;
       next_schedule_date?: string | null;
     };
+    subscription_id?: string;
+    cf_subscription_id?: number | string;
+    subscription_status?: string;
+    next_schedule_date?: string | null;
     payment_id?: string;
     cf_payment_id?: number | string;
     payment_type?: string;
@@ -65,7 +81,9 @@ interface CfWebhookBody {
       authorization_amount?: number;
       authorization_status?: string | null;
       payment_group?: string | null;
-      payment_method?: unknown;
+      /* "upi" / "card" on a real authorisation — there is no payment_group there */
+      payment_method?: string | null;
+      instrument_id?: string | null;
     };
   };
 }
@@ -154,26 +172,33 @@ export async function POST(req: Request) {
       }
     } else if (eventType.startsWith("SUBSCRIPTION_")) {
       const d = body.data ?? {};
+      /* EITHER shape: a payment / authorisation event carries the identity at
+         the top of `data`, STATUS_CHANGED nests it. Reading only the nested one
+         is what left a paid, ACTIVE mandate stuck at pending_auth. */
       const sd = d.subscription_details;
-      if (!sd?.subscription_id && sd?.cf_subscription_id === undefined) {
+      const providerSubscriptionId = sd?.subscription_id ?? d.subscription_id ?? null;
+      const rawCfId = sd?.cf_subscription_id ?? d.cf_subscription_id;
+      const cfSubscriptionId = rawCfId === undefined || rawCfId === null ? null : String(rawCfId);
+      if (!providerSubscriptionId && !cfSubscriptionId) {
         return NextResponse.json({ error: "malformed subscription entity" }, { status: 400 });
       }
       const auth = d.authorization_details;
       const amount = typeof d.payment_amount === "number" ? d.payment_amount : typeof auth?.authorization_amount === "number" ? auth.authorization_amount : null;
       const applied = await applySubscriptionEvent(admin, {
         type: eventType,
-        providerSubscriptionId: sd.subscription_id ?? null,
-        cfSubscriptionId: sd.cf_subscription_id === undefined ? null : String(sd.cf_subscription_id),
-        providerStatus: sd.subscription_status ?? null,
+        providerSubscriptionId,
+        cfSubscriptionId,
+        providerStatus: sd?.subscription_status ?? d.subscription_status ?? null,
         authStatus: auth?.authorization_status ?? null,
         paymentId: d.payment_id ?? null,
         cfPaymentId: d.cf_payment_id === undefined ? null : String(d.cf_payment_id),
         paymentType: d.payment_type ?? null,
         paymentStatus: d.payment_status ?? null,
         amountPaise: amount === null ? null : rupeesToPaise(amount),
-        method: auth?.payment_group ?? null,
+        /* a real UPI AutoPay authorisation carries payment_method, not payment_group */
+        method: auth?.payment_group ?? auth?.payment_method ?? null,
         failureReason: d.failure_details?.failure_reason ?? null,
-        nextScheduleDate: dateOnly(sd.next_schedule_date),
+        nextScheduleDate: dateOnly(sd?.next_schedule_date ?? d.next_schedule_date),
       });
       result = applied;
       revalidatePath("/");

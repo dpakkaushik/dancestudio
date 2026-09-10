@@ -280,7 +280,7 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
   }
 });
 
-test("cashfree subscription webhook: the authorisation pays the first period and lists the studio, the mandate's second event is a no-op, a renewal buys the next period, a failed charge is grace, a cancelled mandate keeps what was paid for", async ({
+test("cashfree subscription webhook, in the shapes Cashfree really sends: the authorisation pays the first period and lists the studio, the mandate's second event is a no-op, a renewal buys the next period, a failed charge is grace, a cancelled mandate keeps what was paid for", async ({
   request,
 }) => {
   test.skip(
@@ -341,6 +341,15 @@ test("cashfree subscription webhook: the authorisation pays the first period and
       p_provider_status: "INITIALIZED",
     });
     const nextMonth = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    /* CASHFREE SENDS TWO SHAPES, and the difference is what made a real ₹700
+       authorisation land as 400 "malformed subscription entity" while this very
+       test was green (10 Sep 2026 — it had been signing OUR shape, not theirs).
+       A payment or authorisation event carries the identity at the TOP of data: */
+    const paymentIdentity = {
+      subscription_id: providerSubscriptionId,
+      cf_subscription_id: cfSubscriptionId,
+    };
+    /* ...while only SUBSCRIPTION_STATUS_CHANGED nests it: */
     const details = (subscription_status: string) => ({
       cf_subscription_id: cfSubscriptionId,
       subscription_id: providerSubscriptionId,
@@ -356,13 +365,23 @@ test("cashfree subscription webhook: the authorisation pays the first period and
         type: "SUBSCRIPTION_PAYMENT_SUCCESS",
         event_time: new Date().toISOString(),
         data: {
+          ...paymentIdentity,
           cf_payment_id: authPaymentId,
           payment_id: `auth_${stamp}`,
           payment_type: "AUTH",
           payment_amount: sub.price_inr,
           payment_status: "SUCCESS",
-          subscription_details: details("ACTIVE"),
-          authorization_details: { authorization_amount: sub.price_inr, authorization_status: "ACTIVE", payment_group: "upi" },
+          failure_details: { failure_reason: null },
+          payment_remarks: "auth payment",
+          /* a live UPI AutoPay authorisation carries payment_method, NOT payment_group */
+          authorization_details: {
+            payment_id: `auth_${stamp}`,
+            instrument_id: "test@upi",
+            payment_method: "upi",
+            authorization_amount: sub.price_inr,
+            authorization_status: "ACTIVE",
+            authorization_amount_refund: false,
+          },
         },
       })
     );
@@ -382,9 +401,20 @@ test("cashfree subscription webhook: the authorisation pays the first period and
         type: "SUBSCRIPTION_AUTH_STATUS",
         event_time: new Date().toISOString(),
         data: {
+          ...paymentIdentity,
           payment_id: `auth_${stamp}`,
-          subscription_details: details("ACTIVE"),
-          authorization_details: { authorization_amount: sub.price_inr, authorization_status: "ACTIVE", payment_group: "upi" },
+          cf_payment_id: authPaymentId,
+          payment_type: "AUTH",
+          payment_amount: sub.price_inr,
+          payment_status: "SUCCESS",
+          authorization_details: {
+            payment_id: `auth_${stamp}`,
+            instrument_id: "test@upi",
+            payment_method: "upi",
+            authorization_amount: sub.price_inr,
+            authorization_status: "ACTIVE",
+            authorization_amount_refund: false,
+          },
         },
       })
     );
@@ -402,12 +432,12 @@ test("cashfree subscription webhook: the authorisation pays the first period and
         type: "SUBSCRIPTION_PAYMENT_SUCCESS",
         event_time: new Date().toISOString(),
         data: {
+          ...paymentIdentity,
           cf_payment_id: authPaymentId + 1,
           payment_id: `charge_${stamp}`,
           payment_type: "CHARGE",
           payment_amount: sub.price_inr,
           payment_status: "SUCCESS",
-          subscription_details: details("ACTIVE"),
         },
       })
     );
@@ -427,13 +457,13 @@ test("cashfree subscription webhook: the authorisation pays the first period and
         type: "SUBSCRIPTION_PAYMENT_FAILED",
         event_time: new Date().toISOString(),
         data: {
+          ...paymentIdentity,
           cf_payment_id: authPaymentId + 2,
           payment_id: `fail_${stamp}`,
           payment_type: "CHARGE",
           payment_amount: sub.price_inr,
           payment_status: "FAILED",
           failure_details: { failure_reason: "Insufficient funds" },
-          subscription_details: details("ACTIVE"),
         },
       })
     );
@@ -449,6 +479,7 @@ test("cashfree subscription webhook: the authorisation pays the first period and
       JSON.stringify({
         type: "SUBSCRIPTION_STATUS_CHANGED",
         event_time: new Date().toISOString(),
+        /* the one event that really does nest it */
         data: { subscription_details: details("CANCELLED") },
       })
     );
