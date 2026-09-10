@@ -44,7 +44,12 @@ export default async function ProfilePage() {
   /* Schedule goes to the public schedule of the business this person runs —
      a trainer's own (prototype `hasSchedule` = mode === "trainer", 10868); with
      none, the button is not drawn rather than pointing nowhere */
-  const biz = tenants.find((t) => t.type === "trainer_business") ?? tenants[0];
+  /* R15 (9 Sep 2026): an organization's event-hosting row is a tenant but not
+     one of its BUSINESSES — it is unlisted for ever, has no rooms and no public
+     page. It is filtered out here so "Your studios" counts studios and the
+     Schedule button never points at a page that does not exist. */
+  const businesses = tenants.filter((t) => t.type !== "org");
+  const biz = businesses.find((t) => t.type === "trainer_business") ?? businesses[0];
   const scheduleHref = biz ? `/${biz.type === "studio" ? "studio" : "artist"}/${biz.id}/schedule` : null;
 
   return (
@@ -57,7 +62,7 @@ export default async function ProfilePage() {
       scheduleHref={scheduleHref}
       prefs={prefs}
       business={biz ?? null}
-      tenants={tenants}
+      tenants={businesses}
       plan={plan}
       isAdmin={isAdmin}
     />

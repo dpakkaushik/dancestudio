@@ -7,8 +7,9 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
  *
  * The claims under test, in the order the story tells them:
  *   1. a stranger cannot see the panel exists — every route 404s;
- *   2. an organization that has asked to be verified sees a TIMELINE saying so,
- *      and a door to write to DanceOS;
+ *   2. an organization that has asked to be verified sees a TIMELINE saying so
+ *      ON HOME (R13, 9 Sep 2026 — it used to be inside the studios hub), with
+ *      the badge on its own name and a door to write to DanceOS;
  *   3. it writes; the admin sees it in the queue with an unread badge, and the
  *      unread is each side's own (the organization's own message is not unread
  *      to itself);
@@ -44,11 +45,18 @@ async function signUp(page: Page, email: string): Promise<string> {
   return link.id;
 }
 
-const ONE_PX_PNG = {
-  name: "face.png",
+const PNG_BYTES = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+  "base64"
+);
+const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
+/** R16 (9 Sep 2026): an organization shows DanceOS five to ten photos of its
+ *  space before it can ask to be verified. The input takes several at once. */
+const FIVE_PNGS = Array.from({ length: 5 }, (_, i) => ({
+  name: `space-${i + 1}.png`,
   mimeType: "image/png",
-  buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
-};
+  buffer: PNG_BYTES,
+}));
 
 /** Onboard as an organization: who first, one name, city, photo, then the
  *  mandatory links — and the bow files the verification request as it leaves. */
@@ -62,6 +70,13 @@ async function onboardOrg(page: Page, name: string, city: string) {
   await expect(page.getByLabel("Your logo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  /* R16: the photos of the space, into a PRIVATE bucket. Continue names what is
+     missing until five are up, the way every other step of this flow does. */
+  await expect(page.getByText("Show DanceOS your space")).toBeVisible();
+  await expect(page.getByRole("button", { name: `Add ${5} more photos` })).toBeVisible();
+  await page.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
+  await expect(page.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
@@ -135,16 +150,21 @@ test.describe("the admin panel: support, trust, accountability", () => {
     orgId = await signUp(org, `panel-org-${stamp}@example.com`);
     await onboardOrg(org, orgName, "Pune");
 
-    // the hub says where it stands, step by step
-    await org.goto("/business");
-    await expect(org.getByRole("status", { name: "Verification: In review" })).toBeVisible();
-    await expect(org.getByText("Your links are published")).toBeVisible();
-    await expect(org.getByText("You asked to be verified")).toBeVisible();
-    await expect(org.getByText("A DanceOS admin checks your links")).toBeVisible();
-    await expect(org.getByText("Your studios are public")).toBeVisible();
+    // R13 (9 Sep 2026): HOME says where it stands, step by step — not the hub
+    await org.goto("/");
+    const standing = org.getByRole("status", { name: /^Verification:/ });
+    await expect(standing).toHaveAttribute("aria-label", "Verification: Under verification");
+    // and the badge is on the organization's own name, for the organization alone
+    await expect(org.getByLabel("Verification: Under verification").first()).toBeVisible();
+    await expect(standing.getByText("Your links are published")).toBeVisible();
+    await expect(standing.getByText("DanceOS has photos of your space")).toBeVisible();
+    await expect(standing.getByText("You asked to be verified")).toBeVisible();
+    await expect(standing.getByText("A DanceOS admin checks them")).toBeVisible();
+    await expect(standing.getByText("Your subscription is active")).toBeVisible();
+    await expect(standing.getByText("You can open studios")).toBeVisible();
 
     // and there is a person on the other side of it
-    await org.getByRole("link", { name: "Message DanceOS" }).click();
+    await standing.getByRole("link", { name: "Message DanceOS" }).click();
     // the card's door carries the verification request, so the compose box is
     // already open and already about it — and the admin's decision will land here
     await org.waitForURL(/\/support\?request=[0-9a-f-]+$/);
@@ -185,13 +205,13 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await admin.getByRole("button", { name: "Send", exact: true }).click();
     await expect(admin.getByText("Your links are enough — we are looking now.")).toBeVisible();
 
-    // the organization reads it, and the hub's badge says there is something to read
-    await org.goto("/business");
+    // the organization reads it, and Home's badge says there is something to read
+    await org.goto("/");
     await expect(org.getByRole("link", { name: /Read DanceOS's reply/ })).toBeVisible();
     await org.getByRole("link", { name: /Read DanceOS's reply/ }).click();
     await expect(org.getByText("Your links are enough — we are looking now.")).toBeVisible();
     // opening IS reading — the badge is gone
-    await org.goto("/business");
+    await org.goto("/");
     await expect(org.getByRole("link", { name: /Read DanceOS's reply/ })).toHaveCount(0);
     await expect(org.getByRole("link", { name: "Your conversation with DanceOS" })).toBeVisible();
   });
@@ -200,15 +220,19 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await adminGoto(admin, `panel-admin-${stamp}@example.com`, "/admin/verifications");
     const request = admin.getByTestId("verification-request").filter({ hasText: orgName });
     await expect(request).toBeVisible();
+    // R16: the links say who they claim to be, the photos say there is a floor
+    await expect(request.getByText("5 PHOTOS OF THE SPACE")).toBeVisible();
     await request.getByRole("button", { name: `Reject ${orgName}` }).click();
     await admin.getByRole("textbox").last().fill("Your Instagram has three posts and no classes — show us the studio.");
     await admin.getByRole("button", { name: /^Reject/ }).last().click();
     await expect(admin.getByText(/not approved|Ask again|rejected/i).first()).toBeVisible({ timeout: 15_000 });
 
     // the organization reads the reason where it asked the question
-    await org.goto("/business");
+    await org.goto("/");
     await expect(org.getByRole("status", { name: "Verification: Not approved" })).toBeVisible();
-    await expect(org.getByRole("list").getByText(/Your Instagram has three posts/)).toBeVisible();
+    await expect(
+      org.getByRole("status", { name: "Verification: Not approved" }).getByText(/Your Instagram has three posts/)
+    ).toBeVisible();
     await org.getByRole("link", { name: /conversation with DanceOS|Read DanceOS/ }).click();
     await expect(org.getByText(/Not approved\. Your Instagram has three posts/)).toBeVisible();
 

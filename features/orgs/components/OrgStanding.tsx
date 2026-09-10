@@ -8,6 +8,7 @@ import { VerifiedTick, dateWords } from "@/features/settings/components/settings
 import { requestOrgVerificationAction } from "@/features/tenants/server-actions/tenants";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import { PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
+import { orgStandingWords } from "@/lib/orgs/standing";
 import type { VerificationRequest } from "@/repositories/admin";
 import type { OrgSubscription } from "@/repositories/orgStanding";
 
@@ -35,16 +36,6 @@ export interface OrgStandingProps {
   subscription: OrgSubscription;
   threadId: string | null;
   unread: number;
-}
-
-/** The word beside the organization's name, and only for the organization
- *  itself. Exported so Home's identity sleeve can wear the same chip the card
- *  below it is titled with. */
-export function orgStandingWords(verifiedAt: string | null, status: string | undefined): { title: string; tone: string; chip: string } {
-  if (verifiedAt) return { title: "Verified organization", tone: "#22C55E", chip: "VERIFIED" };
-  if (status === "pending") return { title: "Under verification", tone: "#F59E0B", chip: "UNDER VERIFICATION" };
-  if (status === "rejected") return { title: "Not approved", tone: "#EF4444", chip: "NOT APPROVED" };
-  return { title: "Not verified yet", tone: "var(--sub)", chip: "NOT VERIFIED" };
 }
 
 /** WHERE YOU STAND WITH DANCEOS — on HOME (R13, 9 Sep 2026, the user's ask).

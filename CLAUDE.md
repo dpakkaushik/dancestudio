@@ -75,9 +75,26 @@
   change a function's return type — a `create or replace` that reshuffled them
   would have failed the whole migration. Every helper the three new migrations
   call was also checked against the live catalog for its exact signature.
-- Typecheck 0, lint 0, `next build` green. **THREE MIGRATIONS ARE WRITTEN AND
-  NOT APPLIED** (NEXT TO DO #1). Until they run, Home's organization strip, the
-  studio gate, the photo step and the org-level events desk all error.
+- **THE THREE MIGRATIONS ARE APPLIED** (the user ran them, 10 Sep 2026) and
+  verified against the live catalog. A FOURTH is written and NOT applied, and it
+  is urgent rather than optional — see NEXT TO DO #0: R15 moved the four public
+  event policies onto `event_host_is_public()` and **did not sweep the function
+  bodies**, so `book_event` and `event_counts` still ask "is the host LISTED",
+  which an organization's hosting row never is. Three published events on
+  production are visible and unbookable right now; that was proved against the
+  live database rather than inferred, and the e2e is what found it.
+- **The suite: 35 green, 1 red on that migration.** `admin-support` 5/5,
+  `admin-moderation` 9/9 (its first segment now walks the whole gate), the five
+  auth / webhook / navigation specs 21/21, and `happy-path` through segment 4.
+  Repairing it exposed three bugs typecheck and `next build` could not:
+  `orgStandingWords` was exported from a `"use client"` module and called by
+  Home on the server, so every organization's Home threw at runtime; and R15's
+  hosting row leaked into Home's Studio Tools doors, the Profile tab's "Your
+  studios" count and the Schedule button's href, because all three assumed a
+  tenant is a business. The harness was repaired too — seventeen proof scripts,
+  the test-phone restorer, the demo seeder, and `rls-proof-tenants.ps1` re-cut
+  because R14 made its premise impossible.
+- Typecheck 0, lint 0, `next build` green.
 
 ## LAST SESSION (10 Sep 2026) — history
 
@@ -208,12 +225,38 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-1. **APPLY THREE MIGRATIONS (user, 1 minute) — R13, R14, R15 and R16 are dark
-   until they run.** One command applies all three, in filename order:
+0. **⚠ APPLY MIGRATION 8 NOW — EVENT BOOKING IS BROKEN ON PRODUCTION.**
+   `supabase/migrations/20260912100000_event_host_in_the_functions.sql`. The
+   R15 migration moved the four PUBLIC event policies onto
+   `event_host_is_public()` and **did not sweep the function bodies**, where no
+   policy reaches. Two functions still ask "is the host LISTED", which an
+   organization's hosting row never is:
+   * `book_event` refuses every booking with "this event is not open to the
+     public" — **proved against the live database on 10 Sep: three published
+     events are visible and unbookable**;
+   * `event_counts` leaves an organization's event out of its own "N booked ·
+     M still available" for anybody who is not a member of the host.
+   The same migration also stops the panel's WHAT EXISTS grid counting each
+   organization's hosting row under "not public yet", which is a number no
+   admin can act on. Both bodies were GENERATED from the applied definitions
+   with one predicate swapped, so the only difference from what is running is
+   the difference intended. **The e2e is what caught this** — a learner could
+   see the event and not buy a seat, and nothing short of a real booking would
+   have shown it. One command:
    ```
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
    npx.cmd supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<password, @ as %40>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all
    ```
+   Then `e2e/happy-path.spec.ts`'s events segment goes green and the suite is
+   whole again.
+
+1. **~~APPLY THREE MIGRATIONS~~ — DONE 10 Sep 2026.** The three below are
+   APPLIED and verified against the live catalog: three tables, eleven
+   functions, `tenants.type` accepting `'org'`, the private `org-proof` bucket
+   with its four storage policies, the four public event policies recreated,
+   three grandfathered subscriptions, four organization hosting rows, and all
+   four existing events moved from studio to organization. Kept here as the
+   record of what landed:
    * `20260911120000_report_audit_names_the_subject.sql` — the audit row for a
      report decision names the thing reported, not the reporter (a one-function
      replace; the rows phase 2 already wrote stay exactly as they are, because
@@ -233,20 +276,38 @@
      host, `nearby_tenants` and `admin_businesses` excluding the hosting row,
      and the four existing events moved to their organizations with their tiers
      and bookings.
-2. **Then say so, and this happens:** the R13–R16 e2e gets written and run (an
-   organization signs up → five photos → asks to be verified → the admin sees
-   the photos beside the links → approves → the hub still refuses a studio
-   because there is no subscription → the admin grants one → the studio is
-   created and public immediately → one events desk at organization level, and
-   the public event names the organization), the full suite is re-run, and the
-   commit is pushed.
-3. **Re-run the two studio-creation tests, and rewrite them for R14.**
-   `admin-moderation.spec.ts:151` and `happy-path.spec.ts:201` both failed in
-   the full-suite run at the same step with the same symptom, and both pass in
-   isolation — the same machine resource starvation as 10 Sep, not a regression.
-   They also both need updating: a studio now needs a verified AND subscribed
-   organization, so each spec must grant a subscription through the service role
-   before it adds a studio.
+2. **~~The R13–R16 e2e~~ — WRITTEN AND GREEN, except one segment waiting on #0.**
+   `e2e/admin-support.spec.ts` **5/5** (the standing on Home, the badge on the
+   organization's own name, the photos on the admin's queue) and
+   `e2e/admin-moderation.spec.ts` **9/9** — and its first segment now walks
+   R14's gate in the order a real organization meets it: no studio at all while
+   unverified, no studio while verified but unsubscribed, then a studio that is
+   public the moment it exists. `e2e/happy-path.spec.ts` passes segments 1–4
+   (the gate, the class, the share link, follows and the enquiry loop) and its
+   **events segment fails until #0 is applied**, because `book_event` refuses
+   the booking. Re-run it after the push.
+   **What the tests caught that nothing else did:** `orgStandingWords` was
+   exported from a `"use client"` module and called by Home on the server —
+   typecheck and `next build` were both clean and every organization's Home
+   threw at runtime ("attempted to call orgStandingWords() from the server").
+   It lives in `lib/orgs/standing.ts` now. And R15's hosting row leaked into
+   three lists that assumed a tenant is a business: Home's Studio Tools doors
+   (`tenants[0]` was the hosting row), the Profile tab's "Your studios" count,
+   and the Schedule button's href.
+3. **The rest of the suite is repaired for R14/R15/R16 too, not just the e2e.**
+   `scripts/ensure-test-phone-profiles.js` grants the test organization a
+   subscription (idempotently — a live row is left alone rather than extended);
+   seventeen `rls-proof-*.ps1` scripts that stamp their organization verified
+   now grant one as well; `scripts/demo-data.js` grants both and hosts its four
+   events on the organizations rather than their studios; and
+   `rls-proof-tenants.ps1` was **re-cut, not patched** — its premise was an
+   unverified organization owning an unlisted studio, which R14 makes
+   impossible, so B is verified and subscribed and an admin takes its studio off
+   Discover instead, which is the only way a studio is unlisted now.
+   **Still to do: `scripts/shots/shoot-app.js`** walks onboarding and the hub as
+   an organization for the prototype-comparison screenshots, so it needs the
+   photo step and the verify-plus-subscribe dance before it can reach the studio
+   screens. It is a developer tool, not part of the product or the suite.
 4. **Decide the Artist plan's price and wire the payment (⚠ Rule 9: money).**
    `activate_artist_plan` records ₹0 and creates no Cashfree order. The same is
    now true of the organization subscription (R14) — the gate is real, the

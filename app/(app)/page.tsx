@@ -10,7 +10,8 @@ import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyVerificationRequest } from "@/repositories/admin";
 import { findMyOrgSubscription, findMyProofPhotos } from "@/repositories/orgStanding";
 import { findSupportThreads } from "@/repositories/support";
-import { OrgStanding, orgStandingWords } from "@/features/orgs/components/OrgStanding";
+import { OrgStanding } from "@/features/orgs/components/OrgStanding";
+import { orgStandingWords } from "@/lib/orgs/standing";
 import { findMyPlace } from "@/repositories/stats";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { amIPlatformAdmin } from "@/repositories/admin";
@@ -115,7 +116,11 @@ export default async function HomePage() {
   /* Manage only appears if you actually run something (7135): the door to what you
      manage, and offering it to somebody who manages nothing is a door onto an empty room */
   const canManage = tenants.length > 0;
-  const firstTenant = tenants[0]?.id ?? null;
+  /* The Studio Tools doors are a STUDIO's — classes, rooms, students, the team.
+     R15 (9 Sep 2026) gave every organization a hidden `org` tenant to hang its
+     events on, and it is created first, so `tenants[0]` is no longer the
+     business anybody means: an organization's tools open its first studio. */
+  const firstTenant = (isOrg ? studio?.id : tenants.find((t) => t.type !== "org")?.id) ?? null;
 
   return (
     <div

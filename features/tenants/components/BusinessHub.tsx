@@ -304,6 +304,7 @@ export function BusinessHub({
               <div
                 role="button"
                 tabIndex={0}
+                aria-label="Add studio"
                 onKeyDown={dosKey}
                 onClick={() => setSheetOpen(true)}
                 style={{

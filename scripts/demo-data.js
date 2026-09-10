@@ -144,8 +144,21 @@ async function seed() {
     await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: city, p_age: null, p_about: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }], p_styles: [], p_phone: null });
     /* the service role stands in for the admin here, exactly as it stands in for the webhook below */
     await patch(H_SERVICE, `profiles?id=eq.${o.id}`, { verified_at: new Date().toISOString() });
+    /* R14 (9 Sep 2026): a studio needs a verified AND SUBSCRIBED organization.
+       This is the row an admin's grant writes — at zero, because nothing is
+       charged yet — and without it create_tenant_with_owner refuses the studio
+       in words rather than making one nobody can publish. */
+    await insert(H_SERVICE, "org_plans", {
+      org_id: o.id,
+      plan: "granted",
+      until: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+      amount_inr: 0,
+      note: "Granted by the demo seeder (R14) — nothing charged",
+      created_by: o.id,
+      updated_by: o.id,
+    });
   }
-  log(`${owner.name} and ${owner2.name} are verified organizations — their studios are born public`);
+  log(`${owner.name} and ${owner2.name} are verified AND subscribed organizations — their studios are born public`);
   /* requirement 3 (9 Sep 2026): a user names at least one style, and every profile keeps a city */
   for (const [u, city, styles] of [[artist, "New Delhi", ["Contemporary", "Kathak"]], [trainer, "New Delhi", ["Hip-Hop", "Bollywood"]], [rhea, "Pune", ["Hip-Hop"]], [zaid, "Pune", ["Breaking"]], [aki, "Pune", ["Salsa"]], [kabir, "New Delhi", ["Bhangra"]]]) {
     await rpc(u.h, "update_my_profile", { p_full_name: u.name, p_city: city, p_age: null, p_about: null, p_socials: [], p_styles: styles, p_phone: null });
@@ -309,6 +322,13 @@ async function seed() {
 
   /* ── events ── */
   console.log("\nEvents");
+  /* R15 (9 Sep 2026): an event is the ORGANIZATION's, so it is hosted by the
+     organization's own tenant rather than by one of its studios — save_event
+     refuses a studio outright. `my_org_tenant` returns that row, making it on
+     first ask, and the public event page prints the organization's name. */
+  const bounceEvents = await rpc(owner.h, "my_org_tenant", {});
+  const eeeEvents = await rpc(owner2.h, "my_org_tenant", {});
+  log("events are held by the organizations themselves (R15), not by their studios");
   const mkEvent = async (h, tenantId, e) => {
     const id = await rpc(h, "save_event", {
       p_tenant_id: tenantId,
@@ -338,7 +358,7 @@ async function seed() {
     return id;
   };
 
-  const showcase = await mkEvent(owner.h, bounce.id, {
+  const showcase = await mkEvent(owner.h, bounceEvents, {
     cat: "showcase",
     title: "Monsoon Showcase Vol 2",
     date: dayShift(12),
@@ -353,7 +373,7 @@ async function seed() {
       { name: "VIP", price_inr: 500, capacity: 20, sort: 1 },
     ],
   });
-  const battle = await mkEvent(owner.h, bounce.id, {
+  const battle = await mkEvent(owner.h, bounceEvents, {
     cat: "battle",
     title: "Delhi Breaking League",
     style: "Breaking",
@@ -371,7 +391,7 @@ async function seed() {
       { format: "crew", fee_inr: 0, capacity: 8 },
     ],
   });
-  await mkEvent(owner2.h, eee.id, {
+  await mkEvent(owner2.h, eeeEvents, {
     cat: "battle",
     title: "Cypher Sundays Vol. 9",
     style: "Hip-Hop",
@@ -384,7 +404,7 @@ async function seed() {
     prizes: [8000, 3000],
     entryTiers: [{ format: "solo", fee_inr: 0, capacity: 8 }],
   });
-  await mkEvent(owner.h, bounce.id, { cat: "tournament", title: "Nritya Championship", date: dayShift(28), venue: "Siri Fort Auditorium", city: "New Delhi", entryFormat: "solo", rounds: 3, entryTiers: [{ format: "solo", fee_inr: 0, capacity: 32 }], publish: false });
+  await mkEvent(owner.h, bounceEvents, { cat: "tournament", title: "Nritya Championship", date: dayShift(28), venue: "Siri Fort Auditorium", city: "New Delhi", entryFormat: "solo", rounds: 3, entryTiers: [{ format: "solo", fee_inr: 0, capacity: 32 }], publish: false });
   log("Bounce: Monsoon Showcase Vol 2 (tickets), Delhi Breaking League (solo/duet/crew), Nritya Championship (draft)");
   log("EEE: Cypher Sundays Vol. 9 (solo)");
 

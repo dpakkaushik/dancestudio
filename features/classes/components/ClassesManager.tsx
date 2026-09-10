@@ -324,12 +324,16 @@ export function ClassesManager({
             door does not squeeze the title. The prototype's studio deck opens
             "Classes · Calendar ›" side by side (7140-7148). Earnings is
             owner-only (payout approval cannot be granted, prototype 18434), so
-            a trainer is not offered a door that would only shut on them. */}
+            a trainer is not offered a door that would only shut on them.
+
+            EVENTS IS NOT HERE ANY MORE (R15, 9 Sep 2026): an event belongs to
+            the organization, not to one of its studios, and `save_event`
+            refuses a studio host. Its door is "Your events" on the business
+            hub — one desk for the organization rather than one per studio. */}
         <div style={{ display: "flex", gap: 8, margin: "0 0 12px", overflowX: "auto", scrollbarWidth: "none" }}>
           {(
             [
               ["calendar", "Calendar"],
-              ["events", "Events"],
               ["students", "Students"],
               ["rooms", "Rooms"],
               ["staff", "Staff"],

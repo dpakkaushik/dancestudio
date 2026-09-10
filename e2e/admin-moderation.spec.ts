@@ -20,6 +20,11 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
  *   8. both decisions are in the audit log, as sentences;
  *   9. putting it back is one press, and the studio is on Discover again.
  *
+ * The first segment also walks R14's gate (9 Sep 2026) in the order a real
+ * organization meets it: no studio at all while it is unverified, no studio
+ * while it is verified but unsubscribed, and then a studio that is public the
+ * moment it exists.
+ *
  * Sign-up uses the admin generate_link API, so no inbox is needed. Everything
  * created carries a stamp and is deleted in afterAll.
  */
@@ -46,11 +51,17 @@ async function signUp(page: Page, email: string): Promise<string> {
   return link.id;
 }
 
-const ONE_PX_PNG = {
-  name: "face.png",
+const PNG_BYTES = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+  "base64"
+);
+const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
+/** R16 (9 Sep 2026): five to ten photos of the space, into a private bucket. */
+const FIVE_PNGS = Array.from({ length: 5 }, (_, i) => ({
+  name: `space-${i + 1}.png`,
   mimeType: "image/png",
-  buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
-};
+  buffer: PNG_BYTES,
+}));
 
 /** Onboarding, both kinds, as it stands since 8 Sep 2026: who first, one name,
  *  the city, the required photo, then a person's styles or an organization's
@@ -67,6 +78,11 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   if (isOrg) {
     await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    /* R16: the photos of the space — five before it can ask to be verified */
+    await expect(page.getByText("Show DanceOS your space")).toBeVisible();
+    await page.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
+    await expect(page.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
   } else {
     await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
@@ -148,12 +164,46 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await anonContext?.close();
   });
 
-  test("a verified organization puts one studio on Discover", async () => {
+  test("a verified, subscribed organization puts one studio on Discover", async () => {
     ownerId = await signUp(owner, `mod-owner-${stamp}@example.com`);
     await onboard(owner, orgName, "Organization", "Pune");
 
+    // R14 (9 Sep 2026): THE GATE. A studio cannot be created at all yet, and the
+    // hub prints the database's own sentence rather than offering a control that
+    // would be refused — the same text create_tenant_with_owner raises.
     await owner.goto("/business");
-    await owner.getByText("＋ Add studio").click();
+    await expect(owner.getByRole("button", { name: "Add studio" })).toHaveCount(0);
+    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toContainText(
+      "A DanceOS admin is checking your organization"
+    );
+
+    adminId = await signUp(admin, adminEmail());
+    const named0 = await fetch(`${supabaseUrl}/rest/v1/platform_admins`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: adminId }),
+    });
+    expect(named0.ok).toBeTruthy();
+    await adminGoto(admin, adminEmail(), "/admin/verifications");
+    await admin.getByTestId("verification-request").filter({ hasText: orgName }).getByRole("button", { name: `Approve ${orgName}` }).click();
+    await expect(admin.getByText(`${orgName} verified — its studios are live`)).toBeVisible({ timeout: 15_000 });
+
+    // verified is only half of the gate: the subscription is the other half
+    await owner.goto("/business");
+    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toContainText(
+      "Your DanceOS subscription is not active"
+    );
+    await adminGoto(admin, adminEmail(), `/admin/accounts?q=${encodeURIComponent(orgName)}`);
+    const account = admin.getByTestId("admin-account").filter({ hasText: orgName });
+    await expect(account).toContainText("NO SUBSCRIPTION");
+    await account.getByRole("button", { name: `Set up ${orgName}'s subscription` }).click();
+    await admin.getByRole("button", { name: `Confirm the subscription for ${orgName}` }).click();
+    await expect(admin.getByText(/can open studios — 12 months, nothing charged/)).toBeVisible({ timeout: 15_000 });
+
+    // now the door exists, and what it makes is public straight away — a studio
+    // is no longer created and left private to wait for something
+    await owner.goto("/business");
+    await owner.getByRole("button", { name: "Add studio" }).click();
     await owner.locator('input[name="name"]').fill(studioName);
     await owner.locator('input[name="area"]').fill("Baner");
     const city = owner.locator('select[name="city"]');
@@ -163,19 +213,7 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.getByRole("button", { name: "Create studio" }).click();
     await expect(owner.getByText(studioName, { exact: true })).toBeVisible();
 
-    // nothing an unverified organization runs is public, so an admin says yes first
-    adminId = await signUp(admin, adminEmail());
-    const named = await fetch(`${supabaseUrl}/rest/v1/platform_admins`, {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({ user_id: adminId }),
-    });
-    expect(named.ok).toBeTruthy();
-    await adminGoto(admin, adminEmail(), "/admin/verifications");
-    await admin.getByTestId("verification-request").filter({ hasText: orgName }).getByRole("button", { name: `Approve ${orgName}` }).click();
-    await expect(admin.getByText(`${orgName} verified — its studios are live`)).toBeVisible({ timeout: 15_000 });
-
-    // the studio is now findable the way a dancer finds it
+    // the studio is findable the way a dancer finds it, with nothing in between
     dancerId = await signUp(dancer, `mod-dancer-${stamp}@example.com`);
     await onboard(dancer, dancerName, "User", "Pune");
     await dancer.goto("/discover?city=Pune&tab=studios");
@@ -260,8 +298,9 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await expect(owner.getByText(`${studioName} has been taken off Discover`)).toBeVisible();
     await expect(owner.getByText(/Two people say these photos belong to another studio/)).toBeVisible();
 
-    // the organization itself is untouched — this is the whole point of the screen
-    await owner.goto("/business");
+    // the organization itself is untouched — this is the whole point of the
+    // screen, and R13 (9 Sep 2026) put where it stands on Home
+    await owner.goto("/");
     await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
   });
 

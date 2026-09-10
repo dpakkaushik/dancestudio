@@ -31,12 +31,25 @@ $stamp = Get-Date -Format "HHmmss"
 # Owner A is the test-number organization (verified — scripts/ensure-test-phone-profiles.js), so its
 # studio is PUBLIC; owner B is an email organization made for this run and NOT verified, so its studio
 # is born UNLISTED — which is exactly the row this proof's isolation claims are about.
+#
+# 9 Sep 2026 (R14): owner B used to be an UNVERIFIED organization, because an unverified
+# organization's studio was born unlisted and an unlisted row is exactly what the isolation
+# claims are about. An unverified organization can no longer create a studio AT ALL, so the
+# premise changed: B is verified and subscribed like A, and an ADMIN takes B's studio off
+# Discover afterwards, which is the only way a studio is unlisted now. The service role stands
+# in for that admin, as it does elsewhere in these scripts. What is proven is unchanged: A
+# never sees a row that is neither public nor A's.
 $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $service) { throw "SUPABASE_SERVICE_ROLE_KEY missing from .env.local" }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
 function New-OrgOwner($email, $name) {
   $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $u.id; full_name = $name; role = "org"; city = "New Delhi"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
+  # R14: a studio needs a VERIFIED and SUBSCRIBED organization, both stamped by the service role
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/org_plans" -Headers $svcH -Body (@{
+    org_id = $u.id; plan = "granted"; until = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); amount_inr = 0
+    note = "Granted by a proof script (R14)"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   return Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
 }
 $b = New-OrgOwner "st-ownerb-$stamp@example.com" "Owner B $stamp"
@@ -44,7 +57,10 @@ $b = New-OrgOwner "st-ownerb-$stamp@example.com" "Owner B $stamp"
 # each owner creates a studio via the RPC (tenant + owner membership, atomic)
 $ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Studio A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
 $tb = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $b.access_token) -Body (@{ p_name = "Studio B $stamp"; p_type = "studio"; p_area = "Saket"; p_city = "New Delhi" } | ConvertTo-Json)
-"1. A created '$($ta.name)'; B created '$($tb.name)'"
+# both studios are born PUBLIC now, so an admin takes B's off Discover to give this proof the
+# unlisted row its isolation claims are about
+$null = Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json)
+"1. A created '$($ta.name)' (public); B created '$($tb.name)', taken off Discover by an admin"
 if (-not $ta.id -or -not $tb.id) { $pass = $false }
 
 # A lists tenants — must contain A's studio and NEVER B's

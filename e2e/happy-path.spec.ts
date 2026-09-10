@@ -49,18 +49,26 @@ async function signUp(page: Page, email: string): Promise<string> {
 }
 
 /** a 1×1 PNG — the smallest thing the bucket will call a photo */
-const ONE_PX_PNG = {
-  name: "face.png",
+const PNG_BYTES = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+  "base64"
+);
+const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
+/** R16 (9 Sep 2026): an organization shows DanceOS five to ten photos of its
+ *  space before it may ask to be verified. They go to a PRIVATE bucket, so the
+ *  only people who ever see them are the organization and a platform admin. */
+const FIVE_PNGS = Array.from({ length: 5 }, (_, i) => ({
+  name: `space-${i + 1}.png`,
   mimeType: "image/png",
-  buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"),
-};
+  buffer: PNG_BYTES,
+}));
 
 /** Walk onboarding as it stands since 8 Sep 2026: WHO IS HERE first (User is
  *  the default, Organization is a tap), ONE name, the city, Continue (the row is
  *  made and the photo picker appears — the photo is REQUIRED, so Continue names
  *  it until one is up), then a person's styles and optional links — or an
- *  organization's REQUIRED links, the price of asking to be verified — and
- *  "Open DanceOS →" off the bow. An organization's bow says it is in review and
+ *  organization's REQUIRED links AND its five photos (R16, 9 Sep 2026) — the
+ *  price of asking to be verified — and "Open DanceOS →" off the bow. An organization's bow says it is in review and
  *  files the verification request as it leaves. */
 async function onboard(page: Page, name: string, role: "User" | "Organization", city: string, style = "Hip-Hop") {
   await expect(page).toHaveURL(/\/onboarding/);
@@ -83,6 +91,13 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
     await expect(page.getByText("Your organization's links")).toBeVisible();
     await expect(page.getByRole("button", { name: "Add at least one link" })).toBeDisabled();
     await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    /* R16 (9 Sep 2026): the photos of the space. Continue names what is missing
+       until five are up, the way every other step of this flow does. */
+    await expect(page.getByText("Show DanceOS your space")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add 5 more photos" })).toBeDisabled();
+    await page.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
+    await expect(page.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
     await expect(page.getByText("your organization is in review")).toBeVisible();
@@ -148,6 +163,8 @@ test.describe.serial("DanceOS, end to end", () => {
   let trainerId: string | null = null;
   let adminId: string | null = null;
   let tenantId: string | null = null;
+  /** R15: the organization's own events host — not one of its studios */
+  let eventsHostId: string | null = null;
 
   /* the values a later segment needs from an earlier one */
   let shareSlug = "";
@@ -203,32 +220,28 @@ test.describe.serial("DanceOS, end to end", () => {
     ownerId = await signUp(owner, `e2e-owner-${stamp}@example.com`);
     await onboard(owner, "E2E Owner", "Organization", "Pune");
 
-    // ---- create the studio ------------------------------------------------
+    // ---- R13: where it stands is on HOME, not inside the studios hub -------
+    // The ask went in as onboarding ended. The badge is on the organization's
+    // own name, and the timeline under it says what has happened and what has
+    // not — including the two photo and subscription steps R14/R16 added.
+    await owner.goto("/");
+    const standing = owner.getByRole("status", { name: /^Verification:/ });
+    await expect(standing).toHaveAttribute("aria-label", "Verification: Under verification");
+    await expect(standing.getByText("Your links are published")).toBeVisible();
+    await expect(standing.getByText(/5 photos — only you and a DanceOS admin can see them/)).toBeVisible();
+    await expect(standing.getByText("You asked to be verified")).toBeVisible();
+    await expect(standing.getByRole("link", { name: "Message DanceOS" })).toBeVisible();
+
+    // ---- R14: no studio yet, and the hub says why in the database's words ---
     await owner.goto("/business");
-    // the ask went in as onboarding ended — the hub says so, and studios are the organization's to add
-    await expect(owner.getByRole("status", { name: "Verification: In review" })).toBeVisible();
-    await owner.getByText("＋ Add studio").click();
-    await owner.locator('input[name="name"]').fill(studioName);
-    await owner.locator('input[name="area"]').fill("Baner");
-    const citySelect = owner.locator('select[name="city"]');
-    await citySelect.selectOption("Pune");
-    await expect(citySelect).toHaveValue("Pune");
-    // the sheet carries the studio's rooms — "a studio is created WITH its
-    // floors" (prototype 2675-2683), and Create is refused until one is named
-    await owner.getByLabel("Room 1 name").fill("Studio A");
-    await owner.getByRole("button", { name: "Create studio" }).click();
+    await expect(owner.getByRole("button", { name: "Add studio" })).toHaveCount(0);
+    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toContainText(
+      "A DanceOS admin is checking your organization"
+    );
 
-    // the action refreshes the hub in place — the new studio is a row now
-    // exact: the hub also draws an "Events at {studio}" door under every studio now
-    const studioRow = owner.getByText(studioName, { exact: true });
-    await expect(studioRow).toBeVisible();
-
-    // ---- an admin verifies the organization (8 Sep 2026) ----------------------
-    // The studio was born UNLISTED: nothing an unverified organization runs is
-    // public. A platform admin — named through the service role, never
-    // self-serve — reads the organization's links in the queue and says yes;
-    // the tick and the studio's visibility move in the same transaction, and
-    // the organization's hub reads Verified.
+    // ---- an admin verifies the organization (8 Sep 2026) -------------------
+    // A platform admin — named through the service role, never self-serve —
+    // reads the organization's links AND its photos in the queue and says yes.
     adminId = await signUp(admin, `e2e-admin-${stamp}@example.com`);
     const named = await fetch(`${supabaseUrl}/rest/v1/platform_admins`, {
       method: "POST",
@@ -243,15 +256,50 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(request).toBeVisible();
     // the evidence is the link, and it is the one the organization typed
     await expect(request.getByRole("link", { name: /^Instagram/ })).toHaveAttribute("href", "https://instagram.com/e2eowner");
+    // R16: and the photos of the space, signed for this admin's own session
+    await expect(request.getByText("5 PHOTOS OF THE SPACE")).toBeVisible();
     await request.getByRole("button", { name: "Approve E2E Owner" }).click();
     await expect(admin.getByText("E2E Owner verified — its studios are live")).toBeVisible();
-    // an admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the queue is
+
+    // ---- R14: verified is HALF the gate — the subscription is the other half -
+    await owner.goto("/business");
+    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toContainText(
+      "Your DanceOS subscription is not active"
+    );
+    await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Owner")}`);
+    const orgAccount = admin.getByTestId("admin-account").filter({ hasText: "E2E Owner" });
+    await expect(orgAccount).toContainText("NO SUBSCRIPTION");
+    await expect(orgAccount).toContainText("5 PHOTOS");
+    await orgAccount.getByRole("button", { name: "Set up E2E Owner's subscription" }).click();
+    await admin.getByRole("button", { name: "Confirm the subscription for E2E Owner" }).click();
+    // nothing is charged — no price has been set, and the toast says so
+    await expect(admin.getByText(/can open studios — 12 months, nothing charged/)).toBeVisible({ timeout: 15_000 });
+
+    // ---- create the studio, which is public the moment it exists -----------
+    await owner.goto("/business");
+    await owner.getByRole("button", { name: "Add studio" }).click();
+    await owner.locator('input[name="name"]').fill(studioName);
+    await owner.locator('input[name="area"]').fill("Baner");
+    const citySelect = owner.locator('select[name="city"]');
+    await citySelect.selectOption("Pune");
+    await expect(citySelect).toHaveValue("Pune");
+    // the sheet carries the studio's rooms — "a studio is created WITH its
+    // floors" (prototype 2675-2683), and Create is refused until one is named
+    await owner.getByLabel("Room 1 name").fill("Studio A");
+    await owner.getByRole("button", { name: "Create studio" }).click();
+
+    // the action refreshes the hub in place — the new studio is a row now
+    const studioRow = owner.getByText(studioName, { exact: true });
+    await expect(studioRow).toBeVisible();
+
+    // an admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the panel is
     // its whole app, and the chrome draws it no tab bar, only a way out
     await admin.goto("/");
-    await expect(admin).toHaveURL(/\/admin\/verifications/);
+    await expect(admin).toHaveURL(/\/admin(\/verifications)?$/);
     await expect(admin.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expect(admin.getByRole("navigation", { name: "Main" })).toHaveCount(0);
-    await owner.goto("/business");
+    // R13: the tick is on the organization's own name on Home now
+    await owner.goto("/");
     await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
     // and its own Profile is the ONE place its studios appear together (R9, 8 Sep
     // 2026): the group, the studio's door, the figure — and no Followers figure,
@@ -549,9 +597,17 @@ test.describe.serial("DanceOS, end to end", () => {
     // on the page and under Your tickets; the owner opens the manager's
     // Spectators register and checks them in. Seats are COUNTED, never stored.
     eventTitle = `E2E Showcase ${stamp}`;
+    // R15 (9 Sep 2026): AN EVENT IS THE ORGANIZATION'S. The studio's register
+    // no longer offers an Events door, because a studio cannot host one — the
+    // hub has ONE desk for the organization, and the public page will name the
+    // organization as host.
     await owner.goto(`/business/${tenantId}/classes`);
-    await owner.getByRole("link", { name: "Events ›" }).click();
+    await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveCount(0);
+    await owner.goto("/business");
+    await owner.getByRole("link", { name: "Your events" }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
+    eventsHostId = owner.url().match(/\/business\/([0-9a-f-]+)\/events/)?.[1] ?? null;
+    expect(eventsHostId).not.toBe(tenantId);
     await owner.getByRole("link", { name: "Create event" }).click();
     await owner.waitForURL(/\/events\/new$/);
     await owner.getByRole("button", { name: "Showcase", exact: true }).click();
@@ -662,7 +718,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // the owner publishes a FREE crew battle: crews only, eight places, no spectator tickets
     battleTitle = `E2E Battle ${stamp}`;
-    await owner.goto(`/business/${tenantId}/events/new`);
+    await owner.goto(`/business/${eventsHostId}/events/new`);
     await owner.getByRole("button", { name: "Battle Tournament", exact: true }).click();
     await owner.getByLabel("Event name").fill(battleTitle);
     await owner.getByLabel("Dance style", { exact: true }).click();

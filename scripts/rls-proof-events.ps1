@@ -66,6 +66,10 @@ function New-EmailUser($email, $name, $role) {
   if ($role -eq "org") {
     # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
     Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+    # 9 Sep 2026 (R14): a studio also needs a LIVE SUBSCRIPTION, so the service role grants one here as an admin would
+    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/org_plans" -Headers $svcH -Body (@{
+      org_id = $u.id; plan = "granted"; until = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); amount_inr = 0
+      note = "Granted by a proof script (R14)"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   }
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
