@@ -1,6 +1,16 @@
 /* Screenshot the APP's screens the way shoot-proto.js shoots the prototype's: a
-   throwaway account (the e2e's admin generate_link trick), onboarded as an
-   artist with a business, then every route → scripts/shots/shots/app-<key>.png (gitignored).
+   throwaway account (the e2e's admin generate_link trick) onboarded as an
+   ORGANIZATION with a studio, then every route →
+   scripts/shots/shots/app-<key>.png (gitignored).
+
+   It walks the gate as a real organization meets it (R13-R16, 9 Sep 2026, and
+   per-studio subscriptions, 10 Sep 2026): who first, the logo, the links, then
+   FIVE PHOTOS OF THE SPACE — without which request_org_verification refuses and
+   nothing downstream exists. The service role then stands in for a platform
+   admin twice, because a developer tool cannot wait for a human: the
+   verification tick, and one granted studio subscription (₹0, nothing charged),
+   which is what puts the studio on Discover.
+
    Needs `npm run dev` on :3000 and .env.local. Cleans up its account. */
 const path = require("path");
 const fs = require("fs");
@@ -21,6 +31,8 @@ const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
 const adminHeaders = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" };
 const BASE = "http://localhost:3000";
+/* a 1x1 PNG — the smallest thing the bucket's mime list accepts */
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
 
 async function signUp(page, email) {
   const res = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ type: "magiclink", email }) });
@@ -52,7 +64,7 @@ async function signUp(page, email) {
     await page.locator('input[name="city"]').fill("New Delhi");
     await page.getByRole("button", { name: "Continue" }).click();
     /* the four screens (U2): the photo is required, then styles, then socials, then the bow */
-    await page.getByLabel("Add a photo").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64") });
+    await page.getByLabel("Add a photo").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: PNG });
     await page.getByLabel("Your logo", { exact: true }).waitFor({ timeout: 20000 });
     await shot("onboarding-photo");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -60,13 +72,36 @@ async function signUp(page, email) {
     await shot("onboarding-links");
     await page.getByLabel("Instagram profile URL").fill("https://instagram.com/eeedance");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
+    /* R16 (9 Sep 2026): five to ten photos of the space, into the PRIVATE bucket.
+       request_org_verification refuses a request under five, so the bow — and
+       everything after it — depends on this screen being filled. */
+    await page.getByText("Show DanceOS your space").waitFor({ timeout: 20000 });
+    await page.getByLabel("Add photos of your space").setInputFiles(
+      Array.from({ length: 5 }, (_, i) => ({ name: `space-${i + 1}.png`, mimeType: "image/png", buffer: PNG }))
+    );
+    await page.getByRole("status", { name: "5 of 5 to 10 photos added" }).waitFor({ timeout: 60000 });
+    await shot("onboarding-space-photos");
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByText(/Welcome, /).waitFor();
     await shot("onboarding-done");
     await page.getByRole("button", { name: "Open DanceOS →" }).click();
     await page.waitForURL((u) => !u.pathname.startsWith("/onboarding"));
     await page.goto(`${BASE}/`);
-    await shot("home-org-empty");
-    /* a business, so the tools have somewhere to go */
+    /* R13: where the organization stands lives on HOME — shoot it BEFORE the
+       tick, because the timeline waiting is a screen in its own right */
+    await shot("home-org-in-review");
+    await page.goto(`${BASE}/business`);
+    await shot("business-hub-unverified");
+
+    /* the platform admin's yes. A developer tool cannot wait for a human, so the
+       service role stamps the tick the way every proof script does. */
+    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+      method: "PATCH", headers: adminHeaders, body: JSON.stringify({ verified_at: new Date().toISOString() }),
+    });
+    await page.goto(`${BASE}/`);
+    await shot("home-org-verified");
+
+    /* a studio, which since 10 Sep 2026 is born PRIVATE */
     await page.goto(`${BASE}/business`);
     await shot("business-hub-empty");
     await page.getByText("＋ Add studio").click();
@@ -77,6 +112,32 @@ async function signUp(page, email) {
     await shot("new-studio-sheet");
     await page.getByRole("button", { name: "Create studio" }).click();
     await page.getByText("EEE Dance Studio").first().waitFor();
+    /* NOT PUBLIC, with the database's own sentence and its Subscribe button */
+    await shot("business-hub-studio-unsubscribed");
+
+    /* the studio's own subscription — the row an admin's grant writes, at ₹0,
+       which is also what puts the studio on Discover */
+    const studioRows = await (await fetch(
+      `${supabaseUrl}/rest/v1/tenant_members?user_id=eq.${userId}&member_role=eq.owner&deleted_at=is.null&select=tenant_id,tenants(type)`,
+      { headers: adminHeaders }
+    )).json();
+    const studioId = (studioRows.find((r) => r.tenants && r.tenants.type === "studio") || {}).tenant_id;
+    if (!studioId) throw new Error("the studio was not created — is the organization verified?");
+    const today = new Date().toISOString().slice(0, 10);
+    const until = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
+      method: "POST", headers: adminHeaders,
+      body: JSON.stringify({
+        kind: "studio", user_id: userId, tenant_id: studioId, plan_key: "studio_monthly",
+        price_inr: 0, period: "monthly", status: "active", current_period_start: today,
+        current_period_end: until, granted: true, note: "Granted by shoot-app.js — nothing charged",
+        created_by: userId, updated_by: userId,
+      }),
+    });
+    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, {
+      method: "PATCH", headers: adminHeaders, body: JSON.stringify({ visibility: "listed" }),
+    });
+    await page.goto(`${BASE}/business`);
     await shot("business-hub");
     await page.getByText("EEE Dance Studio").first().click();
     await page.waitForURL(/\/business\/[0-9a-f-]+\/classes/);
@@ -99,6 +160,10 @@ async function signUp(page, email) {
       ["crews", "/crews"],
       ["classes", "/classes"],
       ["earnings", "/earnings"],
+      /* the subscriptions slice, 10 Sep 2026 */
+      ["subscription", "/subscription"],
+      ["payments", "/payments"],
+      ["support", "/support"],
       ["person", `/person/${userId}`],
       ["studio-public", `/studio/${tenantId}`],
       ["class-form", `/business/${tenantId}/classes/new`],

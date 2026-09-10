@@ -110,8 +110,15 @@ export async function activateArtistPlan(supabase: SupabaseClient, plan: ArtistP
 
 // ── the admin's side ──────────────────────────────────────────────────────
 
-/** Every plan, inactive ones too, with the provider plan it maps to. Also what
- *  the server reads (through the service role) when it needs a Cashfree plan. */
+/** Every plan, inactive ones too, with the provider plan it maps to — for the
+ *  admin's price editor.
+ *
+ *  ⚠ THE ADMIN'S OWN SESSION, never the service role: `admin_plan_catalog()` is
+ *  `select ... where public.is_platform_admin()`, and a service-role connection
+ *  has no `auth.uid()`, so it comes back EMPTY rather than refusing — a silent
+ *  nothing that read as "that plan is not on offer" when
+ *  `startSubscriptionAction` made this mistake (fixed 10 Sep 2026). Anything
+ *  server-side that just needs the price uses `findPlanCatalog`. */
 export async function findAdminPlanCatalog(supabase: SupabaseClient): Promise<PlanCatalogRow[]> {
   const { data, error } = await supabase.rpc("admin_plan_catalog");
   if (error) {

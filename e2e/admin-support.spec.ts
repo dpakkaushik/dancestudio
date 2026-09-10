@@ -83,6 +83,26 @@ async function onboardOrg(page: Page, name: string, city: string) {
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
 
+/** A notification stack is a div[role="button"] carrying an onClick, so it does
+ *  nothing until React has hydrated — and Playwright cannot see that: a
+ *  server-rendered div is already visible and stable, so a click that lands
+ *  first is silently lost. Press until aria-expanded says it opened, which is
+ *  also the only honest assertion that it did. */
+async function pressUntilOpen(page: Page, name: RegExp | string) {
+  const control = page.getByRole("button", { name }).first();
+  await expect(control).toBeVisible();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await control.click();
+    try {
+      await expect(control).toHaveAttribute("aria-expanded", "true", { timeout: 3_000 });
+      return;
+    } catch {
+      /* not hydrated yet — press again */
+    }
+  }
+  throw new Error(`the stack ${name} never reported itself open`);
+}
+
 /** Land the admin on a panel route. The SSR middleware refreshes the access
  *  token on EVERY request, and two browser contexts working at once can race
  *  that refresh — one of them then holds a token the other has already rotated
@@ -257,7 +277,7 @@ test.describe("the admin panel: support, trust, accountability", () => {
     // the account is told, in the words the admin used
     await org.goto("/notifications");
     // what reaches somebody is stacked by kind — the reason is inside the stack
-    await org.getByRole("button", { name: /^People — \d+ updates?$/ }).click();
+    await pressUntilOpen(org, /^People — \d+ updates?$/);
     await expect(org.getByText("Your account is suspended")).toBeVisible();
     await expect(org.getByText(/Reported for using another studio's photos/)).toBeVisible();
 

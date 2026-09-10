@@ -9,6 +9,12 @@ out/
 .env
 .env.local
 .env*.local
+# ...and anything derived from them: .env*.local does NOT match a .bak,
+# which is how a copy of a secrets file nearly got committed (10 Sep 2026)
+.env*
+*.bak
+# the one env file that MUST be committed — it documents the keys, holds none
+!.env.local.example
 
 # builds & caches
 *.tsbuildinfo

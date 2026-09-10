@@ -14,7 +14,7 @@ import {
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findAdminPlanCatalog } from "@/repositories/plans";
+import { findPlanCatalog } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
 import {
   applySubscriptionEvent,
@@ -102,12 +102,21 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
   }
   try {
     const row = await subscribe(supabase, parsed.data.planKey, parsed.data.tenantId ?? null);
-    const admin = createSupabaseAdminClient();
-    const catalog = await findAdminPlanCatalog(admin);
+    /* The plan is read with the CALLER's own client: `plan_catalog` is
+       signed-in readable by policy, while `admin_plan_catalog()` is gated on
+       `is_platform_admin()` and answers a service-role connection with nothing
+       at all — which is what made this button say "That plan is not on offer"
+       to every customer who pressed it (found 10 Sep 2026 by driving the real
+       flow). It is still the DATABASE's price and never the browser's, which is
+       the rule that matters; `subscribe` above has already snapshotted it onto
+       the row. */
+    const catalog = await findPlanCatalog(supabase);
     const plan = catalog.find((p) => p.key === row.planKey);
     if (!plan) {
       return { checkout: null, error: "That plan is not on offer" };
     }
+    /* the service role is for one thing here: writing the Cashfree plan id back */
+    const admin = createSupabaseAdminClient();
     const providerPlanId = await ensureCashfreePlan(admin, plan);
     const profile = await findProfileById(supabase, user.id);
     const providerSubscriptionId = providerSubscriptionIdFor(row.id, row.attempt);

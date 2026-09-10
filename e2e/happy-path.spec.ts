@@ -117,6 +117,28 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
 
+/** A segmented pill and a notification stack are both div[role="button"]
+ *  carrying an onClick, so neither does anything until React has hydrated — and
+ *  Playwright's own waiting cannot see that: a server-rendered div is already
+ *  visible and stable, so a click that lands first is silently lost and nothing
+ *  switches. Press it until it reports the change (aria-pressed on a pill,
+ *  aria-expanded on a stack), which is also the only honest assertion that it
+ *  happened. */
+async function pressPill(page: Page, name: RegExp | string, attr: "aria-pressed" | "aria-expanded" = "aria-pressed") {
+  const pill = page.getByRole("button", { name }).first();
+  await expect(pill).toBeVisible();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await pill.click();
+    try {
+      await expect(pill).toHaveAttribute(attr, "true", { timeout: 3_000 });
+      return;
+    } catch {
+      /* not hydrated yet — press again */
+    }
+  }
+  throw new Error(`the control ${name} never reported itself ${attr === "aria-pressed" ? "pressed" : "open"}`);
+}
+
 /** "July" when the clock (read in IST, like the app) is in August — the period
  *  chip the earnings desk offers for last month. */
 function lastMonthName(): string {
@@ -594,7 +616,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     await owner.goto("/inbox");
     await expect(owner.getByText("1 waiting on you")).toBeVisible();
-    await owner.getByRole("button", { name: /^Enquiries — 1 waiting/ }).click();
+    await pressPill(owner, /^Enquiries — 1 waiting/);
     await owner.getByRole("link", { name: "Private Sessions enquiry from E2E Learner" }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
@@ -604,7 +626,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByTestId("enquiry-stage")).toHaveText("Quoted");
 
     await learner.goto("/inbox");
-    await learner.getByRole("button", { name: /^Enquiries/ }).click();
+    await pressPill(learner, /^Enquiries/);
     await learner.getByRole("button", { name: "Sent enquiries" }).click();
     await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
@@ -729,7 +751,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // the desk counts everything waiting on them — an earlier class ask included — so the crew
     // ask is found by its own words rather than by the total
     await expect(trainer.getByRole("button", { name: `Open the a crew member request from E2E Learner` })).toBeVisible();
-    await trainer.getByRole("button", { name: /^Requests — \d+ waiting/ }).click();
+    await pressPill(trainer, /^Requests — \d+ waiting/);
     await expect(trainer.getByText(`wants to add you to ${crewName}`)).toBeVisible();
     await trainer.getByRole("button", { name: `Confirm ${crewName}` }).click();
     await expect(trainer.getByText(`wants to add you to ${crewName}`)).toHaveCount(0);
@@ -853,7 +875,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ })).toBeVisible();
     await expect(owner.getByRole("button", { name: /^Events — \d+ updates?$/ })).toBeVisible();
     // open the Bookings stack and read a real row: the learner booking the class
-    await owner.getByRole("button", { name: /^Bookings — \d+ updates?$/ }).click();
+    await pressPill(owner, /^Bookings — \d+ updates?$/, "aria-expanded");
     await expect(owner.getByText(`E2E Learner booked ${classTitle}`)).toBeVisible();
     // Mark read on the stack: the count drops and the badge follows
     await owner.getByRole("button", { name: "Mark Bookings read" }).click();
@@ -1249,7 +1271,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await bizSheet.getByRole("button", { name: "Save" }).click();
     await expect(bizSheet).toHaveCount(0);
     await learner.goto("/inbox");
-    await learner.getByRole("button", { name: /^Enquiries/ }).click();
+    await pressPill(learner, /^Enquiries/);
     await learner.getByRole("button", { name: "Sent enquiries" }).click();
     await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
