@@ -101,7 +101,33 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
     return { checkout: null, error: NOT_CONFIGURED };
   }
   try {
+    /* WHAT A PREVIOUS PRESS LEFT ARMED. `subscribe` reuses an unauthorised row
+       and nulls its provider ids, so this is the last moment the mandate the
+       last attempt created can be read — and it has to be cancelled, or a
+       customer who pressed twice ends up with two live mandates and we track
+       one (seen for real on 10 Sep 2026: three presses, three authorised ₹700
+       mandates, two of them orphaned). */
+    const wanted = parsed.data.tenantId ?? null;
+    const stranded =
+      (await findMySubscriptions(supabase)).find(
+        (s) =>
+          s.status === "pending_auth" &&
+          Boolean(s.providerSubscriptionId) &&
+          (wanted ? s.tenantId === wanted : s.kind === "artist" && s.tenantId === null)
+      )?.providerSubscriptionId ?? null;
+
     const row = await subscribe(supabase, parsed.data.planKey, parsed.data.tenantId ?? null);
+
+    /* cancel it BEFORE the new one exists, so there is never a moment with two */
+    if (stranded) {
+      try {
+        await cancelCashfreeSubscription(stranded);
+      } catch {
+        /* it may never have been authorised, in which case it can charge
+           nothing; a live one that refuses to cancel is the status quo, and the
+           new mandate below is the one our row will point at */
+      }
+    }
     /* The plan is read with the CALLER's own client: `plan_catalog` is
        signed-in readable by policy, while `admin_plan_catalog()` is gated on
        `is_platform_admin()` and answers a service-role connection with nothing
