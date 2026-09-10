@@ -130,6 +130,69 @@
   studio (`leads`, `rooms-people`), which R11 and R3 refuse; each now
   makes the third person or the second organization it actually needs, and
   deletes it after.
+- **THEN THE FLOW WAS DRIVEN FOR REAL, AND SUBSCRIBE HAD NEVER WORKED FOR
+  ANYBODY.** ⚠ Rule 9. Three separate money bugs, none of which typecheck, lint,
+  the proofs or the e2e could have caught, because each needed a real customer
+  pressing a real button against a real Cashfree:
+  1. **"That plan is not on offer" — the button never opened a window.**
+     `startSubscriptionAction` looked the plan up with
+     `findAdminPlanCatalog(admin)`: the SERVICE-ROLE client against
+     `admin_plan_catalog()`, whose body is
+     `select ... where public.is_platform_admin()`. A service-role
+     connection has no `auth.uid()`, so the predicate is false and the
+     function returns **zero rows rather than refusing** — a silent nothing that
+     surfaced as a wrong sentence. The plan is read with the CALLER's own client
+     now (`plan_catalog` is signed-in readable by policy); it is still the
+     database's price and never the browser's, which is the rule that matters.
+     **The lesson, and it is new to this file: a SECURITY DEFINER function gated
+     on `is_platform_admin()` answers the service role with emptiness, not
+     an error.** The repository comment that claimed the opposite is a warning
+     now.
+  2. **₹700 was taken, the mandate went ACTIVE, and nothing was granted.**
+     Cashfree does **not** use one shape for the `SUBSCRIPTION_*` family: a
+     payment or authorisation event carries the subscription's identity at the
+     TOP of `data` (`data.subscription_id`,
+     `data.cf_subscription_id`), while `SUBSCRIPTION_STATUS_CHANGED`
+     nests it under `data.subscription_details` — the only shape the route
+     knew, and the only event that ever worked. The route wrote its ledger row,
+     answered **400 "malformed subscription entity"**, and never reached the
+     applier: money in, nothing granted, and **a
+     `webhook_events` row with a null `processed_at` was the only
+     trace anywhere.** It reads either shape now, refusing only when both ids are
+     missing, and takes the method from `payment_method` when there is no
+     `payment_group` (which is what a live UPI AutoPay authorisation
+     carries). The stuck deliveries were replayed through the real route and the
+     plan activated — ₹700 on the ledger, `artist_plan_active` true, the
+     ARTIST badge on.
+     **Why the test did not catch it: `paid-webhook.spec.ts` had been
+     signing OUR shape, not Cashfree's — a test that proves the pipeline agrees
+     with itself. It plays the payload captured from the live delivery now, with
+     the nested shape kept for STATUS_CHANGED, so the pair IS the contract.**
+  3. **Pressing Subscribe twice could leave two live mandates, and we would know
+     about one.** `subscribe()` reuses an unauthorised row on a retry and
+     NULLS its provider ids before handing it back, so the mandate the previous
+     press created is forgotten rather than cancelled. Three presses on
+     production authorised three ₹700 mandates (`…_10`, `…_11`,
+     `…_12`); two were orphaned and were found only by reading the stored
+     webhook payloads by hand. `startSubscriptionAction` now reads what the
+     last attempt armed BEFORE `subscribe()` wipes it and cancels it at
+     Cashfree before creating the new one — never two live, never a moment with
+     two. (Both orphans have been cancelled. Cancelling them appears to have
+     cascaded to the third, since all three were bound to the same sandbox UPI
+     handle; the system handled that correctly — a cancelled mandate keeps what
+     was paid for and stops renewing.)
+- **THE WEBHOOK IS REGISTERED AND CASHFREE'S OWN SIGNATURE IS PROVEN.** The user
+  registered `https://dancestudio-orcin.vercel.app/api/webhooks/cashfree` on
+  the dashboard — and the two pages turned out to be two SUB-TABS of one page
+  (Developers → Payment Gateway → Webhooks → Configuration, with Payment Gateway
+  / Payment Link / Payment Form / **Subscriptions** across the top; "Subscriptions
+  have a new home"). Its `Test` button's deliveries landed as
+  `event_type = 'WEBHOOK'` rows — and **a ledger row only exists if the
+  signature verified**, which closes the one assumption the whole subscription
+  build rested on: `Base64(HMAC-SHA256(x-webhook-timestamp + rawBody, SECRET_KEY))`
+  is right, and the docs' `"$timestamp.$payload"` is PHP concatenation
+  rather than a literal dot. Real `SUBSCRIPTION_*` deliveries have now been
+  through the route as well.
 - **THE DEPLOYMENT COULD NOT HAVE RECEIVED A SINGLE WEBHOOK, and that was found
   by probing it rather than by reading.** `dancestudio-orcin.vercel.app`
   served every page and answered `/api/webhooks/cashfree` with **503
@@ -403,7 +466,10 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **⚠ APPLY MIGRATION 10 — SEARCH CANNOT FIND AN ORGANIZATION'S EVENTS.**
+0. **~~APPLY MIGRATION 10~~ — DONE, and `rls-proof-search` is 8/8, so ALL
+   25 PROOFS ARE GREEN.** Kept here for the record because the bug it fixed was
+   live and silent: **search could not find any organization's event**, and had
+   not been able to since R15.
    `supabase/migrations/20260912160000_search_finds_the_organizations_events.sql`.
    Every published event on production is missing from the search box for
    everybody except the organization that hosts it, and has been since R15: the
@@ -419,8 +485,9 @@
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
    npx.cmd supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<password, @ as %40>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all
 ```
-   Then `powershell -File scripts/rls-proof-search.ps1` — its checks 1, 3, 4
-   and 6 are the ones that fail today, and they are the bug.
+   Discover's Events tab and the event page were never affected, because neither
+   goes through `tenants` — which is exactly why nothing but a re-cut proof
+   could have caught it.
 0b. **Re-run the three browser specs on a FRESH dev server, one at a time.**
    `paid-webhook` is 2/2. `happy-path` passes segments 1–4 (the whole new
    gate: private studio → admin's grant → PUBLIC · GRANTED; the trainer's Artist
@@ -433,12 +500,16 @@
    `test.slow()`; the held ticket gets 15 s). A run on an idle machine
    should be green; if the crews pill races again, wait for
    `networkidle` before pressing it.
-1. **Register the webhook in the Cashfree dashboard — TWO pages, one URL.** The
-   deployment is ready for it (env vars set, redeployed, the route proved: 401 on
-   a bad signature, 200 on a good one), so this is the last thing between the
-   subscriptions and a real renewal. At `merchant.cashfree.com`, with the
-   environment toggle on **Sandbox / Test**, put
-   `https://dancestudio-orcin.vercel.app/api/webhooks/cashfree` on BOTH:
+1. **~~Register the webhook~~ — the SUBSCRIPTIONS endpoint is registered and its
+   signature is proven by real deliveries (10 Sep 2026).** ⚠ **Still to confirm:
+   the `Payment Gateway` sub-tab.** Both live on ONE page — Developers →
+   Payment Gateway → Webhooks → Configuration — as sub-tabs (Payment Gateway /
+   Payment Link / Payment Form / Subscriptions). The URL on both is
+   `https://dancestudio-orcin.vercel.app/api/webhooks/cashfree`, webhook
+   version **2023-08-01** (the payload shape the route parses), and the event
+   list only appears once `Add Webhook Endpoint` is pressed — which is what
+   made them look absent. The pre-existing `NOTIFY_URL` row is Cashfree's
+   legacy per-order mechanism and is not ours:
    * **Developers → Payment Gateway → Webhooks** — PAYMENT_SUCCESS_WEBHOOK,
      PAYMENT_FAILED_WEBHOOK, PAYMENT_USER_DROPPED_WEBHOOK, REFUND_STATUS_WEBHOOK
      (class bookings, Step 9);
@@ -465,9 +536,16 @@
 3. **Cashfree KYC → live keys** and Easy Split for studios' class money; the
    price list lives in the database (`/admin/plans`), so going live needs no
    deploy for a price.
-4. **`scripts/shots/shoot-app.js`** still walks the OLD onboarding and hub; it
-   needs the photo step and the verify → create → grant dance before it reaches
-   the studio screens. A developer tool, not the product.
+4. **~~`scripts/shots/shoot-app.js`~~ — FIXED 10 Sep 2026.** It had been dead
+   since R16: it never filled the five space photos, so the organization was
+   never verified and `create_tenant_with_owner` refused the studio —
+   every shot after `business-hub-empty` was unreachable. It walks the whole
+   gate now (who first, the logo, the links, the five photos), stamps the tick and
+   one granted studio subscription through the service role the way the proofs do,
+   and shoots the new screens (`home-org-in-review`,
+   `business-hub-studio-unsubscribed`, `/subscription`). **Not yet
+   RUN** — it is a developer tool, so it waits for a session that wants the
+   prototype comparison.
 5. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
    profile, lands on `/admin/verifications`, Sign out in the top bar.
 6. **Replace the schema workbook:** close Excel, then rename
@@ -488,13 +566,15 @@
    `smtp_admin_email` at it and switch custom SMTP back ON. That restores 60/h
    and real deliverability. The `onboarding@resend.dev` sender only ever reached
    the Resend account owner, which is what made auth look broken.
-9. **~~Set `NEXT_PUBLIC_SITE_URL` in the Vercel project~~ — DONE 10 Sep 2026**
-   (`https://dancestudio-orcin.vercel.app`, on production + preview +
-   development, with the four other missing variables). Every emailed link and
-   Cashfree's return URL after the mandate window are built from it, with the
-   request's origin as the local-dev fallback. **Still worth confirming:**
-   that Supabase's redirect allow-list carries the same URL
-   (Authentication → URL Configuration).
+9. **~~Set `NEXT_PUBLIC_SITE_URL`, and check the redirect allow-list~~ —
+   BOTH DONE / PROVEN 10 Sep 2026.** The variable is set on production + preview
+   + development with the four others. The allow-list was tested rather than
+   assumed, with the service key and a control: a link asking to redirect to
+   `https://dancestudio-orcin.vercel.app/auth/confirm` comes back carrying
+   exactly that, and one asking for `https://evil.example.com/steal` comes
+   back **rewritten to the site URL** — so the list is enforcing and already
+   carries production. Nothing to do in the Supabase dashboard for auth
+   redirects.
 10. **~~`.env.local` must carry the Cashfree keys~~ — it does** (all five,
    verified 10 Sep 2026), and the three the APP reads are on Vercel now too.
    Only `CASHFREE_ENV` / `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY` are
@@ -3763,7 +3843,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R10 | Location is a free optional field; styles and links are the person's to empty (11364, 11161) | **A city is required** on every profile (onboarding will not make the row without one; `update_my_profile` refuses an empty one); **a user keeps at least one style**; **an organization keeps at least one link** and carries no styles — the Profile tab's Remove buttons stop at the last one and say why | Requirements 2, 3 and 4 name these as things the account fills; the review of 9 Sep found them held by screens only, so the database holds them now (`20260909120000_org_rules.sql`). |
 | R11 | A studio account books classes, joins crews, enters events like anyone (it was a person) | **An organization is not a person**: one trigger (`guard_person_only`) on enrollments, orders, event_bookings, crews, crew_members, enquiries, class_claims and non-owner tenant_members refuses an organization account in the person's seat | "For a user these are separate entities." The org runs studios and hosts events; people book, dance, ask and teach. |
 | R12 | Every signed-in user reads every profile row (Step 1) | **An organization's profile row is readable only by itself, a platform admin, and the members of the studios it owns** (their Staff desk prints the owner) — the SELECT policy says so | R9 hid the organization in the app; the review found the raw API still handed the row over. Now the ceiling matches the app. |
-| R13 | A studio account's own screens carry everything about it; there is no platform to be verified BY | **Where an organization stands with DanceOS lives on HOME.** The badge — VERIFIED / UNDER VERIFICATION / NOT APPROVED — sits on the organization's own name in the identity sleeve, and under the sleeve `OrgStanding` carries the six-step timeline, the admin's rejection reason, the photo strip while it is still short, and the door to the conversation with its unread badge. `/business` keeps only the consequence: whether a studio may be created, and why not | The user's ask (9 Sep 2026): the badge and the way to message the admin belong on the outside screen. An organization waiting on a stranger's decision should not have to go looking for where it stands, and the only door to that stranger should not be two taps inside a screen called Studios. Visible to the organization alone — it is the organization's own Home |
+| R13 | A studio account's own screens carry everything about it; there is no platform to be verified BY | **Where an organization stands with DanceOS lives on HOME.** The badge — VERIFIED / UNDER VERIFICATION / NOT APPROVED — sits on the organization's own name in the identity sleeve, and under the sleeve `OrgStanding` carries the six-step timeline, the admin's rejection reason, the photo strip while it is still short, and the door to the conversation with its unread badge. `/business` keeps only the consequence: whether a studio may be created, and why not | The user's ask (9 Sep 2026): the badge and the way to message the admin belong on the outside screen. An organization waiting on a stranger's decision should not have to go looking for where it stands, and the only door to that stranger should not be two taps inside a screen called Studios. Visible to the organization alone — it is the organization's own Home. **10 Sep 2026, after the user read their own Home:** the six steps are joined by a LINE — solid green behind what is done, dashed ahead — with a `N of 6 done` chip on the head, because a column of dots says what each step is and nothing about the journey; and while the tick is missing Home draws **nothing else at all** — no `Today's schedule`, no Studio Tools grid — since an unverified organization owns no studio and cannot make one, so every tile was a door to an empty room (the prototype's own objection at 7135). The tab bar is the chrome's, so Discover, Inbox and Profile stay a tap away |
 | R14 | Any account opens a business the moment it exists (2660-2684) | **A studio needs a VERIFIED organization to be CREATED, and ITS OWN paid subscription to be PUBLIC** (re-cut 10 Sep 2026 from "a verified and subscribed organization"). `why_no_studio()` is the one sentence the hub prints under a disabled control and `create_tenant_with_owner` raises — verification alone. A studio is born UNLISTED; `why_not_public(tenant)` is the sentence between it and Discover; `guard_tenant_visibility` refuses listing without a live plan; the authorisation webhook (or an admin's audited grant, which charges nothing) lists it. ⚠ **₹1,200 a month per studio, ₹700 a month for the Artist plan, through a Cashfree Subscriptions mandate** — the authorisation pays the first period, the mandate charges each next one, cancel = stop renewing and keep what was paid for, three days' grace on a failed charge; prices are the admin's to change (`/admin/plans`) and snapshotted on every subscription | The user's asks: "studio creation must be after verification and paying for the subscription" (9 Sep 2026), then "keep 1200 for an org … each studio need a subscription … if an org has two studios will need two subscription each linked to studio … keep 700 as artist subscription and link gateway … keep the subscription amount dynamic, admin has the access to change" and "make sure this subscription follows standard approach how it is dealt in real apps" (10 Sep 2026). The first cut sold prepaid periods as one-off orders; a real subscription is a mandate with a status machine, so that is what was built |
 | R15 | An event belongs to the business hosting it, and a studio account IS that business | **An event belongs to the ORGANIZATION.** Each organization gets one tenant of its own (`tenants.type = 'org'`, unlisted for ever) which hosts its events, so `/business/<id>/events` is ONE desk instead of one per studio, and the public event page prints the organization's name as its host. `save_event` refuses a studio host. The organization stays unbrowsable — the hosting row is excluded from Discover, search, `admin_businesses` and every public page, and cannot be followed; `event_host_is_public()` (a verified organization, or a listed studio / artist page) is what decides an event's publicness now, so "listed" keeps meaning "on Discover" | The user's ask (9 Sep 2026): "right now event is inside studio, though it should be at org level." An event has always carried its own venue, city and map link, so the studio on it was never the place — only the owner. Asked whose name a public event should carry, given R9, the user chose the organization, "events only" |
 | R16 | Onboarding asks for a photo and links; nothing else is evidence | **An organization must attach 5–10 photos of its space at signup**, on a fifth onboarding screen, and `request_org_verification` refuses a request under five. They live in a PRIVATE bucket (`org-proof`) readable only by the organization and a platform admin, through short-lived signed URLs; the admin's queue draws them beside the links | The user's ask (9 Sep 2026): "at the time of signup along with the social media the org must attach min 5 to max 10 pics which will be visible to admin for the verification." The public `media` bucket would have made pictures of somebody's premises readable by anybody who guessed the URL — so this is the one thing in the app with a private bucket, and the screen tells the organization so |

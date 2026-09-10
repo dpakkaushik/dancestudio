@@ -116,6 +116,13 @@ export default async function HomePage() {
   /* a studio's day is not a person's day (7022-7060): a studio owner's Home shows
      what is running in the studio's rooms, drawn by the same card in the same rail */
   const studio = isOrg ? (tenants.find((t) => t.type === "studio") ?? null) : null;
+  /* AN UNVERIFIED ORGANIZATION'S HOME IS THE STANDING CARD AND NOTHING ELSE
+     (10 Sep 2026, the user's ask). Until DanceOS has said yes it owns no studio
+     and cannot make one, so "Today's schedule" is always empty and every Studio
+     Tools tile is a door to an empty room — the prototype's own objection to
+     offering Manage to somebody who manages nothing (7135). The tab bar is the
+     chrome's, so Discover, Inbox and Profile are all still a tap away. */
+  const orgAwaitingApproval = isOrg && !profile.verifiedAt;
   const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, tenants);
 
   const RG = DOS_RINGS[kind];
@@ -317,7 +324,9 @@ export default async function HomePage() {
 
         {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
             live first — under the one shelf head, with both doors named. The wrapper runs the
-            full width so the swiped rail, which reaches past the page's padding, is not clipped. ── */}
+            full width so the swiped rail, which reaches past the page's padding, is not clipped.
+            An organization still waiting on approval sees neither this nor the tools. ── */}
+        {orgAwaitingApproval ? null : (
         <div data-dosfold="deck" style={{ margin: "10px -16px 14px", padding: "0 16px" }}>
           <DosShelfHead
             pad="2px 0 8px"
@@ -387,9 +396,11 @@ export default async function HomePage() {
             <PassDeck items={deck} />
           )}
         </div>
+        )}
 
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
             sheet that covers the deck, so it is opaque and it is above. ── */}
+        {orgAwaitingApproval ? null : (
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
           <BizSection role={profile.role} tenantId={firstTenant} plan={profile.role === "org" ? null : isArtist ? "active" : "locked"}>
             {/* somebody has asked you onto their team, and only you can answer —
@@ -423,6 +434,7 @@ export default async function HomePage() {
             ))}
           </BizSection>
         </div>
+        )}
       </div>
     </div>
   );

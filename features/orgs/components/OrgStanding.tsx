@@ -132,6 +132,9 @@ export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, 
     },
   ];
 
+  /* how far along the journey is — the head says it, the line shows it */
+  const doneCount = steps.filter((s) => s.state === "done").length;
+
   return (
     <div
       role="status"
@@ -141,6 +144,13 @@ export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, 
       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
         {verified ? <VerifiedTick size={15} /> : <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: tone, display: "inline-block" }} />}
         <b style={{ fontSize: 13 }}>{title}</b>
+        {/* the journey in one figure, so the timeline below is read rather than counted */}
+        <span
+          aria-hidden="true"
+          style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.3, padding: "2px 7px", borderRadius: 999, background: doneCount === steps.length ? "#DCFCE7" : LILAC, color: doneCount === steps.length ? "#15803D" : MUTED, border: `1px solid ${doneCount === steps.length ? "#BBF7D0" : EL}` }}
+        >
+          {doneCount} of {steps.length} done
+        </span>
         {unread > 0 ? (
           <span style={{ marginLeft: "auto", minWidth: 17, height: 17, borderRadius: 9, padding: "0 5px", background: "#EC4899", color: "#fff", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             {unread}
@@ -149,12 +159,20 @@ export function OrgStanding({ orgId, verifiedAt, request, socialsCount, photos, 
       </div>
 
       <ol style={{ listStyle: "none", padding: 0, margin: "11px 0 2px" }}>
-        {steps.map((s) => (
-          <li key={s.label} style={{ display: "flex", gap: 9, paddingBottom: 9 }}>
-            <span aria-hidden="true" style={{ flexShrink: 0, width: 15, height: 15, borderRadius: 8, marginTop: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, background: s.state === "done" ? "#22C55E" : s.state === "now" ? tone : "var(--el)", color: s.state === "todo" ? MUTED : "#fff" }}>
-              {s.state === "done" ? "✓" : s.state === "now" ? "●" : ""}
+        {steps.map((s, i) => (
+          <li key={s.label} style={{ display: "flex", gap: 9, paddingBottom: i === steps.length - 1 ? 9 : 0 }}>
+            {/* THE MARKER COLUMN: the dot, then the line down to the next one —
+                solid where the journey has been, dashed where it has not, so six
+                steps read as a route rather than a list */}
+            <span aria-hidden="true" style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", alignSelf: "stretch" }}>
+              <span style={{ width: 15, height: 15, borderRadius: 8, marginTop: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, background: s.state === "done" ? "#22C55E" : s.state === "now" ? tone : "var(--el)", color: s.state === "todo" ? MUTED : "#fff" }}>
+                {s.state === "done" ? "✓" : s.state === "now" ? "●" : ""}
+              </span>
+              {i < steps.length - 1 ? (
+                <span style={{ flex: 1, minHeight: 13, marginTop: 3, marginBottom: 3, borderLeft: s.state === "done" ? "2px solid #22C55E" : `2px dashed ${EL}` }} />
+              ) : null}
             </span>
-            <span style={{ minWidth: 0 }}>
+            <span style={{ minWidth: 0, paddingBottom: i === steps.length - 1 ? 0 : 9 }}>
               <span style={{ display: "block", fontSize: 12, fontWeight: s.state === "todo" ? 600 : 800, color: s.state === "todo" ? MUTED : INK, lineHeight: 1.35 }}>{s.label}</span>
               <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2, lineHeight: 1.45 }}>{s.note}</span>
             </span>
