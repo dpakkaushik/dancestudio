@@ -1,6 +1,130 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (10 Sep 2026, later) — replaced on every push (Rule 13)
+## LAST SESSION (11 Sep 2026, overnight) — replaced on every push (Rule 13)
+
+**An end-to-end audit the user asked for while asleep**, in their words: "check
+end to end flow and find any bugs and remove those… check if backend is good
+enough to handle the load and database is keeping all the required records as a
+standard app of this scale should be doing", plus the admin panel "in segments
+where each segment opens a new page — payment, subscription, approval request,
+communication etc", plus "app is missing location picker, use any free maps api".
+**The full report is `docs/AUDIT-2026-09-11.md`** — everything below is the
+summary; the report has the evidence.
+
+- **⚠⚠ A REVENUE BYPASS WAS LIVE, AND IS PROVEN (Rule 9: money + RLS).**
+  `tenants` carried one permissive update policy — `"owners update own tenants"`
+  — that **named no columns**. Every write the app makes to that table goes
+  through a definer function that validates first, but PostgREST is a door too,
+  and a direct `PATCH /rest/v1/tenants` walked past all of them. Two columns
+  mattered and they COMPOSE:
+  `type` is plain text whose CHECK allows both values, so a studio (a verified
+  org **and** ₹1,200/mo) PATCHes into an artist page (₹700/mo) having bought
+  neither — and `guard_tenant_visibility` gates only `new.type = 'studio'`, so
+  once flipped, **listing it on Discover is gated by nothing at all**.
+  `scripts/rls-proof-tenant-columns.ps1` is the new proof and prints it end to
+  end: `WROTE trainer_business — PAID GATE BYPASSABLE` then `WROTE listed —
+  FREE PUBLIC BUSINESS`. **It fails today on purpose**; migration
+  `20260913100000_doors_that_were_not_doors.sql` is what turns it green.
+  Note what DID hold, because it says exactly where the line was: About's
+  220-char cap and the phone's shape were refused — those are CHECK
+  constraints. **A rule the database does not keep is a rule that holds only at
+  the door you went in by.**
+- **⚠ THE SAME HOLE STORED A `javascript:` URL AS A BUSINESS'S LINK.** `socials`
+  was constrained to "an array of at most twelve"; the http(s) rule lived only
+  in the RPC. The app renders links as `href={l.url}` on the public studio page,
+  the public person page, **and the admin's verification queue** — so a business
+  applying to be verified could put a script URL in front of the one account
+  able to approve it. `profiles.socials` had the identical gap. Fixed twice
+  over: `socials_are_web_links()` as a CHECK on both columns (same regex the
+  functions use, so nothing valid becomes invalid; existing bad links are
+  removed by the migration and the count announced), and `safeHref()` at all
+  three render sites.
+- **THE LOAD QUESTION, ANSWERED WITH FOUR THINGS** (migration
+  `20260913090000_load_policies_and_indexes.sql`): **63 RLS policies** called
+  `auth.uid()` bare, so it was re-executed **for every row the planner tested** —
+  now `(select auth.uid())`, hoisted into an InitPlan and run once, rewritten
+  **out of the catalog** rather than by re-typing 63 policies (a re-typed policy
+  is one that can differ, and a policy that differs is a security bug), covering
+  the nine `storage.objects` policies this repo wrote. **Search was a seq scan
+  on every keystroke** — `like '% term%'` cannot use a btree index — now
+  `pg_trgm` GIN on tenants, crews, events, classes, profiles. **Search called
+  `event_host_name()` FOUR TIMES per candidate row** (and it reads `tenants`,
+  then `event_host_is_public()`, which reads `tenant_members` + `profiles`) —
+  now `public_host_ids()` resolves matching public hosts once per search. Plus
+  the indexes for the columns the app actually filters by.
+- **DISCOVER WAS SILENTLY LOSING A CITY'S CLASSES.** It asked for the newest 200
+  published classes **nationally** and filtered by city in JavaScript, so past
+  200 published classes the newest 200 could all be Delhi's and Pune's would
+  simply stop appearing — no error, a shorter list, and the style rail wrong at
+  the same moment. `findPublishedClasses` takes a `city` and narrows in the
+  query (`tenants!inner`). ✅ fixed and verified in the browser.
+- **A PROOF SCRIPT HAD BEEN DEAD FOR WEEKS.** `scripts/rls-proof.ps1` threw a
+  PARSE error, so Step 1's profile RLS was proving nothing. Cause worth
+  remembering: **Windows PowerShell 5.1 decodes a BOM-less `.ps1` as ANSI**, a
+  UTF-8 em dash reads as `â€"`, and `0x94` is U+201D — **a smart quote
+  PowerShell accepts as a string delimiter**, so the literal ends early. Fixed
+  with a UTF-8 BOM on all nine `.ps1` files carrying non-ASCII. ✅ **All 27
+  proofs green.**
+- **`proxy.ts` put the auth server on the critical path of every request** —
+  `getUser()` is a network round trip and the matcher fired on `public/` assets
+  and on the **Cashfree webhook route**, where a slow auth server looks to
+  Cashfree like a failed delivery. Matcher narrowed; nothing about who may see
+  what changed.
+- **THE ADMIN PANEL IS SEGMENTED.** The Overview opens with **THE DESKS** — ten
+  cards, each naming a desk, what it is for, and what waits on it. Two new
+  pages: **`/admin/payments`** (money in / money back / money on — every
+  payment searchable by payer, email, business or provider id; every refund with
+  **how many days somebody has waited**; every payout — READ-ONLY, because
+  settling a refund belongs to the studio whose class it was and moving that
+  here would make DanceOS the counterparty) and **`/admin/communication`**
+  (notification volume, **the share actually opened** by kind, threads where the
+  last word is theirs, and the last things the platform said in its own words).
+  Both say so in a sentence rather than 500ing before their migration lands —
+  and getting that right needed running it: the guard checked Postgres's `42883`
+  and **never fired**, because PostgREST resolves from its **schema cache** and
+  answers **`PGRST202`**.
+- **THE LOCATION PICKER, AND THE BUG UNDERNEATH IT.** `tenants.lat/lng` has
+  existed since Step 5 and **nothing ever wrote a real one** —
+  `create_tenant_with_owner` copies the CITY CENTROID, so every studio in Pune
+  sits on the same point and `nearby_tenants` measures centroid to centroid:
+  **the same number for every studio in the city**. "Studios near you", the
+  distance chips and "nearest first" have all been decorative.
+  Built keyless on **OpenStreetMap + Nominatim** (nothing signed up for):
+  `MapPicker` (hand-rolled Web-Mercator tile map, **fixed centre pin** — the map
+  moves under it, the way every delivery app here does it, because a marker you
+  drag is covered by your own finger; no library, because this machine's pnpm
+  store has broken once already), `LocationPicker` (type an address / use my
+  location / just move the map; a detected city outside the closed list is
+  REPORTED, not written), `/api/geocode` (**signed-in only** — an open geocoder
+  is somebody else's rate limit spent in this app's name; carries the User-Agent
+  Nominatim requires, queues to 1 req/s, caches), `set_tenant_location` +
+  **`location_set_at`** (what separates a chosen point from a defaulted
+  centroid), **"Near me" on Discover**, and cards that **stop printing a
+  distance that is not one** — every studio used to show the same "0 m".
+  Verified live by `scripts/shots/shoot-location.js`: dragging the map returned
+  *"Kasba Peth, Pune… 411001"*. It also caught a real React bug — reporting the
+  pin from inside a `setCentre(c => …)` updater called the parent's setState
+  during render.
+- **New developer tools:** `scripts/db-push.ps1` (builds the pooler URL from
+  `.env.local`, percent-encodes the password, `-DryRun` lists pending),
+  `scripts/shots/shoot-admin.js` (throwaway admin, shoots all 13 admin screens,
+  fails on any console error), `scripts/shots/shoot-location.js`.
+- **⚠ NOTHING IS APPLIED.** Four migrations are written, typechecked and lint
+  clean, and **none has been pushed** — this session's auto-mode classifier
+  blocks production database writes and routing around it would have been the
+  wrong move. See NEXT TO DO #0. Typecheck and lint are clean; all 27 proofs
+  green; **the e2e suite is 50/50 green** with all of tonight's changes in place
+  (`happy-path` 14/14 in 3.5 m, the other seven specs 36/36 in 2.7 m).
+  ⚠ It took three runs to establish that, and the reason is worth carrying
+  forward: this machine ran out of commit charge (down to **1.4 GB of 22.6 GB**
+  with Chrome holding 24 processes) and the suite failed a DIFFERENT test each
+  run — `ERR_INSUFFICIENT_RESOURCES` once, a `toBeVisible` timeout on text that
+  renders unconditionally once, a navigation that did not finish in 5 s once.
+  Every failure was a timeout or an exhaustion error, never a wrong value, and
+  each one passed on the next run. **A red suite on a busy machine is not
+  evidence.**
+
+## LAST SESSION (10 Sep 2026, later) — history
 
 - **PAID SUBSCRIPTIONS, THE STANDARD WAY ⚠ (Rule 9: money + RLS) — WRITTEN,
   TYPECHECKED, BUILT, AND NOT YET RUN AGAINST THE DATABASE.** Migration 9
@@ -466,153 +590,172 @@
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **~~APPLY MIGRATION 10~~ — DONE, and `rls-proof-search` is 8/8, so ALL
-   25 PROOFS ARE GREEN.** Kept here for the record because the bug it fixed was
-   live and silent: **search could not find any organization's event**, and had
-   not been able to since R15.
-   `supabase/migrations/20260912160000_search_finds_the_organizations_events.sql`.
-   Every published event on production is missing from the search box for
-   everybody except the organization that hosts it, and has been since R15: the
-   events branch of `search_dance_os` joined `tenants` to match the
-   organiser's name, and the host is the organization's own unlisted row, which a
-   stranger's RLS drops. **Found by `rls-proof-search` the day it was
-   re-cut** — Discover and the event page never went through `tenants`, so
-   nothing else could have caught it. The fix adds `event_host_name()`
-   (definer, answers only for a PUBLIC host, so no unlisted name leaks) and
-   rewrites that one branch; the function stays SECURITY INVOKER, same signature,
-   same grants.
+0. **⚠⚠ APPLY THE FOUR MIGRATIONS — ONE OF THEM CLOSES A LIVE REVENUE BYPASS.**
+   Nothing from the 11 Sep session is in the database. One command:
 ```
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
-   npx.cmd supabase db push --db-url "postgresql://postgres.wonhocebhckjokfssvja:<password, @ as %40>@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" --include-all
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
 ```
-   Discover's Events tab and the event page were never affected, because neither
-   goes through `tenants` — which is exactly why nothing but a re-cut proof
-   could have caught it.
-0b. **Re-run the three browser specs on a FRESH dev server, one at a time.**
-   `paid-webhook` is 2/2. `happy-path` passes segments 1–4 (the whole new
-   gate: private studio → admin's grant → PUBLIC · GRANTED; the trainer's Artist
-   plan granted; the event booked) and stopped in segment 5 (crews) on a
-   dev-server hydration race — the Requests pill was pressed before the client
-   had hydrated, so the desk never switched (the snapshot still shows "All"
-   pressed). `admin-moderation` and `admin-support` passed their new
-   segments and then died with the dev server (connection refused), not on an
-   assertion. Two waits were widened on the way (the first segment is
-   `test.slow()`; the held ticket gets 15 s). A run on an idle machine
-   should be green; if the crews pill races again, wait for
-   `networkidle` before pressing it.
-1. **~~Register the webhook~~ — the SUBSCRIPTIONS endpoint is registered and its
-   signature is proven by real deliveries (10 Sep 2026).** ⚠ **Still to confirm:
-   the `Payment Gateway` sub-tab.** Both live on ONE page — Developers →
-   Payment Gateway → Webhooks → Configuration — as sub-tabs (Payment Gateway /
-   Payment Link / Payment Form / Subscriptions). The URL on both is
-   `https://dancestudio-orcin.vercel.app/api/webhooks/cashfree`, webhook
-   version **2023-08-01** (the payload shape the route parses), and the event
-   list only appears once `Add Webhook Endpoint` is pressed — which is what
-   made them look absent. The pre-existing `NOTIFY_URL` row is Cashfree's
-   legacy per-order mechanism and is not ours:
-   * **Developers → Payment Gateway → Webhooks** — PAYMENT_SUCCESS_WEBHOOK,
+   (`-DryRun` lists what is pending and applies nothing. The script builds the
+   pooler URL from `.env.local` and percent-encodes the password, which is what
+   the hand-typed `--db-url` kept getting wrong.)
+
+   | Migration | What it does |
+   |---|---|
+   | `20260913090000_load_policies_and_indexes` | 63 RLS policies re-evaluated once per query, not once per row; pg_trgm + missing indexes; search stops calling a definer four times per row |
+   | `20260913100000_doors_that_were_not_doors` | **the revenue bypass and the `javascript:` link** — apply this one first if you apply only one |
+   | `20260913110000_admin_money_and_communication` | the two new admin desks' reads |
+   | `20260913120000_a_business_has_a_place` | `set_tenant_location`, `location_set_at`, `nearby_tenants` gains `located` and a `p_limit` |
+
+   **Then re-run the proofs.** All 28 should be green:
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rls-proof-tenant-columns.ps1
+```
+   That one **FAILS TODAY ON PURPOSE** — it is the proof of the bypass and it is
+   how you know the fix landed. Then the other 27 as regression cover.
+
+   ⚠ `20260913090000` rewrites **every** policy in `public` (and nine in
+   `storage`). It is mechanical, idempotent and reads the policies out of the
+   catalog rather than re-typing them — but the proofs are the safety net, so
+   run them, and if anything fails the fix is a follow-up migration, never an
+   edit to an applied one (Rule 4).
+
+1. **Two `p_limit`s are deliberately not being sent yet.**
+   `findNearbyTenants` only includes `p_limit` when a caller passes one, because
+   PostgREST resolves an RPC by its exact argument NAMES against a cached
+   signature — sending an argument the deployed function does not have is a 404
+   on the whole call, and Discover's main shelf would go blank. After migration
+   `20260913120000` lands, a caller may pass it. Same reasoning applies to
+   `location_set_at`: the app does **not** select it anywhere yet, so nothing
+   breaks before the migration; `nearby_tenants` supplies `located` instead.
+
+2. **The location picker is built but nobody is being ASKED to use it**, and
+   until studios place themselves the feature is inert — every card still shows
+   no distance, which is honest but empty. The obvious next slice: a strip on
+   the business hub for any studio with `location_set_at is null` ("Discover
+   cannot say how far away you are"), and the picker in the studio-creation flow
+   rather than only in the Edit sheet.
+
+3. **Events have no coordinates.** `events` carries `venue`, `address`, `city`
+   and a `maps_url` typed by hand — no lat/lng — so an event cannot appear on a
+   map or be sorted by distance. The picker is written to be reusable; this is
+   a column, an RPC argument and one sheet.
+
+4. **RATE LIMITING DOES NOT EXIST ANYWHERE** and is the main abuse surface for a
+   public consumer app: not on search, `report_content`, `send_enquiry`,
+   `open_support_thread`, or sign-up. RLS decides WHO may do a thing, never HOW
+   OFTEN. Recommended shape (additive, touches no existing RPC body): a
+   `rate_limits` table plus one `rate_limit_hit(bucket, limit, window)` definer
+   called from the server actions that front the risky RPCs. Not built — it
+   wants the user's call on the limits.
+
+5. **The records a marketplace at this scale normally keeps and this one does
+   not** (§3 of the audit): **reviews / ratings** — there is no table at all,
+   and for "the Zomato of dancers" that is the ranking signal, the trust signal
+   and the reason to return; **search and impression events**, without which
+   there is no relevance ranking and no way to tell a studio why it gets no
+   bookings; a **delivery log** for email/SMS; **device / push tokens**. All are
+   product decisions, so none was built. Reviews is the one to do first by a
+   distance.
+
+6. **`nearby_tenants` still has no cursor** — it caps at 50 (now a parameter,
+   max 200). Discover can never show a 51st studio in a city.
+
+7. **The geocoder is keyless and that has a ceiling.** OSM tiles and Nominatim
+   both forbid heavy commercial use, and the throttle and cache in
+   `lib/geo/geocode.ts` are PER INSTANCE, so on serverless the global rate is
+   the per-instance rate times the instance count. Set `GEOCODER_PROVIDER=
+   locationiq` (or `maptiler`) and `GEOCODER_KEY` when there is real traffic —
+   both speak the same shapes, so it is a deploy, not a rewrite. Tiles want the
+   same treatment at that point (MapTiler is 100k/month free).
+
+8. **⚠ Still to confirm: the Cashfree `Payment Gateway` webhook sub-tab.** The
+   SUBSCRIPTIONS endpoint is registered and proven by real deliveries (10 Sep).
+   Both live on one page — Developers → Payment Gateway → Webhooks →
+   Configuration — as sub-tabs; the URL on both is
+   `https://dancestudio-orcin.vercel.app/api/webhooks/cashfree`, version
+   **2023-08-01**, and the event list only appears once `Add Webhook Endpoint`
+   is pressed, which is what made them look absent.
+   * **Payment Gateway → Webhooks** — PAYMENT_SUCCESS_WEBHOOK,
      PAYMENT_FAILED_WEBHOOK, PAYMENT_USER_DROPPED_WEBHOOK, REFUND_STATUS_WEBHOOK
      (class bookings, Step 9);
-   * **Developers → Subscriptions → Webhooks** — SUBSCRIPTION_PAYMENT_SUCCESS,
+   * **Subscriptions → Webhooks** — SUBSCRIPTION_PAYMENT_SUCCESS,
      SUBSCRIPTION_PAYMENT_FAILED, SUBSCRIPTION_PAYMENT_CANCELLED,
      SUBSCRIPTION_AUTH_STATUS, SUBSCRIPTION_STATUS_CHANGED.
-   The same secret key signs both families; there is no separate webhook secret.
-   Without the subscription events the FIRST payment still lands (the server
-   re-reads Cashfree when the mandate window closes) but a RENEWAL and a FAILED
-   charge are never heard — and month 2 has no browser to fall back on.
-   **⚠ No real Cashfree delivery has ever reached this app**, because it was
-   never registered: our check is
-   `Base64(HMAC-SHA256(x-webhook-timestamp + rawBody, SECRET_KEY))`, which
-   matches the docs (their `"$timestamp.$payload"` is PHP concatenation, not
-   a literal dot), and our own tests sign it the way we verify it — which proves
-   the pipeline, not Cashfree's format. If the first real delivery comes back 401,
-   read the dashboard's own delivery log for that endpoint and the fix is one
-   line in `lib/cashfree/signature.ts`.
-2. **Try one real sandbox mandate through the app** (⚠ money): Subscribe a
+   Without the PG events a class booking's money still lands (the server
+   re-reads Cashfree when the window closes) but a refund's terminal state is
+   never heard.
+   ⚠ Note the webhook route is now **excluded from the proxy matcher** — it
+   reads no session and never could, and putting the auth server in front of it
+   made a slow auth server look like a failed delivery.
+
+9. **Try one real sandbox mandate through the app** (⚠ money): Subscribe a
    studio from the hub with the sandbox UPI `testsuccess@gocash`, watch the
    strip turn PUBLIC · RENEWS, then Stop renewing and watch it turn ENDING.
    Then `/admin/plans`: change a price and confirm a NEW subscription picks it
    up while the old one keeps its own.
-3. **Cashfree KYC → live keys** and Easy Split for studios' class money; the
-   price list lives in the database (`/admin/plans`), so going live needs no
-   deploy for a price.
-4. **~~`scripts/shots/shoot-app.js`~~ — FIXED 10 Sep 2026.** It had been dead
-   since R16: it never filled the five space photos, so the organization was
-   never verified and `create_tenant_with_owner` refused the studio —
-   every shot after `business-hub-empty` was unreachable. It walks the whole
-   gate now (who first, the logo, the links, the five photos), stamps the tick and
-   one granted studio subscription through the service role the way the proofs do,
-   and shoots the new screens (`home-org-in-review`,
-   `business-hub-studio-unsubscribed`, `/subscription`). **Not yet
-   RUN** — it is a developer tool, so it waits for a session that wants the
-   prototype comparison.
-5. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
-   profile, lands on `/admin/verifications`, Sign out in the top bar.
-6. **Replace the schema workbook:** close Excel, then rename
-   `docs/DanceOS-database-schema (after migrations).xlsx` over
-   `docs/DanceOS-database-schema.xlsx`. Regenerate all three from the scratchpad
-   pipeline after migrations 8 and 9 land — they add `plan_catalog`,
-   `subscriptions`, the `payments` columns, and drop `org_plans`.
-7. **Customise the Supabase email templates to `token_hash` (dashboard, 3
-   minutes, no code).** Authentication → Email Templates → **Confirm signup**
-   and **Reset password** (Magic Link and Change Email too, for completeness):
-   replace the `{{ .ConfirmationURL }}` href with
-   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`
-   and set Site URL to `https://dancestudio-orcin.vercel.app` (Authentication →
-   URL Configuration). This removes the same-browser limitation entirely — links
-   then work from any app or device. The route already accepts this shape. Then
-   **re-test with a real inbox link, not the proof script** (Rule 15).
-8. **For a pilot, verify a domain at resend.com/domains**, point
-   `smtp_admin_email` at it and switch custom SMTP back ON. That restores 60/h
-   and real deliverability. The `onboarding@resend.dev` sender only ever reached
-   the Resend account owner, which is what made auth look broken.
-9. **~~Set `NEXT_PUBLIC_SITE_URL`, and check the redirect allow-list~~ —
-   BOTH DONE / PROVEN 10 Sep 2026.** The variable is set on production + preview
-   + development with the four others. The allow-list was tested rather than
-   assumed, with the service key and a control: a link asking to redirect to
-   `https://dancestudio-orcin.vercel.app/auth/confirm` comes back carrying
-   exactly that, and one asking for `https://evil.example.com/steal` comes
-   back **rewritten to the site URL** — so the list is enforcing and already
-   carries production. Nothing to do in the Supabase dashboard for auth
-   redirects.
-10. **~~`.env.local` must carry the Cashfree keys~~ — it does** (all five,
-   verified 10 Sep 2026), and the three the APP reads are on Vercel now too.
-   Only `CASHFREE_ENV` / `CASHFREE_APP_ID` / `CASHFREE_SECRET_KEY` are
-   ever read by the app — the `CASHFREE_PAYOUT_*` pair belongs to Payouts,
-   which is deliberately unwired, so it stays local. **Still to tidy:** three
-   dead `RAZORPAY_*` entries from before the 28 Aug rail swap.
-11. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
-   screen's Terms and Privacy Policy are bold text, not links, because linking to
-   a 404 on the screen everybody sees is worse. They become `<Link>`s in the same
-   change that adds the pages — which is also where U3's DPDP consent sentence
-   belongs.
-12. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
-   `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
-   while the global ring in `globals.css` is `#ec4899`. Auth is consistent because
-   the shadcn primitives draw the accent; every other screen still rings magenta
-   against cyan buttons. One line to align, ~50 screens repainted, so it is the
-   user's call.
-13. **Auth-screen latency, still open (⚠ Rule 9):** `proxy.ts` runs
-   `supabase.auth.getUser()` — a network round trip — on EVERY request, the
-   anonymous auth screens included. Consider excluding `/login/*` and public
-   static files from the matcher, then test sign-in end to end.
-14. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
-   2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
-   Twilio credentials, DLT registration and an approved Meta template.
-15. **The folder reorganization is proposed but NOT started**, and it is blocked
+
+10. **Cashfree KYC → live keys** and Easy Split for studios' class money; the
+    price list lives in the database (`/admin/plans`), so going live needs no
+    deploy for a price.
+
+11. **Sign in as the admin (user):** `ai@eeetaxi.com` is admin only — no
+    profile, lands on `/admin/verifications`, Sign out in the top bar.
+    `scripts/shots/shoot-admin.js` makes a throwaway admin instead, shoots all
+    13 screens and fails on any console error — use it after any panel change.
+
+12. **Replace the schema workbook:** close Excel, then rename
+    `docs/DanceOS-database-schema (after migrations).xlsx` over
+    `docs/DanceOS-database-schema.xlsx`. Regenerate after the four migrations
+    above land — they add `location_set_at`, the socials CHECKs, six admin
+    functions and a pile of indexes.
+
+13. **Customise the Supabase email templates to `token_hash` (dashboard, 3
+    minutes, no code).** Authentication → Email Templates → **Confirm signup**
+    and **Reset password** (Magic Link and Change Email too): replace the
+    `{{ .ConfirmationURL }}` href with
+    `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type={{ .Type }}`
+    and set Site URL to `https://dancestudio-orcin.vercel.app`. This removes the
+    same-browser limitation entirely. The route already accepts this shape.
+    Then **re-test with a real inbox link, not the proof script** (Rule 15).
+
+14. **For a pilot, verify a domain at resend.com/domains**, point
+    `smtp_admin_email` at it and switch custom SMTP back ON. The
+    `onboarding@resend.dev` sender only ever reached the Resend account owner,
+    which is what made auth look broken.
+
+15. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
+    screen's Terms and Privacy Policy are bold text, not links, because linking
+    to a 404 on the screen everybody sees is worse. They become `<Link>`s in the
+    same change that adds the pages — which is also where U3's DPDP consent
+    sentence belongs.
+
+16. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
+    `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
+    while the global ring in `globals.css` is `#ec4899`. Auth is consistent
+    because the shadcn primitives draw the accent; every other screen still
+    rings magenta against cyan buttons. One line to align, ~50 screens
+    repainted, so it is the user's call.
+
+17. **Three dead `RAZORPAY_*` entries** are still in `.env.local` from before the
+    28 Aug rail swap. Only `CASHFREE_ENV` / `CASHFREE_APP_ID` /
+    `CASHFREE_SECRET_KEY` are ever read by the app.
+
+18. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
+    2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
+    Twilio credentials, DLT registration and an approved Meta template.
+
+19. **The folder reorganization is proposed but NOT started**, and it is blocked
     on one question: how does the APK reach a phone? `android/danceos-1.1.0.apk`
-    and `.aab` are TRACKED in git (~4 MB per release, and `.git` is 13 MB with a
-    7.6 MB pack), and the Android project exists twice — `files/android/`
-    (tracked, no keystore) and `dancestudio/danceos-android/` (untracked, holds
-    `android.keystore` + `keystore-credentials.txt`, older `app-release-*`
-    outputs). The keystore has never been committed; `files/android/.gitignore`
-    excludes it and `git log --diff-filter=A` across all history confirms it.
-    Also: `files/.claude/settings.json` hardcodes
+    and `.aab` are TRACKED in git (~4 MB per release), and the Android project
+    exists twice — `files/android/` (tracked, no keystore) and
+    `dancestudio/danceos-android/` (untracked, holds `android.keystore`). The
+    keystore has never been committed; `git log --diff-filter=A` across all
+    history confirms it. Also: `files/.claude/settings.json` hardcodes
     `c:\Users\Admin\Downloads\dancestudio\files` in ~9 permission entries, which
     is what a rename would silently break. **What actually breaks the installed
-    app is a URL disappearing, not a folder moving** (Rule 14, learned 7 Sep
-    third session) — so the reorg is safer than it looked, provided every route
-    keeps its path or gets a redirect.
+    app is a URL disappearing, not a folder moving** (Rule 14) — so the reorg is
+    safer than it looked, provided every route keeps its path or gets a redirect.
 
 ## What this repo is
 
@@ -645,6 +788,36 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE OVERNIGHT AUDIT: a live revenue bypass closed, the load answered, the
+  admin panel segmented, and a business finally has a PLACE — 11 Sep 2026, no
+  step number ⚠ (Rule 9, money + auth + RLS) — WRITTEN AND BUILT, FOUR
+  MIGRATIONS NOT APPLIED (NEXT TO DO #0).** Asked for as an end-to-end bug hunt
+  plus three named pieces of work; the whole report is
+  `docs/AUDIT-2026-09-11.md`.
+  **Found and fixed:** a column-less update policy on `tenants` let an owner
+  PATCH `type` and then list the row — **a public business on Discover having
+  bought neither plan**, proven end to end by the new
+  `rls-proof-tenant-columns`; the same hole stored a `javascript:` URL as a
+  business's link, rendered on two public pages **and the admin's verification
+  queue**; Discover silently lost a city's classes past 200 published classes
+  nationally; `rls-proof.ps1` had been dead for weeks on a BOM-less-file parse
+  error; `proxy.ts` put an auth round trip in front of every static asset and
+  the Cashfree webhook; `playwright.config.ts` could never start a server on
+  either known machine (`pnpm dev`).
+  **The load question:** 63 RLS policies re-evaluated once per query instead of
+  once per row, pg_trgm indexes for a search box that was a seq scan on every
+  keystroke, a definer function that ran four times per candidate row now run
+  once per search, and the indexes for the columns the app actually filters by.
+  **The panel:** an Overview that opens with THE DESKS, plus `/admin/payments`
+  (money in / money back / money on, read-only) and `/admin/communication`.
+  **The place:** `tenants.lat/lng` had never held a real value since Step 5 —
+  every studio in a city sat on its centroid, so every distance on Discover was
+  the same number. A keyless OpenStreetMap picker, `set_tenant_location`,
+  `location_set_at`, "Near me" on Discover, and cards that no longer print a
+  distance that is not one.
+  **Nothing is in the database until the push** (NEXT TO DO #0); typecheck and
+  lint clean, all 27 proofs green, admin panel and picker verified by
+  screenshot with real sessions.
 - **PAID SUBSCRIPTIONS, the standard way — ₹1,200 a month PER STUDIO and ₹700 a
   month for the Artist plan, through Cashfree Subscriptions, 10 Sep 2026, no
   step number ⚠ (Rule 9, money + RLS) — WRITTEN AND BUILT, MIGRATION 9 NOT
@@ -3871,6 +4044,11 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **Nobody is ASKED to place their business on the map.** The picker landed 11 Sep 2026 in the business Edit sheet, but a studio that never opens that sheet keeps its city centroid — and its cards then show no distance at all, which is honest and empty. Until studios place themselves the whole radius search stays inert | — (no prototype: the prototype has no backend and no map) | a strip on the business hub for `location_set_at is null`, and the picker in the studio-creation flow |
+| **An event has no coordinates.** `events` carries `venue`, `address`, `city` and a hand-typed `maps_url`; there is no lat/lng, so an event cannot go on a map or be sorted by distance the way a studio now can | — (same) | a column, an RPC argument and one sheet — `LocationPicker` is written to be reusable |
+| **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
+| **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |
+| **The geocoder is keyless, and that has a ceiling.** OSM tiles and Nominatim forbid heavy commercial use, and the throttle and cache in `lib/geo/geocode.ts` are PER INSTANCE — so on serverless the global rate is the per-instance rate times the instance count | — (same) | `GEOCODER_PROVIDER=locationiq` (or `maptiler`) + `GEOCODER_KEY` — both speak the same shapes, so it is a deploy, not a rewrite. Tiles want the same treatment |
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
 | Home: **nothing open.** The QR share sheet and the style row landed 29 Aug 2026 (settings slice), the **PassDeck** 29 Aug 2026 (parity slice 6) and the **rank row** 30 Aug 2026 (parity slice 7 — `my_chart_place`, drawn only where there is a place, because "#0" is not a rank) | Home 7248+, 7315-7323, PassDeck 6863-7204 | closed |
 | Profile tab, what the Profile slice left (**S_profiletab's own render landed 28 Aug 2026**; the verified tick landed 29 Aug 2026 as `profiles.verified_at`, service-role only): the albums grid and its icon tab strip, Call (a person's `phone` exists now, no editor offers it), the long-press-for-QR gesture, the settings sheet's switcher / appearance / language rows, "Can't find your style? Request it", opening Maps from the place. **Call landed 30 Aug 2026** (the Edit profile sheet's Phone field, parity slice 7) | S_profiletab 11069-11130, 10879, 10598, 11135, 11251 | an albums slice; the rest need a product decision |
