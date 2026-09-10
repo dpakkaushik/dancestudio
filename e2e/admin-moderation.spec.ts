@@ -288,9 +288,16 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await second.getByRole("button", { name: "Send report" }).click();
     await expect(second.getByText("Thank you — a DanceOS admin will read this.")).toBeVisible();
 
-    // the overview counts them as work, and the queue names the case
+    // the overview counts them as work, and the queue names the case.
+    // AT LEAST two, not exactly two: this figure is platform-wide on a database
+    // the whole suite shares, so an exact number is only ever right by luck —
+    // a run killed before its cleanup left a third behind and failed this as
+    // though the product were broken (10 Sep 2026). The claim the story makes is
+    // that its own two became work; the queue below names the case itself.
     await adminGoto(admin, adminEmail(), "/admin");
-    await expect(admin.getByRole("link", { name: /reports to answer/ })).toContainText("2");
+    const waiting = admin.getByRole("link", { name: /reports to answer/ });
+    await expect(waiting).toBeVisible();
+    expect(Number((await waiting.innerText()).match(/\d+/)?.[0] ?? 0)).toBeGreaterThanOrEqual(2);
 
     await adminGoto(admin, adminEmail(), "/admin/reports");
     const card = admin.getByTestId("report-card").filter({ hasText: studioName }).first();

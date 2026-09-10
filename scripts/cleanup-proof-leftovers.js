@@ -30,8 +30,18 @@ if (!BASE || !SERVICE) throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SE
 const H = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json", "User-Agent": "danceos-cleanup/1.0", Prefer: "return=representation" };
 const APPLY = process.argv.includes("--apply");
 
-const JUNK_EMAIL = /^(ev|mng|pp|follow|srch|e2e|prof|st|stats|crew|evt|enq|mgd|pay|rf|wh|inv|cls|near|sl)-[^@]*@example\.com$/i;
+const JUNK_EMAIL =
+  /^(ev|mng|pp|follow|srch|e2e|prof|st|stats|crew|evt|enq|mgd|pay|rf|wh|inv|cls|near|sl|mod|panel|shots|orghome|proof|att|set|rooms|leads|enroll|ratecheck)-[^@]*@example\.com$/i;
 const JUNK_NAMES = new Set(["Studio Test", "Priya Test"]);
+
+/* THE BUSINESSES THE PROOF SCRIPTS NAME, verbatim. Ownership alone is not
+   enough: the two test PHONE accounts are kept on purpose (below), so every
+   studio they leave behind was kept with them — eight of them, LISTED, on
+   Discover, called things like "Enroll Studio 142804" (found 10 Sep 2026). A
+   name match sweeps one too, but only when its owner is a junk account or one
+   of those kept phones, so a real business can never be caught by it. */
+const JUNK_TENANT_NAME =
+  /^(Webhook Proof Studio|Enroll Studio|Managed [AB]|Near Studio|Event Proof Studio|Rival Studio|Rooms Proof Studio|Leads Proof Studio|Class Studio|Att Proof Studio|Pay Proof Studio|Refund Proof Studio|Crew Proof Studio|Follow Proof Studio|Media Studio|Notif Proof Studio|Stat Proof Studio|Income Proof Studio|Settings Proof Studio|Slug Proof Studio|Enquiry Proof Studio|Earn Proof Studio|Staff Proof Studio|PP (Listed|Private) Studio|Private Studio|Other Studio|Artist Business|Studio [AB]|Mandate (Test|Proof) Studio|Mod (Studio|Org)|E2E (Studio|Owner)|Timeline Test|Zq)\b/i;
 /* the two Supabase TEST PHONE numbers are how paid-webhook.spec.ts and the older
    proofs sign in. They have no email, so "no email" alone would sweep them up on
    every run and the next phone-based proof would fail with "finish onboarding
@@ -75,12 +85,24 @@ async function allAuthUsers() {
   const tenants = await get("tenants?select=id,type,name&deleted_at=is.null");
   const owners = await get("tenant_members?select=tenant_id,user_id&member_role=eq.owner&deleted_at=is.null");
   const ownedByGood = new Set(owners.filter((m) => liveGood.has(m.user_id)).map((m) => m.tenant_id));
-  const junkTenants = tenants.filter((t) => !ownedByGood.has(t.id));
+  /* who owns what, so a name match can be bounded to a test-owned row */
+  const ownerOf = new Map(owners.map((m) => [m.tenant_id, m.user_id]));
+  const testOwned = (t) => {
+    const owner = ownerOf.get(t.id);
+    if (!owner) return true;
+    if (junkIds.has(owner)) return true;
+    return KEEP_PHONES.has(phoneOf.get(owner));
+  };
+  const junkTenants = tenants.filter(
+    (t) => !ownedByGood.has(t.id) || (JUNK_TENANT_NAME.test(t.name) && testOwned(t))
+  );
 
   console.log(`profiles to soft-delete: ${junkProfiles.length}`);
   junkProfiles.forEach((p) => console.log(`  - ${p.role.padEnd(8)} ${p.full_name}  <${emailOf.get(p.id) || "no email"}>`));
   console.log(`businesses to soft-delete (owned by one of those, or by nobody live): ${junkTenants.length}`);
-  junkTenants.forEach((t) => console.log(`  - ${t.type.padEnd(17)} ${t.name}`));
+  junkTenants.forEach((t) =>
+    console.log(`  - ${t.type.padEnd(17)} ${t.name}${ownedByGood.has(t.id) ? "   (kept owner, junk NAME)" : ""}`)
+  );
   if (!APPLY) {
     console.log("\nDRY RUN — nothing written. Re-run with --apply to soft-delete these.");
     return;

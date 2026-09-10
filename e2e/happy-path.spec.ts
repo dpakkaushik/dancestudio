@@ -243,7 +243,11 @@ test.describe.serial("DanceOS, end to end", () => {
     // server compiling each route on first visit it runs past the 120 s default
     test.slow();
     // ---- studio owner: signup → onboarding -------------------------------
-    ownerId = await signUp(owner, `e2e-owner-${stamp}@example.com`);
+    /* the stamped address, kept: it is what makes this run's rows findable among
+       any a killed run left behind (a name is not unique — "E2E Owner" made the
+       Accounts desk locator ambiguous on 10 Sep 2026) */
+    const ownerEmail = `e2e-owner-${stamp}@example.com`;
+    ownerId = await signUp(owner, ownerEmail);
     await onboard(owner, "E2E Owner", "Organization", "Pune");
 
     // ---- R13: where it stands is on HOME, not inside the studios hub -------
@@ -288,8 +292,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(admin.getByText("E2E Owner verified — its studios are live")).toBeVisible();
 
     // ---- the Accounts desk reads the organization's standing -----------------
-    await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Owner")}`);
-    const orgAccount = admin.getByTestId("admin-account").filter({ hasText: "E2E Owner" });
+    await admin.goto(`/admin/accounts?q=${encodeURIComponent(ownerEmail)}`);
+    const orgAccount = admin.getByTestId("admin-account").filter({ hasText: ownerEmail });
     await expect(orgAccount).toContainText("5 PHOTOS");
 
     // ---- create the studio: verified opens the door (10 Sep 2026), and the
@@ -330,8 +334,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByTestId("studio-subscription").getByText("PUBLIC", { exact: true })).toBeVisible();
     await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
     // the Accounts desk counts it for the organization (the chip appears with the first studio)
-    await admin.goto(`/admin/accounts?q=${encodeURIComponent("E2E Owner")}`);
-    await expect(admin.getByTestId("admin-account").filter({ hasText: "E2E Owner" })).toContainText("1/1 STUDIOS SUBSCRIBED");
+    await admin.goto(`/admin/accounts?q=${encodeURIComponent(ownerEmail)}`);
+    await expect(admin.getByTestId("admin-account").filter({ hasText: ownerEmail })).toContainText("1/1 STUDIOS SUBSCRIBED");
     // Home's timeline counts it
     await owner.goto("/");
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toContainText("your studio is subscribed");
