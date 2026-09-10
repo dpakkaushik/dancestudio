@@ -90,7 +90,13 @@ export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: Nea
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <DosWhere city={place} km={kmLabel(tenant.distanceKm)} />
+          {/* A DISTANCE ONLY WHEN IT IS ONE (11 Sep 2026). Until a business has
+              opened the location picker its lat/lng is its city's centroid, so
+              "2.4 km" is the distance to the middle of town — the same number
+              for every studio in the city, and a confident lie on a card that
+              is asking somebody to travel. Where the point was never chosen the
+              card says the place and stops. */}
+          <DosWhere city={place} km={tenant.located ? kmLabel(tenant.distanceKm) : null} />
           <DosFollowers n={followers} />
         </div>
         {/* the app's own style tiles — one line that scrolls, not a block that wraps (4360-4366) */}

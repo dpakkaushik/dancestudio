@@ -7,6 +7,7 @@ import { CityChip } from "@/features/discovery/components/CityChip";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
+import { NearMeChip } from "@/features/discovery/components/NearMeChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, EventI, kmLabel, StudioI } from "@/features/discovery/components/discover-kit";
 import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
@@ -46,6 +47,20 @@ const stampNowIso = (): string => new Date().toISOString();
 
 const isCity = (v: string | undefined): v is DosCity => Boolean(v) && (DOS_CITIES as readonly string[]).includes(v as string);
 
+/** "18.516,73.856" from the address bar, or nothing. Bounded to India, because
+ *  a pair of numbers in a URL is the least trustworthy input the app has and a
+ *  radius search from the wrong hemisphere is an empty shelf with no
+ *  explanation (11 Sep 2026). */
+const parseNear = (raw: string | undefined): { lat: number; lng: number } | null => {
+  const [a, b] = String(raw ?? "").split(",");
+  const lat = Number(a);
+  const lng = Number(b);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+  return lat >= 6 && lat <= 37.5 && lng >= 68 && lng <= 97.5 ? { lat, lng } : null;
+};
+
 /** Discover — lifted from the prototype's S_discover (4425-4885): THE TOP OF
  *  DISCOVER (the page's colour bleeding off the top, a small word, the title,
  *  THE PLACE ONCE as one chip), the one search box, the five section tabs, THE
@@ -68,7 +83,13 @@ export default async function DiscoverPage({
   const profile = user ? await findProfileById(supabase, user.id) : null;
   const city: DosCity = isCity(params.city) ? params.city : isCity(profile?.city ?? undefined) ? (profile!.city as DosCity) : "Pune";
   const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "studios";
-  const centre = DOS_CITY_CENTROIDS[city];
+  /* WHERE "NEAR" IS MEASURED FROM (11 Sep 2026). The city's centre, unless the
+     person has pressed Near me and their own point is in the address — in which
+     case the distances on the cards are distances to THEM. A malformed or
+     out-of-range pair is ignored rather than argued with: the city centre is
+     always a usable answer, and an empty shelf is not. */
+  const near = parseNear(params.near);
+  const centre = near ?? DOS_CITY_CENTROIDS[city];
   const filters = parseFilters(params, DOS_STYLE_NAMES);
   const wantsBusinesses = tab === "studios" || tab === "artists";
   /* the follow shelf heads Studios and Artists for a signed-in person; a crew has no follow yet */
@@ -196,6 +217,15 @@ export default async function DiscoverPage({
         <CityChip city={city} tab={tab} extra={filtersToParams(filters)} />
       </div>
 
+      {/* "near you" can now mean YOU (11 Sep 2026) — the chip swaps the city's
+          centre for the browser's own point, and the distance on every card
+          becomes a distance to the person reading it */}
+      {wantsBusinesses ? (
+        <div style={{ display: "flex", alignItems: "center", marginTop: 8, minWidth: 0 }}>
+          <NearMeChip on={near !== null} params={{ city, tab, ...filtersToParams(filters) }} />
+        </div>
+      ) : null}
+
       {/* the search box, the five tabs, the style rail, Filters + quick chips, the filter sheet (Step 23) */}
       <DiscoverFilters tab={tab} city={city} filters={filters} styleOrder={styleOrder} tabs={tabTiles} />
 
@@ -251,7 +281,7 @@ export default async function DiscoverPage({
               photo={photoUrl(t.photoPath)}
               grad={gradientOf(t.name)}
               city={t.city ?? t.area ?? "—"}
-              km={kmLabel(t.distanceKm)}
+              km={t.located ? kmLabel(t.distanceKm) : null}
               styles={stylesByTenant.get(t.id) ?? []}
               verified={Boolean(t.verifiedAt)}
               foot={<DosFollowers n={followerCounts.get(t.id) ?? 0} size={11} />}

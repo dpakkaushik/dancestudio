@@ -12,6 +12,11 @@ export interface NearbyTenant {
   area: string | null;
   city: string | null;
   distanceKm: number;
+  /** WHETHER THE DISTANCE MEANS ANYTHING (11 Sep 2026). False while the
+   *  business has never opened the location picker, in which case its lat/lng
+   *  is still its city's centroid and the number is the city measuring itself.
+   *  A card can then stay quiet instead of printing a confident lie. */
+  located: boolean;
 }
 
 interface NearbyRow {
@@ -21,20 +26,32 @@ interface NearbyRow {
   area: string | null;
   city: string | null;
   distance_km: number;
+  located?: boolean;
 }
 
 /** Tenants within a radius, nearest first — the caller's RLS decides visibility
  *  (anonymous and strangers see listed tenants only). */
 export async function findNearbyTenants(
   supabase: SupabaseClient,
-  input: { lat: number; lng: number; radiusKm?: number; type?: TenantType }
+  input: { lat: number; lng: number; radiusKm?: number; type?: TenantType; limit?: number }
 ): Promise<NearbyTenant[]> {
-  const { data, error } = await supabase.rpc("nearby_tenants", {
+  /* `p_limit` IS ONLY SENT WHEN ASKED FOR (11 Sep 2026). It arrives with
+     migration 20260913120000, and PostgREST resolves an RPC by its exact
+     argument NAMES against a cached signature — so sending an argument the
+     deployed function does not have yet is not ignored, it is a 404 on the
+     whole call, and Discover's main shelf would go blank until the migration
+     landed. Omitted, the call matches the old signature and the new one alike,
+     and the new one's own default is the 50 the old one hard-coded. */
+  const args: Record<string, unknown> = {
     p_lat: input.lat,
     p_lng: input.lng,
     p_radius_km: input.radiusKm ?? 25,
     p_type: input.type ?? null,
-  });
+  };
+  if (input.limit !== undefined) {
+    args.p_limit = input.limit;
+  }
+  const { data, error } = await supabase.rpc("nearby_tenants", args);
 
   if (error) {
     throw new Error(`discovery.nearby failed: ${error.message}`);
@@ -46,6 +63,9 @@ export async function findNearbyTenants(
     area: r.area,
     city: r.city,
     distanceKm: r.distance_km,
+    /* absent until migration 20260913120000 lands, and absent means "we cannot
+       say", which is the same answer as false here */
+    located: Boolean(r.located),
   }));
 }
 

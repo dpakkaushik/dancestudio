@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
+import { setTenantLocationAction } from "@/features/geo/server-actions/location";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import type { PublicTenant } from "@/types/publicProfile";
@@ -16,6 +19,8 @@ import { PlatformIcon, Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile
  *  through the one owner-only door, `update_tenant_profile`, which re-checks
  *  ownership inside and validates what a form cannot be trusted to. */
 
+const isDosCity = (v: string | null): v is DosCity => Boolean(v) && (DOS_CITIES as readonly string[]).includes(v as string);
+
 export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; onClose: () => void }) {
   const router = useRouter();
   const [about, setAbout] = useState(tenant.about ?? "");
@@ -25,7 +30,28 @@ export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; o
   const [addPlatform, setAddPlatform] = useState<string>("");
   const [addUrl, setAddUrl] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  /** The pin saves itself. A location is chosen by a gesture that is already
+   *  visible on screen — the map has moved, the address has appeared — so
+   *  asking for a second press to confirm it reads as though the first did not
+   *  register. Failures are said out loud rather than swallowed. */
+  const savePlace = (picked: PickedLocation) =>
+    start(async () => {
+      setPlaceNote("Saving the pin…");
+      const out = await setTenantLocationAction({
+        tenantId: tenant.id,
+        lat: picked.lat,
+        lng: picked.lng,
+        area: picked.area,
+        city: picked.city,
+      });
+      setPlaceNote(out.error ? `Could not save the pin — ${out.error}` : "Saved. Discover measures from here now.");
+      if (!out.error) {
+        router.refresh();
+      }
+    });
   const thisYear = new Date().getFullYear();
   const years = Array.from({ length: thisYear - 1950 + 1 }, (_, i) => thisYear - i);
   const free = PLATFORMS.filter((p) => !socials.some((s) => s.platform === p));
@@ -126,6 +152,24 @@ export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; o
           </button>
         </div>
       ) : null}
+
+      {/* ── WHERE IT IS (11 Sep 2026) ──────────────────────────────────────────
+          The one field the business never had. Until an owner moves this pin
+          their studio sits on its city's centroid, along with every other
+          studio in that city, and Discover's "2.4 km away" is the same 2.4 km
+          for all of them. Saved on its own, immediately, rather than with the
+          rest of the sheet: it is a different kind of edit — a map gesture,
+          not a form field — and pressing Save to commit a pin somebody has
+          already visibly placed reads like it did not take. */}
+      <div style={{ ...fieldLabel, marginTop: 14 }}>Where it is</div>
+      <LocationPicker
+        value={{ lat: tenant.lat, lng: tenant.lng, area: tenant.area }}
+        city={isDosCity(tenant.city) ? tenant.city : null}
+        onChange={savePlace}
+      />
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+        {placeNote ?? "This is what Discover measures from when somebody looks for studios near them."}
+      </div>
 
       {err ? <div role="alert" style={{ fontSize: 12, color: "#F87171", marginTop: 10 }}>{err}</div> : null}
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>

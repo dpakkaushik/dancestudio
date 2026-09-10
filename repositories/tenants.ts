@@ -286,3 +286,26 @@ export async function findTenantTeam(
     };
   });
 }
+
+/** WHERE A BUSINESS IS (11 Sep 2026) — the write behind the location picker.
+ *
+ *  A studio's lat/lng has always been its CITY'S CENTROID, because
+ *  `create_tenant_with_owner` had nothing else to write. This is the door that
+ *  replaces the guess with an address the owner chose. The RPC re-checks
+ *  ownership, refuses a point outside India, and will only write a city that is
+ *  on the app's closed list. */
+export async function setTenantLocation(
+  supabase: SupabaseClient,
+  input: { tenantId: string; lat: number; lng: number; area: string | null; city: string | null }
+): Promise<void> {
+  const { error } = await supabase.rpc("set_tenant_location", {
+    p_tenant_id: input.tenantId,
+    p_lat: input.lat,
+    p_lng: input.lng,
+    p_area: input.area,
+    p_city: input.city,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
