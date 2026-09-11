@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { decideReportAction } from "@/features/admin/server-actions/moderation";
-import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
-import type { AdminReport, ReportReason } from "@/repositories/adminPanel";
+import { INK, SUB } from "@/lib/design/tokens";
+import type { AdminReport, ReportCounts, ReportReason } from "@/repositories/adminPanel";
 import { agoWords } from "@/types/notification";
+import { AdminGlyph, DESK_TINT } from "./admin-glyphs";
+import { CountLine, DeskHero, Pager, StatStrip } from "./desk-kit";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -44,7 +46,22 @@ const KIND_WORDS: Record<AdminReport["subjectKind"], string> = {
  *  Answering is not the same as acting: unlisting the business or suspending
  *  the account are their own decisions, on their own screens, each separately
  *  audited. This screen closes the report and says what was done. */
-export function ReportsQueue({ reports, status, nowIso }: { reports: AdminReport[]; status: string; nowIso: string }) {
+export function ReportsQueue({
+  reports,
+  status,
+  counts,
+  page,
+  total,
+  nowIso,
+}: {
+  /** ONE PAGE of reports in the state the tab shows */
+  reports: AdminReport[];
+  status: string;
+  counts: ReportCounts;
+  page: number;
+  total: number;
+  nowIso: string;
+}) {
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [answering, setAnswering] = useState<string | null>(null);
@@ -67,29 +84,51 @@ export function ReportsQueue({ reports, status, nowIso }: { reports: AdminReport
       router.refresh();
     });
 
-  const open = reports.filter((r) => r.status === "open").length;
+  const open = counts.open;
+  const all = counts.open + counts.actioned + counts.dismissed;
+  const base = "/admin/reports";
 
   return (
-    <div style={{ padding: "14px 16px var(--dos-foot, 40px)" }}>
-      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: open > 0 ? "linear-gradient(135deg,#9F1239,#F43F5E)" : "linear-gradient(135deg,#166534,#22C55E)" }}>
-        <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Reports</div>
-        <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2, position: "relative" }}>
-          {open > 0 ? `${open} waiting on a person` : "nothing waiting"}
-        </div>
+    <div style={{ padding: "6px 16px var(--dos-foot, 40px)" }}>
+      {/* THE DESK SHAPE (11 Sep 2026): figures, tabs as blocks with their own
+          counts, one page of the list, a pager — the same object every other
+          desk is now, so an admin learns it once */}
+      <DeskHero
+        eyebrow="MODERATION"
+        title="Reports"
+        sub={open > 0 ? `${open} waiting on a person` : "nothing waiting"}
+        tint={open > 0 ? DESK_TINT.reports : "#22C55E"}
+        icon={<AdminGlyph k="reports" size={22} />}
+      />
+      <StatStrip
+        cols={4}
+        figs={[
+          { n: counts.open, label: "waiting", href: `${base}?status=open`, tone: counts.open > 0 ? "#EF4444" : undefined },
+          { n: counts.actioned, label: "acted on", href: `${base}?status=actioned`, tone: "#22C55E" },
+          { n: counts.dismissed, label: "no problem found", href: `${base}?status=dismissed` },
+          { n: all, label: "reports ever", href: `${base}?status=all` },
+        ]}
+      />
+      {/* the tab is `?status=`, the word the URL has always used here */}
+      <div role="tablist" style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+        {(
+          [
+            ["open", "Open", counts.open, "#EF4444"],
+            ["actioned", "Acted on", counts.actioned, undefined],
+            ["dismissed", "Dismissed", counts.dismissed, undefined],
+            ["all", "All", all, undefined],
+          ] as Array<[string, string, number, string | undefined]>
+        ).map(([s, label, n, tone]) => {
+          const on = status === s;
+          return (
+            <Link key={s} role="tab" aria-selected={on} href={`${base}?status=${s}`} style={{ flex: 1, minWidth: 0, textAlign: "center", padding: "9px 4px 8px", borderRadius: 14, textDecoration: "none", background: on ? "var(--text)" : CARD, color: on ? "var(--solid)" : SUB, border: `1.5px solid ${on ? "var(--text)" : EL}` }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
+              <div style={{ fontSize: 12, fontWeight: 900, marginTop: 2, fontVariantNumeric: "tabular-nums", color: on ? "var(--solid)" : n > 0 && tone ? tone : SUB }}>{n}</div>
+            </Link>
+          );
+        })}
       </div>
-
-      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        {(["open", "actioned", "dismissed", "all"] as const).map((s) => (
-          <Link
-            key={s}
-            href={`/admin/reports?status=${s}`}
-            style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", textTransform: "capitalize", background: status === s ? "var(--text)" : CARD, color: status === s ? "var(--solid)" : SUB, border: `1px solid ${status === s ? "var(--text)" : EL}` }}
-          >
-            {s}
-          </Link>
-        ))}
-      </div>
+      <CountLine shown={reports.length} total={total} what={status === "all" ? "reports" : `${status === "open" ? "open" : status} report${total === 1 ? "" : "s"}`} />
 
       {reports.length === 0 ? (
         <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55, padding: "0 2px" }}>
@@ -196,6 +235,8 @@ export function ReportsQueue({ reports, status, nowIso }: { reports: AdminReport
           })}
         </div>
       )}
+
+      <Pager base={base} page={page} total={total} keep={{ status }} />
 
       {toast ? (
         <div role="status" style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(28px + var(--dos-safe-bottom, 0px))", zIndex: 500, background: "var(--text)", color: "var(--solid)", borderRadius: 999, padding: "10px 18px", fontSize: 12, fontWeight: 800, width: "min(360px, calc(100vw - 44px))", textAlign: "center", boxSizing: "border-box" }}>

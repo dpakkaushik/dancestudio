@@ -151,6 +151,122 @@ export async function requestOrgVerification(supabase: SupabaseClient): Promise<
   return String(data);
 }
 
+/* ── THE DESK, PAGED (11 Sep 2026) ──────────────────────────────────────────
+ *
+ *  The user's objection, exactly: "how am I gonna scroll down if there are 2k
+ *  studios which applied?" The queue read every pending request into one list
+ *  and every organization on the platform under it — 500 rows, then a hard
+ *  stop, no counts, no search. These read one PAGE, say how many there are in
+ *  all, and match a name. They are plain table reads under the two policies
+ *  that already exist — "admins read every request", and profiles being
+ *  signed-in readable — so no migration stands between the screen and them.
+ *  The count is PostgREST's own (`count: "exact"`), which is a COUNT(*) under
+ *  the same RLS, not a second list. */
+
+export interface VerificationCounts {
+  /** requests waiting on an admin */
+  pending: number;
+  /** requests an admin said no to (the organization may ask again) */
+  rejected: number;
+  /** organizations wearing the tick right now — grandfathered ones included */
+  verifiedOrgs: number;
+  /** every live organization */
+  orgs: number;
+}
+
+const headCount = async (q: PromiseLike<{ count: number | null; error: { message: string } | null }>, what: string): Promise<number> => {
+  const { count, error } = await q;
+  if (error) {
+    throw new Error(`verification.count ${what} failed: ${error.message}`);
+  }
+  return count ?? 0;
+};
+
+export async function countVerification(supabase: SupabaseClient): Promise<VerificationCounts> {
+  const [pending, rejected, verifiedOrgs, orgs] = await Promise.all([
+    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "pending").is("deleted_at", null), "pending"),
+    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").is("deleted_at", null), "rejected"),
+    headCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "org").is("deleted_at", null).not("verified_at", "is", null), "verified"),
+    headCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "org").is("deleted_at", null), "orgs"),
+  ]);
+  return { pending, rejected, verifiedOrgs, orgs };
+}
+
+/* `!inner` so a filter on the organization's name narrows the REQUESTS, not
+   merely the embedded profile — without it a non-matching row still comes back
+   with `profiles: null`, which is the opposite of a search */
+const REQUEST_SELECT_INNER = "id, org_id, status, note, created_at, decided_at, profiles!inner (full_name, city, avatar_path, socials, verified_at)";
+
+export interface Page<T> {
+  rows: T[];
+  /** how many match in all, not how many are on this page */
+  total: number;
+}
+
+/** One page of requests in one state. Pending is oldest first — the person who
+ *  has waited longest is at the top; anything decided is newest decision first. */
+export async function findVerificationRequestsPage(
+  supabase: SupabaseClient,
+  input: { status: VerificationStatus; q?: string | null; page: number; pageSize: number }
+): Promise<Page<VerificationRequest>> {
+  const from = (input.page - 1) * input.pageSize;
+  let query = supabase
+    .from("org_verification_requests")
+    .select(REQUEST_SELECT_INNER, { count: "exact" })
+    .eq("status", input.status)
+    .is("deleted_at", null);
+  if (input.q) {
+    query = query.ilike("profiles.full_name", `%${input.q}%`);
+  }
+  query = input.status === "pending" ? query.order("created_at", { ascending: true }) : query.order("decided_at", { ascending: false, nullsFirst: false });
+  const { data, error, count } = await query.range(from, from + input.pageSize - 1);
+  if (error) {
+    throw new Error(`verification.page failed: ${error.message}`);
+  }
+  return { rows: ((data ?? []) as unknown as RequestRow[]).map(toRequest), total: count ?? 0 };
+}
+
+/** One page of organizations: all of them, only the verified, or only the
+ *  unverified — matched on name or city. */
+export async function findOrganizationsPage(
+  supabase: SupabaseClient,
+  input: { verified?: boolean; q?: string | null; page: number; pageSize: number }
+): Promise<Page<OrganizationRow>> {
+  const from = (input.page - 1) * input.pageSize;
+  let query = supabase
+    .from("profiles")
+    .select("id, full_name, city, avatar_path, socials, verified_at, created_at", { count: "exact" })
+    .eq("role", "org")
+    .is("deleted_at", null);
+  if (input.verified === true) {
+    query = query.not("verified_at", "is", null);
+  } else if (input.verified === false) {
+    query = query.is("verified_at", null);
+  }
+  if (input.q) {
+    const term = input.q.replace(/[%_,()]/g, " ").trim();
+    if (term) {
+      query = query.or(`full_name.ilike.%${term}%,city.ilike.%${term}%`);
+    }
+  }
+  const { data, error, count } = await query.order(input.verified === true ? "verified_at" : "created_at", { ascending: false }).range(from, from + input.pageSize - 1);
+  if (error) {
+    throw new Error(`verification.orgs page failed: ${error.message}`);
+  }
+  return {
+    total: count ?? 0,
+    rows: ((data ?? []) as Array<{ id: string; full_name: string; city: string | null; avatar_path: string | null; socials: unknown; verified_at: string | null; created_at: string }>).map((r) => ({
+      id: r.id,
+      name: r.full_name,
+      city: r.city,
+      avatarPath: r.avatar_path,
+      socials: toSocials(r.socials),
+      verifiedAt: r.verified_at,
+      createdAt: r.created_at,
+    })),
+  };
+}
+
 /** the answer — admins only, and it moves the tick and every studio's visibility with it */
 export async function decideOrgVerification(
   supabase: SupabaseClient,

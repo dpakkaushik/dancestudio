@@ -8,11 +8,14 @@ import { suspendAccountAction, unsuspendAccountAction } from "@/features/admin/s
 import { grantSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
 import { adminOpenSupportThreadAction } from "@/features/support/server-actions/support";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
-import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
+import { INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { AdminAccount } from "@/repositories/adminPanel";
 import type { OrgStandingRow } from "@/repositories/orgStanding";
 import { agoWords } from "@/types/notification";
+import { AdminGlyph, DESK_TINT } from "./admin-glyphs";
+import type { AccountCounts, AccountTab } from "./accounts-tabs";
+import { CountLine, DeskHero, DeskTabs, Pager, SearchBar, StatStrip } from "./desk-kit";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -44,16 +47,24 @@ export function AccountsDesk({
   accounts,
   standing,
   q,
+  tab,
+  counts,
+  page,
+  total,
   nowIso,
 }: {
+  /** ONE PAGE of the accounts on this tab */
   accounts: AdminAccount[];
   /** R14/R16: subscription and evidence figures, per organization on this page */
   standing: Record<string, OrgStandingRow>;
   q: string;
+  tab: AccountTab;
+  counts: AccountCounts;
+  page: number;
+  total: number;
   nowIso: string;
 }) {
   const router = useRouter();
-  const [term, setTerm] = useState(q);
   const [toast, setToast] = useState<string | null>(null);
   const [suspending, setSuspending] = useState<string | null>(null);
   const [writing, setWriting] = useState<string | null>(null);
@@ -114,27 +125,41 @@ export function AccountsDesk({
       else router.refresh();
     });
 
-  return (
-    <div style={{ padding: "14px 16px var(--dos-foot, 40px)" }}>
-      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: "linear-gradient(135deg,#4C1D95,#7C3AED)" }}>
-        <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Accounts</div>
-        <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2, position: "relative" }}>
-          {accounts.length} shown{q ? ` for “${q}”` : ", newest first"}
-        </div>
-      </div>
+  const base = "/admin/accounts";
 
-      <form action="/admin/accounts" style={{ display: "flex", gap: 7, marginBottom: 14 }}>
-        <input
-          name="q"
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          aria-label="Search accounts"
-          placeholder="Search a name, email or city…"
-          style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: INK, fontFamily: "inherit" }}
-        />
-        <button type="submit" style={{ ...btn, height: 40, background: "var(--text)", color: "var(--solid)", border: "none" }}>Search</button>
-      </form>
+  return (
+    <div style={{ padding: "6px 16px var(--dos-foot, 40px)" }}>
+      {/* THE DESK SHAPE (11 Sep 2026): figures, tabs as blocks with their own
+          counts, a search, one page of the list */}
+      <DeskHero
+        eyebrow="THE REGISTER"
+        title="Accounts"
+        sub={`${counts.all.toLocaleString("en-IN")} live account${counts.all === 1 ? "" : "s"}${counts.suspended > 0 ? ` · ${counts.suspended} suspended` : ""}`}
+        tint={DESK_TINT.accounts}
+        icon={<AdminGlyph k="accounts" size={22} />}
+      />
+      <StatStrip
+        cols={4}
+        figs={[
+          { n: counts.users, label: "users", href: `${base}?tab=users` },
+          { n: counts.orgs, label: "organizations", href: `${base}?tab=orgs` },
+          { n: counts.verifiedOrgs, label: "verified", href: "/admin/verifications?tab=approved", tone: "#22C55E" },
+          { n: counts.artists, label: "on the Artist plan", href: "/admin/subscriptions" },
+        ]}
+      />
+      <DeskTabs
+        base={base}
+        current={tab}
+        keep={{ q: q || null }}
+        tabs={[
+          { key: "all", label: "All", count: counts.all },
+          { key: "users", label: "Users", count: counts.users },
+          { key: "orgs", label: "Organizations", count: counts.orgs },
+          { key: "suspended", label: "Suspended", count: counts.suspended, tone: "#EF4444" },
+        ]}
+      />
+      <SearchBar action={base} q={q} keep={{ tab }} placeholder="Search a name, email or city…" />
+      <CountLine shown={accounts.length} total={total} what={tab === "all" ? "accounts" : tab === "orgs" ? "organizations" : tab} q={q} />
 
       {accounts.length === 0 ? (
         <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55 }}>Nobody matches that.</div>
@@ -298,6 +323,8 @@ export function AccountsDesk({
           })}
         </div>
       )}
+
+      <Pager base={base} page={page} total={total} keep={{ tab, q: q || null }} />
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
         Suspending unlists every studio the account owns and tells them why. Lifting it puts a verified organization&apos;s

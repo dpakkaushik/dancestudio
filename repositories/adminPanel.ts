@@ -655,3 +655,26 @@ export async function findAdminRecentNotifications(
     })),
   };
 }
+
+/* ── the reports desk's figures (11 Sep 2026) ──────────────────────────────── */
+
+export interface ReportCounts {
+  open: number;
+  actioned: number;
+  dismissed: number;
+}
+
+/** How many reports stand in each state — PostgREST's own COUNT(*) under the
+ *  "admins read every report" policy, so it needs no RPC and no migration. The
+ *  desk wears these on its tabs; the list is one page of one state. */
+export async function countReports(supabase: SupabaseClient): Promise<ReportCounts> {
+  const one = async (status: ReportStatus): Promise<number> => {
+    const { count, error } = await supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", status).is("deleted_at", null);
+    if (error) {
+      throw new Error(`admin.reports count ${status} failed: ${error.message}`);
+    }
+    return count ?? 0;
+  };
+  const [open, actioned, dismissed] = await Promise.all([one("open"), one("actioned"), one("dismissed")]);
+  return { open, actioned, dismissed };
+}

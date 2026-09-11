@@ -8,9 +8,12 @@ import { setTenantVisibilityAction } from "@/features/admin/server-actions/moder
 import { endSubscriptionAction, grantSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
 import { dateWords } from "@/features/settings/components/settings-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
-import { DOS_DISPLAY, INK, SUB } from "@/lib/design/tokens";
+import { INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { AdminBusiness } from "@/repositories/adminPanel";
+import { AdminGlyph, DESK_TINT } from "./admin-glyphs";
+import type { BusinessCounts, BusinessTab } from "./businesses-tabs";
+import { CountLine, DeskHero, DeskTabs, Pager, SearchBar, StatStrip } from "./desk-kit";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -39,9 +42,23 @@ function Mark({ name, path }: { name: string; path: string | null }) {
  *  Listing a studio is refused while its organization is unverified — the
  *  database refuses it too, so this is one rule said in two places rather than
  *  a button that would fail. */
-export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[]; q: string }) {
+export function BusinessesDesk({
+  businesses,
+  q,
+  tab,
+  counts,
+  page,
+  total,
+}: {
+  /** ONE PAGE of the businesses on this tab */
+  businesses: AdminBusiness[];
+  q: string;
+  tab: BusinessTab;
+  counts: BusinessCounts;
+  page: number;
+  total: number;
+}) {
   const router = useRouter();
-  const [term, setTerm] = useState(q);
   const [toast, setToast] = useState<string | null>(null);
   const [unlisting, setUnlisting] = useState<string | null>(null);
   const [granting, setGranting] = useState<string | null>(null);
@@ -93,27 +110,42 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
       router.refresh();
     });
 
-  return (
-    <div style={{ padding: "14px 16px var(--dos-foot, 40px)" }}>
-      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: "linear-gradient(135deg,#0E7490,#22D3EE)" }}>
-        <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Businesses</div>
-        <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2, position: "relative" }}>
-          {businesses.length} shown{q ? ` for “${q}”` : ", newest first"}
-        </div>
-      </div>
+  const base = "/admin/businesses";
 
-      <form action="/admin/businesses" style={{ display: "flex", gap: 7, marginBottom: 14 }}>
-        <input
-          name="q"
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          aria-label="Search businesses"
-          placeholder="A studio, a city, or an owner…"
-          style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: INK, fontFamily: "inherit" }}
-        />
-        <button type="submit" style={{ ...btn, height: 40, background: "var(--text)", color: "var(--solid)", border: "none" }}>Search</button>
-      </form>
+  return (
+    <div style={{ padding: "6px 16px var(--dos-foot, 40px)" }}>
+      {/* THE DESK SHAPE (11 Sep 2026): figures, tabs as blocks with their own
+          counts, a search, one page of the list */}
+      <DeskHero
+        eyebrow="THE REGISTER"
+        title="Businesses"
+        sub={`${counts.listed} public · ${counts.unlisted} not public${counts.subscribedStudios > 0 ? ` · ${counts.subscribedStudios} studio${counts.subscribedStudios === 1 ? "" : "s"} subscribed` : ""}`}
+        tint={DESK_TINT.businesses}
+        icon={<AdminGlyph k="businesses" size={22} />}
+      />
+      <StatStrip
+        cols={4}
+        figs={[
+          { n: counts.studios, label: "studios", href: `${base}?tab=studios` },
+          { n: counts.artists, label: "artist pages", href: `${base}?tab=artists` },
+          { n: counts.listed, label: "on Discover", href: `${base}?tab=public`, tone: "#22C55E" },
+          { n: counts.unlisted, label: "not public", href: `${base}?tab=private`, tone: counts.unlisted > 0 ? "#F59E0B" : undefined },
+        ]}
+      />
+      <DeskTabs
+        base={base}
+        current={tab}
+        keep={{ q: q || null }}
+        tabs={[
+          { key: "all", label: "All", count: counts.all },
+          { key: "studios", label: "Studios", count: counts.studios },
+          { key: "artists", label: "Artists", count: counts.artists },
+          { key: "public", label: "Public", count: counts.listed },
+          { key: "private", label: "Private", count: counts.unlisted, tone: "#F59E0B" },
+        ]}
+      />
+      <SearchBar action={base} q={q} keep={{ tab }} placeholder="A studio, a city, or an owner…" />
+      <CountLine shown={businesses.length} total={total} what={tab === "all" ? "businesses" : tab === "artists" ? "artist pages" : tab === "public" ? "on Discover" : tab === "private" ? "not public" : tab} q={q} />
 
       {businesses.length === 0 ? (
         <div style={{ fontSize: 11.5, color: SUB }}>Nothing matches that.</div>
@@ -259,6 +291,8 @@ export function BusinessesDesk({ businesses, q }: { businesses: AdminBusiness[];
           })}
         </div>
       )}
+
+      <Pager base={base} page={page} total={total} keep={{ tab, q: q || null }} />
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
         Taking one business off Discover leaves the rest of its organization alone — that is what this screen is for.

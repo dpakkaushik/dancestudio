@@ -14,7 +14,7 @@ export default async function AdminHomePage() {
   const pulse = await findAdminDashboard(supabase);
   return (
     <AdminShell badges={badges}>
-      <AdminDashboardScreen pulse={pulse} nowIso={nowIso} />
+      <AdminDashboardScreen pulse={pulse} badges={badges} nowIso={nowIso} />
     </AdminShell>
   );
 }
