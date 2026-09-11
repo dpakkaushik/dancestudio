@@ -7,13 +7,9 @@ import { findMyDeck, findStudioDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
-import { findMyVerificationRequest } from "@/repositories/admin";
-import { findMyOrgTenantId, findMyProofPhotos } from "@/repositories/orgStanding";
-import { findPlanCatalog, pickPlan } from "@/repositories/plans";
-import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
-import { findSupportThreads } from "@/repositories/support";
-import { OrgStanding } from "@/features/orgs/components/OrgStanding";
-import { orgStandingWords } from "@/lib/orgs/standing";
+import { findMyOrgTenantId } from "@/repositories/orgStanding";
+import { findMyGst } from "@/repositories/gst";
+import { GstCard } from "@/features/orgs/components/GstCard";
 import { findMyPlace } from "@/repositories/stats";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { amIPlatformAdmin } from "@/repositories/admin";
@@ -78,38 +74,26 @@ export default async function HomePage() {
   const isOrg = profile.role === "org";
   /* WHERE AN ORGANIZATION STANDS WITH DANCEOS BELONGS HERE (R13, 9 Sep 2026):
      the badge on its own name, the steps, and the door to a person — not two
-     taps away behind "Studios". A person's Home asks for none of it. */
-  const [tenants, invites, plan, request, photos, catalog, threads, eventsHostId] = await Promise.all([
+     taps away behind "Studios". A person's Home asks for none of it.
+     ⚠ FOUR READS LEFT THIS LIST ON 11 Sep 2026 — the verification request, the
+     proof photos, the plan catalogue and the support threads all fed the
+     six-step organization card, and that card became the GST card. They were
+     four round-trips on every single Home load for a component that is not
+     drawn any more; what is still asked for is what is still shown. */
+  const [tenants, invites, plan, eventsHostId, gst] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
     findMyPendingInvites(supabase),
     isOrg ? Promise.resolve(null) : findMyArtistPlan(supabase),
-    isOrg ? findMyVerificationRequest(supabase) : Promise.resolve(null),
-    isOrg ? findMyProofPhotos(supabase).catch(() => []) : Promise.resolve([]),
-    isOrg ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
-    isOrg ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
     /* R15: the organization's ONE events host, so Studio Tools can carry an
        Events tile (11 Sep 2026) — the desk existed, the door from Home did not */
     isOrg ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
+    /* THE ORGANIZATION'S OWN PAPERWORK (11 Sep 2026) — a GST number, verified
+       by pressing Verify rather than by waiting for a person. It is what an
+       event needs; studios, classes and Discover need nothing from it. */
+    isOrg ? findMyGst(supabase, profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
   ]);
-  /* the conversation about THIS request if there is one, else the newest */
-  const thread = threads.find((t) => request && t.requestId === request.id) ?? threads[0] ?? null;
-  const standing = isOrg ? orgStandingWords(profile.verifiedAt, request?.status) : null;
-  /* each studio's own subscription (10 Sep 2026) — the card counts them */
-  const studioIds = isOrg ? tenants.filter((t) => t.type === "studio").map((t) => t.id) : [];
-  const studioSubs: Record<string, StudioSubscriptionState> = isOrg
-    ? await findMyStudioSubscriptions(supabase, studioIds).catch(() => ({}) as Record<string, StudioSubscriptionState>)
-    : {};
-  const studios = {
-    total: studioIds.length,
-    subscribed: studioIds.filter((id) => studioSubs[id]?.subscription?.hasAccess).length,
-  };
-  /* the next thing a VERIFIED organization has to do: the first studio still
-     waiting on its own subscription, so the standing card can carry the button
-     rather than a list of what already happened (10 Sep 2026, the user's ask) */
-  const nextStudio =
-    tenants.find((t) => t.type === "studio" && !studioSubs[t.id]?.subscription?.hasAccess) ?? null;
   /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
@@ -130,7 +114,15 @@ export default async function HomePage() {
      Tools tile is a door to an empty room — the prototype's own objection to
      offering Manage to somebody who manages nothing (7135). The tab bar is the
      chrome's, so Discover, Inbox and Profile are all still a tap away. */
-  const orgAwaitingApproval = isOrg && !profile.verifiedAt;
+  /* ⚠ NOTHING IS WITHHELD FROM AN ORGANIZATION ANY MORE (11 Sep 2026). This
+     was `isOrg && !profile.verifiedAt`, and it hid the deck and Studio Tools
+     from every organization until an admin had looked at it — which was the
+     right shape when the ORGANIZATION was what got reviewed. Now a studio is
+     reviewed, after it exists, so an organization that has just signed up has
+     work to do from its first minute: open a studio, put it on the map, add
+     its photos, ask for the badge. It stays a constant so the two folds below
+     keep reading as a decision rather than as dead code. */
+  const orgAwaitingApproval = false;
   const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, tenants);
 
   const RG = DOS_RINGS[kind];
@@ -228,14 +220,13 @@ export default async function HomePage() {
                       the word for where it stands, right on its own name. Nobody else
                       is ever shown this — an organization has no public page, and this
                       is the organization's own Home. */}
-                  {standing && !profile.verifiedAt ? (
-                    <span
-                      aria-label={`Verification: ${standing.title}`}
-                      style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 7px", borderRadius: 6, background: standing.tone, color: "#fff", whiteSpace: "nowrap" }}
-                    >
-                      {standing.chip}
-                    </span>
-                  ) : null}
+                  {/* ⚠ NO CHIP ON AN ORGANIZATION'S NAME ANY MORE (11 Sep 2026).
+                      It read NOT VERIFIED / UNDER VERIFICATION while an admin
+                      looked at the organization — but nobody looks at an
+                      organization now, so the words described a wait that will
+                      never end. The badge moved to the studio, where it is
+                      earned and where the hub shows it. An organization
+                      verified under the old model keeps its tick below. */}
                   {/* the QR beside the name shares this person (7288) */}
                   {/* an organization has no public page to share (8 Sep 2026) — its studios have theirs */}
                   {profile.role === "org" ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
@@ -324,21 +315,7 @@ export default async function HomePage() {
             the card has nothing left to say that the studios hub does not say
             better, beside each studio, with its own Subscribe button. The tick
             on the sleeve is the whole verified state; the hub is the next step. ── */}
-        {isOrg && !profile.verifiedAt ? (
-          <OrgStanding
-            orgId={profile.id}
-            verifiedAt={profile.verifiedAt}
-            request={request}
-            socialsCount={profile.socials.length}
-            photos={photos}
-            studios={studios}
-            studioPriceInr={pickPlan(catalog, "studio")?.priceInr ?? null}
-            nextStudio={nextStudio ? { id: nextStudio.id, name: nextStudio.name } : null}
-            studioPlanKey={pickPlan(catalog, "studio")?.key ?? null}
-            threadId={thread?.id ?? null}
-            unread={threads.reduce((n, t) => n + t.unread, 0)}
-          />
-        ) : null}
+        {isOrg ? <GstCard gstin={gst.gstin} verifiedAt={gst.verifiedAt} /> : null}
 
         {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
             live first — under the one shelf head, with both doors named. The wrapper runs the
