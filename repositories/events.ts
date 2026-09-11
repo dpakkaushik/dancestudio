@@ -45,6 +45,13 @@ interface EventRow {
   address: string | null;
   city: string;
   maps_url: string;
+  /** THE VENUE'S PIN (11 Sep 2026) — carried in the payload to save_event, which
+   *  writes it once migration 20260913130000 has added the columns and ignores
+   *  it until then. NOT yet in the SELECT below: asking for a column the table
+   *  does not have yet would break every event read before the migration
+   *  lands, so reading it back is that migration's own follow-up. */
+  lat?: number | null;
+  lng?: number | null;
   about: string | null;
   entry_format: EventEntryHeadline;
   bracket: number;
@@ -251,6 +258,10 @@ export interface EventPayload {
   address: string | null;
   city: string;
   maps_url: string;
+  /** the venue's pin (11 Sep 2026) — optional; save_event writes it once
+   *  migration 20260913130000 has added the columns, and ignores it until then */
+  lat?: number | null;
+  lng?: number | null;
   about: string | null;
   entry_format: EventEntryHeadline;
   bracket: number;

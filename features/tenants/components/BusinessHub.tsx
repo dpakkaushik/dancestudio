@@ -7,9 +7,12 @@ import { SubscribeButton } from "@/features/payments/components/SubscribeButton"
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
 import { dateWords } from "@/features/settings/components/settings-kit";
 import { dosKey } from "@/features/classes/components/ShareSheet";
+import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
-import { DOS_CITIES } from "@/lib/constants/cities";
-import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
+import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+
+const isDosCity = (v: string): v is DosCity => (DOS_CITIES as readonly string[]).includes(v);
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
@@ -143,6 +146,8 @@ export function BusinessHub({
   const [area, setArea] = useState("");
   const [city, setCity] = useState("");
   const [rooms, setRooms] = useState<RoomDraft[]>(seedRooms);
+  /* the pin from the sheet's map, if the owner placed one (11 Sep 2026) */
+  const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
   // the action revalidates in place (no navigation), so the sheet closes itself
   // once a creation lands — prototype behavior after "Create studio"
   const [state, formAction, isPending] = useActionState(
@@ -154,6 +159,8 @@ export function BusinessHub({
         setArea("");
         setCity("");
         setRooms(seedRooms());
+        setPicked(null);
+        if (result.note) setToast(result.note);
       }
       return result;
     },
@@ -527,7 +534,7 @@ export function BusinessHub({
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{isStudio ? "New studio" : "Your artist page"}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
               {isStudio
-                ? "One studio = one location. Opening another branch later? Create it as its own studio — it gets its own profile page and calendar. It goes on Discover as soon as you create it."
+                ? "One studio = one location. Opening another branch later? Create it as its own studio — it gets its own profile page and calendar. It stays private until you subscribe it; then it is on Discover."
                 : "The page people find you by — your classes, your bookings and your earnings live behind it."}
             </div>
 
@@ -571,6 +578,34 @@ export function BusinessHub({
                   </option>
                 ))}
               </select>
+
+              {/* ── WHERE IT IS, ON THE MAP, AT CREATION (11 Sep 2026 — the user:
+                  "wherever we are giving an address, city or location there should
+                  be a location picker as well… user will check nearest studio
+                  using location only"). Until now a studio was born on its city's
+                  centroid and the only map was two taps away on Edit, so almost
+                  nobody would ever place one. The pin rides in as two hidden
+                  fields; the action saves it the moment the studio exists. Typing
+                  a search fills Area and City from the map's own answer. ── */}
+              {isStudio ? (
+                <>
+                  <input type="hidden" name="lat" value={picked ? String(picked.lat) : ""} />
+                  <input type="hidden" name="lng" value={picked ? String(picked.lng) : ""} />
+                  <div style={{ fontSize: 12, color: SUB, margin: "14px 0 6px" }}>Where it is — put the pin on your door</div>
+                  <LocationPicker
+                    value={{ lat: null, lng: null, area: area || null }}
+                    city={isDosCity(city) ? city : null}
+                    onChange={(p) => {
+                      setPicked({ lat: p.lat, lng: p.lng });
+                      if (p.area && !area.trim()) setArea(p.area);
+                      if (p.city && !city) setCity(p.city);
+                    }}
+                  />
+                  <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+                    {picked ? "This is what Discover measures from when somebody looks for studios near them." : "Optional now, and worth doing: without a pin the studio sits at the centre of its city and Discover cannot say how far away it is."}
+                  </div>
+                </>
+              ) : null}
 
               {/* the rooms, right here (2675-2683): a studio is created WITH its floors */}
               {isStudio && (

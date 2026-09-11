@@ -8,12 +8,15 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requestOrgVerification } from "@/repositories/admin";
 import { findProfileById } from "@/repositories/profiles";
 import { createRoom } from "@/repositories/rooms";
-import { createTenantWithOwner } from "@/repositories/tenants";
+import { createTenantWithOwner, setTenantLocation } from "@/repositories/tenants";
 import type { TenantType } from "@/types/tenant";
 
 export interface TenantActionState {
   error: string | null;
   created?: boolean;
+  /** something true about what was just made that is not an error — the sheet
+   *  closes on `created`, so this is what the toast says */
+  note?: string;
 }
 
 /** The rooms the New-studio sheet collects (prototype 2675-2683): a name and a
@@ -38,9 +41,19 @@ const createTenantSchema = z
     area: z.string().trim().max(140).optional(),
     city: z.string().trim().max(120).optional(),
     rooms: roomsSchema,
+    /* WHERE IT IS (11 Sep 2026): the pin from the sheet's map, when one was
+       placed. Optional, because an artist page has no floor and a studio whose
+       owner skipped the map still gets made — on its city's centroid, the way
+       every studio was until now. India's box, as everywhere a browser hands the
+       server a pair of numbers. */
+    lat: z.coerce.number().min(6).max(37.5).optional(),
+    lng: z.coerce.number().min(68).max(97.5).optional(),
   })
   .refine((d) => !d.city || (DOS_CITIES as readonly string[]).includes(d.city), {
     message: "Pick a city from the list",
+  })
+  .refine((d) => (d.lat === undefined) === (d.lng === undefined), {
+    message: "The map pin is incomplete — move the map again",
   });
 
 /** The rooms field is JSON typed by the sheet; anything unparseable is "no rooms"
@@ -65,6 +78,8 @@ export async function createTenantAction(
     area: (formData.get("area") as string) || undefined,
     city: (formData.get("city") as string) || undefined,
     rooms: readRooms(formData.get("rooms")),
+    lat: (formData.get("lat") as string) || undefined,
+    lng: (formData.get("lng") as string) || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -122,11 +137,36 @@ export async function createTenantAction(
     }
   }
 
+  /* THE PIN, LAST (11 Sep 2026). `create_tenant_with_owner` writes the city
+     centroid, as it always has; when the owner placed the pin on the sheet's
+     map, `set_tenant_location` replaces the guess with the address the moment
+     the studio exists. Two doors rather than a changed signature, so nothing
+     that already calls the first one has to learn anything. A pin that does not
+     save does not undo a studio that did — it is said in the toast, and the same
+     map is on the studio's Edit sheet. */
+  let note: string | undefined;
+  if (type === "studio" && parsed.data.lat !== undefined && parsed.data.lng !== undefined) {
+    try {
+      await setTenantLocation(supabase, {
+        tenantId,
+        lat: parsed.data.lat,
+        lng: parsed.data.lng,
+        area: parsed.data.area ?? null,
+        city: parsed.data.city ?? null,
+      });
+      revalidatePath("/discover");
+    } catch {
+      note = "Studio created. The map pin could not be saved yet — place it again from Edit on the studio's page.";
+    }
+  } else if (type === "studio") {
+    note = "Studio created on its city's centre. Place the pin from Edit on its page so Discover can say how far away it is.";
+  }
+
   // a redirect to /business would land on the same route and leave the sheet's
   // client state open — refresh the list and let the sheet close itself instead
   revalidatePath("/business");
   revalidatePath("/");
-  return { error: null, created: true };
+  return { error: null, created: true, note };
 }
 
 /** THE ASK (8 Sep 2026): an organization puts itself in the admins' queue. The

@@ -79,6 +79,10 @@ export interface DanceEvent {
   address: string | null;
   city: string;
   mapsUrl: string;
+  /** the venue's pin (11 Sep 2026) — undefined until the events read selects
+   *  the columns migration 20260913130000 adds; the form treats it as none */
+  lat?: number | null;
+  lng?: number | null;
   about: string | null;
   entryFormat: EventEntryHeadline;
   bracket: number;

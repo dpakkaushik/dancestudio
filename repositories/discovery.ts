@@ -7,6 +7,9 @@ export interface NearbyTenant {
   photoPath?: string | null;
   /** likewise — DanceOS's own tick, drawn beside the name when it is set (D7) */
   verifiedAt?: string | null;
+  /** likewise — where it is, for the map view (11 Sep 2026) */
+  lat?: number | null;
+  lng?: number | null;
   type: TenantType;
   name: string;
   area: string | null;
@@ -78,6 +81,9 @@ export async function findNearbyTenants(
 export interface TenantCardFacts {
   photoPath: string | null;
   verifiedAt: string | null;
+  /** where it is — for Discover's map view (11 Sep 2026); the centroid until the owner places it */
+  lat: number | null;
+  lng: number | null;
 }
 
 export async function findTenantCardFacts(supabase: SupabaseClient, tenantIds: string[]): Promise<Map<string, TenantCardFacts>> {
@@ -86,12 +92,12 @@ export async function findTenantCardFacts(supabase: SupabaseClient, tenantIds: s
   if (ids.length === 0) {
     return out;
   }
-  const { data, error } = await supabase.from("tenants").select("id, photo_path, verified_at").in("id", ids).is("deleted_at", null).limit(ids.length);
+  const { data, error } = await supabase.from("tenants").select("id, photo_path, verified_at, lat, lng").in("id", ids).is("deleted_at", null).limit(ids.length);
   if (error) {
     throw new Error(`discovery.cardFacts failed: ${error.message}`);
   }
-  ((data ?? []) as Array<{ id: string; photo_path: string | null; verified_at: string | null }>).forEach((r) => {
-    out.set(r.id, { photoPath: r.photo_path ?? null, verifiedAt: r.verified_at ?? null });
+  ((data ?? []) as Array<{ id: string; photo_path: string | null; verified_at: string | null; lat: number | null; lng: number | null }>).forEach((r) => {
+    out.set(r.id, { photoPath: r.photo_path ?? null, verifiedAt: r.verified_at ?? null, lat: r.lat ?? null, lng: r.lng ?? null });
   });
   return out;
 }

@@ -35,6 +35,19 @@ export interface MapPoint {
   lng: number;
 }
 
+/** A PLACE DRAWN ON THE MAP (11 Sep 2026) — a studio on Discover's map view.
+ *  Pressing it opens the place; the pin itself carries the name so a screen
+ *  reader has something to read. */
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  href: string;
+  /** the colour the pin wears; the app's pink otherwise */
+  tint?: string;
+}
+
 /** THE PIN DOES NOT MOVE; THE MAP MOVES UNDER IT (11 Sep 2026).
  *
  *  Every delivery app in India picks a location this way, and it is not a
@@ -52,12 +65,18 @@ export function MapPicker({
   height = 260,
   onPick,
   label = "Choose the location",
+  markers = [],
+  showPin = true,
 }: {
   value: MapPoint;
   zoom?: number;
   height?: number;
   onPick: (point: MapPoint) => void;
   label?: string;
+  /** places to draw — Discover's map view; empty for a picker */
+  markers?: MapMarker[];
+  /** the fixed centre pin; off when the map is for LOOKING rather than choosing */
+  showPin?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 320, h: height });
@@ -254,15 +273,45 @@ export function MapPicker({
           />
         ))}
 
-        {/* the pin, dead centre, drawn over everything and touchable by nothing */}
-        <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -100%)", pointerEvents: "none", filter: "drop-shadow(0 3px 5px rgba(0,0,0,.45))" }}>
-          <svg width="30" height="42" viewBox="0 0 30 42" aria-hidden="true">
-            <path d="M15 41C15 41 28 25.5 28 15A13 13 0 1 0 2 15c0 10.5 13 26 13 26Z" fill="#EC4899" stroke="#fff" strokeWidth="2.5" />
-            <circle cx="15" cy="15" r="4.6" fill="#fff" />
-          </svg>
-        </div>
-        {/* the spot the pin points AT, so the pin's own body never hides it */}
-        <div style={{ position: "absolute", left: "50%", top: "50%", width: 6, height: 6, marginLeft: -3, marginTop: -3, borderRadius: 3, background: "rgba(0,0,0,.55)", border: "1.5px solid #fff", pointerEvents: "none" }} />
+        {/* THE PLACES (11 Sep 2026) — each a door, positioned by the same maths
+            the tiles are. A marker off the edge is simply not drawn. */}
+        {markers.map((m) => {
+          const x = lngToX(m.lng, zoom) * TILE - view.left;
+          const y = latToY(m.lat, zoom) * TILE - view.top;
+          if (x < -20 || y < -20 || x > size.w + 20 || y > size.h + 20) {
+            return null;
+          }
+          const tint = m.tint ?? "#EC4899";
+          return (
+            <a
+              key={m.id}
+              href={m.href}
+              aria-label={m.label}
+              title={m.label}
+              onPointerDown={(e) => e.stopPropagation()}
+              style={{ position: "absolute", left: x, top: y, transform: "translate(-50%, -100%)", filter: "drop-shadow(0 2px 4px rgba(0,0,0,.45))", lineHeight: 0, zIndex: 2 }}
+            >
+              <svg width="24" height="34" viewBox="0 0 30 42" aria-hidden="true">
+                <path d="M15 41C15 41 28 25.5 28 15A13 13 0 1 0 2 15c0 10.5 13 26 13 26Z" fill={tint} stroke="#fff" strokeWidth="2.5" />
+                <circle cx="15" cy="15" r="4.6" fill="#fff" />
+              </svg>
+            </a>
+          );
+        })}
+
+        {showPin ? (
+          <>
+            {/* the pin, dead centre, drawn over everything and touchable by nothing */}
+            <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -100%)", pointerEvents: "none", filter: "drop-shadow(0 3px 5px rgba(0,0,0,.45))", zIndex: 3 }}>
+              <svg width="30" height="42" viewBox="0 0 30 42" aria-hidden="true">
+                <path d="M15 41C15 41 28 25.5 28 15A13 13 0 1 0 2 15c0 10.5 13 26 13 26Z" fill="#EC4899" stroke="#fff" strokeWidth="2.5" />
+                <circle cx="15" cy="15" r="4.6" fill="#fff" />
+              </svg>
+            </div>
+            {/* the spot the pin points AT, so the pin's own body never hides it */}
+            <div style={{ position: "absolute", left: "50%", top: "50%", width: 6, height: 6, marginLeft: -3, marginTop: -3, borderRadius: 3, background: "rgba(0,0,0,.55)", border: "1.5px solid #fff", pointerEvents: "none", zIndex: 3 }} />
+          </>
+        ) : null}
 
         <div style={{ position: "absolute", right: 8, top: 8, display: "flex", flexDirection: "column", gap: 5 }}>
           {([["＋", 1, "Zoom in"], ["－", -1, "Zoom out"]] as Array<[string, number, string]>).map(([glyph, by, name]) => (
@@ -287,12 +336,14 @@ export function MapPicker({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center" }}>
-        <span style={{ fontSize: 10, color: MUTED, flex: 1, minWidth: 0 }}>Drag the map so the pin sits on your door.</span>
-        <span style={{ fontSize: 10, color: SUB, fontVariantNumeric: "tabular-nums" }}>
-          {centre.lat.toFixed(5)}, {centre.lng.toFixed(5)}
-        </span>
-      </div>
+      {showPin ? (
+        <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 10, color: MUTED, flex: 1, minWidth: 0 }}>Drag the map so the pin sits on your door.</span>
+          <span style={{ fontSize: 10, color: SUB, fontVariantNumeric: "tabular-nums" }}>
+            {centre.lat.toFixed(5)}, {centre.lng.toFixed(5)}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
