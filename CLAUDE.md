@@ -2,6 +2,29 @@
 
 ## LAST SESSION (11 Sep 2026, overnight) — replaced on every push (Rule 13)
 
+> **✅ ALL FIVE MIGRATIONS ARE APPLIED (11 Sep 2026, by the user).** Everything
+> below that says "not applied" is DONE. The revenue bypass is closed and
+> `rls-proof-tenant-columns` is green; **all 28 proofs pass**; the money and
+> communication desks read real money; a pin saves and `location_set_at` is
+> stamped. Three things were caught only by running the proofs afterwards, and
+> all three were the HARNESS, not the product:
+> * **`rls-proof-tenant-columns` decided by counting the rows PostgREST echoed
+>   back** — and `@($null).Count` is **1**, not 0, so a write that was correctly
+>   refused read as "WROTE" with an empty value and a green fix reported as
+>   seven failures. It reads the column out of the database before and after
+>   now. *A proof that can misread a pass as a fail is not a proof.*
+> * **`rls-proof-discovery` unlisted a studio by PATCHing `tenants` as the
+>   OWNER** — i.e. it was setting itself up THROUGH THE SECURITY HOLE, so
+>   closing the hole made discovery look broken. It uses the service role for
+>   that setup now; what it proves (an unlisted studio is hidden from a
+>   stranger, visible to its owner) is unchanged.
+> * **`rls-proof-settings-screens` asserted the owner could PATCH `tenants`
+>   directly** (check 12) and that refusing the tick always THREW (check 11).
+>   Both were the old world: the refusal is now silent (0 rows) and the owner's
+>   door for `area` is `set_tenant_location`. Check 12 now also proves the
+>   owner cannot flip `type` around that door.
+
+
 **An end-to-end audit the user asked for while asleep**, in their words: "check
 end to end flow and find any bugs and remove those… check if backend is good
 enough to handle the load and database is keeping all the required records as a
@@ -640,8 +663,11 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **⚠⚠ APPLY THE FIVE MIGRATIONS — ONE OF THEM CLOSES A LIVE REVENUE BYPASS.**
-   Nothing from the 11 Sep session is in the database. One command:
+0. **~~APPLY THE FIVE MIGRATIONS~~ — DONE 11 Sep 2026, and ALL 28 PROOFS ARE
+   GREEN.** Kept for the record: the bypass they closed was live, and three
+   proof scripts had to be corrected afterwards because two of them asserted the
+   old world and one could misread a pass as a fail (see the top block). The
+   command, for the next time:
 ```
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
@@ -680,20 +706,17 @@ summary; the report has the evidence.
    `location_set_at`: the app does **not** select it anywhere yet, so nothing
    breaks before the migration; `nearby_tenants` supplies `located` instead.
 
-2. **The picker is in the New-studio sheet now, so every studio made from here
-   on can place itself at birth** — but the studios that ALREADY EXIST sit on
-   their city's centroid and nobody is asked. The remaining slice: a strip on
-   the business hub for any studio with `location_set_at is null` ("Discover
-   cannot say how far away you are"), reading the column migration
-   `20260913120000` adds — which is why it ships with that migration, not before.
+2. **~~The nudge, and reading an event's pin back~~ — BOTH DONE the moment the
+   migrations landed (11 Sep 2026).** The business hub asks any studio with
+   `location_set_at is null` for its pin ("Not on the map yet — Discover
+   measures from the middle of Pune") and the ask disappears once it is placed;
+   the events SELECT carries `lat, lng` now, so the edit form reopens on the
+   point the organiser put. Both are asserted by `shoot-org.js` (13 checks).
 
-3. **Events: the pin is SAVED but not yet READ BACK.** Migration `20260913130000`
-   adds `events.lat/lng` and the form writes them; the events SELECT in
-   `repositories/events.ts` deliberately does not ask for the columns yet,
-   because asking for a column the table does not have breaks every event read
-   before the migration lands. After the push: add `lat, lng` to that select and
-   `toEvent`, and the edit form opens on the saved pin. An event radius search
-   (the GiST index is already in the migration) is the slice after that.
+3. **An event radius search is the slice after that.** The GiST index on
+   `events (lat, lng)` is already there from `20260913130000`, and nothing uses
+   it yet: Discover's Events tab is still city-only, and an event is not on the
+   map view. `nearby_tenants` is the shape to copy.
 
 4. **RATE LIMITING DOES NOT EXIST ANYWHERE** and is the main abuse surface for a
    public consumer app: not on search, `report_content`, `send_enquiry`,
@@ -4105,8 +4128,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| **EXISTING studios are not asked to place themselves on the map.** The picker is in the New-studio sheet (11 Sep 2026, later) so every studio made from here on can place itself at birth, and in the Edit sheet for the rest — but a studio made before that keeps its city centroid until its owner opens Edit, and its cards show no distance meanwhile, which is honest and empty | — (no prototype: the prototype has no backend and no map) | a strip on the business hub for `location_set_at is null` — ships WITH migration `20260913120000`, which adds the column it reads |
-| **An event's pin is saved but not read back.** The event form places the venue and writes the map link from it, and migration `20260913130000` stores `lat`/`lng` — but the events SELECT does not ask for the columns yet (it would break every event read before the migration lands), so the edit form reopens on the city centre and no event is on a map or sorted by distance | — (same) | after the push: `lat, lng` in the events select and `toEvent`; then an event radius search on the GiST index the migration already makes |
+| **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |
 | **The geocoder is keyless, and that has a ceiling.** OSM tiles and Nominatim forbid heavy commercial use, and the throttle and cache in `lib/geo/geocode.ts` are PER INSTANCE — so on serverless the global rate is the per-instance rate times the instance count | — (same) | `GEOCODER_PROVIDER=locationiq` (or `maptiler`) + `GEOCODER_KEY` — both speak the same shapes, so it is a deploy, not a rewrite. Tiles want the same treatment |

@@ -35,4 +35,9 @@ export interface Tenant {
   accepts: AcceptedMethods;
   /** set by DanceOS after KYC — the tick */
   verifiedAt: string | null;
+  /** WHEN AN OWNER PLACED THIS BUSINESS ON THE MAP (11 Sep 2026). Null means
+   *  its lat/lng is still the city centroid `create_tenant_with_owner`
+   *  defaulted to — a guess, not an address — so Discover cannot honestly say
+   *  how far away it is, and the hub asks for the pin. */
+  locationSetAt?: string | null;
 }

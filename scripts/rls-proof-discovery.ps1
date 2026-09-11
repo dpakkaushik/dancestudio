@@ -69,16 +69,31 @@ $typeOk = -not ($trainerIds -contains $tid)
 "3. Type filter excludes it from 'artists': $(if ($typeOk) {'-- OK'} else {'-- !!! FAILED !!!'})"
 if (-not $typeOk) { $pass = $false }
 
-# owner unlists the studio -> gone from anonymous discovery, still visible to the owner
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers (Api $a.access_token) -Body '{"visibility":"unlisted"}' | Out-Null
+# The studio is unlisted -> gone from anonymous discovery, still visible to the owner.
+#
+# ⚠ THE SERVICE ROLE UNLISTS IT, not the owner (11 Sep 2026). This line used to
+# PATCH `tenants` with the OWNER's token, and it stopped working the day
+# `20260913100000_doors_that_were_not_doors` dropped the column-less update
+# policy that made such a PATCH possible — the same policy that let an owner
+# flip `type` and put a business on Discover having paid nothing. So this proof
+# was setting itself up THROUGH A SECURITY HOLE, and closing the hole made it
+# fail as though discovery were broken.
+#
+# What this check claims is about READS — an unlisted studio is hidden from a
+# stranger and visible to its owner — so how it came to be unlisted is setup,
+# not the subject, and ops is the honest hand for it (Subscribe-Studio above
+# already lists it the same way). A REAL owner-side List / Unlist control has
+# never existed; it is on the UI parity backlog.
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH -Body '{"visibility":"unlisted"}' | Out-Null
 $anonSees = (& $idsOf (Nearby $anonH "studio")) -contains $tid
 $ownerSees = (& $idsOf (Nearby (Api $a.access_token) "studio")) -contains $tid
 $hideOk = (-not $anonSees) -and $ownerSees
 "4. Unlisted: anonymous sees it=$anonSees, owner sees it=$ownerSees $(if ($hideOk) {'-- VISIBILITY RESPECTED'} else {'-- !!! FAILED !!!'})"
 if (-not $hideOk) { $pass = $false }
 
-# far away: search from New Delhi must not contain the Pune studio (re-list first)
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers (Api $a.access_token) -Body '{"visibility":"listed"}' | Out-Null
+# far away: search from New Delhi must not contain the Pune studio (re-list first,
+# through the same ops door for the same reason as above)
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH -Body '{"visibility":"listed"}' | Out-Null
 $delhi = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_tenants" -Headers $anonH -Body (@{ p_lat = 28.6139; p_lng = 77.2090; p_radius_km = 25; p_type = "studio" } | ConvertTo-Json)
 $farOk = -not ((& $idsOf $delhi) -contains $tid)
 "5. Search from New Delhi (25 km) excludes the Pune studio: $(if ($farOk) {'-- RADIUS OK'} else {'-- !!! FAILED !!!'})"

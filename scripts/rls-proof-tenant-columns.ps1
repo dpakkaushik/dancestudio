@@ -51,15 +51,37 @@ $H = Api $owner.access_token
 $t = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers $H -Body (@{ p_name = "Col Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
 "0. Owner created '$($t.name)' (type=$($t.type)) - it is theirs, and they are its only owner"
 
-# a PATCH that changes nothing about who may see the row, only what it IS
+# A PATCH that changes nothing about who may see the row, only what it IS.
+#
+# ⚠ THE ANSWER IS READ FROM THE DATABASE, NOT FROM THE RESPONSE (11 Sep 2026).
+# The first version of this decided by counting the rows PostgREST echoed back,
+# and that was wrong in the one direction that matters: once the policy was
+# dropped the PATCH matched NO rows, PostgREST answered `[]`, PowerShell
+# collapsed the empty array to $null — and `@($null).Count` is 1, NOT 0. So a
+# write that was correctly refused was reported as "WROTE" with an empty value,
+# and a green fix read as seven failures. A proof that can misread a pass as a
+# fail is not a proof.
+#
+# So: read the column with the SERVICE ROLE before and after, and let the
+# DATABASE say whether anything moved. An exception still counts as blocked (a
+# guard trigger raising is a refusal), but it is no longer the only way to be
+# sure — and nothing is believed on the strength of a response body.
+function Get-Col($column) {
+  $row = Invoke-RestMethod -Uri "$base/rest/v1/tenants?id=eq.$($t.id)&select=$column" -Headers $svcH
+  return ($row | Select-Object -First 1).$column
+}
 function Try-Patch($label, $body, $column) {
+  $before = Get-Col $column
+  $threw = $false
   try {
-    $r = @(Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $H -Body $body)
-    if ($r.Count -eq 0) { return @{ ok = $true; how = "0 rows" } }
-    return @{ ok = $false; how = "WROTE $($r[0].$column)" }
+    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $H -Body $body | Out-Null
   } catch {
-    return @{ ok = $true; how = "rejected" }
+    $threw = $true
   }
+  $after = Get-Col $column
+  $moved = ("$before" -ne "$after")
+  if (-not $moved) { return @{ ok = $true; how = $(if ($threw) { "rejected" } else { "0 rows" }) } }
+  return @{ ok = $false; how = "WROTE $after" }
 }
 
 # ORDER MATTERS. The `type` flip is LAST, because it is itself a way around the

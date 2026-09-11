@@ -197,15 +197,30 @@ function Subscribe-Studio($tenantId) {
   $r11b = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($owner.id)" -Headers (Plain $owner.token) -Body (@{ verified_at = "2026-08-29T00:00:00Z" } | ConvertTo-Json) }
   $row11 = Rows $anonH "tenants?$TSEL&id=eq.$tenantId"
   $prof11 = Rows (Api $owner.token) "profiles?select=verified_at&id=eq.$($owner.id)"
+  # ⚠ HOW THE REFUSAL ARRIVES CHANGED, AND THE CLAIM DID NOT (11 Sep 2026).
+  # `profiles` still REFUSES with an exception — guard_verified_at raises — but
+  # `tenants` now matches NO ROWS, because
+  # `20260913100000_doors_that_were_not_doors` dropped the column-less update
+  # policy an owner used to PATCH through. Both are refusals; only one throws.
+  # So the test is what it always claimed to be about: THE TICK DID NOT MOVE.
   Check 11 "an owner cannot tick their business and an account cannot tick itself (both refused; the business tick still null, the organization's tick unmoved)" (
-    $r11a -and $r11b -and $null -eq $row11[0].verified_at -and $prof11[0].verified_at -eq $before11)
+    $r11b -and $null -eq $row11[0].verified_at -and $prof11[0].verified_at -eq $before11)
 
-  # 12. ... while the owner can still change everything else about the row, and the service role sets the tick
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers (Plain $owner.token) -Body (@{ area = "Baner" } | ConvertTo-Json) | Out-Null
+  # 12. ... while the owner still changes the row THROUGH ITS OWN DOOR, and the
+  #     service role sets the tick.
+  #
+  # ⚠ This used to PATCH `tenants` directly as the owner, and that is exactly
+  # what migration 20260913100000 closed: the policy naming no columns was the
+  # same one that let an owner flip `type` and put a business on Discover having
+  # bought no plan. `set_tenant_location` is the door for `area` now — it checks
+  # ownership, bounds the point, and will only write a city on the closed list.
+  $r12 = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/set_tenant_location" -Headers (Plain $owner.token) -Body (@{
+    p_tenant_id = $tenantId; p_lat = 18.5204; p_lng = 73.8567; p_area = "Baner"; p_city = "Pune" } | ConvertTo-Json)
+  $r12direct = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers (Plain $owner.token) -Body (@{ type = "trainer_business" } | ConvertTo-Json) }
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ verified_at = "2026-08-29T00:00:00Z" } | ConvertTo-Json) | Out-Null
-  $row12 = Rows $anonH "tenants?select=area,verified_at&id=eq.$tenantId"
-  Check 12 "the owner still edits the row (area -> $($row12[0].area)) and the service role sets the tick ($($row12[0].verified_at))" (
-    $row12[0].area -eq "Baner" -and $null -ne $row12[0].verified_at)
+  $row12 = Rows $anonH "tenants?select=area,type,verified_at&id=eq.$tenantId"
+  Check 12 "the owner edits through the door (area -> $($row12[0].area)) but not around it (type still $($row12[0].type)), and the service role sets the tick ($($row12[0].verified_at))" (
+    $row12[0].area -eq "Baner" -and $row12[0].type -eq "studio" -and $null -ne $row12[0].verified_at)
 }
 finally {
   if ($tenantId) { try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH | Out-Null } catch {} }

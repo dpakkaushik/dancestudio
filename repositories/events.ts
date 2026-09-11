@@ -45,11 +45,10 @@ interface EventRow {
   address: string | null;
   city: string;
   maps_url: string;
-  /** THE VENUE'S PIN (11 Sep 2026) — carried in the payload to save_event, which
-   *  writes it once migration 20260913130000 has added the columns and ignores
-   *  it until then. NOT yet in the SELECT below: asking for a column the table
-   *  does not have yet would break every event read before the migration
-   *  lands, so reading it back is that migration's own follow-up. */
+  /** THE VENUE'S PIN (11 Sep 2026) — written by save_event and read back since
+   *  migration 20260913130000 landed, so the edit form reopens on the point the
+   *  organiser placed rather than on the middle of the city. Still optional:
+   *  every event made before the picker has none. */
   lat?: number | null;
   lng?: number | null;
   about: string | null;
@@ -105,7 +104,7 @@ interface MyBookingRow extends BookingRow {
 }
 
 const EVENT_SELECT =
-  "id, tenant_id, cat, title, style, start_date, end_date, start_time, venue, address, city, maps_url, about, entry_format, bracket, rounds, prizes, tickets_on, status, share_slug, poster, tenants (name, city), event_entry_tiers (id, format, fee_inr, capacity, deleted_at), event_ticket_tiers (id, name, price_inr, capacity, sort, deleted_at)";
+  "id, tenant_id, cat, title, style, start_date, end_date, start_time, venue, address, city, maps_url, lat, lng, about, entry_format, bracket, rounds, prizes, tickets_on, status, share_slug, poster, tenants (name, city), event_entry_tiers (id, format, fee_inr, capacity, deleted_at), event_ticket_tiers (id, name, price_inr, capacity, sort, deleted_at)";
 const BOOKING_SELECT =
   "id, event_id, user_id, kind, ticket_tier_id, entry_format, qty, entrant_name, partner_name, partner_id, partner_status, crew_id, amount_inr, status, checked_in_at, created_at, profiles!event_bookings_user_id_fkey (full_name), event_ticket_tiers (name)";
 
@@ -124,6 +123,9 @@ const toEvent = (r: EventRow, counts: CountRow[]): DanceEvent => ({
   address: r.address,
   city: r.city,
   mapsUrl: r.maps_url,
+  /* the venue's pin, so the edit form reopens where the organiser put it */
+  lat: r.lat ?? null,
+  lng: r.lng ?? null,
   about: r.about,
   entryFormat: r.entry_format,
   bracket: r.bracket,

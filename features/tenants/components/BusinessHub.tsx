@@ -288,6 +288,33 @@ export function BusinessHub({
         <div style={{ fontSize: 10.5, color: SUB, marginTop: 5, lineHeight: 1.5 }}>
           {standing ? standing.line : st.whyNotPublic ?? "On Discover."}
         </div>
+
+        {/* ── ASK FOR THE PIN, WHERE IT MATTERS (11 Sep 2026) ──────────────────
+            A studio that has never opened the location picker still sits on its
+            CITY'S CENTROID — the same point as every other studio in that city —
+            so Discover cannot honestly say how far away it is, and its cards
+            print no distance at all. Nobody goes looking for a map, so the ask
+            comes to them, and it comes HERE: this strip is already the line
+            about being findable, and being findable at a real address is the
+            rest of that same sentence. It disappears the moment the pin is
+            placed, and it is never shown as an error — nothing is broken, one
+            thing is simply not said yet. */}
+        {t.type === "studio" && !t.locationSetAt ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "8px 10px", borderRadius: 11, background: LILAC, border: `1px dashed ${EL}` }}>
+            <span aria-hidden="true" style={{ flexShrink: 0, lineHeight: 0, color: "#F59E0B" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" />
+                <circle cx="12" cy="10" r="2.4" />
+              </svg>
+            </span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>
+              Not on the map yet — {t.city ? `Discover measures from the middle of ${t.city}` : "Discover cannot say how far away it is"}.
+            </span>
+            <Link href={publicProfilePath(t)} aria-label={`Put ${t.name} on the map`} style={{ ...pill, flexShrink: 0, padding: "6px 11px", background: LILAC, border: `1px solid ${EL}`, color: INK, display: "inline-flex", alignItems: "center" }}>
+              Put it on the map
+            </Link>
+          </div>
+        ) : null}
         <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
           {!live && studioPrice ? (
             <SubscribeButton

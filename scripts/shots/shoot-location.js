@@ -118,6 +118,17 @@ const rest = async (method, url, body) => {
   const pinnedOn = await page.getByText(/THE PIN IS ON/i).locator("..").innerText().catch(() => "");
   console.log(`  after the drag: ${pinnedOn.replace(/\s+/g, " ").slice(0, 160)}`);
 
+  /* THE PIN IS ONLY PLACED IF IT IS SAVED (11 Sep 2026). Reading it back from
+     the database is the only way to know: the sheet says "Saved" from the
+     server action's own answer, and `location_set_at` is what every screen
+     downstream actually reads. */
+  const saved = await rest("GET", `/rest/v1/tenants?id=eq.${tenant.id}&select=lat,lng,area,location_set_at`);
+  const row = saved[0] ?? {};
+  const moved = row.lat !== null && Math.abs(Number(row.lat) - 18.5204) > 0.0005;
+  console.log(`  saved in the database: lat=${row.lat} lng=${row.lng} area=${row.area} location_set_at=${row.location_set_at ?? "null"}`);
+  if (!row.location_set_at) problems.push("the pin was NOT saved — location_set_at is still null");
+  if (!moved) problems.push(`the point did not move off the city centroid (lat=${row.lat})`);
+
   await browser.close();
 
   /* clean up, hardest first */

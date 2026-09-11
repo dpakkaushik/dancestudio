@@ -21,9 +21,10 @@ interface TenantRow {
   accepts_cash?: boolean;
   accepts_bank?: boolean;
   verified_at?: string | null;
+  location_set_at?: string | null;
 }
 
-export const TENANT_COLUMNS = "id, type, name, area, city, photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at";
+export const TENANT_COLUMNS = "id, type, name, area, city, photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -47,6 +48,7 @@ export const toTenant = (row: TenantRow): Tenant => ({
   enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null,
   accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false },
   verifiedAt: row.verified_at ?? null,
+  locationSetAt: row.location_set_at ?? null,
 });
 
 export interface TenantProfileInput {

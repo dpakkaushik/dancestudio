@@ -82,7 +82,19 @@ const rest = async (method, url, body) => {
   const eventsHref = await page.getByRole("link", { name: "Events", exact: true }).getAttribute("href");
   check(/^\/business\/[0-9a-f-]+\/events$/.test(eventsHref ?? ""), `Home: Events tile opens the organization's desk (${eventsHref})`);
 
-  /* 2. the New-studio sheet, with the map in it */
+  /* 2. the hub: the studio above was made on Pune's centroid and never placed,
+        so it must be ASKED for its pin — and the ask goes away once placed */
+  await page.goto(`${BASE}/business`, { waitUntil: "networkidle" });
+  await page.screenshot({ path: path.join(OUT, "org-2a-hub-nudge.png"), fullPage: true });
+  check((await page.getByText(/Not on the map yet/).count()) === 1, "Hub: a studio on its city centroid is asked for its pin");
+  check((await page.getByRole("link", { name: /Put .* on the map/ }).count()) === 1, "Hub: the ask carries the door to the map");
+
+  await rest("PATCH", `/rest/v1/tenants?id=eq.${tenant.id}`, { location_set_at: new Date().toISOString() });
+  await page.reload({ waitUntil: "networkidle" });
+  check((await page.getByText(/Not on the map yet/).count()) === 0, "Hub: the ask is gone once the studio is placed");
+  await rest("PATCH", `/rest/v1/tenants?id=eq.${tenant.id}`, { location_set_at: null });
+
+  /* 3. the New-studio sheet, with the map in it */
   await page.goto(`${BASE}/business`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Add studio" }).first().click();
   await page.waitForTimeout(800);
@@ -94,7 +106,7 @@ const rest = async (method, url, body) => {
   check((await page.locator('input[name="lat"]').count()) === 1 && (await page.locator('input[name="lng"]').count()) === 1, "Add studio: the pin rides in as lat/lng fields");
   check((await page.locator('img[src*="tile.openstreetmap.org"]').count()) > 0, "Add studio: tiles rendered");
 
-  /* 3. Discover as a map */
+  /* 4. Discover as a map */
   await page.goto(`${BASE}/discover?city=Pune&tab=studios&view=map`, { waitUntil: "networkidle" });
   await page.waitForTimeout(3000);
   await page.screenshot({ path: path.join(OUT, "org-3-discover-map.png"), fullPage: true });
