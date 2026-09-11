@@ -67,6 +67,13 @@
 >   unpublished daily quota that PAUSES rather than charges, not for production.
 >   Every screen degrades to "the map is not available" rather than breaking.
 >   Swapping in a billed key is two env vars and no code.
+> * **Both keys are ON VERCEL since 11 Sep 2026** (production + preview +
+>   development), put there by `scripts/vercel-set-google-keys.js` — which the
+>   USER runs, because the session's classifier blocks writes to hosting the way
+>   it blocks `db push`. The script also starts a production build: a
+>   `NEXT_PUBLIC_` value is baked in at build time, so saving the variable alone
+>   changes nothing on the live site. Until it ran, the phone showed "no Google
+>   Maps key is configured" while the laptop drew the map — same code, one key.
 
 
 > **✅ ALL FIVE MIGRATIONS ARE APPLIED (11 Sep 2026, by the user).** Everything
