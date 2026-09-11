@@ -104,7 +104,11 @@ const rest = async (method, url, body) => {
   await page.screenshot({ path: path.join(OUT, "org-2-add-studio.png"), fullPage: true });
   check((await sheetMap.count()) === 1, "Add studio: the map picker is in the sheet");
   check((await page.locator('input[name="lat"]').count()) === 1 && (await page.locator('input[name="lng"]').count()) === 1, "Add studio: the pin rides in as lat/lng fields");
-  check((await page.locator('img[src*="tile.openstreetmap.org"]').count()) > 0, "Add studio: tiles rendered");
+  /* Google draws into the container it is given — `.gm-style` is the root it
+     puts there, so its presence is the map having actually rendered, not just
+     the box having been reserved for it. (This looked for OpenStreetMap tiles
+     until 11 Sep 2026, which after the Google move could only ever fail.) */
+  check((await sheetMap.locator(".gm-style").count()) > 0, "Add studio: Google Maps rendered in the picker");
 
   /* 4. Discover as a map */
   await page.goto(`${BASE}/discover?city=Pune&tab=studios&view=map`, { waitUntil: "networkidle" });

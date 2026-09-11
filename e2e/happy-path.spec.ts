@@ -15,6 +15,29 @@ import { test, expect, type Browser, type BrowserContext, type Locator, type Pag
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
+
+/** NAME A CITY IN THE PICKER (11 Sep 2026).
+ *
+ *  `DOS_CITIES` is gone, so there is no `<select name="city">` any more — and
+ *  no chips either: the City field is a Google city search, or, on a studio and
+ *  an event, the city the placed pin resolved to.
+ *
+ *  A test must not depend on Google answering — it costs quota and can simply
+ *  stop on a demo key — so it takes the deterministic path the product has for
+ *  exactly that situation: type the name, take it as typed. When the field
+ *  already holds a city (an edit, or a pin that named one) it is a read-back
+ *  with a Change button, so that is pressed first.
+ *
+ *  `page` is wherever the picker lives — the page, or the dialog it is in, so
+ *  a sheet's own field is not confused with the page's behind it. */
+async function pickCity(page: Page | Locator, city: string) {
+  const box = page.getByRole("searchbox", { name: /Search your city/i });
+  if ((await box.count()) === 0) {
+    await page.getByRole("button", { name: "Change city" }).first().click();
+  }
+  await box.first().fill(city);
+  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+}
 const adminHeaders = {
   apikey: serviceKey,
   Authorization: `Bearer ${serviceKey}`,
@@ -320,9 +343,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Add studio" }).click();
     await owner.locator('input[name="name"]').fill(studioName);
     await owner.locator('input[name="area"]').fill("Baner");
-    const citySelect = owner.locator('select[name="city"]');
-    await citySelect.selectOption("Pune");
-    await expect(citySelect).toHaveValue("Pune");
+    await pickCity(owner, "Pune");
+    await expect(owner.locator('input[name="city"]')).toHaveValue("Pune");
     // the sheet carries the studio's rooms — "a studio is created WITH its
     // floors" (prototype 2675-2683), and Create is refused until one is named
     await owner.getByLabel("Room 1 name").fill("Studio A");
@@ -637,8 +659,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await enqSheet.getByLabel("Dance style").selectOption("Bollywood");
     await enqSheet.getByLabel("Level").selectOption("Beginner");
     await enqSheet.getByLabel("Where they train").selectOption("At the studio");
-    await enqSheet.getByRole("button", { name: "City" }).click();
-    await enqSheet.getByRole("button", { name: "Pune", exact: true }).click();
+    /* the sheet's city is the CityPicker — a Google city search with the typed
+       name as the way out; the old two clicks opened a hand-rolled dropdown */
+    await pickCity(enqSheet, "Pune");
     await enqSheet.getByLabel("Message").fill("Eight evening sessions before a wedding.");
     await enqSheet.getByRole("button", { name: "Send enquiry" }).click();
     await expect(enqSheet.getByText("Enquiry sent")).toBeVisible();
@@ -700,7 +723,7 @@ test.describe.serial("DanceOS, end to end", () => {
     inTwelveDays = new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await owner.getByLabel("First day").fill(inTwelveDays);
     await owner.getByLabel("Venue name").fill("E2E Hall");
-    await owner.getByLabel("City", { exact: true }).selectOption("Pune");
+    await pickCity(owner, "Pune");
     await owner.getByLabel("Google Maps link").fill("https://maps.google.com/?q=E2E+Hall+Pune");
     await owner.getByRole("button", { name: "Continue", exact: true }).click();
     // step 2 — tickets are on by default; one free tier is what a showcase needs
@@ -809,7 +832,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "All styles", exact: true }).click();
     await owner.getByLabel("First day").fill(inTwelveDays);
     await owner.getByLabel("Venue name").fill("E2E Arena");
-    await owner.getByLabel("City", { exact: true }).selectOption("Pune");
+    await pickCity(owner, "Pune");
     await owner.getByLabel("Google Maps link").fill("https://maps.google.com/?q=E2E+Arena+Pune");
     await owner.getByRole("button", { name: "Continue", exact: true }).click();
     await owner.getByRole("button", { name: "Crew", exact: true }).click();

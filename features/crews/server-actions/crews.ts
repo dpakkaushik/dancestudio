@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { DOS_CITIES } from "@/lib/constants/cities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   askCrewMember,
@@ -50,7 +49,8 @@ function revalidateCrews(crewId?: string) {
   revalidatePath("/crew/[crewId]", "page");
 }
 
-const city = z.enum(DOS_CITIES);
+/* any city the map names (11 Sep 2026) — see features/geo/server-actions/location.ts */
+const city = z.string().trim().min(1, "Which city is the crew in?").max(120);
 const style = z.string().trim().min(1).max(40);
 const uuid = z.string().uuid();
 

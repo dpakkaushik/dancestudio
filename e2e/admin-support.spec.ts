@@ -217,7 +217,11 @@ test.describe("the admin panel: support, trust, accountability", () => {
 
     // the conversation is waiting, and it is unread to the ADMIN
     await adminGoto(admin, `panel-admin-${stamp}@example.com`, "/admin/support");
-    const row = admin.getByRole("link", { name: /How long does verification take\?/ });
+    /* THIS run's thread. A run the network killed leaves its organization and
+       its thread behind (afterAll never ran), and the desk then lists two
+       "How long does verification take?" rows — a strict-mode clash on the
+       subject alone (11 Sep 2026). The row carries the organization's name. */
+    const row = admin.getByRole("link", { name: /How long does verification take\?/ }).filter({ hasText: orgName });
     await expect(row).toBeVisible();
     await expect(admin.getByText(orgName, { exact: false }).first()).toBeVisible();
     await row.click();
@@ -238,7 +242,11 @@ test.describe("the admin panel: support, trust, accountability", () => {
   });
 
   test("a rejection lands in the conversation, and in the audit log", async () => {
-    await adminGoto(admin, `panel-admin-${stamp}@example.com`, "/admin/verifications");
+    /* through the desk's own search: the pending queue is oldest-first and one
+       page of 25 — the way an admin with 2,000 applications needs it — so a
+       request made a minute ago is on the LAST page, not the first. Searching
+       by name is what an admin looking for one organization does too. */
+    await adminGoto(admin, `panel-admin-${stamp}@example.com`, `/admin/verifications?q=${encodeURIComponent(orgName)}`);
     const request = admin.getByTestId("verification-request").filter({ hasText: orgName });
     await expect(request).toBeVisible();
     // R16: the links say who they claim to be, the photos say there is a floor

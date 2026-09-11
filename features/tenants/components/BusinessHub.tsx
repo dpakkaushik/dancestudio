@@ -7,12 +7,12 @@ import { SubscribeButton } from "@/features/payments/components/SubscribeButton"
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
 import { dateWords } from "@/features/settings/components/settings-kit";
 import { dosKey } from "@/features/classes/components/ShareSheet";
+import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
-import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
+import { centreOf } from "@/repositories/cities";
 import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 
-const isDosCity = (v: string): v is DosCity => (DOS_CITIES as readonly string[]).includes(v);
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
@@ -108,6 +108,7 @@ export function BusinessHub({
   eventsHostId = null,
   studioSubscriptions = {},
   studioPrice = null,
+  cityCentres = [],
 }: {
   memberships: MyMembership[];
   roomCounts: Record<string, number>;
@@ -124,6 +125,11 @@ export function BusinessHub({
   studioSubscriptions?: Record<string, StudioSubscriptionState>;
   /** what one studio costs, from the price list; null when none is on offer */
   studioPrice?: PlanCatalogRow | null;
+  /** THE CITY REGISTRY (11 Sep 2026) — the cities that already have a business
+   *  in them, with their centres. The New-studio sheet uses it for ONE thing:
+   *  where the map opens once a city is known and no pin is placed yet. It is
+   *  not offered as a list to pick from — the city comes off the address. */
+  cityCentres?: Array<{ city: string; lat: number; lng: number }>;
 }) {
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
@@ -148,6 +154,13 @@ export function BusinessHub({
   const [rooms, setRooms] = useState<RoomDraft[]>(seedRooms);
   /* the pin from the sheet's map, if the owner placed one (11 Sep 2026) */
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
+  /* THE ADDRESS FILLS THE FORM (11 Sep 2026). Area and City are written by the
+     pin — a search, "Use my location", or a drag — and rewritten each time it
+     moves, UNTIL the person types in Area themselves: what somebody wrote by
+     hand is theirs, and the map does not overwrite it. `citySource` is how the
+     City field knows to say "from the address". */
+  const [areaEdited, setAreaEdited] = useState(false);
+  const [citySource, setCitySource] = useState<"address" | null>(null);
   // the action revalidates in place (no navigation), so the sheet closes itself
   // once a creation lands — prototype behavior after "Create studio"
   const [state, formAction, isPending] = useActionState(
@@ -578,61 +591,69 @@ export function BusinessHub({
                 placeholder={isStudio ? "e.g. EEE Dance Studio — Andheri" : "e.g. Rhea Kapoor Dance Co."}
                 style={inp}
               />
-              <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>
-                Area{isStudio ? " — the studio’s single address" : " (optional)"}
-              </div>
-              <input
-                name="area"
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                placeholder="e.g. Andheri West"
-                style={inp}
-              />
-              {/* city is a closed list: it is how the app groups studios, so it cannot be typed */}
-              <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>
-                City{isStudio ? "" : " (optional)"}
-              </div>
-              <select
-                name="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                style={{ ...inp, WebkitAppearance: "none", appearance: "none", cursor: "pointer" }}
-              >
-                <option value="">Pick a city</option>
-                {DOS_CITIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-
-              {/* ── WHERE IT IS, ON THE MAP, AT CREATION (11 Sep 2026 — the user:
-                  "wherever we are giving an address, city or location there should
-                  be a location picker as well… user will check nearest studio
-                  using location only"). Until now a studio was born on its city's
-                  centroid and the only map was two taps away on Edit, so almost
-                  nobody would ever place one. The pin rides in as two hidden
-                  fields; the action saves it the moment the studio exists. Typing
-                  a search fills Area and City from the map's own answer. ── */}
+              {/* ── WHERE IT IS, RIGHT AFTER THE NAME (11 Sep 2026 — the user:
+                  "after filling the studio name the user gets the option to use
+                  my location; location and address are picked, city is picked
+                  from the Google address; when the user fills 'where it is' it
+                  auto-suggests the address from the Google API"). So the address
+                  comes BEFORE Area and City, and writes both: search it (Google
+                  suggests as you type), press Use my location, or drag the map.
+                  The pin rides in as two hidden fields and the action saves it
+                  the moment the studio exists — Discover measures from it. ── */}
               {isStudio ? (
                 <>
                   <input type="hidden" name="lat" value={picked ? String(picked.lat) : ""} />
                   <input type="hidden" name="lng" value={picked ? String(picked.lng) : ""} />
-                  <div style={{ fontSize: 12, color: SUB, margin: "14px 0 6px" }}>Where it is — put the pin on your door</div>
+                  <div style={{ fontSize: 12, color: SUB, margin: "14px 0 6px" }}>Where it is</div>
                   <LocationPicker
                     value={{ lat: null, lng: null, area: area || null }}
-                    city={isDosCity(city) ? city : null}
+                    centre={centreOf(cityCentres, city)}
                     onChange={(p) => {
                       setPicked({ lat: p.lat, lng: p.lng });
-                      if (p.area && !area.trim()) setArea(p.area);
-                      if (p.city && !city) setCity(p.city);
+                      if (p.area && !areaEdited) setArea(p.area);
+                      /* the map is the authority on which city a point is in */
+                      if (p.city) {
+                        setCity(p.city);
+                        setCitySource("address");
+                      }
                     }}
                   />
                   <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
-                    {picked ? "This is what Discover measures from when somebody looks for studios near them." : "Optional now, and worth doing: without a pin the studio sits at the centre of its city and Discover cannot say how far away it is."}
+                    {picked ? "This is what Discover measures from when somebody looks for studios near them." : "Without a pin the studio sits at the centre of its city and Discover cannot say how far away it is."}
                   </div>
                 </>
               ) : null}
+
+              <div style={{ fontSize: 12, color: SUB, margin: "14px 0 4px" }}>
+                Area{isStudio ? " — filled from the address; edit it if it reads wrong" : " (optional)"}
+              </div>
+              <input
+                name="area"
+                value={area}
+                onChange={(e) => {
+                  setArea(e.target.value);
+                  setAreaEdited(true);
+                }}
+                placeholder="e.g. Andheri West"
+                style={inp}
+              />
+              {/* ── THE CITY COMES OFF THE ADDRESS (11 Sep 2026). This was a
+                  `<select>` over DOS_CITIES, then the registry's cities as chips
+                  — which the user rightly read as "a hardcoded list". Now the
+                  pin above names the city and this field shows it; only a
+                  studio with no pin, or a wrong answer, needs the search. ── */}
+              <input type="hidden" name="city" value={city} />
+              <div style={{ margin: "12px 0 0" }}>
+                <CityPicker
+                  value={city || null}
+                  source={citySource}
+                  label={isStudio ? "City" : "City (optional)"}
+                  onChange={(next) => {
+                    setCity(next ?? "");
+                    setCitySource(null);
+                  }}
+                />
+              </div>
 
               {/* the rooms, right here (2675-2683): a studio is created WITH its floors */}
               {isStudio && (

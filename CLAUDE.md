@@ -2,6 +2,73 @@
 
 ## LAST SESSION (11 Sep 2026, overnight) — replaced on every push (Rule 13)
 
+> ### ⚠ ONE MIGRATION IS WAITING: `20260913140000_a_city_is_whatever_the_map_says`
+> ```
+> powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
+> ```
+> The app works without it (the city chips are simply empty and `set_tenant_location`
+> keeps the old closed-list behaviour), but the city registry does not fill until
+> it lands.
+>
+> ### GOOGLE MAPS IS THE MAP NOW, AND THERE IS NO HARDCODED CITY LIST
+> The user's decisions, in their words: *"I have a Google Maps demo key, let's
+> make it standard… remove the earlier maps setup you created, replace with the
+> standard Google Maps approach everywhere… when selecting a city, or putting
+> some address, instead of hardcoded city names I want to use APIs… nothing
+> should be hardcoded."*
+>
+> * **OpenStreetMap is gone.** `MapPicker.tsx` (the hand-rolled Web-Mercator
+>   tile map), `lib/geo/geocode.ts` (Nominatim) and `/api/geocode` are deleted.
+>   In their place: `GoogleMap.tsx` (Maps JavaScript API), `lib/geo/places.ts`
+>   (Places Autocomplete + Place Details + **Geocoding v4**) and `/api/places`.
+> * **`DOS_CITIES` IS DELETED, AND SO ARE THE CHIPS THAT REPLACED IT.** Twelve
+>   hardcoded names were wired into 14 files and meant a studio in Kochi could
+>   not say it was in Kochi. The first replacement drew the registry's cities as
+>   tap-chips; the user read them as a list — *"city should be picked from the
+>   API, not a hardcoded list"* — so `CityPicker` has NO chips. On a studio and
+>   an event the city is READ OFF THE ADDRESS the pin resolves to (the picker
+>   sits right under the name: search the address, or "Use my location", then
+>   Area and City fill themselves and say "from the address"); where there is
+>   no address (crew, enquiry) the field is a Google city search. The typed name
+>   is always the last option, for the day the demo key's quota pauses.
+>   `city_centroids` is a REGISTRY that fills itself (`remember_city`);
+>   `discover_cities()` feeds Discover's city rail — cities that actually have
+>   a business, busiest first — and tells each form's map where to open.
+> * **Bengaluru and Bangalore stay one city.** Free-form cities would have split
+>   Discover's grouping, which matches on the exact string — so every write
+>   folds through `canonical_city()` against a `city_aliases` table seeded with
+>   the Indian renames that actually collide.
+> * **Two gotchas, both found by RUNNING it, both now commented in the code:**
+>   1. A Maps **demo key is refused for the classic Geocoding API** (v3,
+>      `maps.googleapis.com/maps/api/geocode/json`) — and the refusal arrives as
+>      HTTP **200** with `REQUEST_DENIED` inside, which reads like a dead key
+>      rather than the wrong API. **v4** (`geocode.googleapis.com`, key as a
+>      HEADER) works, and happens to answer in the same `addressComponents`
+>      shape as Places, so one component-picker serves both.
+>   2. **The Maps script's `load` event is not "Maps is ready."**
+>      `google.maps` is defined almost immediately, so every plausible readiness
+>      check passes and then `new google.maps.Map()` throws *"Map is not a
+>      constructor"*. `importLibrary` is not the fix either — it does not exist
+>      on a plain script tag. The answer is the oldest mechanism Google has:
+>      `callback=`. **Resolve on the callback, never on the tag.**
+> * **The registry read is where Discover gets its CENTRE, so it must never
+>   answer empty.** Found by the e2e suite before migration `…140000` was
+>   applied: `discover_cities()` did not exist, `findDiscoverCities()` returned
+>   `[]` "harmlessly", `centreOf()` had nothing to find, and Discover measured
+>   every radius from the middle of India — a city's own studios vanished from
+>   its shelf. It now falls back to a plain select over `city_centroids`, which
+>   has existed since Step 5. Rule: a read that decides WHERE a search happens
+>   is not navigation, and cannot degrade to nothing.
+> * `scripts/google-maps-proof.js` asks all three Google APIs directly and says
+>   which answered — run it whenever the key changes or the picker goes quiet.
+>   `scripts/shots/shoot-new-studio.js` drives the New-studio sheet for real
+>   (18 checks: order, no chips, 5 suggestions, Area/City filled off the pick).
+> * ⚠ **The demo key is not a production key.** Google says so: no billing, an
+>   unpublished daily quota that PAUSES rather than charges, not for production.
+>   Every screen degrades to "the map is not available" rather than breaking.
+>   Swapping in a billed key is two env vars and no code.
+
+
 > **✅ ALL FIVE MIGRATIONS ARE APPLIED (11 Sep 2026, by the user).** Everything
 > below that says "not applied" is DONE. The revenue bypass is closed and
 > `rls-proof-tenant-columns` is green; **all 28 proofs pass**; the money and
@@ -743,13 +810,14 @@ summary; the report has the evidence.
 6. **`nearby_tenants` still has no cursor** — it caps at 50 (now a parameter,
    max 200). Discover can never show a 51st studio in a city.
 
-7. **The geocoder is keyless and that has a ceiling.** OSM tiles and Nominatim
-   both forbid heavy commercial use, and the throttle and cache in
-   `lib/geo/geocode.ts` are PER INSTANCE, so on serverless the global rate is
-   the per-instance rate times the instance count. Set `GEOCODER_PROVIDER=
-   locationiq` (or `maptiler`) and `GEOCODER_KEY` when there is real traffic —
-   both speak the same shapes, so it is a deploy, not a rewrite. Tiles want the
-   same treatment at that point (MapTiler is 100k/month free).
+7. **The map runs on Google's Maps Demo Key, and that has a ceiling.** The demo
+   key has no billing behind it, a daily quota that PAUSES rather than bills
+   when exceeded, and is not licensed for production. Before launch: a billed
+   Google Cloud project with Maps JavaScript API + Places API (New) + Geocoding
+   API enabled, a browser key restricted by HTTP referrer and a server key
+   restricted by IP, in `NEXT_PUBLIC_GOOGLE_MAPS_KEY` / `GOOGLE_MAPS_KEY` — the
+   code does not change. The Places/Geocoding cache in `lib/geo/places.ts` is
+   in memory PER INSTANCE, so on serverless the effective cache is per instance.
 
 8. **⚠ Still to confirm: the Cashfree `Payment Gateway` webhook sub-tab.** The
    SUBSCRIPTIONS endpoint is registered and proven by real deliveries (10 Sep).
@@ -4136,7 +4204,7 @@ nothing to lift.
 | **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |
-| **The geocoder is keyless, and that has a ceiling.** OSM tiles and Nominatim forbid heavy commercial use, and the throttle and cache in `lib/geo/geocode.ts` are PER INSTANCE — so on serverless the global rate is the per-instance rate times the instance count | — (same) | `GEOCODER_PROVIDER=locationiq` (or `maptiler`) + `GEOCODER_KEY` — both speak the same shapes, so it is a deploy, not a rewrite. Tiles want the same treatment |
+| **The map runs on Google's Maps Demo Key, and that has a ceiling.** No billing behind it, a daily quota that pauses rather than bills, not licensed for production; the Places/Geocoding cache in `lib/geo/places.ts` is in memory PER INSTANCE | — (same) | a billed Google Cloud project with Maps JavaScript API + Places API (New) + Geocoding API enabled, a referrer-restricted browser key and an IP-restricted server key in `NEXT_PUBLIC_GOOGLE_MAPS_KEY` / `GOOGLE_MAPS_KEY` — a deploy, not a rewrite |
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
 | Home: **nothing open.** The QR share sheet and the style row landed 29 Aug 2026 (settings slice), the **PassDeck** 29 Aug 2026 (parity slice 6) and the **rank row** 30 Aug 2026 (parity slice 7 — `my_chart_place`, drawn only where there is a place, because "#0" is not a rank) | Home 7248+, 7315-7323, PassDeck 6863-7204 | closed |
 | Profile tab, what the Profile slice left (**S_profiletab's own render landed 28 Aug 2026**; the verified tick landed 29 Aug 2026 as `profiles.verified_at`, service-role only): the albums grid and its icon tab strip, Call (a person's `phone` exists now, no editor offers it), the long-press-for-QR gesture, the settings sheet's switcher / appearance / language rows, "Can't find your style? Request it", opening Maps from the place. **Call landed 30 Aug 2026** (the Edit profile sheet's Phone field, parity slice 7) | S_profiletab 11069-11130, 10879, 10598, 11135, 11251 | an albums slice; the rest need a product decision |

@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { DOS_CITIES } from "@/lib/constants/cities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setTenantLocation } from "@/repositories/tenants";
 
@@ -22,8 +21,12 @@ const schema = z.object({
   lat: z.number().min(6).max(37.5),
   lng: z.number().min(68).max(97.5),
   area: z.string().trim().max(140).nullable(),
-  /* the closed list, or nothing — the RPC refuses anything else anyway */
-  city: z.enum(DOS_CITIES).nullable(),
+  /* ANY CITY THE MAP NAMES (11 Sep 2026). This was `z.enum(DOS_CITIES)` — one
+     of twelve — which meant a studio in a thirteenth city had its city quietly
+     dropped on save. The shape is all that is checked here; the DATABASE folds
+     the name onto its canonical form (Bengaluru for "Bangalore") and registers
+     it, so grouping still holds without a list to belong to. */
+  city: z.string().trim().min(1).max(120).nullable(),
 });
 
 export interface LocationActionResult {

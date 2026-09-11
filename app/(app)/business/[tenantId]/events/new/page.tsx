@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { EventForm } from "@/features/events/components/EventForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findDiscoverCities } from "@/repositories/cities";
 import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
 /** Add event (prototype S_eventform). Owners and trainers create; the RPC
@@ -22,5 +23,8 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
   if (role !== "owner" && role !== "trainer") {
     redirect(`/business/${tenantId}/events`);
   }
-  return <EventForm tenantId={tenantId} existing={null} />;
+  /* the city registry (11 Sep 2026): quick chips beside the venue, and where
+     the map opens — it replaces the twelve hardcoded names */
+  const cityCentres = await findDiscoverCities(supabase);
+  return <EventForm tenantId={tenantId} existing={null} cityCentres={cityCentres} />;
 }

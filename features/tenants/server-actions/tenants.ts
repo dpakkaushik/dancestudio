@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { DOS_CITIES } from "@/lib/constants/cities";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requestOrgVerification } from "@/repositories/admin";
 import { findProfileById } from "@/repositories/profiles";
@@ -49,9 +48,9 @@ const createTenantSchema = z
     lat: z.coerce.number().min(6).max(37.5).optional(),
     lng: z.coerce.number().min(68).max(97.5).optional(),
   })
-  .refine((d) => !d.city || (DOS_CITIES as readonly string[]).includes(d.city), {
-    message: "Pick a city from the list",
-  })
+  /* THE LIST IS GONE (11 Sep 2026): any city the map names is allowed, and the
+     database folds it onto a canonical form so Bengaluru and Bangalore stay one
+     city. The only rule left here is a shape. */
   .refine((d) => (d.lat === undefined) === (d.lng === undefined), {
     message: "The map pin is incomplete — move the map again",
   });

@@ -9,14 +9,14 @@ import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters
 import { DiscoverMap } from "@/features/discovery/components/DiscoverMap";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
 import { NearMeChip } from "@/features/discovery/components/NearMeChip";
-import type { MapMarker } from "@/features/geo/components/MapPicker";
+import type { MapMarker } from "@/features/geo/components/GoogleMap";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, EventI, kmLabel, StudioI } from "@/features/discovery/components/discover-kit";
 import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
 import { EventCard } from "@/features/events/components/EventCard";
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
-import { DOS_CITIES, DOS_CITY_CENTROIDS, type DosCity } from "@/lib/constants/cities";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
+import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
 import { DOS_DISPLAY, DOS_UI, INK, PINK, SUB } from "@/lib/design/tokens";
 import { dayKeyOf } from "@/lib/format/month";
 import { photoUrl } from "@/lib/media/photo";
@@ -47,7 +47,13 @@ const TABS = [
 
 const stampNowIso = (): string => new Date().toISOString();
 
-const isCity = (v: string | undefined): v is DosCity => Boolean(v) && (DOS_CITIES as readonly string[]).includes(v as string);
+/** A city is whatever the map named it (11 Sep 2026) — no list to belong to,
+ *  so the only rule is that it is a sane-looking string. The database folds
+ *  aliases onto one canonical name, so grouping holds without one here. */
+const asCity = (v: string | undefined | null): string | null => {
+  const s = String(v ?? "").trim();
+  return s.length > 0 && s.length <= 120 ? s : null;
+};
 
 /** "18.516,73.856" from the address bar, or nothing. Bounded to India, because
  *  a pair of numbers in a URL is the least trustworthy input the app has and a
@@ -82,8 +88,16 @@ export default async function DiscoverPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const profile = user ? await findProfileById(supabase, user.id) : null;
-  const city: DosCity = isCity(params.city) ? params.city : isCity(profile?.city ?? undefined) ? (profile!.city as DosCity) : "Pune";
+  /* THE CITY LIST IS THE REGISTRY (11 Sep 2026): every city that actually has a
+     business in it, busiest first. It fills itself the first time somebody
+     opens a studio somewhere new, so there is no constant to edit and no
+     thirteenth city that cannot be named. */
+  const [profile, cities] = await Promise.all([
+    user ? findProfileById(supabase, user.id) : Promise.resolve(null),
+    findDiscoverCities(supabase),
+  ]);
+  /* asked for, else where this person says they are, else wherever is busiest */
+  const city: string = asCity(params.city) ?? asCity(profile?.city) ?? cities[0]?.city ?? "";
   const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "studios";
   /* WHERE "NEAR" IS MEASURED FROM (11 Sep 2026). The city's centre, unless the
      person has pressed Near me and their own point is in the address — in which
@@ -91,11 +105,13 @@ export default async function DiscoverPage({
      out-of-range pair is ignored rather than argued with: the city centre is
      always a usable answer, and an empty shelf is not. */
   const near = parseNear(params.near);
-  const centre = near ?? DOS_CITY_CENTROIDS[city];
+  /* the city's own centre from the registry; a city nobody has been to yet has
+     none, and then the country is the honest place to measure from */
+  const centre = near ?? centreOf(cities, city) ?? INDIA_CENTRE;
   /* LIST OR MAP (11 Sep 2026): the same shelf, drawn as pins. A toggle rather
-     than always-on, because every map view is a dozen tile requests to a free
-     server that asks not to be hammered — and because a list is still the
-     faster way to read twenty names. */
+     than always-on, because every map view is a Maps JavaScript API load that
+     Google bills per view once the demo key is retired — and because a list is
+     still the faster way to read twenty names. */
   const view: "list" | "map" = params.view === "map" ? "map" : "list";
   const filters = parseFilters(params, DOS_STYLE_NAMES);
   const wantsBusinesses = tab === "studios" || tab === "artists";
@@ -108,7 +124,20 @@ export default async function DiscoverPage({
     /* narrowed to the city IN THE QUERY (11 Sep 2026): asking for the newest 200
        nationally and filtering here made a city's classes disappear once the
        platform passed 200 published classes — see repositories/classes.ts */
-    findPublishedClasses(supabase, 200, city),
+    findPublishedClasses(supabase, 200, city).catch((e: unknown) => {
+      /* ⚠ ON EVERY OTHER TAB THIS READ IS DECORATION (11 Sep 2026, found by the
+         e2e suite): it orders the style rail and adds styles to business cards.
+         Supabase's gateway answered it with a Cloudflare 502 once in a thousand
+         requests, and that one answer took the whole Events tab to a 500 page —
+         a shelf of real, published events unreachable because a rail could not
+         be sorted. So: on the Classes tab the classes ARE the shelf and the error
+         stands; on any other tab it is logged and the rail keeps its default
+         order. The client also retries a 502/503/504 once before this is even
+         reached (lib/supabase/fetch.ts). */
+      if (tab === "classes") throw e;
+      console.error("[Discover] the class list could not be read; the style rail keeps its default order:", e);
+      return [];
+    }),
     wantsBusinesses
       ? findNearbyTenants(supabase, {
           ...centre,
@@ -236,7 +265,7 @@ export default async function DiscoverPage({
       <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>DISCOVER</div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: 5, minWidth: 0 }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: 27, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1, lineHeight: 1.05, color: INK }}>Dance near you</span>
-        <CityChip city={city} tab={tab} extra={filtersToParams(filters)} />
+        <CityChip city={city || "Anywhere"} cities={cities.map((c) => c.city)} tab={tab} extra={filtersToParams(filters)} />
       </div>
 
       {/* "near you" can now mean YOU (11 Sep 2026) — the chip swaps the city's

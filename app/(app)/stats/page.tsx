@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { StatsScreen } from "@/features/stats/components/StatsScreen";
-import { DOS_CITIES } from "@/lib/constants/cities";
+import { findDiscoverCities } from "@/repositories/cities";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyCalendar } from "@/repositories/calendar";
@@ -30,7 +30,11 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
 
   const tab = (TABS as readonly string[]).includes(params.tab ?? "") ? (params.tab as (typeof TABS)[number]) : "record";
   const segment: ChartSegment = SEGMENTS.includes((params.seg ?? "") as ChartSegment) ? (params.seg as ChartSegment) : "studio";
-  const city = (DOS_CITIES as readonly string[]).includes(params.city ?? "") ? (params.city as string) : null;
+  /* the boards filter by any city the registry knows (11 Sep 2026) — it was one
+     of twelve, so a dancer could not see their own city's board unless DanceOS
+     had thought of it */
+  const cityList = await findDiscoverCities(supabase);
+  const city = cityList.some((c) => c.city === params.city) ? (params.city as string) : null;
   const metric = parseChartMetric(params.metric);
   const styleFilter = (DOS_STYLE_NAMES as readonly string[]).includes(params.style ?? "") ? (params.style as string) : null;
 
@@ -68,7 +72,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
       metric={metric}
       city={city}
       styleFilter={styleFilter}
-      cities={DOS_CITIES}
+      cities={cityList.map((c) => c.city)}
       chartStyles={chartStyles}
       myPlace={myPlace}
       boardPlace={boardPlace}

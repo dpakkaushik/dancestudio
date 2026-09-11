@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { DOS_CITIES, DOS_CITY_CENTROIDS, type DosCity } from "@/lib/constants/cities";
 import { INK, SUB } from "@/lib/design/tokens";
-import { MapPicker, type MapPoint } from "./MapPicker";
+import { GoogleMapPicker, type MapPoint } from "./GoogleMap";
+import { PlaceSearch, type ResolvedPlace } from "./PlaceSearch";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -12,116 +12,62 @@ const MUTED = "var(--muted)";
 export interface PickedLocation {
   lat: number;
   lng: number;
-  /** the locality, as OpenStreetMap knows it — what `tenants.area` holds */
+  /** the locality, as Google names it — what `tenants.area` holds */
   area: string | null;
-  /** only ever one of DOS_CITIES, or null when the point is outside them */
-  city: DosCity | null;
+  /** the city, as Google names it. NOT checked against a list any more: the
+   *  database folds aliases (Bengaluru/Bangalore) onto one canonical name and
+   *  registers anything it has not seen, so a studio in a city DanceOS never
+   *  thought of is now a studio in that city. */
+  city: string | null;
   /** the whole address, for showing back what was chosen */
   label: string | null;
 }
 
-interface GeoPlace {
-  label: string;
-  lat: number;
-  lng: number;
-  area: string | null;
-  city: string | null;
-}
-
-const isDosCity = (v: string | null | undefined): v is DosCity =>
-  Boolean(v) && (DOS_CITIES as readonly string[]).includes(v as string);
-
-/** OSM says "Bengaluru" or "Bangalore" depending on who mapped it, and the app
- *  has one closed list of cities. Anything that is not on it is not forced onto
- *  it — the picker says which city it thinks it is in and leaves the field
- *  alone, because a studio silently moved to another city is worse than a
- *  studio whose city was not updated. */
-const ALIASES: Record<string, DosCity> = {
-  bangalore: "Bengaluru",
-  bengaluru: "Bengaluru",
-  gurugram: "Gurgaon",
-  gurgaon: "Gurgaon",
-  delhi: "New Delhi",
-  "new delhi": "New Delhi",
-  bombay: "Mumbai",
-  mumbai: "Mumbai",
-  calcutta: "Kolkata",
-  kolkata: "Kolkata",
-  madras: "Chennai",
-  chennai: "Chennai",
-};
-
-const toDosCity = (raw: string | null): DosCity | null => {
-  if (!raw) {
-    return null;
-  }
-  const key = raw.trim().toLowerCase();
-  if (ALIASES[key]) {
-    return ALIASES[key];
-  }
-  const exact = DOS_CITIES.find((c) => c.toLowerCase() === key);
-  return exact ?? (isDosCity(raw) ? raw : null);
-};
-
-const field: React.CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  background: "var(--bg)",
-  border: `1px solid ${EL}`,
-  borderRadius: 12,
-  padding: "9px 11px",
-  fontSize: 13,
-  color: INK,
-  fontFamily: "inherit",
-};
-
-const btn: React.CSSProperties = {
-  height: 32,
-  padding: "0 11px",
-  borderRadius: 10,
-  fontSize: 11,
-  fontWeight: 800,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  border: `1px solid ${EL}`,
-  background: CARD,
-  color: INK,
-};
-
-/** WHERE A BUSINESS ACTUALLY IS (11 Sep 2026).
+/** WHERE A BUSINESS ACTUALLY IS (11 Sep 2026, rebuilt on Google).
  *
- *  Until now every studio in a city sat on the SAME coordinates — its city's
- *  centroid, written by `create_tenant_with_owner` because there was no way to
- *  ask. Discover measured distance from that centroid to the picked city's
- *  centroid, so "2.4 km away" was the same 2.4 km for every studio in Pune, and
- *  "nearest first" was not an order at all. This is the missing input.
+ *  Until the picker existed, every studio in a city sat on the SAME
+ *  coordinates — its city's centroid, written by `create_tenant_with_owner`
+ *  because there was no way to ask. Discover measured centroid to centroid, so
+ *  "2.4 km away" was the same 2.4 km for every studio in Pune and "nearest
+ *  first" was not an order at all.
  *
- *  Three ways to arrive at a point, because people arrive differently:
- *  type an address, use the phone's own location, or just move the map. All
- *  three end in the same place — a lat/lng and the address underneath it. */
+ *  THE ORDER IS THE FLOW (the user, looking at the first version: "after
+ *  filling the studio name the user gets the option to use my location;
+ *  location and address are picked, city is picked from the Google address;
+ *  when the user fills 'where it is' it auto-suggests the address"). So the
+ *  two ways of ARRIVING at a point come first and large — search the address
+ *  (Google suggests as you type) or press one button and let the phone say —
+ *  and the map comes after, as the place to check and fine-tune what they
+ *  gave. Every way in ends the same: a lat/lng, the address underneath it, and
+ *  the area and city read off that address for the form to fill itself with.
+ *
+ *  NOTHING IS GEOCODED ON ARRIVAL, deliberately. The address for a point we
+ *  already hold is a question that spends a request, and opening a sheet is not
+ *  a reason to spend one — a picker that geocodes on mount costs a call for
+ *  every person who opens the sheet and closes it again. The stored `area` is
+ *  what the business already says about itself, and it is what the panel shows
+ *  until somebody actually moves the pin. */
 export function LocationPicker({
   value,
-  city,
+  centre,
   onChange,
 }: {
   value: { lat: number | null; lng: number | null; area: string | null };
-  /** the business's city today — where the map opens when there is no point yet */
-  city: DosCity | null;
+  /** where the map opens when this business has no point yet — the city it
+   *  named, resolved by the caller; India's centre if it named none */
+  centre?: { lat: number; lng: number } | null;
   onChange: (picked: PickedLocation) => void;
 }) {
-  const fallback = DOS_CITY_CENTROIDS[city ?? "Pune"];
-  const [point, setPoint] = useState<MapPoint>({
-    lat: value.lat ?? fallback.lat,
-    lng: value.lng ?? fallback.lng,
-  });
-  const [term, setTerm] = useState("");
-  const [results, setResults] = useState<GeoPlace[]>([]);
+  /* the geographic centre of India, so a map with nothing to go on opens on the
+     country rather than on the Atlantic */
+  const fallback = centre ?? { lat: 22.9734, lng: 78.6569 };
+  const known = value.lat !== null && value.lng !== null;
+  const [point, setPoint] = useState<MapPoint>({ lat: value.lat ?? fallback.lat, lng: value.lng ?? fallback.lng });
   const [address, setAddress] = useState<string | null>(null);
   const [area, setArea] = useState<string | null>(value.area);
-  const [detected, setDetected] = useState<DosCity | null>(city);
-  const [busy, setBusy] = useState<"search" | "here" | "address" | null>(null);
+  const [city, setCity] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"here" | "address" | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  /* a point the user never touched must not be saved as though they had */
   const [touched, setTouched] = useState(false);
   const seq = useRef(0);
 
@@ -131,24 +77,21 @@ export function LocationPicker({
       const mine = ++seq.current;
       setBusy("address");
       try {
-        const res = await fetch(`/api/geocode?lat=${p.lat}&lng=${p.lng}`);
-        const body = (await res.json()) as { place: GeoPlace | null };
+        const res = await fetch(`/api/places?lat=${p.lat}&lng=${p.lng}`);
+        const body = (await res.json()) as { place: ResolvedPlace | null };
         if (mine !== seq.current) {
           return;
         }
         const place = body.place;
-        const nextArea = place?.area ?? null;
-        const nextCity = toDosCity(place?.city ?? null);
         setAddress(place?.label ?? null);
-        setArea(nextArea);
-        setDetected(nextCity);
-        setNote(place && !nextCity ? `That point is in ${place.city ?? "a place"} — outside the cities DanceOS lists, so the city field is left as it is.` : null);
-        onChange({ lat: p.lat, lng: p.lng, area: nextArea, city: nextCity, label: place?.label ?? null });
+        setArea(place?.area ?? null);
+        setCity(place?.city ?? null);
+        onChange({ lat: p.lat, lng: p.lng, area: place?.area ?? null, city: place?.city ?? null, label: place?.label ?? null });
       } catch {
         /* the map still works; only the words for it are missing */
         if (mine === seq.current) {
           setAddress(null);
-          onChange({ lat: p.lat, lng: p.lng, area, city: detected, label: null });
+          onChange({ lat: p.lat, lng: p.lng, area, city, label: null });
         }
       } finally {
         if (mine === seq.current) {
@@ -156,10 +99,11 @@ export function LocationPicker({
         }
       }
     },
-    [onChange, area, detected]
+    [onChange, area, city]
   );
 
-  const pick = useCallback(
+  /** the map settled somewhere new */
+  const moved = useCallback(
     (p: MapPoint) => {
       setTouched(true);
       setPoint(p);
@@ -168,34 +112,18 @@ export function LocationPicker({
     [describe]
   );
 
-  /* NOTHING IS GEOCODED ON ARRIVAL, and that is deliberate twice over. The
-     address for a point we already hold is a question the server can only
-     answer by spending one of Nominatim's one-per-second requests, and opening
-     a sheet is not a reason to spend one — a picker that geocodes on mount
-     costs a request for every person who opens the sheet and closes it again.
-     The stored `area` is what the business already says about itself, so it is
-     what the panel shows until somebody actually moves the pin. */
-
-  const search = async () => {
-    if (term.trim().length < 3) {
-      return;
-    }
-    setBusy("search");
-    try {
-      const centre = DOS_CITY_CENTROIDS[detected ?? city ?? "Pune"];
-      const res = await fetch(`/api/geocode?q=${encodeURIComponent(term.trim())}&lat=${centre.lat}&lng=${centre.lng}`);
-      const body = (await res.json()) as { places: GeoPlace[] };
-      setResults(body.places ?? []);
-      if ((body.places ?? []).length === 0) {
-        setNote("Nothing found for that. Try a landmark, or just move the map.");
-      } else {
-        setNote(null);
-      }
-    } catch {
-      setNote("The address search is not answering. Move the map instead — that always works.");
-    } finally {
-      setBusy(null);
-    }
+  /** a searched address already carries everything — no second call for it */
+  const chose = (place: ResolvedPlace) => {
+    /* six decimals (~11 cm), the same precision a dragged pin is read at — a
+       Places result arrives with float noise (18.507351399999997) */
+    const p = { lat: Number(place.lat.toFixed(6)), lng: Number(place.lng.toFixed(6)) };
+    setTouched(true);
+    setPoint(p);
+    setAddress(place.label);
+    setArea(place.area);
+    setCity(place.city);
+    setNote(null);
+    onChange({ ...p, area: place.area, city: place.city, label: place.label });
   };
 
   const useMyLocation = () => {
@@ -204,10 +132,11 @@ export function LocationPicker({
       return;
     }
     setBusy("here");
+    setNote(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setBusy(null);
-        pick({ lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) });
+        moved({ lat: Number(pos.coords.latitude.toFixed(6)), lng: Number(pos.coords.longitude.toFixed(6)) });
       },
       () => {
         setBusy(null);
@@ -217,64 +146,60 @@ export function LocationPicker({
     );
   };
 
-  const known = touched || (value.lat !== null && value.lng !== null);
+  const placed = touched || known;
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-        <input
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void search();
-            }
-          }}
-          placeholder="Search an address or landmark…"
-          aria-label="Search for an address"
-          style={{ ...field, flex: 1, minWidth: 0 }}
-        />
-        <button type="button" onClick={() => void search()} disabled={busy === "search" || term.trim().length < 3} style={{ ...btn, height: "auto", opacity: term.trim().length < 3 ? 0.5 : 1 }}>
-          {busy === "search" ? "…" : "Find"}
-        </button>
-      </div>
+      {/* the two ways in, first and large */}
+      <PlaceSearch placeholder="Search an address or landmark…" near={point} onPick={chose} />
+      <button
+        type="button"
+        onClick={useMyLocation}
+        disabled={busy === "here"}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          width: "100%",
+          boxSizing: "border-box",
+          marginTop: 8,
+          height: 40,
+          borderRadius: 12,
+          border: "none",
+          background: busy === "here" ? EL : "var(--text)",
+          color: busy === "here" ? SUB : "var(--solid)",
+          fontSize: 12.5,
+          fontWeight: 900,
+          cursor: busy === "here" ? "default" : "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        {busy === "here" ? "Finding you…" : "◎ Use my location"}
+      </button>
 
-      {results.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
-          {results.map((r) => (
-            <button
-              key={`${r.lat},${r.lng},${r.label}`}
-              type="button"
-              onClick={() => {
-                setResults([]);
-                setTerm("");
-                pick({ lat: r.lat, lng: r.lng });
-              }}
-              style={{ textAlign: "left", background: CARD, border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 11.5, color: INK, cursor: "pointer", fontFamily: "inherit", lineHeight: 1.4 }}
-            >
-              {r.label}
-            </button>
-          ))}
+      {/* what the point resolved to — shown as soon as there is one */}
+      {placed || busy === "address" ? (
+        <div style={{ marginTop: 8, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
+          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED }}>THE PIN IS ON</div>
+          <div style={{ fontSize: 11.5, color: INK, marginTop: 3, lineHeight: 1.45 }}>
+            {busy === "address" ? "Looking up the address…" : address ?? area ?? "A point already on record. Move the map to change it."}
+          </div>
+          {address && (area || city) ? (
+            <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>
+              {area ? `Area: ${area}` : null}
+              {area && city ? " · " : null}
+              {city ? `City: ${city}` : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      <MapPicker value={point} onPick={pick} zoom={known ? 16 : 12} label="Move the map to place the pin on your studio" />
-
-      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-        <button type="button" onClick={useMyLocation} disabled={busy === "here"} style={btn}>
-          {busy === "here" ? "Finding you…" : "◎ Use my location"}
-        </button>
-        {detected ? <span style={{ ...btn, cursor: "default", display: "inline-flex", alignItems: "center", color: SUB }}>{detected}</span> : null}
+      {/* then the map, to check it and fine-tune it */}
+      <div style={{ fontSize: 10.5, color: MUTED, margin: "10px 0 6px" }}>
+        {placed ? "Drag the map to fine-tune the pin — the address above follows it." : "Or move the map and put the pin on your door."}
       </div>
-
-      <div style={{ marginTop: 8, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
-        <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED }}>THE PIN IS ON</div>
-        <div style={{ fontSize: 11.5, color: known ? INK : SUB, marginTop: 3, lineHeight: 1.45 }}>
-          {busy === "address" ? "Looking up the address…" : address ?? (known ? area ?? "A point already on record. Move the map to change it." : "Nothing yet. Move the map, search, or use your location.")}
-        </div>
-        {area ? <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>Area: {area}</div> : null}
-      </div>
+      <GoogleMapPicker value={point} onPick={moved} zoom={placed ? 16 : 11} label="Move the map to place the pin on your studio" />
 
       {note ? <div style={{ fontSize: 10.5, color: "#B45309", marginTop: 6, lineHeight: 1.45 }}>{note}</div> : null}
     </div>

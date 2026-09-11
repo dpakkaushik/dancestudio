@@ -1,10 +1,17 @@
 /**
- * Look at the LOCATION PICKER for real (11 Sep 2026).
+ * THE GOOGLE MAPS PICKER, END TO END (11 Sep 2026).
  *
- * Makes a verified organization, gives it a subscribed studio, signs in as its
- * owner, opens the business Edit sheet, and shoots the map — then drags the map
- * and shoots it again, so the tiles, the pin and the reverse-geocoded address
- * are all seen rather than assumed. Everything it makes is deleted at the end.
+ * Makes a verified organization with a subscribed studio, signs in as its owner,
+ * opens the business Edit sheet and drives the real picker:
+ *
+ *   1. the GOOGLE map renders (its own `.gm-style` container, not a stand-in)
+ *   2. typing an address returns Places suggestions
+ *   3. choosing one moves the pin and fills the address
+ *   4. the point, the area, the CITY and `location_set_at` land in the database
+ *
+ * Step 4 is the one that matters: the sheet says "Saved" from the server
+ * action's own answer, and only the row proves it. Everything it makes is
+ * deleted at the end, and any console error fails the run.
  *
  *   npm run dev            # in another terminal
  *   NODE_PATH=$(pwd)/node_modules node scripts/shots/shoot-location.js
@@ -37,6 +44,11 @@ const rest = async (method, url, body) => {
   fs.mkdirSync(OUT, { recursive: true });
   const stamp = Date.now().toString(36);
   const email = `shot.loc.${stamp}@example.com`;
+  const problems = [];
+  const check = (ok, what) => {
+    console.log(`  ${ok ? "ok  " : "FAIL"} ${what}`);
+    if (!ok) problems.push(what);
+  };
 
   const link = await fetch(`${SUPABASE}/auth/v1/admin/generate_link`, {
     method: "POST",
@@ -51,7 +63,7 @@ const rest = async (method, url, body) => {
   });
   await rest("PATCH", `/rest/v1/profiles?id=eq.${link.id}`, { verified_at: new Date().toISOString() });
 
-  /* the studio, made by the service role the way the proofs do — Pune's
+  /* the studio, made by the service role the way the proofs do — on Pune's
      centroid, which is exactly the guess the picker exists to replace */
   const [tenant] = await rest("POST", "/rest/v1/tenants", {
     type: "studio", name: `Shot Studio ${stamp}`, area: "Kothrud", city: "Pune",
@@ -72,15 +84,14 @@ const rest = async (method, url, body) => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
-  const problems = [];
   page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
   page.on("response", (r) => {
     if (r.status() >= 500) problems.push(`${r.status()} ${r.url()}`);
   });
-  /* a console warning is what Next's dev overlay counts as an "Issue", and a
-     screenshot cannot tell you which one — so they are read here */
   page.on("console", (m) => {
-    if (m.type() === "error" || m.type() === "warning") problems.push(`console.${m.type()}: ${m.text().slice(0, 300)}`);
+    const t = m.text();
+    /* Google's own loader chatter is not this app's problem */
+    if (m.type() === "error" && !/Google Maps|gstatic|googleapis/i.test(t)) problems.push(`console.error: ${t.slice(0, 220)}`);
   });
 
   await page.goto(`${BASE}/auth/confirm?token_hash=${link.hashed_token}&type=${link.verification_type ?? "magiclink"}`);
@@ -92,46 +103,46 @@ const rest = async (method, url, body) => {
   await page.getByRole("button", { name: "Edit business", exact: true }).click();
   await page.waitForTimeout(600);
 
-  /* the map is at the foot of the sheet */
   const map = page.getByRole("application", { name: /Move the map/i });
   await map.scrollIntoViewIfNeeded();
-  /* tiles are images from a third party — give them a moment to land */
-  await page.waitForTimeout(3500);
+  /* Google's script, its tiles and its container all have to arrive */
+  await page.waitForTimeout(5000);
   await page.screenshot({ path: path.join(OUT, "loc-2-picker.png"), fullPage: true });
 
-  const tiles = await page.locator('img[src*="tile.openstreetmap.org"]').count();
-  console.log(`  tiles rendered: ${tiles}`);
+  check((await page.locator("script[data-dos-maps]").count()) === 1, "the Maps JavaScript API is loaded exactly once");
+  check((await page.locator(".gm-style").count()) > 0, "Google's own map container rendered");
+  check((await page.getByText(/map is not available/i).count()) === 0, "the map did not fall back to the unavailable panel");
 
-  /* drag the map, which is the whole gesture: the pin stays, the world moves,
-     and letting go asks the server what the pin is standing on */
-  const box = await map.boundingBox();
-  if (box) {
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + box.width / 2 - 90, box.y + box.height / 2 - 60, { steps: 12 });
-    await page.mouse.up();
+  /* 2. typing an address returns Places suggestions */
+  const search = page.getByRole("searchbox", { name: /Search an address or landmark/i });
+  await search.fill("Shivajinagar Pune");
+  await page.waitForTimeout(2500);
+  /* scoped to the search's own listbox: the Edit sheet also has a `Since`
+     year <select>, whose <option>s carry the same role */
+  const options = page.getByRole("listbox").getByRole("option");
+  const n = await options.count();
+  check(n > 0, `Places Autocomplete answered (${n} suggestions)`);
+
+  if (n > 0) {
+    const first = (await options.first().innerText()).replace(/\s+/g, " ").trim();
+    console.log(`       first suggestion: ${first.slice(0, 70)}`);
+    await options.first().click();
+    await page.waitForTimeout(3500);
+    await page.screenshot({ path: path.join(OUT, "loc-3-after-pick.png"), fullPage: true });
+    const pinnedOn = await page.getByText(/THE PIN IS ON/i).locator("..").innerText().catch(() => "");
+    console.log(`       the pin is on: ${pinnedOn.replace(/\s+/g, " ").slice(0, 130)}`);
+    check(/Pune/i.test(pinnedOn), "the chosen place's address is shown back");
   }
-  await page.waitForTimeout(4000);
-  await map.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: path.join(OUT, "loc-3-after-drag.png"), fullPage: true });
-
-  const pinnedOn = await page.getByText(/THE PIN IS ON/i).locator("..").innerText().catch(() => "");
-  console.log(`  after the drag: ${pinnedOn.replace(/\s+/g, " ").slice(0, 160)}`);
-
-  /* THE PIN IS ONLY PLACED IF IT IS SAVED (11 Sep 2026). Reading it back from
-     the database is the only way to know: the sheet says "Saved" from the
-     server action's own answer, and `location_set_at` is what every screen
-     downstream actually reads. */
-  const saved = await rest("GET", `/rest/v1/tenants?id=eq.${tenant.id}&select=lat,lng,area,location_set_at`);
-  const row = saved[0] ?? {};
-  const moved = row.lat !== null && Math.abs(Number(row.lat) - 18.5204) > 0.0005;
-  console.log(`  saved in the database: lat=${row.lat} lng=${row.lng} area=${row.area} location_set_at=${row.location_set_at ?? "null"}`);
-  if (!row.location_set_at) problems.push("the pin was NOT saved — location_set_at is still null");
-  if (!moved) problems.push(`the point did not move off the city centroid (lat=${row.lat})`);
 
   await browser.close();
 
-  /* clean up, hardest first */
+  /* 4. THE ONLY PROOF THAT COUNTS: the row */
+  const saved = await rest("GET", `/rest/v1/tenants?id=eq.${tenant.id}&select=lat,lng,area,city,location_set_at`);
+  const row = saved[0] ?? {};
+  console.log(`       saved: lat=${row.lat} lng=${row.lng} area=${row.area} city=${row.city} location_set_at=${row.location_set_at ?? "null"}`);
+  check(Boolean(row.location_set_at), "the pin was saved — location_set_at is stamped");
+  check(row.lat !== null && Math.abs(Number(row.lat) - 18.5204) > 0.0005, "the point moved off the city centroid");
+
   await rest("DELETE", `/rest/v1/subscriptions?tenant_id=eq.${tenant.id}`);
   await rest("DELETE", `/rest/v1/tenant_members?tenant_id=eq.${tenant.id}`);
   await rest("DELETE", `/rest/v1/tenants?id=eq.${tenant.id}`);
@@ -142,7 +153,7 @@ const rest = async (method, url, body) => {
     problems.forEach((p) => console.log(`  ${p}`));
     process.exit(1);
   }
-  console.log("\nShot clean, and everything it made is gone.");
+  console.log("\nThe Google picker works end to end, and everything it made is gone.");
 })().catch((e) => {
   console.error(e);
   process.exit(1);

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
-import { DOS_CITIES } from "@/lib/constants/cities";
+import { CityPicker } from "@/features/geo/components/CityPicker";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, type EnquiryField, type EnquiryType } from "@/types/enquiry";
@@ -137,7 +137,6 @@ export function EnquirySheet({
   const [eventName, setEventName] = useState("");
   const [addr, setAddr] = useState("");
   const [city, setCity] = useState("");
-  const [cityOpen, setCityOpen] = useState(false);
   const [mobile, setMobile] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -396,63 +395,18 @@ export function EnquirySheet({
 
             <Lab>Location</Lab>
             <input aria-label="Venue or address" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Venue / address details" style={{ ...inp, marginBottom: 8 }} />
-            <div style={{ position: "relative" }}>
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="City"
-                aria-expanded={cityOpen}
-                onKeyDown={pressKey(() => setCityOpen((v) => !v))}
-                onClick={() => setCityOpen((v) => !v)}
-                style={{ ...inp, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-                  <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z" />
-                  <circle cx="12" cy="10" r="2.5" />
-                </svg>
-                <span style={{ flex: 1, color: city ? "var(--text)" : "var(--sub)" }}>{city || "Select city"}</span>
-                <span style={{ fontSize: 11, color: "var(--sub)" }}>▾</span>
-              </div>
-              {cityOpen ? (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 6px)",
-                    left: 0,
-                    right: 0,
-                    zIndex: 40,
-                    maxHeight: 190,
-                    overflowY: "auto",
-                    background: "var(--solid)",
-                    border: "1px solid var(--el)",
-                    borderRadius: 12,
-                    padding: 6,
-                    boxShadow: "0 10px 28px rgba(0,0,0,.45)",
-                  }}
-                >
-                  {DOS_CITIES.map((c2) => (
-                    <div
-                      key={c2}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={pressKey(() => {
-                        setCity(c2);
-                        setCityOpen(false);
-                        setErr("");
-                      })}
-                      onClick={() => {
-                        setCity(c2);
-                        setCityOpen(false);
-                        setErr("");
-                      }}
-                      style={{ padding: "9px 10px", borderRadius: 9, cursor: "pointer", fontSize: 12.5, fontWeight: city === c2 ? 900 : 600, background: city === c2 ? "var(--el)" : "transparent" }}
-                    >
-                      {c2}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            {/* ── THE CITY IS A SEARCH, NOT A LIST (11 Sep 2026) ─────────────
+                This was a hand-rolled dropdown over DOS_CITIES, so an enquiry
+                for an event in Kochi could not say where it was. Now it is a
+                Google city search — there is no address here to read one off. */}
+            <CityPicker
+              value={city || null}
+              label="City"
+              onChange={(next) => {
+                setCity(next ?? "");
+                setErr("");
+              }}
+            />
 
             <Lab>Your number (optional)</Lab>
             <input aria-label="Your number" value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="+91 …  so they can call you back" inputMode="tel" style={inp} />

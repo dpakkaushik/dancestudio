@@ -5,7 +5,6 @@ import { useState, useTransition } from "react";
 import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
 import { setTenantLocationAction } from "@/features/geo/server-actions/location";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
-import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import type { PublicTenant } from "@/types/publicProfile";
@@ -19,7 +18,6 @@ import { PlatformIcon, Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile
  *  through the one owner-only door, `update_tenant_profile`, which re-checks
  *  ownership inside and validates what a form cannot be trusted to. */
 
-const isDosCity = (v: string | null): v is DosCity => Boolean(v) && (DOS_CITIES as readonly string[]).includes(v as string);
 
 export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; onClose: () => void }) {
   const router = useRouter();
@@ -164,7 +162,9 @@ export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; o
       <div style={{ ...fieldLabel, marginTop: 14 }}>Where it is</div>
       <LocationPicker
         value={{ lat: tenant.lat, lng: tenant.lng, area: tenant.area }}
-        city={isDosCity(tenant.city) ? tenant.city : null}
+        /* the business already has a point; the centre is only the fallback for
+           one that does not, so its own coordinates are the honest opening */
+        centre={tenant.lat != null && tenant.lng != null ? { lat: tenant.lat, lng: tenant.lng } : null}
         onChange={savePlace}
       />
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { resilientFetch } from "./fetch";
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -8,6 +9,8 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      /* reads retry once or twice when the gateway blinks (11 Sep 2026) — see lib/supabase/fetch.ts */
+      global: { fetch: resilientFetch },
       cookies: {
         getAll() {
           return cookieStore.getAll();

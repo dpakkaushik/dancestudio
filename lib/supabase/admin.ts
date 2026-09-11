@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { resilientFetch } from "./fetch";
 
 /** Service-role client — bypasses RLS. Server-only: used by the Cashfree webhook
  *  route and the server-verified checkout handshake to run the apply_* RPCs
@@ -14,5 +15,7 @@ export function createSupabaseAdminClient(): SupabaseClient {
   }
   return createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    /* reads retry when the gateway blinks; the apply_* RPCs are POSTs and never do (11 Sep 2026) */
+    global: { fetch: resilientFetch },
   });
 }

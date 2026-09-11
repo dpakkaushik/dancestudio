@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 
 /**
  * The admin panel, phase 2 (10 Sep 2026): reporting, and taking ONE business
@@ -35,6 +35,29 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
+
+/** NAME A CITY IN THE PICKER (11 Sep 2026).
+ *
+ *  `DOS_CITIES` is gone, so there is no `<select name="city">` any more — and
+ *  no chips either: the City field is a Google city search, or, on a studio and
+ *  an event, the city the placed pin resolved to.
+ *
+ *  A test must not depend on Google answering — it costs quota and can simply
+ *  stop on a demo key — so it takes the deterministic path the product has for
+ *  exactly that situation: type the name, take it as typed. When the field
+ *  already holds a city (an edit, or a pin that named one) it is a read-back
+ *  with a Change button, so that is pressed first.
+ *
+ *  `page` is wherever the picker lives — the page, or the dialog it is in, so
+ *  a sheet's own field is not confused with the page's behind it. */
+async function pickCity(page: Page | Locator, city: string) {
+  const box = page.getByRole("searchbox", { name: /Search your city/i });
+  if ((await box.count()) === 0) {
+    await page.getByRole("button", { name: "Change city" }).first().click();
+  }
+  await box.first().fill(city);
+  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+}
 const adminHeaders = {
   apikey: serviceKey,
   Authorization: `Bearer ${serviceKey}`,
@@ -218,9 +241,7 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.getByRole("button", { name: "Add studio" }).click();
     await owner.locator('input[name="name"]').fill(studioName);
     await owner.locator('input[name="area"]').fill("Baner");
-    const city = owner.locator('select[name="city"]');
-    await city.selectOption("Pune");
-    await expect(city).toHaveValue("Pune");
+    await pickCity(owner, "Pune");
     await owner.getByLabel("Room 1 name").fill("Studio A");
     await owner.getByRole("button", { name: "Create studio" }).click();
     await expect(owner.getByText(studioName, { exact: true })).toBeVisible();

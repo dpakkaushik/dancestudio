@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createCrewAction } from "@/features/crews/server-actions/crews";
 import { PeoplePicker, personGradient, personInitials } from "@/features/people/components/PeoplePicker";
-import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
+import { CityPicker } from "@/features/geo/components/CityPicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -21,12 +21,15 @@ import { Toast, pressKey } from "./crew-kit";
 
 const card: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "12px 14px", marginBottom: 10 };
 const inp: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "10px 12px", fontSize: 13, color: "var(--text)", outline: "none", fontFamily: DOS_UI };
-const sel: React.CSSProperties = { flex: 1, minWidth: 0, background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "10px", color: "var(--text)", fontSize: 12, fontWeight: 700, outline: "none", WebkitAppearance: "none", appearance: "none", fontFamily: DOS_UI };
 
 export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [city, setCity] = useState<DosCity>(defaultCity && (DOS_CITIES as readonly string[]).includes(defaultCity) ? (defaultCity as DosCity) : "New Delhi");
+  /* whatever this dancer says their own city is, else wherever is busiest —
+     never one of twelve hardcoded names any more (11 Sep 2026) */
+  /* the leader's own city to start with; a crew has no address to read one
+     off, so the field is a Google city search (11 Sep 2026) */
+  const [city, setCity] = useState<string>(defaultCity?.trim() || "");
   const [style, setStyle] = useState("");
   const [members, setMembers] = useState<Profile[]>([]);
   const [pick, setPick] = useState(false);
@@ -64,15 +67,7 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
         <div style={card}>
           <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", marginBottom: 8 }}>DETAILS</div>
           <input value={name} aria-label="Crew name" onChange={(e) => setName(e.target.value.slice(0, 64))} placeholder="Crew name" style={{ ...inp, marginBottom: 8 }} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <select value={city} aria-label="City" onChange={(e) => setCity(e.target.value as DosCity)} style={sel}>
-              {DOS_CITIES.map((x) => (
-                <option key={x} value={x}>
-                  📍 {x}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CityPicker value={city || null} label="City" onChange={(next) => setCity(next ?? "")} />
           {/* the app's one style picker (9561) — searchable, with "All styles" above the list */}
           <div style={{ marginTop: 8 }}>
             <DosStylePicker value={style} onChange={setStyle} all placeholder="Dance style" />

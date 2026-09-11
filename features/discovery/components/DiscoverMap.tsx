@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPicker, type MapMarker } from "@/features/geo/components/MapPicker";
+import { GoogleMapPicker, type MapMarker } from "@/features/geo/components/GoogleMap";
 import { INK, SUB } from "@/lib/design/tokens";
 
 const CARD = "var(--card)";
@@ -9,7 +9,7 @@ const EL = "var(--el)";
 /** DISCOVER, AS A MAP (11 Sep 2026 — the user: "if can show it on map much
  *  better, user will check nearest studio using location only").
  *
- *  The same tile map the picker is, with its centre pin off and every business
+ *  The same Google map the picker is, with its centre pin off and every business
  *  on the shelf drawn as a pin you can press. It is centred where the list is
  *  measured from — the city's centre, or the person's own point when Near me
  *  is on — so what is close on the map is what is first in the list.
@@ -32,7 +32,7 @@ export function DiscoverMap({
 }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <MapPicker value={centre} zoom={markers.length > 0 ? 13 : 12} height={300} onPick={() => undefined} markers={markers} showPin={false} label={`${what} on the map`} />
+      <GoogleMapPicker value={centre} zoom={markers.length > 0 ? 13 : 12} height={300} onPick={() => undefined} markers={markers} showPin={false} label={`${what} on the map`} />
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 6, fontSize: 10.5, color: SUB, padding: "0 2px" }}>
         <span style={{ fontWeight: 800, color: INK }}>
           {markers.length === 0 ? `No ${what.toLowerCase()} on the map yet` : `${markers.length} ${what.toLowerCase()} on the map`}

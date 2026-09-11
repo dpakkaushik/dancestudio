@@ -107,7 +107,10 @@ async function signUp(page, email) {
     await page.getByText("＋ Add studio").click();
     await page.locator('input[name="name"]').fill("EEE Dance Studio");
     await page.locator('input[name="area"]').fill("Kothrud");
-    await page.locator('select[name="city"]').selectOption("Pune");
+    /* the city picker replaced the select (11 Sep 2026) — a Google city search,
+       with the typed name as the fallback a test can rely on */
+    await page.getByRole("searchbox", { name: /Search your city/i }).fill("Pune");
+    await page.getByRole("listbox").getByRole("option", { name: 'Use "Pune"' }).click();
     await page.getByLabel("Room 1 name").fill("Studio A");
     await shot("new-studio-sheet");
     await page.getByRole("button", { name: "Create studio" }).click();

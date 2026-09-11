@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { EventForm } from "@/features/events/components/EventForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findDiscoverCities } from "@/repositories/cities";
 import { findEventById } from "@/repositories/events";
 import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
@@ -25,5 +26,6 @@ export default async function EditEventPage({ params }: { params: Promise<{ tena
   if (role !== "owner" && role !== "trainer") {
     redirect(`/business/${tenantId}/events`);
   }
-  return <EventForm tenantId={tenantId} existing={event} />;
+  const cityCentres = await findDiscoverCities(supabase);
+  return <EventForm tenantId={tenantId} existing={event} cityCentres={cityCentres} />;
 }

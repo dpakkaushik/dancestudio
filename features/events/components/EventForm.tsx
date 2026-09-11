@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { saveEventAction } from "@/features/events/server-actions/events";
 import type { EventPayload } from "@/repositories/events";
+import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
-import { DOS_CITIES, type DosCity } from "@/lib/constants/cities";
+import { centreOf } from "@/repositories/cities";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -103,9 +104,8 @@ function Chip({ on, onClick, children, col }: { on: boolean; onClick: () => void
   );
 }
 
-const isDosCity = (v: string): v is DosCity => (DOS_CITIES as readonly string[]).includes(v);
 
-export function EventForm({ tenantId, existing }: { tenantId: string; existing: DanceEvent | null }) {
+export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: string; existing: DanceEvent | null; /** the city registry (11 Sep 2026) — only where the map opens once a city is known; the city itself comes off the venue's address */ cityCentres?: Array<{ city: string; lat: number; lng: number }> }) {
   const router = useRouter();
   const E = existing;
   const [step, setStep] = useState(0);
@@ -118,6 +118,10 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
   const [venue, setVenue] = useState(E?.venue ?? "");
   const [addr, setAddr] = useState(E?.address ?? "");
   const [city, setCity] = useState(E?.city ?? "");
+  /* the pin writes Address and City until the person types an address of their
+     own (11 Sep 2026) — an event being edited already has one, and keeps it */
+  const [addrEdited, setAddrEdited] = useState(Boolean(E?.address));
+  const [citySource, setCitySource] = useState<"address" | null>(null);
   const [maps, setMaps] = useState(E?.mapsUrl ?? "");
   /* the venue's point (11 Sep 2026): from the saved event when it has one, else
      wherever the pin is put — it writes `maps` and rides in the payload */
@@ -161,6 +165,7 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
   const STEPS = ["The event", "Format, tickets & publish"];
   const days = sD && eD ? eventDays(sD, eD) : ["—"];
   const venueOK = !!venue.trim() && !!city.trim();
+  /* the registry's names — the quick chips beside the map */
   const openEntryTiers = ENTRY_KEYS.filter((k) => entryTiers[k].on).map((k) => ({ format: k, fee_inr: Number(entryTiers[k].fee) || 0, capacity: Number(entryTiers[k].cap) || 0 }));
   const entryLow = openEntryTiers.length ? Math.min(...openEntryTiers.map((t) => t.fee_inr)) : 0;
   const blockers = cat
@@ -316,39 +321,54 @@ export function EventForm({ tenantId, existing }: { tenantId: string; existing: 
             {/* A VENUE IS NOT OPTIONAL (15965) */}
             <Head n="5">VENUE</Head>
             <input value={venue} aria-label="Venue name" onChange={(ev) => setVenue(ev.target.value)} placeholder="Venue name · e.g. Talkatora Indoor Stadium" style={inp} />
-            <div style={{ height: 9 }} />
-            <div style={{ display: "flex", gap: 9 }}>
-              <input value={addr} aria-label="Address" onChange={(ev) => setAddr(ev.target.value)} placeholder="Address" style={inp} />
-              <select value={city} onChange={(ev) => setCity(ev.target.value)} aria-label="City" style={{ width: 130, flexShrink: 0, boxSizing: "border-box", background: "var(--card)", border: "none", borderRadius: 12, padding: "13px 12px", fontSize: 14, color: city ? "var(--text)" : "var(--sub)", outline: "none", WebkitAppearance: "none", appearance: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                <option value="">City</option>
-                {DOS_CITIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {!venueOK ? <div style={{ fontSize: 10, color: "#F87171", marginTop: 6, fontWeight: 700 }}>{!venue.trim() ? "Every event needs a venue name." : "Which city is it in?"}</div> : null}
 
-            {/* ── THE VENUE ON THE MAP (11 Sep 2026 — the user: "wherever we are
-                giving an address, city or location there should be a location
-                picker"). The map link used to be typed by hand, which is a
-                link nobody checks; now the pin writes it — a Google Maps URL to
-                the exact point — and fills the address and city from what it is
-                standing on. The point itself is saved too, so an event can be
-                found by distance the way a studio can. ── */}
+            {/* ── THE VENUE ON THE MAP, BEFORE ITS ADDRESS IS TYPED (11 Sep 2026
+                — the user: "wherever we are giving an address, city or location
+                there should be a location picker", and then: "city should be
+                picked from the API, not a list"). Search the venue (Google
+                suggests as you type), or Use my location, or drag the map: the
+                pin writes the Address and the City below it, and the map link
+                — a Google Maps URL to the exact point, which used to be typed by
+                hand and checked by nobody. The point is saved too, so an event
+                can be found by distance the way a studio can. ── */}
             <div style={{ height: 12 }} />
-            <div style={{ fontSize: 12, color: "var(--sub)", marginBottom: 6 }}>Put the pin on the venue — it writes the map link for you</div>
+            <div style={{ fontSize: 12, color: "var(--sub)", marginBottom: 6 }}>Where it is — it writes the address, the city and the map link</div>
             <LocationPicker
               value={{ lat: geo?.lat ?? null, lng: geo?.lng ?? null, area: addr || null }}
-              city={isDosCity(city) ? city : null}
+              centre={centreOf(cityCentres, city)}
               onChange={(p) => {
                 setGeo({ lat: p.lat, lng: p.lng });
                 setMaps(`https://maps.google.com/?q=${p.lat},${p.lng}`);
-                if (p.label && !addr.trim()) setAddr(p.label.split(",").slice(0, 3).join(",").trim());
-                if (p.city && !city) setCity(p.city);
+                if (p.label && !addrEdited) setAddr(p.label.split(",").slice(0, 3).join(",").trim());
+                /* the map is the authority on which city a point is in */
+                if (p.city) {
+                  setCity(p.city);
+                  setCitySource("address");
+                }
               }}
             />
+            <div style={{ height: 10 }} />
+            <input
+              value={addr}
+              aria-label="Address"
+              onChange={(ev) => {
+                setAddr(ev.target.value);
+                setAddrEdited(true);
+              }}
+              placeholder="Address · filled from the pin, or type it"
+              style={inp}
+            />
+            <div style={{ height: 10 }} />
+            <CityPicker
+              value={city || null}
+              source={citySource}
+              label="City"
+              onChange={(next) => {
+                setCity(next ?? "");
+                setCitySource(null);
+              }}
+            />
+            {!venueOK ? <div style={{ fontSize: 10, color: "#F87171", marginTop: 6, fontWeight: 700 }}>{!venue.trim() ? "Every event needs a venue name." : "Which city is it in?"}</div> : null}
             <div style={{ height: 9 }} />
             <input value={maps} aria-label="Google Maps link" onChange={(ev) => setMaps(ev.target.value)} placeholder="Google Maps link · written by the pin, or paste your own" style={inp} />
             {!maps.trim() ? <div style={{ fontSize: 10, color: "#F87171", marginTop: 5, fontWeight: 700 }}>Events need a map link so people can find the venue — move the pin, or paste one.</div> : null}
