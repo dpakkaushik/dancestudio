@@ -6,13 +6,11 @@ import { DosStyleCoin } from "@/components/ui/DosStyleKit";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { finishOnboardingAction, saveProfileBasicsAction } from "@/features/auth/server-actions/auth";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
-import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
 import { BTN_STYLE, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
 import { dosToolPaint } from "@/lib/format/styleInk";
 import { photoUrl } from "@/lib/media/photo";
-import { PROOF_MAX, PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
 import type { Profile, ProfileRole, SocialLink } from "@/types/profile";
 
 /** WHO IS HERE (8 Sep 2026, the user's decision): a person, or an organization.
@@ -116,12 +114,9 @@ type Step = "profile" | "styles" | "socials" | "proof" | "done";
 export function OnboardingForm({
   userId,
   existing = null,
-  proofPhotos = [],
 }: {
   userId: string;
   existing?: Profile | null;
-  /** what an organization coming back to a half-finished flow has already shown */
-  proofPhotos?: ProofPhoto[];
 }) {
   const [role, setRole] = useState<ProfileRole>(existing?.role ?? "user");
   const isOrg = role === "org";
@@ -137,9 +132,7 @@ export function OnboardingForm({
   const [yt, setYt] = useState("");
   const [ig, setIg] = useState("");
   const [fb, setFb] = useState("");
-  const [web, setWeb] = useState("");
   const [extras, setExtras] = useState<Array<{ label: string; url: string }>>([]);
-  const [proofCount, setProofCount] = useState(proofPhotos.length);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -164,7 +157,6 @@ export function OnboardingForm({
     if (ig.trim()) out.push({ platform: "Instagram", url: asUrl(ig) });
     if (yt.trim()) out.push({ platform: "YouTube", url: asUrl(yt) });
     if (fb.trim()) out.push({ platform: "Facebook", url: asUrl(fb) });
-    if (isOrg && web.trim()) out.push({ platform: "Website", url: asUrl(web) });
     extras.forEach((x) => {
       if (x.label.trim() && x.url.trim()) out.push({ platform: x.label.trim().slice(0, 40), url: asUrl(x.url) });
     });
@@ -256,7 +248,12 @@ export function OnboardingForm({
               });
               return;
             }
-            if (ready) setStep(isOrg ? "socials" : "styles");
+            /* AN ORGANIZATION IS DONE HERE (11 Sep 2026 — the user: "org no
+               more needs social media link or images for verification"). Its
+               links were the evidence DanceOS checked; a STUDIO's links and
+               photos are what it checks now, asked for on the hub once the
+               studio exists. A person still names their styles. */
+            if (ready) setStep(isOrg ? "done" : "styles");
           }}
           style={{ ...BTN_STYLE, background: ready ? PINK : LINE, color: ready ? "#fff" : SUB, marginTop: 4, transition: "all .2s" }}
         >
@@ -318,26 +315,22 @@ export function OnboardingForm({
     );
   }
 
-  /* ─── SOCIALS (3890-3913) — optional for a person, the price of asking for an organization ─── */
+  /* ─── SOCIALS (3890-3913) — a PERSON's, and optional. An organization never
+        reaches this screen since 11 Sep 2026: it is asked for no links at all,
+        and the ones it could add were shown to nobody anyway — an organization
+        has no public page; its studios have theirs. ─── */
   if (step === "socials") {
-    const any = Boolean(yt.trim() || ig.trim() || fb.trim() || (isOrg && web.trim()) || extras.some((x) => x.url.trim()));
-    /* OPTIONAL FOR EVERYONE (11 Sep 2026). An organization's links were the
-       evidence DanceOS verified it by; now each STUDIO is verified, by its own
-       links and photos, after it exists — so nothing here is required. */
-    const can = true;
+    const any = Boolean(yt.trim() || ig.trim() || fb.trim() || extras.some((x) => x.url.trim()));
     return (
-      <AuthShell toast={toast} progress={[isOrg ? 2 : 3, total]}>
-        <button type="button" aria-label="Back" onClick={() => setStep(isOrg ? "profile" : "styles")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
+      <AuthShell toast={toast} progress={[3, total]}>
+        <button type="button" aria-label="Back" onClick={() => setStep("styles")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
           ←
         </button>
-        <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>{isOrg ? "Your organization's links" : "Your social links"}</div>
-        <div style={{ fontSize: 13, color: SUB, marginBottom: 16 }}>
-          {isOrg ? "Optional — your organization's own pages. Each studio you open has links of its own, which is what DanceOS checks when it verifies the studio." : "Optional now — worth adding if you take the Artist plan later."}
-        </div>
+        <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Your social links</div>
+        <div style={{ fontSize: 13, color: SUB, marginBottom: 16 }}>Optional now — worth adding if you take the Artist plan later.</div>
         <Soc ic={<span style={{ background: "linear-gradient(45deg,#F56040,#C13584)", WebkitBackgroundClip: "text", color: "transparent", fontWeight: 900 }}>◎</span>} ph="Instagram profile URL" label="Instagram profile URL" val={ig} set={setIg} color="#C13584" />
         <Soc ic={<span style={{ color: "#FF0000", fontWeight: 900 }}>▶</span>} ph="YouTube channel URL" label="YouTube channel URL" val={yt} set={setYt} color="#FF0000" />
         <Soc ic={<span style={{ color: "#1877F2", fontWeight: 900, fontFamily: "Georgia" }}>f</span>} ph="Facebook page URL" label="Facebook page URL" val={fb} set={setFb} color="#1877F2" />
-        {isOrg ? <Soc ic={<span style={{ color: "#5AC8FA", fontWeight: 900 }}>⌂</span>} ph="Website URL" label="Website URL" val={web} set={setWeb} color="#5AC8FA" /> : null}
         {extras.map((x, i, arr) => (
           <div key={i} style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
             <Arrows i={i} n={arr.length} onMove={(dir) => setExtras(move(arr, i, dir))} />
@@ -353,12 +346,9 @@ export function OnboardingForm({
         </button>
         <button
           type="button"
-          disabled={pending || !can}
-          aria-disabled={!can}
-          /* the photo step is not on an organization's path any more — the photos
-             belong to a STUDIO and are shown for one on the hub (11 Sep 2026) */
-          onClick={() => can && writeProfile({ styles: mine, socials: socials() }, () => setStep("done"))}
-          style={{ ...BTN_STYLE, background: can ? PINK : LINE, color: can ? "#fff" : SUB }}
+          disabled={pending}
+          onClick={() => writeProfile({ styles: mine, socials: socials() }, () => setStep("done"))}
+          style={{ ...BTN_STYLE, background: PINK, color: "#fff" }}
         >
           {pending ? "Saving…" : any ? "Continue" : "Skip for now →"}
         </button>
@@ -366,38 +356,20 @@ export function OnboardingForm({
     );
   }
 
-  /* ─── PROOF (R16, 9 Sep 2026) — an organization shows DanceOS its space ─── */
-  if (step === "proof") {
-    const enough = proofCount >= PROOF_MIN;
-    return (
-      <AuthShell toast={toast} progress={[3, total]}>
-        <button type="button" aria-label="Back" onClick={() => setStep("socials")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
-          ←
-        </button>
-        <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>Show DanceOS your space</div>
-        <ProofPhotos orgId={userId} initialPhotos={proofPhotos} onCount={setProofCount} refreshRoute={false} />
-        <button
-          type="button"
-          disabled={pending || !enough}
-          aria-disabled={!enough}
-          onClick={() => enough && setStep("done")}
-          style={{ ...BTN_STYLE, marginTop: 18, background: enough ? PINK : LINE, color: enough ? "#fff" : SUB }}
-        >
-          {enough ? "Continue" : `Add ${PROOF_MIN - proofCount} more photo${PROOF_MIN - proofCount === 1 ? "" : "s"}`}
-        </button>
-        <div style={{ fontSize: 11, color: SUB, marginTop: 10, textAlign: "center", lineHeight: 1.5 }}>
-          {PROOF_MIN} is the minimum, {PROOF_MAX} the most DanceOS needs. You can change them later from Home.
-        </div>
-      </AuthShell>
-    );
-  }
 
   /* ─── DONE — take a bow 🎉 (3915-3943); for an organization, the review begins ─── */
   const myStyles = [...new Set(mine)].slice(0, 5);
   /* nothing is asked of DanceOS as the flow ends any more (11 Sep 2026): an
-     organization is not reviewed — its studios are, one by one, from the hub */
+     organization is not reviewed — its studios are, one by one, from the hub.
+     An organization also writes its profile HERE rather than on the links
+     screen, because it no longer sees one: without this, the name and city it
+     typed would never reach `update_my_profile` at all. */
   const leave = () =>
     start(async () => {
+      if (isOrg) {
+        const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, about: null, phone: null, styles: [], socials: [] });
+        if (out.error) return fire(out.error);
+      }
       await finishOnboardingAction();
     });
   return (

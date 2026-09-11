@@ -4,7 +4,6 @@ import { OnboardingForm } from "@/features/auth/components/OnboardingForm";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
-import { findMyProofPhotos } from "@/repositories/orgStanding";
 import { findProfileById } from "@/repositories/profiles";
 
 /** Onboarding — four screens for a person, five for an organization since R16
@@ -33,8 +32,8 @@ export default async function OnboardingPage() {
   if (!profile && (await amIPlatformAdmin(supabase))) {
     redirect("/admin/verifications");
   }
-  /* an organization coming back mid-flow keeps the photos it already showed */
-  const proofPhotos =
-    profile?.role === "org" ? await findMyProofPhotos(supabase).catch(() => []) : [];
-  return <OnboardingForm userId={user.id} existing={profile} proofPhotos={proofPhotos} />;
+  /* an organization is asked for no photos during onboarding any more (11 Sep
+     2026) — the 5-10 photos belong to a STUDIO and are shown for one on the
+     hub, after it exists. The read that fetched them went with the screen. */
+  return <OnboardingForm userId={user.id} existing={profile} />;
 }

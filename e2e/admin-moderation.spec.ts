@@ -20,11 +20,12 @@ import { test, expect, type BrowserContext, type Locator, type Page } from "@pla
  *   8. both decisions are in the audit log, as sentences;
  *   9. putting it back is one press, and the studio is on Discover again.
  *
- * The first segment also walks R14's gate in the order a real organization
- * meets it (re-cut 10 Sep 2026 for per-studio subscriptions): no studio at all
- * while it is unverified; once verified, a studio that is born PRIVATE with its
- * own Subscribe button; and the studio public the moment an admin grants that
- * studio's subscription — the comp path, which charges nothing. (The paid path
+ * The first segment also walks the gate in the order a real organization meets
+ * it (re-cut 11 Sep 2026, when verification moved to the studio): a studio can
+ * be opened from the first minute; it is born PRIVATE and unverified; its
+ * photos and links go to an admin, who grants the BADGE; and only then does
+ * Subscribe appear — the studio goes public the moment an admin grants that
+ * studio's subscription, the comp path, which charges nothing. (The paid path
  * is Cashfree's mandate window, which no browser test drives; the webhook spec
  * proves what its events do.)
  *
@@ -83,9 +84,10 @@ const PNG_BYTES = Buffer.from(
 );
 const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
 
-/** Onboarding, both kinds, as it stands since 8 Sep 2026: who first, one name,
- *  the city, the required photo, then a person's styles or an organization's
- *  required links — and an organization's bow files the verification request. */
+/** Onboarding, both kinds (11 Sep 2026): who first, one name, the city, the
+ *  required photo — then a person picks styles and may add links, and an
+ *  ORGANIZATION is done: it is asked for no links, no photos, and files
+ *  nothing, because DanceOS reviews its STUDIOS, not the organization. */
 async function onboard(page: Page, name: string, role: "User" | "Organization", city: string) {
   await expect(page).toHaveURL(/\/onboarding/);
   const isOrg = role === "Organization";
@@ -96,11 +98,7 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  if (isOrg) {
-    /* 11 Sep 2026: an organization's links are optional, and the photos belong
-       to a STUDIO — shown for one on the hub, after it exists */
-    await page.getByRole("button", { name: "Skip for now →" }).click();
-  } else {
+  if (!isOrg) {
     await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
     await page.getByRole("button", { name: "Continue · 1 style" }).click();
     await page.getByRole("button", { name: "Skip for now →" }).click();

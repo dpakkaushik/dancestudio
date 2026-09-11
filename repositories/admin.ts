@@ -1,14 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SocialLink } from "@/types/profile";
 
-/** PLATFORM ADMINS AND ORGANIZATION VERIFICATION (8 Sep 2026).
+/** PLATFORM ADMINS AND STUDIO VERIFICATION (8 Sep 2026; rewritten 11 Sep).
  *
- *  An organization asks to be verified; an admin reads its social links and
- *  answers; until the answer is yes, nothing the organization runs is public.
- *  Every write here is an RPC that re-checks who is asking — `is_platform_admin`
- *  for the answer, the caller's own role and links for the ask — so nothing in
- *  this file decides anything. The reads lean on two policies: an organization
- *  reads its own requests, an admin reads them all. */
+ *  ⚠ AN ORGANIZATION IS NEVER REVIEWED BY A HUMAN. The user: "org no more needs
+ *  admin verification at all — org has only GST verification, that will be done
+ *  by the API; just the studio needs admin verification." So a request in this
+ *  table is a STUDIO asking to be checked: its 5-10 photos of the space and its
+ *  own public links. An admin approves or rejects with a reason; approval is
+ *  `tenants.verified_at`, the badge, and the studio's own subscription is what
+ *  then puts it on Discover.
+ *
+ *  Rows with a null `tenant_id` are the organization reviews this replaced.
+ *  They are kept as history and are NOT read back into the queue — every read
+ *  here asks for `tenant_id` — because there is no longer anybody to decide
+ *  them. Every write is an RPC that re-checks who is asking, so nothing in this
+ *  file decides anything. */
 
 export type VerificationStatus = "pending" | "approved" | "rejected";
 
@@ -102,6 +109,7 @@ export async function findVerificationQueue(supabase: SupabaseClient): Promise<V
     .from("org_verification_requests")
     .select(REQUEST_SELECT)
     .eq("status", "pending")
+    .not("tenant_id", "is", null)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(200);
@@ -111,30 +119,6 @@ export async function findVerificationQueue(supabase: SupabaseClient): Promise<V
   return ((data ?? []) as unknown as RequestRow[]).map(toRequest);
 }
 
-/** Every organization, verified or not — so an admin can also REVOKE a tick
- *  (the grandfathered ones never had a request). Profiles are signed-in
- *  readable, so this is a plain read; the page is what limits it to admins. */
-export async function findOrganizations(supabase: SupabaseClient): Promise<OrganizationRow[]> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, city, avatar_path, socials, verified_at, created_at")
-    .eq("role", "org")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(500);
-  if (error) {
-    throw new Error(`verification.orgs failed: ${error.message}`);
-  }
-  return ((data ?? []) as Array<{ id: string; full_name: string; city: string | null; avatar_path: string | null; socials: unknown; verified_at: string | null; created_at: string }>).map((r) => ({
-    id: r.id,
-    name: r.full_name,
-    city: r.city,
-    avatarPath: r.avatar_path,
-    socials: toSocials(r.socials),
-    verifiedAt: r.verified_at,
-    createdAt: r.created_at,
-  }));
-}
 
 /** THE ORGANIZATION'S OWN VIEW: its latest request, or null if it never asked.
  *  Says `org_id = me` out loud — an admin's client would otherwise read every
@@ -158,15 +142,6 @@ export async function findMyVerificationRequest(supabase: SupabaseClient): Promi
   return data ? toRequest(data as unknown as RequestRow) : null;
 }
 
-/** the ask — the RPC refuses a person, an already-verified organization, and one with no links */
-export async function requestOrgVerification(supabase: SupabaseClient): Promise<string> {
-  const { data, error } = await supabase.rpc("request_org_verification");
-  if (error) {
-    throw new Error(error.message);
-  }
-  return String(data);
-}
-
 /* ── THE DESK, PAGED (11 Sep 2026) ──────────────────────────────────────────
  *
  *  The user's objection, exactly: "how am I gonna scroll down if there are 2k
@@ -180,17 +155,15 @@ export async function requestOrgVerification(supabase: SupabaseClient): Promise<
  *  the same RLS, not a second list. */
 
 export interface VerificationCounts {
-  /** requests waiting on an admin */
+  /** studios waiting on an admin */
   pending: number;
-  /** requests an admin said no to (the organization may ask again) */
+  /** studios an admin said no to (the owner may ask again) */
   rejected: number;
-  /** organizations wearing the tick right now — grandfathered ones included */
-  verifiedOrgs: number;
-  /** STUDIOS wearing the badge right now (11 Sep 2026) — the figure that
-   *  replaced verifiedOrgs on the desk once the review moved to the studio */
+  /** STUDIOS wearing the badge right now (11 Sep 2026) */
   verifiedStudios: number;
-  /** every live organization */
-  orgs: number;
+  /** every live studio — the denominator that says how much of the platform
+   *  has been checked at all */
+  studios: number;
 }
 
 const headCount = async (q: PromiseLike<{ count: number | null; error: { message: string } | null }>, what: string): Promise<number> => {
@@ -202,14 +175,13 @@ const headCount = async (q: PromiseLike<{ count: number | null; error: { message
 };
 
 export async function countVerification(supabase: SupabaseClient): Promise<VerificationCounts> {
-  const [pending, rejected, verifiedOrgs, verifiedStudios, orgs] = await Promise.all([
-    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "pending").is("deleted_at", null), "pending"),
-    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").is("deleted_at", null), "rejected"),
-    headCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "org").is("deleted_at", null).not("verified_at", "is", null), "verified"),
+  const [pending, rejected, verifiedStudios, studios] = await Promise.all([
+    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "pending").not("tenant_id", "is", null).is("deleted_at", null), "pending"),
+    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").not("tenant_id", "is", null).is("deleted_at", null), "rejected"),
     headCount(supabase.from("tenants").select("id", { count: "exact", head: true }).eq("type", "studio").is("deleted_at", null).not("verified_at", "is", null), "verified studios"),
-    headCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "org").is("deleted_at", null), "orgs"),
+    headCount(supabase.from("tenants").select("id", { count: "exact", head: true }).eq("type", "studio").is("deleted_at", null), "studios"),
   ]);
-  return { pending, rejected, verifiedOrgs, verifiedStudios, orgs };
+  return { pending, rejected, verifiedStudios, studios };
 }
 
 /* `!inner` so a filter on the organization's name narrows the REQUESTS, not
@@ -234,6 +206,8 @@ export async function findVerificationRequestsPage(
     .from("org_verification_requests")
     .select(REQUEST_SELECT_INNER, { count: "exact" })
     .eq("status", input.status)
+    /* a studio's review; the organization reviews this replaced stay history */
+    .not("tenant_id", "is", null)
     .is("deleted_at", null);
   if (input.q) {
     /* the desk searches by the STUDIO's name now — and still by the
@@ -252,46 +226,6 @@ export async function findVerificationRequestsPage(
   return { rows: ((data ?? []) as unknown as RequestRow[]).map(toRequest), total: count ?? 0 };
 }
 
-/** One page of organizations: all of them, only the verified, or only the
- *  unverified — matched on name or city. */
-export async function findOrganizationsPage(
-  supabase: SupabaseClient,
-  input: { verified?: boolean; q?: string | null; page: number; pageSize: number }
-): Promise<Page<OrganizationRow>> {
-  const from = (input.page - 1) * input.pageSize;
-  let query = supabase
-    .from("profiles")
-    .select("id, full_name, city, avatar_path, socials, verified_at, created_at", { count: "exact" })
-    .eq("role", "org")
-    .is("deleted_at", null);
-  if (input.verified === true) {
-    query = query.not("verified_at", "is", null);
-  } else if (input.verified === false) {
-    query = query.is("verified_at", null);
-  }
-  if (input.q) {
-    const term = input.q.replace(/[%_,()]/g, " ").trim();
-    if (term) {
-      query = query.or(`full_name.ilike.%${term}%,city.ilike.%${term}%`);
-    }
-  }
-  const { data, error, count } = await query.order(input.verified === true ? "verified_at" : "created_at", { ascending: false }).range(from, from + input.pageSize - 1);
-  if (error) {
-    throw new Error(`verification.orgs page failed: ${error.message}`);
-  }
-  return {
-    total: count ?? 0,
-    rows: ((data ?? []) as Array<{ id: string; full_name: string; city: string | null; avatar_path: string | null; socials: unknown; verified_at: string | null; created_at: string }>).map((r) => ({
-      id: r.id,
-      name: r.full_name,
-      city: r.city,
-      avatarPath: r.avatar_path,
-      socials: toSocials(r.socials),
-      verifiedAt: r.verified_at,
-      createdAt: r.created_at,
-    })),
-  };
-}
 
 /** ONE STUDIO as the admin's Approved tab draws it (11 Sep 2026). */
 export interface StudioRow {
@@ -353,19 +287,4 @@ export async function findVerifiedStudiosPage(
       };
     }),
   };
-}
-
-/** the answer — admins only, and it moves the tick and every studio's visibility with it */
-export async function decideOrgVerification(
-  supabase: SupabaseClient,
-  input: { orgId: string; approve: boolean; note?: string | null }
-): Promise<void> {
-  const { error } = await supabase.rpc("decide_org_verification", {
-    p_org_id: input.orgId,
-    p_approve: input.approve,
-    p_note: input.note ?? null,
-  });
-  if (error) {
-    throw new Error(error.message);
-  }
 }

@@ -3,9 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { addProofPhoto, removeProofPhoto } from "@/repositories/orgStanding";
+import { removeProofPhoto } from "@/repositories/orgStanding";
 
-/** R16 (9 Sep 2026): recording and withdrawing one verification photo.
+/** R16 (9 Sep 2026): withdrawing one verification photo.
+ *
+ *  ADDING one goes through `addStudioProofPhotoAction` — a photo belongs to a
+ *  STUDIO since 11 Sep 2026, and an organization is asked for none. Removal is
+ *  shared: the row is the same table, and the RPC already checks it is the
+ *  caller's own.
  *
  *  The FILE never comes through here. The browser puts it straight into the
  *  organization's own folder in the private bucket with its own session, and
@@ -14,7 +19,6 @@ import { addProofPhoto, removeProofPhoto } from "@/repositories/orgStanding";
  *  The RPC checks the folder is the caller's own, so a forged path is refused
  *  even though the browser chose it. */
 
-const addSchema = z.object({ path: z.string().min(8).max(400) });
 const removeSchema = z.object({ id: z.string().uuid() });
 
 const refresh = () => {
@@ -22,21 +26,6 @@ const refresh = () => {
   revalidatePath("/business");
   revalidatePath("/admin/verifications");
 };
-
-export async function addProofPhotoAction(input: unknown): Promise<{ error: string | null }> {
-  const parsed = addSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "That photo could not be recorded" };
-  }
-  const supabase = await createSupabaseServerClient();
-  try {
-    await addProofPhoto(supabase, parsed.data.path);
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Could not add that photo" };
-  }
-  refresh();
-  return { error: null };
-}
 
 export async function removeProofPhotoAction(input: unknown): Promise<{ error: string | null }> {
   const parsed = removeSchema.safeParse(input);

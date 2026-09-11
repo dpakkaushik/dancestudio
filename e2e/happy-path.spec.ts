@@ -110,13 +110,13 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
   await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   if (isOrg) {
-    // an organization is not asked what it dances, and since 11 Sep 2026 its
-    // links are OPTIONAL — what DanceOS checks is each STUDIO's links and photos,
-    // later, on the hub, once the studio exists
-    await expect(page.getByText("Your organization's links")).toBeVisible();
-    await page.getByRole("button", { name: "Skip for now →" }).click();
+    // AN ORGANIZATION IS ASKED FOR NOTHING ELSE (11 Sep 2026 — the user: "org
+    // no more needs admin verification at all; org has only GST verification").
+    // No styles, no links, no photos: the name and the logo are the whole flow,
+    // and what DanceOS checks is each STUDIO, later, from the hub.
     await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
     await expect(page.getByText("your first studio is next")).toBeVisible();
+    await expect(page.getByText("Your organization's links")).toHaveCount(0);
   } else {
     // styles: the grid, one picked, and the button counts it
     await expect(page.getByText("Your dance styles")).toBeVisible();

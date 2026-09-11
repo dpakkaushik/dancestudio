@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { addProofPhotoAction, removeProofPhotoAction } from "@/features/orgs/server-actions/proof";
+import { removeProofPhotoAction } from "@/features/orgs/server-actions/proof";
 import { addStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
 import { INK, LINE, SUB } from "@/lib/design/tokens";
 import { PHOTO_TYPES, whyNotAPhoto } from "@/lib/media/photo";
@@ -32,18 +32,18 @@ const MUTED = "var(--muted)";
  *  real signed URL. */
 export function ProofPhotos({
   orgId,
-  tenantId = null,
+  tenantId,
   initialPhotos,
   onCount,
   compact = false,
   refreshRoute = true,
 }: {
   orgId: string;
-  /** WHICH STUDIO these photos show (11 Sep 2026). Set, the strip is a
-   *  studio's evidence and the row is written through the studio's own door;
-   *  null is the organization's legacy strip. The file goes to the same folder
-   *  either way — `proof/{orgId}/…` — so the bucket's policies need no change. */
-  tenantId?: string | null;
+  /** WHICH STUDIO these photos show. A studio is the ONLY subject since
+   *  11 Sep 2026 — an organization is asked for no photos at all — so this is
+   *  required. The file still goes to `proof/{orgId}/…`, the owner's own
+   *  folder, so the bucket's policies were never touched. */
+  tenantId: string;
   initialPhotos: ProofPhoto[];
   /** onboarding counts the strip to decide whether Continue is allowed */
   onCount?: (n: number) => void;
@@ -95,7 +95,7 @@ export function ProofPhotos({
           setError(up.error.message);
           continue;
         }
-        const out = tenantId ? await addStudioProofPhotoAction({ tenantId, path }) : await addProofPhotoAction({ path });
+        const out = await addStudioProofPhotoAction({ tenantId, path });
         if (out.error) {
           /* the row would not take it, so the orphan file goes back out */
           await supabase.storage.from(PROOF_BUCKET).remove([path]);

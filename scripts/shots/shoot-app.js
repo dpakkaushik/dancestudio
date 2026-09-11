@@ -68,10 +68,8 @@ async function signUp(page, email) {
     await page.getByLabel("Your logo", { exact: true }).waitFor({ timeout: 20000 });
     await shot("onboarding-photo");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    /* an organization is not asked what it dances; since 11 Sep 2026 its links
-       are optional too — DanceOS checks each STUDIO's links and photos instead */
-    await shot("onboarding-links");
-    await page.getByRole("button", { name: "Skip for now →" }).click();
+    /* an organization is asked for nothing else since 11 Sep 2026 — no styles,
+       no links, no photos: DanceOS checks each STUDIO, from the hub */
     await page.getByText(/Welcome, /).waitFor();
     await shot("onboarding-done");
     await page.getByRole("button", { name: "Open DanceOS →" }).click();

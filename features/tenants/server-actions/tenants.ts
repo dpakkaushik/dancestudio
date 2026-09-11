@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { requestOrgVerification } from "@/repositories/admin";
 import { findProfileById } from "@/repositories/profiles";
 import { createRoom } from "@/repositories/rooms";
 import { createTenantWithOwner, setTenantLocation } from "@/repositories/tenants";
@@ -168,25 +167,3 @@ export async function createTenantAction(
   return { error: null, created: true, note };
 }
 
-/** THE ASK (8 Sep 2026): an organization puts itself in the admins' queue. The
- *  RPC refuses a person, an organization already verified, and one with no
- *  social links — the links are what gets checked, so they are the price of
- *  asking. Onboarding calls this when an organization finishes; the hub offers
- *  it again after a rejection. Asking twice returns the open request. */
-export async function requestOrgVerificationAction(): Promise<{ error: string | null }> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-  try {
-    await requestOrgVerification(supabase);
-    revalidatePath("/business");
-    revalidatePath("/admin/verifications");
-    return { error: null };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not ask for verification" };
-  }
-}

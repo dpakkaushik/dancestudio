@@ -63,9 +63,8 @@ async function onboardOrg(page: Page, name: string, city: string) {
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   await expect(page.getByLabel("Your logo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  /* 11 Sep 2026: an organization's links are optional, and the photos of a
-     space belong to a STUDIO, shown for one on the hub once it exists */
-  await page.getByRole("button", { name: "Skip for now →" }).click();
+  /* 11 Sep 2026: an organization is asked for no links and no photos — the
+     name and the logo are the whole flow */
   await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
