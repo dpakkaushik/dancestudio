@@ -8,7 +8,7 @@ import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyVerificationRequest } from "@/repositories/admin";
-import { findMyProofPhotos } from "@/repositories/orgStanding";
+import { findMyOrgTenantId, findMyProofPhotos } from "@/repositories/orgStanding";
 import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
 import { findSupportThreads } from "@/repositories/support";
@@ -79,7 +79,7 @@ export default async function HomePage() {
   /* WHERE AN ORGANIZATION STANDS WITH DANCEOS BELONGS HERE (R13, 9 Sep 2026):
      the badge on its own name, the steps, and the door to a person — not two
      taps away behind "Studios". A person's Home asks for none of it. */
-  const [tenants, invites, plan, request, photos, catalog, threads] = await Promise.all([
+  const [tenants, invites, plan, request, photos, catalog, threads, eventsHostId] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
@@ -89,6 +89,9 @@ export default async function HomePage() {
     isOrg ? findMyProofPhotos(supabase).catch(() => []) : Promise.resolve([]),
     isOrg ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
     isOrg ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
+    /* R15: the organization's ONE events host, so Studio Tools can carry an
+       Events tile (11 Sep 2026) — the desk existed, the door from Home did not */
+    isOrg ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
   ]);
   /* the conversation about THIS request if there is one, else the newest */
   const thread = threads.find((t) => request && t.requestId === request.id) ?? threads[0] ?? null;
@@ -312,8 +315,16 @@ export default async function HomePage() {
 
         {/* ── WHERE YOU STAND WITH DANCEOS (R13, 9 Sep 2026) — an organization only,
             and on the outside screen rather than inside Studios, because it carries
-            the badge and the only door to a person about the decision. ── */}
-        {isOrg ? (
+            the badge and the only door to a person about the decision.
+
+            UNTIL THE DECISION, AND NOT AFTER IT (11 Sep 2026, the user: "after
+            verification I don't need this verified organization box — the user
+            will create the studio and to make it discoverable he will subscribe,
+            then only the studio will be visible"). Once the tick is on the name
+            the card has nothing left to say that the studios hub does not say
+            better, beside each studio, with its own Subscribe button. The tick
+            on the sleeve is the whole verified state; the hub is the next step. ── */}
+        {isOrg && !profile.verifiedAt ? (
           <OrgStanding
             orgId={profile.id}
             verifiedAt={profile.verifiedAt}
@@ -409,7 +420,7 @@ export default async function HomePage() {
             sheet that covers the deck, so it is opaque and it is above. ── */}
         {orgAwaitingApproval ? null : (
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-          <BizSection role={profile.role} tenantId={firstTenant} plan={profile.role === "org" ? null : isArtist ? "active" : "locked"}>
+          <BizSection role={profile.role} tenantId={firstTenant} eventsHostId={isOrg ? eventsHostId : null} plan={profile.role === "org" ? null : isArtist ? "active" : "locked"}>
             {/* somebody has asked you onto their team, and only you can answer —
                 the same gold ask the class page wears when a class is handed over */}
             {invites.map((inv) => (

@@ -338,9 +338,12 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await expect(owner.getByText(/Two people say these photos belong to another studio/)).toBeVisible();
 
     // the organization itself is untouched — this is the whole point of the
-    // screen, and R13 (9 Sep 2026) put where it stands on Home
+    // screen. Since 11 Sep 2026 a VERIFIED organization's Home carries no
+    // standing card (the user: the studio hub is the next step, not a box on
+    // Home) — the tick on its own name is the whole verified state.
     await owner.goto("/");
-    await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
+    await expect(owner.getByLabel("Verified").first()).toBeVisible();
+    await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
   });
 
   test("answering the report tells the reporter, in the admin's own words", async () => {

@@ -354,14 +354,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // the Accounts desk counts it for the organization (the chip appears with the first studio)
     await admin.goto(`/admin/accounts?q=${encodeURIComponent(ownerEmail)}`);
     await expect(admin.getByTestId("admin-account").filter({ hasText: ownerEmail })).toContainText("1/1 STUDIOS SUBSCRIBED");
-    // Home's timeline counts it
+    // Home: the tick, and NO card (11 Sep 2026 — the user: "after verification I
+    // don't need this box; the user will create the studio and to make it
+    // discoverable he will subscribe"). The verified state is the tick on the
+    // name; the hub's PUBLIC · GRANTED row above is the studio's own state.
     await owner.goto("/");
-    /* 10 Sep 2026: once verified the card stops listing the six steps and carries
-       the next thing to do instead — and with the studio subscribed there is
-       nothing left to do, so it says so. */
-    await expect(owner.getByRole("status", { name: /^Verification:/ })).toContainText(
-      "Your studio is subscribed and on Discover."
-    );
+    await expect(owner.getByLabel("Verified").first()).toBeVisible();
+    await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
 
     // an admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the panel is
     // its whole app, and the chrome draws it no tab bar, only a way out
@@ -369,9 +368,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(admin).toHaveURL(/\/admin(\/verifications)?$/);
     await expect(admin.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expect(admin.getByRole("navigation", { name: "Main" })).toHaveCount(0);
-    // R13: the tick is on the organization's own name on Home now
+    // R13: the tick is on the organization's own name on Home — and since 11 Sep
+    // 2026 that IS the verified state: the standing card is gone once the tick
+    // is there (the user: the studio hub with its Subscribe button is the next
+    // step, not a box on Home)
     await owner.goto("/");
-    await expect(owner.getByRole("status", { name: "Verification: Verified organization" })).toBeVisible();
+    await expect(owner.getByLabel("Verified").first()).toBeVisible();
+    await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
     // and its own Profile is the ONE place its studios appear together (R9, 8 Sep
     // 2026): the group, the studio's door, the figure — and no Followers figure,
     // because nobody follows an organization; people follow its studios

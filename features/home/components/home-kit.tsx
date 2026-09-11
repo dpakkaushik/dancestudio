@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { CrewI, dosToolPaint } from "@/features/crews/components/crew-kit";
+import { EventI } from "@/features/discovery/components/discover-kit";
 import { StudioI } from "@/features/shell/components/shell-glyphs";
 import { DOS_DISPLAY, INK, MUTED } from "@/lib/design/tokens";
 import type { ProfileRole } from "@/types/profile";
@@ -40,6 +41,7 @@ const GLYPH: Record<string, ReactNode> = {
   ),
   crews: <CrewI size={20} color="currentColor" />,
   studios: <StudioI size={20} color="currentColor" />,
+  events: <EventI size={20} color="currentColor" />,
   classesmod: I(
     <>
       <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
@@ -80,9 +82,18 @@ interface Tile {
  *  to a door that exists in the app. Events is not an artist tool (2531-2540);
  *  Routines and Reports have no page yet, so they are not drawn — a tile that
  *  opens nothing is a lie. Students and Team are a business's own, so they need
- *  one to point at. */
-const tilesFor = (tenantId: string | null): Tile[] => [
+ *  one to point at.
+ *
+ *  EVENTS IS AN ORGANIZATION'S TOOL (11 Sep 2026, the user: "I told you events
+ *  are gonna be at org level — right now I can't see events on my org page").
+ *  R15 made an event belong to the organization, hosted on its own hidden
+ *  tenant row, and the desk for it has existed at /business/{host}/events since
+ *  — but the only door was a row inside the studios hub, two taps away, and an
+ *  organization's Home never mentioned it. Now it is a tile, where the other
+ *  tools are, pointing at the organization's ONE events desk. */
+const tilesFor = (tenantId: string | null, eventsHostId: string | null): Tile[] => [
   { name: "Calendar", href: "/calendar", k: "calendar", c: "#5AC8FA" },
+  ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
   { name: "Crews", href: "/crews", k: "crews", c: "#DC2626" },
   { name: "Studios", href: "/business", k: "studios", c: "#3B82F6" },
   { name: "Classes", href: tenantId ? `/business/${tenantId}/classes` : "/classes", k: "classesmod", c: "#0D9488" },
@@ -101,8 +112,8 @@ const tilesFor = (tenantId: string | null): Tile[] => [
  *  artist-plan lock is a product decision nobody has made, so every tile is
  *  open. `children` sits between the heading and the grid — Home puts the
  *  pending team invites there. */
-export function BizSection({ role, tenantId, plan = null, children }: { role: ProfileRole; tenantId: string | null; /** the Artist plan's state — the badge on the head (2500-2520); null draws none (a studio) */ plan?: "active" | "locked" | null; children?: ReactNode }) {
-  const tiles = tilesFor(tenantId);
+export function BizSection({ role, tenantId, eventsHostId = null, plan = null, children }: { role: ProfileRole; tenantId: string | null; /** R15: the organization's own events host — the Events tile points at its desk; null draws no tile */ eventsHostId?: string | null; /** the Artist plan's state — the badge on the head (2500-2520); null draws none (a studio) */ plan?: "active" | "locked" | null; children?: ReactNode }) {
+  const tiles = tilesFor(tenantId, eventsHostId);
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
