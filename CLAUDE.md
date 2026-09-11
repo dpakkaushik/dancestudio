@@ -39,9 +39,14 @@ summary; the report has the evidence.
   * **The admin panel as BLOCKS, not a pill bar.** "Give me boxes, block type
     views and an image/icon for each block… inside the tab should not look
     messy… how am I gonna scroll down if there are 2k studios which applied?"
-    So: `/admin` opens on THE DESKS — ten icon blocks (`admin-glyphs.tsx`,
+    So: `/admin` opens on THE DESKS — eleven icon blocks (`admin-glyphs.tsx`,
     `desks.ts`), each with its badge; inside a desk the shell draws only a slim
-    "All desks ‹" line. Every desk now has ONE SHAPE (`desk-kit.tsx`): a hero,
+    "All desks ‹" line. **And ONLY the blocks** (second pass, same day: "the
+    main screen will only have a designated block for every part of it") — the
+    figures first landed UNDERNEATH them, which left the front door as mostly
+    reading material with the nav as a header above it and half the desks below
+    the fold. They are a desk of their own now: **Dashboard**, `/admin/dashboard`,
+    `AdminDashboard.tsx`; `/admin` is `AdminDesks.tsx` and is the map. Every desk now has ONE SHAPE (`desk-kit.tsx`): a hero,
     a STAT STRIP, TABS AS BLOCKS each with its own count, a SEARCH, ONE PAGE of
     the list (25) and a pager — all URL state (`?tab=&q=&page=`).
     **Verifications** (`VerificationDesk.tsx`) reads one page through real

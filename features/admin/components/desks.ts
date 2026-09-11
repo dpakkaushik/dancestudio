@@ -34,6 +34,12 @@ export interface AdminDesk {
  *  watched rather than worked. Then the registers — who and what exists. Audit
  *  is last because it is read after the fact, never before. */
 export const DESKS: AdminDesk[] = [
+  /* THE FIGURES ARE A DESK LIKE ANY OTHER (11 Sep 2026, the user's ask: "the
+     main screen will only have a designated block for every part of it"). They
+     used to sit UNDER the blocks on /admin, which made the front door a long
+     scroll and the blocks a header rather than the panel. They have their own
+     page now, and their own block. */
+  { href: "/admin/dashboard", label: "Dashboard", what: "The platform in figures, and what is stuck", k: "dashboard" },
   { href: "/admin/verifications", label: "Verifications", what: "Organizations asking to be trusted", k: "verifications", badge: "verifications", tone: "#F59E0B" },
   { href: "/admin/support", label: "Support", what: "DanceOS and one account, talking", k: "support", badge: "support", tone: "#F59E0B" },
   { href: "/admin/reports", label: "Reports", what: "What somebody says is wrong", k: "reports", badge: "reports", tone: "#EF4444" },

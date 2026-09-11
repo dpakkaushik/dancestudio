@@ -294,7 +294,10 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     // a run killed before its cleanup left a third behind and failed this as
     // though the product were broken (10 Sep 2026). The claim the story makes is
     // that its own two became work; the queue below names the case itself.
-    await adminGoto(admin, adminEmail(), "/admin");
+    /* 11 Sep 2026: the figures moved off /admin onto their own desk — the front
+       door is the blocks and nothing else (the user: "the main screen will only
+       have a designated block for every part of it"). */
+    await adminGoto(admin, adminEmail(), "/admin/dashboard");
     const waiting = admin.getByRole("link", { name: /reports to answer/ });
     await expect(waiting).toBeVisible();
     expect(Number((await waiting.innerText()).match(/\d+/)?.[0] ?? 0)).toBeGreaterThanOrEqual(2);

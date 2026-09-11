@@ -16,6 +16,7 @@ const I = (p: ReactNode, size: number) => (
 );
 
 export type AdminGlyphKey =
+  | "dashboard"
   | "verifications"
   | "support"
   | "reports"
@@ -30,6 +31,15 @@ export type AdminGlyphKey =
 
 export function AdminGlyph({ k, size = 22 }: { k: AdminGlyphKey; size?: number }) {
   switch (k) {
+    case "dashboard":
+      /* bars rising off a baseline — the figures, which is all this desk is */
+      return I(
+        <>
+          <path d="M4 20h16" />
+          <path d="M7.5 20v-5.5M12 20V8M16.5 20v-8.5" />
+        </>,
+        size
+      );
     case "verifications":
       /* a shield, and the tick inside it — the decision this desk exists to make */
       return I(
@@ -143,6 +153,7 @@ export function AdminGlyph({ k, size = 22 }: { k: AdminGlyphKey; size?: number }
  *  the blue one" once. */
 export const DESK_TINT: Record<AdminGlyphKey, string> = {
   overview: "#64748B",
+  dashboard: "#F59E0B",
   verifications: "#0EA5E9",
   support: "#7C3AED",
   reports: "#EF4444",

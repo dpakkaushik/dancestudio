@@ -34,6 +34,7 @@ const headers = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-
 
 const PAGES = [
   ["overview", "/admin"],
+  ["dashboard", "/admin/dashboard"],
   ["verifications", "/admin/verifications"],
   ["verifications-approved", "/admin/verifications?tab=approved"],
   ["verifications-rejected", "/admin/verifications?tab=rejected"],
