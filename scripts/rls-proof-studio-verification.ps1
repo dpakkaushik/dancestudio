@@ -14,6 +14,7 @@
 #   4. an event is refused without the number and allowed with it
 #   5. the studio's review: a link and five photos before the ask; only the owner asks; idempotent
 #   6. no badge, no subscription; the owner cannot stamp the badge; an admin can, and it lists
+#   7. the badge can be revoked and given again; the GST number can be cleared and the door shuts
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rls-proof-studio-verification.ps1
@@ -59,6 +60,9 @@ function Check($n, $label, $ok) {
   "$n. $label $(if ($ok) {'-- OK'} else {'-- !!! FAILED !!!'})"
   if (-not $ok) { $script:pass = $false }
 }
+# a why_no_* function answering NULL comes back from PostgREST as the four-character body `null`,
+# which Invoke-RestMethod hands over as the STRING "null" - so "no sentence" has two spellings
+function NoSentence($v) { return ($null -eq $v) -or ("$v" -eq "") -or ("$v" -eq "null") }
 # an organization NOBODY has verified - no tick, no GST - which is the whole point
 function New-Org($email, $name) {
   $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{
@@ -82,7 +86,7 @@ try {
   # ── 1. an unverified organization opens a studio ──
   $gate = Rpc (Api $a.token) "why_no_studio" @{}
   $ta = Rpc (Api $a.token) "create_tenant_with_owner" @{ p_name = "SV Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
-  Check 1 "An organization nobody has verified opens a studio (gate: '$gate'; studio: $($ta.id))" (($null -eq $gate -or $gate -eq "") -and $ta.id)
+  Check 1 "An organization nobody has verified opens a studio (gate: '$gate'; studio: $($ta.id))" ((NoSentence $gate) -and $ta.id)
 
   # ── 2. the GST number is not written by hand ──
   $hand = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($a.id)" -Headers (Api $a.token) -Body (@{ gstin = "27HANDW${digits}A1Z5"; gstin_verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) }
@@ -113,7 +117,13 @@ try {
   $whyB2 = Rpc (Api $b.token) "why_no_event" @{}
   $evId = Rpc (Api $b.token) "save_event" @{ p_tenant_id = $orgB; p_event_id = $null; p_event = $ev }
   Check 5 "Without a GST number: why_no_event = '$whyB'; save_event refused ('$noGst'). With one: why_no_event is null and the event saves ($evId)" (
-    ($whyB -match "GST") -and ($noGst -match "GST") -and (($null -eq $whyB2) -or ($whyB2 -eq "")) -and $evId)
+    ($whyB -match "GST") -and ($noGst -match "GST") -and (NoSentence $whyB2) -and $evId)
+  # the number can be taken off again, and the events door closes with it
+  Rpc (Api $b.token) "clear_gstin" @{} | Out-Null
+  $whyB3 = Rpc (Api $b.token) "why_no_event" @{}
+  $rowB = Get-Rows $svcH "profiles?id=eq.$($b.id)&select=gstin,gstin_verified_at"
+  Rpc (Api $b.token) "verify_gstin" @{ p_gstin = "27PROOB${digits}A1Z5" } | Out-Null
+  Check "5b" "clear_gstin empties both columns (gstin: '$($rowB[0].gstin)') and the door shuts again: '$whyB3'" (($null -eq $rowB[0].gstin) -and ($null -eq $rowB[0].gstin_verified_at) -and ($whyB3 -match "GST"))
 
   # ── 5. the studio's review ──
   $noLink = Fails { Rpc (Api $a.token) "request_studio_verification" @{ p_tenant_id = $ta.id } }
@@ -151,6 +161,15 @@ try {
     ($bDecides -match "admin") -and $tick1[0].verified_at -and ($reqDone[0].status -eq "approved") -and ($why1 -match "subscription") -and ($told | Where-Object { $_.title -match "verified" }))
   # still not on Discover: the badge is not the listing - the subscription is
   Check 9 "The badge alone does not list the studio (visibility: $($tick1[0].visibility))" ($tick1[0].visibility -eq "unlisted")
+
+  # ── 7. the badge can be taken off (the Approved tab's Revoke), and given again ──
+  Rpc (Api $adm.token) "decide_studio_verification" @{ p_tenant_id = $ta.id; p_approve = $false; p_note = "Revoked by the proof - the photos were of another floor." } | Out-Null
+  $tick2 = Get-Rows $svcH "tenants?id=eq.$($ta.id)&select=verified_at"
+  $why2 = Rpc (Api $a.token) "why_no_studio" @{ p_tenant_id = $ta.id }
+  Rpc (Api $adm.token) "decide_studio_verification" @{ p_tenant_id = $ta.id; p_approve = $true; p_note = $null } | Out-Null
+  $tick3 = Get-Rows $svcH "tenants?id=eq.$($ta.id)&select=verified_at"
+  Check 10 "Revoke takes the badge off (now: $($tick2[0].verified_at)) and the sentence goes back to the ask: '$why2'; approving again puts it on ($($tick3[0].verified_at))" (
+    ($null -eq $tick2[0].verified_at) -and ($why2 -match "verify") -and $tick3[0].verified_at)
 }
 finally {
   # everything this proof made goes: users cascade to profiles, requests, photos, memberships;
