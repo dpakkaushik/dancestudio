@@ -11,6 +11,56 @@ communication etc", plus "app is missing location picker, use any free maps api"
 **The full report is `docs/AUDIT-2026-09-11.md`** — everything below is the
 summary; the report has the evidence.
 
+- **LATER THE SAME NIGHT — the user woke, looked, and asked for three things
+  (all built, all shot with real sessions, all in this push):**
+  * **The admin panel as BLOCKS, not a pill bar.** "Give me boxes, block type
+    views and an image/icon for each block… inside the tab should not look
+    messy… how am I gonna scroll down if there are 2k studios which applied?"
+    So: `/admin` opens on THE DESKS — ten icon blocks (`admin-glyphs.tsx`,
+    `desks.ts`), each with its badge; inside a desk the shell draws only a slim
+    "All desks ‹" line. Every desk now has ONE SHAPE (`desk-kit.tsx`): a hero,
+    a STAT STRIP, TABS AS BLOCKS each with its own count, a SEARCH, ONE PAGE of
+    the list (25) and a pager — all URL state (`?tab=&q=&page=`).
+    **Verifications** (`VerificationDesk.tsx`) reads one page through real
+    `.range()` + `count: "exact"` under the existing admin policy — Pending /
+    Approved (orgs WEARING the tick, grandfathered ones included) / Rejected
+    (with the reason given) / All orgs. **Support** (`AdminSupportDesk.tsx`):
+    Waiting (last word theirs, unread by us) / Open / Closed / All, search by
+    account, subject or last message. **Reports**: exact counts via HEAD, the
+    `?status=` word kept. **Accounts** and **Businesses**: figures from the one
+    dashboard aggregate, tabs by kind / visibility.
+    ⚠ Learned by running it: **a value exported from a `"use client"` file is
+    not a value on the server** — it is a client reference, so `DESKS.map is
+    not a function` and three desks answered 500. Shared data now lives in
+    plain modules (`desks.ts`, `accounts-tabs.ts`, `businesses-tabs.ts`).
+  * **Home: no "Verified organization" card once verified.** "After
+    verification I don't need this box — the user will create the studio and
+    to make it discoverable he will subscribe." `OrgStanding` renders only
+    while `verifiedAt` is null; the tick on the name is the whole verified
+    state and the hub with its Subscribe button is the next step. Two specs
+    that asserted the card now assert the tick and the card's absence.
+  * **Events on the org's Home.** "I told you events are gonna be at org
+    level — I can't see events on my org page. Where is it?" The desk existed
+    at `/business/{host}/events` since R15; the only door was a row inside the
+    studios hub. Studio Tools now carries an **Events tile** pointing at the
+    organization's one host (`findMyOrgTenantId` on Home).
+  * **The picker wherever an address is entered.** "Wherever we are giving an
+    address, city or location there should be a location picker… user will
+    check nearest studio using location only." The New-studio sheet carries
+    the map (the pin rides in as `lat`/`lng` fields; `createTenantAction`
+    calls `set_tenant_location` the moment the studio exists, and a pin that
+    does not save is said in the toast, never a failed studio); the EVENT form
+    carries it too and **writes the Google Maps link from the pin** instead of
+    asking for one to be pasted — and a FIFTH migration,
+    `20260913130000_an_event_has_a_place`, gives `events` its `lat`/`lng` and
+    a `save_event` that reads them from the payload (a payload without them
+    behaves exactly as before). **Discover has a map view** (`?view=map`,
+    `DiscoverMap.tsx`): the shelf as pins, centred where the list is measured
+    from; only businesses that have PLACED themselves are drawn, and the line
+    under the map says how many have not.
+  * Verified by `scripts/shots/shoot-org.js` (10 assertions on Home, the
+    New-studio sheet and Discover's map, with a real verified org) and
+    `shoot-admin.js` (18 admin screens, zero console errors).
 - **⚠⚠ A REVENUE BYPASS WAS LIVE, AND IS PROVEN (Rule 9: money + RLS).**
   `tenants` carried one permissive update policy — `"owners update own tenants"`
   — that **named no columns**. Every write the app makes to that table goes
@@ -590,7 +640,7 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **⚠⚠ APPLY THE FOUR MIGRATIONS — ONE OF THEM CLOSES A LIVE REVENUE BYPASS.**
+0. **⚠⚠ APPLY THE FIVE MIGRATIONS — ONE OF THEM CLOSES A LIVE REVENUE BYPASS.**
    Nothing from the 11 Sep session is in the database. One command:
 ```
    cd "C:\Users\Admin\Desktop\Dancing App\dancestudio"
@@ -606,6 +656,7 @@ summary; the report has the evidence.
    | `20260913100000_doors_that_were_not_doors` | **the revenue bypass and the `javascript:` link** — apply this one first if you apply only one |
    | `20260913110000_admin_money_and_communication` | the two new admin desks' reads |
    | `20260913120000_a_business_has_a_place` | `set_tenant_location`, `location_set_at`, `nearby_tenants` gains `located` and a `p_limit` |
+   | `20260913130000_an_event_has_a_place` | `events.lat/lng` + a GiST index; `save_event` reads the pin from the payload (a payload without one behaves as before) |
 
    **Then re-run the proofs.** All 28 should be green:
 ```
@@ -629,17 +680,20 @@ summary; the report has the evidence.
    `location_set_at`: the app does **not** select it anywhere yet, so nothing
    breaks before the migration; `nearby_tenants` supplies `located` instead.
 
-2. **The location picker is built but nobody is being ASKED to use it**, and
-   until studios place themselves the feature is inert — every card still shows
-   no distance, which is honest but empty. The obvious next slice: a strip on
+2. **The picker is in the New-studio sheet now, so every studio made from here
+   on can place itself at birth** — but the studios that ALREADY EXIST sit on
+   their city's centroid and nobody is asked. The remaining slice: a strip on
    the business hub for any studio with `location_set_at is null` ("Discover
-   cannot say how far away you are"), and the picker in the studio-creation flow
-   rather than only in the Edit sheet.
+   cannot say how far away you are"), reading the column migration
+   `20260913120000` adds — which is why it ships with that migration, not before.
 
-3. **Events have no coordinates.** `events` carries `venue`, `address`, `city`
-   and a `maps_url` typed by hand — no lat/lng — so an event cannot appear on a
-   map or be sorted by distance. The picker is written to be reusable; this is
-   a column, an RPC argument and one sheet.
+3. **Events: the pin is SAVED but not yet READ BACK.** Migration `20260913130000`
+   adds `events.lat/lng` and the form writes them; the events SELECT in
+   `repositories/events.ts` deliberately does not ask for the columns yet,
+   because asking for a column the table does not have breaks every event read
+   before the migration lands. After the push: add `lat, lng` to that select and
+   `toEvent`, and the edit form opens on the saved pin. An event radius search
+   (the GiST index is already in the migration) is the slice after that.
 
 4. **RATE LIMITING DOES NOT EXIST ANYWHERE** and is the main abuse surface for a
    public consumer app: not on search, `report_content`, `send_enquiry`,
@@ -815,6 +869,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   the same number. A keyless OpenStreetMap picker, `set_tenant_location`,
   `location_set_at`, "Near me" on Discover, and cards that no longer print a
   distance that is not one.
+  **Later the same night, on the user's review:** the panel became BLOCKS
+  (icon grid on `/admin`, one desk shape everywhere — figures, tabs with
+  counts, search, one page of 25, a pager; Verifications reads real pages
+  under RLS), the verified organization's Home lost its standing card, Studio
+  Tools gained an **Events** tile, the picker went into the **New-studio
+  sheet** and the **event form** (which now writes the map link from the pin),
+  Discover gained a **map view**, and a fifth migration gives events a place.
   **Nothing is in the database until the push** (NEXT TO DO #0); typecheck and
   lint clean, all 27 proofs green, admin panel and picker verified by
   screenshot with real sessions.
@@ -4044,8 +4105,8 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| **Nobody is ASKED to place their business on the map.** The picker landed 11 Sep 2026 in the business Edit sheet, but a studio that never opens that sheet keeps its city centroid — and its cards then show no distance at all, which is honest and empty. Until studios place themselves the whole radius search stays inert | — (no prototype: the prototype has no backend and no map) | a strip on the business hub for `location_set_at is null`, and the picker in the studio-creation flow |
-| **An event has no coordinates.** `events` carries `venue`, `address`, `city` and a hand-typed `maps_url`; there is no lat/lng, so an event cannot go on a map or be sorted by distance the way a studio now can | — (same) | a column, an RPC argument and one sheet — `LocationPicker` is written to be reusable |
+| **EXISTING studios are not asked to place themselves on the map.** The picker is in the New-studio sheet (11 Sep 2026, later) so every studio made from here on can place itself at birth, and in the Edit sheet for the rest — but a studio made before that keeps its city centroid until its owner opens Edit, and its cards show no distance meanwhile, which is honest and empty | — (no prototype: the prototype has no backend and no map) | a strip on the business hub for `location_set_at is null` — ships WITH migration `20260913120000`, which adds the column it reads |
+| **An event's pin is saved but not read back.** The event form places the venue and writes the map link from it, and migration `20260913130000` stores `lat`/`lng` — but the events SELECT does not ask for the columns yet (it would break every event read before the migration lands), so the edit form reopens on the city centre and no event is on a map or sorted by distance | — (same) | after the push: `lat, lng` in the events select and `toEvent`; then an event radius search on the GiST index the migration already makes |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |
 | **The geocoder is keyless, and that has a ceiling.** OSM tiles and Nominatim forbid heavy commercial use, and the throttle and cache in `lib/geo/geocode.ts` are PER INSTANCE — so on serverless the global rate is the per-instance rate times the instance count | — (same) | `GEOCODER_PROVIDER=locationiq` (or `maptiler`) + `GEOCODER_KEY` — both speak the same shapes, so it is a deploy, not a rewrite. Tiles want the same treatment |
