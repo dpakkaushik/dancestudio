@@ -464,6 +464,13 @@ begin
     update public.tenants
        set verified_at = coalesce(verified_at, now()), updated_by = v_admin
      where id = p_tenant_id;
+    /* a studio that was already subscribed while it waited — a grant, or a
+       mandate that went through — goes on Discover the moment the badge lands;
+       the visibility guard below admits it because both halves are now true */
+    if public.studio_plan_active(p_tenant_id) then
+      update public.tenants set visibility = 'listed', updated_by = v_admin
+       where id = p_tenant_id and visibility = 'unlisted' and deleted_at is null;
+    end if;
     if v_owner is not null then
       perform public.notify(v_owner, 'people', v_tenant.name || ' is verified',
         coalesce(p_note, 'DanceOS checked your photos and links. Subscribe it to put it on Discover.'),
@@ -625,3 +632,254 @@ alter table public.tenants enable trigger tenants_guard_verified_at;
 /* Requests filed under the old model stay exactly as they are: tenant_id null,
    status untouched, notes readable. They are history, and history that still
    reads true is worth more than a tidy table. */
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 7. EVERY RULE THAT SAID "VERIFIED ORGANIZATION" NOW MEANS "VERIFIED STUDIO"
+-- ─────────────────────────────────────────────────────────────────────────────
+
+/** ⚠ THE ONE REDEFINITION THAT CARRIES THE OTHERS. Twelve callers ask
+ *  `tenant_owner_verified(tenant)` before listing a studio — the visibility
+ *  guard, the admin's grant, the webhook that activates a paid mandate, the
+ *  admin's list/unlist, the desks' counts. Every one of them means the same
+ *  thing: "may this studio be on Discover?" The answer used to be the
+ *  ORGANIZATION's tick; it is now the STUDIO's own badge. Changing the answer
+ *  HERE changes it everywhere at once, without a fifth copy of five long
+ *  functions and the five chances to drop a line that would come with them.
+ *
+ *  The name is kept, deliberately: a rename would be twelve edits to say the
+ *  same thing, and the comment is where the meaning lives. */
+create or replace function public.tenant_owner_verified(p_tenant_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select exists (
+    select 1 from public.tenants t
+     where t.id = p_tenant_id and t.deleted_at is null and t.verified_at is not null
+  );
+$$;
+comment on function public.tenant_owner_verified(uuid) is
+  'Since 11 Sep 2026: does this STUDIO wear the badge (tenants.verified_at)? Kept under its old name because twelve listing rules call it, and all twelve mean exactly this. It used to read the owning organization''s tick.';
+
+/** the visibility guard — same shape, the sentence now names the studio */
+create or replace function public.guard_tenant_visibility()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.visibility = 'listed' and new.visibility is distinct from old.visibility
+     and new.type = 'studio'
+     and coalesce(current_setting('request.jwt.claims', true)::jsonb ->> 'role', '') <> 'service_role' then
+    if not public.tenant_owner_verified(new.id) then
+      raise exception 'a studio goes public once DanceOS has verified it — the badge comes first';
+    end if;
+    if not public.studio_plan_active(new.id) then
+      raise exception 'a studio goes public once its own subscription is active';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+/** `why_not_public` and `why_no_studio(uuid)` had become the same question
+ *  asked twice. One answer now. */
+create or replace function public.why_not_public(p_tenant_id uuid)
+returns text
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select public.why_no_studio(p_tenant_id);
+$$;
+
+/** THE OWNER SUBSCRIBES A STUDIO — the one check that changes is the one that
+ *  used to read the organization's tick and would have refused every
+ *  organization signed up from tonight on. It reads the studio's badge, and
+ *  says so in the order the user asked for. Everything else is as it was. */
+create or replace function public.subscribe(p_plan_key text, p_tenant_id uuid default null)
+returns public.subscriptions
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := auth.uid();
+  v_role text;
+  v_plan public.plan_catalog;
+  v_row public.subscriptions;
+begin
+  if v_user is null then raise exception 'not authenticated'; end if;
+  select p.role into v_role
+    from public.profiles p where p.id = v_user and p.deleted_at is null;
+  if not found then raise exception 'finish onboarding first'; end if;
+  if exists (select 1 from public.profiles p where p.id = v_user and p.suspended_at is not null) then
+    raise exception 'this account is suspended — write to DanceOS from your hub';
+  end if;
+  select * into v_plan from public.plan_catalog c where c.key = p_plan_key and c.active and c.deleted_at is null;
+  if not found then raise exception 'that plan is not on offer'; end if;
+  if v_plan.price_inr <= 0 then
+    raise exception 'this plan is free right now — take it with Start, there is nothing to pay';
+  end if;
+
+  if v_plan.kind = 'artist' then
+    if v_role <> 'user' then raise exception 'the Artist plan is a person''s — an organization subscribes its studios'; end if;
+    if p_tenant_id is not null then raise exception 'an artist plan is not for a studio'; end if;
+  else
+    if v_role <> 'org' then raise exception 'only an organization subscribes a studio'; end if;
+    if p_tenant_id is null then raise exception 'which studio is this for?'; end if;
+    if not exists (select 1 from public.tenants t where t.id = p_tenant_id and t.type = 'studio' and t.deleted_at is null) then
+      raise exception 'no such studio';
+    end if;
+    if not exists (select 1 from public.tenant_members m
+                    where m.tenant_id = p_tenant_id and m.user_id = v_user and m.member_role = 'owner' and m.deleted_at is null) then
+      raise exception 'that studio is not yours to subscribe';
+    end if;
+    /* 11 Sep 2026: the STUDIO's badge, not the organization's tick */
+    if not public.tenant_owner_verified(p_tenant_id) then
+      raise exception 'DanceOS has not verified this studio yet — the badge comes first, then the subscription puts it on Discover';
+    end if;
+  end if;
+
+  -- the live row for this subject, if there is one
+  select * into v_row from public.subscriptions s
+   where s.kind = v_plan.kind and s.deleted_at is null and s.status <> 'expired'
+     and ((v_plan.kind = 'artist' and s.user_id = v_user) or (v_plan.kind = 'studio' and s.tenant_id = p_tenant_id))
+   limit 1;
+  if found then
+    if v_row.status = 'pending_auth' then
+      -- an earlier attempt that was never authorised: reuse the row, new provider id
+      update public.subscriptions s
+         set plan_key = v_plan.key, price_inr = v_plan.price_inr, period = v_plan.period,
+             attempt = s.attempt + 1, provider_subscription_id = null, cf_subscription_id = null,
+             provider_status = null, auth_status = null, updated_by = v_user
+       where s.id = v_row.id
+       returning * into v_row;
+      return v_row;
+    end if;
+    if v_row.granted then
+      raise exception 'DanceOS granted this until % — you can set up payment once that period ends', to_char(v_row.current_period_end, 'FMDD FMMonth YYYY');
+    end if;
+    if v_row.status = 'canceled' or v_row.cancel_at_period_end then
+      raise exception 'this subscription runs until % and then stops — subscribe again after that', to_char(v_row.current_period_end, 'FMDD FMMonth YYYY');
+    end if;
+    raise exception 'already subscribed — it renews on its own until you cancel';
+  end if;
+
+  insert into public.subscriptions (kind, user_id, tenant_id, plan_key, price_inr, period, status, created_by, updated_by)
+  values (v_plan.kind, v_user, p_tenant_id, v_plan.key, v_plan.price_inr, v_plan.period, 'pending_auth', v_user, v_user)
+  returning * into v_row;
+  return v_row;
+end;
+$$;
+
+/** WHOSE EVENTS ARE PUBLIC. An organization's host row is public when the
+ *  organization's GST is verified — that is what an event needs now — OR when
+ *  DanceOS verified it by hand under the old model, so that not one event that
+ *  is live tonight goes dark. A new organization has neither until it presses
+ *  Verify, and the insert trigger above would not have let it publish anyway. */
+create or replace function public.event_host_is_public(p_tenant_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select case
+    when t.type = 'org' then exists (
+      select 1 from public.tenant_members m
+      join public.profiles p on p.id = m.user_id
+      where m.tenant_id = t.id and m.member_role = 'owner' and m.deleted_at is null
+        and (p.gstin_verified_at is not null or p.verified_at is not null)
+        and p.suspended_at is null and p.deleted_at is null
+    )
+    else t.visibility = 'listed'
+  end
+  from public.tenants t
+  where t.id = p_tenant_id and t.deleted_at is null;
+$$;
+
+/** the request table's two triggers learn which noun they are about */
+create or replace function public.notify_org_verification()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_name text;
+  v_studio text;
+begin
+  select p.full_name into v_name from public.profiles p where p.id = new.org_id;
+  if new.tenant_id is not null then
+    select t.name into v_studio from public.tenants t where t.id = new.tenant_id;
+  end if;
+
+  if tg_op = 'INSERT' and new.status = 'pending' then
+    perform public.notify_platform_admins('people',
+      coalesce(v_studio, v_name, 'A studio') || ' asked to be verified',
+      case when new.tenant_id is not null
+           then 'A studio run by ' || coalesce(v_name, 'an organization') || '. Check its links and photos, then approve or reject it in the verification queue.'
+           else 'Check its social links, then approve or reject it in the verification queue.' end,
+      '/admin/verifications');
+  elsif tg_op = 'UPDATE' and old.status = 'pending' and new.status in ('approved', 'rejected') and new.tenant_id is null then
+    /* a STUDIO's decision is worded by decide_studio_verification itself; this
+       branch is the legacy organization's */
+    perform public.notify(new.org_id, 'people',
+      case when new.status = 'approved' then 'Your organization is verified' else 'Your verification was not approved' end,
+      case when new.status = 'approved'
+           then 'Your studios are live on Discover now.'
+           else coalesce(nullif(btrim(coalesce(new.note, '')), ''), 'Update your links and ask again from your organization hub.') end,
+      '/business');
+  end if;
+  return null;
+end;
+$$;
+
+create or replace function public.audit_org_verification()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_name text;
+  v_studio text;
+  v_thread uuid;
+begin
+  select p.full_name into v_name from public.profiles p where p.id = new.org_id;
+  if new.tenant_id is not null then
+    select t.name into v_studio from public.tenants t where t.id = new.tenant_id;
+  else
+    /* the organization's own audit line; a studio's is written by
+       decide_studio_verification ('studio.verify' / 'studio.reject') */
+    perform public.log_admin_action(
+      case when new.status = 'approved' then 'org.approve' else 'org.reject' end,
+      'request', new.id, v_name, new.note,
+      jsonb_build_object('org_id', new.org_id, 'status', new.status));
+  end if;
+
+  /* the decision lands in the conversation that was opened about it, whichever
+     noun the request was about */
+  select t.id into v_thread from public.support_threads t
+    where t.request_id = new.id and t.deleted_at is null
+    order by t.created_at limit 1;
+  if v_thread is not null then
+    insert into public.support_messages (thread_id, author_id, from_admin, body)
+    values (v_thread, coalesce(new.decided_by, auth.uid(), new.org_id), true,
+            case
+              when new.status = 'approved' and new.tenant_id is not null
+                then 'Approved — ' || coalesce(v_studio, 'the studio') || ' is verified. Subscribe it to put it on Discover.'
+              when new.status = 'approved'
+                then 'Approved — your studios are live on Discover now.'
+              else 'Not approved. ' || coalesce(nullif(btrim(coalesce(new.note, '')), ''), 'Update your links and ask again from your hub.')
+            end);
+    update public.support_threads t set last_message_at = now(), status = 'open' where t.id = v_thread;
+  end if;
+  return null;
+end;
+$$;

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { EventForm } from "@/features/events/components/EventForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findDiscoverCities } from "@/repositories/cities";
+import { findWhyNoEvent } from "@/repositories/gst";
 import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
 /** Add event (prototype S_eventform). Owners and trainers create; the RPC
@@ -21,6 +22,12 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
   }
   const role = await findMyMembershipRole(supabase, tenantId);
   if (role !== "owner" && role !== "trainer") {
+    redirect(`/business/${tenantId}/events`);
+  }
+  /* AN EVENT NEEDS THE ORGANIZATION'S GST NUMBER (11 Sep 2026). The desk prints
+     the sentence and offers no Create-event door while it stands; somebody who
+     typed the address by hand lands back on the desk, where the sentence is. */
+  if (await findWhyNoEvent(supabase)) {
     redirect(`/business/${tenantId}/events`);
   }
   /* the city registry (11 Sep 2026): quick chips beside the venue, and where

@@ -129,6 +129,8 @@ Add-Member $ta.id $staffA.id "staff" $ownerA.id
 # The organization is ONE login: its studio's staff are on the studio's team, not on the host's, so
 # they neither run the event nor its door - and they are not "people who run it" at the box office
 # either. The checks below say exactly that (the accounts backlog row records the limitation).
+# 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
+Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "27EVENT$(Get-Date -Format 'mmss')A1Z5" } | Out-Null
 $orgA = [string](Rpc (Api $ownerA.token) "my_org_tenant" @{})
 
 try {

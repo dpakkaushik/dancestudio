@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
+import { StudioVerificationStrip } from "@/features/tenants/components/StudioVerificationStrip";
+import type { StudioVerificationState } from "@/repositories/studioVerification";
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
 import { dateWords } from "@/features/settings/components/settings-kit";
 import { dosKey } from "@/features/classes/components/ShareSheet";
@@ -109,6 +111,8 @@ export function BusinessHub({
   studioSubscriptions = {},
   studioPrice = null,
   cityCentres = [],
+  studioVerification = {},
+  userId = null,
 }: {
   memberships: MyMembership[];
   roomCounts: Record<string, number>;
@@ -130,6 +134,12 @@ export function BusinessHub({
    *  where the map opens once a city is known and no pin is placed yet. It is
    *  not offered as a list to pick from — the city comes off the address. */
   cityCentres?: Array<{ city: string; lat: number; lng: number }>;
+  /** WHERE EACH STUDIO STANDS WITH DANCEOS (11 Sep 2026): its badge, its photos,
+   *  whether an admin is looking. The strip under each studio is drawn from it,
+   *  and Subscribe is offered only once the badge is on. */
+  studioVerification?: Record<string, StudioVerificationState>;
+  /** the owner's own id — a studio's proof photos go into their folder */
+  userId?: string | null;
 }) {
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
@@ -269,9 +279,19 @@ export function BusinessHub({
     );
   };
 
+  /* ── EACH STUDIO'S OWN REVIEW (11 Sep 2026): a public link, 5–10 photos, the
+        ask, the admin's answer — the badge. It sits above the subscription strip
+        because that is the next sentence. ── */
+  const verificationStrip = (t: MyMembership["tenant"]) => {
+    const v = studioVerification[t.id];
+    if (!v || t.type !== "studio" || !userId) return null;
+    return <StudioVerificationStrip key={`v-${t.id}`} tenant={t} orgId={userId} state={v} onDone={fire} />;
+  };
+
   /* ── EACH STUDIO'S OWN SUBSCRIPTION (10 Sep 2026): under its row, where it
         stands and the one thing to do about it. Public = a live subscription
-        under a verified organization; the sentence is the database's. ── */
+        on a VERIFIED STUDIO (11 Sep 2026 — the badge came first); the sentence
+        is the database's. ── */
   const studioStrip = (t: MyMembership["tenant"]) => {
     const st = studioSubscriptions[t.id];
     if (!st) return null;
@@ -329,7 +349,7 @@ export function BusinessHub({
           </div>
         ) : null}
         <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
-          {!live && studioPrice ? (
+          {!live && studioPrice && t.verifiedAt ? (
             <SubscribeButton
               planKey={studioPrice.key}
               tenantId={t.id}
@@ -417,6 +437,7 @@ export function BusinessHub({
               myStudios.map((t) => (
                 <div key={t.id}>
                   {row(t, true)}
+                  {verificationStrip(t)}
                   {studioStrip(t)}
                 </div>
               ))

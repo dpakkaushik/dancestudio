@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { addProofPhotoAction, removeProofPhotoAction } from "@/features/orgs/server-actions/proof";
+import { addStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
 import { INK, LINE, SUB } from "@/lib/design/tokens";
 import { PHOTO_TYPES, whyNotAPhoto } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_MAX, PROOF_MIN, proofPath, type ProofPhoto } from "@/lib/media/proof";
@@ -31,12 +32,18 @@ const MUTED = "var(--muted)";
  *  real signed URL. */
 export function ProofPhotos({
   orgId,
+  tenantId = null,
   initialPhotos,
   onCount,
   compact = false,
   refreshRoute = true,
 }: {
   orgId: string;
+  /** WHICH STUDIO these photos show (11 Sep 2026). Set, the strip is a
+   *  studio's evidence and the row is written through the studio's own door;
+   *  null is the organization's legacy strip. The file goes to the same folder
+   *  either way — `proof/{orgId}/…` — so the bucket's policies need no change. */
+  tenantId?: string | null;
   initialPhotos: ProofPhoto[];
   /** onboarding counts the strip to decide whether Continue is allowed */
   onCount?: (n: number) => void;
@@ -88,7 +95,7 @@ export function ProofPhotos({
           setError(up.error.message);
           continue;
         }
-        const out = await addProofPhotoAction({ path });
+        const out = tenantId ? await addStudioProofPhotoAction({ tenantId, path }) : await addProofPhotoAction({ path });
         if (out.error) {
           /* the row would not take it, so the orphan file goes back out */
           await supabase.storage.from(PROOF_BUCKET).remove([path]);

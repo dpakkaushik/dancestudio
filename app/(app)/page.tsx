@@ -9,6 +9,7 @@ import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findMyGst } from "@/repositories/gst";
+import { findSupportThreads } from "@/repositories/support";
 import { GstCard } from "@/features/orgs/components/GstCard";
 import { findMyPlace } from "@/repositories/stats";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -80,7 +81,7 @@ export default async function HomePage() {
      six-step organization card, and that card became the GST card. They were
      four round-trips on every single Home load for a component that is not
      drawn any more; what is still asked for is what is still shown. */
-  const [tenants, invites, plan, eventsHostId, gst] = await Promise.all([
+  const [tenants, invites, plan, eventsHostId, gst, threads] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
@@ -93,7 +94,15 @@ export default async function HomePage() {
        by pressing Verify rather than by waiting for a person. It is what an
        event needs; studios, classes and Discover need nothing from it. */
     isOrg ? findMyGst(supabase, profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
+    /* THE ONE READ THAT CAME BACK (11 Sep 2026). The six-step card carried the
+       door to the organization's conversation with DanceOS, and with the card
+       gone an organization that had written in had no way back to the reply
+       from Home. One read, drawn only when a thread exists. */
+    isOrg ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
   ]);
+  /* the newest conversation, and whether DanceOS has said something unread */
+  const thread = threads[0] ?? null;
+  const unread = threads.reduce((n, t) => n + t.unread, 0);
   /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
@@ -316,6 +325,18 @@ export default async function HomePage() {
             better, beside each studio, with its own Subscribe button. The tick
             on the sleeve is the whole verified state; the hub is the next step. ── */}
         {isOrg ? <GstCard gstin={gst.gstin} verifiedAt={gst.verifiedAt} /> : null}
+        {/* the conversation with DanceOS, when there is one — the reply is read
+            by opening it, and the count says whether there is one to read */}
+        {isOrg && thread ? (
+          <Link
+            href={`/support/${thread.id}`}
+            style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "11px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)", color: INK, textDecoration: "none", fontSize: 12.5, fontWeight: 800 }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 15 }}>💬</span>
+            <span style={{ flex: 1, minWidth: 0 }}>{unread > 0 ? `Read DanceOS's reply (${unread})` : "Your conversation with DanceOS"}</span>
+            <span aria-hidden="true" style={{ color: "var(--sub)" }}>›</span>
+          </Link>
+        ) : null}
 
         {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
             live first — under the one shelf head, with both doors named. The wrapper runs the

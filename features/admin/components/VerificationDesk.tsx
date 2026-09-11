@@ -4,14 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { decideOrgVerificationAction } from "@/features/admin/server-actions/admin";
+import { decideOrgVerificationAction, decideStudioVerificationAction } from "@/features/admin/server-actions/admin";
 import { VerifiedTick, dateWords } from "@/features/settings/components/settings-kit";
 import { PLATFORM_TINT, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { INK, SUB } from "@/lib/design/tokens";
 import { ProofStrip } from "@/features/admin/components/ProofStrip";
 import { photoUrl } from "@/lib/media/photo";
 import type { ProofPhoto } from "@/lib/media/proof";
-import type { OrganizationRow, VerificationCounts, VerificationRequest } from "@/repositories/admin";
+import type { OrganizationRow, StudioRow, VerificationCounts, VerificationRequest } from "@/repositories/admin";
 import type { SocialLink } from "@/types/profile";
 import { agoWords } from "@/types/notification";
 import { AdminGlyph, DESK_TINT } from "./admin-glyphs";
@@ -59,10 +59,21 @@ function Face({ name, path, size = 44 }: { name: string; path: string | null; si
 
 const TABS: Array<{ key: VerificationTab; label: string }> = [
   { key: "pending", label: "Pending" },
-  { key: "approved", label: "Approved" },
+  { key: "approved", label: "Verified studios" },
   { key: "rejected", label: "Rejected" },
   { key: "all", label: "All orgs" },
 ];
+
+/** what a request is ABOUT: the studio since 11 Sep 2026, the organization on
+ *  the legacy rows kept as history */
+const subjectOf = (r: VerificationRequest) => ({
+  id: r.tenantId ?? r.orgId,
+  name: r.tenantName ?? r.orgName,
+  city: r.tenantId ? r.tenantCity : r.orgCity,
+  socials: r.tenantId ? r.tenantSocials : r.socials,
+  verifiedAt: r.tenantId ? r.tenantVerifiedAt : r.orgVerifiedAt,
+  isStudio: Boolean(r.tenantId),
+});
 
 /** THE VERIFICATION DESK, SECOND CUT (11 Sep 2026) — the user's words: "how am
  *  I gonna scroll down if there are 2k studios which applied? Rather it should
@@ -85,16 +96,22 @@ const TABS: Array<{ key: VerificationTab; label: string }> = [
  *               and a way to approve after all.
  *    All orgs — every organization, whatever it is wearing.
  *
- *  Approving stamps the tick and lists the organization's studios; rejecting
- *  (with a reason the organization reads back) or revoking clears the tick and
- *  unlists them. Both are the database's doing in one transaction; this screen
- *  only asks. */
+ *  ⚠ SINCE 11 Sep 2026 THE THING REVIEWED IS A STUDIO (the user: "the earlier
+ *  logic of org verification will work for the studio… admin will verify the
+ *  studio, then the studio will get badge, then it will subscribe to go live").
+ *  A pending card is a studio — its name, the organization behind it, ITS
+ *  links, ITS photos — and Approve stamps the studio's badge and nothing else:
+ *  the owner still subscribes it to reach Discover. The Approved tab lists the
+ *  studios wearing the badge, with the one lever that takes it off. Requests
+ *  filed under the old model (about an organization) are still drawn, as
+ *  history, and still decided through the organization's own RPC. */
 export function VerificationDesk({
   tab,
   q,
   page,
   counts,
   requests,
+  studios = [],
   orgs,
   total,
   proof,
@@ -106,12 +123,15 @@ export function VerificationDesk({
   counts: VerificationCounts;
   /** the page of requests — on the Pending and Rejected tabs */
   requests: VerificationRequest[];
-  /** the page of organizations — on the Approved and All tabs */
+  /** the page of badged studios — on the Approved tab (11 Sep 2026) */
+  studios?: StudioRow[];
+  /** the page of organizations — on the All tab */
   orgs: OrganizationRow[];
   /** how many match in all, on this tab */
   total: number;
-  /** R16: the photos of the space, per organization on THIS page of the queue,
-   *  each URL already signed on the server for this admin's own session */
+  /** R16: the photos of the space, keyed by the STUDIO on THIS page of the
+   *  queue (by the organization on a legacy row), each URL already signed on
+   *  the server for this admin's own session */
   proof: Record<string, ProofPhoto[]>;
   nowIso: string;
 }) {
@@ -133,19 +153,37 @@ export function VerificationDesk({
       fire(said);
       router.refresh();
     });
+  /* the studio's badge — the answer since 11 Sep 2026 */
+  const decideStudio = (tenantId: string, approve: boolean, said: string, withNote?: string) =>
+    start(async () => {
+      const out = await decideStudioVerificationAction({ tenantId, approve, note: withNote || null });
+      if (out.error) return fire(out.error);
+      setRejecting(null);
+      setNote("");
+      fire(said);
+      router.refresh();
+    });
+  /* one call for either kind of row */
+  const answer = (r: VerificationRequest, approve: boolean, withNote?: string) => {
+    const s = subjectOf(r);
+    const said = approve
+      ? s.isStudio ? `${s.name} verified — the owner subscribes it to go live` : `${s.name} verified — its studios are live`
+      : `${s.name} not approved`;
+    return s.isStudio ? decideStudio(s.id, approve, said, withNote) : decide(s.id, approve, said, withNote);
+  };
 
   const tint = DESK_TINT.verifications;
   const base = "/admin/verifications";
   const keep = { tab, q: q || null };
-  const shown = tab === "pending" || tab === "rejected" ? requests.length : orgs.length;
-  const what = tab === "pending" ? "waiting" : tab === "approved" ? "verified" : tab === "rejected" ? "not approved" : "organizations";
+  const shown = tab === "pending" || tab === "rejected" ? requests.length : tab === "approved" ? studios.length : orgs.length;
+  const what = tab === "pending" ? "waiting" : tab === "approved" ? "verified studios" : tab === "rejected" ? "not approved" : "organizations";
 
   return (
     <div style={{ padding: "6px 16px var(--dos-foot, 40px)" }}>
       <DeskHero
         eyebrow="APPROVAL REQUESTS"
         title="Verification queue"
-        sub={counts.pending === 0 ? "nothing waiting on you" : `${counts.pending} organization${counts.pending === 1 ? "" : "s"} waiting`}
+        sub={counts.pending === 0 ? "nothing waiting on you" : `${counts.pending} studio${counts.pending === 1 ? "" : "s"} waiting`}
         tint={tint}
         icon={<AdminGlyph k="verifications" size={22} />}
       />
@@ -154,7 +192,7 @@ export function VerificationDesk({
         cols={4}
         figs={[
           { n: counts.pending, label: "waiting", href: `${base}?tab=pending`, tone: counts.pending > 0 ? "#F59E0B" : undefined },
-          { n: counts.verifiedOrgs, label: "verified", href: `${base}?tab=approved`, tone: "#22C55E" },
+          { n: counts.verifiedStudios, label: "verified studios", href: `${base}?tab=approved`, tone: "#22C55E" },
           { n: counts.rejected, label: "not approved", href: `${base}?tab=rejected`, tone: counts.rejected > 0 ? "#EF4444" : undefined },
           { n: counts.orgs, label: "organizations", href: `${base}?tab=all` },
         ]}
@@ -166,60 +204,65 @@ export function VerificationDesk({
         keep={{ q: q || null }}
         tabs={TABS.map((t) => ({
           ...t,
-          count: t.key === "pending" ? counts.pending : t.key === "approved" ? counts.verifiedOrgs : t.key === "rejected" ? counts.rejected : counts.orgs,
+          count: t.key === "pending" ? counts.pending : t.key === "approved" ? counts.verifiedStudios : t.key === "rejected" ? counts.rejected : counts.orgs,
           tone: t.key === "pending" ? "#F59E0B" : t.key === "rejected" ? "#EF4444" : undefined,
         }))}
       />
 
-      <SearchBar action={base} q={q} keep={{ tab }} placeholder={tab === "pending" || tab === "rejected" ? "Search by organization name…" : "Search by name or city…"} />
+      <SearchBar action={base} q={q} keep={{ tab }} placeholder={tab === "pending" || tab === "rejected" ? "Search by studio or organization…" : "Search by name or city…"} />
 
       <CountLine shown={shown} total={total} what={what} q={q} />
 
       {/* ── PENDING: the evidence and the decision, on the card ── */}
       {tab === "pending" ? (
         requests.length === 0 ? (
-          <EmptyLine>{q ? "No waiting request matches that name." : "All clear — every organization that asked has an answer."}</EmptyLine>
+          <EmptyLine>{q ? "No waiting request matches that name." : "All clear — every studio that asked has an answer."}</EmptyLine>
         ) : (
-          requests.map((r) => (
-            <div key={r.id} data-testid="verification-request" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 16, padding: "12px 13px", marginBottom: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <Face name={r.orgName} path={r.orgAvatarPath} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Link href={`/person/${r.orgId}`} style={{ fontSize: 13.5, fontWeight: 900, color: INK, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.orgName}</Link>
-                  <div style={{ fontSize: 10.5, color: SUB, marginTop: 1 }}>{[r.orgCity, `asked ${agoWords(r.createdAt, nowIso)}`].filter(Boolean).join(" · ")}</div>
-                </div>
-              </div>
-              <div style={{ margin: "10px 0 4px" }}>
-                <Links socials={r.socials} />
-              </div>
-              {/* R16: the links say who they claim to be; the photos say there is a floor */}
-              <div style={{ margin: "10px 0 4px" }}>
-                <ProofStrip photos={proof[r.orgId] ?? []} orgName={r.orgName} />
-              </div>
-              {rejecting === r.orgId ? (
-                <div style={{ marginTop: 10 }}>
-                  <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="Why not — the organization reads this" aria-label="Reason for rejecting" style={{ width: "100%", boxSizing: "border-box", background: EL, border: `1px solid ${EL}`, borderRadius: 12, padding: "10px 12px", color: INK, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <button type="button" disabled={pending} onClick={() => decide(r.orgId, false, `${r.orgName} not approved`, note.trim())} style={{ ...pill, background: "#EF4444", color: "#fff" }}>
-                      {pending ? "Saving…" : "Reject"}
-                    </button>
-                    <button type="button" disabled={pending} onClick={() => { setRejecting(null); setNote(""); }} style={{ ...pill, background: EL, color: INK }}>
-                      Cancel
-                    </button>
+          requests.map((r) => {
+            const s = subjectOf(r);
+            return (
+              <div key={r.id} data-testid="verification-request" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 16, padding: "12px 13px", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                  <Face name={s.name} path={s.isStudio ? null : r.orgAvatarPath} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Link href={s.isStudio ? `/studio/${s.id}` : `/person/${r.orgId}`} style={{ fontSize: 13.5, fontWeight: 900, color: INK, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</Link>
+                    <div style={{ fontSize: 10.5, color: SUB, marginTop: 1 }}>
+                      {[s.isStudio ? `studio · run by ${r.orgName}` : "organization", s.city, `asked ${agoWords(r.createdAt, nowIso)}`].filter(Boolean).join(" · ")}
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <button type="button" disabled={pending || r.socials.length === 0} aria-label={`Approve ${r.orgName}`} onClick={() => decide(r.orgId, true, `${r.orgName} verified — its studios are live`)} style={{ ...pill, background: r.socials.length ? "#22C55E" : EL, color: r.socials.length ? "#fff" : MUTED }}>
-                    {pending ? "Saving…" : "Approve"}
-                  </button>
-                  <button type="button" disabled={pending} aria-label={`Reject ${r.orgName}`} onClick={() => setRejecting(r.orgId)} style={{ ...pill, background: EL, color: INK }}>
-                    Reject…
-                  </button>
+                <div style={{ margin: "10px 0 4px" }}>
+                  <Links socials={s.socials} />
                 </div>
-              )}
-            </div>
-          ))
+                {/* R16: the links say who they claim to be; the photos say there is a floor */}
+                <div style={{ margin: "10px 0 4px" }}>
+                  <ProofStrip photos={proof[s.id] ?? []} orgName={s.name} />
+                </div>
+                {rejecting === s.id ? (
+                  <div style={{ marginTop: 10 }}>
+                    <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="Why not — the owner reads this" aria-label="Reason for rejecting" style={{ width: "100%", boxSizing: "border-box", background: EL, border: `1px solid ${EL}`, borderRadius: 12, padding: "10px 12px", color: INK, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <button type="button" disabled={pending} onClick={() => answer(r, false, note.trim())} style={{ ...pill, background: "#EF4444", color: "#fff" }}>
+                        {pending ? "Saving…" : "Reject"}
+                      </button>
+                      <button type="button" disabled={pending} onClick={() => { setRejecting(null); setNote(""); }} style={{ ...pill, background: EL, color: INK }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button type="button" disabled={pending || s.socials.length === 0} aria-label={`Approve ${s.name}`} onClick={() => answer(r, true)} style={{ ...pill, background: s.socials.length ? "#22C55E" : EL, color: s.socials.length ? "#fff" : MUTED }}>
+                      {pending ? "Saving…" : "Approve"}
+                    </button>
+                    <button type="button" disabled={pending} aria-label={`Reject ${s.name}`} onClick={() => setRejecting(s.id)} style={{ ...pill, background: EL, color: INK }}>
+                      Reject…
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )
       ) : null}
 
@@ -228,35 +271,65 @@ export function VerificationDesk({
         requests.length === 0 ? (
           <EmptyLine>{q ? "No rejected request matches that name." : "Nobody has been turned down."}</EmptyLine>
         ) : (
-          requests.map((r) => (
-            <div key={r.id} data-testid="verification-rejected" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 16, padding: "11px 13px", marginBottom: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <Face name={r.orgName} path={r.orgAvatarPath} size={38} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                    <Link href={`/person/${r.orgId}`} style={{ fontSize: 13, fontWeight: 900, color: INK, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.orgName}</Link>
-                    {r.orgVerifiedAt ? <VerifiedTick size={13} /> : null}
+          requests.map((r) => {
+            const s = subjectOf(r);
+            return (
+              <div key={r.id} data-testid="verification-rejected" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 16, padding: "11px 13px", marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                  <Face name={s.name} path={s.isStudio ? null : r.orgAvatarPath} size={38} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <Link href={s.isStudio ? `/studio/${s.id}` : `/person/${r.orgId}`} style={{ fontSize: 13, fontWeight: 900, color: INK, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</Link>
+                      {s.verifiedAt ? <VerifiedTick size={13} /> : null}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: SUB, marginTop: 1 }}>
+                      {[s.isStudio ? `run by ${r.orgName}` : null, s.city, r.decidedAt ? `rejected ${dateWords(r.decidedAt)}` : "rejected", s.verifiedAt ? "verified since" : null].filter(Boolean).join(" · ")}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 10.5, color: SUB, marginTop: 1 }}>
-                    {[r.orgCity, r.decidedAt ? `rejected ${dateWords(r.decidedAt)}` : "rejected", r.orgVerifiedAt ? "verified since" : null].filter(Boolean).join(" · ")}
-                  </div>
+                  {s.verifiedAt ? null : (
+                    <button type="button" disabled={pending || s.socials.length === 0} aria-label={`Verify ${s.name}`} onClick={() => answer(r, true)} style={{ ...pill, padding: "7px 12px", background: s.socials.length ? "var(--text)" : EL, color: s.socials.length ? "var(--solid)" : MUTED }}>
+                      Verify
+                    </button>
+                  )}
                 </div>
-                {r.orgVerifiedAt ? null : (
-                  <button type="button" disabled={pending || r.socials.length === 0} aria-label={`Verify ${r.orgName}`} onClick={() => decide(r.orgId, true, `${r.orgName} verified — its studios are live`)} style={{ ...pill, padding: "7px 12px", background: r.socials.length ? "var(--text)" : EL, color: r.socials.length ? "var(--solid)" : MUTED }}>
-                    Verify
-                  </button>
-                )}
+                {r.note ? <div style={{ fontSize: 11.5, color: INK, marginTop: 8, lineHeight: 1.5, borderLeft: `2px solid ${EL}`, paddingLeft: 9 }}>&ldquo;{r.note}&rdquo;</div> : <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8 }}>No reason was recorded.</div>}
               </div>
-              {r.note ? <div style={{ fontSize: 11.5, color: INK, marginTop: 8, lineHeight: 1.5, borderLeft: `2px solid ${EL}`, paddingLeft: 9 }}>&ldquo;{r.note}&rdquo;</div> : <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8 }}>No reason was recorded.</div>}
+            );
+          })
+        )
+      ) : null}
+
+      {/* ── APPROVED: the studios wearing the badge, and the lever that takes it off ── */}
+      {tab === "approved" ? (
+        studios.length === 0 ? (
+          <EmptyLine>{q ? "No verified studio matches that." : "No studio is verified yet."}</EmptyLine>
+        ) : (
+          studios.map((s) => (
+            <div key={s.id} data-testid="verification-studio" style={{ display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #22C55E", borderRadius: 16, padding: "10px 13px", marginBottom: 8 }}>
+              <Face name={s.name} path={s.photoPath} size={36} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <Link href={`/studio/${s.id}`} style={{ fontSize: 13, fontWeight: 900, color: INK, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</Link>
+                  <VerifiedTick size={13} />
+                </div>
+                <div style={{ fontSize: 10.5, color: SUB, marginTop: 1 }}>
+                  {[s.ownerName ? `run by ${s.ownerName}` : null, [s.area, s.city].filter(Boolean).join(", ") || null, s.verifiedAt ? `verified ${dateWords(s.verifiedAt)}` : null, s.visibility === "listed" ? "on Discover" : "not on Discover yet"].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              <button type="button" disabled={pending} aria-label={`Revoke ${s.name}`} onClick={() => decideStudio(s.id, false, `${s.name} unverified — its badge is off`)} style={{ ...pill, padding: "7px 12px", background: EL, color: INK }}>
+                Revoke
+              </button>
             </div>
           ))
         )
       ) : null}
 
-      {/* ── APPROVED / ALL: who is wearing the tick, and the lever ── */}
-      {tab === "approved" || tab === "all" ? (
+      {/* ── ALL: every organization, as a directory. The tick an organization wears
+          is the OLD model's (DanceOS checked it by hand before 11 Sep 2026); it is
+          shown, not offered — the lever is on the studio now. ── */}
+      {tab === "all" ? (
         orgs.length === 0 ? (
-          <EmptyLine>{q ? "No organization matches that." : tab === "approved" ? "Nobody is verified yet." : "No organizations on DanceOS yet."}</EmptyLine>
+          <EmptyLine>{q ? "No organization matches that." : "No organizations on DanceOS yet."}</EmptyLine>
         ) : (
           orgs.map((o) => {
             const verified = Boolean(o.verifiedAt);
@@ -269,18 +342,9 @@ export function VerificationDesk({
                     {verified ? <VerifiedTick size={13} /> : null}
                   </div>
                   <div style={{ fontSize: 10.5, color: SUB, marginTop: 1 }}>
-                    {[o.city, verified ? `verified ${dateWords(o.verifiedAt as string)}` : "not verified", `${o.socials.length} link${o.socials.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}
+                    {[o.city, verified ? `verified ${dateWords(o.verifiedAt as string)}` : "not verified by hand", `${o.socials.length} link${o.socials.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}
                   </div>
                 </div>
-                {verified ? (
-                  <button type="button" disabled={pending} aria-label={`Revoke ${o.name}`} onClick={() => decide(o.id, false, `${o.name} unverified — its studios are private`)} style={{ ...pill, padding: "7px 12px", background: EL, color: INK }}>
-                    Revoke
-                  </button>
-                ) : (
-                  <button type="button" disabled={pending || o.socials.length === 0} aria-label={`Verify ${o.name}`} onClick={() => decide(o.id, true, `${o.name} verified — its studios are live`)} style={{ ...pill, padding: "7px 12px", background: o.socials.length ? "var(--text)" : EL, color: o.socials.length ? "var(--solid)" : MUTED }}>
-                    Verify
-                  </button>
-                )}
               </div>
             );
           })

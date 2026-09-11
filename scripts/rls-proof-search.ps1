@@ -98,6 +98,8 @@ try {
     entry_tiers = @(@{ format = "solo"; fee_inr = 0; capacity = 8 }) }
   # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
   # tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+  # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
+  Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "27SRCHA$(Get-Date -Format 'mmss')A1Z5" } | Out-Null
   $orgA = [string](Rpc (Api $ownerA.token) "my_org_tenant" @{})
   $pubId = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = $ev }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $pubId } | Out-Null

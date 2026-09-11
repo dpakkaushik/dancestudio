@@ -68,35 +68,22 @@ async function signUp(page, email) {
     await page.getByLabel("Your logo", { exact: true }).waitFor({ timeout: 20000 });
     await shot("onboarding-photo");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    /* an organization is not asked what it dances; its links are the price of asking to be verified */
+    /* an organization is not asked what it dances; since 11 Sep 2026 its links
+       are optional too — DanceOS checks each STUDIO's links and photos instead */
     await shot("onboarding-links");
-    await page.getByLabel("Instagram profile URL").fill("https://instagram.com/eeedance");
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
-    /* R16 (9 Sep 2026): five to ten photos of the space, into the PRIVATE bucket.
-       request_org_verification refuses a request under five, so the bow — and
-       everything after it — depends on this screen being filled. */
-    await page.getByText("Show DanceOS your space").waitFor({ timeout: 20000 });
-    await page.getByLabel("Add photos of your space").setInputFiles(
-      Array.from({ length: 5 }, (_, i) => ({ name: `space-${i + 1}.png`, mimeType: "image/png", buffer: PNG }))
-    );
-    await page.getByRole("status", { name: "5 of 5 to 10 photos added" }).waitFor({ timeout: 60000 });
-    await shot("onboarding-space-photos");
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.getByRole("button", { name: "Skip for now →" }).click();
     await page.getByText(/Welcome, /).waitFor();
     await shot("onboarding-done");
     await page.getByRole("button", { name: "Open DanceOS →" }).click();
     await page.waitForURL((u) => !u.pathname.startsWith("/onboarding"));
     await page.goto(`${BASE}/`);
-    /* R13: where the organization stands lives on HOME — shoot it BEFORE the
-       tick, because the timeline waiting is a screen in its own right */
-    await shot("home-org-in-review");
-    await page.goto(`${BASE}/business`);
-    await shot("business-hub-unverified");
-
-    /* the platform admin's yes. A developer tool cannot wait for a human, so the
-       service role stamps the tick the way every proof script does. */
+    /* 11 Sep 2026: Home carries the GST card — NOT VERIFIED first */
+    await shot("home-org-gst");
+    /* the number is the organization's own to verify; the service role stands in
+       for the Verify button, exactly as it stands in for the webhook below */
     await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-      method: "PATCH", headers: adminHeaders, body: JSON.stringify({ verified_at: new Date().toISOString() }),
+      method: "PATCH", headers: adminHeaders,
+      body: JSON.stringify({ gstin: `27SHOTA${String(Date.now() % 10000).padStart(4, "0")}A1Z5`, gstin_verified_at: new Date().toISOString() }),
     });
     await page.goto(`${BASE}/`);
     await shot("home-org-verified");
@@ -125,7 +112,12 @@ async function signUp(page, email) {
       { headers: adminHeaders }
     )).json();
     const studioId = (studioRows.find((r) => r.tenants && r.tenants.type === "studio") || {}).tenant_id;
-    if (!studioId) throw new Error("the studio was not created — is the organization verified?");
+    if (!studioId) throw new Error("the studio was not created");
+    /* the BADGE (11 Sep 2026): an admin's approval, which the service role
+       stands in for — the studio is verified before it is subscribed */
+    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, {
+      method: "PATCH", headers: adminHeaders, body: JSON.stringify({ verified_at: new Date().toISOString() }),
+    });
     const today = new Date().toISOString().slice(0, 10);
     const until = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
     await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {

@@ -82,12 +82,6 @@ const PNG_BYTES = Buffer.from(
   "base64"
 );
 const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
-/** R16 (9 Sep 2026): five to ten photos of the space, into a private bucket. */
-const FIVE_PNGS = Array.from({ length: 5 }, (_, i) => ({
-  name: `space-${i + 1}.png`,
-  mimeType: "image/png",
-  buffer: PNG_BYTES,
-}));
 
 /** Onboarding, both kinds, as it stands since 8 Sep 2026: who first, one name,
  *  the city, the required photo, then a person's styles or an organization's
@@ -103,13 +97,9 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
   await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   if (isOrg) {
-    await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
-    /* R16: the photos of the space — five before it can ask to be verified */
-    await expect(page.getByText("Show DanceOS your space")).toBeVisible();
-    await page.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
-    await expect(page.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
-    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    /* 11 Sep 2026: an organization's links are optional, and the photos belong
+       to a STUDIO — shown for one on the hub, after it exists */
+    await page.getByRole("button", { name: "Skip for now →" }).click();
   } else {
     await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
     await page.getByRole("button", { name: "Continue · 1 style" }).click();
@@ -210,18 +200,16 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await anonContext?.close();
   });
 
-  test("a verified, subscribed organization puts one studio on Discover", async () => {
+  test("an organization opens a studio; DanceOS verifies the studio; its subscription puts it on Discover", async () => {
     ownerId = await signUp(owner, `mod-owner-${stamp}@example.com`);
     await onboard(owner, orgName, "Organization", "Pune");
 
-    // R14 (9 Sep 2026): THE GATE. A studio cannot be created at all yet, and the
-    // hub prints the database's own sentence rather than offering a control that
-    // would be refused — the same text create_tenant_with_owner raises.
+    // 11 Sep 2026: nothing gates CREATING a studio but being an organization —
+    // the hub offers Add studio from the first minute. What DanceOS reviews is
+    // the STUDIO, below, once it exists and has something to show.
     await owner.goto("/business");
-    await expect(owner.getByRole("button", { name: "Add studio" })).toHaveCount(0);
-    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toContainText(
-      "A DanceOS admin is checking your organization"
-    );
+    await expect(owner.getByRole("button", { name: "Add studio" })).toBeVisible();
+    await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toHaveCount(0);
 
     adminId = await signUp(admin, adminEmail());
     const named0 = await fetch(`${supabaseUrl}/rest/v1/platform_admins`, {
@@ -230,9 +218,6 @@ test.describe.serial("the admin panel: businesses and reports", () => {
       body: JSON.stringify({ user_id: adminId }),
     });
     expect(named0.ok).toBeTruthy();
-    await adminGoto(admin, adminEmail(), "/admin/verifications");
-    await admin.getByTestId("verification-request").filter({ hasText: orgName }).getByRole("button", { name: `Approve ${orgName}` }).click();
-    await expect(admin.getByText(`${orgName} verified — its studios are live`)).toBeVisible({ timeout: 15_000 });
 
     // verified opens the door (10 Sep 2026: verification alone gates CREATING a
     // studio) — but what it makes is born PRIVATE, and goes public on its OWN
@@ -245,8 +230,36 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.getByLabel("Room 1 name").fill("Studio A");
     await owner.getByRole("button", { name: "Create studio" }).click();
     await expect(owner.getByText(studioName, { exact: true })).toBeVisible();
-    // under the row: where the studio stands, in the database's own sentence,
+    // under the row: the STUDIO's own review (11 Sep 2026) — a public link,
+    // five photos, the ask, the admin's badge — and only then Subscribe
+    await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");
+    await expect(owner.getByTestId("studio-subscription").getByRole("button", { name: /^Subscribe/ })).toHaveCount(0);
+    const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/tenants?name=eq.${encodeURIComponent(studioName)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+    const studioId = studioRows[0]?.id as string;
+    expect(studioId).toBeTruthy();
+    // the service role stands in for the Edit sheet (the link) and the upload
+    // strip (the photos) — happy-path drives both for real
+    expect((await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ socials: [{ platform: "Instagram", url: "https://instagram.com/modstudio" }] }) })).ok).toBeTruthy();
+    expect(
+      (
+        await fetch(`${supabaseUrl}/rest/v1/org_proof_photos`, {
+          method: "POST",
+          headers: adminHeaders,
+          body: JSON.stringify(Array.from({ length: 5 }, (_, i) => ({ org_id: ownerId, tenant_id: studioId, path: `proof/${ownerId}/mod-${stamp}-${i}.png`, sort: i, created_by: ownerId, updated_by: ownerId }))),
+        })
+      ).ok
+    ).toBeTruthy();
+    await owner.goto("/business");
+    await owner.getByTestId("studio-verification").getByRole("button", { name: `Ask DanceOS to verify ${studioName}` }).click();
+    await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Under review", { timeout: 15_000 });
+    await adminGoto(admin, adminEmail(), `/admin/verifications?q=${encodeURIComponent(studioName)}`);
+    await admin.getByTestId("verification-request").filter({ hasText: studioName }).getByRole("button", { name: `Approve ${studioName}` }).click();
+    await expect(admin.getByText(`${studioName} verified — the owner subscribes it to go live`)).toBeVisible({ timeout: 15_000 });
+
+    // the badge is on; where the studio stands, in the database's own sentence,
     // and the one thing to do about it — the real door is Cashfree's mandate
+    await owner.goto("/business");
+    await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Verified");
     const strip = owner.getByTestId("studio-subscription");
     await expect(strip.getByText("NOT PUBLIC", { exact: true })).toBeVisible();
     await expect(strip).toContainText("Each studio has its own subscription");

@@ -1,4 +1,4 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect, type BrowserContext, type Locator, type Page } from "@playwright/test";
 
 /**
  * The admin panel, phase 1 (10 Sep 2026): the conversation between an
@@ -7,15 +7,15 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
  *
  * The claims under test, in the order the story tells them:
  *   1. a stranger cannot see the panel exists — every route 404s;
- *   2. an organization that has asked to be verified sees a TIMELINE saying so
- *      ON HOME (R13, 9 Sep 2026 — it used to be inside the studios hub), with
- *      the badge on its own name and a door to write to DanceOS;
+ *   2. a STUDIO under review says so on the hub (11 Sep 2026 — the review moved
+ *      from the organization to the studio), with a door to write to DanceOS
+ *      that carries the request, so the thread is about this very review;
  *   3. it writes; the admin sees it in the queue with an unread badge, and the
  *      unread is each side's own (the organization's own message is not unread
  *      to itself);
  *   4. the admin replies; the organization reads the reply and the badge clears;
  *   5. REJECTING posts the reason INTO that conversation, so "why?" is answered
- *      where it was asked, and the timeline prints the reason;
+ *      where it was asked, and the studio's strip on the hub prints the reason;
  *   6. every decision is in the audit log, which cannot be edited by anybody;
  *   7. suspension is reversible, tells the account why, and refuses an admin.
  *
@@ -50,16 +50,10 @@ const PNG_BYTES = Buffer.from(
   "base64"
 );
 const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
-/** R16 (9 Sep 2026): an organization shows DanceOS five to ten photos of its
- *  space before it can ask to be verified. The input takes several at once. */
-const FIVE_PNGS = Array.from({ length: 5 }, (_, i) => ({
-  name: `space-${i + 1}.png`,
-  mimeType: "image/png",
-  buffer: PNG_BYTES,
-}));
 
-/** Onboard as an organization: who first, one name, city, photo, then the
- *  mandatory links — and the bow files the verification request as it leaves. */
+/** Onboard as an organization: who first, one name, city, photo — the links
+ *  are optional since 11 Sep 2026, and nothing is filed as it leaves: the
+ *  review is of a STUDIO, asked for from the hub once one exists. */
 async function onboardOrg(page: Page, name: string, city: string) {
   await expect(page).toHaveURL(/\/onboarding/);
   await page.getByText("Organization", { exact: true }).click();
@@ -69,15 +63,9 @@ async function onboardOrg(page: Page, name: string, city: string) {
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   await expect(page.getByLabel("Your logo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.getByLabel("Instagram profile URL").fill(`https://instagram.com/${name.toLowerCase().replace(/[^a-z0-9]/g, "")}`);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  /* R16: the photos of the space, into a PRIVATE bucket. Continue names what is
-     missing until five are up, the way every other step of this flow does. */
-  await expect(page.getByText("Show DanceOS your space")).toBeVisible();
-  await expect(page.getByRole("button", { name: `Add ${5} more photos` })).toBeVisible();
-  await page.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
-  await expect(page.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  /* 11 Sep 2026: an organization's links are optional, and the photos of a
+     space belong to a STUDIO, shown for one on the hub once it exists */
+  await page.getByRole("button", { name: "Skip for now →" }).click();
   await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
@@ -125,6 +113,43 @@ async function deleteUser(id: string) {
   await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: adminHeaders });
 }
 
+/** NAME A CITY IN THE PICKER (11 Sep 2026) — the same helper happy-path carries:
+ *  the City field is a Google city search; the typed name is always the last
+ *  option, so a test never depends on Google answering. */
+async function pickCity(page: Page | Locator, city: string) {
+  const box = page.getByRole("searchbox", { name: /Search your city/i });
+  if ((await box.count()) === 0) {
+    await page.getByRole("button", { name: "Change city" }).first().click();
+  }
+  await box.first().fill(city);
+  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+}
+
+async function studioIdOf(name: string): Promise<string> {
+  const rows = (await (await fetch(`${supabaseUrl}/rest/v1/tenants?name=eq.${encodeURIComponent(name)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+  const id = rows[0]?.id;
+  if (!id) throw new Error(`no studio named ${name}`);
+  return id;
+}
+
+/** WHAT A STUDIO SHOWS DANCEOS (11 Sep 2026): a public link and five photos.
+ *  The service role stands in for the owner's Edit sheet and upload strip —
+ *  happy-path drives both for real; this spec is about the desk that answers. */
+async function showSpace(studioId: string, ownerId: string) {
+  const linked = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, {
+    method: "PATCH",
+    headers: adminHeaders,
+    body: JSON.stringify({ socials: [{ platform: "Instagram", url: "https://instagram.com/panelstudio" }] }),
+  });
+  if (!linked.ok) throw new Error(`could not link the studio: ${linked.status}`);
+  const photos = await fetch(`${supabaseUrl}/rest/v1/org_proof_photos`, {
+    method: "POST",
+    headers: adminHeaders,
+    body: JSON.stringify(Array.from({ length: 5 }, (_, i) => ({ org_id: ownerId, tenant_id: studioId, path: `proof/${ownerId}/panel-${studioId.slice(0, 8)}-${i}.png`, sort: i, created_by: ownerId, updated_by: ownerId }))),
+  });
+  if (!photos.ok) throw new Error(`could not add the photos: ${photos.status} ${await photos.text()}`);
+}
+
 test.describe("the admin panel: support, trust, accountability", () => {
   let orgContext: BrowserContext;
   let adminContext: BrowserContext;
@@ -137,6 +162,8 @@ test.describe("the admin panel: support, trust, accountability", () => {
   let strangerId: string | null = null;
   const stamp = Date.now().toString(36).slice(-6);
   const orgName = `Panel Org ${stamp}`;
+  /* 11 Sep 2026: the thing under review is a STUDIO */
+  const studioName = `Panel Studio ${stamp}`;
 
   test.beforeAll(async ({ browser }) => {
     test.skip(!supabaseUrl || !serviceKey, "Supabase keys missing (.env.local)");
@@ -166,23 +193,27 @@ test.describe("the admin panel: support, trust, accountability", () => {
     }
   });
 
-  test("an organization in review sees a timeline, and writes to DanceOS", async () => {
+  test("a studio under review says so on the hub, and its owner writes to DanceOS", async () => {
     orgId = await signUp(org, `panel-org-${stamp}@example.com`);
     await onboardOrg(org, orgName, "Pune");
 
-    // R13 (9 Sep 2026): HOME says where it stands, step by step — not the hub
-    await org.goto("/");
-    const standing = org.getByRole("status", { name: /^Verification:/ });
-    await expect(standing).toHaveAttribute("aria-label", "Verification: Under verification");
-    // and the badge is on the organization's own name, for the organization alone
-    await expect(org.getByLabel("Verification: Under verification").first()).toBeVisible();
-    await expect(standing.getByText("Your links are published")).toBeVisible();
-    await expect(standing.getByText("DanceOS has photos of your space")).toBeVisible();
-    await expect(standing.getByText("You asked to be verified")).toBeVisible();
-    await expect(standing.getByText("A DanceOS admin checks them")).toBeVisible();
-    // 10 Sep 2026: a subscription is per STUDIO, so the last two steps say so
-    await expect(standing.getByText("Each studio has its own subscription")).toBeVisible();
-    await expect(standing.getByText("Your studios are on Discover")).toBeVisible();
+    // 11 Sep 2026: the review is of a STUDIO. Open one, show DanceOS its space,
+    // and the hub says where it stands — with a person on the other side of it.
+    await org.goto("/business");
+    await org.getByRole("button", { name: "Add studio" }).click();
+    await org.locator('input[name="name"]').fill(studioName);
+    await org.locator('input[name="area"]').fill("Baner");
+    await pickCity(org, "Pune");
+    await org.getByLabel("Room 1 name").fill("Floor 1");
+    await org.getByRole("button", { name: "Create studio" }).click();
+    await expect(org.getByText(studioName, { exact: true })).toBeVisible();
+    await expect(org.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");
+    await showSpace(await studioIdOf(studioName), orgId as string);
+    await org.goto("/business");
+    await org.getByTestId("studio-verification").getByRole("button", { name: `Ask DanceOS to verify ${studioName}` }).click();
+    const standing = org.getByTestId("studio-verification");
+    await expect(standing).toHaveAttribute("aria-label", "Studio verification: Under review", { timeout: 15_000 });
+    await expect(standing.getByText(/A DanceOS admin is checking this studio/)).toBeVisible();
 
     // and there is a person on the other side of it
     await standing.getByRole("link", { name: "Message DanceOS" }).click();
@@ -246,28 +277,28 @@ test.describe("the admin panel: support, trust, accountability", () => {
        page of 25 — the way an admin with 2,000 applications needs it — so a
        request made a minute ago is on the LAST page, not the first. Searching
        by name is what an admin looking for one organization does too. */
-    await adminGoto(admin, `panel-admin-${stamp}@example.com`, `/admin/verifications?q=${encodeURIComponent(orgName)}`);
-    const request = admin.getByTestId("verification-request").filter({ hasText: orgName });
+    await adminGoto(admin, `panel-admin-${stamp}@example.com`, `/admin/verifications?q=${encodeURIComponent(studioName)}`);
+    const request = admin.getByTestId("verification-request").filter({ hasText: studioName });
     await expect(request).toBeVisible();
     // R16: the links say who they claim to be, the photos say there is a floor
     await expect(request.getByText("5 PHOTOS OF THE SPACE")).toBeVisible();
-    await request.getByRole("button", { name: `Reject ${orgName}` }).click();
+    await request.getByRole("button", { name: `Reject ${studioName}` }).click();
     await admin.getByRole("textbox").last().fill("Your Instagram has three posts and no classes — show us the studio.");
     await admin.getByRole("button", { name: /^Reject/ }).last().click();
     await expect(admin.getByText(/not approved|Ask again|rejected/i).first()).toBeVisible({ timeout: 15_000 });
 
-    // the organization reads the reason where it asked the question
-    await org.goto("/");
-    await expect(org.getByRole("status", { name: "Verification: Not approved" })).toBeVisible();
-    await expect(
-      org.getByRole("status", { name: "Verification: Not approved" }).getByText(/Your Instagram has three posts/)
-    ).toBeVisible();
-    await org.getByRole("link", { name: /conversation with DanceOS|Read DanceOS/ }).click();
+    // the owner reads the reason under the studio, in the admin's own words,
+    // and again in the conversation it opened about this very review
+    await org.goto("/business");
+    await expect(org.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not approved");
+    await expect(org.getByTestId("studio-verification").getByText(/Your Instagram has three posts/)).toBeVisible();
+    await org.goto("/support");
+    await org.getByRole("link", { name: /How long does verification take\?/ }).first().click();
     await expect(org.getByText(/Not approved\. Your Instagram has three posts/)).toBeVisible();
 
     // and the decision is on the record
     await adminGoto(admin, `panel-admin-${stamp}@example.com`, "/admin/audit");
-    const entry = admin.getByTestId("audit-entry").filter({ hasText: orgName });
+    const entry = admin.getByTestId("audit-entry").filter({ hasText: studioName });
     await expect(entry.first()).toBeVisible();
     await expect(entry.first()).toContainText("did not approve");
     await expect(entry.first()).toContainText("Your Instagram has three posts");

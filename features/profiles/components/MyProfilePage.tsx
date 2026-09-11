@@ -310,7 +310,7 @@ export function MyProfilePage({
         {isOrg ? (
           <Group title="Your studios" n={tenants.length}>
             {tenants.map((t) => (
-              <Row key={t.id} href={`/business/${t.id}/classes`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ") || "Studio"} right={profile.verifiedAt ? "Public" : "Not public yet"} />
+              <Row key={t.id} href={`/business/${t.id}/classes`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ") || "Studio"} right={t.verifiedAt ? "Verified" : "Not verified yet"} />
             ))}
             <Row href="/business" title="＋ Add studio" sub={tenants.length === 0 ? "Your first studio is opened from the hub" : "Opened from the hub — the same organization, another address"} />
           </Group>

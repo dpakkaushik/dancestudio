@@ -21,6 +21,16 @@ export interface VerificationRequest {
   socials: SocialLink[];
   /** set once an admin has said yes — a request can be pending on an already-verified org only if it was revoked and asked again */
   orgVerifiedAt: string | null;
+  /** THE STUDIO UNDER REVIEW (11 Sep 2026). Set on every request filed since
+   *  verification moved to the studio; null on the legacy organization
+   *  requests, which are kept as history. When set, the card is about the
+   *  studio — its name, its links, its photos — and the decision stamps ITS
+   *  badge; the organization is only who gets told. */
+  tenantId: string | null;
+  tenantName: string | null;
+  tenantCity: string | null;
+  tenantSocials: SocialLink[];
+  tenantVerifiedAt: string | null;
   status: VerificationStatus;
   note: string | null;
   createdAt: string;
@@ -61,9 +71,15 @@ interface RequestRow {
   created_at: string;
   decided_at: string | null;
   profiles: { full_name: string; city: string | null; avatar_path: string | null; socials: unknown; verified_at: string | null } | null;
+  tenants?: { id: string; name: string; city: string | null; socials: unknown; verified_at: string | null } | null;
 }
 
 const toRequest = (r: RequestRow): VerificationRequest => ({
+  tenantId: r.tenants?.id ?? null,
+  tenantName: r.tenants?.name ?? null,
+  tenantCity: r.tenants?.city ?? null,
+  tenantSocials: toSocials(r.tenants?.socials),
+  tenantVerifiedAt: r.tenants?.verified_at ?? null,
   id: r.id,
   orgId: r.org_id,
   orgName: r.profiles?.full_name ?? "An organization",
@@ -77,7 +93,7 @@ const toRequest = (r: RequestRow): VerificationRequest => ({
   decidedAt: r.decided_at,
 });
 
-const REQUEST_SELECT = "id, org_id, status, note, created_at, decided_at, profiles (full_name, city, avatar_path, socials, verified_at)";
+const REQUEST_SELECT = "id, org_id, status, note, created_at, decided_at, profiles (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
 
 /** THE QUEUE — what is waiting on an admin, oldest first. Under RLS a
  *  non-admin gets their own rows at most; the page refuses them before asking. */
@@ -170,6 +186,9 @@ export interface VerificationCounts {
   rejected: number;
   /** organizations wearing the tick right now — grandfathered ones included */
   verifiedOrgs: number;
+  /** STUDIOS wearing the badge right now (11 Sep 2026) — the figure that
+   *  replaced verifiedOrgs on the desk once the review moved to the studio */
+  verifiedStudios: number;
   /** every live organization */
   orgs: number;
 }
@@ -183,19 +202,20 @@ const headCount = async (q: PromiseLike<{ count: number | null; error: { message
 };
 
 export async function countVerification(supabase: SupabaseClient): Promise<VerificationCounts> {
-  const [pending, rejected, verifiedOrgs, orgs] = await Promise.all([
+  const [pending, rejected, verifiedOrgs, verifiedStudios, orgs] = await Promise.all([
     headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "pending").is("deleted_at", null), "pending"),
     headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").is("deleted_at", null), "rejected"),
     headCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "org").is("deleted_at", null).not("verified_at", "is", null), "verified"),
+    headCount(supabase.from("tenants").select("id", { count: "exact", head: true }).eq("type", "studio").is("deleted_at", null).not("verified_at", "is", null), "verified studios"),
     headCount(supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "org").is("deleted_at", null), "orgs"),
   ]);
-  return { pending, rejected, verifiedOrgs, orgs };
+  return { pending, rejected, verifiedOrgs, verifiedStudios, orgs };
 }
 
 /* `!inner` so a filter on the organization's name narrows the REQUESTS, not
    merely the embedded profile — without it a non-matching row still comes back
    with `profiles: null`, which is the opposite of a search */
-const REQUEST_SELECT_INNER = "id, org_id, status, note, created_at, decided_at, profiles!inner (full_name, city, avatar_path, socials, verified_at)";
+const REQUEST_SELECT_INNER = "id, org_id, status, note, created_at, decided_at, profiles!inner (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
 
 export interface Page<T> {
   rows: T[];
@@ -216,7 +236,13 @@ export async function findVerificationRequestsPage(
     .eq("status", input.status)
     .is("deleted_at", null);
   if (input.q) {
-    query = query.ilike("profiles.full_name", `%${input.q}%`);
+    /* the desk searches by the STUDIO's name now — and still by the
+       organization's, since a request from before 11 Sep 2026 has no studio.
+       PostgREST's `or` across an embedded table needs the table named. */
+    const term = input.q.replace(/[%_,()]/g, " ").trim();
+    if (term) {
+      query = query.or(`full_name.ilike.%${term}%`, { referencedTable: "profiles" });
+    }
   }
   query = input.status === "pending" ? query.order("created_at", { ascending: true }) : query.order("decided_at", { ascending: false, nullsFirst: false });
   const { data, error, count } = await query.range(from, from + input.pageSize - 1);
@@ -264,6 +290,68 @@ export async function findOrganizationsPage(
       verifiedAt: r.verified_at,
       createdAt: r.created_at,
     })),
+  };
+}
+
+/** ONE STUDIO as the admin's Approved tab draws it (11 Sep 2026). */
+export interface StudioRow {
+  id: string;
+  name: string;
+  city: string | null;
+  area: string | null;
+  photoPath: string | null;
+  socials: SocialLink[];
+  verifiedAt: string | null;
+  visibility: string;
+  /** the organization that runs it */
+  ownerId: string | null;
+  ownerName: string | null;
+}
+
+/** One page of studios WEARING THE BADGE — what the Approved tab is now, with
+ *  the one lever that changes it. Matched on the studio's name or city. */
+export async function findVerifiedStudiosPage(
+  supabase: SupabaseClient,
+  input: { q?: string | null; page: number; pageSize: number }
+): Promise<Page<StudioRow>> {
+  const from = (input.page - 1) * input.pageSize;
+  let query = supabase
+    .from("tenants")
+    .select("id, name, city, area, photo_path, socials, verified_at, visibility, tenant_members (user_id, member_role, deleted_at, profiles (full_name))", { count: "exact" })
+    .eq("type", "studio")
+    .is("deleted_at", null)
+    .not("verified_at", "is", null);
+  if (input.q) {
+    const term = input.q.replace(/[%_,()]/g, " ").trim();
+    if (term) {
+      query = query.or(`name.ilike.%${term}%,city.ilike.%${term}%`);
+    }
+  }
+  const { data, error, count } = await query.order("verified_at", { ascending: false }).range(from, from + input.pageSize - 1);
+  if (error) {
+    throw new Error(`verification.studios page failed: ${error.message}`);
+  }
+  type Row = {
+    id: string; name: string; city: string | null; area: string | null; photo_path: string | null; socials: unknown; verified_at: string | null; visibility: string;
+    tenant_members: Array<{ user_id: string; member_role: string; deleted_at: string | null; profiles: { full_name: string } | null }> | null;
+  };
+  return {
+    total: count ?? 0,
+    rows: ((data ?? []) as unknown as Row[]).map((r) => {
+      const owner = (r.tenant_members ?? []).find((m) => m.member_role === "owner" && !m.deleted_at) ?? null;
+      return {
+        id: r.id,
+        name: r.name,
+        city: r.city,
+        area: r.area,
+        photoPath: r.photo_path,
+        socials: toSocials(r.socials),
+        verifiedAt: r.verified_at,
+        visibility: r.visibility,
+        ownerId: owner?.user_id ?? null,
+        ownerName: owner?.profiles?.full_name ?? null,
+      };
+    }),
   };
 }
 

@@ -155,7 +155,12 @@ async function seed() {
     const handle = o.name.toLowerCase().replace(/[^a-z]/g, "");
     await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: city, p_age: null, p_about: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }], p_styles: [], p_phone: null });
     /* the service role stands in for the admin here, exactly as it stands in for the webhook below */
-    await patch(H_SERVICE, `profiles?id=eq.${o.id}`, { verified_at: new Date().toISOString() });
+    await patch(H_SERVICE, `profiles?id=eq.${o.id}`, {
+      verified_at: new Date().toISOString(),
+      /* 11 Sep 2026: a verified GST number is what an event needs */
+      gstin: `27DEMO${o === owner ? "A" : "B"}${String(Date.now() % 10000).padStart(4, "0")}A1Z5`,
+      gstin_verified_at: new Date().toISOString(),
+    });
   }
   log(`${owner.name} and ${owner2.name} are verified organizations — each studio they open gets its own subscription below`);
   /* requirement 3 (9 Sep 2026): a user names at least one style, and every profile keeps a city */
@@ -175,7 +180,8 @@ async function seed() {
      its subscription is live. Granted here as an admin would, and listed the way the grant lists it. */
   for (const [o, t] of [[owner, bounce], [owner2, eee]]) {
     await grantPlan("studio", o.id, t.id, "Granted by the demo seeder — nothing charged");
-    await patch(H_SERVICE, `tenants?id=eq.${t.id}`, { visibility: "listed" });
+    /* 11 Sep 2026: the BADGE first (an admin's approval, which the seeder stands in for), then listed */
+    await patch(H_SERVICE, `tenants?id=eq.${t.id}`, { verified_at: new Date().toISOString(), visibility: "listed" });
   }
   log("Bounce and EEE each hold their own studio subscription (granted, ₹0) and are on Discover");
 

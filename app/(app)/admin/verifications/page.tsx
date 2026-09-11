@@ -3,8 +3,9 @@ import { AdminShell } from "@/features/admin/components/AdminShell";
 import { PAGE_SIZE, pageOf } from "@/features/admin/components/desk-kit";
 import { requireAdmin } from "@/features/admin/server/adminGuard";
 import { VerificationDesk, type VerificationTab } from "@/features/admin/components/VerificationDesk";
-import { countVerification, findOrganizationsPage, findVerificationRequestsPage } from "@/repositories/admin";
+import { countVerification, findOrganizationsPage, findVerificationRequestsPage, findVerifiedStudiosPage } from "@/repositories/admin";
 import { findProofPhotosFor } from "@/repositories/orgStanding";
+import { findStudioProofPhotos } from "@/repositories/studioVerification";
 import type { ProofPhoto } from "@/lib/media/proof";
 
 export const metadata: Metadata = { title: "Verification queue — DanceOS" };
@@ -30,11 +31,15 @@ export default async function VerificationsPage({
     countVerification(supabase),
     tab === "pending" || tab === "rejected"
       ? findVerificationRequestsPage(supabase, { status: tab, q: q || null, page, pageSize: PAGE_SIZE })
-      : findOrganizationsPage(supabase, { verified: tab === "approved" ? true : undefined, q: q || null, page, pageSize: PAGE_SIZE }),
+      : tab === "approved"
+        ? /* the badge is on STUDIOS now (11 Sep 2026): Approved lists them */
+          findVerifiedStudiosPage(supabase, { q: q || null, page, pageSize: PAGE_SIZE })
+        : findOrganizationsPage(supabase, { q: q || null, page, pageSize: PAGE_SIZE }),
   ]);
 
   const requests = tab === "pending" || tab === "rejected" ? (listed.rows as Awaited<ReturnType<typeof findVerificationRequestsPage>>["rows"]) : [];
-  const orgs = tab === "approved" || tab === "all" ? (listed.rows as Awaited<ReturnType<typeof findOrganizationsPage>>["rows"]) : [];
+  const studios = tab === "approved" ? (listed.rows as Awaited<ReturnType<typeof findVerifiedStudiosPage>>["rows"]) : [];
+  const orgs = tab === "all" ? (listed.rows as Awaited<ReturnType<typeof findOrganizationsPage>>["rows"]) : [];
 
   /* the evidence for THIS PAGE of the queue only, signed for this admin's own
      session (R16) — one batch of signatures per organization, not one per photo,
@@ -43,14 +48,20 @@ export default async function VerificationsPage({
   if (tab === "pending") {
     await Promise.all(
       requests.map(async (r) => {
-        proof[r.orgId] = await findProofPhotosFor(supabase, r.orgId).catch(() => []);
+        /* a studio's request shows the STUDIO's photos, keyed by the studio;
+           a legacy organization request still shows the organization's */
+        if (r.tenantId) {
+          proof[r.tenantId] = await findStudioProofPhotos(supabase, r.tenantId).catch(() => []);
+        } else {
+          proof[r.orgId] = await findProofPhotosFor(supabase, r.orgId).catch(() => []);
+        }
       })
     );
   }
 
   return (
     <AdminShell badges={badges}>
-      <VerificationDesk tab={tab} q={q} page={page} counts={counts} requests={requests} orgs={orgs} total={listed.total} proof={proof} nowIso={nowIso} />
+      <VerificationDesk tab={tab} q={q} page={page} counts={counts} requests={requests} studios={studios} orgs={orgs} total={listed.total} proof={proof} nowIso={nowIso} />
     </AdminShell>
   );
 }

@@ -51,7 +51,20 @@ const bizBtn: React.CSSProperties = {
   textDecoration: "none",
 };
 
-export function EventsDesk({ tenantId, events, todayKey }: { tenantId: string; events: DanceEvent[]; todayKey: string }) {
+export function EventsDesk({
+  tenantId,
+  events,
+  todayKey,
+  whyNoEvent = null,
+}: {
+  tenantId: string;
+  events: DanceEvent[];
+  todayKey: string;
+  /** THE ONE SENTENCE between this organization and a new event, or null
+   *  (11 Sep 2026): an event needs the organization's GST number, a studio
+   *  does not. The database words it; this desk prints it where the door was. */
+  whyNoEvent?: string | null;
+}) {
   const router = useRouter();
   const [tab, setTab] = useState<EventStatus>("published");
   const [liveOnly, setLiveOnly] = useState(false);
@@ -93,12 +106,24 @@ export function EventsDesk({ tenantId, events, todayKey }: { tenantId: string; e
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Events</div>
       </div>
       <div style={{ padding: "12px 16px 0" }}>
-        <Link href={`/business/${tenantId}/events/new`} aria-label="Create event" style={{ ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Create event
-        </Link>
+        {whyNoEvent ? (
+          /* a door that would be refused is not offered; the reason stands in
+             its place, with the way to open it — the GST card on Home */
+          <div role="status" aria-label={`Cannot create an event: ${whyNoEvent}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 14, background: "var(--card)", border: "1px dashed var(--el)" }}>
+            <span aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }}>🧾</span>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>{whyNoEvent}</span>
+            <Link href="/" style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "underline", textUnderlineOffset: 2 }}>
+              Add it on Home
+            </Link>
+          </div>
+        ) : (
+          <Link href={`/business/${tenantId}/events/new`} aria-label="Create event" style={{ ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create event
+          </Link>
+        )}
 
         {/* the live banner (LiveBanner 3949): on today AND inside today's window */}
         {liveCount > 0 ? (

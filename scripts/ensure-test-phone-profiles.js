@@ -28,7 +28,7 @@ if (!BASE || !SERVICE) throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SE
 const H = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json", "User-Agent": "danceos-proof-setup/1.0", Prefer: "return=representation" };
 
 const WANTED = [
-  { phone: "919999999999", full_name: "Proof Owner (test number)", role: "org", city: "Pune", styles: [], socials: [{ platform: "Instagram", url: "https://instagram.com/danceos-proof-owner" }], verified: true },
+  { phone: "919999999999", full_name: "Proof Owner (test number)", role: "org", city: "Pune", styles: [], socials: [{ platform: "Instagram", url: "https://instagram.com/danceos-proof-owner" }], verified: true, gstin: "27PHONE9999A1Z5" },
   { phone: "918888888888", full_name: "Proof Learner (test number)", role: "user", city: "Pune", styles: ["Hip-Hop"], socials: [], verified: false },
 ];
 
@@ -53,7 +53,8 @@ async function findUserByPhone(phone) {
   for (const w of WANTED) {
     const u = await findUserByPhone(w.phone);
     if (!u) { console.log(`+${w.phone}: no auth user yet — sign in with the test number once, then rerun`); continue; }
-    const fields = { full_name: w.full_name, role: w.role, city: w.city, styles: w.styles, socials: w.socials, deleted_at: null, verified_at: w.verified ? new Date().toISOString() : null, updated_by: u.id };
+    /* 11 Sep 2026: the owner also carries a verified GST number — an event needs one */
+    const fields = { full_name: w.full_name, role: w.role, city: w.city, styles: w.styles, socials: w.socials, deleted_at: null, verified_at: w.verified ? new Date().toISOString() : null, gstin: w.gstin ?? null, gstin_verified_at: w.gstin ? new Date().toISOString() : null, updated_by: u.id };
     const patched = await call("PATCH", `${BASE}/rest/v1/profiles?id=eq.${u.id}`, fields);
     if (Array.isArray(patched) && patched.length) {
       console.log(`+${w.phone}: profile set — ${w.role}${w.verified ? " · verified" : ""} (${u.id})`);

@@ -12,6 +12,9 @@ const MUTED = "var(--muted)";
 const ACTIONS: Record<string, { says: string; tone: string }> = {
   "org.approve": { says: "verified", tone: "#22C55E" },
   "org.reject": { says: "did not approve", tone: "#EF4444" },
+  /* 11 Sep 2026: the thing verified is a STUDIO */
+  "studio.verify": { says: "verified", tone: "#22C55E" },
+  "studio.reject": { says: "did not approve", tone: "#EF4444" },
   "account.suspend": { says: "suspended", tone: "#EF4444" },
   "account.unsuspend": { says: "lifted the suspension on", tone: "#22C55E" },
   "support.open": { says: "wrote to", tone: "#0EA5E9" },

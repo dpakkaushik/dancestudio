@@ -8,7 +8,6 @@ import { finishOnboardingAction, saveProfileBasicsAction } from "@/features/auth
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import { requestOrgVerificationAction } from "@/features/tenants/server-actions/tenants";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
 import { BTN_STYLE, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
 import { dosToolPaint } from "@/lib/format/styleInk";
@@ -322,7 +321,10 @@ export function OnboardingForm({
   /* ─── SOCIALS (3890-3913) — optional for a person, the price of asking for an organization ─── */
   if (step === "socials") {
     const any = Boolean(yt.trim() || ig.trim() || fb.trim() || (isOrg && web.trim()) || extras.some((x) => x.url.trim()));
-    const can = isOrg ? any : true;
+    /* OPTIONAL FOR EVERYONE (11 Sep 2026). An organization's links were the
+       evidence DanceOS verified it by; now each STUDIO is verified, by its own
+       links and photos, after it exists — so nothing here is required. */
+    const can = true;
     return (
       <AuthShell toast={toast} progress={[isOrg ? 2 : 3, total]}>
         <button type="button" aria-label="Back" onClick={() => setStep(isOrg ? "profile" : "styles")} style={{ fontSize: 20, cursor: "pointer", background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
@@ -330,7 +332,7 @@ export function OnboardingForm({
         </button>
         <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>{isOrg ? "Your organization's links" : "Your social links"}</div>
         <div style={{ fontSize: 13, color: SUB, marginBottom: 16 }}>
-          {isOrg ? "Required — DanceOS verifies an organization by its public presence. Add at least one; a DanceOS admin checks them before your studios go live." : "Optional now — worth adding if you take the Artist plan later."}
+          {isOrg ? "Optional — your organization's own pages. Each studio you open has links of its own, which is what DanceOS checks when it verifies the studio." : "Optional now — worth adding if you take the Artist plan later."}
         </div>
         <Soc ic={<span style={{ background: "linear-gradient(45deg,#F56040,#C13584)", WebkitBackgroundClip: "text", color: "transparent", fontWeight: 900 }}>◎</span>} ph="Instagram profile URL" label="Instagram profile URL" val={ig} set={setIg} color="#C13584" />
         <Soc ic={<span style={{ color: "#FF0000", fontWeight: 900 }}>▶</span>} ph="YouTube channel URL" label="YouTube channel URL" val={yt} set={setYt} color="#FF0000" />
@@ -353,10 +355,12 @@ export function OnboardingForm({
           type="button"
           disabled={pending || !can}
           aria-disabled={!can}
-          onClick={() => can && writeProfile({ styles: mine, socials: socials() }, () => setStep(isOrg ? "proof" : "done"))}
+          /* the photo step is not on an organization's path any more — the photos
+             belong to a STUDIO and are shown for one on the hub (11 Sep 2026) */
+          onClick={() => can && writeProfile({ styles: mine, socials: socials() }, () => setStep("done"))}
           style={{ ...BTN_STYLE, background: can ? PINK : LINE, color: can ? "#fff" : SUB }}
         >
-          {pending ? "Saving…" : isOrg ? (any ? "Continue" : "Add at least one link") : any ? "Continue" : "Skip for now →"}
+          {pending ? "Saving…" : any ? "Continue" : "Skip for now →"}
         </button>
       </AuthShell>
     );
@@ -390,13 +394,10 @@ export function OnboardingForm({
 
   /* ─── DONE — take a bow 🎉 (3915-3943); for an organization, the review begins ─── */
   const myStyles = [...new Set(mine)].slice(0, 5);
+  /* nothing is asked of DanceOS as the flow ends any more (11 Sep 2026): an
+     organization is not reviewed — its studios are, one by one, from the hub */
   const leave = () =>
     start(async () => {
-      if (isOrg) {
-        /* the ask goes in as the flow ends: the links are on the row by now */
-        const out = await requestOrgVerificationAction();
-        if (out.error) return fire(out.error);
-      }
       await finishOnboardingAction();
     });
   return (
@@ -421,7 +422,7 @@ export function OnboardingForm({
         </div>
       </div>
       <div style={{ fontSize: 30, fontWeight: 800, margin: "18px 0 4px", animation: "dosRise .5s .2s ease both", fontFamily: DOS_DISPLAY }}>{isOrg ? `Welcome, ${fullName || "team"}!` : `Take a bow, ${firstWord || "dancer"}!`}</div>
-      <div style={{ fontSize: 13.5, color: "#B7AECB", animation: "dosRise .5s .25s ease both" }}>{isOrg ? "your organization is in review" : `@${handle} · the stage is officially yours.`}</div>
+      <div style={{ fontSize: 13.5, color: "#B7AECB", animation: "dosRise .5s .25s ease both" }}>{isOrg ? "your first studio is next" : `@${handle} · the stage is officially yours.`}</div>
       {isOrg ? null : (
         <>
           <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 8, margin: "28px 0 8px", animation: "dosRise .5s .35s ease both" }}>
@@ -440,7 +441,7 @@ export function OnboardingForm({
       <div style={{ fontSize: 12.5, color: "#B7AECB", marginTop: 22, background: "rgba(255,255,255,.05)", border: "1px solid #241B33", borderRadius: 14, padding: "11px 14px", lineHeight: 1.55, animation: "dosRise .5s .5s ease both", textAlign: "left" }}>
         {isOrg ? (
           <>
-            🛡 <b style={{ color: "#F5F2FA" }}>A DanceOS admin checks your links and photos</b> — usually within a day. Your first studio opens once you are verified and your subscription is active; where you stand is always on <b style={{ color: "#F5F2FA" }}>Home</b>, with a way to message DanceOS about it.
+            🏢 <b style={{ color: "#F5F2FA" }}>Open your first studio from Home</b> — then show DanceOS its space: a public link and 5–10 photos, and an admin gives it the badge. Subscribe a verified studio and it is on Discover. Putting on <b style={{ color: "#F5F2FA" }}>events</b> needs your GST number, which you add on Home in a minute.
           </>
         ) : (
           <>
