@@ -24,11 +24,14 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
   if (role !== "owner" && role !== "trainer") {
     redirect(`/business/${tenantId}/events`);
   }
-  /* AN EVENT NEEDS THE ORGANIZATION'S GST NUMBER (11 Sep 2026). The desk prints
-     the sentence and offers no Create-event door while it stands; somebody who
-     typed the address by hand lands back on the desk, where the sentence is. */
+  /* AN EVENT NEEDS THE ORGANIZATION'S GST NUMBER (11 Sep 2026 — the user: "when
+     a user goes in even without verification of GST it should redirect the user
+     to this settings tab where he can do GST verification"). So this does not
+     bounce them back to the desk they came from, which would be a door that
+     closes with no way forward: it takes them to the screen that fixes it, and
+     `?from=events` is what makes that screen say why they are standing there. */
   if (await findWhyNoEvent(supabase)) {
-    redirect(`/business/${tenantId}/events`);
+    redirect("/gst?from=events");
   }
   /* the city registry (11 Sep 2026): quick chips beside the venue, and where
      the map opens — it replaces the twelve hardcoded names */

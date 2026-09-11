@@ -82,6 +82,7 @@ export function MyProfilePage({
   tenants = [],
   plan,
   isAdmin = false,
+  gstVerified = false,
 }: {
   person: PublicPerson;
   followers: PersonFollowRow[];
@@ -99,6 +100,9 @@ export function MyProfilePage({
   plan: ArtistPlan | null;
   /** a platform admin gets the verification queue as a row in the settings sheet */
   isAdmin?: boolean;
+  /** an organization's GST number — the settings sheet's GST row says whether
+   *  it is verified (11 Sep 2026); false for anybody who is not one */
+  gstVerified?: boolean;
 }) {
   const router = useRouter();
   const { profile } = person;
@@ -423,7 +427,11 @@ export function MyProfilePage({
                 </button>
                 <span style={{ display: "flex", gap: 10, flexShrink: 0 }}>
                   <button type="button" aria-label={`Edit ${l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={{ fontSize: 12, fontWeight: 700, color: SUB, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Edit</button>
-                  <button type="button" aria-label={isOrg && arr.length === 1 ? `${l.platform} is your organization's last link — add another first` : `Remove ${l.platform}`} disabled={isOrg && arr.length === 1} title={isOrg && arr.length === 1 ? "An organization keeps at least one link" : undefined} onClick={() => save({ socials: arr.filter((x) => x.platform !== l.platform) }, `${l.platform} removed`)} style={{ opacity: isOrg && arr.length === 1 ? 0.35 : 1, fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
+                  {/* an organization's last link is removable now (11 Sep 2026):
+                      its links stopped being the evidence behind its tick when
+                      verification moved to the studio, so `update_my_profile`
+                      dropped the rule and this guard went with it */}
+                  <button type="button" aria-label={`Remove ${l.platform}`} onClick={() => save({ socials: arr.filter((x) => x.platform !== l.platform) }, `${l.platform} removed`)} style={{ fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
                 </span>
               </div>
             ))}
@@ -473,7 +481,7 @@ export function MyProfilePage({
           <div style={{ ...fieldLabel, margin: "16px 0 6px" }}>URL</div>
           <input aria-label="URL" value={linkEditor.url} onChange={(e) => setLinkEditor((d) => (d ? { ...d, url: e.target.value } : d))} placeholder="https://…" autoFocus style={fieldInput} />
           <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-            {!linkEditor.isNew && !(isOrg && socials.length === 1) ? (
+            {!linkEditor.isNew ? (
               <button type="button" onClick={() => save({ socials: socials.filter((l) => l.platform !== linkEditor.platform) }, `${linkEditor.platform} removed`, () => setLinkEditor(null))} style={dangerBtn}>Remove</button>
             ) : null}
             <button type="button" onClick={() => setLinkEditor(null)} style={sheetBtn(false)}>Cancel</button>
@@ -535,6 +543,7 @@ export function MyProfilePage({
         onClose={() => router.replace("/profile")}
         role={profile.role}
         isAdmin={isAdmin}
+        gstVerified={gstVerified}
         business={business}
         plan={plan}
         prefs={prefs}

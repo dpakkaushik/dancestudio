@@ -51,6 +51,7 @@ export function SettingsSheet({
   onClose,
   role,
   isAdmin = false,
+  gstVerified = false,
   business,
   plan,
   prefs,
@@ -60,6 +61,9 @@ export function SettingsSheet({
   role: ProfileRole;
   /** a platform admin gets the verification queue as a row; nobody else sees it exists */
   isAdmin?: boolean;
+  /** whether the organization's GST number is verified — the GST row says which
+   *  (11 Sep 2026). False for everybody who is not an organization. */
+  gstVerified?: boolean;
   /** the first business this person runs, for the rows that live on its desk */
   business: Tenant | null;
   /** the Artist plan, when one has been taken */
@@ -124,6 +128,14 @@ export function SettingsSheet({
   const desk = business ? `/business/${business.id}` : null;
   /* a business's rows go to its desk; a person's to their own */
   const rows: Array<{ l: string; v: string; href?: string; sheet?: "enq" }> = [
+    /* ── THE GST NUMBER, ONCE (11 Sep 2026 — the user: "make it one of the
+       options in settings where the org user can click and enter the GST, a
+       one-time option"). It was a card on Home, which turned a one-time errand
+       into a permanent fixture on the screen an organization opens most. Only
+       an organization has one, so only an organization sees the row. ── */
+    ...(role === "org"
+      ? [{ l: "🧾 GST number", v: gstVerified ? "verified · events are open" : "not verified · needed for events", href: "/gst" }]
+      : []),
     { l: isDancer || !desk ? "💳 Payments" : "💳 Payments & verification", v: isDancer || !desk ? "cards · UPI · saved methods" : "cards · UPI · cash · KYC", href: isDancer || !desk ? "/payments" : `${desk}/payments` },
     { l: "🧾 Invoices", v: "billing history · export", href: isDancer || !desk ? "/invoices" : `${desk}/invoices` },
     { l: "↩️ Refunds", v: "requests · approvals · receipts", href: isDancer || !desk ? "/refunds" : `${desk}/refunds` },

@@ -130,7 +130,7 @@ Add-Member $ta.id $staffA.id "staff" $ownerA.id
 # they neither run the event nor its door - and they are not "people who run it" at the box office
 # either. The checks below say exactly that (the accounts backlog row records the limitation).
 # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
-Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "27EVENT$(Get-Date -Format 'mmss')A1Z5" } | Out-Null
+Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "EVT$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
 $orgA = [string](Rpc (Api $ownerA.token) "my_org_tenant" @{})
 
 try {

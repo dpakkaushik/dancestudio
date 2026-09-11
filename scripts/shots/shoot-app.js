@@ -83,7 +83,7 @@ async function signUp(page, email) {
        for the Verify button, exactly as it stands in for the webhook below */
     await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
       method: "PATCH", headers: adminHeaders,
-      body: JSON.stringify({ gstin: `27SHOTA${String(Date.now() % 10000).padStart(4, "0")}A1Z5`, gstin_verified_at: new Date().toISOString() }),
+      body: JSON.stringify({ gstin: `SHT${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString() }),
     });
     await page.goto(`${BASE}/`);
     await shot("home-org-verified");

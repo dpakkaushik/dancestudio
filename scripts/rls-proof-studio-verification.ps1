@@ -11,6 +11,7 @@
 #   1. an organization NOBODY has verified opens a studio
 #   2. the GST number cannot be written by hand; only verify_gstin moves it
 #   3. verify_gstin refuses a wrong shape with the reason, accepts a right one, refuses a twin
+#      (the accepted shape is the PLACEHOLDER the user asked for: 3 letters, 5 digits)
 #   4. an event is refused without the number and allowed with it
 #   5. the studio's review: a link and five photos before the ask; only the owner asks; idempotent
 #   6. no badge, no subscription; the owner cannot stamp the badge; an admin can, and it lists
@@ -76,7 +77,7 @@ function New-Org($email, $name) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$digits = Get-Date -Format "mmss"
+$digits = (Get-Date -Format "HHmmss").Substring(1)
 $made = @()
 
 try {
@@ -89,19 +90,19 @@ try {
   Check 1 "An organization nobody has verified opens a studio (gate: '$gate'; studio: $($ta.id))" ((NoSentence $gate) -and $ta.id)
 
   # ── 2. the GST number is not written by hand ──
-  $hand = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($a.id)" -Headers (Api $a.token) -Body (@{ gstin = "27HANDW${digits}A1Z5"; gstin_verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) }
+  $hand = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($a.id)" -Headers (Api $a.token) -Body (@{ gstin = "HND${digits}"; gstin_verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) }
   $after = Get-Rows $svcH "profiles?id=eq.$($a.id)&select=gstin,gstin_verified_at"
   Check 2 "The owner's own PATCH of gstin is refused or ignored ('$hand'); the column is still empty" ($null -eq $after[0].gstin)
 
   # ── 3. verify_gstin: the reasons, the acceptance, the twin ──
-  $short = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "ABC123456" } }
-  $state = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "45ABCDE1234F1Z5" } }
-  $shape = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "27ABCDE1234F1X5" } }
-  $gstA = "27PROOF${digits}A1Z5"
-  $when = Rpc (Api $a.token) "verify_gstin" @{ p_gstin = " 27proof${digits}a1z5 " }
+  $short = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "ABC1234" } }
+  $long = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "ABC123456" } }
+  $shape = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "27ABCDE1234F1Z5" } }
+  $gstA = "PRF${digits}"
+  $when = Rpc (Api $a.token) "verify_gstin" @{ p_gstin = " prf-${digits} " }
   $rowA = Get-Rows $svcH "profiles?id=eq.$($a.id)&select=gstin,gstin_verified_at"
-  Check 3 "verify_gstin says why: length ('$short'), state code ('$state'), shape ('$shape'); accepts and normalises the right one (stored: $($rowA[0].gstin))" (
-    ($short -match "15 characters") -and ($state -match "state code") -and ($shape -match "shape") -and ($rowA[0].gstin -eq $gstA) -and $rowA[0].gstin_verified_at)
+  Check 3 "verify_gstin says why: four digits ('$short'), six digits ('$long'), a real 15-character GSTIN is not the accepted shape ('$shape'); accepts and normalises the right one (stored: $($rowA[0].gstin))" (
+    ($short -match "three letters then five digits") -and ($long -match "three letters then five digits") -and ($shape -match "three letters then five digits") -and ($rowA[0].gstin -eq $gstA) -and $rowA[0].gstin_verified_at)
   $twin = Fails { Rpc (Api $b.token) "verify_gstin" @{ p_gstin = $gstA } }
   Check 4 "A second organization cannot claim the same number ('$twin')" ($twin -match "already on another")
 
@@ -113,7 +114,7 @@ try {
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof event"
     entry_format = "none"; bracket = 0; rounds = 0; prizes = @(); tickets_on = $false; entry_tiers = @(); ticket_tiers = @() }
   $noGst = Fails { Rpc (Api $b.token) "save_event" @{ p_tenant_id = $orgB; p_event_id = $null; p_event = $ev } }
-  Rpc (Api $b.token) "verify_gstin" @{ p_gstin = "27PROOB${digits}A1Z5" } | Out-Null
+  Rpc (Api $b.token) "verify_gstin" @{ p_gstin = "PRB${digits}" } | Out-Null
   $whyB2 = Rpc (Api $b.token) "why_no_event" @{}
   $evId = Rpc (Api $b.token) "save_event" @{ p_tenant_id = $orgB; p_event_id = $null; p_event = $ev }
   Check 5 "Without a GST number: why_no_event = '$whyB'; save_event refused ('$noGst'). With one: why_no_event is null and the event saves ($evId)" (
@@ -122,7 +123,7 @@ try {
   Rpc (Api $b.token) "clear_gstin" @{} | Out-Null
   $whyB3 = Rpc (Api $b.token) "why_no_event" @{}
   $rowB = Get-Rows $svcH "profiles?id=eq.$($b.id)&select=gstin,gstin_verified_at"
-  Rpc (Api $b.token) "verify_gstin" @{ p_gstin = "27PROOB${digits}A1Z5" } | Out-Null
+  Rpc (Api $b.token) "verify_gstin" @{ p_gstin = "PRB${digits}" } | Out-Null
   Check "5b" "clear_gstin empties both columns (gstin: '$($rowB[0].gstin)') and the door shuts again: '$whyB3'" (($null -eq $rowB[0].gstin) -and ($null -eq $rowB[0].gstin_verified_at) -and ($whyB3 -match "GST"))
 
   # ── 5. the studio's review ──

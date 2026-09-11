@@ -8,9 +8,7 @@ import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
-import { findMyGst } from "@/repositories/gst";
 import { findSupportThreads } from "@/repositories/support";
-import { GstCard } from "@/features/orgs/components/GstCard";
 import { findMyPlace } from "@/repositories/stats";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { amIPlatformAdmin } from "@/repositories/admin";
@@ -81,7 +79,7 @@ export default async function HomePage() {
      six-step organization card, and that card became the GST card. They were
      four round-trips on every single Home load for a component that is not
      drawn any more; what is still asked for is what is still shown. */
-  const [tenants, invites, plan, eventsHostId, gst, threads] = await Promise.all([
+  const [tenants, invites, plan, eventsHostId, threads] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
@@ -90,10 +88,6 @@ export default async function HomePage() {
     /* R15: the organization's ONE events host, so Studio Tools can carry an
        Events tile (11 Sep 2026) — the desk existed, the door from Home did not */
     isOrg ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
-    /* THE ORGANIZATION'S OWN PAPERWORK (11 Sep 2026) — a GST number, verified
-       by pressing Verify rather than by waiting for a person. It is what an
-       event needs; studios, classes and Discover need nothing from it. */
-    isOrg ? findMyGst(supabase, profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
     /* THE ONE READ THAT CAME BACK (11 Sep 2026). The six-step card carried the
        door to the organization's conversation with DanceOS, and with the card
        gone an organization that had written in had no way back to the reply
@@ -324,7 +318,13 @@ export default async function HomePage() {
             the card has nothing left to say that the studios hub does not say
             better, beside each studio, with its own Subscribe button. The tick
             on the sleeve is the whole verified state; the hub is the next step. ── */}
-        {isOrg ? <GstCard gstin={gst.gstin} verifiedAt={gst.verifiedAt} /> : null}
+        {/* ⚠ NO GST CARD ON HOME (11 Sep 2026 — the user: "GST verification step
+            is showing here at the org main screen and that['s] stupid; better
+            make it one of the options in settings"). It is a ONE-TIME errand,
+            and a permanent card for a one-time errand is clutter on the screen
+            an organization opens most. It lives at /gst now, reached from
+            Settings' own row and from the events desk, which is the only place
+            it actually stands in anybody's way. */}
         {/* the conversation with DanceOS, when there is one — the reply is read
             by opening it, and the count says whether there is one to read */}
         {isOrg && thread ? (

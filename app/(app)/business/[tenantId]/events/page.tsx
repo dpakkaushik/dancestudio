@@ -27,7 +27,10 @@ export default async function TenantEventsPage({ params }: { params: Promise<{ t
     redirect("/business");
   }
   /* AN EVENT NEEDS THE ORGANIZATION'S GST NUMBER (11 Sep 2026): the sentence
-     is the database's, and the desk prints it where Create event would be */
+     is the database's, and the desk prints it where Create event would be —
+     with the door to /gst, which is where the number is entered. The desk
+     itself still opens, because an organization with events already published
+     must be able to read and run them while the number is missing. */
   const [events, whyNoEvent] = await Promise.all([findEventsByTenant(supabase, tenantId), findWhyNoEvent(supabase)]);
   return <EventsDesk tenantId={tenantId} events={events} todayKey={dayKeyOf(stampNowIso())} whyNoEvent={whyNoEvent} />;
 }

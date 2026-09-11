@@ -8,6 +8,7 @@ import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyPlace } from "@/repositories/stats";
 import { findMyTenants } from "@/repositories/tenants";
 import { amIPlatformAdmin } from "@/repositories/admin";
+import { findMyGst } from "@/repositories/gst";
 
 /** The Profile tab — prototype S_profiletab's own render, lifted in
  *  `MyProfilePage`, with the Settings sheet behind the chrome's gear
@@ -29,7 +30,7 @@ export default async function ProfilePage() {
     redirect("/onboarding");
   }
   const role = person.profile.role;
-  const [followers, followingPeople, followingTenants, tenants, prefs, plan, isAdmin] = await Promise.all([
+  const [followers, followingPeople, followingTenants, tenants, prefs, plan, isAdmin, gst] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -37,6 +38,9 @@ export default async function ProfilePage() {
     findMyNotificationPrefs(supabase),
     findMyArtistPlan(supabase),
     amIPlatformAdmin(supabase),
+    /* the Settings sheet's GST row says verified or not (11 Sep 2026); only an
+       organization has the row, so only an organization is asked about it */
+    role === "org" ? findMyGst(supabase, person.profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
   ]);
   /* where you stand — an ORGANIZATION has no people board (the prototype hides the
      rank on a studio, 10719); a person stands on the artists' board while the plan is live */
@@ -65,6 +69,7 @@ export default async function ProfilePage() {
       tenants={businesses}
       plan={plan}
       isAdmin={isAdmin}
+      gstVerified={Boolean(gst.verifiedAt)}
     />
   );
 }

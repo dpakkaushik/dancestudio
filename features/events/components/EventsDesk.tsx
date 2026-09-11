@@ -112,8 +112,8 @@ export function EventsDesk({
           <div role="status" aria-label={`Cannot create an event: ${whyNoEvent}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 14, background: "var(--card)", border: "1px dashed var(--el)" }}>
             <span aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }}>🧾</span>
             <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>{whyNoEvent}</span>
-            <Link href="/" style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "underline", textUnderlineOffset: 2 }}>
-              Add it on Home
+            <Link href="/gst?from=events" style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "underline", textUnderlineOffset: 2 }}>
+              Add it
             </Link>
           </div>
         ) : (

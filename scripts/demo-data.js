@@ -158,7 +158,7 @@ async function seed() {
     await patch(H_SERVICE, `profiles?id=eq.${o.id}`, {
       verified_at: new Date().toISOString(),
       /* 11 Sep 2026: a verified GST number is what an event needs */
-      gstin: `27DEMO${o === owner ? "A" : "B"}${String(Date.now() % 10000).padStart(4, "0")}A1Z5`,
+      gstin: `DM${o === owner ? "A" : "B"}${String(Date.now() % 100000).padStart(5, "0")}`,
       gstin_verified_at: new Date().toISOString(),
     });
   }

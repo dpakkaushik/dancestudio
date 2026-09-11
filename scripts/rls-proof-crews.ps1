@@ -185,7 +185,7 @@ try {
   # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
   # tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
   # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
-  Rpc (Api $owner.token) "verify_gstin" @{ p_gstin = "27CREWS$(Get-Date -Format 'mmss')A1Z5" } | Out-Null
+  Rpc (Api $owner.token) "verify_gstin" @{ p_gstin = "CRW$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
   $orgA = [string](Rpc (Api $owner.token) "my_org_tenant" @{})
   $ev = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = @{
     cat = "battle"; title = "Crew Battle $stamp"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"

@@ -130,7 +130,7 @@ $cB1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $tb.id "B D
 # tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
 # The owner's two events are both the organization's, whichever studio they are "for".
 # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
-Rpc (Api $owner.token) "verify_gstin" @{ p_gstin = "27MANAG$(Get-Date -Format 'mmss')A1Z5" } | Out-Null
+Rpc (Api $owner.token) "verify_gstin" @{ p_gstin = "MNG$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
 $orgT = [string](Rpc (Api $owner.token) "my_org_tenant" @{})
 $eA = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgT; p_event_id = $null; p_event = (Ev "A Event $stamp") }
 $eB = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgT; p_event_id = $null; p_event = (Ev "B Event $stamp") }

@@ -290,8 +290,9 @@ test.describe.serial("DanceOS, end to end", () => {
     // create an event" — so the hub offers Add studio from the first minute and
     // the events desk prints the one sentence that stands between it and an event.
     await owner.goto("/");
-    await expect(owner.getByText("GST number", { exact: true })).toBeVisible();
-    await expect(owner.getByText("NOT VERIFIED", { exact: true })).toBeVisible();
+    /* 11 Sep 2026: Home says NOTHING about the GST number — it is a one-time
+       errand living in Settings, not a permanent card on the busiest screen */
+    await expect(owner.getByText("GST number", { exact: true })).toHaveCount(0);
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
 
     await owner.goto("/business");
@@ -301,20 +302,28 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
     await expect(owner.getByRole("status", { name: /^Cannot create an event:/ })).toContainText("Add your GST number");
     await expect(owner.getByRole("link", { name: "Create event" })).toHaveCount(0);
+    /* and typing the address by hand does not dead-end: it lands on the screen
+       that fixes it, which says why (the user's ask, 11 Sep 2026) */
+    const eventsUrl = owner.url();
+    await owner.goto(`${eventsUrl}/new`);
+    await owner.waitForURL(/\/gst\?from=events$/);
+    await expect(owner.getByRole("status", { name: "Why you are here" })).toContainText("Events need this first");
 
-    // ---- the organization verifies its own GST number — shape-checked today,
-    // the government API tomorrow, behind the same button ---------------------
-    // stamped so a run the network killed cannot leave a twin behind (one GSTIN,
-    // one organization — the database refuses a second)
-    const gstin = `27EOWNR${String(Date.now() % 10000).padStart(4, "0")}A1Z5`;
-    await owner.goto("/");
-    await owner.getByLabel("GST number").fill("ABC123456");
-    await expect(owner.getByText(/A GST number is 15 characters/)).toBeVisible();
+    // ---- the organization verifies its own GST number, on the screen the
+    // events desk sent it to — format-checked today, the API tomorrow ---------
+    // stamped so a run the network killed cannot leave a twin behind (one
+    // number, one organization — the database refuses a second)
+    const gstin = `EOW${String(Date.now() % 100000).padStart(5, "0")}`;
+    await owner.getByLabel("GST number").fill("AB1234");
+    await expect(owner.getByText(/three letters then five digits/)).toBeVisible();
     await expect(owner.getByRole("button", { name: "Verify" })).toBeDisabled();
     await owner.getByLabel("GST number").fill(gstin);
     await owner.getByRole("button", { name: "Verify" }).click();
-    await expect(owner.getByText("VERIFIED", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByRole("status", { name: "GST number: verified" })).toBeVisible({ timeout: 15_000 });
     await expect(owner.getByText(/Your organization can put on events/)).toBeVisible();
+    /* and Settings carries the row that leads back here */
+    await owner.goto("/profile?settings=1");
+    await expect(owner.getByRole("link", { name: /GST number/ })).toContainText("verified");
 
     // ---- a platform admin — named through the service role, never self-serve --
     adminId = await signUp(admin, `e2e-admin-${stamp}@example.com`);
@@ -404,7 +413,6 @@ test.describe.serial("DanceOS, end to end", () => {
     // discoverable he will subscribe"). The verified state is the tick on the
     // name; the hub's PUBLIC · GRANTED row above is the studio's own state.
     await owner.goto("/");
-    await expect(owner.getByText("VERIFIED", { exact: true })).toBeVisible();
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
 
     // an admin is ADMIN ONLY (9 Sep 2026): no profile, no Home — the panel is
@@ -418,7 +426,6 @@ test.describe.serial("DanceOS, end to end", () => {
     // is there (the user: the studio hub with its Subscribe button is the next
     // step, not a box on Home)
     await owner.goto("/");
-    await expect(owner.getByText("VERIFIED", { exact: true })).toBeVisible();
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
     // and its own Profile is the ONE place its studios appear together (R9, 8 Sep
     // 2026): the group, the studio's door, the figure — and no Followers figure,
