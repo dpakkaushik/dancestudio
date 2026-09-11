@@ -73,7 +73,10 @@ export async function GET(request: Request) {
 
   const parsed = reverseQuery.safeParse(params);
   if (!parsed.success || !isPlausibleIndianPoint(parsed.data.lat, parsed.data.lng)) {
-    return NextResponse.json({ place: null });
+    return NextResponse.json({ place: null, configured: isPlacesConfigured() });
   }
-  return NextResponse.json({ place: await reversePlace(parsed.data.lat, parsed.data.lng) });
+  /* `configured` rides along so the picker can tell "no key on this server"
+     from "Google did not answer" — the two look identical as a null, and the
+     first one was read on a phone as "location isn't working" (11 Sep 2026) */
+  return NextResponse.json({ place: await reversePlace(parsed.data.lat, parsed.data.lng), configured: isPlacesConfigured() });
 }

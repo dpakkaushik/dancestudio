@@ -78,7 +78,7 @@ export function LocationPicker({
       setBusy("address");
       try {
         const res = await fetch(`/api/places?lat=${p.lat}&lng=${p.lng}`);
-        const body = (await res.json()) as { place: ResolvedPlace | null };
+        const body = (await res.json()) as { place: ResolvedPlace | null; configured?: boolean };
         if (mine !== seq.current) {
           return;
         }
@@ -86,6 +86,17 @@ export function LocationPicker({
         setAddress(place?.label ?? null);
         setArea(place?.area ?? null);
         setCity(place?.city ?? null);
+        /* SAY WHY there is no address (11 Sep 2026). A deployment without
+           GOOGLE_MAPS_KEY answered every lookup with null, and the panel's
+           fallback line read as if the location had failed. The pin is real
+           either way — it is the words for it that are missing. */
+        if (!place) {
+          setNote(
+            body.configured === false
+              ? "The pin is placed, but this server has no Google key to look up its address — type the area and city yourself."
+              : "The pin is placed, but Google could not name the address just now — type the area and city yourself."
+          );
+        }
         onChange({ lat: p.lat, lng: p.lng, area: place?.area ?? null, city: place?.city ?? null, label: place?.label ?? null });
       } catch {
         /* the map still works; only the words for it are missing */
@@ -183,7 +194,9 @@ export function LocationPicker({
         <div style={{ marginTop: 8, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED }}>THE PIN IS ON</div>
           <div style={{ fontSize: 11.5, color: INK, marginTop: 3, lineHeight: 1.45 }}>
-            {busy === "address" ? "Looking up the address…" : address ?? area ?? "A point already on record. Move the map to change it."}
+            {busy === "address"
+              ? "Looking up the address…"
+              : address ?? (touched ? `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)} — no address for it yet` : area ?? "A point already on record. Move the map to change it.")}
           </div>
           {address && (area || city) ? (
             <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>
