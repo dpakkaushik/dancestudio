@@ -73,6 +73,10 @@ export async function amIPlatformAdmin(supabase: SupabaseClient): Promise<boolea
 interface RequestRow {
   id: string;
   org_id: string;
+  /** the request's OWN column, so a card knows it is about a studio even when
+   *  the embedded tenant read comes back empty (14 Sep 2026: RLS hid an
+   *  unlisted studio from the admin and the card fell back to the organization) */
+  tenant_id: string | null;
   status: VerificationStatus;
   note: string | null;
   created_at: string;
@@ -82,7 +86,7 @@ interface RequestRow {
 }
 
 const toRequest = (r: RequestRow): VerificationRequest => ({
-  tenantId: r.tenants?.id ?? null,
+  tenantId: r.tenant_id ?? r.tenants?.id ?? null,
   tenantName: r.tenants?.name ?? null,
   tenantCity: r.tenants?.city ?? null,
   tenantSocials: toSocials(r.tenants?.socials),
@@ -100,7 +104,7 @@ const toRequest = (r: RequestRow): VerificationRequest => ({
   decidedAt: r.decided_at,
 });
 
-const REQUEST_SELECT = "id, org_id, status, note, created_at, decided_at, profiles (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
+const REQUEST_SELECT = "id, org_id, tenant_id, status, note, created_at, decided_at, profiles (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
 
 /** THE QUEUE — what is waiting on an admin, oldest first. Under RLS a
  *  non-admin gets their own rows at most; the page refuses them before asking. */
@@ -187,7 +191,7 @@ export async function countVerification(supabase: SupabaseClient): Promise<Verif
 /* `!inner` so a filter on the organization's name narrows the REQUESTS, not
    merely the embedded profile — without it a non-matching row still comes back
    with `profiles: null`, which is the opposite of a search */
-const REQUEST_SELECT_INNER = "id, org_id, status, note, created_at, decided_at, profiles!inner (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
+const REQUEST_SELECT_INNER = "id, org_id, tenant_id, status, note, created_at, decided_at, profiles!inner (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
 
 export interface Page<T> {
   rows: T[];

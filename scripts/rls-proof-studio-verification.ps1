@@ -16,6 +16,7 @@
 #   5. the studio's review: a link and five photos before the ask; only the owner asks; idempotent
 #   6. no badge, no subscription; the owner cannot stamp the badge; an admin can, and it lists
 #   7. the badge can be revoked and given again; the GST number can be cleared and the door shuts
+#   7b. a platform admin reads the unlisted studio it is reviewing; another organization cannot
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rls-proof-studio-verification.ps1
@@ -152,6 +153,13 @@ try {
   # a platform admin, named through the service role - never self-serve
   $adm = New-Org "sv-admin-$stamp@example.com" "SV Admin $stamp"; $made += $adm.id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/platform_admins" -Headers $svcH -Body (@{ user_id = $adm.id } | ConvertTo-Json) | Out-Null
+  # 14 Sep 2026: the desk reads the studio under RLS, and a studio under review is UNLISTED - so
+  # the admin must be able to read a tenant it is neither a member of nor able to see on Discover,
+  # while another organization still cannot. Found when the queue drew the organization's name
+  # over a studio that had just submitted a link and five photos.
+  $adminSees = Get-Rows (Api $adm.token) "tenants?id=eq.$($ta.id)&select=id,name,visibility"
+  $bSees = Get-Rows (Api $b.token) "tenants?id=eq.$($ta.id)&select=id"
+  Check "7b" "The admin reads the unlisted studio it is reviewing ($($adminSees.Count) row, visibility $($adminSees[0].visibility)); another organization reads nothing ($($bSees.Count) rows)" (($adminSees.Count -eq 1) -and ($adminSees[0].visibility -eq "unlisted") -and ($bSees.Count -eq 0))
   $bDecides = Fails { Rpc (Api $b.token) "decide_studio_verification" @{ p_tenant_id = $ta.id; p_approve = $true; p_note = $null } }
   Rpc (Api $adm.token) "decide_studio_verification" @{ p_tenant_id = $ta.id; p_approve = $true; p_note = "Floor, mirrors, a class in progress - approved." } | Out-Null
   $tick1 = Get-Rows $svcH "tenants?id=eq.$($ta.id)&select=verified_at,visibility"
