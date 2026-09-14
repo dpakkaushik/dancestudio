@@ -319,7 +319,11 @@ export function BusinessHub({
           ) : null}
         </div>
         <div style={{ fontSize: 10.5, color: SUB, marginTop: 5, lineHeight: 1.5 }}>
-          {standing ? standing.line : st.whyNotPublic ?? "On Discover."}
+          {/* an UNVERIFIED studio has the verification form directly above this
+              line, and the form IS the instruction — repeating the database's
+              "add a link and five photos" sentence under it said the same thing
+              twice on one screen (14 Sep 2026). One line about the order, instead. */}
+          {standing ? standing.line : !t.verifiedAt ? "Verified first, then subscribed — then it is on Discover." : st.whyNotPublic ?? "On Discover."}
         </div>
 
         {/* ── ASK FOR THE PIN, WHERE IT MATTERS (11 Sep 2026) ──────────────────

@@ -10,67 +10,87 @@
 > keeps the old closed-list behaviour), but the city registry does not fill until
 > it lands.
 >
-> ### VERIFICATION BELONGS TO THE STUDIO; A GST NUMBER IS THE ORGANIZATION'S PAPERWORK (11 Sep 2026)
-> The user, in their words: *"Earlier we were verifying the ORG and uploading
-> images and social media for the org; now instead of social media use GST
-> number. GST verification will be by API — right now bypass, just give a
-> Verify button: if it's in format then verified, else reject. 2) If a user
-> doesn't have a GST he can still create a studio but can't create an event.
-> 3) The earlier logic of org verification will work for the STUDIO: upload
-> 5-10 images and social media for the studio, admin verifies it, studio gets
-> a badge, then it subscribes to go live."*
+> ### ONLY A STUDIO IS EVER REVIEWED; AN ORGANIZATION HAS A GST NUMBER AND NOTHING ELSE (11–14 Sep 2026)
+> The user, across four messages that each cut deeper: *"instead of social
+> media use GST number… right now bypass, just a Verify button"* → *"if a user
+> doesn't have a GST he can still create a studio but can't create an event"*
+> → *"the earlier logic of org verification will work for the STUDIO: upload
+> 5-10 images and social media, admin verifies it, studio gets a badge, then it
+> subscribes to go live"* → *"org no more needs admin verification AT ALL —
+> org has only GST verification, by the API; just the studio needs admin
+> verification."*
 >
-> * **Migration `20260914090000_verification_belongs_to_the_studio`** (apply
->   with `scripts/db-push.ps1`). `profiles.gstin` + `gstin_verified_at`, a
->   shape CHECK (`gstin_shape`), uniqueness, and a trigger so the pair moves
->   only through **`verify_gstin(text)`** — FORMAT-ONLY today, and the place the
->   government API lands later behind the same signature. `lib/gst/gstin.ts`
->   is the same anatomy in TypeScript, plus the real mod-36 check character
->   (proven by `scripts/gstin-proof.mjs`, OFF by default — the user asked for
->   the bypass; a made-up test number must pass).
-> * **`why_no_event(uuid)`** is the one sentence between an organization and an
->   event, enforced by a **BEFORE INSERT trigger on `events`** rather than a
->   fifth rewrite of `save_event`. Existing events keep their life. The events
->   desk prints the sentence where Create event was; `/events/new` redirects.
-> * **A request is about a STUDIO now.** `org_verification_requests.tenant_id`
->   and `org_proof_photos.tenant_id` (null = legacy organization rows, kept as
->   history). `request_studio_verification`, `add_studio_proof_photo`,
->   `decide_studio_verification` — approval stamps **`tenants.verified_at`, the
->   badge, and nothing else**; the studio still subscribes to reach Discover.
->   The photos live under the same `proof/{org_id}/…` folder, so not one
->   storage policy changed.
+> **THE MODEL, IN ONE PLACE:**
+> * **An organization** signs up with a name, a city and a logo. That is the
+>   whole flow — no styles, no links, no photos, nothing filed with anyone. Its
+>   only paperwork is a **GST number**, entered ONCE at `/gst` (Settings →
+>   🧾 GST number). `verify_gstin(text)` is the single door: today it checks
+>   the PLACEHOLDER the user asked for — **three letters, five digits,
+>   `ABC12345`** — and the government API lands inside that function later
+>   with no caller changing. `lib/gst/gstin.ts` is the same rule in
+>   TypeScript (`scripts/gstin-proof.mjs`, 13 checks). `gstin_shape`, the
+>   CHECK behind the column, also accepts a real 15-character GSTIN so stored
+>   numbers stay valid; what is ACCEPTED is `verify_gstin`'s decision alone.
+>   No admin ever sees an organization; `request_org_verification`,
+>   `decide_org_verification` and `add_org_proof_photo` are DROPPED, and
+>   `update_my_profile` no longer demands a link (that rule blocked sign-up
+>   once the evidence moved — found by the user signing up).
+> * **Events need the GST number; studios do not.** `why_no_event(uuid)` is
+>   the sentence; a **BEFORE INSERT trigger on `events`** enforces it (not a
+>   fifth rewrite of `save_event`); existing events keep their life. The
+>   events desk prints the sentence where Create event was, and
+>   `/events/new` REDIRECTS to `/gst?from=events`, which opens with "Events
+>   need this first" — a closed door that leads somewhere.
+> * **A studio is what an admin reviews.** Under each studio on the hub,
+>   `StudioVerificationStrip` is a FORM: title "Get this studio verified",
+>   **"Why? ›"** opening a sheet with the reasoning (progressive disclosure —
+>   the form carries labels and controls only), block SOCIAL LINKS (Instagram ·
+>   YouTube · Facebook · Website, each beside its own mark, a bare host
+>   finished into https), block STUDIO PHOTOS (`ProofPhotos` with a required
+>   `tenantId`, private), and ONE **Submit** that saves the links AND files
+>   `request_studio_verification`. States: Not verified / Under review (one
+>   line + Message DanceOS) / Not approved (the admin's words, "Submit again")
+>   / Verified. **Subscribe appears only once the badge is on.**
+>   `scripts/shots/shoot-verify-form.js` drives it for real (17 checks).
+> * **The admin desk is studios only:** Pending · Verified · Rejected. A card is
+>   the studio, "run by …", ITS links, ITS photos; Approve stamps
+>   `tenants.verified_at` — the badge — and nothing else; Verified lists badged
+>   studios with Revoke. "All orgs" is gone. Every read filters
+>   `tenant_id is not null`; the organization reviews this replaced are kept
+>   as history and never read back.
+>
+> **THE DATABASE, four migrations (`20260914090000` … `120000`):**
+> * `org_verification_requests.tenant_id`, `org_proof_photos.tenant_id`
+>   (null = legacy organization rows). Photos still live under
+>   `proof/{org_id}/…`, so not one storage policy changed.
 > * **⚠ `tenant_owner_verified(uuid)` WAS REDEFINED, NOT RENAMED.** Twelve
->   listing rules call it (the visibility guard, the admin grant, the webhook's
->   activation, list/unlist, counts) and all twelve mean "may this studio be on
->   Discover?" — it now reads the STUDIO's badge instead of the owner's tick.
->   One redefinition carried them all. `subscribe()`, `why_not_public`,
->   `event_host_is_public` (GST **or** the legacy tick, so no live event goes
->   dark) and the request table's two triggers were rewritten in full.
-> * **`why_no_studio()` (creation) is "are you an organization" and nothing
->   else.** `why_no_studio(uuid)` reads badge → subscription → moderation, in
->   the order asked for. Grandfathering: every studio owned by an
->   already-verified organization was given the badge; `profiles.verified_at`
->   is untouched (the tick still means "checked by hand"; it lists nothing).
-> * **UI.** Home: `GstCard` (type, Verify, tick + date or the exact reason) and
->   a one-line door to the conversation with DanceOS; the six-step card, the
->   NOT VERIFIED chip and five round-trips that fed them are gone. Hub:
->   `StudioVerificationStrip` under each studio — a public link (edited on the
->   studio page), `ProofPhotos` with `tenantId`, "Ask DanceOS to verify", the
->   states Not verified / Under review / Not approved (+ the admin's words) /
->   Verified — and **Subscribe is offered only once the badge is on**. Admin
->   desk: pending cards are studios (name, "run by …", its links, its photos);
->   Approved lists badged studios with Revoke; All orgs is a directory with no
->   lever. Onboarding: an organization's links are optional, no photo step, no
->   request filed; the bow says "your first studio is next".
-> * **Tests.** `scripts/rls-proof-studio-verification.ps1` (9 checks, the new
->   model end to end, as the people involved). happy-path / admin-moderation /
->   admin-support drive the new flow; the four event proofs and
->   `ensure-test-phone-profiles.js` / `demo-data.js` / `shoot-app.js` verify a
->   GST first. Test GSTINs are stamp-based (`27EOWNR1234A1Z5`-shaped) because
->   one number is one organization.
-> * **How this was built:** the Workflow fan-out (6 readers → 2 designs → judge)
->   lost 6 of 9 agents to "out of usage credits" mid-run; the three maps that
->   returned were recovered from its journal and the rest was read inline.
+>   listing rules call it and all twelve mean "may this studio be on Discover?"
+>   — it reads the STUDIO's badge now. One redefinition carried them all.
+>   `subscribe()`, `why_not_public`, `event_host_is_public` (GST **or** the
+>   legacy tick, so no live event went dark) were rewritten in full.
+> * `why_no_studio()` (creation) is "are you an organization" and nothing
+>   else; `why_no_studio(uuid)` reads badge → subscription → moderation.
+> * Grandfathering: every studio of an already-verified organization got the
+>   badge; the 19 organizations' `profiles.verified_at` is untouched (history;
+>   lists nothing). Thirteen orphaned test studios were UNLISTED (a studio
+>   with nobody behind it is not on Discover); the two organizations still in
+>   the queue were withdrawn with the reason written where they read it.
+> * Two bugs the proofs caught after applying: `why_no_studio(uuid)` named
+>   `plan_catalog.plan_key` (the column is `key`; plpgsql resolves columns on
+>   first EXECUTION, so it applied cleanly and would have 500'd the hub on every
+>   badged-but-unsubscribed studio); and PostgREST's bare `null` reaches
+>   PowerShell as the STRING "null" (`NoSentence` in the proof).
+>
+> **Tests:** `scripts/rls-proof-studio-verification.ps1` (11 checks, as the
+> people involved); happy-path / admin-moderation / admin-support drive the new
+> flow, typing the links in the form; the four event proofs and
+> `ensure-test-phone-profiles.js` / `demo-data.js` / `shoot-app.js` verify a
+> GST first. Test numbers are stamp-based (`PRF14339`-shaped) because one
+> number is one organization. All 28 proofs green on the migrated schema.
+>
+> **How this was built:** a Workflow fan-out (6 readers → 2 designs → judge)
+> lost 6 of 9 agents to "out of usage credits" mid-run; the three maps that
+> returned were recovered from its journal and the rest was read inline.
 
 > ### GOOGLE MAPS IS THE MAP NOW, AND THERE IS NO HARDCODED CITY LIST
 > The user's decisions, in their words: *"I have a Google Maps demo key, let's

@@ -121,13 +121,20 @@ function WhySheet({ onClose }: { onClose: () => void }) {
       </div>
 
       <div style={{ background: LILAC, border: `1px solid ${EL}`, borderRadius: 13, padding: "11px 13px" }}>
-        <b style={{ fontSize: 11.5, color: INK, display: "block", marginBottom: 5 }}>What happens next</b>
-        <ol style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: SUB, lineHeight: 1.7 }}>
-          <li>You submit your links and {PROOF_MIN}–{PROOF_MAX} photos.</li>
-          <li>A DanceOS admin looks — usually within a day.</li>
-          <li>The badge lands, and you are told either way.</li>
-          <li>Subscribe the studio and it goes live on Discover.</li>
-        </ol>
+        <b style={{ fontSize: 11.5, color: INK, display: "block", marginBottom: 7 }}>What happens next</b>
+        {/* the numbers are drawn, not left to list markers — the app's reset
+            strips those, and four steps without their numbers read as prose */}
+        {[
+          `You submit your links and ${PROOF_MIN}–${PROOF_MAX} photos.`,
+          "A DanceOS admin looks — usually within a day.",
+          "The badge lands, and you are told either way.",
+          "Subscribe the studio and it goes live on Discover.",
+        ].map((step, i) => (
+          <div key={step} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginBottom: 6 }}>
+            <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: "var(--text)", color: "var(--solid)", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+            <span style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55 }}>{step}</span>
+          </div>
+        ))}
       </div>
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 12, lineHeight: 1.5 }}>
@@ -341,12 +348,11 @@ export function StudioVerificationStrip({
 
       {/* ── BLOCK 2: the photos ── */}
       <div style={{ marginTop: 10, padding: "10px 11px 11px", borderRadius: 13, background: LILAC, border: `1px solid ${EL}` }}>
+        {/* no count here — the strip below carries its own, and two counters
+            for one thing is one too many */}
         <div style={blockHead}>
           <span>STUDIO PHOTOS</span>
-          <span style={{ color: enoughPhotos ? GREEN : AMBER, letterSpacing: 0 }}>
-            {enoughPhotos ? `✓ ${photoCount}` : `${photoCount} of ${PROOF_MIN}`}
-          </span>
-          <span style={{ marginLeft: "auto", fontWeight: 700, letterSpacing: 0, color: MUTED, textTransform: "none" }}>private</span>
+          <span style={{ marginLeft: "auto", fontWeight: 700, letterSpacing: 0, color: MUTED, textTransform: "none" }}>private · only DanceOS sees these</span>
         </div>
         <ProofPhotos orgId={orgId} tenantId={tenant.id} initialPhotos={state.photos} compact onCount={setPhotoCount} />
       </div>
