@@ -133,6 +133,16 @@ function WhySheet({ onClose }: { onClose: () => void }) {
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 12, lineHeight: 1.5 }}>
         Turned down? You are told exactly why, and you can fix it and submit again — there is no limit.
       </div>
+
+      {/* the way out an explainer always has — the backdrop and system back
+          close it too, but a button is the one everybody finds */}
+      <button
+        type="button"
+        onClick={onClose}
+        style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 999, border: "none", background: "var(--text)", color: "var(--solid)", fontSize: 13.5, fontWeight: 900, cursor: "pointer", fontFamily: "inherit" }}
+      >
+        Got it
+      </button>
     </Sheet>
   );
 }

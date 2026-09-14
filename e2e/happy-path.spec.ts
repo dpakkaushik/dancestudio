@@ -366,7 +366,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // the reasoning is one tap away, not a paragraph on the form
     await verifyStrip.getByRole("button", { name: "Why verification" }).click();
     await expect(owner.getByRole("dialog", { name: "Why verification" }).getByText("Why photos of the space")).toBeVisible();
-    await owner.keyboard.press("Escape").catch(() => {});
+    await owner.getByRole("dialog", { name: "Why verification" }).getByRole("button", { name: "Got it" }).click();
+    await expect(owner.getByRole("dialog", { name: "Why verification" })).toHaveCount(0);
     // a bare host is finished into a real address by the form
     await verifyStrip.getByLabel("Instagram").fill("instagram.com/e2estudio");
     await verifyStrip.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
