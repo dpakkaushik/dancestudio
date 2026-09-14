@@ -232,7 +232,9 @@ export function BusinessHub({
     return (
       <Link
         key={t.id}
-        href={own ? `/business/${t.id}/classes` : publicProfilePath(t)}
+        /* a STUDIO opens its own home (14 Sep 2026) — the photo header, today's
+           rooms, its tools; an artist page has no such home and opens its register */
+        href={own ? (t.type === "studio" ? `/business/${t.id}` : `/business/${t.id}/classes`) : publicProfilePath(t)}
         aria-label={`${t.name} — ${own ? "open the studio" : "open the profile"}`}
         style={rowStyle(own)}
       >

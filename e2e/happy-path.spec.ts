@@ -441,8 +441,15 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- create + publish a class ----------------------------------------
     await studioRow.click();
-    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes/);
-    tenantId = owner.url().match(/\/business\/([0-9a-f-]+)\/classes/)?.[1] ?? null;
+    // the row opens the STUDIO'S OWN HOME (14 Sep 2026): the photo header, today's
+    // rooms and its tools — the register is one of the tools
+    await owner.waitForURL(/\/business\/[0-9a-f-]+$/);
+    tenantId = owner.url().match(/\/business\/([0-9a-f-]+)$/)?.[1] ?? null;
+    await expect(owner.getByRole("heading", { name: studioName, exact: true })).toBeVisible();
+    await expect(owner.getByText("Studio Tools")).toBeVisible();
+    await expect(owner.getByText("Nothing in your rooms today")).toBeVisible();
+    await owner.getByRole("link", { name: "Classes", exact: true }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
     // ---- the room came with the studio; give it an amenity (Step 11) ------
     await owner.getByRole("link", { name: "Rooms ›" }).click();
@@ -1157,8 +1164,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByLabel("Age").selectOption("24");
     await trainer.getByLabel("Bio").fill("Movement is a language.");
     await trainer.getByRole("dialog", { name: "Edit profile" }).getByRole("button", { name: "Save" }).click();
-    await expect(trainer.getByText("Movement is a language.")).toBeVisible();
-    await expect(trainer.getByText("24, Pune")).toBeVisible();
+    /* the sheet closes when the action returns, and the page refreshes after
+       that — two round trips, 10 s on a loaded machine (14 Sep 2026). Wait for
+       the close first: while the sheet is open its textarea carries the typed
+       bio as text content, and a text match there is not the page showing it. */
+    await expect(trainer.getByRole("dialog", { name: "Edit profile" })).toHaveCount(0, { timeout: 20_000 });
+    await expect(trainer.getByText("Movement is a language.")).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByText("24, Pune")).toBeVisible({ timeout: 15_000 });
     // a style, from the registry
     await trainer.getByRole("button", { name: "Add a dance style" }).click();
     await trainer.getByRole("button", { name: "Add Kathak", exact: true }).click();
@@ -1208,7 +1220,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("switch", { name: "Bank transfer" }).click();
     await expect(trainer.getByText("Only the owner changes what the business accepts")).toBeVisible();
     await trainer.getByRole("button", { name: "Verification" }).click();
-    await expect(trainer.getByText("Not verified yet")).toBeVisible();
+    /* 14 Sep 2026: the badge is the STUDIO's now, and an admin gave this studio
+       its badge in the first segment — so the tab reads verified, and it would
+       be a bug if it did not */
+    await expect(trainer.getByText("Verified studio")).toBeVisible();
     // Artist tools is the Artist PLAN's switch (8855), and the plan has been live
     // since the trainer got it on day one — so the strip reads PRO ACTIVE, and
     // pressing it ENDS the plan

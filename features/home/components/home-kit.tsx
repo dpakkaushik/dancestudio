@@ -69,9 +69,16 @@ const GLYPH: Record<string, ReactNode> = {
       <path d="M15.5 14.6c2.5.2 4.3 1.6 5 4.4" />
     </>
   ),
+  /* a room is a place on the floor — the prototype's Rooms mark is a pin (7373) */
+  rooms: I(
+    <>
+      <path d="M12 21s-6.5-5.7-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.3-6.5 10-6.5 10z" />
+      <circle cx="12" cy="10.8" r="2.3" />
+    </>
+  ),
 };
 
-interface Tile {
+export interface Tile {
   name: string;
   href: string;
   k: keyof typeof GLYPH;
@@ -131,72 +138,80 @@ export function BizSection({ role, tenantId, eventsHostId = null, plan = null, c
         ) : null}
       </div>
       {children}
-      {/* the glyph keeps its own ground: a black chip outlined in the tile's colour, so
-          on a tile that IS the colour the icon has an edge to sit against (2556-2566) */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        {tiles.map((t) => (
-          <Link
-            key={t.name}
-            href={t.href}
-            aria-label={t.name}
+      <ToolGrid tiles={tiles} />
+    </div>
+  );
+}
+
+/** THE GRID ITSELF, on its own (14 Sep 2026) so a studio's own home can draw
+ *  ITS set of doors with the same tile, the same paint and the same glyph chip.
+ *  The glyph keeps its own ground: a black chip outlined in the tile's colour, so
+ *  on a tile that IS the colour the icon has an edge to sit against (2556-2566). */
+export function ToolGrid({ tiles }: { tiles: Tile[] }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      {tiles.map((t) => (
+        <Link
+          key={t.name}
+          href={t.href}
+          aria-label={t.name}
+          style={{
+            background: dosToolPaint(t.c),
+            border: `1px solid ${t.c}`,
+            borderRadius: 16,
+            padding: "9px 11px",
+            minHeight: 58,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            gap: 10,
+            cursor: "pointer",
+            boxSizing: "border-box",
+            WebkitTapHighlightColor: "transparent",
+            boxShadow: `0 3px 12px ${t.c}33`,
+            transition: "transform .12s",
+            textDecoration: "none",
+          }}
+        >
+          <span
             style={{
-              background: dosToolPaint(t.c),
-              border: `1px solid ${t.c}`,
-              borderRadius: 16,
-              padding: "9px 11px",
-              minHeight: 58,
+              flexShrink: 0,
+              width: 38,
+              height: 38,
+              borderRadius: 12,
               display: "flex",
               alignItems: "center",
-              justifyContent: "flex-start",
-              gap: 10,
-              cursor: "pointer",
-              boxSizing: "border-box",
-              WebkitTapHighlightColor: "transparent",
-              boxShadow: `0 3px 12px ${t.c}33`,
-              transition: "transform .12s",
-              textDecoration: "none",
+              justifyContent: "center",
+              background: "#0A0A0A",
+              border: `1.5px solid ${t.c}`,
+              color: t.c,
+              lineHeight: 0,
             }}
           >
-            <span
-              style={{
-                flexShrink: 0,
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#0A0A0A",
-                border: `1.5px solid ${t.c}`,
-                color: t.c,
-                lineHeight: 0,
-              }}
-            >
-              {GLYPH[t.k]}
-            </span>
-            <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                <span
-                  style={{
-                    minWidth: 0,
-                    fontSize: 14.5,
-                    fontWeight: 900,
-                    letterSpacing: -0.3,
-                    lineHeight: 1.1,
-                    color: "#fff",
-                    fontFamily: DOS_DISPLAY,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {t.name}
-                </span>
+            {GLYPH[t.k]}
+          </span>
+          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+              <span
+                style={{
+                  minWidth: 0,
+                  fontSize: 14.5,
+                  fontWeight: 900,
+                  letterSpacing: -0.3,
+                  lineHeight: 1.1,
+                  color: "#fff",
+                  fontFamily: DOS_DISPLAY,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t.name}
               </span>
             </span>
-          </Link>
-        ))}
-      </div>
+          </span>
+        </Link>
+      ))}
     </div>
   );
 }

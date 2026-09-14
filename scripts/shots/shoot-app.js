@@ -133,8 +133,11 @@ async function signUp(page, email) {
     await page.goto(`${BASE}/business`);
     await shot("business-hub");
     await page.getByText("EEE Dance Studio").first().click();
-    await page.waitForURL(/\/business\/[0-9a-f-]+\/classes/);
-    tenantId = page.url().match(/\/business\/([0-9a-f-]+)\//)?.[1] ?? null;
+    /* the row opens the studio's own home (14 Sep 2026) — the photo header, today, its tools */
+    await page.waitForURL(/\/business\/[0-9a-f-]+$/);
+    tenantId = page.url().match(/\/business\/([0-9a-f-]+)$/)?.[1] ?? null;
+    await shot("studio-home");
+    await page.goto(`${BASE}/business/${tenantId}/classes`);
     await shot("classes-desk");
     for (const [name, url] of [
       ["home", "/"],
