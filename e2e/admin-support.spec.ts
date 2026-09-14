@@ -209,10 +209,10 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await expect(org.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");
     await showSpace(await studioIdOf(studioName), orgId as string);
     await org.goto("/business");
-    await org.getByTestId("studio-verification").getByRole("button", { name: `Ask DanceOS to verify ${studioName}` }).click();
+    await org.getByTestId("studio-verification").getByRole("button", { name: `Submit ${studioName} for verification` }).click();
     const standing = org.getByTestId("studio-verification");
     await expect(standing).toHaveAttribute("aria-label", "Studio verification: Under review", { timeout: 15_000 });
-    await expect(standing.getByText(/A DanceOS admin is checking this studio/)).toBeVisible();
+    await expect(standing.getByText(/A DanceOS admin is looking/)).toBeVisible();
 
     // and there is a person on the other side of it
     await standing.getByRole("link", { name: "Message DanceOS" }).click();

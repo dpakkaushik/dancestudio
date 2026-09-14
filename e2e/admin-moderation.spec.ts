@@ -248,7 +248,7 @@ test.describe.serial("the admin panel: businesses and reports", () => {
       ).ok
     ).toBeTruthy();
     await owner.goto("/business");
-    await owner.getByTestId("studio-verification").getByRole("button", { name: `Ask DanceOS to verify ${studioName}` }).click();
+    await owner.getByTestId("studio-verification").getByRole("button", { name: `Submit ${studioName} for verification` }).click();
     await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Under review", { timeout: 15_000 });
     await adminGoto(admin, adminEmail(), `/admin/verifications?q=${encodeURIComponent(studioName)}`);
     await admin.getByTestId("verification-request").filter({ hasText: studioName }).getByRole("button", { name: `Approve ${studioName}` }).click();

@@ -359,23 +359,25 @@ test.describe.serial("DanceOS, end to end", () => {
     const verifyStrip = owner.getByTestId("studio-verification");
     await expect(verifyStrip).toHaveAttribute("aria-label", "Studio verification: Not verified");
     await expect(owner.getByTestId("studio-subscription").getByRole("button", { name: /^Subscribe/ })).toHaveCount(0);
-    // the link lives on the studio page's Edit sheet; the service role stands in
-    // for the owner typing it there
-    const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/tenants?name=eq.${encodeURIComponent(studioName)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
-    const studioId = studioRows[0]?.id;
-    expect(studioId).toBeTruthy();
-    const linked = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, {
-      method: "PATCH",
-      headers: adminHeaders,
-      body: JSON.stringify({ socials: [{ platform: "Instagram", url: "https://instagram.com/e2estudio" }] }),
-    });
-    expect(linked.ok).toBeTruthy();
-    // R16, one level down: five photos of THIS studio's space, through the strip
-    await owner.goto("/business");
+    // 14 Sep 2026: the strip IS the form — the links are typed in it beside each
+    // platform's own mark, the photos go under them, and ONE Submit saves the
+    // links and files the request. Nothing is written by the service role here.
+    await expect(verifyStrip.getByRole("button", { name: `Submit ${studioName} for verification` })).toBeDisabled();
+    // the reasoning is one tap away, not a paragraph on the form
+    await verifyStrip.getByRole("button", { name: "Why verification" }).click();
+    await expect(owner.getByRole("dialog", { name: "Why verification" }).getByText("Why photos of the space")).toBeVisible();
+    await owner.keyboard.press("Escape").catch(() => {});
+    // a bare host is finished into a real address by the form
+    await verifyStrip.getByLabel("Instagram").fill("instagram.com/e2estudio");
     await verifyStrip.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
     await expect(verifyStrip.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
-    await verifyStrip.getByRole("button", { name: `Ask DanceOS to verify ${studioName}` }).click();
+    await verifyStrip.getByRole("button", { name: `Submit ${studioName} for verification` }).click();
     await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Under review", { timeout: 15_000 });
+    const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/tenants?name=eq.${encodeURIComponent(studioName)}&select=id,socials`, { headers: adminHeaders })).json()) as Array<{ id: string; socials: Array<{ platform: string; url: string }> }>;
+    const studioId = studioRows[0]?.id;
+    expect(studioId).toBeTruthy();
+    /* the form wrote a real http(s) address from what was typed */
+    expect(studioRows[0]?.socials?.[0]?.url).toBe("https://instagram.com/e2estudio");
 
     // ---- the admin reads the STUDIO's link and photos in the queue, and says yes
     await admin.goto("/admin/verifications");
