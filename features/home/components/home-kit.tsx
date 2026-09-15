@@ -76,6 +76,14 @@ const GLYPH: Record<string, ReactNode> = {
       <circle cx="12" cy="10.8" r="2.3" />
     </>
   ),
+  /* media is a picture: the frame, the sun, the hill (15 Sep 2026) */
+  media: I(
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="3" />
+      <circle cx="9" cy="10" r="1.7" />
+      <path d="M20.5 15.5l-4.6-4.6a1.5 1.5 0 0 0-2.1 0L6.5 18.2" />
+    </>
+  ),
 };
 
 export interface Tile {

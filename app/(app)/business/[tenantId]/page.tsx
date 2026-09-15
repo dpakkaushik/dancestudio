@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Tile } from "@/features/home/components/home-kit";
+import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { StudioHome } from "@/features/tenants/components/StudioHome";
 import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -48,7 +49,8 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
   const [photos, deck, roomCounts, stylesByTenant, eventsHostId] = await Promise.all([
-    /* the photos of its space, as shown to DanceOS — signed, the owner's to see */
+    /* the header pictures — the photos of its space, as shown to DanceOS;
+       signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
     findStudioDeck(supabase, tenant, nowIso),
     countRoomsByTenants(supabase, [tenantId]),
@@ -57,17 +59,20 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     isOwner ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
   ]);
 
-  /* a proof photo whose URL could not be signed is left out — the rail says
-     what it has, and the strip on the hub is where a missing one is chased */
-  const proof = photos.flatMap((p) => (p.url ? [{ id: p.id, url: p.url }] : []));
+  /* a photo whose URL could not be signed is left out — the rail says what it
+     has, and the Media desk is where a missing one is chased */
+  const header = photos.flatMap((p) => (p.url ? [{ id: p.id, path: p.path, url: p.url }] : []));
 
   /* the prototype's studio grid (7359-7373) minus the doors that do not exist —
      Expenses, Assets and Reports have no page, and a tile that opens nothing
-     is a lie. Earnings is the owner's (the desk is server-checked owner-only). */
+     is a lie. Earnings is the owner's (the desk is server-checked owner-only).
+     MEDIA (15 Sep 2026, the user: "create a tab for media along with classes,
+     calendar, earnings") is the studio's two pictures as a desk. */
   const tiles: Tile[] = [
     { name: "Classes", href: `/business/${tenantId}/classes`, k: "classesmod", c: "#0D9488" },
     ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
     { name: "Calendar", href: `/business/${tenantId}/calendar`, k: "calendar", c: "#5AC8FA" },
+    { name: DOS_TOOLS.media.name, href: `/business/${tenantId}/media`, k: "media", c: DOS_TOOLS.media.c },
     { name: "Students", href: `/business/${tenantId}/students`, k: "students", c: "#8B5CF6" },
     { name: "Team", href: `/business/${tenantId}/staff`, k: "team", c: "#F97316" },
     ...(isOwner ? [{ name: "Earnings", href: `/business/${tenantId}/earnings`, k: "earn", c: "#22C55E" } as Tile] : []),
@@ -79,7 +84,9 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       tenant={tenant}
       photo={photoUrl(tenant.photoPath)}
       canEditPhoto={canEditPhoto}
-      proof={proof}
+      header={header}
+      canEditHeader={isOwner}
+      ownerId={isOwner ? user.id : null}
       deck={deck}
       roomCount={roomCounts[tenantId] ?? 0}
       styles={stylesByTenant.get(tenantId) ?? []}

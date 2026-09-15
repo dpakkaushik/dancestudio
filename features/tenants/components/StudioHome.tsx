@@ -2,11 +2,13 @@ import Link from "next/link";
 import { ToolGrid, type Tile } from "@/features/home/components/home-kit";
 import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { HeaderRemove } from "@/features/profiles/components/HeaderRemove";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { PROOF_MAX } from "@/lib/media/proof";
 import type { DeckItem } from "@/types/home";
 import type { Tenant } from "@/types/tenant";
 
@@ -16,26 +18,32 @@ import type { Tenant } from "@/types/tenant";
  *  register: *"I should get something like [the prototype's studio Home], with
  *  a scrollable header."* So this is the prototype's S_homebiz (7354-7660) —
  *  today's schedule as the deck asked the studio's question, then the Studio
- *  Tools grid — under the identity hero every one of the four identity pages
- *  wears, because an organization runs several studios and each one is its own
- *  place, with its own pictures, its own rooms and its own day.
+ *  Tools grid — under the identity hero every identity page wears, because an
+ *  organization runs several studios and each one is its own place, with its
+ *  own pictures, its own rooms and its own day.
  *
- *  What the hero swipes through here: the studio's own picture first — set
- *  right here, by the ＋ on its corner, by the owner or a trainer (the user:
- *  "I want option to have a profile image for user, studio and artist all") —
- *  then the photos of its space it showed DanceOS for the badge. Nothing here
- *  is a second implementation: the hero is `IdentityHero`, the shelf is
- *  `TodayShelf`, the grid is Home's `ToolGrid`. What the page ADDS is the
- *  composition — one studio, whole — and the register, which used to be where
- *  the row landed, is one of the tools. */
+ *  THE HERO'S TWO PICTURES (15 Sep 2026, the user: "I need a profile picture
+ *  for the studio"): the round disc is the studio's OWN picture —
+ *  `tenants.photo_path`, set right here by the ＋ on its rim, by the owner or a
+ *  trainer — and the header is the photos of its space it showed DanceOS for
+ *  the badge, which are its header pictures now. The owner adds to them from
+ *  the Add tile and takes one away from its ✕; the database keeps at least one
+ *  ("make sure he can't delete all"), so the ✕ is not drawn on the last. The
+ *  Media tool is the same pictures as a desk. Nothing here is a second
+ *  implementation: the hero is `IdentityHero`, the shelf is `TodayShelf`, the
+ *  grid is Home's `ToolGrid`. */
 export function StudioHome({
   tenant,
   /** the studio's own picture — `tenants.photo_path`, served from the public bucket */
   photo,
   /** an owner or trainer — the pair that may change the picture */
   canEditPhoto,
-  /** the photos of its space, as shown to DanceOS — signed URLs, the owner's to see */
-  proof,
+  /** the photos of its space, as shown to DanceOS — signed URLs */
+  header,
+  /** the owner — the one who adds to the header and takes from it */
+  canEditHeader,
+  /** the owner's own id: the folder in the private bucket a new picture goes into */
+  ownerId,
   deck,
   roomCount,
   /** what it teaches, off its PUBLISHED classes — a studio with none says nothing (7419-7421) */
@@ -45,7 +53,9 @@ export function StudioHome({
   tenant: Tenant;
   photo: string | null;
   canEditPhoto: boolean;
-  proof: Array<{ id: string; url: string }>;
+  header: Array<{ id: string; path: string; url: string }>;
+  canEditHeader: boolean;
+  ownerId: string | null;
   deck: DeckItem[];
   roomCount: number;
   styles: string[];
@@ -54,7 +64,15 @@ export function StudioHome({
   const RG = gradientOf(tenant.name);
   const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
   const roomsWords = `${roomCount} room${roomCount === 1 ? "" : "s"}`;
-  const shots: HeroShot[] = proof.map((p, i) => ({ key: p.id, src: p.url, alt: `Photo ${i + 2} of ${tenant.name} — its space`, signed: true }));
+  const shots: HeroShot[] = header.map((p, i) => ({
+    key: p.id,
+    src: p.url,
+    alt: `Header picture ${i + 1} of ${tenant.name} — its space`,
+    signed: true,
+    /* the last picture has no ✕: the database refuses to empty a header, so a
+       control that can only ever be refused is not offered */
+    corner: canEditHeader && header.length > 1 ? <HeaderRemove target={{ kind: "studio", id: p.id }} path={p.path} /> : undefined,
+  }));
 
   return (
     <div
@@ -70,7 +88,8 @@ export function StudioHome({
     >
       <div style={{ padding: "0 16px" }}>
         {/* ── the studio, lit like a player: its colour bleeding off the top, its
-            pictures as a swipe, then who it is in the order you read a business ── */}
+            pictures as a swipe, its own picture on the disc, then who it is in
+            the order you read a business ── */}
         <IdentityHero
           testId="studio-hero"
           name={tenant.name}
@@ -93,10 +112,16 @@ export function StudioHome({
           }
           styles={styles}
           styleAria={(s) => `${s} — a style this studio teaches`}
-          photo={photo}
-          photoAlt={tenant.name}
-          picker={canEditPhoto ? <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" overlay /> : undefined}
-          more={shots}
+          avatar={photo}
+          avatarAlt={tenant.name}
+          avatarPicker={canEditPhoto ? <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" overlay /> : undefined}
+          shots={shots}
+          addTile={
+            canEditHeader && ownerId && header.length < PROOF_MAX ? (
+              <PhotoPicker owner={{ kind: "studioHeader", id: tenant.id, orgId: ownerId }} hasPhoto={false} label="Add a header picture" tile />
+            ) : undefined
+          }
+          addLabel="Add a header picture"
         />
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and

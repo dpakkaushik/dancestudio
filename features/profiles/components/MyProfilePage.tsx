@@ -21,13 +21,18 @@ import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { NotificationPrefs } from "@/types/notification";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
+import type { HeaderPhoto } from "@/repositories/headerPhotos";
+import { HeaderRemove } from "./HeaderRemove";
+import type { HeroShot } from "./HeroRail";
+import { IdentityHero } from "./hero-kit";
 import { Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
- *  whole: the profile lit like a player (the role's colour bleeding off the top,
- *  the picture as a sharp 206px square with the sleeve's thrown shadow, the ＋
- *  on its corner), the three controls top right (Edit, Public view — Share is
- *  the QR beside the name), WHO in the order you read a person (the role and
+ *  whole: the profile lit like a player (the role's colour bleeding off the top;
+ *  since 15 Sep 2026 the HEADER PICTURES across the top and the round DISC with
+ *  the ＋ on its rim — `IdentityHero`, the one every profile page wears), the
+ *  three controls top right (Edit, Public view — Share is the QR beside the
+ *  name), WHO in the order you read a person (the role and
  *  the account number, the name, "24, New Delhi", then the figures — Followers,
  *  Following, and where you stand in the metal it earned), THE BAND UNDER THE
  *  NAME in three parts (the styles with ＋, the links rail with ＋ Add link, About
@@ -42,8 +47,6 @@ import { Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE,
  *  number), and the long-press-for-QR gesture (the QR is a button). */
 
 const micro = TYPE.micro;
-const SQ = 206;
-const sqShadow = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.4)";
 /* the prototype offers 65 ages, 13 to 77 (11384) */
 const AGES = Array.from({ length: 65 }, (_, i) => 13 + i);
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
@@ -72,6 +75,8 @@ function Arrows({ i, n, onMove }: { i: number; n: number; onMove: (dir: -1 | 1) 
 
 export function MyProfilePage({
   person,
+  header = [],
+  headerMax = 0,
   followers,
   followingPeople,
   followingTenants,
@@ -85,6 +90,10 @@ export function MyProfilePage({
   gstVerified = false,
 }: {
   person: PublicPerson;
+  /** THE HEADER PICTURES (15 Sep 2026): the person's own, in their order */
+  header?: HeaderPhoto[];
+  /** how many the plan allows — one for a user, ten for an artist, none for an organization */
+  headerMax?: number;
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
   followingTenants: FollowedTenant[];
@@ -111,6 +120,10 @@ export function MyProfilePage({
   const ring = ROLE_RING[kind];
   const RC = ring[1];
   const face = photoUrl(profile.avatarPath);
+  /* the header, each picture with its ✕ — this is your own page */
+  const shots: HeroShot[] = header
+    .filter((h) => h.url)
+    .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, corner: <HeaderRemove target={{ kind: "person", id: h.id }} path={h.path} /> }));
   const followingN = followingPeople.length + followingTenants.length;
   /* an organization is not a public entity (8 Sep 2026): no page to share, nobody
      follows it and it follows nobody, it dances nothing — its figure is its studios */
@@ -180,50 +193,50 @@ export function MyProfilePage({
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <style>{`@keyframes dosSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <div style={{ padding: "0 16px" }}>
-        {/* ── THE PROFILE, LIT LIKE A PLAYER (10574) ── */}
-        <div style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: `linear-gradient(180deg, ${RC}b8 0%, ${RC}55 46%, ${RC}18 74%, ${LILAC} 100%)` }}>
-          <div style={{ display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            <div style={{ width: SQ, height: SQ, position: "relative", boxShadow: sqShadow }}>
-              <div aria-label={profile.fullName} style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: `linear-gradient(135deg,${ring[0]},${ring[1]})`, color: "#fff", fontSize: 64, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY }}>
-                {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(profile.fullName)}
-              </div>
-              {/* the ＋ on the corner of the square (10600): the one place you change your picture */}
-              <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" overlay />
-            </div>
-          </div>
+        {/* ── THE PROFILE, LIT LIKE A PLAYER (10574) — the one hero every profile page wears ── */}
+        <IdentityHero
+          testId="my-hero"
+          name={profile.fullName}
+          grad={ring}
+          tint={RC}
+          eyebrow={KIND_BADGE[kind]}
+          verified={Boolean(profile.verifiedAt)}
+          share={isOrg ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
+          /* age and place read as one introduction — "24, New Delhi" (10664) */
+          meta={
+            profile.age || profile.city ? (
+              profile.city ? (
+                <PlaceLink prefix={profile.age ? `${profile.age}, ` : ""} place={profile.city} />
+              ) : (
+                <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{profile.age}</span>
+              )
+            ) : null
+          }
+          avatar={face}
+          avatarAlt={profile.fullName}
+          /* the ＋ on the disc's rim (10600): the one place you change your picture */
+          avatarPicker={<PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" overlay />}
+          shots={shots}
+          addTile={header.length < headerMax ? <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add a header picture" tile /> : undefined}
+          addLabel="Add a header picture"
+          /* ── THE THREE CONTROLS, TOP RIGHT (10613) — Share is the QR beside the name ── */
+          corner={
+            <>
+              <button type="button" aria-label="Edit profile" onClick={() => { setEdit(draftOf(profile)); setEditOpen(true); }} style={corner}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></svg>
+              </button>
+              {/* "Public view" — the page as another signed-in person reads it, which is a real page of its own here */}
+              <Link href={`/person/${profile.id}`} aria-label="Public view" style={corner}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
+              </Link>
+            </>
+          }
+        >
+          {/* ── WHO, IN THE ORDER YOU READ A PERSON (10632): the account number under the name ── */}
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 8 }}>{memberNoWords(profile.memberNo)}</div>
 
-          {/* ── THE THREE CONTROLS, TOP RIGHT (10613) — Share is the QR beside the name ── */}
-          <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", gap: 6 }}>
-            <button type="button" aria-label="Edit profile" onClick={() => { setEdit(draftOf(profile)); setEditOpen(true); }} style={corner}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></svg>
-            </button>
-            {/* "Public view" — the page as another signed-in person reads it, which is a real page of its own here */}
-            <Link href={`/person/${profile.id}`} aria-label="Public view" style={corner}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
-            </Link>
-          </div>
-
-          {/* ── WHO, IN THE ORDER YOU READ A PERSON (10632) ── */}
-          <div style={{ padding: "10px 16px 2px" }}>
-            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{KIND_BADGE[kind]}</div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 3 }}>{memberNoWords(profile.memberNo)}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.fullName}</span>
-              {isOrg ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
-            </div>
-            {/* age and place read as one introduction — "24, New Delhi" (10664) */}
-            {profile.age || profile.city ? (
-              <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 15, fontWeight: 700, color: SUB }}>
-                {profile.city ? (
-                  <PlaceLink prefix={profile.age ? `${profile.age}, ` : ""} place={profile.city} />
-                ) : (
-                  <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{profile.age}</span>
-                )}
-              </div>
-            ) : null}
-
-            {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
+          {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
               {isOrg ? (
                 /* an organization's one figure is its studios — it has no followers, follows nobody, and stands on no board */
                 <Link href="/business" aria-label={`${tenants.length} ${tenants.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
@@ -252,9 +265,8 @@ export function MyProfilePage({
               ) : null}
                 </>
               )}
-            </div>
           </div>
-        </div>
+        </IdentityHero>
 
         {/* ── THE BAND UNDER THE NAME — ONE STRUCTURE, THREE PARTS (10739) ── */}
         <div style={{ textAlign: "left" }}>
@@ -345,21 +357,49 @@ export function MyProfilePage({
             the gear in the top bar opens it from anywhere. */}
       </div>
 
-      {/* ── Edit profile — name, location, age, bio (11364) ── */}
+      {/* ── Edit profile (11364) — in the order the user asked for (15 Sep 2026):
+          name, mobile, profile picture, header pictures; then where and who ── */}
       {editOpen ? (
         <Sheet label="Edit profile" onClose={() => setEditOpen(false)} maxHeight="88vh">
           <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit profile</b>
           <div style={fieldLabel}>Name</div>
           <input aria-label="Name" value={edit.fullName} onChange={(e) => setEdit((d) => ({ ...d, fullName: e.target.value }))} style={fieldInput} />
-          <div style={fieldLabel}>Location</div>
-          <input aria-label="Location" value={edit.city} onChange={(e) => setEdit((d) => ({ ...d, city: e.target.value }))} style={fieldInput} />
-          {!edit.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
           {/* the number is the person's to publish and theirs to take down: an
               empty box saves null, and the line under the box says so rather
               than making them guess (N8 — Call, S_profiletab 10879) */}
-          <div style={fieldLabel}>Phone</div>
+          <div style={fieldLabel}>Mobile</div>
           <input aria-label="Phone" type="tel" inputMode="tel" value={edit.phone} onChange={(e) => setEdit((d) => ({ ...d, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
           <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Shown on your public page as Call. Leave it empty and nobody sees a number.</div>
+          <div style={fieldLabel}>Profile picture</div>
+          <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
+          {/* THE HEADER PICTURES (15 Sep 2026): an artist has no verification
+              step, so this sheet is where theirs are added — up to ten; a user
+              has one. Each lands the moment it uploads and the page re-reads;
+              the ✕ takes one out again. */}
+          {headerMax > 0 ? (
+            <>
+              <div style={fieldLabel}>Header pictures</div>
+              <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 8, lineHeight: 1.45 }}>
+                {headerMax === 1 ? "One picture across the top of your page. The Artist plan makes it ten." : `Up to ${headerMax}, swiped across the top of your page in this order.`}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 7 }}>
+                {header.map((h, i) => (
+                  <div key={h.id} style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: 11, overflow: "hidden", background: "var(--el)", border: `1px solid ${LINE}` }}>
+                    {h.url ? <Image src={h.url} alt={`Header picture ${i + 1}`} fill sizes="90px" style={{ objectFit: "cover" }} /> : null}
+                    <HeaderRemove target={{ kind: "person", id: h.id }} path={h.path} />
+                  </div>
+                ))}
+                {header.length < headerMax ? (
+                  <div style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: 11, overflow: "hidden", background: "var(--el)" }}>
+                    <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add picture" tile compact />
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+          <div style={fieldLabel}>Location</div>
+          <input aria-label="Location" value={edit.city} onChange={(e) => setEdit((d) => ({ ...d, city: e.target.value }))} style={fieldInput} />
+          {!edit.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
           <div style={fieldLabel}>Age</div>
           <select aria-label="Age" value={edit.age ?? ""} onChange={(e) => setEdit((d) => ({ ...d, age: e.target.value ? Number(e.target.value) : null }))} style={fieldInput}>
             <option value="">—</option>
@@ -370,8 +410,6 @@ export function MyProfilePage({
           <div style={fieldLabel}>Bio</div>
           <textarea aria-label="Bio" value={edit.about} rows={3} maxLength={220} onChange={(e) => setEdit((d) => ({ ...d, about: e.target.value }))} style={{ ...fieldInput, lineHeight: 1.5, resize: "none" }} />
           <div style={{ fontSize: 10, color: MUTED, textAlign: "right", marginTop: 4 }}>{edit.about.length}/220</div>
-          <div style={fieldLabel}>Profile photo</div>
-          <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
           <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
             <button type="button" onClick={() => setEditOpen(false)} style={sheetBtn(false)}>Cancel</button>
             <button type="button" disabled={pending || !edit.city.trim()} onClick={() => save({ fullName: edit.fullName, city: edit.city, age: edit.age, about: edit.about, phone: edit.phone }, "✓ Profile updated", () => setEditOpen(false))} style={sheetBtn(true)}>{pending ? "Saving…" : "Save"}</button>

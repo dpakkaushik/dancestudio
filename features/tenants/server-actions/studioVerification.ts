@@ -19,9 +19,15 @@ const addSchema = z.object({ tenantId: z.string().uuid(), path: z.string().min(8
 const removeSchema = z.object({ id: z.string().uuid() });
 const askSchema = z.object({ tenantId: z.string().uuid() });
 
+/* the photos are the studio's HEADER PICTURES too (15 Sep 2026), so every page
+   that swipes through them re-reads: its own home, its Media desk, its public
+   page — as well as the hub and the admin's queue */
 const refresh = () => {
   revalidatePath("/");
   revalidatePath("/business");
+  revalidatePath("/business/[tenantId]", "page");
+  revalidatePath("/business/[tenantId]/media", "page");
+  revalidatePath("/studio/[tenantId]", "page");
   revalidatePath("/admin/verifications");
 };
 

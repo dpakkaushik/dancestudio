@@ -9,15 +9,15 @@ import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findSupportThreads } from "@/repositories/support";
 import { findMyPlace } from "@/repositories/stats";
-import { findGalleryPhotos } from "@/repositories/gallery";
+import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { amIPlatformAdmin } from "@/repositories/admin";
-import { GALLERY_MAX, photoUrl } from "@/lib/media/photo";
+import { headerMaxFor, photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { BizSection, HOME_TYPE } from "@/features/home/components/home-kit";
 import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
-import { GalleryRemove } from "@/features/profiles/components/GalleryRemove";
+import { HeaderRemove } from "@/features/profiles/components/HeaderRemove";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ROLE_RING, tierOf } from "@/features/profiles/components/profile-kit";
@@ -42,13 +42,14 @@ const greeting = (now: Date): string => {
  *  THE SLEEVE IS THE IDENTITY HERO NOW (14 Sep 2026, the user: "make sure all 4
  *  profile pages share common looking user interface and common code base").
  *  The prototype's Home wore an 86px square of initials beside the greeting; the
- *  app's Home wears the profile hero's 206px square — the same object a studio's
- *  own home stands on — with the ＋ that changes the picture on its corner. A
- *  user's square is one picture ("just one cover image is enough"); an artist's
- *  swipes on through their gallery, ten at most, with the Add tile at the end;
- *  an organization's is its logo. Under it, what the prototype's sleeve said:
- *  the greeting, the name, "24, New Delhi", the styles, the role word over the
- *  account number, and the rank in the metal it earned. */
+ *  app's Home wears the profile hero — the same object a studio's own home
+ *  stands on. SINCE 15 SEP 2026 THAT IS TWO PICTURES: the HEADER across the
+ *  top (a user's one picture, an artist's up to ten with the Add tile at the
+ *  end, nothing for an organization) and the round PROFILE DISC over its
+ *  bottom-left edge — the face, or the logo — with the ＋ that changes it on
+ *  its rim. Under it, what the prototype's sleeve said: the greeting, the
+ *  name, "24, New Delhi", the styles, the role word over the account number,
+ *  and the rank in the metal it earned. */
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -98,10 +99,12 @@ export default async function HomePage() {
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
 
-  /* AN ARTIST'S GALLERY (14 Sep 2026): the pictures that swipe behind the
-     profile photo. Asked for only when they would be drawn — a user's Home is
-     one square, and a lapsed plan hides the gallery without deleting it. */
-  const gallery = isArtist ? await findGalleryPhotos(supabase, user.id) : [];
+  /* THE HEADER PICTURES (15 Sep 2026): what swipes across the top. A user has
+     one, an artist ten — the plan decides, here and in the database — and a
+     plan that lapsed with ten stored still draws one; the rest wait. An
+     organization's header is empty: it is not a place and has no body of work. */
+  const headerMax = isOrg ? 0 : headerMaxFor(isArtist);
+  const header = isOrg ? [] : await findPersonHeaderPhotos(supabase, user.id, headerMax);
 
   /* WHERE YOU STAND, ON THE SLEEVE THAT SAYS WHO YOU ARE (7324-7333). The place
      is Step 25's own — the same RPC the Profile tab and the boards ask — and a
@@ -146,12 +149,10 @@ export default async function HomePage() {
      business anybody means: an organization's tools open its first studio. */
   const firstTenant = (isOrg ? studio?.id : tenants.find((t) => t.type !== "org")?.id) ?? null;
 
-  /* the rail after the profile photo: an artist's gallery, each with its ✕ */
-  const shots: HeroShot[] = isArtist
-    ? gallery
-        .filter((g) => g.url)
-        .map((g, i) => ({ key: g.id, src: g.url as string, alt: `Photo ${i + 2} of ${profile.fullName}`, corner: <GalleryRemove id={g.id} path={g.path} /> }))
-    : [];
+  /* the header, each picture with its ✕ — this is the person's own Home */
+  const shots: HeroShot[] = header
+    .filter((g) => g.url)
+    .map((g, i) => ({ key: g.id, src: g.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, corner: <HeaderRemove target={{ kind: "person", id: g.id }} path={g.path} /> }));
 
   return (
     <div
@@ -183,12 +184,14 @@ export default async function HomePage() {
           /* the styles you dance, as the app's one style tile (7330, DosStyleRow) */
           styles={profile.styles}
           styleAria={(s) => `${s} — a style you dance`}
-          photo={face}
-          photoAlt={profile.fullName}
-          /* the ＋ on the corner of the square (10600): the one place you change your picture */
-          picker={<PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" overlay />}
-          more={shots}
-          addTile={isArtist && gallery.length < GALLERY_MAX ? <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add to your gallery" tile /> : undefined}
+          /* the disc is the face — or the logo — and its ＋ (10600) is the one place you change it */
+          avatar={face}
+          avatarAlt={profile.fullName}
+          avatarPicker={<PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" overlay />}
+          shots={shots}
+          /* the Add tile ends the header while there is room: one for a user, ten for an artist */
+          addTile={header.length < headerMax ? <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add a header picture" tile /> : undefined}
+          addLabel="Add a header picture"
         >
           {/* what you are, not what your number is (7308-7323): the role is the word,
               the account number the small line under it */}

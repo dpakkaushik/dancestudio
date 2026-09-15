@@ -1,20 +1,20 @@
-import Image from "next/image";
 import Link from "next/link";
-import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import { SIDE_TINT, SIDE_VERB, hoursWords } from "@/types/stats";
 import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
+import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { PersonFollowButton } from "./PersonFollowButton";
 import { ReportButton } from "@/features/reports/components/ReportButton";
 import { ProfileShare } from "./ProfileShare";
 import { CallButton, fmtFollowers } from "./PublicProfile";
-import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
 import { Group, PlaceLink, PlatformIcon, ROLE_RING, Row, SchedIcon, TYPE, bigWhite } from "./profile-kit";
+import type { HeroShot } from "./HeroRail";
+import { IdentityHero } from "./hero-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
@@ -23,10 +23,14 @@ export { Group, Row };
  *  in the prototype IS a person (PUB 8643: a name, a badge, a place, followers and
  *  following). The same skeleton the studio and crew pages wear, because it is
  *  the same screen: the person's colour bleeding off the top and dying into the
- *  page, the picture as a sharp square with the sleeve's thrown shadow, the role
- *  over the name, the QR beside it, the place under it, then the figures set like
- *  figures — and under them the people-and-places groups, each headed with a
- *  count (11000-11060).
+ *  page, the role over the name, the QR beside it, the place under it, then the
+ *  figures set like figures — and under them the people-and-places groups, each
+ *  headed with a count (11000-11060).
+ *
+ *  THE HERO IS THE ONE EVERY PROFILE PAGE WEARS (15 Sep 2026): the header —
+ *  this person's own pictures, one for a user and up to ten for an artist —
+ *  and the round disc with their face. The square this page drew for itself
+ *  is gone.
  *
  *  What it is made of is only what this app can say truthfully: the person's
  *  record (Step 25's arithmetic, keyed on them), the crews they are CONFIRMED in
@@ -39,29 +43,27 @@ export { Group, Row };
  *  name. Making a person page PUBLIC is a decision about somebody else's data,
  *  and it is not one to take in passing — it stays on the backlog.
  *
- *  Not lifted, tracked in the backlog: the photo (no media yet — the square is
- *  the person's initials on their own gradient), About / age / experience (no
- *  fields), the enquiry sheet (enquiries target businesses), the albums tabs,
- *  and the rank ladder. CALL LANDED 30 Aug 2026 (N8): a person holds a number
- *  now — one they publish from their own Edit profile sheet and can clear the
- *  same way — so Follow shares its row with Call whenever there is one to ring,
- *  and the row is Follow alone when there is not. */
+ *  CALL LANDED 30 Aug 2026 (N8): a person holds a number now — one they publish
+ *  from their own Edit profile sheet and can clear the same way — so Follow
+ *  shares its row with Call whenever there is one to ring, and the row is
+ *  Follow alone when there is not. */
 
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
 const figure: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontWeight: 700, fontVariantNumeric: "tabular-nums" };
 
-
-const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "D";
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
 export function PublicPersonPage({
   person,
+  header = [],
   isMe,
   following,
   signedIn,
   canFollow = true,
 }: {
   person: PublicPerson;
+  /** THE HEADER PICTURES — this person's own, as many as their plan shows */
+  header?: HeaderPhoto[];
   isMe: boolean;
   following: boolean;
   signedIn: boolean;
@@ -73,82 +75,76 @@ export function PublicPersonPage({
   const kind = kindOf(profile.role, person.isArtist);
   const ring = ROLE_RING[kind];
   const RC = ring[1];
-  const SQ = 206;
-  const sqShadow = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.4)";
   const path = `/person/${profile.id}`;
   const totalSessions = stats.sessionsConducted + stats.sessionsAssisted + stats.sessionsAttended;
   const totalHours = Math.round((stats.hoursConducted + stats.hoursAssisted + stats.hoursAttended) * 10) / 10;
   const face = photoUrl(profile.avatarPath);
+  const shots: HeroShot[] = header
+    .filter((h) => h.url)
+    .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, signed: h.signed }));
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <div style={{ padding: "0 16px" }}>
-        {/* ── the profile, lit like a player ── */}
-        <div style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: `linear-gradient(180deg, ${RC}b8 0%, ${RC}55 46%, ${RC}18 74%, ${LILAC} 100%)` }}>
-          <div style={{ display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            <div aria-label={profile.fullName} style={{ width: SQ, height: SQ, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: `linear-gradient(135deg,${ring[0]},${ring[1]})`, color: "#fff", fontSize: 64, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY, boxShadow: sqShadow }}>
-              {/* a cover, not an avatar (10577) — the photo fills the square and
-                  the initials are what stands there until there is one */}
-              {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(profile.fullName)}
-            </div>
-          </div>
-          <div style={{ padding: "10px 16px 2px" }}>
-            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{KIND_BADGE[kind]}</div>
-            {profile.memberNo ? <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 3 }}>{memberNoWords(profile.memberNo)}</div> : null}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.fullName}</span>
-              {/* an organization has no page to share — this one is the admin's view of it (8 Sep 2026) */}
-              {kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
-            </div>
-            {profile.city || profile.age ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7, fontSize: 15, fontWeight: 700, color: SUB }}>
-                {/* "24, New Delhi" — one introduction, not two facts (10664), and the
-                    place opens Maps (10694-10698). A person has an age where a business
-                    has a founding year — never both (10594). */}
-                {profile.city ? (
-                  <PlaceLink prefix={profile.age ? `${profile.age}, ` : ""} place={profile.city} />
-                ) : (
-                  <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{profile.age}</span>
-                )}
-              </div>
-            ) : null}
+        {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
+        <IdentityHero
+          testId="person-hero"
+          name={profile.fullName}
+          grad={ring}
+          tint={RC}
+          eyebrow={KIND_BADGE[kind]}
+          verified={Boolean(profile.verifiedAt)}
+          /* an organization has no page to share — this one is the admin's view of it (8 Sep 2026) */
+          share={kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
+          meta={
+            profile.city || profile.age ? (
+              /* "24, New Delhi" — one introduction, not two facts (10664), and the
+                  place opens Maps (10694-10698). A person has an age where a business
+                  has a founding year — never both (10594). */
+              profile.city ? (
+                <PlaceLink prefix={profile.age ? `${profile.age}, ` : ""} place={profile.city} />
+              ) : (
+                <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{profile.age}</span>
+              )
+            ) : null
+          }
+          /* the styles they dance (DosStyleRow 1767) */
+          styles={profile.styles}
+          styleAria={(s) => `${s} — a style ${profile.fullName} dances`}
+          avatar={face}
+          avatarAlt={profile.fullName}
+          shots={shots}
+        >
+          {profile.memberNo ? <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 8 }}>{memberNoWords(profile.memberNo)}</div> : null}
 
-            {/* the figures, at the size of figures */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-              <span aria-label={`${person.followers} followers`}>
-                <span data-testid="person-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>
-                  {fmtFollowers(person.followers)}
-                </span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+          {/* the figures, at the size of figures */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
+            <span aria-label={`${person.followers} followers`}>
+              <span data-testid="person-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>
+                {fmtFollowers(person.followers)}
               </span>
-              <span aria-label={`following ${person.following}`}>
-                <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{fmtFollowers(person.following)}</span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Following</span>
-              </span>
-              <span aria-label={`${totalSessions} sessions`}>
-                <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{totalSessions}</span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Sessions</span>
-              </span>
-              <span aria-label={`${totalHours} hours on the floor`}>
-                <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{hoursWords(totalHours)}</span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>On the floor</span>
-              </span>
-            </div>
+              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+            </span>
+            <span aria-label={`following ${person.following}`}>
+              <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{fmtFollowers(person.following)}</span>
+              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Following</span>
+            </span>
+            <span aria-label={`${totalSessions} sessions`}>
+              <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{totalSessions}</span>
+              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Sessions</span>
+            </span>
+            <span aria-label={`${totalHours} hours on the floor`}>
+              <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{hoursWords(totalHours)}</span>
+              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>On the floor</span>
+            </span>
           </div>
-        </div>
+        </IdentityHero>
 
-        {/* THE BAND UNDER THE NAME (10739): the styles they dance, where else to
-            find them — a number is not a public handle, so WhatsApp stays off
-            (10778) — and their own sentence */}
-        {profile.styles.length ? (
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 6px", alignItems: "center" }}>
-            {profile.styles.map((s) => (
-              <DosStyleTile key={s} label={s} color={dosStyleColor(s)} />
-            ))}
-          </div>
-        ) : null}
+        {/* THE BAND UNDER THE NAME (10739): where else to find them — a number is
+            not a public handle, so WhatsApp stays off (10778) — and their own
+            sentence; the styles are in the hero now */}
         {profile.socials.filter((l) => l.platform !== "WhatsApp").length ? (
-          <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "0 0 4px", paddingBottom: 2 }}>
+          <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "14px 0 4px", paddingBottom: 2 }}>
             {profile.socials
               .filter((l) => l.platform !== "WhatsApp")
               .map((l) => {
@@ -180,6 +176,8 @@ export function PublicPersonPage({
               <Link href="/stats" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
                 This is you · Your record ›
               </Link>
+              {/* your picture, from your own page — the chip with its Remove, the
+                  one control for the photo here (the Profile tab has the disc's ＋) */}
               <div style={{ marginTop: 8 }}>
                 <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
               </div>

@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
@@ -8,32 +7,38 @@ import { enquiryTypesFor } from "@/types/enquiry";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { photoUrl } from "@/lib/media/photo";
 import { FollowButton } from "./FollowButton";
-import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import type { PublicTenantProfileWithFaces } from "@/repositories/publicProfile";
+import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { TenantFollower } from "@/types/follow";
 import { TYPE } from "./profile-kit";
 import { ReportButton } from "@/features/reports/components/ReportButton";
 import { ProfileShare } from "./ProfileShare";
 import { BusinessEditButton } from "./BusinessEditSheet";
 import { TenantFollowersButton } from "./TenantFollowersButton";
-import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { PLATFORM_TINT, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { PlatformIcon } from "./profile-kit";
+import type { HeroShot } from "./HeroRail";
+import { HeroDot, HeroPlace, IdentityHero } from "./hero-kit";
 
 /** A business's public page, lifted from prototype S_profiletab with
  *  `publicEntity="studio"|"trainer"` (10565-11060): THE PROFILE, LIT LIKE A
  *  PLAYER — the entity's colour bleeding off the top and dying into the page, the
- *  picture as a sharp square with the sleeve's thrown shadow, the role over the
- *  name, the QR beside it, the place under it, then the figures set like
- *  figures; the styles it teaches; the action row (Follow) and the one white bar
- *  the page is for — Schedule; then the people, one row each, headed with a
+ *  role over the name, the QR beside it, the place under it, then the figures set
+ *  like figures; the styles it teaches; the action row (Follow) and the one white
+ *  bar the page is for — Schedule; then the people, one row each, headed with a
  *  count.
  *
+ *  THE HERO IS THE ONE EVERY PROFILE PAGE WEARS (15 Sep 2026, the user: "when a
+ *  user clicks over a studio or artist he will see the same: scrollable header
+ *  and profile image, name — but below that only what is relevant, like running
+ *  classes, events"). So the square this page drew for itself is gone:
+ *  `IdentityHero` draws the HEADER — a studio's photos of its space, an artist
+ *  page's owner's own pictures — and the round DISC with the business's picture,
+ *  and what follows is what a visitor came for.
+ *
  *  Left out on purpose, tracked in the parity backlog: the Following figure and
- *  the rank (a business follows nobody and holds no rank), About (no bio field
- *  yet — the prototype's default sentence would be one studio's words on every
- *  studio's page), Call and Enquiry (no numbers, no enquiry desk yet), Photos and
- *  the albums/plans tabs (media, memberships), Stats (Step 25). */
+ *  the rank (a business follows nobody and holds no rank), the albums/plans tabs
+ *  (memberships), Stats (Step 25). */
 
 /** Every business wears a gradient of its own until real photos arrive — the
  *  same six the Discover card draws from (StudioCard GRADS). */
@@ -88,6 +93,7 @@ const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpaci
 
 export function PublicProfile({
   profile,
+  header = [],
   path,
   following,
   signedIn,
@@ -100,6 +106,10 @@ export function PublicProfile({
   manageHref,
 }: {
   profile: PublicTenantProfileWithFaces;
+  /** THE HEADER PICTURES (15 Sep 2026): a studio's photos of its space, an
+   *  artist page's owner's own — whatever `tenant_header_photos` let this
+   *  viewer see */
+  header?: HeaderPhoto[];
   /** this page's own path — what the QR shares */
   path: string;
   following: boolean;
@@ -120,12 +130,11 @@ export function PublicProfile({
   const { tenant } = profile;
   const RG = gradientOf(tenant.name);
   const RC = RG[1];
-  const SQ = 206;
-  const sqShadow = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.4)";
-  const kind = tenant.type === "studio" ? "STUDIO" : "ARTIST";
   const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
-  const mapsHref = place ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${tenant.name} ${place}`)}` : null;
   const face = photoUrl(tenant.photoPath);
+  const shots: HeroShot[] = header
+    .filter((h) => h.url)
+    .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${tenant.name}`, signed: h.signed }));
 
   return (
     <div
@@ -141,50 +150,18 @@ export function PublicProfile({
       }}
     >
       <div style={{ padding: "0 16px" }}>
-        {/* ── the profile, lit like a player ── */}
-        <div
-          style={{
-            margin: "0 -16px",
-            position: "relative",
-            overflow: "hidden",
-            background: `linear-gradient(180deg, ${RC}b8 0%, ${RC}55 46%, ${RC}18 74%, ${LILAC} 100%)`,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            <div
-              aria-label={tenant.name}
-              style={{
-                width: SQ,
-                height: SQ,
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-                background: `linear-gradient(135deg,${RG[0]},${RG[1]})`,
-                color: "#fff",
-                fontSize: 64,
-                fontWeight: 900,
-                letterSpacing: 1,
-                fontFamily: DOS_DISPLAY,
-                boxShadow: sqShadow,
-              }}
-            >
-              {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(tenant.name)}
-              {canEditPhoto ? <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" overlay /> : null}
-            </div>
-          </div>
-
-          {/* who, in the order you read a business: what it is, its name, where it is, then the figures */}
-          <div style={{ padding: "10px 16px 2px" }}>
-            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{kind}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <span style={{ ...TYPE.display, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
-              {/* the tick is DanceOS's to give — set when the rail's KYC clears (DosVerified 10592) */}
-              {tenant.verifiedAt ? <VerifiedTick size={18} /> : null}
-              <ProfileShare path={path} name={tenant.name} />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 15, fontWeight: 700, color: SUB }}>
+        {/* ── the profile, lit like a player — the one hero every profile page wears ── */}
+        <IdentityHero
+          testId="public-hero"
+          name={tenant.name}
+          grad={RG}
+          tint={RC}
+          eyebrow={tenant.type === "studio" ? "Studio" : "Artist"}
+          /* the tick is DanceOS's to give — set when a verification actually clears (DosVerified 10592) */
+          verified={Boolean(tenant.verifiedAt)}
+          share={<ProfileShare path={path} name={tenant.name} />}
+          meta={
+            <>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
                   <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
@@ -194,55 +171,42 @@ export function PublicProfile({
               </span>
               {place ? (
                 <>
-                  <span style={{ color: LINE }}>·</span>
-                  {mapsHref ? (
-                    <a
-                      href={mapsHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label="Open this address in Maps"
-                      style={{ fontWeight: 800, color: INK, textDecoration: "underline", textDecorationColor: LINE, textUnderlineOffset: 3 }}
-                    >
-                      {place}
-                    </a>
-                  ) : (
-                    <span style={{ fontWeight: 800, color: INK }}>{place}</span>
-                  )}
+                  <HeroDot />
+                  <HeroPlace text={place} query={`${tenant.name} ${place}`} />
                 </>
               ) : null}
-            </div>
-
-            {/* the figures, at the size of figures */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-              {/* a number, never a name (Step 15) — unless you are the business
-                  whose followers they are, and then it opens (B6) */}
-              {followers ? (
-                <TenantFollowersButton count={profile.followers} followers={followers} />
-              ) : (
-                <span aria-label={`${profile.followers} followers`}>
-                  <span
-                    data-testid="followers-count"
-                    style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {fmtFollowers(profile.followers)}
-                  </span>
-                  <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+            </>
+          }
+          /* the styles it teaches, off its published classes (DosStyleRow 1767) */
+          styles={profile.styles}
+          styleAria={(s) => `${s} — a style this business teaches`}
+          avatar={face}
+          avatarAlt={tenant.name}
+          avatarPicker={canEditPhoto ? <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" overlay /> : undefined}
+          shots={shots}
+        >
+          {/* the figures, at the size of figures */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
+            {/* a number, never a name (Step 15) — unless you are the business
+                whose followers they are, and then it opens (B6) */}
+            {followers ? (
+              <TenantFollowersButton count={profile.followers} followers={followers} />
+            ) : (
+              <span aria-label={`${profile.followers} followers`}>
+                <span
+                  data-testid="followers-count"
+                  style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}
+                >
+                  {fmtFollowers(profile.followers)}
                 </span>
-              )}
-            </div>
+                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+              </span>
+            )}
           </div>
-        </div>
+        </IdentityHero>
 
-        {/* ── the facts: the styles it teaches (DosStyleRow 1767) ── */}
-        {profile.styles.length > 0 ? (
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 6px", alignItems: "center" }}>
-            {profile.styles.map((s) => (
-              <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — a style this business teaches`} />
-            ))}
-          </div>
-        ) : (
-          <div style={{ fontSize: 12, color: MUTED, padding: "14px 0 6px" }}>No published classes yet.</div>
-        )}
+        {/* ── a business with nothing published yet says so where the styles would be ── */}
+        {profile.styles.length === 0 ? <div style={{ fontSize: 12, color: MUTED, padding: "14px 0 6px" }}>No published classes yet.</div> : <div style={{ height: 10 }} />}
 
         {/* ── the links rail (10760): every public handle the business gave, WhatsApp included — a business's number is a public one ── */}
         {tenant.socials.length ? (

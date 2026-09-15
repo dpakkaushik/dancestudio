@@ -58,6 +58,24 @@ export const tintForTenantType = (type: "studio" | "trainer_business" | "org"): 
 export const HERO_SQ = 206;
 export const HERO_SQ_SHADOW = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.4)";
 
+/** THE HEADER AND THE DISC (15 Sep 2026). The user split the hero in two: the
+ *  big square is the HEADER — the pictures of a place or a body of work, up to
+ *  ten, swiped — and the profile picture is a round DISC overlapping the
+ *  header's bottom-left edge, the way every social profile is laid out.
+ *
+ *  The header keeps the 206 square for now, at the user's choice ("keep same,
+ *  but make option if we need to change dimension later — code just needs a
+ *  tweak"). So its box is these two numbers and nothing else reads HERO_SQ for
+ *  it: make HERO_HEAD_W the screen's width and HERO_HEAD_H shorter and the
+ *  header is a banner, with the disc already sitting where a banner's would. */
+export const HERO_HEAD_W = HERO_SQ;
+export const HERO_HEAD_H = HERO_SQ;
+/** the disc's diameter, the ring the page draws round it, and how far it drops
+ *  below the header's bottom edge */
+export const HERO_DISC = 96;
+export const HERO_DISC_RING = 3;
+export const HERO_DISC_DROP = 40;
+
 export const BTN_STYLE: React.CSSProperties = {
   padding: "15px",
   borderRadius: 999,

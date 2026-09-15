@@ -5,13 +5,21 @@
  *  round trip, no expiry, and a public page does not depend on a signed URL per
  *  image. Writes are path-scoped by storage policy: `avatars/{user}`,
  *  `tenants/{tenant}`, `crews/{crew}`, and since 14 Sep 2026 `gallery/{user}` —
- *  an artist's own pictures, the ones that swipe behind the profile photo. */
+ *  a person's HEADER PICTURES, the ones that swipe across the top of their page
+ *  above the round profile disc (15 Sep 2026). */
 
 export const MEDIA_BUCKET = "media";
 
-/** AN ARTIST'S GALLERY holds ten at most — the prototype's own ceiling for a
- *  Photos rail (10979), and the count the database refuses past. */
-export const GALLERY_MAX = 10;
+/** HOW MANY HEADER PICTURES A PERSON MAY HOLD (15 Sep 2026, the user): an
+ *  artist ten — the prototype's own ceiling for a Photos rail (10979) — and a
+ *  plain user ONE ("use plain user just a profile pic and one header"). The
+ *  database refuses past either; said here so the screens stop offering the
+ *  tile at the same count. `GALLERY_MAX` is the artist's number under the
+ *  name the gallery slice gave it. */
+export const HEADER_MAX_ARTIST = 10;
+export const HEADER_MAX_USER = 1;
+export const GALLERY_MAX = HEADER_MAX_ARTIST;
+export const headerMaxFor = (isArtist: boolean): number => (isArtist ? HEADER_MAX_ARTIST : HEADER_MAX_USER);
 
 /** what the bucket itself accepts (mirrored from the migration, so the browser
  *  can refuse a file before spending somebody's data on the upload) */
@@ -23,19 +31,29 @@ export type PhotoOwner =
   | { kind: "avatar"; id: string }
   | { kind: "tenant"; id: string }
   | { kind: "crew"; id: string }
-  /** one more picture in a person's gallery — `id` is the person */
-  | { kind: "gallery"; id: string };
+  /** one more header picture for a person — `id` is the person */
+  | { kind: "gallery"; id: string }
+  /** one more header picture for a STUDIO (15 Sep 2026) — `id` is the studio,
+   *  and the file goes into its OWNER's folder in the PRIVATE proof bucket,
+   *  because a studio's header pictures ARE the photos it showed DanceOS to be
+   *  verified; `orgId` is that owner */
+  | { kind: "studioHeader"; id: string; orgId: string };
 
-const FOLDER: Record<PhotoOwner["kind"], string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery" };
+const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery" };
+
+const extOf = (file: { type: string }): string => (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");
+const randomName = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`);
 
 /** The path a new photo takes. The folder is the whole of the authority check —
  *  the storage policy reads it, and so does the RPC that records it — so it is
  *  built in one place. The random suffix means a replacement is a NEW object: a
- *  browser that cached the old one is not left showing it. */
+ *  browser that cached the old one is not left showing it. A studio's header
+ *  picture is the one that does not go in `media` at all — see `proofPath`. */
 export const photoPath = (owner: PhotoOwner, file: { name: string; type: string }): string => {
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const rand = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`;
-  return `${FOLDER[owner.kind]}/${owner.id}/${rand}.${ext}`;
+  if (owner.kind === "studioHeader") {
+    return `proof/${owner.orgId}/${randomName()}.${extOf(file)}`;
+  }
+  return `${FOLDER[owner.kind]}/${owner.id}/${randomName()}.${extOf(file)}`;
 };
 
 /** Where a stored path is served from. Null in, null out — the caller draws

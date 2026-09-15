@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { publicProfilePath, publicSchedulePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findTenantFollowers, isFollowingTenant } from "@/repositories/follows";
+import { findTenantHeaderPhotos } from "@/repositories/headerPhotos";
 import { findPublicTenantProfile } from "@/repositories/publicProfile";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyMembershipRole } from "@/repositories/tenants";
@@ -30,11 +31,14 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
     redirect(publicProfilePath(profile.tenant));
   }
 
-  const [following, role, viewer] = await Promise.all([
+  const [following, role, viewer, header] = await Promise.all([
     user ? isFollowingTenant(supabase, tenantId) : Promise.resolve(false),
     user ? findMyMembershipRole(supabase, tenantId) : Promise.resolve(null),
     /* an organization follows nothing (8 Sep 2026) — the button is not drawn for one */
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
+    /* THE HEADER (15 Sep 2026): the pictures that swipe across the top — the
+       RPC decides what this viewer may see, and signs nothing it may not */
+    findTenantHeaderPhotos(supabase, tenantId),
   ]);
 
   /* WHO follows you is the owner's to read (B6). The policy would admit any
@@ -45,6 +49,7 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
   return (
     <PublicProfile
       profile={profile}
+      header={header}
       path={publicProfilePath(profile.tenant)}
       following={following}
       signedIn={Boolean(user)}
@@ -54,7 +59,7 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
       canEdit={role === "owner"}
       followers={followers}
       scheduleHref={publicSchedulePath(profile.tenant)}
-      manageHref={`/business/${tenantId}/classes`}
+      manageHref={profile.tenant.type === "studio" ? `/business/${tenantId}` : `/business/${tenantId}/classes`}
     />
   );
 }

@@ -3,14 +3,22 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { removeMyGalleryPhotoAction } from "@/features/media/server-actions/photos";
+import { removeStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
 import { MEDIA_BUCKET } from "@/lib/media/photo";
+import { PROOF_BUCKET } from "@/lib/media/proof";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { DOS_UI, INK } from "@/lib/design/tokens";
 
-/** The ✕ on a gallery photo's corner (prototype's per-tile × on the Photos
+/** The ✕ on a header picture's corner (prototype's per-tile × on the Photos
  *  rail, 10979-10981) — the row goes first, then the object, so a refusal
- *  leaves the picture exactly where it was. */
-export function GalleryRemove({ id, path }: { id: string; path: string }) {
+ *  leaves the picture exactly where it was and says why in the database's own
+ *  words ("a studio keeps at least one header picture").
+ *
+ *  Two kinds of header, one control (15 Sep 2026): a PERSON's picture is a
+ *  `profile_photos` row in the public bucket; a STUDIO's is one of the photos
+ *  it showed DanceOS, in the private one. The storage policy lets exactly this
+ *  person delete exactly this path either way. */
+export function HeaderRemove({ target, path }: { target: { kind: "person" | "studio"; id: string }; path: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +26,16 @@ export function GalleryRemove({ id, path }: { id: string; path: string }) {
   const remove = async () => {
     setBusy(true);
     setError(null);
-    const out = await removeMyGalleryPhotoAction({ id });
+    const out = target.kind === "person" ? await removeMyGalleryPhotoAction({ id: target.id }) : await removeStudioProofPhotoAction({ id: target.id });
     if (out.error) {
       setBusy(false);
       setError(out.error);
+      setTimeout(() => setError(null), 3200);
       return;
     }
-    /* the storage policy lets exactly this person delete exactly this path */
-    await createSupabaseBrowserClient().storage.from(MEDIA_BUCKET).remove([path]);
+    await createSupabaseBrowserClient()
+      .storage.from(target.kind === "person" ? MEDIA_BUCKET : PROOF_BUCKET)
+      .remove([path]);
     setBusy(false);
     router.refresh();
   };
@@ -34,7 +44,7 @@ export function GalleryRemove({ id, path }: { id: string; path: string }) {
     <>
       <button
         type="button"
-        aria-label="Remove this photo"
+        aria-label="Remove this picture"
         disabled={busy}
         onClick={() => void remove()}
         style={{

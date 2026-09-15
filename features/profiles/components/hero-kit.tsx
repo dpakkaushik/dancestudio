@@ -1,25 +1,36 @@
 import type { CSSProperties, ReactNode } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
-import { HeroRail, type HeroShot } from "@/features/profiles/components/HeroRail";
+import { HeroRail, ProfileDisc, type HeroShot } from "@/features/profiles/components/HeroRail";
 import { TYPE, mapsHref } from "@/features/profiles/components/profile-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { INK, LILAC, LINE } from "@/lib/design/tokens";
+import { HERO_DISC, HERO_DISC_DROP, INK, LILAC, LINE } from "@/lib/design/tokens";
 
-/** THE IDENTITY HERO — one object, four pages (14 Sep 2026).
+/** THE IDENTITY HERO — one object, every profile page (14 Sep 2026; re-cut
+ *  15 Sep 2026).
  *
  *  The user: "make sure all 4 profile pages share common looking user
  *  interface and common code base, though will have different features as per
  *  their use cases." So this is the prototype's profile hero (S_profiletab
  *  10575-10727) as the ONE component a user's Home, an artist's Home, an
- *  organization's Home and a studio's own home all stand on: the entity's
- *  colour bleeding off the top of the screen, the 206px square with its swipe
- *  and its ＋, then who it is in the order you read a name — the micro caps
- *  over it, the name with its tick and its QR, the line under it, the styles.
- *  What differs between the four is passed in, never redrawn: the eyebrow
- *  (GOOD EVENING on your own Home, STUDIO on a studio's), what the rail swipes
- *  through (nothing for a user, a gallery for an artist, the photos of its
- *  space for a studio), the meta line, and whatever the page adds underneath. */
+ *  organization's Home, a studio's own home, the Profile tab and the two
+ *  public pages all stand on.
+ *
+ *  ITS TWO PICTURES, SINCE 15 SEP 2026. The user drew a circle on the
+ *  bottom-left of the hero and said: "I need a profile picture for the studio,
+ *  same way for the artist page … the current image you are showing in artist
+ *  should go in the drawn circle." So the hero is laid out the way every
+ *  social profile is: the HEADER across the top — the pictures of a place or a
+ *  body of work, swiped, up to ten — and the round PROFILE DISC overlapping the
+ *  header's bottom-left edge, with the ＋ that changes it on its rim. Then who
+ *  it is in the order you read a name: the micro caps, the name with its tick
+ *  and its QR, the line under it, the styles, and whatever the page adds.
+ *
+ *  What differs between the pages is passed in, never redrawn: the eyebrow
+ *  (GOOD EVENING on your own Home, STUDIO on a studio's), what the header
+ *  swipes through (one picture for a user, ten for an artist, the photos of
+ *  its space for a studio, nothing for an organization), who may change what,
+ *  and the meta line. */
 
 export const heroWash = (tint: string) => `linear-gradient(180deg, ${tint}b8 0%, ${tint}55 46%, ${tint}18 74%, ${LILAC} 100%)`;
 
@@ -62,16 +73,18 @@ export function IdentityHero({
   meta = null,
   styles = [],
   styleAria = (s) => s,
-  photo,
-  photoAlt,
-  picker,
-  more,
+  avatar,
+  avatarAlt,
+  avatarPicker,
+  shots = [],
   addTile,
+  addLabel,
+  corner,
   testId,
   children,
 }: {
   name: string;
-  /** the two colours the initials square is painted in */
+  /** the two colours the disc's initials and an empty header are painted in */
   grad: [string, string];
   /** the colour that bleeds off the top of the screen — the entity's own */
   tint: string;
@@ -86,24 +99,38 @@ export function IdentityHero({
   /** the styles, as the app's one style tile */
   styles?: string[];
   styleAria?: (style: string) => string;
-  /** the profile photo — the first square; null draws the initials */
-  photo: string | null;
-  photoAlt?: string;
-  /** the ＋ on the first square, for whoever may change the photo */
-  picker?: ReactNode;
-  /** what the rail swipes through after the profile photo */
-  more?: HeroShot[];
-  /** the last square — an "Add" tile */
+  /** THE PROFILE PICTURE — the round disc; null draws the initials */
+  avatar: string | null;
+  avatarAlt?: string;
+  /** the ＋ on the disc's rim, for whoever may change the picture */
+  avatarPicker?: ReactNode;
+  /** THE HEADER — what swipes across the top */
+  shots?: HeroShot[];
+  /** the header's last square — an "Add" tile, for whoever may add */
   addTile?: ReactNode;
+  addLabel?: string;
+  /** controls pinned to the hero's top-right corner (the Profile tab's Edit and Public view, 10613) */
+  corner?: ReactNode;
   testId?: string;
   /** whatever the page adds under the styles — Home's role word, code and rank */
   children?: ReactNode;
 }) {
+  /* the text block starts under the disc, which drops HERO_DISC_DROP px below
+     the header's edge — so the block's top padding is the part of the disc
+     that hangs into it, plus a breath */
+  const blockTop = HERO_DISC - HERO_DISC_DROP + 10;
   return (
     <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: heroWash(tint) }}>
-      <HeroRail name={name} grad={grad} photo={photo} photoAlt={photoAlt} picker={picker} more={more} addTile={addTile} />
+      {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", gap: 6 }}>{corner}</div> : null}
 
-      <div style={{ padding: "10px 16px 14px" }}>
+      <HeroRail name={name} grad={grad} shots={shots} addTile={addTile} addLabel={addLabel} />
+
+      <div style={{ position: "relative", padding: `${blockTop}px 16px 14px` }}>
+        {/* the disc, where the user drew it: over the header's bottom-left edge */}
+        <div style={{ position: "absolute", left: 16, top: -HERO_DISC_DROP, zIndex: 2 }}>
+          <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} picker={avatarPicker} testId="hero-disc" />
+        </div>
+
         <div style={HERO_EYEBROW}>{eyebrow}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
           <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>

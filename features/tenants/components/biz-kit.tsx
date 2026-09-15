@@ -17,6 +17,9 @@ export const DOS_TOOLS = {
   students: { name: "Students", c: "#8B5CF6" },
   team: { name: "Team", c: "#F97316" },
   rooms: { name: "Rooms", c: "#3498DB" },
+  /* MEDIA (15 Sep 2026): a studio's two pictures — the disc and the header —
+     as a desk of their own; a fuchsia nobody else on the grid wears */
+  media: { name: "Media", c: "#D946EF" },
 } as const;
 export type DosToolKey = keyof typeof DOS_TOOLS;
 

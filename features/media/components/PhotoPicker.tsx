@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setTenantPhotoAction } from "@/features/media/server-actions/photos";
+import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setTenantPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
+import { addStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
 import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
+import { PROOF_BUCKET } from "@/lib/media/proof";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { DOS_UI, INK, LINE, SUB } from "@/lib/design/tokens";
 
@@ -20,21 +22,33 @@ import { DOS_UI, INK, LINE, SUB } from "@/lib/design/tokens";
  *  places wanted from a crop. The cropper is on the backlog with the poster
  *  uploads it belongs to.
  *
- *  Three shapes: the chip with its Remove (the Edit sheet), the ＋ on the corner
- *  of the hero square (`overlay`), and since 14 Sep 2026 the dashed square that
- *  ends an artist's gallery rail (`tile`) — the prototype's "＋ Add" tile on the
- *  Photos rail (10979), the size of the square it sits in. */
+ *  Three shapes: the chip with its Remove (the Edit sheet), the ＋ on the rim of
+ *  the profile disc (`overlay`), and the dashed square that ends a header rail
+ *  (`tile`) — the prototype's "＋ Add" tile on the Photos rail (10979), the
+ *  size of the square it sits in.
+ *
+ *  Five owners, two buckets (15 Sep 2026): a person's avatar, a business's
+ *  picture, a crew's and a person's header pictures all go to the public
+ *  `media` bucket; a STUDIO's header pictures are the photos it showed DanceOS,
+ *  so they go into its owner's folder in the private proof bucket, through the
+ *  same door the verification form uses. */
 
-const setter = (owner: PhotoOwner, path: string | null) =>
-  owner.kind === "avatar"
-    ? setMyAvatarAction({ path })
-    : owner.kind === "tenant"
-      ? setTenantPhotoAction({ tenantId: owner.id, path })
-      : owner.kind === "gallery"
-        ? path
-          ? addMyGalleryPhotoAction({ path })
-          : Promise.resolve({ error: "A gallery photo is removed from its own corner." })
-        : setCrewPhotoAction({ crewId: owner.id, path });
+const bucketFor = (owner: PhotoOwner) => (owner.kind === "studioHeader" ? PROOF_BUCKET : MEDIA_BUCKET);
+
+const setter = (owner: PhotoOwner, path: string | null): Promise<PhotoActionResult> => {
+  switch (owner.kind) {
+    case "avatar":
+      return setMyAvatarAction({ path });
+    case "tenant":
+      return setTenantPhotoAction({ tenantId: owner.id, path });
+    case "crew":
+      return setCrewPhotoAction({ crewId: owner.id, path });
+    case "gallery":
+      return path ? addMyGalleryPhotoAction({ path }) : Promise.resolve({ error: "A header picture is removed from its own corner." });
+    case "studioHeader":
+      return path ? addStudioProofPhotoAction({ tenantId: owner.id, path }) : Promise.resolve({ error: "A header picture is removed from its own corner." });
+  }
+};
 
 export function PhotoPicker({
   owner,
@@ -43,6 +57,7 @@ export function PhotoPicker({
   onLight = false,
   overlay = false,
   tile = false,
+  compact = false,
   onSaved,
 }: {
   owner: PhotoOwner;
@@ -50,12 +65,15 @@ export function PhotoPicker({
   label?: string;
   /** drawn on the entity's own colour rather than on the page */
   onLight?: boolean;
-  /** the ＋ on the corner of the profile square (prototype 10600) — one round
+  /** the ＋ on the rim of the profile disc (prototype 10600) — one round
    *  control, absolutely placed inside a relative parent; errors show as a toast */
   overlay?: boolean;
   /** the whole square as a dashed "＋ Add" tile — fills its relative parent;
    *  `label` is what it says and what it is called */
   tile?: boolean;
+  /** a tile in a 72px grid rather than the 206 hero square — the ＋ and the
+   *  word sized to fit it (the Edit-profile sheet's header grid) */
+  compact?: boolean;
   /** ONBOARDING'S CASE (U2): the page it sits on redirects the moment a profile
    *  exists, so a refresh there would end the flow. A caller that passes this
    *  is told the path instead of the page being reloaded. */
@@ -76,8 +94,9 @@ export function PhotoPicker({
     setError(null);
     try {
       const supabase = createSupabaseBrowserClient();
+      const bucket = bucketFor(owner);
       const path = photoPath(owner, file);
-      const up = await supabase.storage.from(MEDIA_BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+      const up = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
       if (up.error) {
         setError(up.error.message);
         return;
@@ -86,7 +105,7 @@ export function PhotoPicker({
       if (out.error) {
         /* the row would not take it, so the orphan file goes back out — the
            storage policy allows exactly this person to delete exactly this path */
-        await supabase.storage.from(MEDIA_BUCKET).remove([path]);
+        await supabase.storage.from(bucket).remove([path]);
         setError(out.error);
         return;
       }
@@ -145,7 +164,7 @@ export function PhotoPicker({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: 8,
+            gap: compact ? 3 : 8,
             cursor: busy ? "default" : "pointer",
             background: "rgba(0,0,0,.28)",
             border: "1.5px dashed rgba(255,255,255,.6)",
@@ -153,12 +172,14 @@ export function PhotoPicker({
             boxSizing: "border-box",
             fontFamily: DOS_UI,
             opacity: busy ? 0.7 : 1,
+            padding: compact ? 4 : 0,
+            textAlign: "center",
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 40, lineHeight: 1, fontWeight: 300 }}>
+          <span aria-hidden="true" style={{ fontSize: compact ? 22 : 40, lineHeight: 1, fontWeight: 300 }}>
             {busy ? "…" : "＋"}
           </span>
-          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1.2, textTransform: "uppercase" }}>{busy ? "Uploading" : label}</span>
+          <span style={{ fontSize: compact ? 8.5 : 10.5, fontWeight: 800, letterSpacing: compact ? 0.5 : 1.2, textTransform: "uppercase", lineHeight: 1.2 }}>{busy ? "Uploading" : label}</span>
           {input(label)}
         </label>
         {toast}
@@ -171,7 +192,7 @@ export function PhotoPicker({
       <>
         <label
           aria-disabled={busy}
-          style={{ position: "absolute", bottom: 8, right: 8, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,.62)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: busy ? "default" : "pointer", fontSize: 14, border: "1.5px solid rgba(255,255,255,.35)", opacity: busy ? 0.6 : 1 }}
+          style={{ position: "absolute", bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, background: "rgba(0,0,0,.72)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: busy ? "default" : "pointer", fontSize: 14, border: "1.5px solid rgba(255,255,255,.45)", opacity: busy ? 0.6 : 1, zIndex: 2 }}
         >
           {busy ? "…" : "＋"}
           {input(hasPhoto ? label : "Add a photo")}

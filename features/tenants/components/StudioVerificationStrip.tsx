@@ -103,8 +103,9 @@ function WhySheet({ onClose }: { onClose: () => void }) {
           <b style={{ fontSize: 12.5, color: INK, display: "block", marginBottom: 3 }}>Why photos of the space</b>
           <span style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55 }}>
             The floor, the mirrors, the entrance, a class in progress. Links can be borrowed; a room is harder to fake.{" "}
-            <b style={{ color: INK }}>Nobody but you and a DanceOS admin ever sees these</b> — they are kept in a private
-            store, they are not on your studio page, and they are not on Discover.
+            <b style={{ color: INK }}>They become the header pictures on your studio page</b> once it is live — so pick the
+            ones you would want a dancer to see. Until the studio is on Discover, only you and a DanceOS admin can see
+            them.
           </span>
         </div>
       </div>
@@ -352,7 +353,7 @@ export function StudioVerificationStrip({
             for one thing is one too many */}
         <div style={blockHead}>
           <span>STUDIO PHOTOS</span>
-          <span style={{ marginLeft: "auto", fontWeight: 700, letterSpacing: 0, color: MUTED, textTransform: "none" }}>private · only DanceOS sees these</span>
+          <span style={{ marginLeft: "auto", fontWeight: 700, letterSpacing: 0, color: MUTED, textTransform: "none" }}>also the header of your studio page</span>
         </div>
         <ProofPhotos orgId={orgId} tenantId={tenant.id} initialPhotos={state.photos} compact onCount={setPhotoCount} />
       </div>

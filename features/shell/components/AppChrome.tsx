@@ -116,6 +116,7 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/business\/[^/]+\/classes\/[^/]+\/edit$/, "Edit class"],
   [/^\/business\/[^/]+\/classes\/[^/]+\/roster$/, "Attendance"],
   [/^\/business\/[^/]+\/calendar$/, "Calendar"],
+  [/^\/business\/[^/]+\/media$/, "Media"],
   [/^\/business\/[^/]+\/events$/, "Events"],
   [/^\/business\/[^/]+\/events\/new$/, "Add event"],
   [/^\/business\/[^/]+\/events\/[^/]+\/edit$/, "Edit event"],

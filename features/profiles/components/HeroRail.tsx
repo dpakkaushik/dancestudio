@@ -3,76 +3,78 @@
 import Image from "next/image";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { initialsOf } from "@/features/profiles/components/profile-kit";
-import { DOS_DISPLAY, HERO_SQ, HERO_SQ_SHADOW } from "@/lib/design/tokens";
+import { DOS_DISPLAY, HERO_DISC, HERO_DISC_RING, HERO_HEAD_H, HERO_HEAD_W, HERO_SQ_SHADOW, LILAC } from "@/lib/design/tokens";
 
-/** One picture in the rail after the profile photo. */
+/** One picture in the header rail. */
 export interface HeroShot {
   key: string;
   src: string;
   alt: string;
   /** a signed URL into a private bucket must not go through the image
    *  optimizer, which would fetch it server-side without the signature and get
-   *  a 400 — a studio's proof photos are these */
+   *  a 400 — a studio's photos are these */
   signed?: boolean;
-  /** a control on the top-right corner — the artist's ✕ on a gallery photo */
+  /** a control on the top-right corner — the ✕ that removes this picture */
   corner?: ReactNode;
 }
 
 type Slide = { key: string; src: string | null; alt: string; signed?: boolean; corner?: ReactNode; node?: ReactNode };
 
-/** THE SQUARE IS A SWIPE (prototype S_profiletab 10575-10627, 14 Sep 2026).
+/** THE HEADER IS A SWIPE (prototype S_profiletab 10575-10627; re-cut 15 Sep
+ *  2026).
  *
- *  The profile hero's cover — a SHARP SQUARE standing on the entity's own colour
- *  with the sleeve's thrown shadow — and, when there is more than one picture,
- *  "the booking flow's sideways scroll-snap, profile photo first, then the
- *  latest shots, a dot for each." The first square is always the profile photo,
- *  and it is where the ＋ that changes it sits. What follows it is the caller's:
- *  a studio's photos of its space, an artist's gallery, nothing at all for a
- *  user — the user: "in case of user we don't want scrollable cover photo
- *  collection, just one cover image is enough."
+ *  Until today the first square was the profile photo and the pictures came
+ *  after it. The user split the two: the profile picture is the round disc
+ *  below (`ProfileDisc`), and this rail is the HEADER — the pictures of a place
+ *  or a body of work, "the booking flow's sideways scroll-snap … a dot for
+ *  each." What it swipes through is the caller's: a studio's photos of its
+ *  space, an artist's ten, a user's one, and for whoever may add to it the
+ *  dashed Add tile at the end.
  *
- *  A square with no picture shows the initials on the gradient; so does a
- *  square whose picture would not load (a signed URL past its half hour, an
- *  object gone from the bucket) — an invisible failure over a gradient used to
- *  read as "no photo", and now it reads as exactly that instead of a blank.
- *  One thing is not a choice, so a lone square draws no dots. The dots are
+ *  A header with nothing in it and nothing to add draws one quiet square on the
+ *  entity's own gradient — no initials, because the disc under it already says
+ *  who this is, and the same letters twice is a stutter. A picture that would
+ *  not load (a signed URL past its half hour, an object gone from the bucket)
+ *  falls back to that same square rather than to a broken image.
+ *
+ *  One square is not a choice, so a lone square draws no dots. The dots are
  *  decoration on a swipe a thumb already understands, hidden from the
- *  accessibility tree; the rail itself says how many photos there are. */
+ *  accessibility tree; the rail itself says how many pictures there are.
+ *
+ *  The box is HERO_HEAD_W × HERO_HEAD_H — the 206 square today, by the user's
+ *  choice; those two tokens are the whole of what changes if it ever goes
+ *  wide. */
 export function HeroRail({
   name,
   grad,
-  photo,
-  photoAlt,
-  picker,
-  more = [],
+  shots = [],
   addTile,
+  addLabel = "Add a header picture",
 }: {
   name: string;
-  /** the two colours the initials stand on */
+  /** the two colours an empty header stands on */
   grad: [string, string];
-  /** the profile photo — null draws the initials */
-  photo: string | null;
-  photoAlt?: string;
-  /** the ＋ on the first square's corner, for whoever may change the photo */
-  picker?: ReactNode;
-  more?: HeroShot[];
-  /** the last square — the artist's "Add to your gallery" tile */
+  shots?: HeroShot[];
+  /** the last square — the dashed "＋ Add" tile, for whoever may add */
   addTile?: ReactNode;
+  /** what that tile is called, so it is never mistaken for the disc's ＋ */
+  addLabel?: string;
 }) {
   const [idx, setIdx] = useState(0);
   const [broken, setBroken] = useState<Record<string, true>>({});
 
   const slides: Slide[] = [
-    { key: "photo", src: photo, alt: photoAlt ?? name, corner: picker },
-    ...more.map((m): Slide => ({ key: m.key, src: m.src, alt: m.alt, signed: m.signed, corner: m.corner })),
-    ...(addTile ? [{ key: "add", src: null, alt: "Add a photo", node: addTile } as Slide] : []),
+    ...shots.map((m): Slide => ({ key: m.key, src: m.src, alt: m.alt, signed: m.signed, corner: m.corner })),
+    ...(addTile ? [{ key: "add", src: null, alt: addLabel, node: addTile } as Slide] : []),
   ];
+  if (slides.length === 0) {
+    slides.push({ key: "empty", src: null, alt: `${name} — no header pictures yet` });
+  }
   const many = slides.length > 1;
-  const photos = 1 + more.length;
 
   const square: CSSProperties = {
-    width: HERO_SQ,
-    height: HERO_SQ,
+    width: HERO_HEAD_W,
+    height: HERO_HEAD_H,
     position: "relative",
     overflow: "hidden",
     display: "flex",
@@ -80,9 +82,6 @@ export function HeroRail({
     justifyContent: "center",
     background: `linear-gradient(135deg,${grad[0]},${grad[1]})`,
     color: "#fff",
-    fontSize: 64,
-    fontWeight: 900,
-    letterSpacing: 1,
     fontFamily: DOS_DISPLAY,
     boxShadow: HERO_SQ_SHADOW,
   };
@@ -91,7 +90,7 @@ export function HeroRail({
     <>
       <div
         role={many ? "region" : undefined}
-        aria-label={many ? `${name} — ${photos} photo${photos === 1 ? "" : "s"}, swipe sideways` : undefined}
+        aria-label={many ? `${name} — ${shots.length} header picture${shots.length === 1 ? "" : "s"}, swipe sideways` : undefined}
         data-testid="hero-rail"
         onScroll={(e) => {
           const n = e.currentTarget;
@@ -108,21 +107,20 @@ export function HeroRail({
       >
         {slides.map((s) => (
           <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            <div aria-label={s.alt} style={square}>
+            {/* the Add tile names itself through its input, so its square does not say it twice */}
+            <div aria-label={s.node ? undefined : s.alt} style={square}>
               {s.node ??
                 (s.src && !broken[s.key] ? (
                   <Image
                     src={s.src}
                     alt=""
                     fill
-                    sizes={`${HERO_SQ}px`}
+                    sizes={`${HERO_HEAD_W}px`}
                     style={{ objectFit: "cover" }}
                     unoptimized={Boolean(s.signed)}
                     onError={() => setBroken((b) => ({ ...b, [s.key]: true }))}
                   />
-                ) : (
-                  initialsOf(name)
-                ))}
+                ) : null)}
               {s.corner}
             </div>
           </div>
@@ -145,5 +143,45 @@ export function HeroRail({
         </div>
       ) : null}
     </>
+  );
+}
+
+/** THE PROFILE DISC (15 Sep 2026) — the round profile picture, overlapping the
+ *  header's bottom-left edge where the user drew the circle. Initials on the
+ *  entity's own gradient until there is a picture, and again if the picture
+ *  would not load. The ring is the page's own colour, so the disc cuts out of
+ *  the wash behind it. `picker` is the ＋ on its rim, for whoever may change it,
+ *  and it sits OUTSIDE the clipped circle so the whole button is reachable. */
+export function ProfileDisc({ name, grad, photo, photoAlt, picker, testId }: { name: string; grad: [string, string]; photo: string | null; photoAlt?: string; picker?: ReactNode; testId?: string }) {
+  const [broken, setBroken] = useState(false);
+  const size = HERO_DISC;
+  return (
+    <div data-testid={testId} style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <div
+        aria-label={photoAlt ?? name}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          overflow: "hidden",
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: `linear-gradient(135deg,${grad[0]},${grad[1]})`,
+          color: "#fff",
+          fontSize: Math.round(size * 0.36),
+          fontWeight: 900,
+          letterSpacing: 0.5,
+          fontFamily: DOS_DISPLAY,
+          border: `${HERO_DISC_RING}px solid ${LILAC}`,
+          boxSizing: "border-box",
+          boxShadow: "0 10px 28px rgba(0,0,0,.45)",
+        }}
+      >
+        {photo && !broken ? <Image src={photo} alt="" fill sizes={`${size}px`} style={{ objectFit: "cover" }} onError={() => setBroken(true)} /> : initialsOf(name)}
+      </div>
+      {picker}
+    </div>
   );
 }

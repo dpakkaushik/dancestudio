@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { PublicPersonPage } from "@/features/profiles/components/PublicPersonPage";
+import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
+import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findProfileById } from "@/repositories/profiles";
 import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
 
@@ -63,7 +65,11 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      when either side is one (the RPC refuses it too) */
   const viewer = isMe ? person.profile : await findProfileById(supabase, user.id);
   const canFollow = !isMe && !isOrg && viewer?.role !== "org";
-  const following = canFollow ? await isFollowingPerson(supabase, userId) : false;
+  const [following, header] = await Promise.all([
+    canFollow ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
+    /* THE HEADER (15 Sep 2026): their own pictures, as many as their plan shows */
+    isOrg ? Promise.resolve([]) : findPersonHeaderPhotos(supabase, userId, headerMaxFor(person.isArtist)),
+  ]);
 
-  return <PublicPersonPage person={person} isMe={isMe} following={following} signedIn={Boolean(user)} canFollow={canFollow} />;
+  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} canFollow={canFollow} />;
 }

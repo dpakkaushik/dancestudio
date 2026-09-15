@@ -1,12 +1,92 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (11 Sep 2026, overnight) — replaced on every push (Rule 13)
+## LAST SESSION (15 Sep 2026) — replaced on every push (Rule 13)
 
-> ### ⚠ A SECOND MIGRATION IS WAITING: `20260914170000_artist_gallery`
-> Same command as below. Without it Home still works — `findGalleryPhotos`
-> degrades to empty — but an artist's "Add to your gallery" tile fails with
-> "relation profile_photos does not exist" until it lands.
+> ### ⚠ ONE MIGRATION IS WAITING: `20260915090000_header_pictures` (Rule 9: RLS)
+> ```
+> powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
+> ```
+> The app runs without it, degraded in four ways it says nothing about: a
+> USER can store ten header pictures where the screen offers one (the old cap
+> was ten for everyone); a studio's LAST header picture can be removed (the
+> screen hides the ✕, the database does not yet refuse); a stranger's public
+> studio page shows NO header (`tenant_header_photos` does not exist and the
+> read degrades to empty); and a TRAINER on a studio's home sees none of its
+> photos (the owner-only policy is still the only one). Every one of those is
+> the migration. Then `node scripts/shots/shoot-hero.js` against a dev server —
+> the guest-page check is the one that proves the new storage policy.
 >
+> **Both migrations the 14 Sep block below called "waiting" —
+> `20260913140000_a_city_is_whatever_the_map_says` and
+> `20260914170000_artist_gallery` — ARE APPLIED** (verified 15 Sep 2026 by
+> `db-push.ps1 -DryRun`: all 58 local == remote, and `profile_photos`,
+> `city_aliases` read HTTP 200). The warnings were stale from the other PC.
+>
+> ### THE HEADER AND THE DISC — TWO PICTURES, EVERY PROFILE PAGE (15 Sep 2026)
+> The user drew a circle on the hero's bottom-left: *"I need a profile picture
+> for the studio, same way for the artist page … the current image you are
+> showing in artist should go in the drawn circle … edit profile where he can
+> change Name, Mobile, Profile Pic, Header Pictures (max 10)."* Asked, they
+> chose: keep the 206 square for now but as tokens so going wide is a tweak
+> (`HERO_HEAD_W/H`, `HERO_DISC*`); a plain user gets **one** header picture;
+> a studio's owner may add/remove header pictures but **never the last one**;
+> a **Media** tab beside Classes · Calendar · Earnings; and the public studio
+> and artist pages wear the same header + disc, with only what a visitor came
+> for underneath.
+> * `IdentityHero` is re-cut: `HeroRail` swipes the HEADER only (an Add tile
+>   at the end for whoever may add; one quiet gradient square when empty);
+>   `ProfileDisc` is the round picture overlapping the header's bottom-left,
+>   the ＋ on its rim (`hero-disc` / `hero-rail` test ids). **Seven pages stand
+>   on it now**: user / artist / org Home, studio home, the Profile tab,
+>   `PublicProfile` (studio + artist page) and `PublicPersonPage`. Only
+>   `CrewPublicPage` still carries its own square.
+> * **A person's header IS `profile_photos`** (the 14 Sep "gallery"): ten for
+>   an artist, ONE for a user — `add_my_gallery_photo` caps by
+>   `artist_plan_active`. Added from Home's tile, the Profile tab's tile, and
+>   the Edit-profile sheet's new **Header pictures** section (field order now
+>   Name · Mobile · Profile picture · Header pictures · Location · Age · Bio).
+>   `repositories/gallery.ts` → `headerPhotos.ts`; `GalleryRemove` →
+>   `HeaderRemove` (person | studio).
+> * **A studio's header IS its verification photos** (`org_proof_photos` with
+>   `tenant_id`): the same 5–10 the admin checks. ⚠ **They become PUBLIC once
+>   the studio is LISTED** — a new SELECT policy on the rows and on the
+>   `org-proof` storage objects (`is listed OR is_tenant_member`), so a
+>   stranger can sign a listed studio's photo and nobody can sign an unlisted
+>   one's. `remove_org_proof_photo` refuses the last picture of a studio.
+>   `PhotoPicker` gained the `studioHeader` owner (the proof bucket, the
+>   owner's folder, `add_studio_proof_photo`). The copy that said "nobody
+>   else ever sees these" (ProofPhotos, the Why sheet, the form's block head)
+>   now says the truth.
+> * **`tenant_header_photos(uuid)`** — one definer RPC answering "what swipes
+>   across this business's page": a studio's proof photos, an artist page's
+>   OWNER's header pictures; empty for a tenant the caller could not open.
+> * **The Media desk** `/business/{id}/media` (`StudioMediaDesk`, `BizPage`
+>   in the new `DOS_TOOLS.media` fuchsia): the disc with its chip, the header
+>   grid (`ProofPhotos`, now with `readOnly` and the disabled ✕ on the only
+>   picture), a tile on the studio home and a chip on the classes register.
+> * Verified: typecheck 0 · lint 0 · `next build` green · `shoot-hero.js`
+>   re-cut (≈45 checks, the guest page included). The e2e labels it relied
+>   on — "Add a photo" / "Change your photo" on the disc — are unchanged;
+>   the header tile is "Add a header picture" so the two never collide.
+>
+> ### THE MACHINE MOVE (15 Sep 2026) — what a copy-pasted folder loses
+> The repo was copied PC to PC. What came across: `.env.local` whole (all 12
+> documented keys + `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`), Playwright's
+> chromium (it lives in `%LOCALAPPDATA%`). What did not: **pnpm's symlinks** —
+> every top-level package folder AND every transitive one inside `.pnpm/`
+> arrived as an EMPTY directory, so `tsc` reported ~150 "getUser does not
+> exist" errors that were not code. `corepack pnpm@10 install` said "Already
+> up to date" and fixed nothing; **`--force`** relinked all 469. Also missing:
+> `~/.gitconfig` (identity + credential helper — `git` authenticated as a
+> second account, `dpakkaushikdev`, until `credential.https://github.com.username`
+> was pinned), git on PATH (MinGit is at `C:\Users\ADMIN\mingit\cmd`), and
+> `danceos-android/android.keystore` — never in git, sideloaded TWA only, so
+> low stakes; it exists on the old PC alone. `npm` is `npm.cmd` here (the
+> `.ps1` shim is blocked by execution policy). `gh` is installed at
+> `C:\Users\ADMIN\gh\bin` and needs `gh auth login`.
+
+## LAST SESSION (14 Sep 2026) — history
+
 > ### THE IDENTITY HERO — ONE OBJECT, FOUR PAGES (14 Sep 2026)
 > The user: *"I want option to have a profile image for user, studio and artist
 > all… Artist and Studio has scrollable images in cover photo area but in case
@@ -33,17 +113,13 @@
 >   is gone into `HeroRail`. The prototype's Home wore an 86px square of
 >   initials (7276); the app's wears the profile hero's square — a deliberate
 >   deviation at the user's instruction.
-> * Not touched, each still carrying its own copy of the 206 square:
+> * Not touched then, each still carrying its own copy of the 206 square:
 >   `PublicProfile`, `PublicPersonPage`, `MyProfilePage`, `CrewPublicPage` —
->   the public studio page decision is still the user's to make.
+>   **three of the four moved onto `IdentityHero` on 15 Sep 2026**; the crew
+>   page is the one left.
 >
-> ### ⚠ ONE MIGRATION IS WAITING: `20260913140000_a_city_is_whatever_the_map_says`
-> ```
-> powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
-> ```
-> The app works without it (the city chips are simply empty and `set_tenant_location`
-> keeps the old closed-list behaviour), but the city registry does not fill until
-> it lands.
+> ### ~~⚠ ONE MIGRATION IS WAITING: `20260913140000_a_city_is_whatever_the_map_says`~~
+> **Applied** — verified 15 Sep 2026 (see the top block).
 >
 > ### ONLY A STUDIO IS EVER REVIEWED; AN ORGANIZATION HAS A GST NUMBER AND NOTHING ELSE (11–14 Sep 2026)
 > The user, across four messages that each cut deeper: *"instead of social
@@ -859,7 +935,16 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **~~APPLY THE FIVE MIGRATIONS~~ — DONE 11 Sep 2026, and ALL 28 PROOFS ARE
+0. **⚠ APPLY `20260915090000_header_pictures`** (Rule 9: RLS — a listed
+   studio's proof photos become public to read). The command is the one under
+   0a; `-DryRun` first. Then `node scripts/shots/shoot-hero.js` against
+   `npm run dev` — its signed-out guest check on `/studio/{id}` is what proves
+   the new storage policy, and `rls-proof-studio-verification.ps1` as
+   regression cover (it does not remove photos, so the new min-one rule has
+   no proof yet — write one when it lands: the last photo refused, a second
+   added, the first removed).
+
+0a. **~~APPLY THE FIVE MIGRATIONS~~ — DONE 11 Sep 2026, and ALL 28 PROOFS ARE
    GREEN.** Kept for the record: the bypass they closed was live, and three
    proof scripts had to be corrected afterwards because two of them asserted the
    old world and one could misread a pass as a fail (see the top block). The
@@ -1062,6 +1147,17 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE HEADER AND THE DISC — every profile page on one hero, 15 Sep 2026, no
+  step number ⚠ (Rule 9, RLS) — WRITTEN AND BUILT, ONE MIGRATION NOT APPLIED
+  (NEXT TO DO #0).** The user split the hero in two: the header pictures
+  across the top (a user's one, an artist's ten, a studio's 5–10 verification
+  photos) and the round profile disc over its bottom-left edge. `IdentityHero`
+  + `HeroRail` + `ProfileDisc` now carry seven pages (three Homes, the studio
+  home, the Profile tab, the public studio/artist page, the person page);
+  the Edit-profile sheet gained Header pictures; a studio gained the Media
+  desk; a listed studio's photos are readable by anyone through a new pair of
+  SELECT policies, and its last header picture cannot be removed. Detail at
+  the top of this file.
 - **THE OVERNIGHT AUDIT: a live revenue bypass closed, the load answered, the
   admin panel segmented, and a business finally has a PLACE — 11 Sep 2026, no
   step number ⚠ (Rule 9, money + auth + RLS) — WRITTEN AND BUILT, FOUR
@@ -4325,6 +4421,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The header slice, what it left (15 Sep 2026):** the **crew page** still draws its own 206 square rather than `IdentityHero` (a crew has a photo and no header pictures — a decision about what a crew's header would show); header pictures cannot be **reordered** (insertion order stands; the Profile tab's ▲▼ pattern is the shape); an **organization's Home** has an empty header (it is not a place — decision (c)); a **trainer** may change a studio's disc but not its header, because the files go into the OWNER's folder in the proof bucket (a per-studio folder would let a trainer add — needs a storage-policy change); the header is the **206 square**, not a full-width banner, by the user's choice — `HERO_HEAD_W/H` are the tweak; no **proof script** yet for the min-one rule or the public read policy (`shoot-hero.js` covers both from the browser) | S_profiletab 10577, 11093 | a crew decision; a reorder slice; a per-studio proof folder if a trainer ever needs to add; a `.ps1` proof after the migration lands |
 | **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |

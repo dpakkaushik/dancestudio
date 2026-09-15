@@ -334,6 +334,7 @@ export function ClassesManager({
           {(
             [
               ["calendar", "Calendar"],
+              ["media", "Media"],
               ["students", "Students"],
               ["rooms", "Rooms"],
               ["staff", "Staff"],

@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { MyProfilePage } from "@/features/profiles/components/MyProfilePage";
+import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
+import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMyNotificationPrefs } from "@/repositories/notifications";
 import { findPublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
@@ -42,6 +44,10 @@ export default async function ProfilePage() {
        organization has the row, so only an organization is asked about it */
     role === "org" ? findMyGst(supabase, person.profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
   ]);
+  /* THE HEADER (15 Sep 2026): one picture for a user, ten for an artist, none
+     for an organization — the same rule the database keeps on the way in */
+  const headerMax = role === "org" ? 0 : headerMaxFor(Boolean(plan?.active));
+  const header = headerMax > 0 ? await findPersonHeaderPhotos(supabase, user.id, headerMax) : [];
   /* where you stand — an ORGANIZATION has no people board (the prototype hides the
      rank on a studio, 10719); a person stands on the artists' board while the plan is live */
   const place = role === "org" ? null : await findMyPlace(supabase, plan?.active ? "artist" : "dancer");
@@ -59,6 +65,8 @@ export default async function ProfilePage() {
   return (
     <MyProfilePage
       person={person}
+      header={header}
+      headerMax={headerMax}
       followers={followers}
       followingPeople={followingPeople}
       followingTenants={followingTenants}
