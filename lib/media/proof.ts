@@ -18,8 +18,10 @@ export const PROOF_MIN = 5;
 export const PROOF_MAX = 10;
 
 /** How long a signed read lives. Long enough to render a page and scroll it,
- *  short enough that a copied URL is worthless by the time it is pasted. */
-export const PROOF_URL_SECONDS = 600;
+ *  short enough that a copied URL is worthless by the time it is pasted.
+ *  Thirty minutes since 14 Sep 2026: the studio's own home swipes through
+ *  these, and a page left open through a class went blank at ten. */
+export const PROOF_URL_SECONDS = 1800;
 
 /** The path a new proof photo takes. The random name means a replacement is a
  *  new object, so a browser holding the old one is not left showing it. */

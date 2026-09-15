@@ -2,6 +2,41 @@
 
 ## LAST SESSION (11 Sep 2026, overnight) — replaced on every push (Rule 13)
 
+> ### ⚠ A SECOND MIGRATION IS WAITING: `20260914170000_artist_gallery`
+> Same command as below. Without it Home still works — `findGalleryPhotos`
+> degrades to empty — but an artist's "Add to your gallery" tile fails with
+> "relation profile_photos does not exist" until it lands.
+>
+> ### THE IDENTITY HERO — ONE OBJECT, FOUR PAGES (14 Sep 2026)
+> The user: *"I want option to have a profile image for user, studio and artist
+> all… Artist and Studio has scrollable images in cover photo area but in case
+> of user we don't want scrollable cover photo collection, just one cover image
+> is enough… make sure all 4 profile pages share common looking user interface
+> and common code base."* Asked, they chose: an artist gets an uploadable
+> gallery; the artist's home is the Pro user's Home at `/`.
+> * `features/profiles/components/hero-kit.tsx` — `IdentityHero`: the wash off
+>   the entity's colour, `HeroRail` (the 206px square as a scroll-snap rail, the
+>   ＋ on the first square, dots only past one, initials when a picture is
+>   missing OR would not load), then eyebrow · name + tick + QR · meta · styles ·
+>   whatever the page adds. `HERO_SQ` / `HERO_SQ_SHADOW` live in tokens.
+> * **User Home `/`**: one square, their photo, the ＋ (`PhotoPicker` avatar).
+>   **Org Home**: the same, its logo, no QR. **Artist Home** (a live plan): the
+>   photo, then the gallery — `profile_photos`, `gallery/{user}/…` in `media`,
+>   `add_my_gallery_photo` / `remove_my_gallery_photo`, ten at most, each with
+>   its ✕ (`GalleryRemove`) and an "Add to your gallery" tile at the end
+>   (`PhotoPicker tile`). **Studio home `/business/{id}`**: the studio's own
+>   picture first — `tenants.photo_path`, set HERE by the owner or a trainer,
+>   which until today was reachable only from the public page — then the proof
+>   photos (signed, `unoptimized`, 30 min now instead of 10).
+> * `TodayShelf` (`features/home/components/TodayShelf.tsx`) is the one
+>   "Today's schedule" shelf both Homes hang under the hero. `StudioPhotoRail`
+>   is gone into `HeroRail`. The prototype's Home wore an 86px square of
+>   initials (7276); the app's wears the profile hero's square — a deliberate
+>   deviation at the user's instruction.
+> * Not touched, each still carrying its own copy of the 206 square:
+>   `PublicProfile`, `PublicPersonPage`, `MyProfilePage`, `CrewPublicPage` —
+>   the public studio page decision is still the user's to make.
+>
 > ### ⚠ ONE MIGRATION IS WAITING: `20260913140000_a_city_is_whatever_the_map_says`
 > ```
 > powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1

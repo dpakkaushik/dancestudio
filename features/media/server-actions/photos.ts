@@ -58,6 +58,39 @@ export async function setTenantPhotoAction(input: { tenantId: string; path: stri
   return { error: null, path: (data as string | null) ?? null };
 }
 
+/** AN ARTIST'S GALLERY (14 Sep 2026). The same shape as the three doors above:
+ *  the file is already in `gallery/{user}/…` when this runs, and the RPC checks
+ *  the folder, the ceiling of ten, and records the row. Removing returns the
+ *  path so the browser can take the object out of the bucket too — the one
+ *  photo flow here that does not leave an orphan behind. */
+export async function addMyGalleryPhotoAction(input: { path: string }): Promise<PhotoActionResult> {
+  const parsed = z.string().trim().min(1).max(300).safeParse(input.path);
+  if (!parsed.success) return { error: "Invalid photo" };
+  const supabase = await requireUser();
+  const { error } = await supabase.rpc("add_my_gallery_photo", { p_path: parsed.data });
+  if (error) {
+    return { error: error.message };
+  }
+  revalidatePath("/");
+  revalidatePath("/profile");
+  revalidatePath("/person/[userId]", "page");
+  return { error: null, path: parsed.data };
+}
+
+export async function removeMyGalleryPhotoAction(input: { id: string }): Promise<PhotoActionResult> {
+  const parsed = z.string().uuid().safeParse(input.id);
+  if (!parsed.success) return { error: "Invalid photo" };
+  const supabase = await requireUser();
+  const { data, error } = await supabase.rpc("remove_my_gallery_photo", { p_id: parsed.data });
+  if (error) {
+    return { error: error.message };
+  }
+  revalidatePath("/");
+  revalidatePath("/profile");
+  revalidatePath("/person/[userId]", "page");
+  return { error: null, path: (data as string | null) ?? null };
+}
+
 export async function setCrewPhotoAction(input: { crewId: string; path: string | null }): Promise<PhotoActionResult> {
   const parsed = z.object({ crewId: z.string().uuid(), path }).safeParse(input);
   if (!parsed.success) return { error: "Invalid photo" };

@@ -448,6 +448,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("heading", { name: studioName, exact: true })).toBeVisible();
     await expect(owner.getByText("Studio Tools")).toBeVisible();
     await expect(owner.getByText("Nothing in your rooms today")).toBeVisible();
+    // the studio's own picture is set HERE (14 Sep 2026): the ＋ on the hero square,
+    // offered to the owner; a studio born in the sheet has none yet
+    await expect(owner.getByLabel("Add a photo")).toBeAttached();
     await owner.getByRole("link", { name: "Classes", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 

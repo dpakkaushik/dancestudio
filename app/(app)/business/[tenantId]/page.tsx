@@ -43,6 +43,9 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
   }
 
   const isOwner = memberRole === "owner";
+  /* the pair that may change the studio's picture — the same pair the storage
+     policy and set_tenant_photo admit (20260829230000) */
+  const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
   const [photos, deck, roomCounts, stylesByTenant, eventsHostId] = await Promise.all([
     /* the photos of its space, as shown to DanceOS — signed, the owner's to see */
@@ -54,8 +57,9 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     isOwner ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
   ]);
 
-  /* the public photo first, then the space — a URL that could not be signed is left out */
-  const shots = [photoUrl(tenant.photoPath), ...photos.map((p) => p.url)].filter((u): u is string => Boolean(u));
+  /* a proof photo whose URL could not be signed is left out — the rail says
+     what it has, and the strip on the hub is where a missing one is chased */
+  const proof = photos.flatMap((p) => (p.url ? [{ id: p.id, url: p.url }] : []));
 
   /* the prototype's studio grid (7359-7373) minus the doors that do not exist —
      Expenses, Assets and Reports have no page, and a tile that opens nothing
@@ -73,7 +77,9 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
   return (
     <StudioHome
       tenant={tenant}
-      shots={shots}
+      photo={photoUrl(tenant.photoPath)}
+      canEditPhoto={canEditPhoto}
+      proof={proof}
       deck={deck}
       roomCount={roomCounts[tenantId] ?? 0}
       styles={stylesByTenant.get(tenantId) ?? []}

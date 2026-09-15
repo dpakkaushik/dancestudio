@@ -52,6 +52,12 @@ export const DOS_TINT: Record<"user" | "artist" | "org", string> = {
 export const tintForTenantType = (type: "studio" | "trainer_business" | "org"): string =>
   type === "trainer_business" ? DOS_TINT.artist : DOS_TINT.org;
 
+/** THE HERO SQUARE (prototype S_profiletab 10588-10589): the sharp 206px cover
+ *  every identity page stands its picture in, and the sleeve's thrown shadow.
+ *  Said once (14 Sep 2026) — five files used to carry their own copy of the pair. */
+export const HERO_SQ = 206;
+export const HERO_SQ_SHADOW = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.4)";
+
 export const BTN_STYLE: React.CSSProperties = {
   padding: "15px",
   borderRadius: 999,

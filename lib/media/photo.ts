@@ -1,12 +1,17 @@
-/** Photos (parity slice 2). One public bucket, three folders, and the rules the
+/** Photos (parity slice 2). One public bucket, four folders, and the rules the
  *  browser needs to know before it uploads anything.
  *
  *  The bucket is public for READS, so a URL is a plain string built here — no
  *  round trip, no expiry, and a public page does not depend on a signed URL per
  *  image. Writes are path-scoped by storage policy: `avatars/{user}`,
- *  `tenants/{tenant}`, `crews/{crew}`. */
+ *  `tenants/{tenant}`, `crews/{crew}`, and since 14 Sep 2026 `gallery/{user}` —
+ *  an artist's own pictures, the ones that swipe behind the profile photo. */
 
 export const MEDIA_BUCKET = "media";
+
+/** AN ARTIST'S GALLERY holds ten at most — the prototype's own ceiling for a
+ *  Photos rail (10979), and the count the database refuses past. */
+export const GALLERY_MAX = 10;
 
 /** what the bucket itself accepts (mirrored from the migration, so the browser
  *  can refuse a file before spending somebody's data on the upload) */
@@ -14,9 +19,14 @@ export const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 export const PHOTO_MAX_WORDS = "5 MB";
 
-export type PhotoOwner = { kind: "avatar"; id: string } | { kind: "tenant"; id: string } | { kind: "crew"; id: string };
+export type PhotoOwner =
+  | { kind: "avatar"; id: string }
+  | { kind: "tenant"; id: string }
+  | { kind: "crew"; id: string }
+  /** one more picture in a person's gallery — `id` is the person */
+  | { kind: "gallery"; id: string };
 
-const FOLDER: Record<PhotoOwner["kind"], string> = { avatar: "avatars", tenant: "tenants", crew: "crews" };
+const FOLDER: Record<PhotoOwner["kind"], string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery" };
 
 /** The path a new photo takes. The folder is the whole of the authority check —
  *  the storage policy reads it, and so does the RPC that records it — so it is
