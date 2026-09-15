@@ -2,19 +2,37 @@
 
 ## LAST SESSION (15 Sep 2026) — replaced on every push (Rule 13)
 
-> ### ⚠ ONE MIGRATION IS WAITING: `20260915090000_header_pictures` (Rule 9: RLS)
-> ```
-> powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
-> ```
-> The app runs without it, degraded in four ways it says nothing about: a
-> USER can store ten header pictures where the screen offers one (the old cap
-> was ten for everyone); a studio's LAST header picture can be removed (the
-> screen hides the ✕, the database does not yet refuse); a stranger's public
-> studio page shows NO header (`tenant_header_photos` does not exist and the
-> read degrades to empty); and a TRAINER on a studio's home sees none of its
-> photos (the owner-only policy is still the only one). Every one of those is
-> the migration. Then `node scripts/shots/shoot-hero.js` against a dev server —
-> the guest-page check is the one that proves the new storage policy.
+> ### ✅ `20260915090000_header_pictures` IS APPLIED (15 Sep 2026, Rule 9: RLS)
+> Applied from this session through `scripts/db-push.ps1` — the FIRST time the
+> agent has been able to: the auto-mode classifier refused the push until the
+> user asked for an allow rule, which now lives in `.claude/settings.local.json`
+> (gitignored, this machine only, scoped to that one script). From here the
+> agent applies migrations itself; `-DryRun` first, always.
+>
+> Without it the app had run degraded in four silent ways (a user could store
+> ten header pictures where the screen offers one; a studio's last picture was
+> removable; a stranger's public studio page showed no header; a trainer saw
+> none of the studio's photos). All four are closed.
+>
+> **AND IT NEEDED A SECOND MIGRATION, FOUND BY DRIVING IT:**
+> `20260915100000_anon_reads_a_listed_studios_pictures` — also applied. With
+> the first one live, the OWNER's public page showed the header and the
+> signed-out GUEST's still did not. A bare REST probe said why: anon got
+> **401** on `org_proof_photos` and 200 on `tenants` with identical headers.
+> PostgREST answers 401 for `insufficient_privilege` when the role is anon —
+> the table was created on 11 Sep with policies `to authenticated` only and
+> had **never been GRANTed to anon at the table level**, so a `to anon`
+> policy had nothing to attach to, and the storage policy's subquery on the
+> same table hit the same wall. **A POLICY IS NOT A GRANT**: RLS decides which
+> rows, the GRANT decides whether the role may look at the table at all; a
+> policy on a table the role cannot touch is a policy that never runs. Fixed
+> with `grant select … to anon, authenticated` (+ execute on
+> `is_tenant_member`, which the policy calls). Verified: anon reads **5 rows
+> of 80 live** — the listed studios' photos and none of the 70 legacy
+> organization rows — and `shoot-hero.js` is **44/44**, the guest check
+> included. (One false alarm on the way: `@($json | ConvertFrom-Json).Count`
+> read an empty `[]` as 1 — the PowerShell 5.1 quirk this file already
+> records. Print the raw body.)
 >
 > **Both migrations the 14 Sep block below called "waiting" —
 > `20260913140000_a_city_is_whatever_the_map_says` and
@@ -65,9 +83,11 @@
 >   grid (`ProofPhotos`, now with `readOnly` and the disabled ✕ on the only
 >   picture), a tile on the studio home and a chip on the classes register.
 > * Verified: typecheck 0 · lint 0 · `next build` green · `shoot-hero.js`
->   re-cut (≈45 checks, the guest page included). The e2e labels it relied
->   on — "Add a photo" / "Change your photo" on the disc — are unchanged;
->   the header tile is "Add a header picture" so the two never collide.
+>   re-cut and **44/44 on the migrated database**, the signed-out guest's
+>   header included. The e2e labels it relied on — "Add a photo" / "Change
+>   your photo" on the disc — are unchanged; the header tile is "Add a header
+>   picture" so the two never collide. No `.ps1` proof yet for the min-one
+>   rule (NEXT TO DO #0).
 >
 > ### THE MACHINE MOVE (15 Sep 2026) — what a copy-pasted folder loses
 > The repo was copied PC to PC. What came across: `.env.local` whole (all 12
@@ -935,14 +955,15 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **⚠ APPLY `20260915090000_header_pictures`** (Rule 9: RLS — a listed
-   studio's proof photos become public to read). The command is the one under
-   0a; `-DryRun` first. Then `node scripts/shots/shoot-hero.js` against
-   `npm run dev` — its signed-out guest check on `/studio/{id}` is what proves
-   the new storage policy, and `rls-proof-studio-verification.ps1` as
-   regression cover (it does not remove photos, so the new min-one rule has
-   no proof yet — write one when it lands: the last photo refused, a second
-   added, the first removed).
+0. **~~APPLY `20260915090000_header_pictures`~~ — DONE 15 Sep 2026, with its
+   follow-up `20260915100000` (the anon GRANT), both applied from the agent's
+   session through `scripts/db-push.ps1` under the new allow rule in
+   `.claude/settings.local.json`.** `shoot-hero.js` 44/44. Still owed: a
+   `.ps1` proof for the two new database rules — `remove_org_proof_photo`
+   refusing a studio's LAST picture (add a second, remove the first, refuse
+   the last), and `add_my_gallery_photo` refusing a USER's second picture while
+   admitting an artist's tenth; and `rls-proof-studio-verification.ps1` as
+   regression cover on the migrated schema.
 
 0a. **~~APPLY THE FIVE MIGRATIONS~~ — DONE 11 Sep 2026, and ALL 28 PROOFS ARE
    GREEN.** Kept for the record: the bypass they closed was live, and three
@@ -1148,8 +1169,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 ### Progress tracker — update after EVERY push (Rule 11)
 
 - **THE HEADER AND THE DISC — every profile page on one hero, 15 Sep 2026, no
-  step number ⚠ (Rule 9, RLS) — WRITTEN AND BUILT, ONE MIGRATION NOT APPLIED
-  (NEXT TO DO #0).** The user split the hero in two: the header pictures
+  step number ⚠ (Rule 9, RLS) — BUILT, BOTH MIGRATIONS APPLIED, 44/44 driven
+  for real.** The user split the hero in two: the header pictures
   across the top (a user's one, an artist's ten, a studio's 5–10 verification
   photos) and the round profile disc over its bottom-left edge. `IdentityHero`
   + `HeroRail` + `ProfileDisc` now carry seven pages (three Homes, the studio
