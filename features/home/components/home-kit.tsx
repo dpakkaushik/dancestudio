@@ -76,6 +76,15 @@ const GLYPH: Record<string, ReactNode> = {
       <circle cx="12" cy="10.8" r="2.3" />
     </>
   ),
+  /* stats: the bars, as the tab bar drew them until 15 Sep 2026 */
+  stats: I(
+    <>
+      <path d="M4 19.5h16" />
+      <path d="M5 16.5V12M9.5 16.5V8.5M14 16.5v-6" />
+      <path d="m18.5 16.5-.01-9" />
+      <path d="m16.4 6.6 2.1-2.1 2.1 2.1" />
+    </>
+  ),
   /* media is a picture: the frame, the sun, the hill (15 Sep 2026) */
   media: I(
     <>
@@ -108,6 +117,8 @@ export interface Tile {
  *  tools are, pointing at the organization's ONE events desk. */
 const tilesFor = (tenantId: string | null, eventsHostId: string | null): Tile[] => [
   { name: "Calendar", href: "/calendar", k: "calendar", c: "#5AC8FA" },
+  /* Stats left the tab bar for the grid (15 Sep 2026) — the record, the history and the boards */
+  { name: "Stats", href: "/stats", k: "stats", c: "#A855F7" },
   ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
   { name: "Crews", href: "/crews", k: "crews", c: "#DC2626" },
   { name: "Studios", href: "/business", k: "studios", c: "#3B82F6" },

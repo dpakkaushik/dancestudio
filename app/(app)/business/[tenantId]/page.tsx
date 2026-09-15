@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
 import { findStudioDeck } from "@/repositories/home";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
+import { findPublicTenant } from "@/repositories/publicProfile";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -48,7 +49,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      policy and set_tenant_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, eventsHostId] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByTenant, eventsHostId, editable] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
@@ -57,6 +58,8 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     findPublishedStylesByTenant(supabase, [tenantId]).catch(() => new Map<string, string[]>()),
     /* R15: events are the ORGANIZATION's — the tile points at its one desk, owner only */
     isOwner ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
+    /* the studio as its Edit sheet reads it (About, Since, the pin…) — the owner's pencil */
+    isOwner ? findPublicTenant(supabase, tenantId).catch(() => null) : Promise.resolve(null),
   ]);
 
   /* a photo whose URL could not be signed is left out — the rail says what it
@@ -72,6 +75,8 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     { name: "Classes", href: `/business/${tenantId}/classes`, k: "classesmod", c: "#0D9488" },
     ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
     { name: "Calendar", href: `/business/${tenantId}/calendar`, k: "calendar", c: "#5AC8FA" },
+    /* Stats left the tab bar for the grid (15 Sep 2026) — a studio's is the studio board */
+    { name: DOS_TOOLS.stats.name, href: "/stats?tab=charts&seg=studio", k: "stats", c: DOS_TOOLS.stats.c },
     { name: DOS_TOOLS.media.name, href: `/business/${tenantId}/media`, k: "media", c: DOS_TOOLS.media.c },
     { name: "Students", href: `/business/${tenantId}/students`, k: "students", c: "#8B5CF6" },
     { name: "Team", href: `/business/${tenantId}/staff`, k: "team", c: "#F97316" },
@@ -87,6 +92,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       header={header}
       canEditHeader={isOwner}
       ownerId={isOwner ? user.id : null}
+      editable={editable}
       deck={deck}
       roomCount={roomCounts[tenantId] ?? 0}
       styles={stylesByTenant.get(tenantId) ?? []}

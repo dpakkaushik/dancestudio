@@ -145,6 +145,18 @@ export function Sheet({ label, onClose, children, maxHeight = "80vh" }: { label:
   );
 }
 
+/** THE CORNER CHIP (10613): the 36px blurred-glass square the hero's top-right
+ *  controls wear — Edit, Public view — on the Profile tab, on Home and on a
+ *  studio's own home alike (15 Sep 2026). */
+export const cornerChip: CSSProperties = { width: 36, height: 36, borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,.42)", color: "#fff", border: "1px solid rgba(255,255,255,.28)", textDecoration: "none", padding: 0, fontFamily: "inherit" };
+
+export const PencilIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></svg>
+);
+export const EyeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
+);
+
 export const fieldLabel: CSSProperties = { fontSize: 11.5, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--muted)", margin: "14px 0 6px" };
 export const fieldInput: CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "11px 14px", fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "inherit" };
 export const sheetBtn = (primary: boolean): CSSProperties => ({

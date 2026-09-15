@@ -2,14 +2,16 @@ import Link from "next/link";
 import { ToolGrid, type Tile } from "@/features/home/components/home-kit";
 import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
 import { HeaderRemove } from "@/features/profiles/components/HeaderRemove";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
-import { gradientOf } from "@/features/profiles/components/profile-kit";
+import { EyeIcon, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { PROOF_MAX } from "@/lib/media/proof";
 import type { DeckItem } from "@/types/home";
+import type { PublicTenant } from "@/types/publicProfile";
 import type { Tenant } from "@/types/tenant";
 
 /** ONE STUDIO'S OWN HOME (14 Sep 2026) — what a studio row on the hub opens.
@@ -44,6 +46,9 @@ export function StudioHome({
   canEditHeader,
   /** the owner's own id: the folder in the private bucket a new picture goes into */
   ownerId,
+  /** the studio as its Edit sheet reads it — About, Since, the number, the links,
+   *  the pin; null for anybody but the owner, and the pencil is not drawn */
+  editable = null,
   deck,
   roomCount,
   /** what it teaches, off its PUBLISHED classes — a studio with none says nothing (7419-7421) */
@@ -56,6 +61,7 @@ export function StudioHome({
   header: Array<{ id: string; path: string; url: string }>;
   canEditHeader: boolean;
   ownerId: string | null;
+  editable?: PublicTenant | null;
   deck: DeckItem[];
   roomCount: number;
   styles: string[];
@@ -122,6 +128,17 @@ export function StudioHome({
             ) : undefined
           }
           addLabel="Add a header picture"
+          /* the corner (10613, 15 Sep 2026): the owner's pencil — About, Since,
+             the number, the links, the pin — and for everyone on the team the
+             eye, the page as a stranger sees it */
+          corner={
+            <>
+              {editable ? <BusinessEditButton tenant={editable} corner /> : null}
+              <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
+              </Link>
+            </>
+          }
         />
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and

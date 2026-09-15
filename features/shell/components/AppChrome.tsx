@@ -9,9 +9,18 @@ import { WorkspaceStrip } from "./WorkspaceStrip";
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round
- *  theme/settings chips) and the floating five-tab pill bar. The prototype keeps
+ *  theme/settings chips) and the floating pill bar. The prototype keeps
  *  screens in a stack; here each tab and drill is a real route, so "which tab is
- *  lit" and "is the bar drawn at all" read off the pathname instead of the stack. */
+ *  lit" and "is the bar drawn at all" read off the pathname instead of the stack.
+ *
+ *  FOUR IN THE BAR, NOT FIVE (15 Sep 2026, the user): Stats left the bar for a
+ *  tile among the tools on every Home ("keep it as a tab on the home page along
+ *  with calendar, classes"), and Profile left it for an EYE — "the profile view,
+ *  what a user will see when he clicks over a studio or artist" — whose target
+ *  the layout works out per account. /profile and /stats are still routes (a
+ *  route is a promise, Rule 14): the gear opens the first, the tile the second,
+ *  and both read as drill pages now, with the back chip and a title. Recorded
+ *  in CLAUDE.md's deviations table. */
 
 /* ── the DanceOS mark — lifted from prototype DosMark (DanceOSApp.jsx:1614-1628) ── */
 function DosMark({ size = 28 }: { size?: number }) {
@@ -80,10 +89,11 @@ const TAB_ICONS: Record<string, (c: string) => ReactNode> = {
       <path d="M3.5 13.5 6.2 5.2h11.6l2.7 8.3V18a1.8 1.8 0 0 1-1.8 1.8H5.3A1.8 1.8 0 0 1 3.5 18z" />
     </svg>
   ),
-  Profile: (c) => (
+  /* the eye: the page as a stranger sees it */
+  "Public view": (c) => (
     <svg width="20" height="20" viewBox="0 0 24 24" stroke={c} {...ICON_STROKE}>
-      <circle cx="12" cy="8.2" r="3.6" />
-      <path d="M5 20c.8-3.6 3.7-5.4 7-5.4s6.2 1.8 7 5.4" />
+      <path d="M1.8 12S5.6 5.2 12 5.2 22.2 12 22.2 12 18.4 18.8 12 18.8 1.8 12 1.8 12z" />
+      <circle cx="12" cy="12" r="3.1" />
     </svg>
   ),
 };
@@ -91,21 +101,22 @@ const TAB_ICONS: Record<string, (c: string) => ReactNode> = {
 const TAB_TINT: Record<string, string> = {
   Home: "#5AC8FA",
   Discover: "#22C55E",
-  Stats: "#F59E0B",
   Inbox: "#8B5CF6",
-  Profile: "#EC4899",
+  "Public view": "#EC4899",
 };
 
+/* the three that are places of their own; the eye is added per account below */
 const TAB_SET: Array<{ label: string; href: string }> = [
   { label: "Home", href: "/" },
   { label: "Discover", href: "/discover" },
-  { label: "Stats", href: "/stats" },
   { label: "Inbox", href: "/inbox" },
-  { label: "Profile", href: "/profile" },
 ];
 
 /* drill-page titles — the top bar names where you are (prototype 19241) */
 const DRILL_TITLES: Array<[RegExp, string]> = [
+  /* the two that were tabs until 15 Sep 2026 */
+  [/^\/profile$/, "Profile"],
+  [/^\/stats$/, "Stats"],
   [/^\/classes$/, "Classes"],
   [/^\/c\/[^/]+$/, "Class"],
   [/^\/my-classes$/, "All bookings"],
@@ -193,17 +204,22 @@ export function AppChrome({
   children,
   unread = 0,
   adminOnly = false,
+  publicViewHref = null,
 }: {
   children: ReactNode;
   /** what the bell says — counted server-side for this render */
   unread?: number;
   /** a platform admin with no profile (9 Sep 2026): no tab bar, no bell, no gear — a Sign out instead; the queue is its whole app */
   adminOnly?: boolean;
+  /** where the eye goes — this account's page as a stranger sees it; null draws no eye */
+  publicViewHref?: string | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeTab = TAB_SET.find((t) => t.href === pathname)?.label ?? null;
   const isTab = activeTab !== null;
+  /* the eye is a door out of the bar, never a lit tab — the page it opens is a drill */
+  const bar = publicViewHref ? [...TAB_SET, { label: "Public view", href: publicViewHref }] : TAB_SET;
   /* a studio is a WORKSPACE you enter from Home (19267): every route under
      /business/[tenantId] is inside one, and the strip is the way back out */
   const workspaceId = pathname.match(/^\/business\/([0-9a-f-]{36})(?:\/|$)/i)?.[1] ?? null;
@@ -403,7 +419,7 @@ export function AppChrome({
 
       {/* ── the floating pill bar — only a tab draws it (19308-19397). The selected tab
           expands into a filled capsule carrying its icon AND name; the others are their
-          icon alone, each keeping its aria-label so a screen reader names all five. ── */}
+          icon alone, each keeping its aria-label so a screen reader names all four. ── */}
       {isTab && !adminOnly && (
         <nav
           aria-label="Main"
@@ -424,7 +440,7 @@ export function AppChrome({
             boxShadow: "var(--nav-shadow)",
           }}
         >
-          {TAB_SET.map(({ label, href }) => {
+          {bar.map(({ label, href }) => {
             const on = activeTab === label;
             const tint = TAB_TINT[label];
             const c = on ? "#FFFFFF" : "var(--tab-rest)";

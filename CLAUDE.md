@@ -89,6 +89,41 @@
 >   picture" so the two never collide. No `.ps1` proof yet for the min-one
 >   rule (NEXT TO DO #0).
 >
+> ### FOUR TABS AND AN EYE; EDIT PROFILE ON HOME; STATS AS A TILE (15 Sep 2026)
+> The user, on their organization's Home: *"1) where is the edit profile
+> button? 2) remove stats from the navigation menu, keep it as a tab on the
+> org / studio / artist / user home page along with calendar, classes. 3)
+> remove the profile [tab] as well and make an eye icon which will show the
+> profile view — what a user will see when he clicks over a studio or
+> artist."* Three deviations from the prototype's five-tab bar, at the user's
+> instruction — rows C1–C3 in "Deliberate deviations — the chrome".
+> * **The bar is Home · Discover · Inbox · 👁.** The eye's target is worked out
+>   ONCE per render in `app/(app)/layout.tsx` and handed to `AppChrome` as
+>   `publicViewHref`: an organization → its first studio's `/studio/{id}` (an
+>   organization has no page of its own, R9; no studio yet → `/business`), an
+>   artist → `/artist/{id}`, a user → `/person/{id}`. It is a door, never a lit
+>   tab. `/profile` and `/stats` are still routes (Rule 14) — drill pages now,
+>   with the back chip and a title; the gear still opens `/profile?settings=1`.
+> * **Edit profile is a pencil on Home's hero** (the Profile tab's corner
+>   control, 10613), opening the same sheet: `EditProfileSheet` is lifted out
+>   of `MyProfilePage` into its own client component with `EditProfileButton`
+>   round it; the Profile tab uses the same sheet. An organization's sheet says
+>   Logo / About and asks no age. **A studio's own home** got the corner too:
+>   the owner's pencil (`BusinessEditButton corner` — About, Since, phone,
+>   links, the pin) and the eye to `/studio/{id}` for the whole team.
+>   `cornerChip`, `PencilIcon`, `EyeIcon` live in `profile-kit`.
+> * **Stats is a tile** — `DOS_TOOLS.stats` (violet) in Home's grid → `/stats`,
+>   and in a studio's grid → `/stats?tab=charts&seg=studio`, the studio board.
+> * ⚠ Not built: **renaming a studio** from its home — `update_tenant_profile`
+>   takes no name, and adding one is a dropped-and-recreated RPC (the overload
+>   lesson). A person's name IS editable. Backlog row.
+> * Verified: typecheck 0 · lint 0 · build green · `shoot-hero.js` grew eleven
+>   checks for the chrome (the four-link bar, each account's eye target, the
+>   pencils, the Stats tiles, the organization's Logo/no-age sheet) — **55/55**.
+>   Probe lesson: Playwright's `getByLabel` is a case-insensitive SUBSTRING
+>   match, so `getByLabel("Age")` finds "Everything you man**age**" — pass
+>   `exact: true` for short words.
+>
 > ### THE MACHINE MOVE (15 Sep 2026) — what a copy-pasted folder loses
 > The repo was copied PC to PC. What came across: `.env.local` whole (all 12
 > documented keys + `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`), Playwright's
@@ -4424,6 +4459,18 @@ user chose "Pro gets one artist business" without admin verification). **Still
 the service role's:** `tenants.verified_at` (the KYC tick on a business) is
 unchanged; the admin's tick is `profiles.verified_at` on the organization.
 
+### Deliberate deviations from the prototype — the chrome (15 Sep 2026)
+
+The prototype's final tab set is five: Home · Discover · Stats · Inbox ·
+Profile (19313-19396). The user re-cut it on 15 Sep 2026 looking at their own
+Home. **Do not "restore parity" on these.**
+
+| # | The prototype does | DanceOS does | Why |
+|---|--------------------|--------------|-----|
+| C1 | Stats is the third tab (19313) | **Stats is a tile** in every Home's tool grid (`/stats`; on a studio's home `/stats?tab=charts&seg=studio`) and `/stats` is a drill page | "Remove stats from the navigation menu, keep it as a tab on the home page along with calendar, classes." |
+| C2 | Profile is the fifth tab (19313), and Edit lives on it | **The fifth slot is an eye** — the account's page as a stranger sees it (an organization's first studio, an artist's page, a user's person page), computed per account in the layout. **Edit profile is a pencil on Home's hero**, opening the Profile tab's own sheet; a studio's home carries the owner's pencil and the team's eye the same way | "Remove the profile as well and make an eye icon which will show the profile view." And: "where is the edit profile button?" |
+| C3 | Five tabs | **Four**: Home · Discover · Inbox · 👁 | Follows from C1 and C2. `/profile` stays a route (the gear opens it with `?settings=1`) — Rule 14. |
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -4442,6 +4489,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The chrome re-cut, what it left (15 Sep 2026):** a **studio cannot be renamed** from its home — `update_tenant_profile` takes no `p_name`, so the pencil edits About, Since, phone, links and the pin but not the name (a person's name IS editable); an **organization with several studios** gets the eye pointing at its FIRST studio (a chooser is a decision); the eye on the bar is a door, so the **Profile and Stats pages have no lit tab** while open — they read as drill pages with the back chip | 19313-19396; S_profiletab 10613 | a `p_name` on `update_tenant_profile` (drop + recreate — the overload lesson); a studio chooser if an organization asks |
 | **The header slice, what it left (15 Sep 2026):** the **crew page** still draws its own 206 square rather than `IdentityHero` (a crew has a photo and no header pictures — a decision about what a crew's header would show); header pictures cannot be **reordered** (insertion order stands; the Profile tab's ▲▼ pattern is the shape); an **organization's Home** has an empty header (it is not a place — decision (c)); a **trainer** may change a studio's disc but not its header, because the files go into the OWNER's folder in the proof bucket (a per-studio folder would let a trainer add — needs a storage-policy change); the header is the **206 square**, not a full-width banner, by the user's choice — `HERO_HEAD_W/H` are the tweak; no **proof script** yet for the min-one rule or the public read policy (`shoot-hero.js` covers both from the browser) | S_profiletab 10577, 11093 | a crew decision; a reorder slice; a per-studio proof folder if a trainer ever needs to add; a `.ps1` proof after the migration lands |
 | **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |

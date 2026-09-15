@@ -8,7 +8,7 @@ import { updateTenantProfileAction } from "@/features/settings/server-actions/pl
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import type { PublicTenant } from "@/types/publicProfile";
-import { PlatformIcon, Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
 /** The business's own Edit sheet — the prototype has ONE editor for a profile
  *  (11364, "one editor, and it is Edit profile"), and a studio's page is the
@@ -184,14 +184,23 @@ export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; o
   );
 }
 
-/** The owner's Edit control (10613) and the sheet behind it, in one client island. */
-export function BusinessEditButton({ tenant }: { tenant: PublicTenant }) {
+/** The owner's Edit control (10613) and the sheet behind it, in one client
+ *  island. Two dresses: the cell in the public page's action row, and — since
+ *  15 Sep 2026 — the pencil on the hero's corner of a studio's own home, the
+ *  same chip the Profile tab's Edit wears. */
+export function BusinessEditButton({ tenant, corner = false }: { tenant: PublicTenant; corner?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" aria-label="Edit business" onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, cursor: "pointer", fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", background: CARD, color: INK, border: `1px solid ${LINE}`, fontFamily: "inherit" }}>
-        Edit
-      </button>
+      {corner ? (
+        <button type="button" aria-label="Edit studio" onClick={() => setOpen(true)} style={{ ...cornerChip, border: "1px solid rgba(255,255,255,.28)" }}>
+          <PencilIcon />
+        </button>
+      ) : (
+        <button type="button" aria-label="Edit business" onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, cursor: "pointer", fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", background: CARD, color: INK, border: `1px solid ${LINE}`, fontFamily: "inherit" }}>
+          Edit
+        </button>
+      )}
       {open ? <BusinessEditSheet tenant={tenant} onClose={() => setOpen(false)} /> : null}
     </>
   );

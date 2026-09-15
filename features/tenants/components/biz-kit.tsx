@@ -20,6 +20,10 @@ export const DOS_TOOLS = {
   /* MEDIA (15 Sep 2026): a studio's two pictures — the disc and the header —
      as a desk of their own; a fuchsia nobody else on the grid wears */
   media: { name: "Media", c: "#D946EF" },
+  /* STATS (15 Sep 2026, the user: "remove stats from the navigation menu, keep
+     it as a tab on the home page along with calendar, classes") — the violet
+     the Charts hero opens on */
+  stats: { name: "Stats", c: "#A855F7" },
 } as const;
 export type DosToolKey = keyof typeof DOS_TOOLS;
 

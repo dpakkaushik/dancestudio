@@ -22,10 +22,11 @@ import type { NotificationPrefs } from "@/types/notification";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
+import { EditProfileSheet } from "./EditProfileSheet";
 import { HeaderRemove } from "./HeaderRemove";
 import type { HeroShot } from "./HeroRail";
 import { IdentityHero } from "./hero-kit";
-import { Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
+import { EyeIcon, Group, PencilIcon, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -47,8 +48,6 @@ import { Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE,
  *  number), and the long-press-for-QR gesture (the QR is a button). */
 
 const micro = TYPE.micro;
-/* the prototype offers 65 ages, 13 to 77 (11384) */
-const AGES = Array.from({ length: 65 }, (_, i) => 13 + i);
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
 type Draft = { fullName: string; city: string; age: number | null; about: string; socials: SocialLink[]; styles: string[]; phone: string };
@@ -132,7 +131,6 @@ export function MyProfilePage({
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
-  const [edit, setEdit] = useState<Draft>(() => draftOf(profile));
   const [stylesOpen, setStylesOpen] = useState(false);
   const [linksOpen, setLinksOpen] = useState(false);
   const [linkEditor, setLinkEditor] = useState<{ platform: string; url: string; isNew: boolean } | null>(null);
@@ -175,7 +173,6 @@ export function MyProfilePage({
   const seg = kind === "artist" ? "artist" : "dancer";
 
   const bigWhite: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 42, borderRadius: 12, fontWeight: 900, fontSize: 12.5, boxSizing: "border-box", padding: "0 6px", whiteSpace: "nowrap", overflow: "hidden", background: "var(--text)", color: "var(--solid)", border: "1.5px solid var(--text)", textDecoration: "none" };
-  const corner: React.CSSProperties = { width: 36, height: 36, borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,.42)", color: "#fff", border: "1px solid rgba(255,255,255,.28)", textDecoration: "none" };
   const chip: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, cursor: "pointer", whiteSpace: "nowrap", background: "var(--card)", border: "1px solid var(--el)", fontFamily: "inherit", color: INK };
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
@@ -222,12 +219,12 @@ export function MyProfilePage({
           /* ── THE THREE CONTROLS, TOP RIGHT (10613) — Share is the QR beside the name ── */
           corner={
             <>
-              <button type="button" aria-label="Edit profile" onClick={() => { setEdit(draftOf(profile)); setEditOpen(true); }} style={corner}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></svg>
+              <button type="button" aria-label="Edit profile" onClick={() => setEditOpen(true)} style={cornerChip}>
+                <PencilIcon />
               </button>
               {/* "Public view" — the page as another signed-in person reads it, which is a real page of its own here */}
-              <Link href={`/person/${profile.id}`} aria-label="Public view" style={corner}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
+              <Link href={`/person/${profile.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
               </Link>
             </>
           }
@@ -298,7 +295,7 @@ export function MyProfilePage({
             {profile.about ? (
               <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>{profile.about}</div>
             ) : (
-              <button type="button" onClick={() => { setEdit(draftOf(profile)); setEditOpen(true); }} style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+              <button type="button" onClick={() => setEditOpen(true)} style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
                 A sentence in your own words — <b style={{ color: PINK }}>Edit profile ›</b>
               </button>
             )}
@@ -357,65 +354,8 @@ export function MyProfilePage({
             the gear in the top bar opens it from anywhere. */}
       </div>
 
-      {/* ── Edit profile (11364) — in the order the user asked for (15 Sep 2026):
-          name, mobile, profile picture, header pictures; then where and who ── */}
-      {editOpen ? (
-        <Sheet label="Edit profile" onClose={() => setEditOpen(false)} maxHeight="88vh">
-          <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit profile</b>
-          <div style={fieldLabel}>Name</div>
-          <input aria-label="Name" value={edit.fullName} onChange={(e) => setEdit((d) => ({ ...d, fullName: e.target.value }))} style={fieldInput} />
-          {/* the number is the person's to publish and theirs to take down: an
-              empty box saves null, and the line under the box says so rather
-              than making them guess (N8 — Call, S_profiletab 10879) */}
-          <div style={fieldLabel}>Mobile</div>
-          <input aria-label="Phone" type="tel" inputMode="tel" value={edit.phone} onChange={(e) => setEdit((d) => ({ ...d, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Shown on your public page as Call. Leave it empty and nobody sees a number.</div>
-          <div style={fieldLabel}>Profile picture</div>
-          <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
-          {/* THE HEADER PICTURES (15 Sep 2026): an artist has no verification
-              step, so this sheet is where theirs are added — up to ten; a user
-              has one. Each lands the moment it uploads and the page re-reads;
-              the ✕ takes one out again. */}
-          {headerMax > 0 ? (
-            <>
-              <div style={fieldLabel}>Header pictures</div>
-              <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 8, lineHeight: 1.45 }}>
-                {headerMax === 1 ? "One picture across the top of your page. The Artist plan makes it ten." : `Up to ${headerMax}, swiped across the top of your page in this order.`}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 7 }}>
-                {header.map((h, i) => (
-                  <div key={h.id} style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: 11, overflow: "hidden", background: "var(--el)", border: `1px solid ${LINE}` }}>
-                    {h.url ? <Image src={h.url} alt={`Header picture ${i + 1}`} fill sizes="90px" style={{ objectFit: "cover" }} /> : null}
-                    <HeaderRemove target={{ kind: "person", id: h.id }} path={h.path} />
-                  </div>
-                ))}
-                {header.length < headerMax ? (
-                  <div style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: 11, overflow: "hidden", background: "var(--el)" }}>
-                    <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add picture" tile compact />
-                  </div>
-                ) : null}
-              </div>
-            </>
-          ) : null}
-          <div style={fieldLabel}>Location</div>
-          <input aria-label="Location" value={edit.city} onChange={(e) => setEdit((d) => ({ ...d, city: e.target.value }))} style={fieldInput} />
-          {!edit.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
-          <div style={fieldLabel}>Age</div>
-          <select aria-label="Age" value={edit.age ?? ""} onChange={(e) => setEdit((d) => ({ ...d, age: e.target.value ? Number(e.target.value) : null }))} style={fieldInput}>
-            <option value="">—</option>
-            {AGES.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-          <div style={fieldLabel}>Bio</div>
-          <textarea aria-label="Bio" value={edit.about} rows={3} maxLength={220} onChange={(e) => setEdit((d) => ({ ...d, about: e.target.value }))} style={{ ...fieldInput, lineHeight: 1.5, resize: "none" }} />
-          <div style={{ fontSize: 10, color: MUTED, textAlign: "right", marginTop: 4 }}>{edit.about.length}/220</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-            <button type="button" onClick={() => setEditOpen(false)} style={sheetBtn(false)}>Cancel</button>
-            <button type="button" disabled={pending || !edit.city.trim()} onClick={() => save({ fullName: edit.fullName, city: edit.city, age: edit.age, about: edit.about, phone: edit.phone }, "✓ Profile updated", () => setEditOpen(false))} style={sheetBtn(true)}>{pending ? "Saving…" : "Save"}</button>
-          </div>
-        </Sheet>
-      ) : null}
+      {/* ── Edit profile (11364) — the one sheet, shared with Home since 15 Sep 2026 ── */}
+      {editOpen ? <EditProfileSheet profile={profile} header={header} headerMax={headerMax} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} /> : null}
 
       {/* ── ＋ Add a dance style (11217): reorder, remove, add from the registry ── */}
       {stylesOpen ? (

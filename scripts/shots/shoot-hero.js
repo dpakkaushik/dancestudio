@@ -144,6 +144,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await rail(org).getAttribute("role")) === null, "studio home: the header is one square (the Add tile), so no swipe");
     check((await org.getByLabel("Add a header picture").count()) === 1, "studio home: the owner is offered the header's Add tile");
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
+    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: a Stats tile among the tools (it left the tab bar)");
+    check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
+    check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the eye opens the studio's public page");
     await shot("studio-initials");
 
     /* the disc's ＋ sets the studio's picture — tenants.photo_path, through set_tenant_photo */
@@ -214,6 +217,21 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByLabel("Share your profile — QR code").count()) === 0 && (await org.getByRole("button", { name: /QR/ }).count()) === 0, "org home: no QR — an organization has no public page");
     check(await org.getByText("Organization", { exact: true }).isVisible(), "org home: the role word under the sleeve");
     check((await org.getByLabel("Change your photo").count()) === 1, "org home: the ＋ changes the logo");
+    /* the chrome, re-cut 15 Sep 2026: four in the bar and an eye, Edit on the hero, Stats in the grid */
+    const bar = org.getByRole("navigation", { name: "Main" });
+    check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
+    check((await bar.getByRole("link", { name: "Public view" }).getAttribute("href")) === `/studio/${studioId}`, "bar: the eye opens the organization's studio as a stranger sees it");
+    check((await bar.getByRole("link").count()) === 4, "bar: Home · Discover · Inbox · the eye — four");
+    check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: Edit profile is a pencil on the hero");
+    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: Stats is a tile in the grid");
+    await org.getByRole("button", { name: "Edit profile", exact: true }).click();
+    await org.getByRole("dialog", { name: "Edit profile" }).waitFor();
+    /* exact: getByLabel is a case-insensitive SUBSTRING match, and Home's
+       "Everything you manage" link behind the sheet contains "age" */
+    check(await org.getByText("Logo", { exact: true }).isVisible() && (await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: Logo, not Profile picture; no age for an organization");
+    await shot("org-edit");
+    await org.keyboard.press("Escape").catch(() => {});
+    await org.getByRole("button", { name: "Cancel" }).click().catch(() => {});
     await shot("org-home");
     await org.close();
 
@@ -228,6 +246,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await rail(me).getAttribute("role")) === null, "user home: an empty header with the Add tile, no swipe");
     check((await me.getByLabel("Add a header picture").count()) === 1, "user home: a user is offered ONE header picture");
     check(await me.getByText("User", { exact: true }).isVisible(), "user home: the role word");
+    check((await me.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Public view" }).getAttribute("href")) === `/person/${userId}`, "bar: a user's eye opens their person page");
+    check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "user home: Edit profile is a pencil on the hero");
 
     await me.getByLabel("Add a header picture").setInputFiles(FILE);
     const userHeader = await waitRailImgs(me, 1).then(() => true).catch(() => false);

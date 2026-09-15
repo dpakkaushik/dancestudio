@@ -17,6 +17,7 @@ import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/d
 import { BizSection, HOME_TYPE } from "@/features/home/components/home-kit";
 import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { EditProfileButton } from "@/features/profiles/components/EditProfileSheet";
 import { HeaderRemove } from "@/features/profiles/components/HeaderRemove";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
@@ -192,6 +193,10 @@ export default async function HomePage() {
           /* the Add tile ends the header while there is room: one for a user, ten for an artist */
           addTile={header.length < headerMax ? <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add a header picture" tile /> : undefined}
           addLabel="Add a header picture"
+          /* EDIT PROFILE, FROM HOME (15 Sep 2026, the user: "where is the edit
+             profile button?") — the pencil on the hero's corner (10613), opening
+             the Profile tab's own sheet: name, mobile, the pictures, the rest */
+          corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} />}
         >
           {/* what you are, not what your number is (7308-7323): the role is the word,
               the account number the small line under it */}
