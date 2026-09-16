@@ -17,7 +17,7 @@ import { photoUrl } from "@/lib/media/photo";
 import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
 import type { PublicTenant } from "@/types/publicProfile";
 import { ProfileDisc } from "./HeroRail";
-import { PencilIcon, PlatformIcon, SectionHead, Sheet, cornerChip, fieldInput, fieldLabel, gradientOf, sheetBtn } from "./profile-kit";
+import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, gradientOf, sheetBtn } from "./profile-kit";
 
 /** The business's own Edit sheet — the prototype has ONE editor for a profile
  *  (11364, "one editor, and it is Edit profile"), and a studio's page is the
@@ -173,7 +173,16 @@ export function BusinessEditSheet({
           and what was TRUE in them survives where it can be acted on: "one
           always stays" on the disabled ✕ that enforces it, and "an admin checks
           these" on the count badge and on the verification form itself. */}
-      <SectionHead title="Profile picture" />
+      {/* ⚠ ONE LABEL STYLE, EVERY FIELD (16 Sep 2026, the user: "why About,
+          Since etc has different font than Header Picture and Profile picture,
+          why so much randomness … everything should be standard").
+          They were right and it was a half-finished edit of mine: fixing the
+          labels' legibility, I introduced a SECOND, larger heading style and
+          then used it on two blocks out of five. Two species of heading in one
+          form is not a hierarchy, it is an accident. A form gets ONE label
+          tier — the small tracked caps every app uses for this — and grouping
+          comes from the order and the spacing, not from a second typeface. */}
+      <div style={fieldLabel}>Update profile</div>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <ProfileDisc name={tenant.name} grad={gradientOf(tenant.name)} photo={photoUrl(tenant.photoPath)} photoAlt={`${tenant.name} — profile picture`} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -189,7 +198,7 @@ export function BusinessEditSheet({
           belongs to the PERSON who owns it, and is edited on their own profile */}
       {canEditHeader ? (
         <>
-          <SectionHead title="Header pictures" />
+          <div style={fieldLabel}>Update header</div>
           <HeaderPictures draft={draft} tiles={tiles} kind="studio" canWrite addLabel="Add photos of your space" onOpen={setLightbox} busy={pending} />
         </>
       ) : null}
@@ -218,8 +227,11 @@ export function BusinessEditSheet({
           </select>
         </div>
         <div>
-          <div style={fieldLabel}>Phone (Call button)</div>
-          <input aria-label="Phone (Call button)" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={fieldInput} />
+          {/* "Phone (Call button)" until 16 Sep 2026 — the parenthetical told
+              the owner what the number is FOR, which the public page already
+              shows them, at the cost of being the longest label on the form */}
+          <div style={fieldLabel}>Phone</div>
+          <input aria-label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={fieldInput} />
         </div>
       </div>
 
@@ -271,7 +283,7 @@ export function BusinessEditSheet({
           rest of the sheet: it is a different kind of edit — a map gesture,
           not a form field — and pressing Save to commit a pin somebody has
           already visibly placed reads like it did not take. */}
-      <SectionHead title="Where it is" />
+      <div style={fieldLabel}>Where it is</div>
       <LocationPicker
         value={{ lat: tenant.lat, lng: tenant.lng, area: tenant.area }}
         /* the business already has a point; the centre is only the fallback for

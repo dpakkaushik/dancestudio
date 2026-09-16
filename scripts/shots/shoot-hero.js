@@ -218,8 +218,11 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.getByRole("button", { name: "Edit studio", exact: true }).click();
     const sheet = org.getByRole("dialog", { name: "Edit business" });
     await sheet.waitFor();
-    check(await sheet.getByText("Profile picture", { exact: true }).isVisible(), "edit studio: a Profile picture section");
-    check(await sheet.getByText("Header pictures", { exact: true }).isVisible(), "edit studio: a Header pictures section");
+    check(await sheet.getByText("Update profile", { exact: true }).isVisible(), "edit studio: an Update profile block");
+    check(await sheet.getByText("Update header", { exact: true }).isVisible(), "edit studio: an Update header block");
+    /* 16 Sep 2026: ONE label style for every field on the form — the second,
+       larger heading that briefly headed two blocks out of five is gone */
+    check((await sheet.getByText("Phone", { exact: true }).count()) === 1, "edit studio: the phone field is called Phone, not Phone (Call button)");
     /* the location is READ-ONLY until somebody asks for it (16 Sep 2026): a map
        on greedy gestures inside a scrolling sheet moved the pin when a thumb
        scrolled past it, and this sheet SAVES a moved pin immediately */
@@ -354,7 +357,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await orgSheet.waitFor();
     /* exact: getByLabel is a case-insensitive SUBSTRING match, and Home's
        "Everything you manage" link behind the sheet contains "age" */
-    check(await org.getByText("Logo", { exact: true }).isVisible() && (await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: Logo, not Profile picture; no age for an organization");
+    check(await org.getByText("Update logo", { exact: true }).isVisible() && (await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: Update logo, not Update profile; no age for an organization");
     check((await orgSheet.getByLabel("Change your photo").count()) === 1, "org edit profile: and the logo is changed HERE — the one place a picture changes");
     await shot("org-edit");
     await org.keyboard.press("Escape").catch(() => {});
@@ -381,9 +384,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await me.getByRole("button", { name: "Edit profile", exact: true }).click();
     const mySheet = me.getByRole("dialog", { name: "Edit profile" });
     await mySheet.waitFor();
-    check(await me.getByText("Profile picture", { exact: true }).isVisible(), "edit profile: the Profile picture section");
-    check(await me.getByText("Header pictures", { exact: true }).isVisible(), "edit profile: the Header pictures section");
-    check(await me.getByText("Mobile", { exact: true }).isVisible(), "edit profile: Name · Mobile · Profile picture · Header pictures, in that order");
+    check(await me.getByText("Update profile", { exact: true }).isVisible(), "edit profile: an Update profile block");
+    check(await me.getByText("Update header", { exact: true }).isVisible(), "edit profile: an Update header block");
+    check(await me.getByText("Mobile", { exact: true }).isVisible(), "edit profile: Name · Mobile · Update profile · Update header, in that order");
     check((await mySheet.getByLabel("Add picture").count()) === 1, "edit profile: a user is offered ONE header picture");
     const personRows = async () => {
       const live = await rest(`profile_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);

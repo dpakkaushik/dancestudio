@@ -103,6 +103,43 @@
 >   `getByRole("dialog", …)` finds what it found before. **Lesson: a `.catch(()
 >   => {})` in a harness is a place a bug can live.**
 >
+> ### ⚠ ONE LABEL TIER, AND SIX THINGS THE USER HAD TO SAY TWICE (16 Sep 2026)
+> The user, on the sheet an hour after it shipped: *"why undo the last removal —
+> at the end of form there [is] cancel, also there is [an] undo button over [the]
+> selected image"*, *"Phone (Call Button) why so much of unnecessary text"*,
+> *"1 change pending text why?"*, *"why About, Since etc has different font than
+> Header Picture and Profile picture, why so much randomness in your output,
+> everything should be standard"*, *"use Update Profile and Update Header"*, and
+> — the one that matters — *"don't you know what are the standard for forms in
+> apps?"*
+>
+> **Every one was right, and they share one cause worth naming.** Fixing a
+> complaint that the labels were washed out, I introduced a SECOND heading style
+> (`SectionHead`, `TYPE.shelf` in `var(--text)`) and then used it on **two blocks
+> out of five**. Two species of heading in one form is not a hierarchy — it is an
+> unfinished edit, and it reads as randomness because it is randomness. In the
+> same change I deleted two explanatory paragraphs at the user's instruction and
+> **added a new one** ("1 change waiting — nothing happens to your pictures until
+> you press Save…"), plus a third way to undo a removal on a screen that already
+> had two.
+>
+> **THE RULE, WRITTEN DOWN SO IT IS NOT RE-DECIDED:**
+> * **A form gets ONE label tier.** `SectionHead` is deleted. Every label in both
+>   Edit sheets is `fieldLabel` — the small tracked caps every app uses — and the
+>   grouping comes from order and spacing, not from a second typeface. (`Group`
+>   keeps its own head: a group of PEOPLE rows is not a form field. That
+>   distinction is real; this one was not.)
+> * **Helper text only where the control cannot speak.** Gone: the "1 change
+>   waiting" paragraph (the Save button already reads `Save · 1 picture change`
+>   and the tile already says REMOVING), the "Undo the last removal" link (the ↩
+>   on the tile is the undo; Cancel is the escape), the duplicated
+>   "JPEG, PNG or WebP…" line under the header, and the second sentence of the
+>   person's plan note. Kept: "The Artist plan makes it ten", which is the one
+>   fact the screen cannot show.
+> * **A label names the field, not its purpose.** "Phone (Call button)" → "Phone".
+> * **"Update profile" / "Update header"** (and "Update logo" for an
+>   organization), by the user's wording.
+>
 > ### THE SHEET, MADE LEGIBLE (16 Sep 2026)
 > The user: *"why there is so much unnecessary lines … both lines are
 > unnecessary remove these"*, *"show the header pictures as an image gallery
@@ -4889,7 +4926,7 @@ Home. **Do not "restore parity" on these.**
 | C3 | Five tabs | **Four**: Home · Discover · Inbox · 👁 | Follows from C1 and C2. `/profile` stays a route (the gear opens it with `?settings=1`) — Rule 14. |
 | C4 | The ＋ that changes a picture sits on the square's own corner (10600), and the Photos rail carries a ＋ Add tile with a × per picture (10979-10981) | **No picture control on a hero anywhere.** The disc and the header show; `EditProfileSheet` (a person) and `BusinessEditSheet` (a studio) change them — the disc, and the header as a GRID | 16 Sep 2026, the user, circling both on their own studio home: *"the update image option should be inside the edit profile."* A grid can also say the rules — "one always stays" is a disabled ✕ with its reason on it, where a one-square-at-a-time rail could only offer a press the database refuses |
 | C4b | The prototype's Edit profile sheet has NO pictures in it at all, and says why (11368-11374): *"It used to open with a profile-photo picker and close with a cover-photo picker … so the same picture could be changed in two places and the sheet was mostly about pictures rather than about you."* | **The pictures ARE in the Edit sheets**, and they are the only place a picture changes | 16 Sep 2026, the user: *"the update image option should be inside the edit profile."* Recorded because without this row a future run reads them as drift and takes them out again. Note what the prototype's objection was — the SAME picture changeable in TWO places — and that the app's answer is the opposite of what it feared: one place, not two. ⚠ It is also the deviation that CAUSED the destroy-on-cancel bug, by putting immediate-write controls inside a container with a Cancel button; the draft model is what makes it safe. |
-| C4c | `fieldLabel` — 11.5px uppercase `var(--muted)` — is the prototype's form-field eyebrow (11375), lifted verbatim | Field labels are `var(--sub)` at weight 900; BLOCK heads are `SectionHead` (`TYPE.shelf` in `var(--text)`) | 16 Sep 2026, the user: *"the headings are in light grey color isnt looking good."* The block-head half is a LIFT (the prototype's own, 10961-10963) and needs no deviation. The colour half is one: `--muted` measures 4.0:1 on the dark sheet and 3.45:1 on the light one where 11.5px needs 4.5:1, so the prototype fails the same check — and the reason to overrule it is DENSITY rather than taste, four of these in its sheet against nine in a studio's, on an 88vh scroller that also carries a gallery and a map. |
+| C4c | `fieldLabel` — 11.5px uppercase `var(--muted)` — is the prototype's form-field eyebrow (11375), lifted verbatim | **Every label in both Edit sheets is that same eyebrow, in `var(--sub)` at weight 900** — one tier, no exceptions | 16 Sep 2026, in two steps. The colour is the deviation: `--muted` measures 4.0:1 on the dark sheet and 3.45:1 on the light one where 11.5px needs 4.5:1, so the prototype fails the same check, and the reason to overrule it is DENSITY rather than taste — four of these in its sheet against nine in a studio's. ⚠ The SECOND step was undoing my own: a larger block head briefly sat over two of the five blocks, and the user read it exactly as what it was (*"why so much randomness … everything should be standard"*). **A form gets one label tier.** Do not reintroduce a second one here. |
 | C5 | The shell's "Managing {studio}" strip draws on every `/business/*` route (19267-19294) | **Not on `/business/{id}` itself**, where the identity hero already carries the name, the place, the rooms and the picture; on the deeper desks it is the **name alone**, no address, and keeps `Exit studio ›` | 16 Sep 2026, the user: *"isn't it unnecessary — name, location etc already there below the profile image?"* On the studio's home, exactly right. On a desk the tool hero names the TOOL and nothing names the studio, and an organization runs several — so the name stays, and the address goes, because an address is not what tells you which register this is |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten

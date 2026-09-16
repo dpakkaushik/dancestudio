@@ -55,7 +55,7 @@ export function HeaderPictures({
   onOpen: (index: number) => void;
   busy?: boolean;
 }) {
-  const { keeping, dirty, changeCount, error, canAdd, canUndo, stage, unstage, undoLast } = draft;
+  const { keeping, error, canAdd, stage, unstage } = draft;
   const enough = keeping >= PROOF_MIN;
 
   return (
@@ -94,33 +94,18 @@ export function HeaderPictures({
         full={!canAdd}
       />
 
-      {/* THE SENTENCE THE BUG DESERVED (16 Sep 2026) */}
-      {dirty ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 10.5, color: SUB, marginTop: 8, lineHeight: 1.45 }}>
-          <span>
-            {changeCount} {changeCount === 1 ? "change" : "changes"} waiting — nothing happens to your pictures until you press Save, and Cancel leaves them as they are.
-          </span>
-          {/* offered only while something is actually marked — a dead Undo is
-              worse than none, and an Undo with nothing to undo used to re-mark */}
-          {canUndo ? (
-            <button
-              type="button"
-              onClick={undoLast}
-              style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 10.5, fontWeight: 900, color: SUB, textDecoration: "underline", cursor: "pointer" }}
-            >
-              Undo the last removal
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
+      {/* ⚠ NO PARAGRAPH HERE, AND NO UNDO LINK (16 Sep 2026, the user: "why undo
+          the last removal — at the end of form there [is] cancel, also there is
+          [an] undo button over [the] selected image"). Right: three ways to
+          reverse one thing, and a paragraph explaining what Save and Cancel
+          mean. What is staged is already said twice, where a person is looking:
+          the tile wears REMOVING, and the Save button counts the changes. */}
       {error ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 8, lineHeight: 1.45 }}>{error}</div> : null}
       {tiles.some((t) => t.failed) ? (
         <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 6, lineHeight: 1.45 }}>
           {tiles.find((t) => t.failed)?.failed}
         </div>
       ) : null}
-      {canWrite ? <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 8 }}>JPEG, PNG or WebP · up to 5 MB each · pick several at once</div> : null}
     </div>
   );
 }

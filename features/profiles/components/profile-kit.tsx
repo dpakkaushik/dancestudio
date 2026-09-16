@@ -248,22 +248,14 @@ export function EntityMark({ name, photo, size = 42, radius = 13 }: { name: stri
 /* ── THE PEOPLE, IN ONE LANGUAGE (11000-11030): a Group headed with the word and
    its count, a Row per entity — mark, name, role in the group's colour, and the
    row itself opens their page, ending in the › ── */
-/** THE HEAD OF A BLOCK, as against the label of a FIELD (prototype 10961-10963).
- *
- *  The prototype has two heading species and the app had been drawing one of
- *  them for both jobs. A field label is the 11.5px uppercase grey eyebrow
- *  (11375 — `fieldLabel` below is a verbatim lift of it); a BLOCK is headed by
- *  `TYPE.shelf` in `var(--text)`, with its count quiet at the right. "Profile
- *  picture" and "Header pictures" head blocks, so this is what they wear from
- *  16 Sep 2026 — which is a lift, not a deviation. */
-export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "18px 0 8px" }}>
-      <span style={{ ...TYPE.shelf, color: "var(--text)" }}>{title}</span>
-      {right ? <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{right}</span> : null}
-    </div>
-  );
-}
+/* ⚠ A `SectionHead` lived here for a few hours on 16 Sep 2026 — `TYPE.shelf` in
+   `var(--text)`, drawn over the two picture blocks in the Edit sheets. It is
+   gone, and the reason is worth keeping: a second heading style applied to two
+   blocks out of five is not a hierarchy, it is an unfinished edit, and that is
+   exactly how the user read it ("why so much randomness … everything should be
+   standard"). A FORM GETS ONE LABEL TIER. `Group` below keeps its own head
+   because a group of PEOPLE rows is not a form field — that distinction is real
+   and this one was not. */
 
 export function Group({ title, n, children }: { title: string; n: number; children: ReactNode }) {
   return (

@@ -12,7 +12,7 @@ import { updateMyProfileAction } from "@/features/profiles/server-actions/profil
 import { MUTED, SUB } from "@/lib/design/tokens";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Profile } from "@/types/profile";
-import { PencilIcon, SectionHead, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
 /** EDIT PROFILE (prototype 11364 — "one editor, and it is Edit profile"), in
  *  the order the user asked for on 15 Sep 2026: Name · Mobile · Profile
@@ -109,7 +109,8 @@ export function EditProfileSheet({
       <div style={fieldLabel}>Mobile</div>
       <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Shown on your public page as Call. Leave it empty and nobody sees a number.</div>
-      <SectionHead title={isOrg ? "Logo" : "Profile picture"} />
+      {/* one label style, every field — see BusinessEditSheet for why */}
+      <div style={fieldLabel}>{isOrg ? "Update logo" : "Update profile"}</div>
       <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
       {/* THE HEADER PICTURES (15 Sep 2026): an artist has no verification
           step, so this sheet is where theirs are added — up to ten; a user
@@ -117,10 +118,9 @@ export function EditProfileSheet({
           for Save, so Cancel means what it says. */}
       {headerMax > 0 ? (
         <>
-          <SectionHead title="Header pictures" />
-          <div style={{ fontSize: 10.5, color: SUB, marginBottom: 8, lineHeight: 1.45 }}>
-            {headerMax === 1 ? "One picture across the top of your page. The Artist plan makes it ten." : `Up to ${headerMax}, swiped across the top of your page in this order.`}
-          </div>
+          <div style={fieldLabel}>Update header</div>
+          {/* the one non-obvious fact, and only to the person it is news to */}
+          {headerMax === 1 ? <div style={{ fontSize: 10.5, color: SUB, marginBottom: 8 }}>The Artist plan makes it ten.</div> : null}
           <HeaderPictures draft={draft} tiles={tiles} kind="person" canWrite addLabel="Add picture" onOpen={setLightbox} busy={pending} />
         </>
       ) : null}

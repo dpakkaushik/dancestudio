@@ -1318,7 +1318,7 @@ test.describe.serial("DanceOS, end to end", () => {
     const bizEdit = owner.getByRole("dialog", { name: "Edit business" });
     await bizEdit.getByLabel("About").fill("Where Pune comes to move.");
     await bizEdit.getByLabel("Since").selectOption("2016");
-    await bizEdit.getByLabel("Phone (Call button)").fill("+91 98765 43210");
+    await bizEdit.getByLabel("Phone", { exact: true }).fill("+91 98765 43210");
     await bizEdit.getByRole("button", { name: "Save" }).click();
     await expect(owner.getByText("Where Pune comes to move.")).toBeVisible({ timeout: 15_000 });
     await expect(owner.getByText("Since 2016")).toBeVisible();
@@ -1452,7 +1452,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(studioUrl);
     await owner.getByRole("button", { name: "Edit business" }).click();
     const bizSheet = owner.getByRole("dialog", { name: "Edit business" });
-    await bizSheet.getByLabel("Phone (Call button)").fill("+91 90000 11111");
+    await bizSheet.getByLabel("Phone", { exact: true }).fill("+91 90000 11111");
     await bizSheet.getByRole("button", { name: "Save" }).click();
     await expect(bizSheet).toHaveCount(0);
     await learner.goto("/inbox");
