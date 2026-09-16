@@ -8,8 +8,11 @@ import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { EyeIcon, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
+import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { PROOF_MAX } from "@/lib/media/proof";
+import type { PlanCatalogRow } from "@/repositories/plans";
+import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { DeckItem } from "@/types/home";
 import type { PublicTenant } from "@/types/publicProfile";
 import type { Tenant } from "@/types/tenant";
@@ -49,6 +52,11 @@ export function StudioHome({
   /** the studio as its Edit sheet reads it — About, Since, the number, the links,
    *  the pin; null for anybody but the owner, and the pencil is not drawn */
   editable = null,
+  /** WHERE THIS STUDIO'S SUBSCRIPTION STANDS — the owner's only door to
+   *  cancelling since the hub collapsed to one card (15 Sep 2026); null for a
+   *  trainer, who neither pays nor cancels */
+  subscription = null,
+  studioPrice = null,
   deck,
   roomCount,
   /** what it teaches, off its PUBLISHED classes — a studio with none says nothing (7419-7421) */
@@ -62,6 +70,8 @@ export function StudioHome({
   canEditHeader: boolean;
   ownerId: string | null;
   editable?: PublicTenant | null;
+  subscription?: StudioSubscriptionState | null;
+  studioPrice?: PlanCatalogRow | null;
   deck: DeckItem[];
   roomCount: number;
   styles: string[];
@@ -169,6 +179,22 @@ export function StudioHome({
             </>
           }
         />
+
+        {/* ── the subscription, for the owner (15 Sep 2026): what it is doing,
+              and the one control. It lived under the studio's row on the hub
+              until that collapsed to one card — and the hub was the only door
+              to cancelling, so it came here rather than being lost. ── */}
+        {subscription ? (
+          <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
+            <StudioSubscriptionStrip
+              tenantId={tenant.id}
+              tenantName={tenant.name}
+              verified={Boolean(tenant.verifiedAt)}
+              state={subscription}
+              studioPrice={studioPrice}
+            />
+          </div>
+        ) : null}
 
         {/* ── STUDIO TOOLS (7590-7620): the same tile language as Home's grid, and
             every door is THIS studio's ── */}

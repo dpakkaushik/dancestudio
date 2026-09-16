@@ -132,6 +132,32 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     });
     await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ visibility: "listed" }) });
 
+    /* ── THE HUB, ONE CARD PER STUDIO (15 Sep 2026) ── */
+    await org.goto(`${BASE}/business`);
+    const card = org.getByTestId("studio-card").first();
+    await card.waitFor();
+    check((await org.getByTestId("studio-card").count()) === 1, "hub: one card for the one studio");
+    check((await org.getByText("VERIFIED STUDIO").count()) === 0, "hub: no VERIFIED STUDIO line — the tick beside the name is the whole state");
+    check((await card.getByLabel("Verified").count()) === 1, "hub: the verified tick sits beside the studio name");
+    check((await org.getByText("Manage ›").count()) === 0, "hub: no Manage word — the card itself is the door");
+    check((await card.getByRole("link", { name: /open the studio/ }).getAttribute("href")) === `/business/${studioId}`, "hub: the card opens the manage screen");
+    check((await org.getByTestId("studio-live").count()) === 1, "hub: LIVE, not PUBLIC + RENEWS");
+    check((await org.getByText("Stop renewing").count()) === 0, "hub: the renewal detail is off the card");
+    await shot("hub-one-card");
+    /* pressing the card lands on the studio's home */
+    await card.getByRole("link", { name: /open the studio/ }).click();
+    await org.waitForURL(new RegExp(`/business/${studioId}$`));
+    check(true, "hub: pressing the card opened the studio's home");
+    /* and the cancel door survived the collapse */
+    check(await org.getByText("SUBSCRIPTION", { exact: true }).isVisible(), "studio home: the subscription strip came here with it");
+    /* this studio's plan is a GRANT (₹0, set up above) and a grant does not
+       renew — so the strip says so and offers no Stop renewing, which is the
+       honest answer. The paid-mandate path that DOES offer it needs a real
+       Cashfree authorisation, which no script can drive; `rls-proof-*` and the
+       live sandbox cover that. */
+    check(await org.getByText("GRANTED", { exact: true }).isVisible(), "studio home: the strip names the standing (GRANTED)");
+    check((await org.getByRole("button", { name: /Stop .* renewing/ }).count()) === 0, "studio home: a grant offers no Stop renewing — there is nothing to stop");
+
     /* the studio's own home: an empty header with the Add tile, initials on the disc */
     await org.goto(`${BASE}/business/${studioId}`);
     const hero = org.getByTestId("studio-hero");

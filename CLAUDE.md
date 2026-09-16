@@ -124,6 +124,42 @@
 >   match, so `getByLabel("Age")` finds "Everything you man**age**" — pass
 >   `exact: true` for short words.
 >
+> ### ONE CARD PER STUDIO ON THE HUB (15 Sep 2026)
+> The user, on a hub showing two studios as three stacked blocks each: *"1)
+> there is 'VERIFIED STUDIO' written beneath it — no need, just show the badge
+> for verified along the studio name. 2) below that 'PUBLIC RENEWS' is
+> written — instead show Live, or subscribe; we don't need separate cards
+> after verification and subscription, just one studio card is enough. 3) no
+> need of Manage — clicking over the studio card will open the manage screen.
+> 4) also show the profile pic before the studio name."*
+> * `BusinessHub`'s `row` + `verificationStrip` + `studioStrip` collapse into
+>   ONE `studioCard`: the 42px face (`tenants.photo_path`, the kind's mark when
+>   there is none), the name with `VerifiedTick` beside it, the meta line, and
+>   a green **LIVE** pill when `whyNotPublic` is null. What stays inside is
+>   only the WORK — the verification form while there is no badge, the
+>   Subscribe button once there is. A live studio's card is the identity line
+>   alone. `Manage ›` is gone.
+> * **The whole card is the control**, via a STRETCHED LINK: an absolutely
+>   positioned `<Link>` at `inset: 0, zIndex: 1`, the identity block beneath it
+>   at `zIndex: 0`, and the work above at `zIndex: 2`. A form cannot be nested
+>   in an anchor — this is how the card is clickable and the Subscribe button
+>   still presses.
+> * ⚠ **The collapse would have deleted the only cancel door.** The hub's
+>   subscription strip carried "Stop renewing", and `/subscription` sends an
+>   organization straight back to the hub — so removing it would have made a
+>   studio's subscription impossible to cancel anywhere in the app. It moved to
+>   the page the card now opens: `StudioSubscriptionStrip` on the studio's own
+>   home (owner only), carrying the standing, the date and the control. The
+>   studio-home page reads `findMyStudioSubscriptions` + the price list for it.
+> * Verified by `shoot-hero.js`, **66/66**, driving the real hub: one card, the
+>   tick beside the name, no "VERIFIED STUDIO" line, no "Manage", LIVE instead
+>   of PUBLIC + RENEWS, the card press landing on `/business/{id}`, and the
+>   strip present there afterwards. One correction on the way, and it was the
+>   CHECK not the product: the script's studio holds a GRANTED plan, a grant
+>   does not renew, so "Stop renewing" is correctly absent — the assertion now
+>   says that, and notes the paid-mandate path needs a real Cashfree
+>   authorisation no script can drive.
+>
 > ### THE MACHINE MOVE (15 Sep 2026) — what a copy-pasted folder loses
 > The repo was copied PC to PC. What came across: `.env.local` whole (all 12
 > documented keys + `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`), Playwright's

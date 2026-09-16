@@ -1,13 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { StudioVerificationStrip } from "@/features/tenants/components/StudioVerificationStrip";
 import type { StudioVerificationState } from "@/repositories/studioVerification";
-import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
-import { dateWords } from "@/features/settings/components/settings-kit";
+import { VerifiedTick } from "@/features/settings/components/settings-kit";
+import { photoUrl } from "@/lib/media/photo";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
@@ -141,22 +141,11 @@ export function BusinessHub({
   /** the owner's own id — a studio's proof photos go into their folder */
   userId?: string | null;
 }) {
-  const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
-  const [stopping, setStopping] = useState<string | null>(null);
-  const [pending, start] = useTransition();
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2800);
   };
-  const stopRenewing = (subscriptionId: string, name: string) =>
-    start(async () => {
-      const out = await cancelSubscriptionAction({ subscriptionId });
-      if (out.error) return fire(out.error);
-      setStopping(null);
-      fire(out.until ? `${name} stays on Discover until ${dateWords(out.until)}, then stops` : "Cancelled");
-      router.refresh();
-    });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
@@ -208,10 +197,8 @@ export function BusinessHub({
   const gateShut = isOrg ? whyNoStudio : null;
   const canOpen = isOrg ? gateShut === null : isArtist && !myArtistPage;
 
-  const rowStyle = (own: boolean): React.CSSProperties => ({
-    display: "flex",
-    alignItems: "center",
-    gap: 11,
+  const cardStyle = (own: boolean): React.CSSProperties => ({
+    position: "relative",
     background: CARD,
     border: `1px solid ${EL}`,
     borderLeft: `4px solid ${own ? ACCENT : EL}`,
@@ -219,127 +206,126 @@ export function BusinessHub({
     padding: "12px 13px",
     marginBottom: 9,
     color: INK,
-    textDecoration: "none",
-    cursor: "pointer",
   });
 
-  const row = (t: MyMembership["tenant"], own: boolean) => {
+  /** THE FACE BEFORE THE NAME (15 Sep 2026, the user: "show the profile pic
+   *  before the studio name"). Its own picture when it has one — the same
+   *  `tenants.photo_path` the disc on its home wears — and its kind's mark on
+   *  the accent when it does not. */
+  const face = (t: MyMembership["tenant"], own: boolean) => {
+    const src = photoUrl(t.photoPath);
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: 13,
+          flexShrink: 0,
+          overflow: "hidden",
+          position: "relative",
+          background: own ? `${ACCENT}1c` : EL,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {src ? (
+          <Image src={src} alt="" fill sizes="42px" style={{ objectFit: "cover" }} />
+        ) : t.type === "studio" ? (
+          <StudioI size={19} color={own ? ACCENT : "var(--sub)"} />
+        ) : (
+          <ArtistI size={19} color={own ? ACCENT : "var(--sub)"} />
+        )}
+      </span>
+    );
+  };
+
+  /** WHO IT IS — the face, the name with its badge, the line under it. Sits
+   *  BELOW the stretched link (z-index 0) so a tap anywhere on it opens the
+   *  studio; the work below sits above the link so its controls still work. */
+  const identity = (t: MyMembership["tenant"], own: boolean, right?: React.ReactNode) => {
     const loc = [t.area, t.city].filter(Boolean).join(", ");
     const n = roomCounts[t.id] ?? 0;
     const sub = own
       ? [loc, t.type === "studio" ? `${n} room${n === 1 ? "" : "s"}` : "Your artist page"].filter(Boolean).join(" · ")
       : [t.type === "studio" ? "Studio" : "Artist", loc].filter(Boolean).join(" · ");
     return (
-      <Link
-        key={t.id}
-        /* a STUDIO opens its own home (14 Sep 2026) — the photo header, today's
-           rooms, its tools; an artist page has no such home and opens its register */
-        href={own ? (t.type === "studio" ? `/business/${t.id}` : `/business/${t.id}/classes`) : publicProfilePath(t)}
-        aria-label={`${t.name} — ${own ? "open the studio" : "open the profile"}`}
-        style={rowStyle(own)}
-      >
-        <span
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 11,
-            flexShrink: 0,
-            background: own ? `${ACCENT}1c` : EL,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {t.type === "studio" ? (
-            <StudioI size={17} color={own ? ACCENT : "var(--sub)"} />
-          ) : (
-            <ArtistI size={17} color={own ? ACCENT : "var(--sub)"} />
-          )}
-        </span>
+      <div style={{ position: "relative", zIndex: 0, display: "flex", alignItems: "center", gap: 11 }}>
+        {face(t, own)}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {t.name}
+          <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+            {/* THE BADGE IS THE WHOLE VERIFIED STATE (15 Sep 2026, the user:
+                "no need [for the VERIFIED STUDIO line], just show badge for
+                verified along the studio name") */}
+            {t.verifiedAt ? <VerifiedTick size={14} /> : null}
           </div>
-          <div
-            style={{
-              fontSize: 10,
-              color: SUB,
-              marginTop: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {sub}
-          </div>
+          <div style={{ fontSize: 10, color: SUB, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</div>
         </div>
-        {/* the word on the right is the promise the tap keeps */}
-        <span style={{ fontSize: 10.5, fontWeight: 800, color: own ? ACCENT : "var(--sub)", flexShrink: 0 }}>
-          {own ? "Manage ›" : "Profile ›"}
-        </span>
-      </Link>
+        {right}
+      </div>
     );
   };
 
-  /* ── EACH STUDIO'S OWN REVIEW (11 Sep 2026): a public link, 5–10 photos, the
-        ask, the admin's answer — the badge. It sits above the subscription strip
-        because that is the next sentence. ── */
-  const verificationStrip = (t: MyMembership["tenant"]) => {
-    const v = studioVerification[t.id];
-    if (!v || t.type !== "studio" || !userId) return null;
-    return <StudioVerificationStrip key={`v-${t.id}`} tenant={t} orgId={userId} state={v} onDone={fire} />;
-  };
+  /* the stretched link: the whole card is the control (15 Sep 2026, the user:
+     "no need of manage, clicking over studio card will open the manage screen") */
+  const openLink = (href: string, label: string) => (
+    <Link href={href} aria-label={label} style={{ position: "absolute", inset: 0, zIndex: 1, borderRadius: 16 }} />
+  );
 
-  /* ── EACH STUDIO'S OWN SUBSCRIPTION (10 Sep 2026): under its row, where it
-        stands and the one thing to do about it. Public = a live subscription
-        on a VERIFIED STUDIO (11 Sep 2026 — the badge came first); the sentence
-        is the database's. ── */
-  const studioStrip = (t: MyMembership["tenant"]) => {
+  /** ONE CARD PER STUDIO (15 Sep 2026). It was three stacked blocks — the row,
+   *  the verification strip, the subscription strip — and the user asked for
+   *  one: the badge beside the name, LIVE instead of PUBLIC + RENEWS, and the
+   *  card itself as the door to the manage screen. What is left inside is only
+   *  the WORK: the verification form while DanceOS has not checked it, or
+   *  Subscribe once it has. A live studio's card is the identity line alone.
+   *
+   *  The renewal date and Stop renewing moved to the studio's own home
+   *  (`StudioSubscriptionStrip`) — this hub was the only door to cancelling,
+   *  and a collapsed card must not take a control away with it. */
+  const studioCard = (t: MyMembership["tenant"]) => {
     const st = studioSubscriptions[t.id];
-    if (!st) return null;
-    const s = st.subscription;
-    const live = Boolean(s?.hasAccess);
-    const isPublic = st.whyNotPublic === null;
-    const until = s?.currentPeriodEnd ? dateWords(s.currentPeriodEnd) : null;
-    const standing = !s || !live
-      ? null
-      : s.status === "past_due"
-        ? { word: "PAYMENT PROBLEM", tone: "#EF4444", line: `The renewal did not go through — Cashfree is retrying; you keep Discover for three days past ${until}.` }
-        : s.cancelAtPeriodEnd || s.status === "canceled"
-          ? { word: "ENDING", tone: "#F59E0B", line: `Stays on until ${until}, then stops. Nothing more will be charged.` }
-          : s.granted
-            ? { word: "GRANTED", tone: "#22C55E", line: `DanceOS set this up until ${until}. It does not renew on its own.` }
-            : { word: "RENEWS", tone: "#22C55E", line: `Renews ${s.nextChargeOn ? dateWords(s.nextChargeOn) : until ?? ""} at ${priceWords(s.priceInr, s.period)} — you are told a day before each charge.` };
+    const v = studioVerification[t.id];
+    const live = st ? st.whyNotPublic === null : false;
+    const canSubscribe = Boolean(st && !st.subscription?.hasAccess && studioPrice && t.verifiedAt);
+    /* the form is the work only while there is no badge yet */
+    const showForm = Boolean(v && !t.verifiedAt && userId);
     return (
-      <div data-testid="studio-subscription" style={{ margin: "-4px 0 10px", padding: "9px 12px 10px", background: CARD, border: `1px solid ${EL}`, borderTop: "none", borderRadius: "0 0 14px 14px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: isPublic ? "#DCFCE7" : "#FEF3C7", color: isPublic ? "#15803D" : "#92400E" }}>
-            {isPublic ? "PUBLIC" : "NOT PUBLIC"}
+      <div key={t.id} data-testid="studio-card" style={cardStyle(true)}>
+        {openLink(`/business/${t.id}`, `${t.name} — open the studio`)}
+        {identity(t, true, live ? (
+          <span data-testid="studio-live" style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "#DCFCE722", color: "#22C55E", border: "1px solid #22C55E55" }}>
+            LIVE
           </span>
-          {standing ? (
-            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: `${standing.tone}22`, color: standing.tone }}>{standing.word}</span>
-          ) : null}
-        </div>
-        <div style={{ fontSize: 10.5, color: SUB, marginTop: 5, lineHeight: 1.5 }}>
-          {/* an UNVERIFIED studio has the verification form directly above this
-              line, and the form IS the instruction — repeating the database's
-              "add a link and five photos" sentence under it said the same thing
-              twice on one screen (14 Sep 2026). One line about the order, instead. */}
-          {standing ? standing.line : !t.verifiedAt ? "Verified first, then subscribed — then it is on Discover." : st.whyNotPublic ?? "On Discover."}
-        </div>
+        ) : null)}
 
-        {/* ── ASK FOR THE PIN, WHERE IT MATTERS (11 Sep 2026) ──────────────────
-            A studio that has never opened the location picker still sits on its
-            CITY'S CENTROID — the same point as every other studio in that city —
-            so Discover cannot honestly say how far away it is, and its cards
-            print no distance at all. Nobody goes looking for a map, so the ask
-            comes to them, and it comes HERE: this strip is already the line
-            about being findable, and being findable at a real address is the
-            rest of that same sentence. It disappears the moment the pin is
-            placed, and it is never shown as an error — nothing is broken, one
-            thing is simply not said yet. */}
-        {t.type === "studio" && !t.locationSetAt ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "8px 10px", borderRadius: 11, background: LILAC, border: `1px dashed ${EL}` }}>
+        {/* ── the work, when there is any. Above the stretched link, so a press
+              lands on the control and not on the card. ── */}
+        {showForm || canSubscribe ? (
+          <div style={{ position: "relative", zIndex: 2, marginTop: 10 }}>
+            {showForm ? <StudioVerificationStrip tenant={t} orgId={userId as string} state={v} onDone={fire} /> : null}
+            {canSubscribe && studioPrice ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <SubscribeButton
+                  planKey={studioPrice.key}
+                  tenantId={t.id}
+                  label={`Subscribe · ${priceWords(studioPrice.priceInr, studioPrice.period)}`}
+                  onDone={fire}
+                  style={{ background: ACCENT }}
+                />
+                <span style={{ fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>Verified — subscribe to put it on Discover.</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* ── ASK FOR THE PIN (11 Sep 2026): a studio that has never opened the
+              location picker sits on its CITY'S CENTROID, the same point as
+              every other studio there, so Discover cannot say how far away it
+              is. Never an error — one thing is simply not said yet. ── */}
+        {!t.locationSetAt ? (
+          <div style={{ position: "relative", zIndex: 2, display: "flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 10px", borderRadius: 11, background: LILAC, border: `1px dashed ${EL}` }}>
             <span aria-hidden="true" style={{ flexShrink: 0, lineHeight: 0, color: "#F59E0B" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" />
@@ -354,35 +340,21 @@ export function BusinessHub({
             </Link>
           </div>
         ) : null}
-        <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap", alignItems: "center" }}>
-          {!live && studioPrice && t.verifiedAt ? (
-            <SubscribeButton
-              planKey={studioPrice.key}
-              tenantId={t.id}
-              label={`Subscribe · ${priceWords(studioPrice.priceInr, studioPrice.period)}`}
-              onDone={fire}
-              style={{ background: ACCENT }}
-            />
-          ) : null}
-          {s && live && s.renews ? (
-            stopping === s.id ? (
-              <>
-                <span style={{ fontSize: 10.5, color: SUB }}>Stop renewing? It stays on until {until}.</span>
-                <button type="button" disabled={pending} onClick={() => stopRenewing(s.id, t.name)} style={{ ...pill, padding: "7px 12px", background: "#EF4444", color: "#fff" }}>
-                  {pending ? "…" : "Yes, stop"}
-                </button>
-                <button type="button" onClick={() => setStopping(null)} style={{ ...pill, padding: "7px 12px", background: LILAC, border: `1px solid ${EL}`, color: INK }}>Keep</button>
-              </>
-            ) : (
-              <button type="button" onClick={() => setStopping(s.id)} style={{ background: "none", border: "none", padding: 0, fontFamily: "inherit", fontSize: 10.5, fontWeight: 800, color: SUB, textDecoration: "underline", cursor: "pointer" }} aria-label={`Stop ${t.name} renewing`}>
-                Stop renewing
-              </button>
-            )
-          ) : null}
-        </div>
       </div>
     );
   };
+
+  /* an artist page, and the studios somebody only teaches at: the same card
+     without the studio's paperwork */
+  const plainCard = (t: MyMembership["tenant"], own: boolean) => (
+    <div key={t.id} style={cardStyle(own)}>
+      {openLink(
+        own ? `/business/${t.id}/classes` : publicProfilePath(t),
+        `${t.name} — ${own ? "open your artist page" : "open the profile"}`
+      )}
+      {identity(t, own)}
+    </div>
+  );
 
   const setRoom = (i: number, patch: Partial<RoomDraft>) =>
     setRooms((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
@@ -440,13 +412,7 @@ export function BusinessHub({
           <>
             <Head>YOUR STUDIOS</Head>
             {myStudios.length ? (
-              myStudios.map((t) => (
-                <div key={t.id}>
-                  {row(t, true)}
-                  {verificationStrip(t)}
-                  {studioStrip(t)}
-                </div>
-              ))
+              myStudios.map((t) => studioCard(t))
             ) : (
               <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>
                 {gateShut
@@ -499,7 +465,7 @@ export function BusinessHub({
             <div style={{ marginTop: 20 }}>
               <Head>EVENTS</Head>
               {eventsHostId ? (
-                <Link href={`/business/${eventsHostId}/events`} style={{ ...rowStyle(true), borderLeftColor: "#F59E0B" }} aria-label="Your events">
+                <Link href={`/business/${eventsHostId}/events`} style={{ ...cardStyle(true), display: "flex", alignItems: "center", gap: 11, borderLeftColor: "#F59E0B", textDecoration: "none", cursor: "pointer" }} aria-label="Your events">
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Your events</div>
                     <div style={{ fontSize: 10, color: SUB, marginTop: 1 }}>showcases · battles · tournaments — held by your organization, at any venue</div>
@@ -519,7 +485,7 @@ export function BusinessHub({
           <>
             <Head>YOUR ARTIST PAGE</Head>
             {myArtistPage ? (
-              row(myArtistPage, true)
+              plainCard(myArtistPage, true)
             ) : isArtist ? (
               <>
                 <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>One page for your classes, bookings and earnings — it goes on Discover&apos;s Artists tab.</div>
@@ -560,7 +526,7 @@ export function BusinessHub({
         {theirs.length > 0 && (
           <div style={{ marginTop: 20 }}>
             <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
-            {theirs.map((t) => row(t, false))}
+            {theirs.map((t) => plainCard(t, false))}
           </div>
         )}
       </div>

@@ -7,9 +7,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
 import { findStudioDeck } from "@/repositories/home";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
+import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findPublicTenant } from "@/repositories/publicProfile";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
+import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
 import { findMyMemberships } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the deck's one
@@ -49,7 +51,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      policy and set_tenant_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, eventsHostId, editable] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByTenant, eventsHostId, editable, subs, catalog] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
@@ -60,6 +62,12 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     isOwner ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
     /* the studio as its Edit sheet reads it (About, Since, the pin…) — the owner's pencil */
     isOwner ? findPublicTenant(supabase, tenantId).catch(() => null) : Promise.resolve(null),
+    /* WHERE ITS SUBSCRIPTION STANDS (15 Sep 2026) — the owner's only door to
+       cancelling, now that the hub is one card per studio */
+    isOwner
+      ? findMyStudioSubscriptions(supabase, [tenantId]).catch(() => ({}) as Record<string, StudioSubscriptionState>)
+      : Promise.resolve({} as Record<string, StudioSubscriptionState>),
+    isOwner ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
   ]);
 
   /* a photo whose URL could not be signed is left out — the rail says what it
@@ -93,6 +101,8 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       canEditHeader={isOwner}
       ownerId={isOwner ? user.id : null}
       editable={editable}
+      subscription={subs[tenantId] ?? null}
+      studioPrice={pickPlan(catalog, "studio")}
       deck={deck}
       roomCount={roomCounts[tenantId] ?? 0}
       styles={stylesByTenant.get(tenantId) ?? []}
