@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyArtistPlan, findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
 import { findDiscoverCities } from "@/repositories/cities";
-import { findMyOrgTenantId, findWhyNoStudio } from "@/repositories/orgStanding";
+import { findWhyNoStudio } from "@/repositories/orgStanding";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findStudioVerificationStates } from "@/repositories/studioVerification";
 import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
@@ -33,13 +33,15 @@ export default async function BusinessPage() {
   const isOrg = profile.role === "org";
   // membership is the spine, and the ROLE on it decides which list a business
   // sits in — owned rows get their room count for the sub-line (prototype 2655)
-  const [memberships, plan, whyNoStudio, eventsHostId, catalog, cityCentres] = await Promise.all([
+  const [memberships, plan, whyNoStudio, catalog, cityCentres] = await Promise.all([
     findMyMemberships(supabase),
     isOrg ? Promise.resolve(null) : findMyArtistPlan(supabase),
     /* the gate to CREATING a studio — verification, in the database's own words (R14) */
     isOrg ? findWhyNoStudio(supabase).catch(() => null) : Promise.resolve(null),
-    /* the organization's ONE events host (R15) — made on first ask */
-    isOrg ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
+    /* ⚠ THE EVENTS HOST IS NOT READ HERE ANY MORE (15 Sep 2026). This hub is
+       "Studios"; its events block duplicated Home's Events tile and read as
+       though a studio had events. Home is the one door — and `my_org_tenant()`
+       MAKES the host row on first ask, so Home asking for it is enough. */
     isOrg ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
     /* the cities that already have a business in them (11 Sep 2026) — the
        New-studio sheet's quick chips, and where its map opens. Replaces
@@ -67,7 +69,6 @@ export default async function BusinessPage() {
       role={profile.role}
       isArtist={Boolean(plan?.active)}
       whyNoStudio={whyNoStudio}
-      eventsHostId={eventsHostId}
       studioSubscriptions={studioSubscriptions}
       studioVerification={studioVerification}
       userId={user.id}

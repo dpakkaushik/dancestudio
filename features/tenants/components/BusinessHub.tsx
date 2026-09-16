@@ -107,7 +107,6 @@ export function BusinessHub({
   role,
   isArtist,
   whyNoStudio,
-  eventsHostId = null,
   studioSubscriptions = {},
   studioPrice = null,
   cityCentres = [],
@@ -123,8 +122,6 @@ export function BusinessHub({
    *  the one sentence still standing in the way. Asked of `why_no_studio()` so
    *  this screen cannot drift from what `create_tenant_with_owner` enforces. */
   whyNoStudio: string | null;
-  /** R15: the organization's own events host — ONE desk, not one per studio */
-  eventsHostId?: string | null;
   /** 10 Sep 2026: each studio's own subscription, and the sentence between it and Discover */
   studioSubscriptions?: Record<string, StudioSubscriptionState>;
   /** what one studio costs, from the price list; null when none is on offer */
@@ -457,29 +454,17 @@ export function BusinessHub({
               </div>
             )}
 
-            {/* R15 (9 Sep 2026): AN EVENT IS THE ORGANIZATION'S. It was a desk per
-                studio, which read as though a battle happened in one of your
-                rooms; an event has always carried its own venue, city and map
-                link, so the studio on it was never the place. ONE desk, and the
-                public event page names the organization as its host. */}
-            <div style={{ marginTop: 20 }}>
-              <Head>EVENTS</Head>
-              {eventsHostId ? (
-                <Link href={`/business/${eventsHostId}/events`} style={{ ...cardStyle(true), display: "flex", alignItems: "center", gap: 11, borderLeftColor: "#F59E0B", textDecoration: "none", cursor: "pointer" }} aria-label="Your events">
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Your events</div>
-                    <div style={{ fontSize: 10, color: SUB, marginTop: 1 }}>showcases · battles · tournaments — held by your organization, at any venue</div>
-                  </div>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#F59E0B", flexShrink: 0 }}>Open ›</span>
-                </Link>
-              ) : (
-                <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 4px" }}>Your events desk is opening — reload in a moment.</div>
-              )}
-              <div style={{ fontSize: 10.5, color: "var(--muted)", padding: "2px 2px 0", lineHeight: 1.5 }}>
-                An event is your organization&apos;s, not a studio&apos;s — it carries its own venue, so it can be
-                anywhere. Your organization&apos;s name is what the public sees on it.
-              </div>
-            </div>
+            {/* ⚠ NO EVENTS BLOCK HERE ANY MORE (15 Sep 2026). The user, looking
+                at this screen: "is there any sense of events inside studio?
+                Event is at org level, there is already an event tab on the org
+                home page." Right on both counts. This block was at the correct
+                LEVEL — the hub is the organization's — but it duplicated Home's
+                Events tile, and it sat under a page titled STUDIOS, which is
+                exactly what made it read as "events inside a studio". The
+                paragraph under it existed only to undo that misreading, and a
+                component that needs a disclaimer explaining what it is not is
+                usually a component in the wrong place. ONE door now, on Home,
+                where the user went looking for it on 11 Sep. */}
           </>
         ) : (
           <>

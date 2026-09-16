@@ -298,7 +298,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/business");
     await expect(owner.getByRole("button", { name: "Add studio" })).toBeVisible();
     await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toHaveCount(0);
-    await owner.getByRole("link", { name: "Your events" }).click();
+    /* 15 Sep 2026: the hub no longer carries an events block — an event is the
+       organization's and its ONE door is the Events tile on Home */
+    await expect(owner.getByRole("link", { name: "Your events" })).toHaveCount(0);
+    await owner.goto("/");
+    await owner.getByRole("link", { name: "Events", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
     await expect(owner.getByRole("status", { name: /^Cannot create an event:/ })).toContainText("Add your GST number");
     await expect(owner.getByRole("link", { name: "Create event" })).toHaveCount(0);
@@ -746,14 +750,17 @@ test.describe.serial("DanceOS, end to end", () => {
     // on the page and under Your tickets; the owner opens the manager's
     // Spectators register and checks them in. Seats are COUNTED, never stored.
     eventTitle = `E2E Showcase ${stamp}`;
-    // R15 (9 Sep 2026): AN EVENT IS THE ORGANIZATION'S. The studio's register
-    // no longer offers an Events door, because a studio cannot host one — the
-    // hub has ONE desk for the organization, and the public page will name the
-    // organization as host.
+    // R15 (9 Sep 2026): AN EVENT IS THE ORGANIZATION'S. Neither the studio's
+    // register NOR its own home offers an Events door, because a studio cannot
+    // host one — `save_event` refuses a studio host outright. ONE desk, opened
+    // from the organization's Home, and the public page names the organization.
     await owner.goto(`/business/${tenantId}/classes`);
     await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveCount(0);
-    await owner.goto("/business");
-    await owner.getByRole("link", { name: "Your events" }).click();
+    /* 15 Sep 2026: and not on the studio's own home either */
+    await owner.goto(`/business/${tenantId}`);
+    await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveCount(0);
+    await owner.goto("/");
+    await owner.getByRole("link", { name: "Events", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
     eventsHostId = owner.url().match(/\/business\/([0-9a-f-]+)\/events/)?.[1] ?? null;
     expect(eventsHostId).not.toBe(tenantId);

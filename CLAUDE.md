@@ -160,6 +160,39 @@
 >   says that, and notes the paid-mandate path needs a real Cashfree
 >   authorisation no script can drive.
 >
+> ### ONE DOOR TO EVENTS, AND THE DATABASE AUDITED FOR IT (15 Sep 2026)
+> The user, on the hub: *"is there any sense of events inside studio? Event is
+> at org level, there is already an event tab on org home page."* Right — and
+> there were THREE doors to the one desk, one of which was a real bug:
+> * **Org Home → Events tile** — correct, and the door the user asked for on
+>   11 Sep. **Kept, and now the only one.**
+> * **The hub's "Your events" block** — the right LEVEL (the hub is the
+>   organization's) but a duplicate, sitting under a page titled STUDIOS, which
+>   is what made it read as "events inside a studio". The paragraph beneath it
+>   existed only to undo that misreading — a component that needs a disclaimer
+>   explaining what it is not is usually in the wrong place. **Removed.**
+> * **A studio's own home → Events tile** — ⚠ the actual bug, and mine, added
+>   14 Sep when `StudioHome` was built: it said this studio has events when
+>   `save_event` refuses a studio host outright. The happy path already asserted
+>   the same rule on the classes register (line 754) and the new tile broke it
+>   everywhere else. **Removed**, and the e2e now asserts its absence on the
+>   studio's home too.
+> * `eventsHostId` is no longer read by `/business` at all — `my_org_tenant()`
+>   MAKES the host row on first ask, so Home asking for it is enough.
+>
+> **AND THE DATABASE WAS AUDITED RATHER THAN ASSUMED** —
+> `scripts/proof-events-are-org-level.js`, a real signed-in organization
+> against production, **6/6**: `save_event` with a STUDIO host is refused in
+> words; a **direct PostgREST INSERT into `events` is refused too** (no insert
+> policy — the RPC is not the only lock); the organization's host row is
+> accepted; that host is a different tenant, of type `org`, `unlisted`; and
+> `can_run_events(studio)` is TRUE, which proves the refusal is the ORG RULE
+> and not a permission check firing by accident. Worth recording: the guard was
+> checked in the migration that is actually live (`20260913130000`, which
+> rewrote `save_event` for the map pin) — `create or replace` replaces the whole
+> body, so a rule can be swept away by an unrelated rewrite. That one carried
+> it forward correctly.
+>
 > ### THE MACHINE MOVE (15 Sep 2026) — what a copy-pasted folder loses
 > The repo was copied PC to PC. What came across: `.env.local` whole (all 12
 > documented keys + `SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`), Playwright's

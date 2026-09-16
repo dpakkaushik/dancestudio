@@ -143,6 +143,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await card.getByRole("link", { name: /open the studio/ }).getAttribute("href")) === `/business/${studioId}`, "hub: the card opens the manage screen");
     check((await org.getByTestId("studio-live").count()) === 1, "hub: LIVE, not PUBLIC + RENEWS");
     check((await org.getByText("Stop renewing").count()) === 0, "hub: the renewal detail is off the card");
+    /* 15 Sep 2026: the hub is Studios — events open from Home, the one door */
+    check((await org.getByRole("link", { name: "Your events" }).count()) === 0, "hub: no events block — the hub lists studios");
     await shot("hub-one-card");
     /* pressing the card lands on the studio's home */
     await card.getByRole("link", { name: /open the studio/ }).click();
@@ -171,6 +173,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByLabel("Add a header picture").count()) === 1, "studio home: the owner is offered the header's Add tile");
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: a Stats tile among the tools (it left the tab bar)");
+    /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
+    check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
     check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
     check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the eye opens the studio's public page");
     await shot("studio-initials");

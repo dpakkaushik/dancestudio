@@ -6,7 +6,6 @@ import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
 import { findStudioDeck } from "@/repositories/home";
-import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findPublicTenant } from "@/repositories/publicProfile";
 import { countRoomsByTenants } from "@/repositories/rooms";
@@ -51,15 +50,20 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      policy and set_tenant_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, eventsHostId, editable, subs, catalog] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByTenant, editable, subs, catalog] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
     findStudioDeck(supabase, tenant, nowIso),
     countRoomsByTenants(supabase, [tenantId]),
     findPublishedStylesByTenant(supabase, [tenantId]).catch(() => new Map<string, string[]>()),
-    /* R15: events are the ORGANIZATION's — the tile points at its one desk, owner only */
-    isOwner ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
+    /* ⚠ NO EVENTS TILE ON A STUDIO'S HOME (15 Sep 2026). It was here from
+       14 Sep and it was wrong: R15 makes an event the ORGANIZATION's, and
+       `save_event` refuses a studio host outright — so a tile here said this
+       studio has events when the database will not let it have one. The
+       happy path already asserted the same rule on the classes register
+       (`Events` absent, line 754); this is that rule, kept. Events opens from
+       the organization's Home. */
     /* the studio as its Edit sheet reads it (About, Since, the pin…) — the owner's pencil */
     isOwner ? findPublicTenant(supabase, tenantId).catch(() => null) : Promise.resolve(null),
     /* WHERE ITS SUBSCRIPTION STANDS (15 Sep 2026) — the owner's only door to
@@ -81,7 +85,6 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      calendar, earnings") is the studio's two pictures as a desk. */
   const tiles: Tile[] = [
     { name: "Classes", href: `/business/${tenantId}/classes`, k: "classesmod", c: "#0D9488" },
-    ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
     { name: "Calendar", href: `/business/${tenantId}/calendar`, k: "calendar", c: "#5AC8FA" },
     /* Stats left the tab bar for the grid (15 Sep 2026) — a studio's is the studio board */
     { name: DOS_TOOLS.stats.name, href: "/stats?tab=charts&seg=studio", k: "stats", c: DOS_TOOLS.stats.c },
