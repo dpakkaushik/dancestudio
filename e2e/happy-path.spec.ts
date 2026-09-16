@@ -481,7 +481,25 @@ test.describe.serial("DanceOS, end to end", () => {
     // and the address does not move because somebody scrolled past the map
     await expect(studioSheet.getByRole("button", { name: "Change address" })).toBeVisible();
     await expect(studioSheet.getByRole("searchbox", { name: /Search an address/ })).toHaveCount(0);
+    // ⚠ AND CANCEL MEANS CANCEL (16 Sep 2026). A staged picture is held in the
+    // browser and nothing is uploaded until Save, so dismissing the sheet must
+    // leave the record exactly as it was. The reported bug was the opposite: a
+    // pressed ✕ destroyed the file outright and Cancel had nothing to undo.
+    const proofRows = async () =>
+      ((await (
+        await fetch(`${supabaseUrl}/rest/v1/org_proof_photos?tenant_id=eq.${tenantId}&deleted_at=is.null&select=id`, { headers: adminHeaders })
+      ).json()) as unknown[]).length;
+    // this studio showed DanceOS five photos to be verified, and they ARE its header
+    const before = await proofRows();
+    expect(before).toBe(5);
+    // stage one more, and stage a removal of one that exists
+    await studioSheet.getByLabel("Add photos of your space").setInputFiles(ONE_PX_PNG);
+    await expect(studioSheet.getByLabel(`Remove photo ${before + 1}`)).toBeAttached({ timeout: 20_000 });
+    await studioSheet.getByLabel("Remove photo 1").click();
+    await expect(studioSheet.getByLabel("Undo removing photo 1")).toBeAttached();
+    expect(await proofRows(), "a pressed ✕ has not touched the database").toBe(before);
     await studioSheet.getByRole("button", { name: "Cancel" }).click();
+    expect(await proofRows(), "and Cancel left every picture exactly where it was").toBe(before);
     await owner.getByRole("link", { name: "Classes", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 

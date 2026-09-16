@@ -2,18 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Portal } from "@/components/ui/Portal";
 import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
 import { setTenantLocationAction } from "@/features/geo/server-actions/location";
+import { commitHeaderDraft, commitWords, studioPorts } from "@/features/media/commitHeaderDraft";
+import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderPictures";
+import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
-import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
+import { useHeaderDraft } from "@/features/media/headerDraft";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
-import { PROOF_MAX, PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
+import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
 import type { PublicTenant } from "@/types/publicProfile";
 import { ProfileDisc } from "./HeroRail";
-import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, gradientOf, sheetBtn } from "./profile-kit";
+import { PencilIcon, PlatformIcon, SectionHead, Sheet, cornerChip, fieldInput, fieldLabel, gradientOf, sheetBtn } from "./profile-kit";
 
 /** The business's own Edit sheet — the prototype has ONE editor for a profile
  *  (11364, "one editor, and it is Edit profile"), and a studio's page is the
@@ -26,12 +30,23 @@ import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, gr
  *  AND THE PICTURES, SINCE 16 SEP 2026 (the user: "the update image option
  *  should be inside the edit profile"). They used to be controls on the hero —
  *  a ＋ on the disc's rim and a ✕ per header picture, one square at a time. Here
- *  the whole set is a grid, so "one always stays" can be a disabled ✕ with a
- *  reason on it instead of a press the database refuses. A STUDIO's header
- *  pictures are the photos it showed DanceOS (`ProofPhotos`, {PROOF_MIN}–
- *  {PROOF_MAX}, and the database keeps the last one); an ARTIST PAGE's header
- *  is its OWNER's own pictures, so those are edited in Edit profile on the
- *  person — this sheet draws the disc for both and the header for a studio. */
+ *  the whole set is a gallery you can open a picture from. A STUDIO's header
+ *  pictures are the photos it showed DanceOS (5–10, and the database keeps the
+ *  last one); an ARTIST PAGE's header is its OWNER's own pictures, so those are
+ *  edited in Edit profile on the person — this sheet draws the disc for both
+ *  and the header for a studio.
+ *
+ *  ⚠ AND THE PICTURES ARE A DRAFT, LIKE EVERY OTHER FIELD HERE (16 Sep 2026).
+ *  The first cut put the immediate-write grid from the verification form inside
+ *  this sheet, which has a Cancel button — so a ✕ destroyed a picture on the
+ *  press and Cancel had nothing to undo. The user lost four that way. Staging
+ *  is not a new idea imported to fix it: it is what About, Since, the phone and
+ *  the links have always done here, and what the prototype's own edit sheet
+ *  does (11364-11400 — Cancel is `setEditOpen(false)` and NOTHING else). The
+ *  DISC is the one thing still written immediately, and deliberately: changing
+ *  it REPLACES rather than destroys — `PhotoPicker` never deletes the old
+ *  object — and the result is visible on screen the moment it lands, which is
+ *  the same test the map pin's own comment sets further down. */
 
 
 export function BusinessEditSheet({
@@ -61,6 +76,17 @@ export function BusinessEditSheet({
   const [err, setErr] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /* the pictures, as a draft this sheet owns — so Save commits them and Cancel
+     is free, exactly like every other field here */
+  const isStudio = tenant.type === "studio";
+  const canEditHeader = isStudio && Boolean(ownerId);
+  const draft = useHeaderDraft({
+    initial: photos.map((p) => ({ id: p.id, path: p.path, url: p.url, signed: true })),
+    min: 1,
+    max: PROOF_MAX,
+  });
+  const tiles = headerTiles(draft, tenant.name);
+  const [lightbox, setLightbox] = useState<number | null>(null);
 
   /** The pin saves itself. A location is chosen by a gesture that is already
    *  visible on screen — the map has moved, the address has appeared — so
@@ -85,6 +111,15 @@ export function BusinessEditSheet({
   const years = Array.from({ length: thisYear - 1950 + 1 }, (_, i) => thisYear - i);
   const free = PLATFORMS.filter((p) => !socials.some((s) => s.platform === p));
 
+  /** THE WORDS FIRST, THEN THE PICTURES, AND ONE REFRESH AT THE END.
+   *
+   *  The order is deliberate: `update_tenant_profile` is the likeliest thing to
+   *  refuse (a 221-character About, a phone that is not a phone, a link that is
+   *  not a URL), and a refusal must cost NOTHING — so it happens before a
+   *  single byte moves. If the picture commit then half-fails, the sheet STAYS
+   *  OPEN wearing the database's own sentence and pressing Save again retries
+   *  only what is left: `applyCommit` has already folded in whatever landed, so
+   *  nothing is uploaded or removed twice. */
   const save = () =>
     start(async () => {
       setErr(null);
@@ -102,6 +137,15 @@ export function BusinessEditSheet({
         setErr(out.error);
         return;
       }
+      if (canEditHeader && draft.dirty && ownerId) {
+        const result = await commitHeaderDraft(draft.items, studioPorts(tenant.id, ownerId));
+        draft.applyCommit(result);
+        if (result.failures.length > 0) {
+          setErr(commitWords(result, draft.changeCount));
+          router.refresh();
+          return;
+        }
+      }
       onClose();
       router.refresh();
     });
@@ -117,50 +161,54 @@ export function BusinessEditSheet({
   };
 
   return (
+    <Portal>
     <Sheet label="Edit business" onClose={onClose} maxHeight="88vh">
-      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 12 }}>Edit {tenant.type === "studio" ? "studio" : "artist page"}</div>
+      <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit {isStudio ? "studio" : "artist page"}</b>
 
       {/* ── THE PICTURES (16 Sep 2026) ────────────────────────────────────────
           The round one first, because it is the one everybody sees on a card;
-          then the header, which is a set and needs room to be one. */}
-      <div style={fieldLabel}>Profile picture</div>
+          then the header, which is a set and needs room to be one. The two
+          paragraphs that used to explain them are gone at the user's
+          instruction — a picture beside an Add button does not need a caption,
+          and what was TRUE in them survives where it can be acted on: "one
+          always stays" on the disabled ✕ that enforces it, and "an admin checks
+          these" on the count badge and on the verification form itself. */}
+      <SectionHead title="Profile picture" />
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <ProfileDisc name={tenant.name} grad={gradientOf(tenant.name)} photo={photoUrl(tenant.photoPath)} photoAlt={`${tenant.name} — profile picture`} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 8, lineHeight: 1.45 }}>
-            One picture — the round one on {tenant.name}&rsquo;s page and on its Discover card.
-          </div>
           {canEditPhoto ? (
             <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" />
           ) : (
-            <div style={{ fontSize: 10.5, color: MUTED }}>The owner or a trainer changes this.</div>
+            <div style={{ fontSize: 10.5, color: SUB }}>The owner or a trainer changes this.</div>
           )}
         </div>
       </div>
 
       {/* a studio's header IS its verification photos; an artist page's header
           belongs to the PERSON who owns it, and is edited on their own profile */}
-      {tenant.type === "studio" && ownerId ? (
+      {canEditHeader ? (
         <>
-          <div style={{ ...fieldLabel, marginTop: 14 }}>Header pictures</div>
-          <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 8, lineHeight: 1.45 }}>
-            {PROOF_MIN}–{PROOF_MAX}, swiped across the top of the page — and the same photos a DanceOS admin checks to
-            verify the studio. <b style={{ color: INK }}>One always stays</b>: to replace your only picture, add the new
-            one first. The order does not matter.
-          </div>
-          <ProofPhotos orgId={ownerId} tenantId={tenant.id} initialPhotos={photos} compact />
+          <SectionHead title="Header pictures" />
+          <HeaderPictures draft={draft} tiles={tiles} kind="studio" canWrite addLabel="Add photos of your space" onOpen={setLightbox} busy={pending} />
         </>
       ) : null}
 
-      <label style={{ ...fieldLabel, marginTop: 14 }}>
-        About
-        <textarea value={about} maxLength={220} onChange={(e) => setAbout(e.target.value)} rows={3} placeholder={tenant.type === "studio" ? "Where the city comes to move…" : "Movement is a language…"} style={{ ...fieldInput, resize: "none", lineHeight: 1.5 }} />
-        <span style={{ display: "block", textAlign: "right", fontSize: 10.5, color: about.length > 200 ? "#F59E0B" : MUTED, marginTop: 3 }}>{about.length}/220</span>
-      </label>
+      {/* ⚠ EVERY LABEL BELOW IS A SIBLING OF ITS CONTROL, NOT ITS WRAPPER
+          (16 Sep 2026). These five were `<label style={fieldLabel}>` around the
+          input, and `text-transform` inherits while Tailwind's preflight gives
+          form controls `font: inherit` — so the studio's own About paragraph,
+          its phone number and every pasted URL rendered UPPERCASE at weight
+          800. The explicit aria-label on each control is NOT optional: the
+          wrapper was what gave these fields their accessible name, and the e2e
+          suite finds three of them by it. */}
+      <div style={fieldLabel}>About</div>
+      <textarea aria-label="About" value={about} maxLength={220} onChange={(e) => setAbout(e.target.value)} rows={3} placeholder={isStudio ? "Where the city comes to move…" : "Movement is a language…"} style={{ ...fieldInput, resize: "none", lineHeight: 1.5 }} />
+      <span style={{ display: "block", textAlign: "right", fontSize: 10.5, color: about.length > 200 ? "#F59E0B" : MUTED, marginTop: 3 }}>{about.length}/220</span>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <label style={fieldLabel}>
-          Since
-          <select value={founded} onChange={(e) => setFounded(e.target.value)} style={fieldInput}>
+        <div>
+          <div style={fieldLabel}>Since</div>
+          <select aria-label="Since" value={founded} onChange={(e) => setFounded(e.target.value)} style={fieldInput}>
             <option value="">Not shown</option>
             {years.map((y) => (
               <option key={y} value={y}>
@@ -168,11 +216,11 @@ export function BusinessEditSheet({
               </option>
             ))}
           </select>
-        </label>
-        <label style={fieldLabel}>
-          Phone (Call button)
-          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={fieldInput} />
-        </label>
+        </div>
+        <div>
+          <div style={fieldLabel}>Phone (Call button)</div>
+          <input aria-label="Phone (Call button)" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={fieldInput} />
+        </div>
       </div>
 
       <div style={{ ...fieldLabel, marginTop: 6 }}>Links</div>
@@ -194,9 +242,9 @@ export function BusinessEditSheet({
       </div>
       {free.length ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr auto", gap: 6, alignItems: "end" }}>
-          <label style={fieldLabel}>
-            Platform
-            <select value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)} style={fieldInput}>
+          <div>
+            <div style={fieldLabel}>Platform</div>
+            <select aria-label="Platform" value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)} style={fieldInput}>
               <option value="">Pick…</option>
               {free.map((p) => (
                 <option key={p} value={p}>
@@ -204,11 +252,11 @@ export function BusinessEditSheet({
                 </option>
               ))}
             </select>
-          </label>
-          <label style={fieldLabel}>
-            URL
-            <input value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder={addPlatform === "WhatsApp" ? "https://wa.me/919876543210" : "https://…"} style={fieldInput} />
-          </label>
+          </div>
+          <div>
+            <div style={fieldLabel}>URL</div>
+            <input aria-label="URL" value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder={addPlatform === "WhatsApp" ? "https://wa.me/919876543210" : "https://…"} style={fieldInput} />
+          </div>
           <button type="button" onClick={addLink} style={{ ...sheetBtn(false), padding: "10px 12px", height: 40 }}>
             Add
           </button>
@@ -223,7 +271,7 @@ export function BusinessEditSheet({
           rest of the sheet: it is a different kind of edit — a map gesture,
           not a form field — and pressing Save to commit a pin somebody has
           already visibly placed reads like it did not take. */}
-      <div style={{ ...fieldLabel, marginTop: 14 }}>Where it is</div>
+      <SectionHead title="Where it is" />
       <LocationPicker
         value={{ lat: tenant.lat, lng: tenant.lng, area: tenant.area }}
         /* the business already has a point; the centre is only the fallback for
@@ -231,7 +279,8 @@ export function BusinessEditSheet({
         centre={tenant.lat != null && tenant.lng != null ? { lat: tenant.lat, lng: tenant.lng } : null}
         onChange={savePlace}
       />
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
+      {/* a failure must not be the faintest text on the screen */}
+      <div style={{ fontSize: 10.5, color: placeNote && placeNote.startsWith("Could not") ? "#F87171" : SUB, marginTop: 6, lineHeight: 1.45 }}>
         {placeNote ?? "This is what Discover measures from when somebody looks for studios near them."}
       </div>
 
@@ -240,11 +289,26 @@ export function BusinessEditSheet({
         <button type="button" onClick={onClose} style={sheetBtn(false)}>
           Cancel
         </button>
+        {/* the count is a substring, so getByRole("button", { name: "Save" }) still finds it */}
         <button type="button" disabled={pending} onClick={save} style={sheetBtn(true)}>
-          {pending ? "Saving…" : "Save"}
+          {pending ? "Saving…" : draft.dirty ? `Save · ${draft.changeCount} ${draft.changeCount === 1 ? "picture change" : "picture changes"}` : "Save"}
         </button>
       </div>
     </Sheet>
+    {/* ⚠ A SIBLING OF THE SHEET, NEVER A CHILD — see PhotoLightbox's own header:
+        the Sheet's panel carries a transform while it rises, and every test that
+        scopes to getByRole("dialog", { name: "Edit business" }) would go
+        ambiguous on a dialog nested inside it. */}
+    {lightbox !== null ? (
+      <PhotoLightbox
+        shots={tiles.map((t) => ({ key: t.key, src: t.url, alt: t.alt, signed: t.signed }))}
+        index={lightbox}
+        onIndex={setLightbox}
+        onClose={() => setLightbox(null)}
+        label={tenant.name}
+      />
+    ) : null}
+    </Portal>
   );
 }
 

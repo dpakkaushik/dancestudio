@@ -225,6 +225,16 @@ a:focus-visible:not([data-slot]) {
   }
 }
 
+/* a full-screen picture fading up over whatever opened it (prototype 10572) */
+@keyframes dosFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* the live pulse used on the deck, the calendar and Discover — declared once, app-wide */
 @keyframes dosPulseH {
   0% {

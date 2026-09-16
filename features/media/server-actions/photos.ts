@@ -15,6 +15,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export interface PhotoActionResult {
   error: string | null;
   path?: string | null;
+  /** the ROW's id, for the doors that make one (16 Sep 2026) — a header picture
+   *  added inside an Edit sheet has to be removable in that same sheet, and
+   *  removing takes an id */
+  id?: string | null;
 }
 
 const path = z.string().trim().min(1).max(300).nullable();
@@ -67,14 +71,14 @@ export async function addMyGalleryPhotoAction(input: { path: string }): Promise<
   const parsed = z.string().trim().min(1).max(300).safeParse(input.path);
   if (!parsed.success) return { error: "Invalid photo" };
   const supabase = await requireUser();
-  const { error } = await supabase.rpc("add_my_gallery_photo", { p_path: parsed.data });
+  const { data, error } = await supabase.rpc("add_my_gallery_photo", { p_path: parsed.data });
   if (error) {
     return { error: error.message };
   }
   revalidatePath("/");
   revalidatePath("/profile");
   revalidatePath("/person/[userId]", "page");
-  return { error: null, path: parsed.data };
+  return { error: null, path: parsed.data, id: (data as string | null) ?? null };
 }
 
 export async function removeMyGalleryPhotoAction(input: { id: string }): Promise<PhotoActionResult> {

@@ -1,15 +1,18 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Portal } from "@/components/ui/Portal";
+import { commitHeaderDraft, commitWords, personPorts } from "@/features/media/commitHeaderDraft";
+import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderPictures";
+import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { useHeaderDraft } from "@/features/media/headerDraft";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import { LINE, MUTED } from "@/lib/design/tokens";
+import { MUTED, SUB } from "@/lib/design/tokens";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Profile } from "@/types/profile";
-import { HeaderRemove } from "./HeaderRemove";
-import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { PencilIcon, SectionHead, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
 /** EDIT PROFILE (prototype 11364 — "one editor, and it is Edit profile"), in
  *  the order the user asked for on 15 Sep 2026: Name · Mobile · Profile
@@ -45,6 +48,17 @@ export function EditProfileSheet({
   const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, about: profile.about ?? "", phone: profile.phone ?? "" });
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /* the header pictures as a DRAFT (16 Sep 2026) — the same bug lived here:
+     `HeaderRemove`'s ✕ deleted a picture on the press, inside a sheet with a
+     Cancel button. A person's floor is 0, not 1: `remove_my_gallery_photo` has
+     no minimum guard, and inventing one here would be a rule nobody wrote. */
+  const draft = useHeaderDraft({
+    initial: header.map((h) => ({ id: h.id, path: h.path, url: h.url, signed: h.signed })),
+    min: 0,
+    max: headerMax,
+  });
+  const tiles = headerTiles(draft, profile.fullName);
+  const [lightbox, setLightbox] = useState<number | null>(null);
 
   const save = () => {
     /* the database refuses a profile without a city (9 Sep 2026) — say so before asking it */
@@ -54,6 +68,7 @@ export function EditProfileSheet({
     }
     start(async () => {
       setErr(null);
+      /* the words first: a refusal here must cost nothing (see BusinessEditSheet) */
       const out = await updateMyProfileAction({
         fullName: d.fullName,
         city: d.city.trim(),
@@ -67,6 +82,15 @@ export function EditProfileSheet({
         setErr(out.error);
         return;
       }
+      if (headerMax > 0 && draft.dirty) {
+        const result = await commitHeaderDraft(draft.items, personPorts(profile.id, headerMax));
+        draft.applyCommit(result);
+        if (result.failures.length > 0) {
+          setErr(commitWords(result, draft.changeCount));
+          router.refresh();
+          return;
+        }
+      }
       onSaved?.();
       onClose();
       router.refresh();
@@ -74,6 +98,7 @@ export function EditProfileSheet({
   };
 
   return (
+    <Portal>
     <Sheet label="Edit profile" onClose={onClose} maxHeight="88vh">
       <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit profile</b>
       <div style={fieldLabel}>Name</div>
@@ -84,31 +109,19 @@ export function EditProfileSheet({
       <div style={fieldLabel}>Mobile</div>
       <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Shown on your public page as Call. Leave it empty and nobody sees a number.</div>
-      <div style={fieldLabel}>{isOrg ? "Logo" : "Profile picture"}</div>
+      <SectionHead title={isOrg ? "Logo" : "Profile picture"} />
       <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
       {/* THE HEADER PICTURES (15 Sep 2026): an artist has no verification
           step, so this sheet is where theirs are added — up to ten; a user
-          has one. Each lands the moment it uploads and the page re-reads;
-          the ✕ takes one out again. */}
+          has one. A DRAFT since 16 Sep 2026: adding and removing both wait
+          for Save, so Cancel means what it says. */}
       {headerMax > 0 ? (
         <>
-          <div style={fieldLabel}>Header pictures</div>
-          <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 8, lineHeight: 1.45 }}>
+          <SectionHead title="Header pictures" />
+          <div style={{ fontSize: 10.5, color: SUB, marginBottom: 8, lineHeight: 1.45 }}>
             {headerMax === 1 ? "One picture across the top of your page. The Artist plan makes it ten." : `Up to ${headerMax}, swiped across the top of your page in this order.`}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 7 }}>
-            {header.map((h, i) => (
-              <div key={h.id} style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: 11, overflow: "hidden", background: "var(--el)", border: `1px solid ${LINE}` }}>
-                {h.url ? <Image src={h.url} alt={`Header picture ${i + 1}`} fill sizes="90px" style={{ objectFit: "cover" }} /> : null}
-                <HeaderRemove target={{ kind: "person", id: h.id }} path={h.path} />
-              </div>
-            ))}
-            {header.length < headerMax ? (
-              <div style={{ position: "relative", aspectRatio: "1 / 1", borderRadius: 11, overflow: "hidden", background: "var(--el)" }}>
-                <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add picture" tile compact />
-              </div>
-            ) : null}
-          </div>
+          <HeaderPictures draft={draft} tiles={tiles} kind="person" canWrite addLabel="Add picture" onOpen={setLightbox} busy={pending} />
         </>
       ) : null}
       <div style={fieldLabel}>Location</div>
@@ -132,9 +145,22 @@ export function EditProfileSheet({
       {err ? <div role="alert" style={{ fontSize: 12, color: "#F87171", marginTop: 8 }}>{err}</div> : null}
       <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
         <button type="button" onClick={onClose} style={sheetBtn(false)}>Cancel</button>
-        <button type="button" disabled={pending || !d.city.trim()} onClick={save} style={sheetBtn(true)}>{pending ? "Saving…" : "Save"}</button>
+        <button type="button" disabled={pending || !d.city.trim()} onClick={save} style={sheetBtn(true)}>
+          {pending ? "Saving…" : draft.dirty ? `Save · ${draft.changeCount} ${draft.changeCount === 1 ? "picture change" : "picture changes"}` : "Save"}
+        </button>
       </div>
     </Sheet>
+    {/* a SIBLING of the sheet — see PhotoLightbox's header for why */}
+    {lightbox !== null ? (
+      <PhotoLightbox
+        shots={tiles.map((t) => ({ key: t.key, src: t.url, alt: t.alt, signed: t.signed }))}
+        index={lightbox}
+        onIndex={setLightbox}
+        onClose={() => setLightbox(null)}
+        label={profile.fullName}
+      />
+    ) : null}
+    </Portal>
   );
 }
 

@@ -12,7 +12,10 @@ export const bizCard: CSSProperties = { background: "var(--card)", border: "1px 
 export const bizBtn: CSSProperties = { textAlign: "center", padding: 13, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "none", fontFamily: "inherit", width: "100%", textDecoration: "none", display: "block" };
 export const ghostBtn: CSSProperties = { ...bizBtn, background: "var(--card)", color: "var(--text)", border: "1px solid var(--el)", fontWeight: 800 };
 export const chip = (on: boolean): CSSProperties => ({ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : "var(--sub)", border: "1px solid var(--el)", fontFamily: "inherit", whiteSpace: "nowrap" });
-export const eyebrow: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", margin: "2px 0 8px", textTransform: "uppercase" };
+/* `--sub`, not `--muted` (16 Sep 2026): the same legibility fix the Edit
+   sheets' field labels got, so the Media desk's own headings are not a
+   different grey from the sheet that edits the same two pictures */
+export const eyebrow: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--sub)", margin: "2px 0 8px", textTransform: "uppercase" };
 export const rupees = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 export const dayWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date(iso));
 export const dateWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.length === 10 ? `${iso}T00:00:00+05:30` : iso));

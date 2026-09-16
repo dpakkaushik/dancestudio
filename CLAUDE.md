@@ -2,6 +2,141 @@
 
 ## LAST SESSION (16 Sep 2026) — replaced on every push (Rule 13)
 
+> ### ⚠⚠ THE EDIT SHEET DESTROYED FOUR PICTURES ON A CANCEL — AND IT WAS MINE (16 Sep 2026)
+> The user, an hour after the picture controls moved into the Edit sheet: *"i
+> clicked over the cross but didnt save but canceled the edit form but still i
+> lost the 4 header images why? This isnt how apps behave."*
+>
+> They were right, it was a real loss, and **the four pictures are gone for
+> good**. `ProofPhotos.drop()` ran TWO phases on the press: `remove_org_proof_
+> photo` soft-deleted the row (recoverable in principle — `deleted_at`, and no
+> un-delete function exists) and then `supabase.storage.remove()` HARD-deleted
+> the object. Verified against production: four rows soft-deleted 09:15:17–22,
+> **all four objects gone from the bucket**, no versioning, no restore. Their
+> fifth survived only because the database refuses a studio's last picture.
+>
+> **The cause was mine and it was a category error**: the grid came from two
+> screens that have NO Save button — the verification form and the Media desk,
+> where acting at once is correct — and on 15 Sep I dropped it into a sheet that
+> has Cancel, without wiring Cancel to it. Everything else in that sheet (About,
+> Since, the phone, the links) had always been a draft committed by `save()`.
+> **So staging is not a new idea imported to patch this; it is the rule the
+> sheet already followed everywhere else, and the PROTOTYPE'S OWN** — its Edit
+> profile sheet copies the record into `editDraft`, and Cancel is
+> `setEditOpen(false)` and nothing else (DanceOSApp.jsx 11394).
+>
+> **THE FIX — `features/media/headerDraft.ts` + `commitHeaderDraft.ts`:**
+> * ✕ marks a picture; it dims, says REMOVING, and its control becomes ↩. **No
+>   network call happens in `headerDraft.ts` at all** — not one Supabase import —
+>   which is the property that makes Cancel free.
+> * **Adding is staged too**, held as a `File` with a local object URL for the
+>   preview, so "Cancel" means one thing on that screen rather than two.
+> * ⚠ **THE COMMIT ORDER IS THE DESIGN, and "add everything then remove
+>   everything" is WRONG.** The database re-checks per call against the live
+>   count: `remove_org_proof_photo` refuses at `v_live <= 1`,
+>   `add_studio_proof_photo` at `>= 10`, `add_my_gallery_photo` at 1 for a plain
+>   user. So add-first breaks the swap AT THE CEILING (a studio at ten, a user
+>   at one) and remove-first breaks it AT THE FLOOR (a studio at one). The rule
+>   that holds at both is one line: **remove if that leaves us at or above the
+>   floor, else add if that leaves us at or below the ceiling** — which keeps the
+>   live count inside [min, max] at every instant. A judge panel caught this;
+>   the first design had add-first and would have shipped the ceiling bug.
+>   It is also why the deleted instruction ("to replace your only picture, add
+>   the new one first") is not lost but made UNNECESSARY — the sheet does that
+>   ordering itself, which is the right home for a rule nobody should read.
+> * Row before object on every removal; object before row on every addition,
+>   with a refused row taking its own upload back out. A half-failed Save keeps
+>   the sheet open with the database's words, and Save again retries only what
+>   is left (`applyCommit` folds in what landed).
+> * **`ProofPhotos` keeps its name, its props and its IMMEDIATE behaviour** for
+>   its two remaining homes, and that is deliberate: the Media desk has no Save,
+>   and the verification form's Submit is gated on the LIVE photo count, so a
+>   staged photo would let a studio ask to be verified on evidence that does not
+>   exist. Only the TIMING differs between the two; the grid is now one file.
+>
+> ### AND THREE THINGS AN ADVERSARIAL REVIEW OF THE FIX CAUGHT (16 Sep 2026)
+> A six-lens panel was run over the finished slice, each lens trying to break one
+> claim, every finding then handed to three independent refuters. ⚠ **The session
+> limit killed 71 of its 90 agents mid-run**, so its "confirmed" list is not
+> evidence on its own — but three findings were checked by hand and were real:
+> * ⚠ **UNDO COULD STAGE A DELETION.** `undoLast` read the last key off a stack
+>   and handed it to `unstage`, which decides what to do from the item's CURRENT
+>   state. After a partial Save that stack is stale: mark A and B, stage C, Save;
+>   A commits, B is REFUSED and comes back unmarked, C fails. The stack still
+>   says ["A","B"], so Undo took "B", found it unmarked, and **marked it for
+>   deletion**. A button labelled Undo staging a removal is the same class of
+>   mistake as the bug the slice exists to fix. The stack is reconciled against
+>   the items on every read now, `applyCommit` prunes it, and the control is not
+>   drawn when there is nothing marked.
+> * **A refused removal can be permanent, and the message promised a retry
+>   anyway.** `remove_org_proof_photo` refuses deterministically (the last
+>   picture; or below five while a review is pending), so "Press Save to try the
+>   rest" was offering something that would return the same answer — and after a
+>   removal-only failure the draft is clean, so Save would just close the sheet.
+>   `commitWords` says "The picture was left where it was" when nothing is
+>   retryable, and keeps the retry sentence only when a staged ADD survives.
+> * **The commit consumed a refused removal without reconsidering it.**
+>   `ports.min` models the floor this code knows about — a studio keeps one —
+>   but not the SECOND floor inside the RPC: it also refuses below five while a
+>   verification request is pending. So a studio at five, under review, swapping
+>   a picture was told to "add a replacement first" in the same breath as having
+>   added exactly that. A refused removal is parked and retried once after the
+>   additions have made room; only then is it a failure.
+>
+> ### ⚠ AND TWO MORE STACKING BUGS FELL OUT OF DRIVING IT (16 Sep 2026)
+> Both are the same root cause, and it is worth carrying forward because it will
+> happen again: **`z-index` is only comparable inside ONE stacking context.**
+> The Edit sheets open from a pencil in `IdentityHero`'s corner —
+> `position: absolute, zIndex: 3` — so everything rendered from there is stamped
+> "3" whatever its own z-index says.
+> * The new lightbox's 700 lost to `AppChrome`'s top bar at **400**: the close
+>   button was "visible, enabled and stable" and unclickable, with the bell on
+>   top of it.
+> * Worse, and PRE-EXISTING since 15 Sep: the Edit-profile sheet's 600 lost to
+>   the floating tab bar at **300**, so **on anyone's own Home the sheet's Save
+>   and Cancel could not be pressed at all**. It survived unnoticed because
+>   `shoot-hero.js` wrapped that press in `.catch(() => {})`. A studio's own home
+>   is a drill page with no tab bar, which is why the same sheet worked there and
+>   only there.
+> * Fixed by `components/ui/Portal.tsx` — a modal belongs at the root of the
+>   document. Nothing about the React tree changes, so every
+>   `getByRole("dialog", …)` finds what it found before. **Lesson: a `.catch(()
+>   => {})` in a harness is a place a bug can live.**
+>
+> ### THE SHEET, MADE LEGIBLE (16 Sep 2026)
+> The user: *"why there is so much unnecessary lines … both lines are
+> unnecessary remove these"*, *"show the header pictures as an image gallery
+> where user can click over a picture and expand and see it"*, *"the headings are
+> in light grey color isnt looking good"*.
+> * **Both paragraphs are gone.** Nothing true went with them: "one always
+>   stays" survives on the disabled ✕ that enforces it, and "an admin checks
+>   these" on the count badge and on the verification form itself.
+> * **The gallery**: one `HeaderGrid`, replacing a literal that had been
+>   copy-pasted into two files and was already drifting. A tile is a button now;
+>   `PhotoLightbox` opens the picture full size, paging with ‹ › and the arrow
+>   keys. Its chrome is the prototype's own viewer (11440-11447) — and it
+>   completes a stub the prototype LEFT: its photo state is declared
+>   `null | "avatar" | "cover"` (8705) and the `"cover"` branch was never
+>   rendered.
+> * **The headings.** `fieldLabel` is a verbatim lift of the prototype's FIELD
+>   eyebrow (11375), and it was being used for BLOCK heads too. Blocks get
+>   `SectionHead` — `TYPE.shelf` in `var(--text)`, which is the prototype's own
+>   block head (10961-10963), so that half is a LIFT, not a deviation. The real
+>   field labels move `var(--muted)` → `var(--sub)`: #707070 on #0A0A0A is
+>   **4.0:1** where 11.5px text needs 4.5, and #8A8A8A on white is 3.45:1;
+>   `--sub` is 7.9 and 6.8. One deviation row, and the reason is DENSITY, not
+>   taste — the prototype's sheet has four of these and a studio's has nine.
+> * ⚠ **AND THE REAL REASON IT LOOKED BAD, which the user did not name and a
+>   mapping agent found:** five controls wrapped their input in
+>   `<label style={fieldLabel}>`. `text-transform` INHERITS, and Tailwind v4's
+>   preflight gives every input, select and textarea `font: inherit` and
+>   `letter-spacing: inherit` — so **the studio's own About paragraph, its phone
+>   number and every pasted URL rendered UPPERCASE at weight 800**. Visible in
+>   the user's own screenshot once you know. The five are siblings now, each
+>   with an explicit `aria-label` (the wrapper was what gave them their
+>   accessible name, and three e2e locators depend on it), and `fieldInput`
+>   carries `textTransform: none` as a standing guard so the next one cannot.
+>
 > ### ⚠ A STUDIO COULD BE MOVED ACROSS THE CITY BY SOMEBODY SCROLLING (16 Sep 2026)
 > The user, on their own Edit-profile sheet: *"when I edit profile, while
 > scrolling, the location changes — just show the location text and the map, and
@@ -4753,6 +4888,8 @@ Home. **Do not "restore parity" on these.**
 | C2 | Profile is the fifth tab (19313), and Edit lives on it | **The fifth slot is an eye** — the account's page as a stranger sees it (an organization's first studio, an artist's page, a user's person page), computed per account in the layout. **Edit profile is a pencil on Home's hero**, opening the Profile tab's own sheet; a studio's home carries the owner's pencil and the team's eye the same way | "Remove the profile as well and make an eye icon which will show the profile view." And: "where is the edit profile button?" |
 | C3 | Five tabs | **Four**: Home · Discover · Inbox · 👁 | Follows from C1 and C2. `/profile` stays a route (the gear opens it with `?settings=1`) — Rule 14. |
 | C4 | The ＋ that changes a picture sits on the square's own corner (10600), and the Photos rail carries a ＋ Add tile with a × per picture (10979-10981) | **No picture control on a hero anywhere.** The disc and the header show; `EditProfileSheet` (a person) and `BusinessEditSheet` (a studio) change them — the disc, and the header as a GRID | 16 Sep 2026, the user, circling both on their own studio home: *"the update image option should be inside the edit profile."* A grid can also say the rules — "one always stays" is a disabled ✕ with its reason on it, where a one-square-at-a-time rail could only offer a press the database refuses |
+| C4b | The prototype's Edit profile sheet has NO pictures in it at all, and says why (11368-11374): *"It used to open with a profile-photo picker and close with a cover-photo picker … so the same picture could be changed in two places and the sheet was mostly about pictures rather than about you."* | **The pictures ARE in the Edit sheets**, and they are the only place a picture changes | 16 Sep 2026, the user: *"the update image option should be inside the edit profile."* Recorded because without this row a future run reads them as drift and takes them out again. Note what the prototype's objection was — the SAME picture changeable in TWO places — and that the app's answer is the opposite of what it feared: one place, not two. ⚠ It is also the deviation that CAUSED the destroy-on-cancel bug, by putting immediate-write controls inside a container with a Cancel button; the draft model is what makes it safe. |
+| C4c | `fieldLabel` — 11.5px uppercase `var(--muted)` — is the prototype's form-field eyebrow (11375), lifted verbatim | Field labels are `var(--sub)` at weight 900; BLOCK heads are `SectionHead` (`TYPE.shelf` in `var(--text)`) | 16 Sep 2026, the user: *"the headings are in light grey color isnt looking good."* The block-head half is a LIFT (the prototype's own, 10961-10963) and needs no deviation. The colour half is one: `--muted` measures 4.0:1 on the dark sheet and 3.45:1 on the light one where 11.5px needs 4.5:1, so the prototype fails the same check — and the reason to overrule it is DENSITY rather than taste, four of these in its sheet against nine in a studio's, on an 88vh scroller that also carries a gallery and a map. |
 | C5 | The shell's "Managing {studio}" strip draws on every `/business/*` route (19267-19294) | **Not on `/business/{id}` itself**, where the identity hero already carries the name, the place, the rooms and the picture; on the deeper desks it is the **name alone**, no address, and keeps `Exit studio ›` | 16 Sep 2026, the user: *"isn't it unnecessary — name, location etc already there below the profile image?"* On the studio's home, exactly right. On a desk the tool hero names the TOOL and nothing names the studio, and an organization runs several — so the name stays, and the address goes, because an address is not what tells you which register this is |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
@@ -4775,7 +4912,9 @@ nothing to lift.
 |-----|--------------|-------------|
 | **The chrome re-cut, what it left (15 Sep 2026):** a **studio cannot be renamed** from its home — `update_tenant_profile` takes no `p_name`, so the pencil edits About, Since, phone, links and the pin but not the name (a person's name IS editable); an **organization with several studios** gets the eye pointing at its FIRST studio (a chooser is a decision); the eye on the bar is a door, so the **Profile and Stats pages have no lit tab** while open — they read as drill pages with the back chip | 19313-19396; S_profiletab 10613 | a `p_name` on `update_tenant_profile` (drop + recreate — the overload lesson); a studio chooser if an organization asks |
 | **The header slice, what it left (15 Sep 2026, re-read 16 Sep):** the **crew page** still draws its own 206 square rather than `IdentityHero` (a crew has a photo and no header pictures — a decision about what a crew's header would show); ~~reordering~~ **settled 16 Sep 2026 — the user: "order doesn't matter"**, so insertion order stands and there is nothing to build; an **organization's Home** has an empty header (it is not a place — decision (c)); a **trainer** may change a studio's disc but not its header, because the files go into the OWNER's folder in the proof bucket (a per-studio folder would let a trainer add — needs a storage-policy change), and since 16 Sep the header block simply is not drawn in a trainer's Edit sheet; the header is the **206 square**, not a full-width banner, by the user's choice — `HERO_HEAD_W/H` are the tweak; no **proof script** yet for the min-one rule or the public read policy (`shoot-hero.js` covers both from the browser) | S_profiletab 10577, 11093 | a crew decision; a per-studio proof folder if a trainer ever needs to add; a `.ps1` proof after the migration lands |
-| **The pictures moved into the Edit sheets (16 Sep 2026), what that left:** a studio's header can be added to from **three** places now — the pencil, the Media desk and the verification form — which is one component (`ProofPhotos`) in three frames rather than three implementations, but it is still three doors to one job and worth collapsing if the user ever reads it as clutter; the Edit sheets have **no drag-to-reorder and no cropper** (`object-fit: cover`, and the user settled the order question); a person's header grid has **no min-one rule**, deliberately — only a studio's header is evidence somebody else checks | S_profiletab 11364; DosCropper 6604 | the cropper with the posters slice; the rest is decision (c) |
+| **The pictures moved into the Edit sheets (16 Sep 2026), what that left:** a studio's header can be added to from **three** places now — the pencil, the Media desk and the verification form — one component in three frames rather than three implementations, but still three doors to one job; the Edit sheets have **no drag-to-reorder and no cropper** (`object-fit: cover`, and the user settled the order question); a person's header grid has **no min-one rule**, deliberately — only a studio's header is evidence somebody else checks | S_profiletab 11364; DosCropper 6604 | the cropper with the posters slice; the rest is decision (c) |
+| **The staged draft (16 Sep 2026), what it left:** a **signed proof URL is minted at PAGE render and lives 30 minutes** (`PROOF_URL_SECONDS`), so a sheet left open past that shows the "added" placeholder rather than the picture — it does not re-sign; there is **no `beforeunload` guard** on a dirty draft (this repo has none anywhere, and a phone would ignore it), so a refresh mid-edit silently drops staged work — which is strictly better than the bug it replaces, where a refresh mid-edit left the deletions already applied; the **profile DISC still commits immediately** while the header stages, because changing it REPLACES rather than destroys and the result is visible at once; the **object delete still runs from the browser** (Rule 5), which is pre-existing and is the one step that makes a loss unrecoverable | — | re-signing when a draft outlives its URLs; a server-side delete if the object delete is ever worth hardening |
+| **The lightbox (16 Sep 2026) is an ADDITION, not a lift.** The prototype's photo tiles have no `onClick` at all and its album grid draws plain divs (11119-11121); what it DOES have is a full-screen viewer for an AVATAR (11440-11447) and a `photoView` state declared `null \| "avatar" \| "cover"` (8705) whose `"cover"` branch is never rendered. So this completes a stub rather than inventing a pattern — but the grid-tile-opens-it half has no counterpart. Also: the prototype's studio Photos is a 104×78 horizontal RAIL (10965-10968), not a square grid | 8705, 11440-11447, 11119-11121 | nothing owed unless the user wants the rail |
 | **The workspace strip, what it left (16 Sep 2026):** `Exit studio ›` is kept on the desks over the user's objection, with the reason written at the top of this file (back retraces, and a TWA deep-link has nothing to retrace) — **one line in `WorkspaceStrip` to remove if they say so again**; the strip still costs a server action per desk visit to learn the studio's name, which is a round trip for one word | 19267-19294 | the user's call; the name could ride the layout instead of a client fetch |
 | **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |

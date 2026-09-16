@@ -31,19 +31,28 @@ const refresh = () => {
   revalidatePath("/admin/verifications");
 };
 
-export async function addStudioProofPhotoAction(input: unknown): Promise<{ error: string | null }> {
+/** ⚠ IT RETURNS THE ROW'S ID NOW (16 Sep 2026). The RPC has always returned the
+ *  uuid and this action threw it away, which is why `ProofPhotos` had to query
+ *  `org_proof_photos` from the BROWSER to find it again when somebody removed a
+ *  picture they had just added — a direct Supabase read in a component, against
+ *  Rule 5, that existed only to recover a value we already had. Handing it back
+ *  deletes that query, and it is what lets a picture be added, staged for
+ *  removal and retried inside one open Edit sheet. Additive: no existing caller
+ *  reads `id`. */
+export async function addStudioProofPhotoAction(input: unknown): Promise<{ error: string | null; id?: string | null }> {
   const parsed = addSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "That photo could not be recorded" };
   }
   const supabase = await createSupabaseServerClient();
+  let id: string;
   try {
-    await addStudioProofPhoto(supabase, parsed.data.tenantId, parsed.data.path);
+    id = await addStudioProofPhoto(supabase, parsed.data.tenantId, parsed.data.path);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not add that photo" };
   }
   refresh();
-  return { error: null };
+  return { error: null, id };
 }
 
 /** Removing is the organization's existing door — the row is the same table and

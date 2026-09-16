@@ -157,8 +157,25 @@ export const EyeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
 );
 
-export const fieldLabel: CSSProperties = { fontSize: 11.5, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--muted)", margin: "14px 0 6px" };
-export const fieldInput: CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "11px 14px", fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "inherit" };
+/** ⚠ `var(--sub)`, NOT `var(--muted)` (16 Sep 2026, the user: "the headings are
+ *  in light grey color isnt looking good"). They were right and it is
+ *  measurable: `--muted` is #707070 on the sheet's #0A0A0A ground — 4.0:1 — and
+ *  #8A8A8A on #FFFFFF — 3.45:1 — where 11.5px text needs 4.5:1. `--sub` is
+ *  7.9:1 and 6.8:1, still far short of `--text` at ~19:1, so a label stays
+ *  quieter than the value it labels, which is the hierarchy the prototype
+ *  wanted. A deliberate deviation from the verbatim lift at prototype 11375,
+ *  and the reason is DENSITY rather than taste: the prototype's sheet has four
+ *  of these and a studio's has nine, on an 88vh scroller that also carries a
+ *  gallery and a map. */
+export const fieldLabel: CSSProperties = { fontSize: 11.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--sub)", margin: "14px 0 6px" };
+/** ⚠ THE LAST THREE ARE A GUARD, NOT A STYLE (16 Sep 2026). Five controls in
+ *  the studio's Edit sheet were wrapped in `<label style={fieldLabel}>`, and
+ *  `text-transform` INHERITS while Tailwind v4's preflight gives every input,
+ *  select and textarea `font: inherit` and `letter-spacing: inherit` — so the
+ *  studio's own About paragraph, its phone number and every pasted URL rendered
+ *  UPPERCASE at weight 800 with the label's tracking. The wrappers are fixed
+ *  where they are; this makes it impossible for the next one to happen. */
+export const fieldInput: CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "11px 14px", fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "inherit", textTransform: "none", letterSpacing: "normal", fontWeight: 400 };
 export const sheetBtn = (primary: boolean): CSSProperties => ({
   flex: 1,
   textAlign: "center",
@@ -231,6 +248,23 @@ export function EntityMark({ name, photo, size = 42, radius = 13 }: { name: stri
 /* ── THE PEOPLE, IN ONE LANGUAGE (11000-11030): a Group headed with the word and
    its count, a Row per entity — mark, name, role in the group's colour, and the
    row itself opens their page, ending in the › ── */
+/** THE HEAD OF A BLOCK, as against the label of a FIELD (prototype 10961-10963).
+ *
+ *  The prototype has two heading species and the app had been drawing one of
+ *  them for both jobs. A field label is the 11.5px uppercase grey eyebrow
+ *  (11375 — `fieldLabel` below is a verbatim lift of it); a BLOCK is headed by
+ *  `TYPE.shelf` in `var(--text)`, with its count quiet at the right. "Profile
+ *  picture" and "Header pictures" head blocks, so this is what they wear from
+ *  16 Sep 2026 — which is a lift, not a deviation. */
+export function SectionHead({ title, right }: { title: string; right?: ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "18px 0 8px" }}>
+      <span style={{ ...TYPE.shelf, color: "var(--text)" }}>{title}</span>
+      {right ? <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{right}</span> : null}
+    </div>
+  );
+}
+
 export function Group({ title, n, children }: { title: string; n: number; children: ReactNode }) {
   return (
     <div style={{ marginTop: 18 }}>

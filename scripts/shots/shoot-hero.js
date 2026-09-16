@@ -239,26 +239,66 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     const photoPath = await rest(`tenants?id=eq.${studioId}&select=photo_path`);
     check(String(photoPath[0] && photoPath[0].photo_path).startsWith(`tenants/${studioId}/`), "tenants.photo_path is set, in the studio's own folder");
 
-    /* the header: the same sheet's grid — and the ✕ on the only picture is
-       disabled. The sheet is still open: `router.refresh()` after an upload
-       re-renders the page under it without closing it. */
-    await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
-    const headerUp = await waitRailImgs(org, 1).then(() => true).catch(() => false);
-    if (headerUp) {
-      check(true, "edit studio: the header holds the first picture");
-      check((await sheet.getByLabel(/is the only one/).count()) === 1, "edit studio: the only picture's ✕ is disabled and says why — a header never empties");
-      await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
-      await waitRailImgs(org, 2);
-      check((await sheet.getByLabel(/^Remove photo/).count()) === 2, "edit studio: two pictures, two live ✕");
-      check((await rail(org).getAttribute("role")) === "region", "studio home: the header swipes now");
-      await shot("studio-header");
-      await sheet.getByLabel("Remove photo 1").click();
-      await waitRailImgs(org, 1);
-      check((await sheet.getByLabel(/^Remove photo/).count()) === 0, "edit studio: ✕ took one out, and the last one is disabled again");
+    /* ── THE HEADER IS A DRAFT (16 Sep 2026) ────────────────────────────────
+       The user pressed ✕ on four pictures, pressed CANCEL, and lost all four.
+       These checks are that sentence, both ways round: staged work shows in the
+       sheet and NOT on the page behind it; Cancel leaves everything alone; Save
+       is what moves anything at all. ⚠ This block used to assert the BUG — it
+       pressed ✕ and then waited for the rail behind the sheet to drop. */
+    const studioRows = async () => {
       const live = await rest(`org_proof_photos?tenant_id=eq.${studioId}&deleted_at=is.null&select=id`);
-      check(Array.isArray(live) && live.length === 1, "org_proof_photos holds the one live row for the studio");
-      await org.keyboard.press("Escape").catch(() => {});
-      await sheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+      return Array.isArray(live) ? live.length : -1;
+    };
+    await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+    const headerUp = await sheet
+      .getByLabel(/is the only one/)
+      .first()
+      .waitFor({ timeout: 25000 })
+      .then(() => true)
+      .catch(() => false);
+    if (headerUp) {
+      check(true, "edit studio: a staged picture appears in the sheet");
+      check((await railImgs(org)) === 0, "edit studio: and NOT on the page behind it — nothing is saved yet");
+      check((await studioRows()) === 0, "edit studio: and the database still holds nothing");
+      check((await sheet.getByLabel(/is the only one/).count()) === 1, "edit studio: the only picture's ✕ is disabled and says why — a header never empties");
+      await sheet.getByRole("button", { name: "Save" }).click();
+      await waitRailImgs(org, 1);
+      check((await studioRows()) === 1, "edit studio: Save is what put the picture on the record");
+
+      /* ⚠ THE REPORTED BUG, AS A STANDING CHECK */
+      await org.getByRole("button", { name: "Edit studio", exact: true }).click();
+      await sheet.waitFor();
+      await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+      await sheet.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
+      check((await sheet.getByLabel(/^Remove photo/).count()) === 2, "edit studio: two pictures, two live ✕");
+      await sheet.getByLabel("Remove photo 1").click();
+      check((await sheet.getByLabel(/^Undo removing photo/).count()) === 1, "edit studio: ✕ marks it and offers ↩ — the picture is not gone");
+      check((await studioRows()) === 1, "⚠ THE BUG: a pressed ✕ has not touched the database");
+      await sheet.getByRole("button", { name: "Cancel" }).click();
+      check((await studioRows()) === 1, "⚠ THE BUG: and Cancel left the picture exactly where it was");
+      await org.getByRole("button", { name: "Edit studio", exact: true }).click();
+      await sheet.waitFor();
+      check((await sheet.getByLabel(/is the only one/).count()) === 1, "edit studio: reopening shows it still there, and still the only one");
+
+      /* the gallery opens a picture full size */
+      await sheet.getByLabel("Open picture 1").click();
+      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 1, "edit studio: pressing a picture opens it full size");
+      await org.getByRole("button", { name: "Close the picture" }).click();
+      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 0, "edit studio: and it closes again");
+      await shot("studio-header");
+
+      /* a second picture, saved — then a removal, saved */
+      await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+      await sheet.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
+      await sheet.getByRole("button", { name: "Save" }).click();
+      await waitRailImgs(org, 2);
+      check((await studioRows()) === 2, "edit studio: Save committed the second one too");
+      await org.getByRole("button", { name: "Edit studio", exact: true }).click();
+      await sheet.waitFor();
+      await sheet.getByLabel("Remove photo 1").click();
+      await sheet.getByRole("button", { name: "Save" }).click();
+      await waitRailImgs(org, 1);
+      check((await studioRows()) === 1, "edit studio: and Save is what removes one, too");
 
       /* the Media desk: the same two pictures as a desk */
       await org.goto(`${BASE}/business/${studioId}/media`);
@@ -345,14 +385,32 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check(await me.getByText("Header pictures", { exact: true }).isVisible(), "edit profile: the Header pictures section");
     check(await me.getByText("Mobile", { exact: true }).isVisible(), "edit profile: Name · Mobile · Profile picture · Header pictures, in that order");
     check((await mySheet.getByLabel("Add picture").count()) === 1, "edit profile: a user is offered ONE header picture");
+    const personRows = async () => {
+      const live = await rest(`profile_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
+      return Array.isArray(live) ? live.length : -1;
+    };
     await mySheet.getByLabel("Add picture").setInputFiles(FILE);
-    const userHeader = await waitRailImgs(me, 1).then(() => true).catch(() => false);
+    const userHeader = await mySheet
+      .getByLabel("Remove photo 1")
+      .first()
+      .waitFor({ timeout: 25000 })
+      .then(() => true)
+      .catch(() => false);
     if (userHeader) {
-      check(true, "edit profile: the one header picture is up, and the hero behind it shows it");
+      check(true, "edit profile: a staged picture appears in the sheet");
       check((await mySheet.getByLabel("Add picture").count()) === 0, "edit profile: and the tile is gone — one is the ceiling for a user");
+      check((await railImgs(me)) === 0 && (await personRows()) === 0, "edit profile: nothing on the page or in the database until Save");
       await shotMe("profile-edit");
-      await me.keyboard.press("Escape").catch(() => {});
-      await mySheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+      /* Cancel discards a staged ADD as completely as a staged removal */
+      await mySheet.getByRole("button", { name: "Cancel" }).click();
+      check((await personRows()) === 0, "edit profile: Cancel threw the staged picture away — nothing was uploaded");
+      await me.getByRole("button", { name: "Edit profile", exact: true }).click();
+      await mySheet.waitFor();
+      await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+      await mySheet.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
+      await mySheet.getByRole("button", { name: "Save" }).click();
+      await waitRailImgs(me, 1);
+      check((await personRows()) === 1, "edit profile: and Save is what puts one on the record");
       await shotMe("user-home");
 
       /* the Artist plan, granted — what makes a person an artist, and the ceiling ten */
@@ -367,22 +425,26 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await mySheet.waitFor();
       check((await mySheet.getByLabel("Add picture").count()) === 1, "artist edit profile: the Add tile is back — an artist holds ten");
       await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+      await mySheet.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
+      await mySheet.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 2);
       check((await rail(me).getAttribute("role")) === "region", "artist home: two pictures, so the header swipes");
-      const rowCount = await rest(`profile_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
-      check(Array.isArray(rowCount) && rowCount.length === 2, "profile_photos holds the two rows, in the person's folder");
+      check((await personRows()) === 2, "profile_photos holds the two rows, in the person's folder");
       await shotMe("artist-home");
-      await mySheet.getByLabel("Remove this picture").first().click();
+      /* a person's floor is 0 — `remove_my_gallery_photo` has no minimum */
+      await me.getByRole("button", { name: "Edit profile", exact: true }).click();
+      await mySheet.waitFor();
+      await mySheet.getByLabel("Remove photo 1").click();
+      check((await personRows()) === 2, "artist edit profile: a pressed ✕ has not touched the database");
+      await mySheet.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 1);
-      check((await railImgs(me)) === 1, "artist edit profile: ✕ takes a header picture out again");
-      await me.keyboard.press("Escape").catch(() => {});
-      await mySheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+      check((await personRows()) === 1, "artist edit profile: Save is what takes one out");
 
       /* the Profile tab: the same hero, as bare as Home's */
       await me.goto(`${BASE}/profile`);
       await me.getByTestId("my-hero").waitFor();
       check((await discImgs(me)) === 1 && (await railImgs(me)) === 1, "profile tab: the same disc and header");
-      check((await me.getByLabel("Change your photo").count()) === 0 && (await me.getByLabel("Remove this picture").count()) === 0, "profile tab: and the same bare hero — no ＋, no ✕");
+      check((await me.getByLabel("Change your photo").count()) === 0 && (await me.getByLabel(/^Remove photo/).count()) === 0, "profile tab: and the same bare hero — no ＋, no ✕");
       /* the person's own PUBLIC view is what a visitor sees, and nothing else */
       await me.goto(`${BASE}/person/${userId}`);
       await me.getByRole("link", { name: /This is you/ }).waitFor();
