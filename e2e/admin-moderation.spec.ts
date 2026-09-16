@@ -255,11 +255,17 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await expect(admin.getByText(`${studioName} verified — the owner subscribes it to go live`)).toBeVisible({ timeout: 15_000 });
 
     // the badge is on; where the studio stands, in the database's own sentence,
-    // and the one thing to do about it — the real door is Cashfree's mandate
+    // and the one thing to do about it — the real door is Cashfree's mandate.
+    // ⚠ ONE CARD PER STUDIO since 15 Sep 2026: the hub's card wears the tick and
+    // carries Subscribe, and the standing moved to the studio's own home.
     await owner.goto("/business");
-    await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Verified");
+    await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
+    const hubCard = owner.getByTestId("studio-card").filter({ hasText: studioName });
+    await expect(hubCard.getByLabel("Verified")).toBeVisible();
+    await expect(hubCard.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
+    await owner.goto(`/business/${studioId}`);
     const strip = owner.getByTestId("studio-subscription");
-    await expect(strip.getByText("NOT PUBLIC", { exact: true })).toBeVisible();
+    await expect(strip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     await expect(strip).toContainText("Each studio has its own subscription");
     await expect(strip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
 
@@ -274,7 +280,8 @@ test.describe.serial("the admin panel: businesses and reports", () => {
 
     // and the studio is on Discover the moment its subscription is
     await owner.goto("/business");
-    await expect(owner.getByTestId("studio-subscription").getByText("PUBLIC", { exact: true })).toBeVisible();
+    await expect(owner.getByTestId("studio-live")).toBeVisible();
+    await owner.goto(`/business/${studioId}`);
     await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
 
     // the studio is findable the way a dancer finds it, with nothing in between
@@ -373,12 +380,15 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await expect(owner.getByText(/Two people say these photos belong to another studio/)).toBeVisible();
 
     // the organization itself is untouched — this is the whole point of the
-    // screen. Since 11 Sep 2026 a VERIFIED organization's Home carries no
-    // standing card (the user: the studio hub is the next step, not a box on
-    // Home) — the tick on its own name is the whole verified state.
+    // screen. ⚠ AND THE TICK IS THE STUDIO'S, NOT THE ORGANIZATION'S (11 Sep
+    // 2026: nobody reviews an organization any more, so its Home wears no badge
+    // and no standing card). What still wears the badge is the STUDIO — being
+    // taken off Discover is a moderation decision, not the withdrawal of a
+    // verification, and the two must not be confused.
     await owner.goto("/");
-    await expect(owner.getByLabel("Verified").first()).toBeVisible();
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
+    await owner.goto("/business");
+    await expect(owner.getByTestId("studio-card").filter({ hasText: studioName }).getByLabel("Verified")).toBeVisible();
   });
 
   test("answering the report tells the reporter, in the admin's own words", async () => {

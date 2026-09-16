@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { ToolGrid, type Tile } from "@/features/home/components/home-kit";
 import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
-import { HeaderRemove } from "@/features/profiles/components/HeaderRemove";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { EyeIcon, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
 import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
-import { PROOF_MAX } from "@/lib/media/proof";
+import type { ProofPhoto } from "@/lib/media/proof";
 import type { PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { DeckItem } from "@/types/home";
@@ -29,14 +27,20 @@ import type { Tenant } from "@/types/tenant";
  *
  *  THE HERO'S TWO PICTURES (15 Sep 2026, the user: "I need a profile picture
  *  for the studio"): the round disc is the studio's OWN picture —
- *  `tenants.photo_path`, set right here by the ＋ on its rim, by the owner or a
- *  trainer — and the header is the photos of its space it showed DanceOS for
- *  the badge, which are its header pictures now. The owner adds to them from
- *  the Add tile and takes one away from its ✕; the database keeps at least one
- *  ("make sure he can't delete all"), so the ✕ is not drawn on the last. The
- *  Media tool is the same pictures as a desk. Nothing here is a second
- *  implementation: the hero is `IdentityHero`, the shelf is `TodayShelf`, the
- *  grid is Home's `ToolGrid`. */
+ *  `tenants.photo_path` — and the header is the photos of its space it showed
+ *  DanceOS for the badge, which are its header pictures now.
+ *
+ *  ⚠ BOTH ARE CHANGED IN THE PENCIL, NOT ON THE HERO (16 Sep 2026). The user
+ *  marked the ✕ on the header and the ＋ on the disc: "the update image option
+ *  should be inside the edit profile … for cover photos 1–10 images, profile
+ *  only one pic … in case of a studio the user submits at least 5 images, he
+ *  can delete but can't delete all — 1 will always remain, order doesn't
+ *  matter." So the hero shows them and `BusinessEditSheet` edits them, and the
+ *  min-one rule is the database's own (`remove_org_proof_photo` refuses the
+ *  last), said in the grid as a disabled ✕ rather than as a press that can only
+ *  be refused. The Media tool is the same pictures as a desk. Nothing here is a
+ *  second implementation: the hero is `IdentityHero`, the shelf is
+ *  `TodayShelf`, the grid is Home's `ToolGrid`. */
 export function StudioHome({
   tenant,
   /** the studio's own picture — `tenants.photo_path`, served from the public bucket */
@@ -45,9 +49,8 @@ export function StudioHome({
   canEditPhoto,
   /** the photos of its space, as shown to DanceOS — signed URLs */
   header,
-  /** the owner — the one who adds to the header and takes from it */
-  canEditHeader,
-  /** the owner's own id: the folder in the private bucket a new picture goes into */
+  /** the owner's own id: the folder in the private bucket a new picture goes
+   *  into. Null for a trainer, who may look at the header but not change it. */
   ownerId,
   /** the studio as its Edit sheet reads it — About, Since, the number, the links,
    *  the pin; null for anybody but the owner, and the pencil is not drawn */
@@ -66,8 +69,7 @@ export function StudioHome({
   tenant: Tenant;
   photo: string | null;
   canEditPhoto: boolean;
-  header: Array<{ id: string; path: string; url: string }>;
-  canEditHeader: boolean;
+  header: ProofPhoto[];
   ownerId: string | null;
   editable?: PublicTenant | null;
   subscription?: StudioSubscriptionState | null;
@@ -80,15 +82,16 @@ export function StudioHome({
   const RG = gradientOf(tenant.name);
   const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
   const roomsWords = `${roomCount} room${roomCount === 1 ? "" : "s"}`;
-  const shots: HeroShot[] = header.map((p, i) => ({
-    key: p.id,
-    src: p.url,
-    alt: `Header picture ${i + 1} of ${tenant.name} — its space`,
-    signed: true,
-    /* the last picture has no ✕: the database refuses to empty a header, so a
-       control that can only ever be refused is not offered */
-    corner: canEditHeader && header.length > 1 ? <HeaderRemove target={{ kind: "studio", id: p.id }} path={p.path} /> : undefined,
-  }));
+  /* a photo whose URL could not be signed is not a square the rail can draw —
+     it is still one of the studio's pictures, and the Edit sheet still counts it */
+  const shots: HeroShot[] = header
+    .filter((p) => p.url)
+    .map((p, i) => ({
+      key: p.id,
+      src: p.url as string,
+      alt: `Header picture ${i + 1} of ${tenant.name} — its space`,
+      signed: true,
+    }));
 
   return (
     <div
@@ -130,20 +133,13 @@ export function StudioHome({
           styleAria={(s) => `${s} — a style this studio teaches`}
           avatar={photo}
           avatarAlt={tenant.name}
-          avatarPicker={canEditPhoto ? <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" overlay /> : undefined}
           shots={shots}
-          addTile={
-            canEditHeader && ownerId && header.length < PROOF_MAX ? (
-              <PhotoPicker owner={{ kind: "studioHeader", id: tenant.id, orgId: ownerId }} hasPhoto={false} label="Add a header picture" tile />
-            ) : undefined
-          }
-          addLabel="Add a header picture"
-          /* the corner (10613, 15 Sep 2026): the owner's pencil — About, Since,
-             the number, the links, the pin — and for everyone on the team the
-             eye, the page as a stranger sees it */
+          /* the corner (10613, 15 Sep 2026): the owner's pencil — the pictures,
+             About, Since, the number, the links, the pin — and for everyone on
+             the team the eye, the page as a stranger sees it */
           corner={
             <>
-              {editable ? <BusinessEditButton tenant={editable} corner /> : null}
+              {editable ? <BusinessEditButton tenant={editable} corner photos={header} ownerId={ownerId} canEditPhoto={canEditPhoto} /> : null}
               <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
                 <EyeIcon />
               </Link>

@@ -4,11 +4,16 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
 import { setTenantLocationAction } from "@/features/geo/server-actions/location";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import { ProofPhotos } from "@/features/orgs/components/ProofPhotos";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
+import { PROOF_MAX, PROOF_MIN, type ProofPhoto } from "@/lib/media/proof";
 import type { PublicTenant } from "@/types/publicProfile";
-import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { ProfileDisc } from "./HeroRail";
+import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, gradientOf, sheetBtn } from "./profile-kit";
 
 /** The business's own Edit sheet — the prototype has ONE editor for a profile
  *  (11364, "one editor, and it is Edit profile"), and a studio's page is the
@@ -16,10 +21,36 @@ import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, sh
  *  (≤ 220, the sheet's own counter), the founding year ("Since 2016", 10691),
  *  the number the Call button dials (10879) and the links rail (10760). Saved
  *  through the one owner-only door, `update_tenant_profile`, which re-checks
- *  ownership inside and validates what a form cannot be trusted to. */
+ *  ownership inside and validates what a form cannot be trusted to.
+ *
+ *  AND THE PICTURES, SINCE 16 SEP 2026 (the user: "the update image option
+ *  should be inside the edit profile"). They used to be controls on the hero —
+ *  a ＋ on the disc's rim and a ✕ per header picture, one square at a time. Here
+ *  the whole set is a grid, so "one always stays" can be a disabled ✕ with a
+ *  reason on it instead of a press the database refuses. A STUDIO's header
+ *  pictures are the photos it showed DanceOS (`ProofPhotos`, {PROOF_MIN}–
+ *  {PROOF_MAX}, and the database keeps the last one); an ARTIST PAGE's header
+ *  is its OWNER's own pictures, so those are edited in Edit profile on the
+ *  person — this sheet draws the disc for both and the header for a studio. */
 
 
-export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; onClose: () => void }) {
+export function BusinessEditSheet({
+  tenant,
+  photos = [],
+  ownerId = null,
+  canEditPhoto = false,
+  onClose,
+}: {
+  tenant: PublicTenant;
+  /** a studio's header pictures, as this viewer may read them */
+  photos?: ProofPhoto[];
+  /** the owner's own id — the folder in the private bucket a new one goes into;
+   *  null hides the header block, because only the owner may add to it */
+  ownerId?: string | null;
+  /** an owner or a trainer — the pair the storage policy on `tenants/{id}` admits */
+  canEditPhoto?: boolean;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const [about, setAbout] = useState(tenant.about ?? "");
   const [founded, setFounded] = useState(tenant.foundedYear ? String(tenant.foundedYear) : "");
@@ -88,7 +119,40 @@ export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; o
   return (
     <Sheet label="Edit business" onClose={onClose} maxHeight="88vh">
       <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 12 }}>Edit {tenant.type === "studio" ? "studio" : "artist page"}</div>
-      <label style={fieldLabel}>
+
+      {/* ── THE PICTURES (16 Sep 2026) ────────────────────────────────────────
+          The round one first, because it is the one everybody sees on a card;
+          then the header, which is a set and needs room to be one. */}
+      <div style={fieldLabel}>Profile picture</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <ProfileDisc name={tenant.name} grad={gradientOf(tenant.name)} photo={photoUrl(tenant.photoPath)} photoAlt={`${tenant.name} — profile picture`} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 8, lineHeight: 1.45 }}>
+            One picture — the round one on {tenant.name}&rsquo;s page and on its Discover card.
+          </div>
+          {canEditPhoto ? (
+            <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" />
+          ) : (
+            <div style={{ fontSize: 10.5, color: MUTED }}>The owner or a trainer changes this.</div>
+          )}
+        </div>
+      </div>
+
+      {/* a studio's header IS its verification photos; an artist page's header
+          belongs to the PERSON who owns it, and is edited on their own profile */}
+      {tenant.type === "studio" && ownerId ? (
+        <>
+          <div style={{ ...fieldLabel, marginTop: 14 }}>Header pictures</div>
+          <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 8, lineHeight: 1.45 }}>
+            {PROOF_MIN}–{PROOF_MAX}, swiped across the top of the page — and the same photos a DanceOS admin checks to
+            verify the studio. <b style={{ color: INK }}>One always stays</b>: to replace your only picture, add the new
+            one first. The order does not matter.
+          </div>
+          <ProofPhotos orgId={ownerId} tenantId={tenant.id} initialPhotos={photos} compact />
+        </>
+      ) : null}
+
+      <label style={{ ...fieldLabel, marginTop: 14 }}>
         About
         <textarea value={about} maxLength={220} onChange={(e) => setAbout(e.target.value)} rows={3} placeholder={tenant.type === "studio" ? "Where the city comes to move…" : "Movement is a language…"} style={{ ...fieldInput, resize: "none", lineHeight: 1.5 }} />
         <span style={{ display: "block", textAlign: "right", fontSize: 10.5, color: about.length > 200 ? "#F59E0B" : MUTED, marginTop: 3 }}>{about.length}/220</span>
@@ -188,7 +252,19 @@ export function BusinessEditSheet({ tenant, onClose }: { tenant: PublicTenant; o
  *  island. Two dresses: the cell in the public page's action row, and — since
  *  15 Sep 2026 — the pencil on the hero's corner of a studio's own home, the
  *  same chip the Profile tab's Edit wears. */
-export function BusinessEditButton({ tenant, corner = false }: { tenant: PublicTenant; corner?: boolean }) {
+export function BusinessEditButton({
+  tenant,
+  corner = false,
+  photos = [],
+  ownerId = null,
+  canEditPhoto = false,
+}: {
+  tenant: PublicTenant;
+  corner?: boolean;
+  photos?: ProofPhoto[];
+  ownerId?: string | null;
+  canEditPhoto?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -201,7 +277,7 @@ export function BusinessEditButton({ tenant, corner = false }: { tenant: PublicT
           Edit
         </button>
       )}
-      {open ? <BusinessEditSheet tenant={tenant} onClose={() => setOpen(false)} /> : null}
+      {open ? <BusinessEditSheet tenant={tenant} photos={photos} ownerId={ownerId} canEditPhoto={canEditPhoto} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }

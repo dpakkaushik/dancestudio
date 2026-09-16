@@ -1,6 +1,177 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (15 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (16 Sep 2026) — replaced on every push (Rule 13)
+
+> ### ⚠ A STUDIO COULD BE MOVED ACROSS THE CITY BY SOMEBODY SCROLLING (16 Sep 2026)
+> The user, on their own Edit-profile sheet: *"when I edit profile, while
+> scrolling, the location changes — just show the location text and the map, and
+> only when the user clicks Change address does the change work."* That is a real
+> data-loss bug, not a preference, and worth reading twice:
+> * `GoogleMapPicker` ran on **`gestureHandling: "greedy"`**, which means ONE
+>   FINGER ON THE MAP PANS THE MAP. The map sits in the middle of a scrolling
+>   sheet, so a thumb dragged down the sheet to reach Save panned the map
+>   instead of the page.
+> * A pan fires Google's `idle`, which is the picker's "the map settled
+>   somewhere new" signal → reverse-geocode → `onChange`.
+> * And `BusinessEditSheet`'s `onChange` is `savePlace`, which **writes
+>   `set_tenant_location` immediately** — deliberately, because a pin somebody
+>   has visibly placed should not need a second press to commit. Correct for a
+>   deliberate gesture; catastrophic for an accidental one.
+> * So: scroll past the map → the studio's saved coordinates, area and city are
+>   overwritten with wherever the map happened to land, silently, and Discover
+>   measures from there afterwards.
+>
+> **The fix is a lock, not a smaller map.** `LocationPicker` now opens LOCKED for
+> any business that already stands somewhere (`value.lat != null`): the address
+> it holds, the map to look at (`gestureHandling: "none"`, so the page scrolls
+> under the finger and the `idle` listener is deaf), and one **Change address**
+> button. Armed, it is exactly what it was — the Places search, Use my location,
+> the draggable map — and **Done** locks it again. A picker with NO point yet (a
+> studio being created, an event being written) opens armed, because placing one
+> is the whole reason it is on the screen, and the toggle is not drawn until
+> there is something to protect. Driven for real: `shoot-location.js` presses
+> Change address before it can type, and still saves a pin off the centroid.
+>
+> ### EVERY PICTURE IS CHANGED IN THE EDIT SHEET, AND NOWHERE ELSE (16 Sep 2026)
+> The user, with the ✕ on a header square and the ＋ on the profile disc circled
+> on their own studio home: *"the update image option should be inside the edit
+> profile. For cover photos 1–10 images, profile only one pic, user can add /
+> delete inside update profile. In case of a studio the user submits at least 5
+> images which will be shown here — he can delete but can't delete all, 1 will
+> always remain. Order doesn't matter."*
+> * **The hero has no picture controls at all now.** `HeroRail` lost `addTile`
+>   and `HeroShot.corner`; `ProfileDisc` lost `picker`; `IdentityHero` lost
+>   `avatarPicker` / `addTile` / `addLabel`. Not left as unused props — a dead
+>   prop is a lie to the next reader. Seven pages lost their ＋ and ✕ in one go.
+> * **`EditProfileSheet`** already carried Profile picture + Header pictures, so
+>   a person's half needed nothing: the pencil on Home or the Profile tab is the
+>   one door.
+> * **`BusinessEditSheet` gained the pictures block** — the disc (`ProfileDisc`
+>   + `PhotoPicker`, owner or trainer) and, for a STUDIO, the header grid
+>   (`ProofPhotos`, 5–10, the same component the verification form and the Media
+>   desk draw). An ARTIST PAGE's header belongs to the PERSON who owns it, so it
+>   is edited on their own profile and this sheet draws only the disc for one.
+> * **"One always stays" is the database's rule** (`remove_org_proof_photo`
+>   refuses the last), and the grid says it as a DISABLED ✕ with the reason on
+>   it rather than a press that can only be refused. **Order doesn't matter** —
+>   the user settled the reorder question that was on the backlog; insertion
+>   order stands and that backlog row is closed.
+> * **The public view of yourself lost its photo chip too** (`PublicPersonPage`).
+>   That page is what the eye in the tab bar opens — "what a user will see when
+>   he clicks over a studio or artist" — so an edit control on it was the one
+>   thing on the screen no visitor would ever see.
+>
+> ### THE "MANAGING {STUDIO}" STRIP (16 Sep 2026)
+> The user: *"isn't it unnecessary — name, location etc already there below the
+> profile image? Exit studio also unnecessary, the phone's back button works. Is
+> it required for any purpose?"*
+> * **On the studio's own home they are exactly right, and it is gone there.**
+>   `/business/{id}` IS the identity hero: the name at display size, the place,
+>   the rooms, the picture. The strip was the same sentence twice and the widest
+>   thing on the screen. `AppChrome`'s match is `^/business/{id}/.+` now.
+> * **On the DESKS it stays, and it earns it.** `/business/{id}/classes`,
+>   `/calendar`, `/students`, `/rooms`, `/staff`, `/earnings`, `/media` all wear
+>   a tool hero that names the TOOL and nothing that names the studio — and an
+>   organization runs several. Without the strip the only thing between
+>   publishing a class here and publishing it into the studio next door is
+>   memory.
+> * **The location came off the line** — what an address cannot tell you is
+>   WHICH of your studios this register belongs to, and the name can.
+> * **Exit studio stays, and it is not the back button in different clothes:**
+>   back retraces (Add class → the register → the home → the hub is three
+>   presses), and in the installed TWA a notification deep-link opened straight
+>   onto a desk has no history to retrace at all. One press to the studio list,
+>   from anywhere inside the workspace. Say the word and it is one line to
+>   remove.
+>
+> ### AND THREE PRE-EXISTING REDS THE SUITE FOUND (16 Sep 2026)
+> `happy-path` segment 1 had been broken since the 15 Sep hub re-cut and nobody
+> re-ran it — and because the suite is `describe.serial`, THE OTHER THIRTEEN
+> SEGMENTS HAD NOT RUN EITHER. Three breaks, each hidden behind the one before:
+> 1. It still asserted the OLD hub — a `studio-verification` strip reading
+>    "Verified" after approval, and a `studio-subscription` strip on the hub
+>    saying NOT PUBLIC. One card per studio removed both. Repaired to what is
+>    true: the card wears the tick and offers Subscribe, and the standing lives
+>    on the studio's own home, where `StudioSubscriptionStrip` now carries the
+>    `studio-subscription` test id it inherited.
+> 2. Then it clicked the studio's name **from the Profile tab** and waited for
+>    `/business/{id}`. The Profile tab's "Your studios" row is a different door
+>    and has always gone straight to `/business/{id}/classes`, so the wait could
+>    never resolve — **a fifteen-minute timeout, not a failed assertion**, which
+>    is the expensive kind. It starts at the hub and presses the card now, which
+>    is the door the comment was describing all along.
+> 3. Then segment 11 asked the person page for a style tile labelled exactly
+>    `Kathak`. `PublicPersonPage` moved onto `IdentityHero` on 15 Sep, and the
+>    hero takes a `styleAria` — the label has been "Kathak — a style … dances"
+>    ever since. Nothing was broken in the product; the assertion was describing
+>    a page that stopped existing a day earlier.
+>
+> **This file's own lesson again, and sharper: a proof is only true the last time
+> it ran, AND A SERIAL SUITE ONLY TELLS YOU ABOUT ITS FIRST FAILURE.**
+> `shoot-hero.js` was updated on 15 Sep and the e2e was not; fixing break 1 is
+> the only reason anybody reached 2, and fixing 2 the only reason anybody
+> reached 3. NEXT TO DO #0z: run the whole suite, not the spec you touched.
+>
+> ### ⚠ AND THE OTHER SPECS HELD A REAL BUG: THE ADMIN COULD NOT SEARCH THE QUEUE BY STUDIO NAME (16 Sep 2026)
+> With `happy-path` green, the other seven specs were run — they had not been
+> since 14 Sep — and four were red. **All four were confirmed pre-existing by
+> stashing this session's work and re-running them on `fa390f6`: the same four
+> failed.** Three were stale tests; one was the product.
+> * **THE BUG.** `findVerificationRequestsPage` filtered the queue's search on
+>   `profiles.full_name` ALONE, while the box's placeholder says "Search by
+>   studio or organization…" and **the comment directly above the code claimed
+>   it searched the studio's name**. So an admin typing a studio's name got an
+>   empty queue for a request sitting right there. It has been wrong since the
+>   desk was paged on 11 Sep. The comment is why it survived: the code was read
+>   as documented rather than as written.
+>   **The fix, and why it is not one `or`:** PostgREST scopes an embedded filter
+>   to ONE referenced table, so "the studio's name OR the organization's" cannot
+>   be a single clause across `tenants` and `profiles`. Both ids ARE plain
+>   columns on `org_verification_requests`, so the names are resolved to ids
+>   first (two indexed reads — `pg_trgm` on both names since 20260913090000) and
+>   the `or` is over columns. A term matching neither is an impossible filter,
+>   never a dropped search that hands back the whole queue.
+> * The three stale ones: `admin-moderation` still asserted the pre-15-Sep hub
+>   (a `studio-subscription` strip on `/business` saying NOT PUBLIC) and the
+>   ORGANIZATION's own tick on Home (the badge moved to the studio on 11 Sep);
+>   and `paid-webhook`'s mandate story built a studio and called `subscribe()`
+>   on it — which 14 Sep made illegal ("the badge comes first"), so the service
+>   role stamps the badge now, the way the proof scripts do.
+>
+> ### ⚠ AND THEN A SECOND ONE, WORSE: AN ADMIN COULD NOT PUT A STUDIO BACK ON DISCOVER (16 Sep 2026)
+> With those fixed, one red was left and it survived a serial run, so it was not
+> the busy machine: `admin-moderation`'s "putting it back is one press". It was
+> not.
+> * `BusinessesDesk` decided whether to offer **Put back on Discover** with
+>   `!b.ownerVerified` — **the ORGANIZATION's tick**. Since 14 Sep nobody reviews
+>   an organization, so that column is null for every organization created since,
+>   and the button was never drawn. In its place the desk printed a sentence about
+>   a rule that no longer exists: *"Its organization is not verified — verify that
+>   first."*
+> * So **the reversible sanction was not reversible**. An admin could take a
+>   studio off Discover over a report — which RLS also takes its public page down
+>   with — and then had no way back from the panel. The only route left was a
+>   direct database write.
+> * The gate is the STUDIO's own badge plus a live plan, which is what
+>   `guard_tenant_visibility` actually enforces, so the screen now says what the
+>   database will refuse. One line, and the sentence beside it rewritten.
+> * **Worth carrying forward: `tenant_owner_verified(uuid)` was REDEFINED rather
+>   than renamed on 14 Sep** (this file records that, and records that one
+>   redefinition carried twelve listing rules with it). What it could not carry
+>   was a TypeScript field of the same intent read by a React component — and
+>   nothing failed loudly, because a missing button is not an exception.
+>
+> **After all of it: the whole suite is 50/50 on one worker (8.6 min).** Four
+> workers is where this machine's own lesson bites — a different test fails each
+> run, always a timeout or a 5-second `toHaveURL` on a page that is merely slow.
+> Run `--workers=1` before believing a red.
+>
+> Verified: typecheck 0 · lint 0 · `next build` green · `shoot-hero.js` **84/84**
+> (re-cut to drive the SHEETS, and asserting the hero offers nothing) ·
+> `shoot-location.js` green through the new lock · `shoot-new-studio.js` 21/21
+> unchanged (a new studio has no point, so its picker opens armed).
+
+## LAST SESSION (15 Sep 2026) — history
 
 > ### ✅ `20260915090000_header_pictures` IS APPLIED (15 Sep 2026, Rule 9: RLS)
 > Applied from this session through `scripts/db-push.ps1` — the FIRST time the
@@ -1059,6 +1230,24 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0z. **RUN THE WHOLE SUITE, ON ONE WORKER, AND RUN IT OFTEN.**
+```
+   npx playwright test --reporter=line --workers=1
+```
+   16 Sep 2026: the suite had not been run whole since 14 Sep, and it was hiding
+   **six** things — three stale assertions AND TWO REAL PRODUCT BUGS (an admin
+   could not search the verification queue by studio name; an admin could not
+   put a studio back on Discover), plus one locator that only clashes under
+   parallelism. They were invisible because `happy-path` is
+   `describe.serial`: **a serial suite tells you about its first failure and
+   nothing else**, so one stale line from 15 Sep kept thirteen segments and,
+   through them, two live defects out of sight for two days.
+   ⚠ **Four workers on this machine is not evidence** (the 11 Sep lesson, seen
+   again): a different test failed each parallel run — a 5-second `toHaveURL` on
+   a page that was merely slow, a sheet that took longer than 5 s to open, a
+   120-second test timeout — and all of them passed on one worker. Serial takes
+   8.6 minutes and answers the question.
+
 0. **~~APPLY `20260915090000_header_pictures`~~ — DONE 15 Sep 2026, with its
    follow-up `20260915100000` (the anon GRANT), both applied from the agent's
    session through `scripts/db-push.ps1` under the new allow rule in
@@ -1272,6 +1461,30 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE PICTURES MOVED INTO THE EDIT SHEETS, THE MAP STOPPED MOVING ITSELF, AND
+  THE STUDIO STRIP CAME OFF THE STUDIO'S OWN HOME — 16 Sep 2026, no step
+  number ⚠ (Rule 9: the map bug WROTE to the database) — BUILT AND DRIVEN, no
+  migration.** Three things the user found on their own studio home. **(1) A
+  real bug:** the location picker's map ran on greedy gestures inside a
+  scrolling sheet, and `BusinessEditSheet` saves a moved pin immediately — so
+  scrolling past the map silently rewrote a studio's coordinates, area and
+  city. The picker opens LOCKED now for a business that already has a point,
+  and Change address is the only way in. **(2)** Every picture control left the
+  hero: the ＋ on the disc, the Add tile and the per-picture ✕ are gone from all
+  seven pages and live in `EditProfileSheet` (a person) and `BusinessEditSheet`
+  (a studio's disc + its 5–10 header photos, with the database's min-one rule
+  drawn as a disabled ✕). **(3)** The "Managing {studio}" strip is off the
+  studio's own home — the hero says all of it — and is the NAME alone on the
+  desks, where nothing else identifies which studio you are in.
+  **And then the suite was run whole for the first time since 14 Sep, which
+  turned up TWO MORE LIVE BUGS in the admin panel, both proven pre-existing by
+  stashing this session's work and re-running on `fa390f6`:** the verification
+  queue could not be searched by a studio's name (the filter matched only the
+  organization's, while the placeholder and the comment above the code both
+  said otherwise), and **an admin who took a studio off Discover could not put
+  it back** (the button was gated on the organization's tick, which stopped
+  existing on 14 Sep). Both fixed. The whole suite is 50/50 on one worker.
+  Detail at the top.
 - **THE HEADER AND THE DISC — every profile page on one hero, 15 Sep 2026, no
   step number ⚠ (Rule 9, RLS) — BUILT, BOTH MIGRATIONS APPLIED, 44/44 driven
   for real.** The user split the hero in two: the header pictures
@@ -4539,6 +4752,8 @@ Home. **Do not "restore parity" on these.**
 | C1 | Stats is the third tab (19313) | **Stats is a tile** in every Home's tool grid (`/stats`; on a studio's home `/stats?tab=charts&seg=studio`) and `/stats` is a drill page | "Remove stats from the navigation menu, keep it as a tab on the home page along with calendar, classes." |
 | C2 | Profile is the fifth tab (19313), and Edit lives on it | **The fifth slot is an eye** — the account's page as a stranger sees it (an organization's first studio, an artist's page, a user's person page), computed per account in the layout. **Edit profile is a pencil on Home's hero**, opening the Profile tab's own sheet; a studio's home carries the owner's pencil and the team's eye the same way | "Remove the profile as well and make an eye icon which will show the profile view." And: "where is the edit profile button?" |
 | C3 | Five tabs | **Four**: Home · Discover · Inbox · 👁 | Follows from C1 and C2. `/profile` stays a route (the gear opens it with `?settings=1`) — Rule 14. |
+| C4 | The ＋ that changes a picture sits on the square's own corner (10600), and the Photos rail carries a ＋ Add tile with a × per picture (10979-10981) | **No picture control on a hero anywhere.** The disc and the header show; `EditProfileSheet` (a person) and `BusinessEditSheet` (a studio) change them — the disc, and the header as a GRID | 16 Sep 2026, the user, circling both on their own studio home: *"the update image option should be inside the edit profile."* A grid can also say the rules — "one always stays" is a disabled ✕ with its reason on it, where a one-square-at-a-time rail could only offer a press the database refuses |
+| C5 | The shell's "Managing {studio}" strip draws on every `/business/*` route (19267-19294) | **Not on `/business/{id}` itself**, where the identity hero already carries the name, the place, the rooms and the picture; on the deeper desks it is the **name alone**, no address, and keeps `Exit studio ›` | 16 Sep 2026, the user: *"isn't it unnecessary — name, location etc already there below the profile image?"* On the studio's home, exactly right. On a desk the tool hero names the TOOL and nothing names the studio, and an organization runs several — so the name stays, and the address goes, because an address is not what tells you which register this is |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -4559,7 +4774,9 @@ nothing to lift.
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
 | **The chrome re-cut, what it left (15 Sep 2026):** a **studio cannot be renamed** from its home — `update_tenant_profile` takes no `p_name`, so the pencil edits About, Since, phone, links and the pin but not the name (a person's name IS editable); an **organization with several studios** gets the eye pointing at its FIRST studio (a chooser is a decision); the eye on the bar is a door, so the **Profile and Stats pages have no lit tab** while open — they read as drill pages with the back chip | 19313-19396; S_profiletab 10613 | a `p_name` on `update_tenant_profile` (drop + recreate — the overload lesson); a studio chooser if an organization asks |
-| **The header slice, what it left (15 Sep 2026):** the **crew page** still draws its own 206 square rather than `IdentityHero` (a crew has a photo and no header pictures — a decision about what a crew's header would show); header pictures cannot be **reordered** (insertion order stands; the Profile tab's ▲▼ pattern is the shape); an **organization's Home** has an empty header (it is not a place — decision (c)); a **trainer** may change a studio's disc but not its header, because the files go into the OWNER's folder in the proof bucket (a per-studio folder would let a trainer add — needs a storage-policy change); the header is the **206 square**, not a full-width banner, by the user's choice — `HERO_HEAD_W/H` are the tweak; no **proof script** yet for the min-one rule or the public read policy (`shoot-hero.js` covers both from the browser) | S_profiletab 10577, 11093 | a crew decision; a reorder slice; a per-studio proof folder if a trainer ever needs to add; a `.ps1` proof after the migration lands |
+| **The header slice, what it left (15 Sep 2026, re-read 16 Sep):** the **crew page** still draws its own 206 square rather than `IdentityHero` (a crew has a photo and no header pictures — a decision about what a crew's header would show); ~~reordering~~ **settled 16 Sep 2026 — the user: "order doesn't matter"**, so insertion order stands and there is nothing to build; an **organization's Home** has an empty header (it is not a place — decision (c)); a **trainer** may change a studio's disc but not its header, because the files go into the OWNER's folder in the proof bucket (a per-studio folder would let a trainer add — needs a storage-policy change), and since 16 Sep the header block simply is not drawn in a trainer's Edit sheet; the header is the **206 square**, not a full-width banner, by the user's choice — `HERO_HEAD_W/H` are the tweak; no **proof script** yet for the min-one rule or the public read policy (`shoot-hero.js` covers both from the browser) | S_profiletab 10577, 11093 | a crew decision; a per-studio proof folder if a trainer ever needs to add; a `.ps1` proof after the migration lands |
+| **The pictures moved into the Edit sheets (16 Sep 2026), what that left:** a studio's header can be added to from **three** places now — the pencil, the Media desk and the verification form — which is one component (`ProofPhotos`) in three frames rather than three implementations, but it is still three doors to one job and worth collapsing if the user ever reads it as clutter; the Edit sheets have **no drag-to-reorder and no cropper** (`object-fit: cover`, and the user settled the order question); a person's header grid has **no min-one rule**, deliberately — only a studio's header is evidence somebody else checks | S_profiletab 11364; DosCropper 6604 | the cropper with the posters slice; the rest is decision (c) |
+| **The workspace strip, what it left (16 Sep 2026):** `Exit studio ›` is kept on the desks over the user's objection, with the reason written at the top of this file (back retraces, and a TWA deep-link has nothing to retrace) — **one line in `WorkspaceStrip` to remove if they say so again**; the strip still costs a server action per desk visit to learn the studio's name, which is a round trip for one word | 19267-19294 | the user's call; the name could ride the layout instead of a client fetch |
 | **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |

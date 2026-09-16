@@ -73,7 +73,7 @@ export function StudioSubscriptionStrip({
     });
 
   return (
-    <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 12 }}>
+    <div data-testid="studio-subscription" style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: MUTED }}>SUBSCRIPTION</span>
         <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 5, background: `${standing.tone}22`, color: standing.tone }}>

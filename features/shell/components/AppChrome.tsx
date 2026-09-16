@@ -221,8 +221,17 @@ export function AppChrome({
   /* the eye is a door out of the bar, never a lit tab — the page it opens is a drill */
   const bar = publicViewHref ? [...TAB_SET, { label: "Public view", href: publicViewHref }] : TAB_SET;
   /* a studio is a WORKSPACE you enter from Home (19267): every route under
-     /business/[tenantId] is inside one, and the strip is the way back out */
-  const workspaceId = pathname.match(/^\/business\/([0-9a-f-]{36})(?:\/|$)/i)?.[1] ?? null;
+     /business/[tenantId] is inside one, and the strip is the way back out.
+     ⚠ NOT ON THE STUDIO'S OWN HOME (16 Sep 2026, the user: "isn't it
+     unnecessary — name, location etc already there below the profile image?").
+     Right: `/business/{id}` IS the identity hero, which carries the name, the
+     place, the rooms and the picture at full size, so the strip was the same
+     sentence twice and the widest thing on the screen. Every DEEPER route —
+     the register, the calendar, Students, Rooms, the Team — has a tool hero
+     that names the TOOL and nothing that names the studio, and an organization
+     runs several, so there the strip is the only thing standing between
+     publishing a class here and publishing it into the studio next door. */
+  const workspaceId = pathname.match(/^\/business\/([0-9a-f-]{36})\/.+/i)?.[1] ?? null;
 
   /* theme lives on <html> (set pre-paint by the root layout's boot script) and is
      persisted under the prototype's key — the <html> class IS the store, so the

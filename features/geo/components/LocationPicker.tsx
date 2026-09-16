@@ -46,7 +46,21 @@ export interface PickedLocation {
  *  a reason to spend one — a picker that geocodes on mount costs a call for
  *  every person who opens the sheet and closes it again. The stored `area` is
  *  what the business already says about itself, and it is what the panel shows
- *  until somebody actually moves the pin. */
+ *  until somebody actually moves the pin.
+ *
+ *  ⚠ AND NOTHING MOVES UNTIL SOMEBODY ASKS FOR IT TO (16 Sep 2026). The user:
+ *  *"when I edit profile, while scrolling, the location changes — just show the
+ *  location text and the map, and only when the user clicks Change address does
+ *  the change work."* They had found a real one: the map ran on greedy
+ *  gestures, so a thumb scrolling the sheet past it dragged the map instead of
+ *  the page, and `BusinessEditSheet` saves a pin the moment it moves — a studio
+ *  could be moved across the city by somebody scrolling to the Save button.
+ *
+ *  So a picker that ALREADY HAS a point opens LOCKED: the address it holds, the
+ *  map to look at, and one button. Armed, it is exactly what it was — the
+ *  search, "use my location", the draggable map — and Done locks it again. A
+ *  picker with NO point (a studio being created, an event being written) opens
+ *  armed, because placing one is the whole reason it is on the screen. */
 export function LocationPicker({
   value,
   centre,
@@ -69,6 +83,9 @@ export function LocationPicker({
   const [busy, setBusy] = useState<"here" | "address" | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  /* a business that already stands somewhere opens locked; one that stands
+     nowhere opens ready to be placed */
+  const [armed, setArmed] = useState(!known);
   const seq = useRef(0);
 
   /** the address under a point — what makes a pair of numbers legible */
@@ -159,44 +176,55 @@ export function LocationPicker({
 
   const placed = touched || known;
 
+  const wideBtn = (solid: boolean): React.CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    width: "100%",
+    boxSizing: "border-box",
+    height: 40,
+    borderRadius: 12,
+    border: solid ? "none" : `1px solid ${EL}`,
+    background: solid ? "var(--text)" : CARD,
+    color: solid ? "var(--solid)" : INK,
+    fontSize: 12.5,
+    fontWeight: 900,
+    cursor: "pointer",
+    fontFamily: "inherit",
+  });
+
   return (
     <div>
-      {/* the two ways in, first and large */}
-      <PlaceSearch placeholder="Search an address or landmark…" near={point} onPick={chose} />
-      <button
-        type="button"
-        onClick={useMyLocation}
-        disabled={busy === "here"}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          width: "100%",
-          boxSizing: "border-box",
-          marginTop: 8,
-          height: 40,
-          borderRadius: 12,
-          border: "none",
-          background: busy === "here" ? EL : "var(--text)",
-          color: busy === "here" ? SUB : "var(--solid)",
-          fontSize: 12.5,
-          fontWeight: 900,
-          cursor: busy === "here" ? "default" : "pointer",
-          fontFamily: "inherit",
-        }}
-      >
-        {busy === "here" ? "Finding you…" : "◎ Use my location"}
-      </button>
+      {/* the two ways in, first and large — only once somebody has asked to change it */}
+      {armed ? (
+        <>
+          <PlaceSearch placeholder="Search an address or landmark…" near={point} onPick={chose} />
+          <button
+            type="button"
+            onClick={useMyLocation}
+            disabled={busy === "here"}
+            style={{
+              ...wideBtn(true),
+              marginTop: 8,
+              background: busy === "here" ? EL : "var(--text)",
+              color: busy === "here" ? SUB : "var(--solid)",
+              cursor: busy === "here" ? "default" : "pointer",
+            }}
+          >
+            {busy === "here" ? "Finding you…" : "◎ Use my location"}
+          </button>
+        </>
+      ) : null}
 
       {/* what the point resolved to — shown as soon as there is one */}
       {placed || busy === "address" ? (
-        <div style={{ marginTop: 8, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
+        <div style={{ marginTop: armed ? 8 : 0, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED }}>THE PIN IS ON</div>
           <div style={{ fontSize: 11.5, color: INK, marginTop: 3, lineHeight: 1.45 }}>
             {busy === "address"
               ? "Looking up the address…"
-              : address ?? (touched ? `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)} — no address for it yet` : area ?? "A point already on record. Move the map to change it.")}
+              : address ?? (touched ? `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)} — no address for it yet` : area ?? "A point already on record.")}
           </div>
           {address && (area || city) ? (
             <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>
@@ -208,11 +236,32 @@ export function LocationPicker({
         </div>
       ) : null}
 
-      {/* then the map, to check it and fine-tune it */}
+      {/* then the map — to look at while it is locked, to fine-tune once it is not */}
       <div style={{ fontSize: 10.5, color: MUTED, margin: "10px 0 6px" }}>
-        {placed ? "Drag the map to fine-tune the pin — the address above follows it." : "Or move the map and put the pin on your door."}
+        {!armed
+          ? "This is where it sits on the map. Nothing here changes until you press Change address."
+          : placed
+            ? "Drag the map to fine-tune the pin — the address above follows it."
+            : "Or move the map and put the pin on your door."}
       </div>
-      <GoogleMapPicker value={point} onPick={moved} zoom={placed ? 16 : 11} label="Move the map to place the pin on your studio" />
+      <GoogleMapPicker
+        value={point}
+        onPick={moved}
+        zoom={placed ? 16 : 11}
+        locked={!armed}
+        label={armed ? "Move the map to place the pin on your studio" : "Where this business is on the map"}
+      />
+
+      {/* THE ONE CONTROL (16 Sep 2026). Locked, it is the only way in — so
+          scrolling past the map can no longer move anything. Armed, Done shuts
+          it again; there is nothing to save, because a moved pin has already
+          saved itself. Nothing to toggle until there IS a point: a studio being
+          created has the search and the map and no state to protect yet. */}
+      {placed ? (
+        <button type="button" onClick={() => setArmed((a) => !a)} style={{ ...wideBtn(!armed), marginTop: 8 }}>
+          {armed ? "Done" : "Change address"}
+        </button>
+      ) : null}
 
       {note ? <div style={{ fontSize: 10.5, color: "#B45309", marginTop: 6, lineHeight: 1.45 }}>{note}</div> : null}
     </div>

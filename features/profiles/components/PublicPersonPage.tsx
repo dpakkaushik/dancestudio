@@ -5,7 +5,6 @@ import { SIDE_TINT, SIDE_VERB, hoursWords } from "@/types/stats";
 import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { PersonFollowButton } from "./PersonFollowButton";
 import { ReportButton } from "@/features/reports/components/ReportButton";
 import { ProfileShare } from "./ProfileShare";
@@ -172,16 +171,14 @@ export function PublicPersonPage({
         {/* the one thing you can do to a person, or the door to your own page */}
         <div style={{ marginTop: 12 }}>
           {isMe ? (
-            <>
-              <Link href="/stats" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
-                This is you · Your record ›
-              </Link>
-              {/* your picture, from your own page — the chip with its Remove, the
-                  one control for the photo here (the Profile tab has the disc's ＋) */}
-              <div style={{ marginTop: 8 }}>
-                <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
-              </div>
-            </>
+            /* ⚠ AND NOTHING ELSE (16 Sep 2026). This page is what the eye in the
+               tab bar opens — "the profile view is what a user will see when he
+               clicks over a studio or artist" — so a photo picker sitting on it
+               was the one thing on the screen no visitor would ever see. The
+               picture is changed in Edit profile, with the header pictures. */
+            <Link href="/stats" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
+              This is you · Your record ›
+            </Link>
           ) : profile.phone ? (
             /* two things you can do, so they share the row — the same tel: the
                business page hands off with, from the same component */

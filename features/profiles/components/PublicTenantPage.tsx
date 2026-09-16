@@ -57,6 +57,9 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
       isMember={role !== null}
       canEditPhoto={role === "owner" || role === "trainer"}
       canEdit={role === "owner"}
+      /* the owner's own id, for the Edit sheet's header grid — a new picture
+         goes into `proof/{owner}/…`, which is the only folder they may write */
+      ownerId={role === "owner" ? (user?.id ?? null) : null}
       followers={followers}
       scheduleHref={publicSchedulePath(profile.tenant)}
       manageHref={profile.tenant.type === "studio" ? `/business/${tenantId}` : `/business/${tenantId}/classes`}

@@ -4,19 +4,30 @@
    (gitignored), with a PASS/FAIL line per check the way shoot-verify-form.js
    does.
 
+   ⚠ RE-CUT AGAIN 16 SEP 2026: EVERY PICTURE IS CHANGED IN THE EDIT SHEET. The
+   user circled the ✕ on a header square and the ＋ on the disc — "the update
+   image option should be inside the edit profile" — so the hero has no picture
+   controls at all now and this script drives the sheets instead. It asserts
+   both halves: that the hero offers nothing, and that the sheet does
+   everything the hero used to.
+
    Two throwaway accounts (the e2e's admin generate_link trick):
      an ORGANIZATION → its studio → /business/{id}: the empty header and the
-       initials disc; the disc's ＋ sets the studio's own picture; the header's
-       Add tile puts a photo across the top; the only picture has no ✕ (a
-       header never empties), a second one has, and the ✕ takes it out; the
-       Media desk shows the same two; the PUBLIC page shows the header to the
-       organization AND to a signed-out stranger (the storage policy for a
-       listed studio's photos); then its Home — the logo on the disc, no
+       initials disc, with NO ＋ and NO Add tile on them; the owner's pencil
+       opens Edit studio, where the disc's picture goes up, the header's photos
+       go up, the only picture's ✕ is disabled (a header never empties) and a
+       second one's is not; the location is LOCKED behind Change address; the
+       Media desk shows the same two pictures; the PUBLIC page shows the header
+       to the organization AND to a signed-out stranger (the storage policy for
+       a listed studio's photos); then its Home — the logo on the disc, no
        header, no QR;
-     a USER → Home: the face on the disc, the Add tile, ONE header picture and
-       then no tile; the service role grants the Artist plan (₹0, nothing
-       charged) → the tile is back, a second picture goes up, its ✕ takes it
-       down; the Profile tab's Edit sheet carries the Header pictures section.
+     a USER → Home: the face on the disc, an empty header and no tile on it;
+       Edit profile puts ONE header picture up and then offers no more; the
+       service role grants the Artist plan (₹0, nothing charged) → the sheet
+       offers another, a second picture goes up, its ✕ takes it down.
+
+   Also: the "Managing {studio}" strip is gone from a studio's own home (the
+   hero says it) and still there, name only, on its desks.
 
    Needs migration 20260915090000 on the database for the header half; without
    it the failures say so and the run carries on.
@@ -160,7 +171,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check(await org.getByText("GRANTED", { exact: true }).isVisible(), "studio home: the strip names the standing (GRANTED)");
     check((await org.getByRole("button", { name: /Stop .* renewing/ }).count()) === 0, "studio home: a grant offers no Stop renewing — there is nothing to stop");
 
-    /* the studio's own home: an empty header with the Add tile, initials on the disc */
+    /* the studio's own home: an empty header and the initials disc, and NOTHING
+       on either of them to press (16 Sep 2026) */
     await org.goto(`${BASE}/business/${studioId}`);
     const hero = org.getByTestId("studio-hero");
     await hero.waitFor();
@@ -168,9 +180,14 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check(await org.getByText("Studio", { exact: true }).first().isVisible(), "studio home: STUDIO over the name");
     check((await hero.locator("img").count()) === 0, "studio home: no picture anywhere yet → initials on the disc, no <img>");
     check((await disc(org).count()) === 1, "studio home: the disc is there");
-    check((await org.getByLabel("Add a photo").count()) === 1, "studio home: the disc's ＋ offers the studio's own picture");
-    check((await rail(org).getAttribute("role")) === null, "studio home: the header is one square (the Add tile), so no swipe");
-    check((await org.getByLabel("Add a header picture").count()) === 1, "studio home: the owner is offered the header's Add tile");
+    /* 16 Sep 2026, the user: "the update image option should be inside the edit profile" */
+    check((await org.getByLabel("Add a photo").count()) === 0, "studio home: NO ＋ on the disc — the picture is changed in the sheet");
+    check((await org.getByLabel("Add a header picture").count()) === 0, "studio home: NO Add tile on the header — same reason");
+    check((await org.getByLabel("Remove this picture").count()) === 0, "studio home: NO ✕ on a header square");
+    check((await rail(org).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
+    /* 16 Sep 2026, the user: "isn't it unnecessary — name, location etc already
+       there below the profile image?" — right, so the strip is off THIS page */
+    check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip — the hero already says the name and the place");
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: a Stats tile among the tools (it left the tab bar)");
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
@@ -179,31 +196,69 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the eye opens the studio's public page");
     await shot("studio-initials");
 
-    /* the disc's ＋ sets the studio's picture — tenants.photo_path, through set_tenant_photo */
-    await org.getByLabel("Add a photo").setInputFiles(FILE);
+    /* … and the strip IS on a desk, where nothing else names the studio */
+    await org.goto(`${BASE}/business/${studioId}/classes`);
+    await org.getByText(/^Managing/).first().waitFor();
+    /* the name arrives from a server action, so the strip holds its height with
+       an ellipsis first — assert what it settles on, not what it starts as */
+    await org
+      .waitForFunction(() => {
+        const el = Array.from(document.querySelectorAll("span")).find((n) => /^Managing/.test(n.textContent || ""));
+        return Boolean(el) && !(el.textContent || "").includes("…");
+      }, null, { timeout: 15000 })
+      .catch(() => {});
+    const strip = await org.getByText(/^Managing/).first().innerText();
+    check(strip.includes("EEE Dance Studio"), "a desk: the Managing strip names the studio");
+    check(!strip.includes("Kothrud"), "a desk: and not its address — the name is what tells you which register this is");
+    check((await org.getByRole("link", { name: /Leave this studio/ }).count()) === 1, "a desk: Exit studio is still the one press back to the studio list");
+
+    /* ── EVERY PICTURE, THROUGH THE PENCIL (16 Sep 2026) ── */
+    await org.goto(`${BASE}/business/${studioId}`);
+    await hero.waitFor();
+    await org.getByRole("button", { name: "Edit studio", exact: true }).click();
+    const sheet = org.getByRole("dialog", { name: "Edit business" });
+    await sheet.waitFor();
+    check(await sheet.getByText("Profile picture", { exact: true }).isVisible(), "edit studio: a Profile picture section");
+    check(await sheet.getByText("Header pictures", { exact: true }).isVisible(), "edit studio: a Header pictures section");
+    /* the location is READ-ONLY until somebody asks for it (16 Sep 2026): a map
+       on greedy gestures inside a scrolling sheet moved the pin when a thumb
+       scrolled past it, and this sheet SAVES a moved pin immediately */
+    check((await sheet.getByRole("button", { name: "Change address" }).count()) === 1, "edit studio: the address is locked behind Change address");
+    check((await sheet.getByRole("searchbox", { name: /Search an address/ }).count()) === 0, "edit studio: and the address search is not even drawn until then");
+    await sheet.getByRole("button", { name: "Change address" }).click();
+    check((await sheet.getByRole("searchbox", { name: /Search an address/ }).count()) === 1, "edit studio: pressing it arms the search and the map");
+    await sheet.getByRole("button", { name: "Done" }).click();
+    check((await sheet.getByRole("button", { name: "Change address" }).count()) === 1, "edit studio: Done locks it again");
+    await shot("studio-edit-sheet");
+
+    /* the disc's picture — tenants.photo_path, through set_tenant_photo */
+    await sheet.getByLabel("Add a photo").setInputFiles(FILE);
     await disc(org).locator("img").first().waitFor({ timeout: 20000 });
-    check((await discImgs(org)) === 1, "studio home: the picture is on the disc");
-    check((await railImgs(org)) === 0, "studio home: and not in the header");
-    check((await org.getByLabel("Change the photo").count()) === 1, "studio home: the ＋ now says Change the photo");
+    check((await discImgs(org)) === 1, "edit studio: the picture landed on the disc behind the sheet");
+    check((await railImgs(org)) === 0, "edit studio: and not in the header");
     const photoPath = await rest(`tenants?id=eq.${studioId}&select=photo_path`);
     check(String(photoPath[0] && photoPath[0].photo_path).startsWith(`tenants/${studioId}/`), "tenants.photo_path is set, in the studio's own folder");
 
-    /* the header: one picture through the Add tile — and no ✕ on the only one */
-    await org.getByLabel("Add a header picture").setInputFiles(FILE);
+    /* the header: the same sheet's grid — and the ✕ on the only picture is
+       disabled. The sheet is still open: `router.refresh()` after an upload
+       re-renders the page under it without closing it. */
+    await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
     const headerUp = await waitRailImgs(org, 1).then(() => true).catch(() => false);
     if (headerUp) {
-      check(true, "studio home: the header holds the first picture");
-      check((await org.getByLabel("Remove this picture").count()) === 0, "studio home: the only picture has no ✕ — a header never empties");
-      await org.getByLabel("Add a header picture").setInputFiles(FILE);
+      check(true, "edit studio: the header holds the first picture");
+      check((await sheet.getByLabel(/is the only one/).count()) === 1, "edit studio: the only picture's ✕ is disabled and says why — a header never empties");
+      await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
       await waitRailImgs(org, 2);
-      check((await org.getByLabel("Remove this picture").count()) === 2, "studio home: two pictures, two ✕");
+      check((await sheet.getByLabel(/^Remove photo/).count()) === 2, "edit studio: two pictures, two live ✕");
       check((await rail(org).getAttribute("role")) === "region", "studio home: the header swipes now");
       await shot("studio-header");
-      await org.getByLabel("Remove this picture").first().click();
+      await sheet.getByLabel("Remove photo 1").click();
       await waitRailImgs(org, 1);
-      check((await org.getByLabel("Remove this picture").count()) === 0, "studio home: ✕ took one out, and the last one has no ✕ again");
+      check((await sheet.getByLabel(/^Remove photo/).count()) === 0, "edit studio: ✕ took one out, and the last one is disabled again");
       const live = await rest(`org_proof_photos?tenant_id=eq.${studioId}&deleted_at=is.null&select=id`);
       check(Array.isArray(live) && live.length === 1, "org_proof_photos holds the one live row for the studio");
+      await org.keyboard.press("Escape").catch(() => {});
+      await sheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
 
       /* the Media desk: the same two pictures as a desk */
       await org.goto(`${BASE}/business/${studioId}/media`);
@@ -243,10 +298,10 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.goto(`${BASE}/`);
     await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
     check((await discImgs(org)) === 1, "org home: the logo is on the disc");
-    check((await railImgs(org)) === 0 && (await org.getByLabel("Add a header picture").count()) === 0, "org home: no header and no Add tile — an organization is not a place");
+    check((await railImgs(org)) === 0, "org home: no header — an organization is not a place");
     check((await org.getByLabel("Share your profile — QR code").count()) === 0 && (await org.getByRole("button", { name: /QR/ }).count()) === 0, "org home: no QR — an organization has no public page");
     check(await org.getByText("Organization", { exact: true }).isVisible(), "org home: the role word under the sleeve");
-    check((await org.getByLabel("Change your photo").count()) === 1, "org home: the ＋ changes the logo");
+    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed in Edit profile");
     /* the chrome, re-cut 15 Sep 2026: four in the bar and an eye, Edit on the hero, Stats in the grid */
     const bar = org.getByRole("navigation", { name: "Main" });
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
@@ -255,10 +310,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: Edit profile is a pencil on the hero");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: Stats is a tile in the grid");
     await org.getByRole("button", { name: "Edit profile", exact: true }).click();
-    await org.getByRole("dialog", { name: "Edit profile" }).waitFor();
+    const orgSheet = org.getByRole("dialog", { name: "Edit profile" });
+    await orgSheet.waitFor();
     /* exact: getByLabel is a case-insensitive SUBSTRING match, and Home's
        "Everything you manage" link behind the sheet contains "age" */
     check(await org.getByText("Logo", { exact: true }).isVisible() && (await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: Logo, not Profile picture; no age for an organization");
+    check((await orgSheet.getByLabel("Change your photo").count()) === 1, "org edit profile: and the logo is changed HERE — the one place a picture changes");
     await shot("org-edit");
     await org.keyboard.press("Escape").catch(() => {});
     await org.getByRole("button", { name: "Cancel" }).click().catch(() => {});
@@ -273,17 +330,29 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await me.goto(`${BASE}/`);
     await me.getByRole("heading", { name: "Rhea Kapoor", exact: true }).waitFor();
     check((await discImgs(me)) === 1, "user home: the profile photo is on the disc");
-    check((await rail(me).getAttribute("role")) === null, "user home: an empty header with the Add tile, no swipe");
-    check((await me.getByLabel("Add a header picture").count()) === 1, "user home: a user is offered ONE header picture");
+    check((await rail(me).getAttribute("role")) === null, "user home: an empty header, so no swipe");
+    check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled from Edit profile");
+    check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText("User", { exact: true }).isVisible(), "user home: the role word");
     check((await me.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Public view" }).getAttribute("href")) === `/person/${userId}`, "bar: a user's eye opens their person page");
     check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "user home: Edit profile is a pencil on the hero");
 
-    await me.getByLabel("Add a header picture").setInputFiles(FILE);
+    /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026) ── */
+    await me.getByRole("button", { name: "Edit profile", exact: true }).click();
+    const mySheet = me.getByRole("dialog", { name: "Edit profile" });
+    await mySheet.waitFor();
+    check(await me.getByText("Profile picture", { exact: true }).isVisible(), "edit profile: the Profile picture section");
+    check(await me.getByText("Header pictures", { exact: true }).isVisible(), "edit profile: the Header pictures section");
+    check(await me.getByText("Mobile", { exact: true }).isVisible(), "edit profile: Name · Mobile · Profile picture · Header pictures, in that order");
+    check((await mySheet.getByLabel("Add picture").count()) === 1, "edit profile: a user is offered ONE header picture");
+    await mySheet.getByLabel("Add picture").setInputFiles(FILE);
     const userHeader = await waitRailImgs(me, 1).then(() => true).catch(() => false);
     if (userHeader) {
-      check(true, "user home: the one header picture is up");
-      check((await me.getByLabel("Add a header picture").count()) === 0, "user home: and the tile is gone — one is the ceiling for a user");
+      check(true, "edit profile: the one header picture is up, and the hero behind it shows it");
+      check((await mySheet.getByLabel("Add picture").count()) === 0, "edit profile: and the tile is gone — one is the ceiling for a user");
+      await shotMe("profile-edit");
+      await me.keyboard.press("Escape").catch(() => {});
+      await mySheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
       await shotMe("user-home");
 
       /* the Artist plan, granted — what makes a person an artist, and the ceiling ten */
@@ -293,28 +362,31 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       });
       await me.goto(`${BASE}/`);
       await me.getByText("Artist", { exact: true }).first().waitFor();
-      check((await me.getByLabel("Add a header picture").count()) === 1, "artist home: the Add tile is back — an artist holds ten");
-      check((await rail(me).getAttribute("role")) === "region", "artist home: the header swipes (the picture, then the tile)");
-      await me.getByLabel("Add a header picture").setInputFiles(FILE);
+      check((await railImgs(me)) === 1, "artist home: the header picture is still there");
+      await me.getByRole("button", { name: "Edit profile", exact: true }).click();
+      await mySheet.waitFor();
+      check((await mySheet.getByLabel("Add picture").count()) === 1, "artist edit profile: the Add tile is back — an artist holds ten");
+      await mySheet.getByLabel("Add picture").setInputFiles(FILE);
       await waitRailImgs(me, 2);
+      check((await rail(me).getAttribute("role")) === "region", "artist home: two pictures, so the header swipes");
       const rowCount = await rest(`profile_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
       check(Array.isArray(rowCount) && rowCount.length === 2, "profile_photos holds the two rows, in the person's folder");
       await shotMe("artist-home");
-      await me.getByLabel("Remove this picture").first().click();
+      await mySheet.getByLabel("Remove this picture").first().click();
       await waitRailImgs(me, 1);
-      check((await railImgs(me)) === 1, "artist home: ✕ takes a header picture out again");
+      check((await railImgs(me)) === 1, "artist edit profile: ✕ takes a header picture out again");
+      await me.keyboard.press("Escape").catch(() => {});
+      await mySheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
 
-      /* the Profile tab: the same hero, and the Edit sheet carries the header */
+      /* the Profile tab: the same hero, as bare as Home's */
       await me.goto(`${BASE}/profile`);
       await me.getByTestId("my-hero").waitFor();
       check((await discImgs(me)) === 1 && (await railImgs(me)) === 1, "profile tab: the same disc and header");
-      /* exact: the About placeholder is a button whose name ENDS in "Edit profile ›" */
-      await me.getByRole("button", { name: "Edit profile", exact: true }).click();
-      await me.getByRole("dialog", { name: "Edit profile" }).waitFor();
-      check(await me.getByText("Header pictures", { exact: true }).isVisible(), "edit profile: the Header pictures section");
-      check((await me.getByLabel("Add picture").count()) === 1, "edit profile: the Add tile in the sheet");
-      check(await me.getByText("Mobile", { exact: true }).isVisible(), "edit profile: Name · Mobile · Profile picture · Header pictures, in that order");
-      await shotMe("profile-edit");
+      check((await me.getByLabel("Change your photo").count()) === 0 && (await me.getByLabel("Remove this picture").count()) === 0, "profile tab: and the same bare hero — no ＋, no ✕");
+      /* the person's own PUBLIC view is what a visitor sees, and nothing else */
+      await me.goto(`${BASE}/person/${userId}`);
+      await me.getByRole("link", { name: /This is you/ }).waitFor();
+      check((await me.getByLabel("Change your photo").count()) === 0, "public view of yourself: no photo control — it is the view a visitor gets");
     } else {
       console.log("HEADER  the picture did not land in 25 s — is migration 20260915090000 on the database?");
       fail += 1;

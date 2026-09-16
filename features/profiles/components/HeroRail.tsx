@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties } from "react";
 import { initialsOf } from "@/features/profiles/components/profile-kit";
 import { DOS_DISPLAY, HERO_DISC, HERO_DISC_RING, HERO_HEAD_H, HERO_HEAD_W, HERO_SQ_SHADOW, LILAC } from "@/lib/design/tokens";
 
@@ -14,11 +14,9 @@ export interface HeroShot {
    *  optimizer, which would fetch it server-side without the signature and get
    *  a 400 — a studio's photos are these */
   signed?: boolean;
-  /** a control on the top-right corner — the ✕ that removes this picture */
-  corner?: ReactNode;
 }
 
-type Slide = { key: string; src: string | null; alt: string; signed?: boolean; corner?: ReactNode; node?: ReactNode };
+type Slide = { key: string; src: string | null; alt: string; signed?: boolean };
 
 /** THE HEADER IS A SWIPE (prototype S_profiletab 10575-10627; re-cut 15 Sep
  *  2026).
@@ -28,14 +26,19 @@ type Slide = { key: string; src: string | null; alt: string; signed?: boolean; c
  *  below (`ProfileDisc`), and this rail is the HEADER — the pictures of a place
  *  or a body of work, "the booking flow's sideways scroll-snap … a dot for
  *  each." What it swipes through is the caller's: a studio's photos of its
- *  space, an artist's ten, a user's one, and for whoever may add to it the
- *  dashed Add tile at the end.
+ *  space, an artist's ten, a user's one.
  *
- *  A header with nothing in it and nothing to add draws one quiet square on the
- *  entity's own gradient — no initials, because the disc under it already says
- *  who this is, and the same letters twice is a stutter. A picture that would
- *  not load (a signed URL past its half hour, an object gone from the bucket)
- *  falls back to that same square rather than to a broken image.
+ *  ⚠ IT SHOWS; IT DOES NOT EDIT (16 Sep 2026, the user, with the ✕ and the ＋
+ *  circled on their own hero: "the update image option should be inside the
+ *  edit profile"). The dashed Add tile and the per-picture ✕ are gone from
+ *  here; adding and removing happen in the Edit sheet, where the whole set is
+ *  visible as a grid and the rules can be said in words. The rail is a rail.
+ *
+ *  A header with nothing in it draws one quiet square on the entity's own
+ *  gradient — no initials, because the disc under it already says who this is,
+ *  and the same letters twice is a stutter. A picture that would not load (a
+ *  signed URL past its half hour, an object gone from the bucket) falls back to
+ *  that same square rather than to a broken image.
  *
  *  One square is not a choice, so a lone square draws no dots. The dots are
  *  decoration on a swipe a thumb already understands, hidden from the
@@ -48,25 +51,16 @@ export function HeroRail({
   name,
   grad,
   shots = [],
-  addTile,
-  addLabel = "Add a header picture",
 }: {
   name: string;
   /** the two colours an empty header stands on */
   grad: [string, string];
   shots?: HeroShot[];
-  /** the last square — the dashed "＋ Add" tile, for whoever may add */
-  addTile?: ReactNode;
-  /** what that tile is called, so it is never mistaken for the disc's ＋ */
-  addLabel?: string;
 }) {
   const [idx, setIdx] = useState(0);
   const [broken, setBroken] = useState<Record<string, true>>({});
 
-  const slides: Slide[] = [
-    ...shots.map((m): Slide => ({ key: m.key, src: m.src, alt: m.alt, signed: m.signed, corner: m.corner })),
-    ...(addTile ? [{ key: "add", src: null, alt: addLabel, node: addTile } as Slide] : []),
-  ];
+  const slides: Slide[] = shots.map((m): Slide => ({ key: m.key, src: m.src, alt: m.alt, signed: m.signed }));
   if (slides.length === 0) {
     slides.push({ key: "empty", src: null, alt: `${name} — no header pictures yet` });
   }
@@ -107,21 +101,18 @@ export function HeroRail({
       >
         {slides.map((s) => (
           <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            {/* the Add tile names itself through its input, so its square does not say it twice */}
-            <div aria-label={s.node ? undefined : s.alt} style={square}>
-              {s.node ??
-                (s.src && !broken[s.key] ? (
-                  <Image
-                    src={s.src}
-                    alt=""
-                    fill
-                    sizes={`${HERO_HEAD_W}px`}
-                    style={{ objectFit: "cover" }}
-                    unoptimized={Boolean(s.signed)}
-                    onError={() => setBroken((b) => ({ ...b, [s.key]: true }))}
-                  />
-                ) : null)}
-              {s.corner}
+            <div aria-label={s.alt} style={square}>
+              {s.src && !broken[s.key] ? (
+                <Image
+                  src={s.src}
+                  alt=""
+                  fill
+                  sizes={`${HERO_HEAD_W}px`}
+                  style={{ objectFit: "cover" }}
+                  unoptimized={Boolean(s.signed)}
+                  onError={() => setBroken((b) => ({ ...b, [s.key]: true }))}
+                />
+              ) : null}
             </div>
           </div>
         ))}
@@ -150,9 +141,11 @@ export function HeroRail({
  *  header's bottom-left edge where the user drew the circle. Initials on the
  *  entity's own gradient until there is a picture, and again if the picture
  *  would not load. The ring is the page's own colour, so the disc cuts out of
- *  the wash behind it. `picker` is the ＋ on its rim, for whoever may change it,
- *  and it sits OUTSIDE the clipped circle so the whole button is reachable. */
-export function ProfileDisc({ name, grad, photo, photoAlt, picker, testId }: { name: string; grad: [string, string]; photo: string | null; photoAlt?: string; picker?: ReactNode; testId?: string }) {
+ *  the wash behind it.
+ *
+ *  It wore a ＋ on its rim until 16 Sep 2026; the picture is changed in the Edit
+ *  sheet now, with the header pictures, so the disc is a picture again. */
+export function ProfileDisc({ name, grad, photo, photoAlt, testId }: { name: string; grad: [string, string]; photo: string | null; photoAlt?: string; testId?: string }) {
   const [broken, setBroken] = useState(false);
   const size = HERO_DISC;
   return (
@@ -181,7 +174,6 @@ export function ProfileDisc({ name, grad, photo, photoAlt, picker, testId }: { n
       >
         {photo && !broken ? <Image src={photo} alt="" fill sizes={`${size}px`} style={{ objectFit: "cover" }} onError={() => setBroken(true)} /> : initialsOf(name)}
       </div>
-      {picker}
     </div>
   );
 }

@@ -4,7 +4,6 @@ import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@
 
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { enquiryTypesFor } from "@/types/enquiry";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { photoUrl } from "@/lib/media/photo";
 import { FollowButton } from "./FollowButton";
 import type { PublicTenantProfileWithFaces } from "@/repositories/publicProfile";
@@ -101,6 +100,7 @@ export function PublicProfile({
   isMember,
   canEditPhoto = false,
   canEdit = false,
+  ownerId = null,
   followers = null,
   scheduleHref,
   manageHref,
@@ -118,10 +118,15 @@ export function PublicProfile({
   canFollow?: boolean;
   /** the viewer belongs to this business: no Follow, a Manage door instead */
   isMember: boolean;
-  /** an owner or trainer — the pair that may change the business's photo */
+  /** an owner or trainer — the pair that may change the business's photo. The
+   *  control is inside the Edit sheet since 16 Sep 2026, never on the hero */
   canEditPhoto?: boolean;
-  /** the owner — the one who edits About, Since, the number and the links (10613) */
+  /** the owner — the one who edits the pictures, About, Since, the number and
+   *  the links (10613) */
   canEdit?: boolean;
+  /** the owner's own id when the VIEWER is the owner — the folder in the
+   *  private bucket a new header picture goes into; null for everybody else */
+  ownerId?: string | null;
   /** the owner's list — null for everybody else, and the figure stays a figure (B6) */
   followers?: TenantFollower[] | null;
   scheduleHref: string;
@@ -182,7 +187,6 @@ export function PublicProfile({
           styleAria={(s) => `${s} — a style this business teaches`}
           avatar={face}
           avatarAlt={tenant.name}
-          avatarPicker={canEditPhoto ? <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" overlay /> : undefined}
           shots={shots}
         >
           {/* the figures, at the size of figures */}
@@ -261,7 +265,7 @@ export function PublicProfile({
               You are on this team · Manage ›
             </Link>
             {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
-            {canEdit ? <BusinessEditButton tenant={tenant} /> : null}
+            {canEdit ? <BusinessEditButton tenant={tenant} photos={header} ownerId={ownerId} canEditPhoto={canEditPhoto} /> : null}
             </div>
           ) : null}
           {isMember ? null : (

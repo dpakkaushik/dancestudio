@@ -16,9 +16,7 @@ import { headerMaxFor, photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { BizSection, HOME_TYPE } from "@/features/home/components/home-kit";
 import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { EditProfileButton } from "@/features/profiles/components/EditProfileSheet";
-import { HeaderRemove } from "@/features/profiles/components/HeaderRemove";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ROLE_RING, tierOf } from "@/features/profiles/components/profile-kit";
@@ -150,10 +148,11 @@ export default async function HomePage() {
      business anybody means: an organization's tools open its first studio. */
   const firstTenant = (isOrg ? studio?.id : tenants.find((t) => t.type !== "org")?.id) ?? null;
 
-  /* the header, each picture with its ✕ — this is the person's own Home */
+  /* the header, shown and nothing else: adding and removing moved into the
+     Edit-profile sheet on 16 Sep 2026, at the user's instruction */
   const shots: HeroShot[] = header
     .filter((g) => g.url)
-    .map((g, i) => ({ key: g.id, src: g.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, corner: <HeaderRemove target={{ kind: "person", id: g.id }} path={g.path} /> }));
+    .map((g, i) => ({ key: g.id, src: g.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}` }));
 
   return (
     <div
@@ -185,14 +184,12 @@ export default async function HomePage() {
           /* the styles you dance, as the app's one style tile (7330, DosStyleRow) */
           styles={profile.styles}
           styleAria={(s) => `${s} — a style you dance`}
-          /* the disc is the face — or the logo — and its ＋ (10600) is the one place you change it */
+          /* the disc is the face — or the logo. Its ＋ went into the Edit sheet
+             on 16 Sep 2026 with the header's ✕, so both pictures are changed in
+             one place rather than two controls on a hero */
           avatar={face}
           avatarAlt={profile.fullName}
-          avatarPicker={<PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" overlay />}
           shots={shots}
-          /* the Add tile ends the header while there is room: one for a user, ten for an artist */
-          addTile={header.length < headerMax ? <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add a header picture" tile /> : undefined}
-          addLabel="Add a header picture"
           /* EDIT PROFILE, FROM HOME (15 Sep 2026, the user: "where is the edit
              profile button?") — the pencil on the hero's corner (10613), opening
              the Profile tab's own sheet: name, mobile, the pictures, the rest */

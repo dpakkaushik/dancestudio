@@ -214,12 +214,41 @@ export async function findVerificationRequestsPage(
     .not("tenant_id", "is", null)
     .is("deleted_at", null);
   if (input.q) {
-    /* the desk searches by the STUDIO's name now — and still by the
-       organization's, since a request from before 11 Sep 2026 has no studio.
-       PostgREST's `or` across an embedded table needs the table named. */
     const term = input.q.replace(/[%_,()]/g, " ").trim();
     if (term) {
-      query = query.or(`full_name.ilike.%${term}%`, { referencedTable: "profiles" });
+      /* ⚠ IT SAID IT SEARCHED THE STUDIO'S NAME AND IT DID NOT (found 16 Sep
+         2026). The filter was `profiles.full_name` alone, so an admin typing a
+         STUDIO's name into a box whose placeholder reads "Search by studio or
+         organization…" got an empty queue — for a request that was sitting
+         right there. The comment above it claimed otherwise, which is how it
+         survived: the code was read as documented rather than as written.
+         (It was invisible for another reason too: the two e2e specs that type
+         a studio name here had been red behind an earlier failure since
+         15 Sep. NEXT TO DO #0z.)
+
+         WHY NOT ONE `or`: PostgREST scopes an embedded filter to ONE referenced
+         table, so "the studio's name OR the organization's" cannot be written
+         as a single clause across `tenants` and `profiles`. Both ids ARE plain
+         columns on this table, though — so the names are resolved to ids first
+         and the `or` is over columns. Two small indexed reads (`pg_trgm` on
+         both names since 20260913090000) for a search box that runs on submit,
+         and an admin may read every tenant (20260914130000) and every profile,
+         so nothing is hidden from the lookup that is visible in the list. */
+      const like = `%${term}%`;
+      const [studios, orgs] = await Promise.all([
+        supabase.from("tenants").select("id").eq("type", "studio").ilike("name", like).is("deleted_at", null).limit(500),
+        supabase.from("profiles").select("id").ilike("full_name", like).is("deleted_at", null).limit(500),
+      ]);
+      const tenantIds = ((studios.data ?? []) as Array<{ id: string }>).map((r) => r.id);
+      const orgIds = ((orgs.data ?? []) as Array<{ id: string }>).map((r) => r.id);
+      const clauses = [
+        ...(tenantIds.length ? [`tenant_id.in.(${tenantIds.join(",")})`] : []),
+        ...(orgIds.length ? [`org_id.in.(${orgIds.join(",")})`] : []),
+      ];
+      /* a term that names no studio and no organization matches no request —
+         said with a filter that cannot match, never by dropping the search and
+         handing back the whole queue */
+      query = clauses.length ? query.or(clauses.join(",")) : query.eq("id", "00000000-0000-0000-0000-000000000000");
     }
   }
   query = input.status === "pending" ? query.order("created_at", { ascending: true }) : query.order("decided_at", { ascending: false, nullsFirst: false });

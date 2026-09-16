@@ -32,8 +32,10 @@ declare namespace google.maps {
     mapId?: string;
     disableDefaultUI?: boolean;
     zoomControl?: boolean;
-    /** "greedy" so one finger pans inside a scrolling sheet, which is where
-     *  every one of these maps lives */
+    /** "greedy" lets one finger pan the map — right for a picker somebody is
+     *  actively using, and wrong for one sitting in a scrolling sheet, where it
+     *  eats the page's scroll and moves the pin (16 Sep 2026). "none" while the
+     *  picker is locked; see `LocationPicker`. */
     gestureHandling?: "cooperative" | "greedy" | "none" | "auto";
     clickableIcons?: boolean;
   }
@@ -48,6 +50,8 @@ declare namespace google.maps {
     panTo(position: LatLngLiteral): void;
     getZoom(): number | undefined;
     setZoom(zoom: number): void;
+    /** how the lock reaches a map that is already drawn (16 Sep 2026) */
+    setOptions(options: MapOptions): void;
     addListener(eventName: string, handler: () => void): MapsEventListener;
   }
 

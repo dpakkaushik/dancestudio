@@ -322,6 +322,19 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
   // a studio is born PRIVATE (10 Sep 2026)
   expect(tenant.visibility).toBe("unlisted");
 
+  /* ⚠ AND SINCE 14 SEP 2026 IT IS ALSO BORN UNVERIFIED, and `subscribe()`
+     refuses one: "DanceOS has not verified this studio yet — the badge comes
+     first, then the subscription puts it on Discover." The badge is an admin's
+     decision, which this spec has no admin for and is not what it is testing —
+     so the service role stamps it, exactly as the proof scripts do. Without
+     this the whole mandate story stops at its first line. */
+  const badged = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenant.id}`, {
+    method: "PATCH",
+    headers: serviceHeaders,
+    body: JSON.stringify({ verified_at: new Date().toISOString() }),
+  });
+  expect(badged.ok).toBeTruthy();
+
   // the owner starts the subscription through the real RPC: OUR row first, at the
   // price list's price, waiting on the mandate
   const sub = await rpc<{ id: string; status: string; price_inr: number; period: string }>(userHeaders(owner.token), "subscribe", {

@@ -154,6 +154,7 @@ export function GoogleMapPicker({
   label = "Choose the location",
   markers = [],
   showPin = true,
+  locked = false,
 }: {
   value: MapPoint;
   zoom?: number;
@@ -164,6 +165,19 @@ export function GoogleMapPicker({
   markers?: MapMarker[];
   /** the fixed centre pin; off when the map is for LOOKING rather than choosing */
   showPin?: boolean;
+  /** ⚠ THE MAP IS FOR READING UNTIL SOMEBODY SAYS OTHERWISE (16 Sep 2026).
+   *
+   *  `gestureHandling: "greedy"` means one finger on the map pans the MAP, and
+   *  a map sits in the middle of a scrolling sheet — so scrolling past it with
+   *  a thumb dragged the map, the `idle` below fired, the address was
+   *  re-resolved and the studio's saved location was rewritten by somebody who
+   *  was only trying to reach the field underneath. The user found it: "when I
+   *  edit profile, while scrolling, the location changes."
+   *
+   *  Locked, the map takes no gesture at all (`"none"`, so the page scrolls
+   *  under the finger) and the settle listener is deaf. The caller unlocks it
+   *  on an explicit press. */
+  locked?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
@@ -182,6 +196,14 @@ export function GoogleMapPicker({
     pick.current = onPick;
   }, [onPick]);
 
+  /* the lock, read by a listener created once — and pushed onto the live map,
+     so unlocking takes effect without rebuilding it */
+  const shut = useRef(locked);
+  useEffect(() => {
+    shut.current = locked;
+    map.current?.setOptions({ gestureHandling: locked ? "none" : "greedy" });
+  }, [locked]);
+
   /* ── create the map once ── */
   useEffect(() => {
     let cancelled = false;
@@ -199,7 +221,7 @@ export function GoogleMapPicker({
           mapId: "DANCEOS_MAP",
           disableDefaultUI: true,
           zoomControl: true,
-          gestureHandling: "greedy",
+          gestureHandling: locked ? "none" : "greedy",
           clickableIcons: false,
         });
         map.current = m;
@@ -220,6 +242,8 @@ export function GoogleMapPicker({
              world means by "put the pin on your door". ~1 m of tolerance, for
              the tile-pixel rounding Google applies when it lands. */
           m.addListener("idle", () => {
+            /* a locked map answers nothing — see `locked` above */
+            if (shut.current) return;
             const c = m.getCenter();
             if (!c) return;
             if (Math.abs(c.lat() - known.current.lat) < 1e-5 && Math.abs(c.lng() - known.current.lng) < 1e-5) {
@@ -353,7 +377,9 @@ export function GoogleMapPicker({
 
       {showPin ? (
         <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center" }}>
-          <span style={{ fontSize: 10, color: MUTED, flex: 1, minWidth: 0 }}>Drag the map so the pin sits on your door.</span>
+          <span style={{ fontSize: 10, color: MUTED, flex: 1, minWidth: 0 }}>
+            {locked ? "This is where you are on the map." : "Drag the map so the pin sits on your door."}
+          </span>
           <span style={{ fontSize: 10, color: SUB, fontVariantNumeric: "tabular-nums" }}>
             {centre.lat.toFixed(5)}, {centre.lng.toFixed(5)}
           </span>

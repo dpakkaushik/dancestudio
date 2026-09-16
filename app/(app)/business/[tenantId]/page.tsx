@@ -74,10 +74,6 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     isOwner ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
   ]);
 
-  /* a photo whose URL could not be signed is left out — the rail says what it
-     has, and the Media desk is where a missing one is chased */
-  const header = photos.flatMap((p) => (p.url ? [{ id: p.id, path: p.path, url: p.url }] : []));
-
   /* the prototype's studio grid (7359-7373) minus the doors that do not exist —
      Expenses, Assets and Reports have no page, and a tile that opens nothing
      is a lie. Earnings is the owner's (the desk is server-checked owner-only).
@@ -100,8 +96,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       tenant={tenant}
       photo={photoUrl(tenant.photoPath)}
       canEditPhoto={canEditPhoto}
-      header={header}
-      canEditHeader={isOwner}
+      header={photos}
       ownerId={isOwner ? user.id : null}
       editable={editable}
       subscription={subs[tenantId] ?? null}

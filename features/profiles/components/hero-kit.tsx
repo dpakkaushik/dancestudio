@@ -22,15 +22,21 @@ import { HERO_DISC, HERO_DISC_DROP, INK, LILAC, LINE } from "@/lib/design/tokens
  *  should go in the drawn circle." So the hero is laid out the way every
  *  social profile is: the HEADER across the top — the pictures of a place or a
  *  body of work, swiped, up to ten — and the round PROFILE DISC overlapping the
- *  header's bottom-left edge, with the ＋ that changes it on its rim. Then who
- *  it is in the order you read a name: the micro caps, the name with its tick
- *  and its QR, the line under it, the styles, and whatever the page adds.
+ *  header's bottom-left edge. Then who it is in the order you read a name: the
+ *  micro caps, the name with its tick and its QR, the line under it, the
+ *  styles, and whatever the page adds.
+ *
+ *  ⚠ THE HERO SHOWS; EDIT PROFILE EDITS (16 Sep 2026). It carried two picture
+ *  controls of its own — the ＋ on the disc's rim and the dashed Add tile with a
+ *  ✕ per header picture — and the user circled both: "the update image option
+ *  should be inside the edit profile." They are, and only there: one sheet, one
+ *  place to look, and the set visible as a grid rather than one square at a
+ *  time. The pencil in `corner` is what opens it.
  *
  *  What differs between the pages is passed in, never redrawn: the eyebrow
  *  (GOOD EVENING on your own Home, STUDIO on a studio's), what the header
  *  swipes through (one picture for a user, ten for an artist, the photos of
- *  its space for a studio, nothing for an organization), who may change what,
- *  and the meta line. */
+ *  its space for a studio, nothing for an organization), and the meta line. */
 
 export const heroWash = (tint: string) => `linear-gradient(180deg, ${tint}b8 0%, ${tint}55 46%, ${tint}18 74%, ${LILAC} 100%)`;
 
@@ -75,10 +81,7 @@ export function IdentityHero({
   styleAria = (s) => s,
   avatar,
   avatarAlt,
-  avatarPicker,
   shots = [],
-  addTile,
-  addLabel,
   corner,
   testId,
   children,
@@ -102,13 +105,8 @@ export function IdentityHero({
   /** THE PROFILE PICTURE — the round disc; null draws the initials */
   avatar: string | null;
   avatarAlt?: string;
-  /** the ＋ on the disc's rim, for whoever may change the picture */
-  avatarPicker?: ReactNode;
   /** THE HEADER — what swipes across the top */
   shots?: HeroShot[];
-  /** the header's last square — an "Add" tile, for whoever may add */
-  addTile?: ReactNode;
-  addLabel?: string;
   /** controls pinned to the hero's top-right corner (the Profile tab's Edit and Public view, 10613) */
   corner?: ReactNode;
   testId?: string;
@@ -123,12 +121,12 @@ export function IdentityHero({
     <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: heroWash(tint) }}>
       {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", gap: 6 }}>{corner}</div> : null}
 
-      <HeroRail name={name} grad={grad} shots={shots} addTile={addTile} addLabel={addLabel} />
+      <HeroRail name={name} grad={grad} shots={shots} />
 
       <div style={{ position: "relative", padding: `${blockTop}px 16px 14px` }}>
         {/* the disc, where the user drew it: over the header's bottom-left edge */}
         <div style={{ position: "absolute", left: 16, top: -HERO_DISC_DROP, zIndex: 2 }}>
-          <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} picker={avatarPicker} testId="hero-disc" />
+          <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
         </div>
 
         <div style={HERO_EYEBROW}>{eyebrow}</div>

@@ -396,10 +396,20 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- the badge is on, and only now is Subscribe offered, at the price
     // list's price; the admin's grant is the other door, and charges nothing ---
+    // ⚠ ONE CARD PER STUDIO since 15 Sep 2026 (the user: "we don't need separate
+    // cards after verification and subscription"). The verification strip is
+    // gone the moment the badge is on, the card wears the tick beside the name,
+    // and the only WORK left inside it is Subscribe.
     await owner.goto("/business");
-    await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Verified");
+    const hubCard = owner.getByTestId("studio-card").filter({ hasText: studioName });
+    await expect(hubCard.getByLabel("Verified")).toBeVisible();
+    await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
+    await expect(hubCard.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
+    // and the sentence between this studio and Discover is on the page that card
+    // opens — where the cancel door moved when the hub collapsed
+    await owner.goto(`/business/${studioId}`);
     const studioStrip = owner.getByTestId("studio-subscription");
-    await expect(studioStrip.getByText("NOT PUBLIC", { exact: true })).toBeVisible();
+    await expect(studioStrip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     await expect(studioStrip).toContainText("Each studio has its own subscription");
     await expect(studioStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
     await admin.goto(`/admin/businesses?q=${encodeURIComponent(studioName)}`);
@@ -408,9 +418,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await studioCard.getByRole("button", { name: `Grant ${studioName} a subscription` }).click();
     await admin.getByRole("button", { name: `Confirm granting ${studioName} a subscription` }).click();
     await expect(admin.getByText(`${studioName} is subscribed for 12 months — nothing charged, the owner has been told`)).toBeVisible({ timeout: 15_000 });
-    // the studio is public the moment its subscription is, and the row says so
+    // the studio is public the moment its subscription is: the card says LIVE,
+    // and the standing behind it is the grant
     await owner.goto("/business");
-    await expect(owner.getByTestId("studio-subscription").getByText("PUBLIC", { exact: true })).toBeVisible();
+    await expect(owner.getByTestId("studio-live")).toBeVisible();
+    await owner.goto(`/business/${studioId}`);
     await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
     // the Accounts desk counts it for the organization (the chip appears with the first studio)
     await admin.goto(`/admin/accounts?q=${encodeURIComponent(ownerEmail)}`);
@@ -444,17 +456,32 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: /followers$/ })).toHaveCount(0);
 
     // ---- create + publish a class ----------------------------------------
-    await studioRow.click();
-    // the row opens the STUDIO'S OWN HOME (14 Sep 2026): the photo header, today's
-    // rooms and its tools — the register is one of the tools
+    // ⚠ FROM THE HUB, because that is the door this asserts. The hub's CARD
+    // opens the STUDIO'S OWN HOME (14 Sep 2026; the whole card since 15 Sep):
+    // the header, today's rooms and its tools, the register among them. The
+    // Profile tab's "Your studios" row is a DIFFERENT door and goes straight to
+    // the register — clicking there and then waiting for /business/{id} is how
+    // this segment sat on a 15-minute timeout.
+    await owner.goto("/business");
+    await hubCard.getByRole("link", { name: `${studioName} — open the studio` }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+$/);
     tenantId = owner.url().match(/\/business\/([0-9a-f-]+)$/)?.[1] ?? null;
     await expect(owner.getByRole("heading", { name: studioName, exact: true })).toBeVisible();
     await expect(owner.getByText("Studio Tools")).toBeVisible();
     await expect(owner.getByText("Nothing in your rooms today")).toBeVisible();
-    // the studio's own picture is set HERE (14 Sep 2026): the ＋ on the hero square,
-    // offered to the owner; a studio born in the sheet has none yet
-    await expect(owner.getByLabel("Add a photo")).toBeAttached();
+    // the studio's pictures are set in the Edit sheet (16 Sep 2026, the user:
+    // "the update image option should be inside the edit profile") — the hero
+    // shows them and offers no control of its own
+    await expect(owner.getByLabel("Add a photo")).toHaveCount(0);
+    await expect(owner.getByLabel("Add a header picture")).toHaveCount(0);
+    await owner.getByRole("button", { name: "Edit studio", exact: true }).click();
+    const studioSheet = owner.getByRole("dialog", { name: "Edit business" });
+    await expect(studioSheet.getByLabel("Add a photo")).toBeAttached();
+    await expect(studioSheet.getByLabel("Add photos of your space")).toBeAttached();
+    // and the address does not move because somebody scrolled past the map
+    await expect(studioSheet.getByRole("button", { name: "Change address" })).toBeVisible();
+    await expect(studioSheet.getByRole("searchbox", { name: /Search an address/ })).toHaveCount(0);
+    await studioSheet.getByRole("button", { name: "Cancel" }).click();
     await owner.getByRole("link", { name: "Classes", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
@@ -1049,9 +1076,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto(`/crews/${crewId}/manage`);
     await learner.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
-    // exact: Next's route announcer carries the page TITLE ("E2E Trainer — DanceOS"),
-    // which a loose match picks up as a second element the moment a navigation is fresh
-    await expect(learner.getByText(trainerName, { exact: true })).toBeVisible();
+    /* THE HEADING, not the text (16 Sep 2026). `exact: true` was put here to
+       dodge Next's route announcer on the theory that it carries the page TITLE
+       ("E2E Trainer — DanceOS"); on a fresh navigation it carries the bare NAME,
+       so `exact` made the clash certain rather than avoiding it — a strict-mode
+       violation that only shows up when the suite runs its specs in parallel and
+       this page is opened cold. The name on this page is an <h1>; ask for that. */
+    await expect(learner.getByRole("heading", { name: trainerName, exact: true })).toBeVisible();
     await expect(learner.getByText("ARTIST")).toBeVisible();
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
@@ -1095,20 +1126,28 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.waitForURL(/\/person\/[0-9a-f-]+$/);
     await expect(trainer.getByRole("link", { name: /This is you/ })).toBeVisible();
     await expect(trainer.getByRole("button", { name: "Follow" })).toHaveCount(0);
-    // and the photo: the file goes from THIS browser straight to Storage with the
-    // trainer's own session (the proof covers the rules; only a browser can cover
-    // the upload), the row records the path, and the square stops being initials
-    // onboarding required a photo (U2), so the square is a face already —
-    // taking it down puts the initials back, and the control turns into "Add a photo"
-    await expect(trainer.locator("img").first()).toBeVisible();
-    await expect(trainer.getByLabel("Change your photo")).toBeAttached();
-    await trainer.getByRole("button", { name: "Remove the photo" }).click();
-    await expect(trainer.locator("img")).toHaveCount(0);
-    // and a new one goes up from THIS browser straight to Storage with the trainer's
-    // own session (the proof covers the rules; only a browser can cover the upload)
-    await trainer.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
-    await expect(trainer.locator("img").first()).toBeVisible({ timeout: 20_000 });
-    await expect(trainer.getByLabel("Change your photo")).toBeAttached();
+    // ⚠ and the public view of yourself offers NO photo control (16 Sep 2026):
+    // this page is what the eye in the tab bar opens, so it is what a visitor
+    // sees and nothing else
+    await expect(trainer.getByLabel("Change your photo")).toHaveCount(0);
+    // the photo itself is changed in Edit profile, the one place pictures live
+    // now. The file goes from THIS browser straight to Storage with the
+    // trainer's own session (the proof covers the rules; only a browser can
+    // cover the upload), the row records the path, and the disc stops being
+    // initials. Onboarding required a photo (U2), so it is a face already —
+    // taking it down puts the initials back and the control says "Add a photo".
+    await trainer.goto("/profile");
+    await trainer.getByTestId("my-hero").waitFor();
+    await trainer.getByRole("button", { name: "Edit profile", exact: true }).click();
+    const profileSheet = trainer.getByRole("dialog", { name: "Edit profile" });
+    await expect(profileSheet.getByLabel("Change your photo")).toBeAttached();
+    await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(1);
+    await profileSheet.getByRole("button", { name: "Remove the photo" }).click();
+    await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(0);
+    await profileSheet.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+    await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(1, { timeout: 20_000 });
+    await expect(profileSheet.getByLabel("Change your photo")).toBeAttached();
+    await profileSheet.getByRole("button", { name: "Cancel" }).click();
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browserRef.newContext();
     try {
@@ -1274,7 +1313,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto(`/person/${trainerId}`);
     await expect(learner.getByText("Movement is a language.")).toBeVisible();
     await expect(learner.getByText("24, Pune")).toBeVisible();
-    await expect(learner.getByLabel("Kathak", { exact: true })).toBeVisible();
+    /* the tile names whose style it is (15 Sep 2026, when this page moved onto
+       `IdentityHero`, which takes a `styleAria`) — a bare "Kathak" is the label
+       nothing has carried since */
+    await expect(learner.getByLabel(/^Kathak — a style .+ dances$/)).toBeVisible();
     await expect(learner.getByRole("link", { name: "Instagram — @rheamoves" })).toHaveAttribute("href", "https://instagram.com/rheamoves");
   });
   test("Home’s PassDeck: today’s sessions as swiped cards, with the pass and the invoice on the card", async () => {

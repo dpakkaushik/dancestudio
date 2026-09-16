@@ -7,9 +7,23 @@ import { StudioI } from "./shell-glyphs";
 
 /** The "Managing {studio}" strip lifted from the shell (prototype 19267-19294):
  *  a studio is a WORKSPACE you enter from Home, and this strip is the way back
- *  out. It draws on every /business/[tenantId]/* route. The name comes from a
- *  server action keyed on the id in the URL; until it lands the strip already
- *  holds its height so the page under it does not jump. */
+ *  out. It draws on every /business/[tenantId]/SOMETHING route — never on the
+ *  studio's own home, where the hero says all of this at full size (16 Sep
+ *  2026). The name comes from a server action keyed on the id in the URL; until
+ *  it lands the strip already holds its height so the page under it does not
+ *  jump.
+ *
+ *  THE NAME, AND ONLY THE NAME (16 Sep 2026). It used to print the area and the
+ *  city after it, which made the line the widest thing on a desk and answered a
+ *  question nobody standing on a class register is asking: what an address
+ *  cannot tell you is WHICH of an organization's studios this register belongs
+ *  to, and the name can.
+ *
+ *  Exit studio stays, and it is not the back button in different clothes: back
+ *  retraces the last page (from Add class that is the register, then the home,
+ *  then the hub — three presses), and in the installed TWA a deep link opened
+ *  straight onto a desk has no history to retrace at all. This is one press to
+ *  the studio list, from anywhere inside the workspace. */
 export function WorkspaceStrip({ tenantId }: { tenantId: string }) {
   const [ws, setWs] = useState<{ id: string; data: Workspace | null } | null>(null);
 
@@ -25,7 +39,6 @@ export function WorkspaceStrip({ tenantId }: { tenantId: string }) {
 
   /* a name from a previous studio must not be printed over this one */
   const current = ws && ws.id === tenantId ? ws.data : null;
-  const loc = current ? [current.area, current.city].filter(Boolean).join(", ") : "";
 
   return (
     <div
@@ -56,7 +69,6 @@ export function WorkspaceStrip({ tenantId }: { tenantId: string }) {
       >
         Managing{" "}
         <b style={{ color: "var(--text)", fontSize: 13.5 }}>{current ? current.name : "…"}</b>
-        {loc ? ` · ${loc}` : ""}
       </span>
       <Link
         href="/business"

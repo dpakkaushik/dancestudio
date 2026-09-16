@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
@@ -23,7 +22,6 @@ import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { EditProfileSheet } from "./EditProfileSheet";
-import { HeaderRemove } from "./HeaderRemove";
 import type { HeroShot } from "./HeroRail";
 import { IdentityHero } from "./hero-kit";
 import { EyeIcon, Group, PencilIcon, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
@@ -119,10 +117,11 @@ export function MyProfilePage({
   const ring = ROLE_RING[kind];
   const RC = ring[1];
   const face = photoUrl(profile.avatarPath);
-  /* the header, each picture with its ✕ — this is your own page */
+  /* the header, shown and nothing else: adding and removing moved into the
+     Edit-profile sheet on 16 Sep 2026, at the user's instruction */
   const shots: HeroShot[] = header
     .filter((h) => h.url)
-    .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, corner: <HeaderRemove target={{ kind: "person", id: h.id }} path={h.path} /> }));
+    .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}` }));
   const followingN = followingPeople.length + followingTenants.length;
   /* an organization is not a public entity (8 Sep 2026): no page to share, nobody
      follows it and it follows nobody, it dances nothing — its figure is its studios */
@@ -211,11 +210,9 @@ export function MyProfilePage({
           }
           avatar={face}
           avatarAlt={profile.fullName}
-          /* the ＋ on the disc's rim (10600): the one place you change your picture */
-          avatarPicker={<PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" overlay />}
+          /* both pictures are changed in Edit profile (16 Sep 2026) — the
+             pencil below, not a ＋ on the disc and a ✕ on each header square */
           shots={shots}
-          addTile={header.length < headerMax ? <PhotoPicker owner={{ kind: "gallery", id: profile.id }} hasPhoto={false} label="Add a header picture" tile /> : undefined}
-          addLabel="Add a header picture"
           /* ── THE THREE CONTROLS, TOP RIGHT (10613) — Share is the QR beside the name ── */
           corner={
             <>

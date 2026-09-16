@@ -103,6 +103,15 @@ const rest = async (method, url, body) => {
   await page.getByRole("button", { name: "Edit business", exact: true }).click();
   await page.waitForTimeout(600);
 
+  /* ⚠ THE PICKER OPENS LOCKED for a business that already stands somewhere
+     (16 Sep 2026): the map used to take a one-finger gesture, so scrolling this
+     sheet past it dragged the pin and this sheet SAVES a moved pin at once.
+     Arming it is now an explicit press, and so is this. */
+  check((await page.getByRole("button", { name: "Change address" }).count()) === 1, "the address is locked until Change address is pressed");
+  check((await page.getByRole("searchbox", { name: /Search an address or landmark/i }).count()) === 0, "…and nothing to type into until then");
+  await page.getByRole("button", { name: "Change address" }).click();
+  await page.waitForTimeout(400);
+
   const map = page.getByRole("application", { name: /Move the map/i });
   await map.scrollIntoViewIfNeeded();
   /* Google's script, its tiles and its container all have to arrive */

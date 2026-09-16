@@ -153,7 +153,18 @@ export function BusinessesDesk({
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {businesses.map((b) => {
             const live = b.visibility === "listed";
-            const blockedFromListing = !live && b.type === "studio" && (!b.ownerVerified || !(b.subStatus && ["active", "past_due", "canceled"].includes(b.subStatus)));
+            /* ⚠ THE BADGE IS THE STUDIO'S, NOT THE ORGANIZATION'S (fixed 16 Sep
+               2026). This read `!b.ownerVerified` — the organization's own tick —
+               and since 14 Sep NOBODY REVIEWS AN ORGANIZATION, so that tick is
+               null for every organization made after that date. The consequence
+               was not cosmetic: **an admin who took a studio off Discover could
+               never put it back**, because the button was replaced by a sentence
+               about a rule that no longer exists ("its organization is not
+               verified"). A reversible sanction that cannot be reversed from the
+               panel is not reversible. `guard_tenant_visibility` gates on the
+               STUDIO's badge and a live plan, and so does this now — the screen
+               says what the database will actually refuse. */
+            const blockedFromListing = !live && b.type === "studio" && (!b.verifiedAt || !(b.subStatus && ["active", "past_due", "canceled"].includes(b.subStatus)));
             const subLive = b.type === "studio" && b.subStatus !== null && ["active", "past_due", "canceled"].includes(b.subStatus);
             return (
               <div key={b.id} data-testid="admin-business" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${live ? "#22C55E" : "#F59E0B"}`, borderRadius: 16, padding: "11px 12px" }}>
@@ -264,8 +275,8 @@ export function BusinessesDesk({
                       </button>
                     ) : blockedFromListing ? (
                       <span style={{ fontSize: 10.5, color: MUTED, alignSelf: "center", lineHeight: 1.4 }}>
-                        {!b.ownerVerified
-                          ? "Its organization is not verified — verify that first, or its studios cannot be public."
+                        {!b.verifiedAt
+                          ? "This studio is not verified — approve it on the Verifications desk first, or it cannot be public."
                           : "It has no active subscription — its owner subscribes it, or grant one below."}
                       </span>
                     ) : (
