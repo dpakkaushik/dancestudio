@@ -4,9 +4,9 @@
 # sale by arithmetic, that the door is the organiser's, and that a draft is
 # dark to everybody but the organiser.
 #
-# Money, honestly: every seat and entry here is FREE, because the rail has no
-# account behind it. A priced tier or entry is refused with Step 9's sentence
-# and this proof pins that down rather than pretending.
+# Money: every seat and entry here is FREE. Since 17 Sep 2026 a priced one is
+# a pending_payment booking paid through Cashfree - check 5 pins the shape and
+# rls-proof-event-money.ps1 proves the rail end to end.
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -File scripts/rls-proof-events.ps1
@@ -185,9 +185,15 @@ try {
   Check 4 "L1 books General: $($t1.status), qty $($t1.qty), Rs $($t1.amount_inr); public count for General = $($counts[0].n)" (
     ($t1.status -eq "booked") -and ($t1.qty -eq 1) -and ($t1.amount_inr -eq 0) -and ($counts.Count -eq 1) -and ($counts[0].n -eq 1))
 
-  # 5. A PRICED TIER IS REFUSED WITH STEP 9'S SENTENCE
-  $priced = Fails { Book $l1 $bId "spectator" $vip.id 1 $null $null $null }
-  Check 5 "VIP (Rs 500) refused: $priced" ($priced -match "switched on")
+  # 5. A PRICED TIER IS A PENDING BOOKING (17 Sep 2026): it is written as
+  #    pending_payment and HOLDS NO SEAT until the money lands - the public count
+  #    for VIP stays empty. The rail itself is proved in rls-proof-event-money.ps1;
+  #    here the pending row is removed again so the counts below stay what they were.
+  $priced = Book $l1 $bId "spectator" $vip.id 1 $null $null $null
+  $vipCount = @((Rpc $anonH "event_counts" @{ p_event_ids = @($bId) }) | Where-Object { $_.ticket_tier_id -eq $vip.id })
+  Check 5 "VIP (Rs 500) books as $($priced.status) for Rs $($priced.amount_inr); the public count for VIP is $(if ($vipCount.Count) { $vipCount[0].n } else { 0 }) - a seat is not sold until it is paid" (
+    ($priced.status -eq "pending_payment") -and ($priced.amount_inr -eq 500) -and ($vipCount.Count -eq 0))
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/event_bookings?id=eq.$($priced.id)" -Headers $svcH | Out-Null
 
   # 6. THE PEOPLE WHO RUN IT DO NOT BOOK IT (13273) - the organization; its studio's staff are not on
   #    the host's team (R15), so a staff member is a person here and is refused only by the duet rule

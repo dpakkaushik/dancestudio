@@ -20,20 +20,33 @@ interface RefundRow {
   profiles: { full_name: string } | null;
 }
 
+/* an order names a class session OR an event (17 Sep 2026) — both are embedded,
+   and whichever is there is what the row is "against" */
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, business_id, classes (title, style, share_slug), businesses (name))";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, event_id, business_id, classes (title, style, share_slug), events (title, share_slug), businesses (name))";
 
-/** a refund with the class it is against — the ledger's row (16665-16680) */
+/** a refund with the class — or, since 17 Sep 2026, the event — it is against;
+ *  the ledger's row (16665-16680). The `class*` names are kept for the class
+ *  case's callers; an event row fills them with the event's words. */
 export interface RefundLedgerRow extends RefundRequest {
   classId: string;
   tenantId: string;
   classTitle: string;
   classStyle: string;
   classShareSlug: string | null;
+  /** set on an event ticket's refund — the row opens /e/{slug} */
+  eventShareSlug: string | null;
   tenantName: string;
 }
 interface LedgerRow extends RefundRow {
-  orders: { class_id: string; business_id: string; classes: { title: string; style: string; share_slug: string } | null; businesses: { name: string } | null } | null;
+  orders: {
+    class_id: string | null;
+    event_id: string | null;
+    business_id: string;
+    classes: { title: string; style: string; share_slug: string } | null;
+    events: { title: string; share_slug: string } | null;
+    businesses: { name: string } | null;
+  } | null;
 }
 const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   id: r.id,
@@ -49,9 +62,10 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   hasRailReference: r.provider_refund_id !== null,
   classId: r.orders?.class_id ?? "",
   tenantId: r.orders?.business_id ?? "",
-  classTitle: r.orders?.classes?.title ?? "Class",
-  classStyle: r.orders?.classes?.style ?? "",
+  classTitle: r.orders?.classes?.title ?? r.orders?.events?.title ?? "Booking",
+  classStyle: r.orders?.classes?.style ?? (r.orders?.events ? "Event ticket" : ""),
   classShareSlug: r.orders?.classes?.share_slug ?? null,
+  eventShareSlug: r.orders?.events?.share_slug ?? null,
   tenantName: r.orders?.businesses?.name ?? "",
 });
 

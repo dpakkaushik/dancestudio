@@ -125,6 +125,18 @@ export function EventsDesk({
           </Link>
         )}
 
+        {/* THE MONEY DOORS (17 Sep 2026): tickets and entries pay through Cashfree
+            now, so the organization has takings and a refund queue on its
+            hosting row — the same two desks a studio has for its classes */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <Link href={`/business/${tenantId}/earnings`} aria-label="Ticket money" style={{ ...pill(), flex: 1, justifyContent: "center", padding: "9px 11px" }}>
+            Ticket money ›
+          </Link>
+          <Link href={`/business/${tenantId}/refunds`} aria-label="Ticket refunds" style={{ ...pill(), flex: 1, justifyContent: "center", padding: "9px 11px" }}>
+            Refunds ›
+          </Link>
+        </div>
+
         {/* the live banner (LiveBanner 3949): on today AND inside today's window */}
         {liveCount > 0 ? (
           <div

@@ -115,10 +115,12 @@ export interface Tile {
  *  — but the only door was a row inside the studios hub, two taps away, and an
  *  organization's Home never mentioned it. Now it is a tile, where the other
  *  tools are, pointing at the organization's ONE events desk. */
-const tilesFor = (tenantId: string | null, eventsHostId: string | null): Tile[] => [
+const tilesFor = (tenantId: string | null, eventsHostId: string | null, statsHref: string): Tile[] => [
   { name: "Calendar", href: "/calendar", k: "calendar", c: "#5AC8FA" },
-  /* Stats left the tab bar for the grid (15 Sep 2026) — the record, the history and the boards */
-  { name: "Stats", href: "/stats", k: "stats", c: "#A855F7" },
+  /* Stats left the tab bar for the grid (15 Sep 2026) — the record, the history
+     and the boards. AN ORGANIZATION'S STATS ARE ITS STUDIOS' (17 Sep 2026): it
+     does not dance, so its tile opens the combined dashboard, not a person's record */
+  { name: "Stats", href: statsHref, k: "stats", c: "#A855F7" },
   ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
   { name: "Crews", href: "/crews", k: "crews", c: "#DC2626" },
   { name: "Studios", href: "/business", k: "studios", c: "#3B82F6" },
@@ -139,7 +141,7 @@ const tilesFor = (tenantId: string | null, eventsHostId: string | null): Tile[] 
  *  open. `children` sits between the heading and the grid — Home puts the
  *  pending team invites there. */
 export function BizSection({ role, tenantId, eventsHostId = null, plan = null, children }: { role: ProfileRole; tenantId: string | null; /** R15: the organization's own events host — the Events tile points at its desk; null draws no tile */ eventsHostId?: string | null; /** the Artist plan's state — the badge on the head (2500-2520); null draws none (a studio) */ plan?: "active" | "locked" | null; children?: ReactNode }) {
-  const tiles = tilesFor(tenantId, eventsHostId);
+  const tiles = tilesFor(tenantId, eventsHostId, role === "org" ? "/business/stats" : "/stats");
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>

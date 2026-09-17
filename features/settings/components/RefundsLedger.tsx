@@ -113,8 +113,8 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 900 }}>{side === "mine" ? r.tenantName : r.learnerName}</div>
               <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
-                {r.classShareSlug ? (
-                  <Link href={`/c/${r.classShareSlug}`} style={{ color: "var(--sub)", textDecoration: "none" }}>
+                {r.classShareSlug || r.eventShareSlug ? (
+                  <Link href={r.classShareSlug ? `/c/${r.classShareSlug}` : `/e/${r.eventShareSlug}`} style={{ color: "var(--sub)", textDecoration: "none" }}>
                     {r.classStyle} · {r.classTitle}
                   </Link>
                 ) : (
@@ -158,9 +158,9 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
               Mark refunded at the desk
             </button>
           ) : null}
-          {r.status === "processed" && r.classShareSlug ? (
-            <Link href={`/c/${r.classShareSlug}`} style={{ display: "block", marginTop: 9, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--el)", color: "var(--text)", textDecoration: "none" }}>
-              Receipt on the class page ›
+          {r.status === "processed" && (r.classShareSlug || r.eventShareSlug) ? (
+            <Link href={r.classShareSlug ? `/c/${r.classShareSlug}` : `/e/${r.eventShareSlug}`} style={{ display: "block", marginTop: 9, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, background: "var(--el)", color: "var(--text)", textDecoration: "none" }}>
+              {r.classShareSlug ? "Receipt on the class page ›" : "Open the event ›"}
             </Link>
           ) : null}
         </div>
@@ -168,7 +168,7 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
       {list.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", border: "1.5px dashed var(--el)", padding: "22px 16px" }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 5 }}>{rows.length === 0 ? "No refunds yet" : "Nothing in that state"}</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class page and the request lands here." : "A learner's cancellation inside the 48-hour window lands here for you to decide; outside it the rail refunds by itself."}</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Cancel a paid booking from its class or event page and the request lands here." : "A cancellation inside the 48-hour window lands here for you to decide; outside it the rail refunds by itself."}</div>
         </div>
       ) : null}
       <BizToast msg={toast} />

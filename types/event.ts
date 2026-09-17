@@ -113,7 +113,9 @@ export interface EventBooking {
   /** Step 22: the crew a crew entry is for, entered by the person who leads it */
   crewId: string | null;
   amountInr: number;
-  status: "booked" | "cancelled";
+  /** pending_payment (17 Sep 2026): a priced seat waiting for its Cashfree
+   *  payment — holds no seat, appears in no count */
+  status: "pending_payment" | "booked" | "cancelled";
   checkedInAt: string | null;
   createdAt: string;
 }

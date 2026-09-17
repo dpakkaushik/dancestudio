@@ -4,13 +4,28 @@ import type { ClassMoney, OrderStatus, PaidReceipt, PaymentOrder, PaymentProvide
 interface OrderRow {
   id: string;
   business_id: string;
-  class_id: string;
-  session_id: string;
+  class_id: string | null;
+  session_id: string | null;
+  event_id?: string | null;
+  event_booking_id?: string | null;
   amount_inr: number;
   provider: PaymentProvider;
   provider_order_id: string | null;
   status: OrderStatus;
 }
+
+const toOrder = (row: OrderRow): PaymentOrder => ({
+  id: row.id,
+  tenantId: row.business_id,
+  classId: row.class_id ?? null,
+  sessionId: row.session_id ?? null,
+  eventId: row.event_id ?? null,
+  eventBookingId: row.event_booking_id ?? null,
+  amountInr: row.amount_inr,
+  provider: row.provider,
+  providerOrderId: row.provider_order_id,
+  status: row.status,
+});
 
 /** Start a paid booking — the RPC validates session/price/capacity server-side. */
 export async function createPaymentOrder(
@@ -23,17 +38,24 @@ export async function createPaymentOrder(
   if (error) {
     throw new Error(error.message);
   }
-  const row = data as OrderRow;
-  return {
-    id: row.id,
-    tenantId: row.business_id,
-    classId: row.class_id,
-    sessionId: row.session_id,
-    amountInr: row.amount_inr,
-    provider: row.provider,
-    providerOrderId: row.provider_order_id,
-    status: row.status,
-  };
+  return toOrder(data as OrderRow);
+}
+
+/** Start paying for a PENDING event booking — a priced ticket or entry
+ *  `book_event` wrote as `pending_payment` (17 Sep 2026). The RPC re-checks
+ *  the event is open and the tier still has room; the amount is the
+ *  booking's, never the client's. */
+export async function createEventPaymentOrder(
+  supabase: SupabaseClient,
+  eventBookingId: string
+): Promise<PaymentOrder> {
+  const { data, error } = await supabase.rpc("create_event_payment_order", {
+    p_event_booking_id: eventBookingId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return toOrder(data as OrderRow);
 }
 
 /** One of the payer's own orders, for the checkout confirmation — says
@@ -248,8 +270,12 @@ export async function findClassMoney(
 // ── verified-event appliers — service-role client only ────────────────────────
 
 export interface CaptureOutcome {
+  /** `enrolled` is "the seat is theirs" for a class AND for an event (the word
+   *  predates events; `kind` says which) */
   outcome: "enrolled" | "duplicate" | "refund_pending" | "ignored";
+  kind?: "event";
   class_booking_id?: string;
+  event_booking_id?: string;
   order_status?: OrderStatus;
   refund_id?: string;
   provider_payment_id?: string;

@@ -511,3 +511,110 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
     });
   }
 });
+
+test("cashfree webhook for an EVENT TICKET (17 Sep 2026): a priced seat waits for its money, the signed capture books it, a replay is a no-op, and cancelling ten days out files an automatic refund", async ({ request }) => {
+  test.skip(
+    !supabaseUrl || !anonKey || !serviceKey || !secretKey,
+    "Supabase keys or CASHFREE_SECRET_KEY missing (.env.local or env)"
+  );
+
+  const stamp = Date.now().toString(36);
+  const owner = await signInTestNumber("+919999999999");
+  const learner = await signInTestNumber("+918888888888");
+
+  /* an event needs the organization's GST number (11 Sep 2026); the restorer
+     usually leaves the test organization with one — ask, and add one if not */
+  const why = await rpc<string | null>(userHeaders(owner.token), "why_no_event", {});
+  if (why) {
+    /* the placeholder shape is THREE LETTERS then five digits — "E2E" has a digit in it */
+    await rpc(userHeaders(owner.token), "verify_gstin", { p_gstin: `WEB${String(Date.now()).slice(-5)}` });
+  }
+  const hostId = await rpc<string>(userHeaders(owner.token), "my_org_business", {});
+  const inTenDays = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const eventId = await rpc<string>(userHeaders(owner.token), "save_event", {
+    p_business_id: hostId,
+    p_event_id: null,
+    p_event: {
+      category: "battle", title: `Webhook Ticket ${stamp}`, style: "All styles",
+      start_date: inTenDays, end_date: inTenDays, start_time: "18:00",
+      venue: "Webhook Hall", address: null, city: "Pune", maps_url: "https://maps.google.com/?q=Webhook+Hall",
+      about: null, entry_format: "solo", bracket: 16, rounds: 0, prizes: [1000, 0, 0], tickets_on: true,
+      entry_tiers: [{ format: "solo", fee_inr: 0, capacity: 10 }],
+      ticket_tiers: [{ name: "Door", price_inr: 250, capacity: 3, sort: 0 }],
+    },
+  });
+
+  try {
+    await rpc(userHeaders(owner.token), "publish_event", { p_event_id: eventId });
+    const tiers = await rows<{ id: string }>(serviceHeaders, `event_ticket_tiers?event_id=eq.${eventId}&select=id`);
+    const tierId = tiers[0].id;
+
+    // a PRICED ticket is a pending booking that holds no seat
+    const booking = await rpc<{ id: string; status: string; amount_inr: number }>(userHeaders(learner.token), "book_event", {
+      p_event_id: eventId, p_kind: "spectator", p_ticket_tier_id: tierId, p_qty: 1,
+    });
+    expect(booking.status).toBe("pending_payment");
+    expect(booking.amount_inr).toBe(250);
+    const countBefore = await rpc<Array<{ n: number }>>({ apikey: anonKey, "Content-Type": "application/json" }, "event_counts", { p_event_ids: [eventId] });
+    expect(countBefore).toHaveLength(0);
+
+    // the order against it, the rail's id bound
+    const order = await rpc<{ id: string; amount_inr: number; event_id: string }>(userHeaders(learner.token), "create_event_payment_order", {
+      p_event_booking_id: booking.id,
+    });
+    expect(order.amount_inr).toBe(250);
+    expect(order.event_id).toBe(eventId);
+    const providerOrderId = `dos_${order.id.replace(/-/g, "")}`;
+    await rpc(userHeaders(learner.token), "attach_provider_order", { p_order_id: order.id, p_provider_order_id: providerOrderId });
+
+    // the delivery, exactly as Cashfree sends a PAYMENT_SUCCESS
+    const cfPaymentId = Number(`${Date.now()}`.slice(-9));
+    const body = JSON.stringify({
+      data: {
+        order: { order_id: providerOrderId, order_amount: 250.0, order_currency: "INR" },
+        payment: { cf_payment_id: cfPaymentId, payment_status: "SUCCESS", payment_amount: 250.0, payment_currency: "INR", payment_group: "upi", payment_method: { upi: { channel: "collect", upi_id: "testsuccess@gocash" } } },
+      },
+      event_time: new Date().toISOString(),
+      type: "PAYMENT_SUCCESS_WEBHOOK",
+    });
+    const timestamp = String(Date.now());
+    const delivered = await request.post("/api/webhooks/cashfree", {
+      headers: { "content-type": "application/json", "x-webhook-signature": sign(timestamp, body), "x-webhook-timestamp": timestamp },
+      data: body,
+    });
+    expect(delivered.status()).toBe(200);
+    const outcome = (await delivered.json()) as { result?: { outcome?: string; kind?: string } };
+    expect(outcome.result?.outcome).toBe("enrolled");
+    expect(outcome.result?.kind).toBe("event");
+
+    // the seat is theirs, the order paid, the count public
+    const held = await rows<{ status: string }>(userHeaders(learner.token), `event_bookings?id=eq.${booking.id}&select=status`);
+    expect(held[0].status).toBe("booked");
+    const orderRows = await rows<{ status: string }>(userHeaders(learner.token), `orders?id=eq.${order.id}&select=status`);
+    expect(orderRows[0].status).toBe("paid");
+    const countAfter = await rpc<Array<{ n: number }>>({ apikey: anonKey, "Content-Type": "application/json" }, "event_counts", { p_event_ids: [eventId] });
+    expect(countAfter).toHaveLength(1);
+    expect(Number(countAfter[0].n)).toBe(1);
+
+    // a replay changes nothing
+    const replayed = await request.post("/api/webhooks/cashfree", {
+      headers: { "content-type": "application/json", "x-webhook-signature": sign(timestamp, body), "x-webhook-timestamp": timestamp },
+      data: body,
+    });
+    expect(replayed.status()).toBe(200);
+    const payments = await rows<{ id: string }>(userHeaders(learner.token), `payments?order_id=eq.${order.id}&select=id`);
+    expect(payments).toHaveLength(1);
+
+    // ten days out, cancelling is an AUTOMATIC refund (the class rule)
+    const cancelled = await rpc<{ status: string; refund: { status: string; amount_inr: number } | null }>(userHeaders(learner.token), "cancel_event_booking", {
+      p_booking_id: booking.id, p_reason: "Plans changed",
+    });
+    expect(cancelled.refund?.status).toBe("pending");
+    expect(cancelled.refund?.amount_inr).toBe(250);
+    const orderAfter = await rows<{ status: string }>(userHeaders(learner.token), `orders?id=eq.${order.id}&select=status`);
+    expect(orderAfter[0].status).toBe("refund_pending");
+  } finally {
+    // the event delete cascades its tiers, bookings, orders and payments
+    await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}`, { method: "DELETE", headers: serviceHeaders });
+  }
+});

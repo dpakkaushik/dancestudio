@@ -8,6 +8,7 @@ import type {
   EventStatus,
   MyEventBooking,
 } from "@/types/event";
+import type { RefundOutcome } from "@/types/payment";
 
 /** Step 21 reads and RPC wrappers. Events, tiers and bookings are RLS-shaped:
  *  members read their tenant's (drafts included), the public reads published
@@ -86,7 +87,7 @@ interface BookingRow {
   partner_status: "asked" | "confirmed" | "rejected" | null;
   crew_id: string | null;
   amount_inr: number;
-  status: "booked" | "cancelled";
+  status: "pending_payment" | "booked" | "cancelled";
   checked_in_at: string | null;
   created_at: string;
   profiles: { full_name: string } | null;
@@ -319,7 +320,7 @@ export async function bookEvent(
     crewId?: string | null;
     partnerId?: string | null;
   }
-): Promise<string> {
+): Promise<{ id: string; status: EventBooking["status"]; amountInr: number }> {
   const { data, error } = await supabase.rpc("book_event", {
     p_event_id: input.eventId,
     p_kind: input.kind,
@@ -334,14 +335,40 @@ export async function bookEvent(
   if (error) {
     throw new Error(error.message);
   }
-  return (data as { id: string }).id;
+  const row = data as { id: string; status: EventBooking["status"]; amount_inr: number };
+  /* a FREE seat comes back `booked`; a PRICED one `pending_payment`, to be
+     paid through createEventPaymentOrder (17 Sep 2026) */
+  return { id: row.id, status: row.status, amountInr: row.amount_inr };
 }
 
-export async function cancelEventBooking(supabase: SupabaseClient, bookingId: string): Promise<void> {
-  const { error } = await supabase.rpc("cancel_event_booking", { p_booking_id: bookingId });
+/** Cancel your own ticket or entry. A PAID one files a refund by the class
+ *  rule — 48 h before the event it is automatic, inside that the organiser
+ *  decides — and the money side comes back so the action can fire the rail
+ *  (17 Sep 2026; the RPC returned nothing before). */
+export async function cancelEventBooking(supabase: SupabaseClient, bookingId: string, reason: string | null = null): Promise<RefundOutcome | null> {
+  const { data, error } = await supabase.rpc("cancel_event_booking", { p_booking_id: bookingId, p_reason: reason });
   if (error) {
     throw new Error(error.message);
   }
+  const out = data as {
+    refund: {
+      id: string;
+      status: RefundOutcome["status"];
+      amount_inr: number;
+      provider: RefundOutcome["provider"];
+      provider_order_id: string | null;
+      provider_payment_id: string;
+    } | null;
+  } | null;
+  if (!out?.refund) return null;
+  return {
+    id: out.refund.id,
+    status: out.refund.status,
+    amountInr: out.refund.amount_inr,
+    provider: out.refund.provider,
+    providerOrderId: out.refund.provider_order_id,
+    providerPaymentId: out.refund.provider_payment_id,
+  };
 }
 
 export async function checkInEventBooking(supabase: SupabaseClient, bookingId: string, on: boolean): Promise<void> {

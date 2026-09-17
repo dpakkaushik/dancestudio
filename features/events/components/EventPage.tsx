@@ -7,7 +7,9 @@ import { PassSheet } from "@/features/classes/components/PassSheet";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { bookEventAction, cancelEventBookingAction } from "@/features/events/server-actions/events";
+import { confirmCheckoutAction, startEventCheckoutAction } from "@/features/payments/server-actions/payments";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
+import { openCashfreeCheckout, type CashfreeCheckoutResult } from "@/lib/cashfree/checkout-client";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { Profile } from "@/types/profile";
@@ -36,9 +38,11 @@ import { EvFormatIcon, bookingWords, eventCodeOf, eventTimeWords, eventWhen } fr
  *  WHAT TO KNOW, POLICY, and ONE BAR STUCK TO THE BOTTOM because booking IS the
  *  page — "Book as participant" / "Book as a spectator" — opening the confirm
  *  sheet (entering as · your partner · which crew · how many) and then THE
- *  PAYMENT STEP, "one sheet, both kinds of booking". Money, honestly: every
- *  free seat or entry books through `book_event`; a priced one prints Step 9's
- *  sentence instead of a methods list, because the rail has no account yet.
+ *  PAYMENT STEP, "one sheet, both kinds of booking". A free seat or entry books
+ *  through `book_event`; a PRICED one (17 Sep 2026) pays through the Cashfree
+ *  sandbox the way a class seat does — the booking is written as
+ *  `pending_payment`, the window takes the money, and the SERVER asks Cashfree
+ *  what happened; the capture is what books the seat.
  *
  *  Departures, stated (tracked in the parity backlog): the duet partner and the
  *  crew are typed names, not the PeoplePicker / the crews you lead (crews are
@@ -232,13 +236,70 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
     fire(bookMode === "audience" ? `🎟 ${qty > 1 ? `${qty} tickets` : "Ticket"} booked — in My classes` : "🎉 Entered — your entry is in My classes");
     router.refresh();
   };
+  /* A PRICED BOOKING PAYS FIRST (17 Sep 2026): the seat is written as
+     pending_payment — it holds nothing — the order opens against it, Cashfree's
+     window takes the money, and the SERVER asks Cashfree what happened. The
+     capture is what books the seat, re-checking the tier under the event lock;
+     the browser's word for it is never trusted. Same path as a class seat. */
+  const payBooking = async () => {
+    if (busy) return;
+    setBusy(true);
+    const res = await startEventCheckoutAction({
+      eventId: ev.id,
+      kind: bookMode === "audience" ? "spectator" : "participant",
+      ticketTierId: bookMode === "audience" ? sel?.id ?? null : null,
+      qty: bookMode === "audience" ? Math.max(1, qty) : 1,
+      format: bookMode === "participant" ? asFmt : null,
+      crewId: asFmt === "crew" ? crewId : null,
+      partnerId: asFmt === "duo" ? partner?.id ?? null : null,
+      businessName: ev.tenantName,
+      description: whatFor.slice(0, 120),
+    });
+    if (!res.checkout) {
+      setBusy(false);
+      fire(res.error ?? "Could not start the payment");
+      return;
+    }
+    let result: CashfreeCheckoutResult;
+    try {
+      result = await openCashfreeCheckout(res.checkout.paymentSessionId, res.checkout.mode);
+    } catch (openError: unknown) {
+      setBusy(false);
+      fire(openError instanceof Error ? openError.message : "Could not open the payment window");
+      return;
+    }
+    if (result.error) {
+      // closed without paying, or the attempt failed — nothing was charged
+      setBusy(false);
+      fire(result.error.message ?? "The payment window closed before the payment finished");
+      return;
+    }
+    const out = await confirmCheckoutAction({ orderId: res.checkout.orderId });
+    setBusy(false);
+    if (out.error || !out.outcome) {
+      fire(out.error ?? "Could not confirm the payment");
+      return;
+    }
+    setPayOpen(false);
+    fire(
+      out.outcome === "booked"
+        ? bookMode === "audience"
+          ? `🎟 Paid — ${qty > 1 ? `${qty} tickets` : "ticket"} booked, in My classes`
+          : "🎉 Paid — you're entered, it's in My classes"
+        : out.outcome === "processing"
+          ? "Payment received — confirming your seat…"
+          : "The seats went before your payment landed — your money is on its way back"
+    );
+    router.refresh();
+  };
   const cancelBooking = async (b: EventBooking) => {
     if (busy) return;
     setBusy(true);
     const out = await cancelEventBookingAction({ bookingId: b.id, slug: ev.shareSlug });
     setBusy(false);
     setCancelAsk(null);
-    fire(out.error ?? (b.kind === "spectator" ? "Ticket cancelled — the seat is back on sale" : "Entry withdrawn"));
+    /* a paid ticket says what happens to the money (17 Sep 2026) */
+    fire(out.error ?? out.message ?? (b.kind === "spectator" ? "Ticket cancelled — the seat is back on sale" : "Entry withdrawn"));
     router.refresh();
   };
 
@@ -815,16 +876,23 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
               <span style={{ fontSize: 20, fontWeight: 900, fontFamily: DOS_MONO, fontVariantNumeric: "tabular-nums", color: dueNow > 0 ? "var(--text)" : "#4ADE80" }}>{dueNow > 0 ? `₹${dueNow.toLocaleString("en-IN")}` : "Free"}</span>
             </div>
             {dueNow > 0 ? (
-              /* the prototype lists your saved methods here; we have no rail behind
-                 events yet, so the sheet says so in Step 9's own words instead */
-              <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 12px", borderRadius: 14, marginBottom: 12, background: "var(--card)", border: `1.5px dashed ${col}` }}>
+              /* the prototype lists your saved methods here (13462); the one
+                 method on the account is Cashfree Checkout — the same row the
+                 class page's PayFlow draws */
+              <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 12px", borderRadius: 14, marginBottom: 12, background: "var(--card)", border: "1.5px solid var(--el)" }}>
+                <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>
+                  💳
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 900 }}>Payments aren&rsquo;t switched on yet</div>
-                  <div style={{ fontSize: 10, color: "var(--sub)", marginTop: 1, lineHeight: 1.45 }}>This {bookMode === "participant" ? "entry" : "ticket"} costs money and the rail has no account behind it — ask {ev.tenantName} to book you in.</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 900 }}>
+                    UPI · Cards · Netbanking
+                    <span style={{ marginLeft: 6, fontSize: 8, fontWeight: 900, padding: "2px 6px", borderRadius: 999, background: "rgba(34,197,94,.16)", color: "#22C55E" }}>DEFAULT</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--sub)", marginTop: 1 }}>Secure checkout via Cashfree · paid to {ev.tenantName}</div>
                 </div>
               </div>
             ) : null}
-            {dueNow > 0 ? <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.5, margin: "2px 0 12px" }}>Class packs and memberships do not apply to events.</div> : null}
+            {dueNow > 0 ? <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.5, margin: "2px 0 12px" }}>Class packs and memberships do not apply to events. Cancel 48 h or more before it starts for an automatic refund; inside that, the organiser decides.</div> : null}
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 type="button"
@@ -836,8 +904,8 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
               >
                 Back
               </button>
-              <button type="button" disabled={busy || dueNow > 0} aria-disabled={dueNow > 0} onClick={() => void commitBooking()} style={{ ...solidBtn, flex: 1.4, opacity: dueNow > 0 ? 0.45 : 1, cursor: busy ? "wait" : dueNow > 0 ? "default" : "pointer" }}>
-                {dueNow > 0 ? `Pay ₹${dueNow.toLocaleString("en-IN")}` : bookMode === "participant" ? "Confirm entry" : "Confirm booking"}
+              <button type="button" disabled={busy} onClick={() => void (dueNow > 0 ? payBooking() : commitBooking())} style={{ ...solidBtn, flex: 1.4, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}>
+                {busy ? "One moment…" : dueNow > 0 ? `Pay ₹${dueNow.toLocaleString("en-IN")}` : bookMode === "participant" ? "Confirm entry" : "Confirm booking"}
               </button>
             </div>
           </div>

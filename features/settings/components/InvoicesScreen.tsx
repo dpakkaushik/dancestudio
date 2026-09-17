@@ -18,7 +18,7 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
   const [f, setF] = useState<"all" | "paid" | "refunded">("all");
   const shown = f === "all" ? rows : rows.filter((r) => r.status === f);
   const csv = () => {
-    const lines = [["number", "who", "what", "amount_inr", "method", "status", "paid_at"].join(","), ...rows.map((r) => [r.number, r.who, r.what, r.amountInr, r.method ?? "", r.status, r.paidAt].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))];
+    const lines = [["number", "kind", "who", "what", "amount_inr", "method", "status", "paid_at"].join(","), ...rows.map((r) => [r.number, r.kind, r.who, r.what, r.amountInr, r.method ?? "", r.status, r.paidAt].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))];
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -59,8 +59,8 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
           </>
         );
         const style = { ...bizCard, borderLeft: `4px solid ${TONE[r.status]}`, display: "flex", alignItems: "center", gap: 11, padding: "12px 13px", color: "var(--text)", textDecoration: "none" } as const;
-        return r.classShareSlug ? (
-          <Link key={r.id} href={`/c/${r.classShareSlug}`} aria-label={`Open ${r.number}`} style={style}>
+        return r.href ? (
+          <Link key={r.id} href={r.href} aria-label={`Open ${r.number}`} style={style}>
             {body}
           </Link>
         ) : (
@@ -72,7 +72,7 @@ export function InvoicesScreen({ rows, side }: { rows: InvoiceRow[]; side: "mine
       {shown.length === 0 ? (
         <div style={{ ...bizCard, textAlign: "center", border: "1.5px dashed var(--el)", padding: "22px 16px" }}>
           <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 5 }}>{rows.length === 0 ? (side === "mine" ? "No invoices yet" : "Nothing collected yet") : "Nothing in that state"}</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Every paid booking leaves an invoice here, with its receipt on the class page." : "Every payment a student makes lands here the moment Cashfree confirms it."}</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>{side === "mine" ? "Every paid booking, ticket and subscription period leaves an invoice here the moment Cashfree confirms it." : "Every payment a student or a ticket-holder makes lands here the moment Cashfree confirms it."}</div>
         </div>
       ) : null}
       <button type="button" onClick={csv} disabled={rows.length === 0} style={{ ...ghostBtn, marginTop: 4, opacity: rows.length ? 1 : 0.5 }}>

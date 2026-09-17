@@ -121,6 +121,9 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/c\/[^/]+$/, "Class"],
   [/^\/my-classes$/, "All bookings"],
   [/^\/business$/, "Your business"],
+  /* the organization's combined figures (17 Sep 2026) — a static segment, so it
+     must be matched before the studio id below swallows it */
+  [/^\/business\/stats$/, "Studios · combined"],
   [/^\/business\/[^/]+$/, "Studio"],
   [/^\/business\/[^/]+\/classes$/, "Classes"],
   [/^\/business\/[^/]+\/classes\/new$/, "Add class"],

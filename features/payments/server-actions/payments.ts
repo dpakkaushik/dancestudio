@@ -13,17 +13,20 @@ import {
 } from "@/lib/cashfree/api";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { bookEvent } from "@/repositories/events";
 import {
   applyCapturedPayment,
   applyFailedPayment,
   attachProviderOrder,
   attachProviderRefund,
   cancelBooking,
+  createEventPaymentOrder,
   createPaymentOrder,
   findMyOrder,
 } from "@/repositories/payments";
 import { findProfileById } from "@/repositories/profiles";
-import type { CheckoutPayload } from "@/types/payment";
+import type { EntryFormat } from "@/types/event";
+import type { CheckoutPayload, PaymentOrder } from "@/types/payment";
 
 /** Step 9 money actions on the Cashfree rail (swapped 28 Aug 2026). The flow:
  *  startCheckoutAction makes our order + the Cashfree order (amount always from
@@ -53,6 +56,9 @@ function revalidateBookingSurfaces() {
   revalidatePath("/discover");
   revalidatePath("/");
   revalidatePath("/c/[slug]", "page");
+  /* an event's page and its register move too (17 Sep 2026) */
+  revalidatePath("/e/[slug]", "page");
+  revalidatePath("/business/[tenantId]/events/[eventId]", "page");
 }
 
 /** Cashfree requires a customer phone on every order. Accounts that signed in
@@ -92,27 +98,102 @@ export async function startCheckoutAction(input: {
   }
   try {
     const order = await createPaymentOrder(supabase, parsed.data.sessionId);
-    const profile = await findProfileById(supabase, user.id);
-    const cfOrder = await createCashfreeOrder({
-      orderId: order.id,
-      amountInr: order.amountInr,
-      customer: { id: user.id, phone: customerPhoneOf(user.phone), name: profile?.fullName ?? null, email: user.email ?? null },
-      note: `${parsed.data.businessName} · ${parsed.data.description}`,
-      tags: { order_id: order.id, business_id: order.tenantId, class_id: order.classId, session_id: order.sessionId },
-    });
-    await attachProviderOrder(supabase, order.id, cfOrder.order_id);
+    return { checkout: await openRail(supabase, user, order, parsed.data.businessName, parsed.data.description), error: null };
+  } catch (error: unknown) {
     return {
-      checkout: {
-        orderId: order.id,
-        providerOrderId: cfOrder.order_id,
-        paymentSessionId: cfOrder.payment_session_id,
-        mode: cashfreeMode(),
-        amountInr: order.amountInr,
-        businessName: parsed.data.businessName,
-        description: parsed.data.description,
-      },
-      error: null,
+      checkout: null,
+      error: error instanceof Error ? error.message : "Could not start the payment",
     };
+  }
+}
+
+/** OUR order exists; now the Cashfree order against it, bound to ours before
+ *  the window opens. One path for a class seat and an event ticket — the rail
+ *  does not care what the seat is for, and the tags say which it was. */
+async function openRail(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  user: Awaited<ReturnType<typeof requireUser>>["user"],
+  order: PaymentOrder,
+  businessName: string,
+  description: string
+): Promise<CheckoutPayload> {
+  const profile = await findProfileById(supabase, user.id);
+  const tags: Record<string, string> = { order_id: order.id, business_id: order.tenantId };
+  if (order.classId) tags.class_id = order.classId;
+  if (order.sessionId) tags.session_id = order.sessionId;
+  if (order.eventId) tags.event_id = order.eventId;
+  if (order.eventBookingId) tags.event_booking_id = order.eventBookingId;
+  const cfOrder = await createCashfreeOrder({
+    orderId: order.id,
+    amountInr: order.amountInr,
+    customer: { id: user.id, phone: customerPhoneOf(user.phone), name: profile?.fullName ?? null, email: user.email ?? null },
+    note: `${businessName} · ${description}`,
+    tags,
+  });
+  await attachProviderOrder(supabase, order.id, cfOrder.order_id);
+  return {
+    orderId: order.id,
+    providerOrderId: cfOrder.order_id,
+    paymentSessionId: cfOrder.payment_session_id,
+    mode: cashfreeMode(),
+    amountInr: order.amountInr,
+    businessName,
+    description,
+  };
+}
+
+const startEventSchema = z.object({
+  eventId: z.string().uuid(),
+  kind: z.enum(["spectator", "participant"]),
+  ticketTierId: z.string().uuid().nullable().optional(),
+  qty: z.number().int().min(1).max(20).optional(),
+  format: z.enum(["solo", "duo", "crew"]).nullable().optional(),
+  crewId: z.string().uuid().nullable().optional(),
+  partnerId: z.string().uuid().nullable().optional(),
+  // display-only strings for the checkout modal — money comes from the DB
+  businessName: z.string().trim().min(1).max(80),
+  description: z.string().trim().min(1).max(120),
+});
+
+/** A PRICED ticket or entry (17 Sep 2026): `book_event` writes the booking as
+ *  `pending_payment` — it holds no seat — then the order opens against it and
+ *  the Cashfree window opens. The capture (webhook or `confirmCheckoutAction`)
+ *  is what books the seat, re-checking the tier under the event lock. */
+export async function startEventCheckoutAction(input: {
+  eventId: string;
+  kind: "spectator" | "participant";
+  ticketTierId?: string | null;
+  qty?: number;
+  format?: EntryFormat | null;
+  crewId?: string | null;
+  partnerId?: string | null;
+  businessName: string;
+  description: string;
+}): Promise<StartCheckoutResult> {
+  const parsed = startEventSchema.safeParse(input);
+  if (!parsed.success) {
+    return { checkout: null, error: "Invalid booking request" };
+  }
+  const { supabase, user } = await requireUser();
+  if (!isCashfreeConfigured()) {
+    return { checkout: null, error: NOT_CONFIGURED };
+  }
+  try {
+    const booking = await bookEvent(supabase, {
+      eventId: parsed.data.eventId,
+      kind: parsed.data.kind,
+      ticketTierId: parsed.data.ticketTierId ?? null,
+      qty: parsed.data.qty ?? 1,
+      format: parsed.data.format ?? null,
+      crewId: parsed.data.crewId ?? null,
+      partnerId: parsed.data.partnerId ?? null,
+    });
+    if (booking.status !== "pending_payment") {
+      // the database found nothing to pay for (a free tier) and booked it outright
+      return { checkout: null, error: "Nothing to pay — that booking is free and is already confirmed" };
+    }
+    const order = await createEventPaymentOrder(supabase, booking.id);
+    return { checkout: await openRail(supabase, user, order, parsed.data.businessName, parsed.data.description), error: null };
   } catch (error: unknown) {
     return {
       checkout: null,

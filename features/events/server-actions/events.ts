@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { isCashfreeConfigured, refundCashfreePayment } from "@/lib/cashfree/api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   addEventWalkIn,
@@ -15,16 +16,23 @@ import {
   setEventStatus,
   type EventPayload,
 } from "@/repositories/events";
+import { attachProviderRefund } from "@/repositories/payments";
 
-/** ⚠ money-adjacent. Step 21's writes. The RPCs hold every rule — who may run
- *  events, the publish blockers, capacity under lock, and the refusal of a
- *  priced seat or entry until the rail has an account — so the actions
- *  validate shape and pass through. */
+/** ⚠ money. Step 21's writes. The RPCs hold every rule — who may run events,
+ *  the publish blockers, capacity under lock — so the actions validate shape
+ *  and pass through. Since 17 Sep 2026 a PRICED seat or entry pays through the
+ *  Cashfree sandbox: `startEventCheckoutAction` (features/payments) opens the
+ *  window, and cancelling a paid one files a refund by the class rule and
+ *  fires the rail from here, exactly as `cancelBookingAction` does for a class. */
 
 export interface EventActionResult {
   error: string | null;
   eventId?: string;
   bookingId?: string;
+  /** what `book_event` wrote: `booked` for a free seat, `pending_payment` for a priced one */
+  status?: "pending_payment" | "booked" | "cancelled";
+  /** the money side of a cancellation, in words the sheet can fire as a toast */
+  message?: string | null;
 }
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "not a date");
@@ -174,22 +182,52 @@ export async function bookEventAction(input: z.input<typeof bookSchema>): Promis
   if (!parsed.success) return { error: "Invalid booking" };
   const supabase = await requireUser();
   try {
-    const id = await bookEvent(supabase, parsed.data);
+    const booking = await bookEvent(supabase, parsed.data);
     revalidateEvents(undefined, parsed.data.slug);
-    return { error: null, bookingId: id };
+    return { error: null, bookingId: booking.id, status: booking.status };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not book" };
   }
 }
 
-export async function cancelEventBookingAction(input: { bookingId: string; slug?: string }): Promise<EventActionResult> {
-  const parsed = z.object({ bookingId: z.string().uuid(), slug: z.string().optional() }).safeParse(input);
+const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+/** Cancel a ticket or entry. Free: the seat goes back on sale and that is all.
+ *  Paid (17 Sep 2026): the RPC files the refund by the 48-hour rule and hands
+ *  back the rail's ids; when the refund is automatic this fires it, and a
+ *  failed call leaves the ledgered `pending` row on the organiser's queue. */
+export async function cancelEventBookingAction(input: { bookingId: string; slug?: string; reason?: string | null }): Promise<EventActionResult> {
+  const parsed = z
+    .object({ bookingId: z.string().uuid(), slug: z.string().optional(), reason: z.string().trim().max(300).nullable().optional() })
+    .safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
   const supabase = await requireUser();
   try {
-    await cancelEventBooking(supabase, parsed.data.bookingId);
+    const refund = await cancelEventBooking(supabase, parsed.data.bookingId, parsed.data.reason ?? null);
     revalidateEvents(undefined, parsed.data.slug);
-    return { error: null };
+    revalidatePath("/business/[tenantId]/refunds", "page");
+    revalidatePath("/business/[tenantId]/earnings", "page");
+    if (!refund) {
+      return { error: null, message: null };
+    }
+    if (refund.status === "requested") {
+      return { error: null, message: "Cancelled — inside 48 h the organiser decides the refund, and they've been asked" };
+    }
+    if (isCashfreeConfigured() && refund.provider === "cashfree" && refund.providerOrderId) {
+      try {
+        const cf = await refundCashfreePayment({
+          providerOrderId: refund.providerOrderId,
+          refundId: refund.id,
+          amountInr: refund.amountInr,
+          note: parsed.data.reason ?? "Ticket cancelled",
+        });
+        await attachProviderRefund(supabase, refund.id, String(cf.cf_refund_id));
+        return { error: null, message: `Cancelled — your ${rupees(refund.amountInr)} refund is on its way` };
+      } catch {
+        return { error: null, message: "Cancelled — your refund is queued" };
+      }
+    }
+    return { error: null, message: "Cancelled — your refund is queued" };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not cancel" };
   }

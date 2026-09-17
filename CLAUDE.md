@@ -1,8 +1,99 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (16–17 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (17 Sep 2026) — replaced on every push (Rule 13)
 
-> ### ⚠⚠ THE DATABASE SPEAKS THE APP'S LANGUAGE NOW — `tenants` IS `businesses` (16–17 Sep 2026)
+> ### ⚠ EVENT TICKETS PAY THROUGH CASHFREE, THE ORGANIZATION HAS A DASHBOARD, A SUBSCRIPTION HAS A RECEIPT (17 Sep 2026)
+> The user, on being told event tickets were still free: *"We have Cashfree test
+> — why aren't you recording money? Make sure there is a complete workflow for
+> Cashfree test transactions; we will later change the test API with live."*
+> And: *"an org can have multiple studios at different locations and can host
+> events, so stats will show the combined as well as separate stats for all the
+> studios under the org — make sure there is a link between org and studios it
+> owns."* And: *"what about the subscriptions — are you recording that or not?"*
+> Three decisions asked and answered: ticket refunds follow **the class rule
+> (48 h)**; enquiry advances stay "recorded as received" for now; the org
+> dashboard is **its own page from the org Home's Stats tile**.
+>
+> **This time the full change list went in front of the user BEFORE a line was
+> written, and the migration's rolled-back dry run BEFORE it was applied** — the
+> correction from the rename, applied.
+>
+> **Migration `20260917120000_event_money_and_the_org_dashboard.sql` (applied):**
+> * **`orders` may name an event**: `class_id`/`session_id` nullable, `+event_id`,
+>   `+event_booking_id`, one CHECK (`orders_subject_check`: a class session OR an
+>   event, never both/neither). Every existing row is a class order.
+> * **`event_bookings.status` gains `pending_payment`** — the event's "waitlisted":
+>   a row for the money to land on that HOLDS NO SEAT (every count already filters
+>   `booked`). `book_event` writes one for a priced tier instead of refusing, and
+>   closes the same person's earlier abandoned attempt on that tier first.
+> * **`create_event_payment_order(booking)`** — the mirror of `create_payment_order`;
+>   amount from the booking, never the client. **`apply_captured_payment`** — the
+>   same RPC the class webhook lands on — gains an event branch: lock the event,
+>   re-check the tier, flip `pending_payment → booked`; wrong amount / closed order
+>   / tier filled / booking cancelled → a `pending` refund, never a seat. The
+>   webhook route did not change by one line.
+> * **`cancel_event_booking(booking, reason)`** returns the money side (jsonb, so it
+>   was dropped and re-created with its grants): ≥ 48 h before the event STARTS
+>   (IST) → `pending`, automatic; inside → `requested`, the organiser decides.
+> * **`can_settle_refunds_for_order(order)`** — the class rule for a class order, the
+>   host's OWNER for an event order; `decide_refund`, `settle_refund_offline` and
+>   `attach_settled_refund_reference` read it. ⚠ Without this the class-only test
+>   returned FALSE for an order with no class and every event refund would have
+>   sat in `requested` for ever.
+> * `notify_refund` names the event; `notify_event_booking` tells the organiser on
+>   `booked` (insert for free, capture for paid), never on money that has not landed
+>   — its trigger is `after insert or update of partner_status, status` now.
+> * **`my_org_stats()`** — one row per business the caller OWNS (studios + the
+>   hosting row): classes, sessions held, seats offered/taken, bookings, gross,
+>   refunded, this IST month's gross, followers, events, tickets, entries.
+>   Aggregate-only, definer, scoped to `auth.uid()`, **no argument** — nobody can
+>   ask about another organization. The hosting row's money IS the event money.
+>
+> **The app:** `startEventCheckoutAction` (book pending → order → Cashfree order →
+> bind) and the class flow's own `confirmCheckoutAction` (order-generic already);
+> the event page's payment step draws the UPI · Cards · Netbanking row and "Pay ₹X"
+> is live; `cancelEventBookingAction` fires the Cashfree refund exactly as the
+> class one does. The Events desk gained **Ticket money ›** and **Refunds ›**
+> (`/business/{host}/earnings|refunds` — both already summed `payments` by
+> business). Refund and Invoice rows say "Ticket · {event}" and open `/e/{slug}`.
+> **`/business/stats`** (`OrgDashboard`): the total across studios, an Events card
+> off the hosting row, then a card per studio with its own figures and doors; the
+> org Home's Stats tile points here (a person's still opens `/stats`).
+> **Receipts:** a person's `/invoices` now lists `subscription_auth` /
+> `subscription_charge` payments — "Studio subscription · {studio} · first period /
+> renewal", "Artist plan" — with the CSV; a studio's ledger deliberately does NOT
+> (that is money it paid, not money it took).
+>
+> **Verified:** dry run clean (+3 authenticated-only functions, anon's set unchanged)
+> · applied · typecheck 0 · lint 0 · build green · **29/29 proofs** including the
+> new `rls-proof-event-money.ps1` (12 checks: pending holds no seat; the order's
+> amount is the booking's; only the service role captures; capture books and tells
+> the organiser; replay is a no-op; wrong amount and a filled tier both refund, the
+> booking stays pending; ≥48 h cancel is automatic; inside the window only the
+> host's owner decides and a rival organization is refused; the host reads its 5
+> payments and a rival none; `my_org_stats` shows the host row's ₹1,150 to the
+> owner, 0 rows to a person, none of A's to B; no direct writes) · `paid-webhook`
+> **3/3** with the new event-ticket test through the real signed route · **e2e 51/51**:
+> 49 green in the whole-suite run (8.0 min, one worker) plus the two `admin-support`
+> tests that timed out at 5 s WHILE the 29-proof suite was running against the same
+> database — re-run alone, 5/5 in 43 s. The 11 Sep lesson a third time: a red on a
+> busy machine is not evidence; re-run the spec alone before believing it.
+> Three harness-only reds on the way, each the proof's own: a GSTIN that spelled
+> `E2E` (a digit is not a letter); a **`$pid` parameter** — PowerShell's read-only
+> process id, which a function may not name a parameter after; a battle with no
+> entry tier, which `event_blockers` rightly refused to publish; and the
+> `Invoke-RestMethod` empty-`[]`-is-one quirk, met a third time — `Rpc-Rows` counts
+> off the raw body now.
+>
+> **What it leaves (backlog rows):** enquiry advances still "recorded as received"
+> (the user's call); no per-event refund queue on the manager (the host's ledger
+> lists them); an abandoned `pending_payment` row is closed only by the person's
+> next attempt on the same tier — invisible and harmless, no sweeper; the
+> dashboard is all-time + this month, no period chips; and NEXT TO DO #8 — the
+> Payment Gateway webhook sub-tab on the Cashfree dashboard — is still the user's,
+> and until it is registered a refund's terminal state is never heard.
+
+> ### ⚠⚠ EARLIER IN THE SAME SESSION — THE DATABASE SPEAKS THE APP'S LANGUAGE NOW: `tenants` IS `businesses` (16–17 Sep 2026)
 > The user, reading the schema: *"can you rename table and column names as per
 > this app's nomenclature so that it is easy to understand what data is saving
 > where — right now it is hard to understand the database; for example there is a
@@ -1675,7 +1766,14 @@ summary; the report has the evidence.
    code does not change. The Places/Geocoding cache in `lib/geo/places.ts` is
    in memory PER INSTANCE, so on serverless the effective cache is per instance.
 
-8. **⚠ Still to confirm: the Cashfree `Payment Gateway` webhook sub-tab.** The
+8. **⚠ Still to confirm: the Cashfree `Payment Gateway` webhook sub-tab — AND IT
+   MATTERS MORE SINCE 17 Sep 2026**, because event tickets now pay through the PG
+   rail too: without the PG events registered, a class or ticket payment still
+   lands (the server re-reads Cashfree when the window closes) but a refund's
+   terminal state — `REFUND_STATUS_WEBHOOK` — is never heard, so every automatic
+   refund stays `pending` on the ledger for ever. The 136 `PAYMENT_SUCCESS_WEBHOOK`
+   rows in `webhook_events` are the e2e signing the route itself, not proof the
+   sub-tab is registered. The
    SUBSCRIPTIONS endpoint is registered and proven by real deliveries (10 Sep).
    Both live on one page — Developers → Payment Gateway → Webhooks →
    Configuration — as sub-tabs; the URL on both is
@@ -1794,6 +1892,17 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **EVENT MONEY THROUGH THE CASHFREE SANDBOX, THE ORGANIZATION'S DASHBOARD, AND
+  SUBSCRIPTION RECEIPTS — 17 Sep 2026, no step number ⚠ (Rule 9: money) —
+  MIGRATION APPLIED, 29/29 proofs, e2e run whole.** The user: *"we have Cashfree
+  test — why aren't you recording money?"* A priced event ticket or entry pays
+  through the same rail, webhook and RPC a class seat does: `orders` may name an
+  event, a priced booking is `pending_payment` until the capture books it under
+  the event lock, cancelling follows the class 48-hour rule, and the host's owner
+  settles. `my_org_stats()` + `/business/stats` give an organization its studios
+  combined and one by one, with the events on the hosting row. A person's
+  Invoices lists their subscription payments. Step 21's "wait for a live account"
+  deferral is closed: the sandbox IS the account until KYC. Detail at the top.
 - **THE DATABASE WAS RENAMED INTO THE APP'S OWN VOCABULARY — 16–17 Sep 2026,
   no step number ⚠ (Rule 9: every RLS policy and money/auth function stands on
   the renamed objects) — TWO MIGRATIONS APPLIED, 28/28 proofs, e2e run whole.**
@@ -5167,7 +5276,8 @@ nothing to lift.
 | Crews: the desk's Battles won / Points tiles (results need scoring — no table holds a score), practice attendance and pay per performance on a member row, Follow a crew (follows target tenants), Enquiry a crew, a crew photo. **"See crew ranking" landed 30 Aug 2026** (parity slice 7 — `/stats?tab=charts&seg=crew`); the photo/name door to a person's page landed with person pages | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | scoring with a later event slice; a follows extension; media slice |
 | Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
-| Events: paid tickets and entries through `orders` (the rail is class-shaped — class_id, session_id), the payment step's saved-methods list, the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles | S_event 13452-13510, 13265, 12968-12995 | a live Cashfree account + an `orders` extension |
+| Events: ~~paid tickets and entries through `orders`~~ **landed 17 Sep 2026** (the sandbox rail; `orders.event_id`, `pending_payment`, the class refund rule). Still open: the payment step's saved-methods list (Cashfree's vault), the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles (the money exists now — the tiles do not read it yet) | S_event 13452-13510, 13265, 12968-12995 | the REVENUE tile is a read away; the waitlist its own slice |
+| **Event money, what it left (17 Sep 2026):** **enquiry advances** still "recorded as received" by the business, not paid through Cashfree (the user's call: later); the **event manager has no Refunds / Earnings segment** — the organiser's queue is the hosting row's ledger at `/business/{host}/refunds`, reached from the desk's new **Refunds ›**; an **abandoned `pending_payment` row** (window closed, never paid) is closed only by that person's next attempt on the same tier — invisible to every count and harmless, but there is no sweeper; **`/business/stats` is all-time + this IST month**, no period chips, and its per-studio "fill" counts held sessions only; a Pro user opening it is sent to `/stats` (one artist page has one board) | — | a sweeper if pending rows ever matter; period chips when a pilot org asks; the enquiry rail is its own slice |
 | Events: the add panel's Scan QR / New user arms, WHO ATTENDED on a completed page (names are private — the counts are printed), the venue amenity chips (the prototype seeds five for every event; no field), "Studios can't book" for a studio-role viewer who is not a member (only members are refused — the database's rule) — the duet partner as a person and the crews you lead landed with Step 22, the events search box with Step 23 | S_event 13040, 12985, 13273; WalkIn 13904 | real scanning; the rest need fields or a product decision |
 | Calendar: hold-to-reorder on the side pills (a saved preference that also decides which side Home opens on), and `__DOSCALSTATE` remembering view + day across drill-ins | DosSidePill 6700, 8651 | Home parity slice |
 | Calendar: the History chip in the hero — **landed 30 Aug 2026** (parity slice 7): the prototype's own chip, opening `/stats?tab=history` | 9070-9074 | closed |
@@ -5180,7 +5290,7 @@ nothing to lift.
 | **Accounts slice, what it left (8 Sep 2026):** **no List / Unlist control** on a studio (verification lists it; unlisting is the admin's revoke — an owner's own switch is a product decision); **two public surfaces escape the visibility gate**: `session_seat_counts` (definer, anon, keyed on a session id — a count, no names) and the public `media` bucket (a tenant's photos are readable whatever its visibility — by design of the photos slice); **an organization is one login** (no org_members — several people administer one org only through each studio's own team); **an organization account can still act as a person elsewhere** (book a class, join a crew, enter an event, send an enquiry — nothing refuses it, and where it does it prints as a person; whether it should is open); **RLS still lets any signed-in user read an organization's `profiles` row** (Step 1's policy) — the 404, the search filter and the follow refusals are the app's decisions on that ceiling, not a new policy; **a Pro user's artist page is not admin-verified** (the user's choice; the same queue could take it); **the proof-script pass is done (9 Sep):** every `New-EmailUser` stamps an organization verified through the service role, an artist page is opened by a Pro user, and the phone-based proofs rely on `scripts/ensure-test-phone-profiles.js` — `rls-proof-discovery` must run alone (OTP rate limit); the **date of birth and 18+ gate** stay needs field (b); **the Artist plan IS charged since 10 Sep 2026** (₹700 a month through a Cashfree mandate — the subscriptions slice; `activate_artist_plan` is only the free path, refusing while the price list says otherwise) | Step 2 policy; 20260824090000:172; 20260829230000:29; — | an owner's List/Unlist switch (decision); a seat-count gate if ever needed; org members when a pilot org asks; Pro verification when the user wants it; a proof-script pass |
 | S_managed, what the slice left: the toast its CalTile manage actions fire (rows are links here) and the poster on a class row (posters are drawn until the posters slice). The Today deck's empty-day "See everything you manage" door landed with parity slice 6 | S_managed 6360-6366, 7171-7175 | posters slice |
 | **R13–R16, what they left (9 Sep 2026), re-read 10 Sep 2026 after the subscriptions slice:** ~~the organization subscription is not charged~~ — **charged now, per studio** (see the row below); **there is an owner-facing "what am I paying" screen now** (`/subscription` for an artist, the strip under each studio for an organization); **the verification photos have no cropper and no reordering** (`object-fit: cover` and insertion order stand in; the cropper belongs to the posters slice); **an existing organization verified before R16 has no photos**, so its request was filed under the old rule — the admin's queue says so on the card rather than pretending; **an organization's hosting row (R15) is created for every organization, verified or not**, so an unverified one can draft events it cannot publish (harmless, and it means the desk is never missing); **a studio can no longer host an event at all**, so an artist page and an organization are the only hosts — if a single studio ever needs its own event series that is a new decision, not a bug; **`session_seat_counts` and the public `media` bucket still escape the visibility gate** (unchanged from the accounts slice — aggregate-only and by design, but an unlisted studio's seat count and photos are still readable) | — (the user's requirements, 9 Sep 2026) | the cropper with the posters slice; the rest are decisions (c) |
-| **The subscriptions slice, what it left (10 Sep 2026) ⚠:** **yearly plans** exist in the schema (`plan_catalog.period`, `plan_months`) and none is seeded or offered — monthly only, by the user's prices; **a plan change** (monthly → yearly, or a price the customer moves to) is not built — a customer cancels and subscribes again; **proration and GST lines** on a subscription payment are not built (the payment row carries the rupee amount only); **the pre-debit notice before each charge is Cashfree's** (RBI e-mandate rules), not ours — the hub's "you are told a day before each charge" is Cashfree's notice, and our own reminder is only for GRANTED periods (three days out, from the nightly clock); **`/invoices` and the studio income screens count class money only** — subscription payments (`payments.kind` = subscription_*) have no receipt screen of their own yet; **a mandate authorised but never reported** (window closed without a webhook and without the return) stays `pending_auth` until the customer presses Subscribe again — the nightly clock does not poll Cashfree; **the nightly clock depends on pg_cron** being enabled on the project (the migration guards the schedule, so the rest applies without it — but then nothing expires on its own); **the Cashfree return URL** is `NEXT_PUBLIC_SITE_URL` or the request's origin — set it in Vercel (NEXT TO DO #9); **`scripts/shots/shoot-app.js`** is still on the old onboarding and hub; **a subscription payment has no receipt of its own** (the `payments` row is written with kind subscription_auth / subscription_charge, and the Invoices screen still counts class money only) | — (the user's asks, 10 Sep 2026) | yearly and plan changes when a customer asks; receipts with the Invoices PDF slice; polling only if a real mandate ever goes missing; pg_cron is a dashboard switch |
+| **The subscriptions slice, what it left (10 Sep 2026) ⚠:** **yearly plans** exist in the schema (`plan_catalog.period`, `plan_months`) and none is seeded or offered — monthly only, by the user's prices; **a plan change** (monthly → yearly, or a price the customer moves to) is not built — a customer cancels and subscribes again; **proration and GST lines** on a subscription payment are not built (the payment row carries the rupee amount only); **the pre-debit notice before each charge is Cashfree's** (RBI e-mandate rules), not ours — the hub's "you are told a day before each charge" is Cashfree's notice, and our own reminder is only for GRANTED periods (three days out, from the nightly clock); **`/invoices` and the studio income screens count class money only** — subscription payments (`payments.kind` = subscription_*) have no receipt screen of their own yet; **a mandate authorised but never reported** (window closed without a webhook and without the return) stays `pending_auth` until the customer presses Subscribe again — the nightly clock does not poll Cashfree; **the nightly clock depends on pg_cron** being enabled on the project (the migration guards the schedule, so the rest applies without it — but then nothing expires on its own); **the Cashfree return URL** is `NEXT_PUBLIC_SITE_URL` or the request's origin — set it in Vercel (NEXT TO DO #9); **`scripts/shots/shoot-app.js`** is still on the old onboarding and hub; ~~a subscription payment has no receipt of its own~~ **landed 17 Sep 2026** — a person's `/invoices` lists every `subscription_auth` / `subscription_charge` payment they made, with the plan, the studio and first period / renewal (a studio's own ledger deliberately does not: that is money it paid, not took) | — (the user's asks, 10 Sep 2026) | yearly and plan changes when a customer asks; a PDF with the Invoices PDF slice; polling only if a real mandate ever goes missing; pg_cron is a dashboard switch |
 
 ### Parity audit — 28 Aug 2026 (every built screen against its prototype source)
 
@@ -5812,8 +5922,11 @@ npm run lint        → eslint
 npm run typecheck   → tsc --noEmit
 npx playwright test → both e2e specs, against a FRESH npm run dev
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 [name fragments…]
-                    → every rls-proof-*.ps1 one after another, PASS/FAIL per script (16 Sep 2026).
-                      Sequential on purpose: the phone-number proofs share an OTP rate limit.
+                    → every rls-proof-*.ps1 (29 since 17 Sep 2026) one after another, PASS/FAIL per
+                      script. Sequential on purpose: the phone-number proofs share an OTP rate limit.
+                      PowerShell 5.1 traps met writing proofs: $pid is a READ-ONLY automatic variable
+                      (never a parameter name); Invoke-RestMethod reads an empty JSON [] as ONE item —
+                      count rows off Invoke-WebRequest's raw Content (Get-Rows / Rpc-Rows).
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 [-DryRun]
                     → apply pending migrations (calls the CLI's platform .exe directly since
                       16 Sep 2026 — the npx shim's spawnSync fails with UNKNOWN on this machine)

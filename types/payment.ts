@@ -4,12 +4,16 @@ export type RefundStatus = "requested" | "pending" | "processed" | "failed";
  *  Step 9 (test ids); everything since the 28 Aug 2026 swap is Cashfree. */
 export type PaymentProvider = "razorpay" | "cashfree";
 
-/** The orders row as the pay flow needs it (repository maps snake_case). */
+/** The orders row as the pay flow needs it (repository maps snake_case). An
+ *  order names a class session OR an event booking (17 Sep 2026), so each pair
+ *  is null on the other kind. */
 export interface PaymentOrder {
   id: string;
   tenantId: string;
-  classId: string;
-  sessionId: string;
+  classId: string | null;
+  sessionId: string | null;
+  eventId: string | null;
+  eventBookingId: string | null;
   amountInr: number;
   provider: PaymentProvider;
   providerOrderId: string | null;
