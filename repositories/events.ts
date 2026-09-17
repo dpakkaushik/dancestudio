@@ -11,7 +11,7 @@ import type {
 
 /** Step 21 reads and RPC wrappers. Events, tiers and bookings are RLS-shaped:
  *  members read their tenant's (drafts included), the public reads published
- *  events of listed tenants, and bookings are the holder's and the organiser's.
+ *  events of listed businesses, and bookings are the holder's and the organiser's.
  *  Sold counts are never stored — `event_counts` sums live bookings, so a
  *  cancellation frees a seat by arithmetic. */
 
@@ -34,8 +34,9 @@ interface TicketTierRow {
 }
 interface EventRow {
   id: string;
-  tenant_id: string;
-  cat: EventCat;
+  business_id: string;
+  /** the column is `category` (16 Sep 2026; it was `cat`); the domain type keeps `cat` until the identifiers pass */
+  category: EventCat;
   title: string;
   style: string;
   start_date: string;
@@ -60,7 +61,7 @@ interface EventRow {
   status: EventStatus;
   share_slug: string;
   poster: string | null;
-  tenants: { name: string; city: string | null } | null;
+  businesses: { name: string; city: string | null } | null;
   event_entry_tiers: EntryTierRow[] | null;
   event_ticket_tiers: TicketTierRow[] | null;
 }
@@ -94,7 +95,7 @@ interface BookingRow {
 interface MyBookingRow extends BookingRow {
   events: {
     title: string;
-    cat: EventCat;
+    category: EventCat;
     share_slug: string;
     start_date: string;
     start_time: string;
@@ -104,16 +105,16 @@ interface MyBookingRow extends BookingRow {
 }
 
 const EVENT_SELECT =
-  "id, tenant_id, cat, title, style, start_date, end_date, start_time, venue, address, city, maps_url, lat, lng, about, entry_format, bracket, rounds, prizes, tickets_on, status, share_slug, poster, tenants (name, city), event_entry_tiers (id, format, fee_inr, capacity, deleted_at), event_ticket_tiers (id, name, price_inr, capacity, sort, deleted_at)";
+  "id, business_id, category, title, style, start_date, end_date, start_time, venue, address, city, maps_url, lat, lng, about, entry_format, bracket, rounds, prizes, tickets_on, status, share_slug, poster, businesses (name, city), event_entry_tiers (id, format, fee_inr, capacity, deleted_at), event_ticket_tiers (id, name, price_inr, capacity, sort, deleted_at)";
 const BOOKING_SELECT =
   "id, event_id, user_id, kind, ticket_tier_id, entry_format, qty, entrant_name, partner_name, partner_id, partner_status, crew_id, amount_inr, status, checked_in_at, created_at, profiles!event_bookings_user_id_fkey (full_name), event_ticket_tiers (name)";
 
 const toEvent = (r: EventRow, counts: CountRow[]): DanceEvent => ({
   id: r.id,
-  tenantId: r.tenant_id,
-  tenantName: r.tenants?.name ?? "",
-  tenantCity: r.tenants?.city ?? null,
-  cat: r.cat,
+  tenantId: r.business_id,
+  tenantName: r.businesses?.name ?? "",
+  tenantCity: r.businesses?.city ?? null,
+  cat: r.category,
   title: r.title,
   style: r.style,
   startDate: r.start_date,
@@ -182,7 +183,7 @@ export async function findEventsByTenant(supabase: SupabaseClient, tenantId: str
   const { data, error } = await supabase
     .from("events")
     .select(EVENT_SELECT)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .order("start_date", { ascending: false })
     .limit(MAX_LIST);
@@ -201,7 +202,7 @@ export async function findEventsByTenants(supabase: SupabaseClient, tenantIds: s
   const { data, error } = await supabase
     .from("events")
     .select(EVENT_SELECT)
-    .in("tenant_id", tenantIds)
+    .in("business_id", tenantIds)
     .is("deleted_at", null)
     .order("start_date", { ascending: false })
     .limit(MAX_LIST);
@@ -250,7 +251,8 @@ export async function findPublishedEvents(supabase: SupabaseClient, todayKey: st
 }
 
 export interface EventPayload {
-  cat: EventCat;
+  /** save_event reads `p_event->>'category'` (16 Sep 2026; it was `cat`) */
+  category: EventCat;
   title: string;
   style: string;
   start_date: string;
@@ -275,7 +277,7 @@ export interface EventPayload {
 }
 
 export async function saveEvent(supabase: SupabaseClient, tenantId: string, eventId: string | null, payload: EventPayload): Promise<string> {
-  const { data, error } = await supabase.rpc("save_event", { p_tenant_id: tenantId, p_event_id: eventId, p_event: payload });
+  const { data, error } = await supabase.rpc("save_event", { p_business_id: tenantId, p_event_id: eventId, p_event: payload });
   if (error) {
     throw new Error(error.message);
   }
@@ -405,7 +407,7 @@ export async function findEventBookings(supabase: SupabaseClient, eventId: strin
 export async function findMyEventBookings(supabase: SupabaseClient, userId: string): Promise<MyEventBooking[]> {
   const { data, error } = await supabase
     .from("event_bookings")
-    .select(`${BOOKING_SELECT}, events (title, cat, share_slug, start_date, start_time, venue, city)`)
+    .select(`${BOOKING_SELECT}, events (title, category, share_slug, start_date, start_time, venue, city)`)
     .eq("user_id", userId)
     .eq("status", "booked")
     .is("deleted_at", null)
@@ -419,7 +421,7 @@ export async function findMyEventBookings(supabase: SupabaseClient, userId: stri
     .map((r) => ({
       ...toBooking(r),
       eventTitle: r.events!.title,
-      eventCat: r.events!.cat,
+      eventCat: r.events!.category,
       eventShareSlug: r.events!.share_slug,
       startDate: r.events!.start_date,
       startTime: String(r.events!.start_time).slice(0, 5),

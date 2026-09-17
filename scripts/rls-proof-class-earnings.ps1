@@ -61,8 +61,8 @@ function New-EmailUser($email, $name, $role) {
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
 function Add-Member($tenantId, $userId, $memberRole, $byUser) {
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $tenantId; user_id = $userId; member_role = $memberRole
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $tenantId; user_id = $userId; member_role = $memberRole
     created_by = $byUser; updated_by = $byUser } | ConvertTo-Json) | Out-Null
 }
 function Buy-Seat($learner, $sessionId, $tag) {
@@ -70,7 +70,7 @@ function Buy-Seat($learner, $sessionId, $tag) {
   Rpc (Api $learner.token) "attach_provider_order" @{ p_order_id = $o.id; p_provider_order_id = "order_$tag" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_$tag"; p_provider_payment_id = "pay_$tag";
     p_amount_paise = 30000; p_method = "upi" } | Out-Null
-  return (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
+  return (Get-Rows (Api $learner.token) "class_bookings?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
 }
 function Sum-Amt($rows) {
   $s = ($rows | Measure-Object -Property amount_inr -Sum).Sum
@@ -102,17 +102,17 @@ foreach ($i in 1..5) { $learners += New-EmailUser "earnproof-l$i-$stamp@example.
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Earn Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Earn Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $rival.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
 
@@ -120,17 +120,17 @@ try {
   $tmr = (Get-Date).AddDays(1)
   # a PAID class tomorrow, so every cancellation lands inside the 48 h window
   # where the studio decides - which is how we get each refund state on purpose
-  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Earnings Class $stamp";
+  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Earnings Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
     p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
   $sid = (Get-Rows $svcH "class_sessions?class_id=eq.$($cls.id)&select=id")[0].id
 
   # a FREE class, for the zero case
-  $free = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Free Class $stamp";
+  $free = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Free Class $stamp";
     p_style = "Contemporary"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
     p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT18:00:00zzz") }
   $freeSid = (Get-Rows $svcH "class_sessions?class_id=eq.$($free.id)&select=id")[0].id
-  Rpc (Api $learners[0].token) "enroll_in_session" @{ p_session_id = $freeSid } | Out-Null
+  Rpc (Api $learners[0].token) "book_class_session" @{ p_session_id = $freeSid } | Out-Null
 
   # 1. a free class with a booked seat made nothing, and says so - the figure is
   #    zero because nothing came in, not because it is missing
@@ -155,7 +155,7 @@ try {
 
   # 3. a refund SETTLED: the money still came in, and goes back out on its own
   #    line - the prototype prints gross above and the refund under it
-  $r1 = (Rpc (Api $learners[0].token) "cancel_booking" @{ p_enrollment_id = $e[0]; p_reason = "Family emergency" }).refund.id
+  $r1 = (Rpc (Api $learners[0].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[0]; p_reason = "Family emergency" }).refund.id
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r1; p_decision = "approve" } | Out-Null
   Rpc (Api $owner.token) "settle_refund_offline" @{ p_refund_id = $r1; p_note = "Cash at the desk" } | Out-Null
   $m2 = Money-Of (Api $owner.token) $cls.id
@@ -163,21 +163,21 @@ try {
     ($m2.collected -eq 1500) -and ($m2.refunded -eq 300) -and ($m2.owed -eq 0))
 
   # 4. an OPEN request is owed, not refunded - nothing has gone back yet
-  Rpc (Api $learners[1].token) "cancel_booking" @{ p_enrollment_id = $e[1]; p_reason = "Changed my mind" } | Out-Null
+  Rpc (Api $learners[1].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[1]; p_reason = "Changed my mind" } | Out-Null
   $m3 = Money-Of (Api $owner.token) $cls.id
   Check 4 "An open request is owed (Rs $($m3.owed)) and not counted as refunded (Rs $($m3.refunded))" (
     ($m3.owed -eq 300) -and ($m3.refunded -eq 300))
 
   # 5. a DECLINED refund is in neither total - the prototype counts only Paid,
   #    and Requested + Processing. A refusal is a decision, not money moving.
-  $r3 = (Rpc (Api $learners[2].token) "cancel_booking" @{ p_enrollment_id = $e[2]; p_reason = "Too far" }).refund.id
+  $r3 = (Rpc (Api $learners[2].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[2]; p_reason = "Too far" }).refund.id
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r3; p_decision = "decline"; p_note = "Outside our policy" } | Out-Null
   $m4 = Money-Of (Api $owner.token) $cls.id
   Check 5 "A declined refund is in neither total (refunded Rs $($m4.refunded), owed Rs $($m4.owed))" (
     ($m4.refunded -eq 300) -and ($m4.owed -eq 300))
 
   # 6. nor is a FAILED one - the rail broke, so no money went back
-  $r4 = (Rpc (Api $learners[3].token) "cancel_booking" @{ p_enrollment_id = $e[3]; p_reason = "Injury" }).refund.id
+  $r4 = (Rpc (Api $learners[3].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[3]; p_reason = "Injury" }).refund.id
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r4; p_decision = "approve" } | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/refunds?id=eq.$r4" -Headers $svcH `
     -Body (@{ status = "failed" } | ConvertTo-Json) | Out-Null
@@ -186,7 +186,7 @@ try {
     ($m5.refunded -eq 300) -and ($m5.owed -eq 300))
 
   # 7. the rival's own paid class money never lands in ours
-  $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_tenant_id = $tb.id; p_title = "Rival Class $stamp";
+  $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_business_id = $tb.id; p_title = "Rival Class $stamp";
     p_style = "Bollywood"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
     p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
   $rsid = (Get-Rows $svcH "class_sessions?class_id=eq.$($rcls.id)&select=id")[0].id
@@ -210,8 +210,8 @@ try {
     ($trainerSees.collected -eq 1500) -and ($trainerSees.payRows -eq 5))
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
   $all = @($owner, $trainer, $rival) + $learners
   if ($comped) { $all += $comped }
   foreach ($u in $all) {

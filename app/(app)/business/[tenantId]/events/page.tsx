@@ -22,8 +22,8 @@ export default async function TenantEventsPage({ params }: { params: Promise<{ t
   if (!user) {
     redirect("/login");
   }
-  const tenants = await findMyTenants(supabase);
-  if (!tenants.some((t) => t.id === tenantId)) {
+  const businesses = await findMyTenants(supabase);
+  if (!businesses.some((t) => t.id === tenantId)) {
     redirect("/business");
   }
   /* AN EVENT NEEDS THE ORGANIZATION'S GST NUMBER (11 Sep 2026): the sentence

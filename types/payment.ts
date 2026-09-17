@@ -52,7 +52,7 @@ export interface ClassMoney {
   owedInr: number;
 }
 
-/** cancel_booking's money outcome, when the seat was paid for. */
+/** cancel_class_booking_with_reason's money outcome, when the seat was paid for. */
 export interface RefundOutcome {
   id: string;
   status: RefundStatus;

@@ -17,4 +17,4 @@ export interface BusinessCounts {
 
 /** the tab a business belongs on — one place, so the counts and the list agree */
 export const onBusinessTab = (b: AdminBusiness, tab: BusinessTab): boolean =>
-  tab === "all" ? true : tab === "studios" ? b.type === "studio" : tab === "artists" ? b.type === "trainer_business" : tab === "public" ? b.visibility === "listed" : b.visibility === "unlisted";
+  tab === "all" ? true : tab === "studios" ? b.type === "studio" : tab === "artists" ? b.type === "artist_page" : tab === "public" ? b.visibility === "listed" : b.visibility === "unlisted";

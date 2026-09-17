@@ -15,7 +15,7 @@ import { reportContent } from "@/repositories/adminPanel";
  *  is looking at it" is the honest answer and not an error to hide. */
 
 const schema = z.object({
-  subjectKind: z.enum(["tenant", "profile", "crew", "event", "class"]),
+  subjectKind: z.enum(["business", "profile", "crew", "event", "class"]),
   subjectId: z.string().uuid(),
   reason: z.enum(["impersonation", "not_a_real_business", "stolen_content", "offensive", "spam", "unsafe", "other"]),
   note: z.string().trim().max(1000).nullable().optional(),

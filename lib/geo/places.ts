@@ -48,7 +48,7 @@ export interface ResolvedPlace {
   label: string;
   lat: number;
   lng: number;
-  /** the locality — what `tenants.area` holds */
+  /** the locality — what `businesses.area` holds */
   area: string | null;
   /** the city, as Google names it; the database folds aliases onto one form */
   city: string | null;

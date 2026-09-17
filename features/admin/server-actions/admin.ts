@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { decideStudioVerification } from "@/repositories/studioVerification";
 
 /** THE ANSWER, ABOUT A STUDIO (11 Sep 2026). Approving is the BADGE only —
- *  `tenants.verified_at` — and the studio still subscribes to reach Discover,
+ *  `businesses.verified_at` — and the studio still subscribes to reach Discover,
  *  which is the order the user asked for. Rejecting carries the reason the
  *  owner reads. The RPC re-checks `is_platform_admin()` itself. */
 const studioSchema = z.object({

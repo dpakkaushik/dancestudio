@@ -79,7 +79,7 @@ export async function findTenantIncome(
     supabase
       .from("payments")
       .select("amount_inr, status, method, created_at")
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       /* a refunded payment still CAME IN; the refund is its own deduction below */
       .in("status", ["captured", "refunded"])
       .is("deleted_at", null)
@@ -89,7 +89,7 @@ export async function findTenantIncome(
     supabase
       .from("refunds")
       .select("amount_inr, created_at, decided_at, updated_at")
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       .eq("status", "processed")
       .is("deleted_at", null)
       /* updated_at is never earlier than decided_at, so this bound cannot drop
@@ -100,7 +100,7 @@ export async function findTenantIncome(
     supabase
       .from("refunds")
       .select("amount_inr")
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       /* being asked back right now, whichever month it was filed — a live
          queue figure. Declined and failed are in neither total, matching the
          prototype's own filters (only Paid, and Requested + Processing). */

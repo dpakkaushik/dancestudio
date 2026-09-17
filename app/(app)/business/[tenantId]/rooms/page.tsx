@@ -19,8 +19,8 @@ export default async function TenantRoomsPage({
   }
 
   // membership is the spine — findMyTenants filters to the caller's own rows
-  const tenants = await findMyTenants(supabase);
-  const tenant = tenants.find((t) => t.id === tenantId);
+  const businesses = await findMyTenants(supabase);
+  const tenant = businesses.find((t) => t.id === tenantId);
   if (!tenant) {
     redirect("/business");
   }

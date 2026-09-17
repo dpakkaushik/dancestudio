@@ -66,8 +66,8 @@ const toIst = (date: string, time: string): string => `${date}T${time}:00+05:30`
 const peopleSchema = z.object({
   artistUserId: z.string().uuid().nullable(),
   /* ⚠ Step 13: a rate is optional here because only an OWNER's form sends one.
-     Validating the range is not the authorization — claim_person and
-     set_claim_pay refuse a rate from anybody but the owner, server-side. */
+     Validating the range is not the authorization — ask_class_person and
+     set_class_person_pay refuse a rate from anybody but the owner, server-side. */
   artistPayInr: z.number().int().min(0).max(200000).optional(),
   assistants: z
     .array(

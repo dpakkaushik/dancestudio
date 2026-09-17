@@ -232,18 +232,18 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     // five photos, the ask, the admin's badge — and only then Subscribe
     await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");
     await expect(owner.getByTestId("studio-subscription").getByRole("button", { name: /^Subscribe/ })).toHaveCount(0);
-    const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/tenants?name=eq.${encodeURIComponent(studioName)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+    const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/businesses?name=eq.${encodeURIComponent(studioName)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
     const studioId = studioRows[0]?.id as string;
     expect(studioId).toBeTruthy();
     // the service role stands in for the Edit sheet (the link) and the upload
     // strip (the photos) — happy-path drives both for real
-    expect((await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ socials: [{ platform: "Instagram", url: "https://instagram.com/modstudio" }] }) })).ok).toBeTruthy();
+    expect((await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ socials: [{ platform: "Instagram", url: "https://instagram.com/modstudio" }] }) })).ok).toBeTruthy();
     expect(
       (
-        await fetch(`${supabaseUrl}/rest/v1/org_proof_photos`, {
+        await fetch(`${supabaseUrl}/rest/v1/studio_photos`, {
           method: "POST",
           headers: adminHeaders,
-          body: JSON.stringify(Array.from({ length: 5 }, (_, i) => ({ org_id: ownerId, tenant_id: studioId, path: `proof/${ownerId}/mod-${stamp}-${i}.png`, sort: i, created_by: ownerId, updated_by: ownerId }))),
+          body: JSON.stringify(Array.from({ length: 5 }, (_, i) => ({ org_id: ownerId, business_id: studioId, path: `proof/${ownerId}/mod-${stamp}-${i}.png`, sort: i, created_by: ownerId, updated_by: ownerId }))),
         })
       ).ok
     ).toBeTruthy();

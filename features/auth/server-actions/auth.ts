@@ -244,7 +244,7 @@ export async function signOutAction(): Promise<void> {
  *  prototype's onboarding is four screens — profile, styles, socials, take a
  *  bow (3781-3943) — and the photo, the styles and the links are written onto
  *  the profile ROW, so the row has to exist before the second screen can start
- *  (set_my_avatar and update_my_profile both say "finish onboarding first" to a
+ *  (set_my_profile_photo and update_my_profile both say "finish onboarding first" to a
  *  person with no row). This creates the row and hands back; the client goes
  *  on to the next screen, and "Open DanceOS →" is what finally leaves.
  *  `completeProfileAction` stays for anything that still wants the one-step
@@ -274,7 +274,7 @@ export async function saveProfileBasicsAction(input: unknown): Promise<{ error: 
     });
     /* WHY A COOKIE: every server action that revalidates a path makes the client
        refetch the CURRENT route, and /onboarding used to redirect the moment a
-       profile row existed — so the photo landing (set_my_avatar revalidates
+       profile row existed — so the photo landing (set_my_profile_photo revalidates
        /profile) threw the person onto Home half-way through. The row now says
        "there is a person"; this says "and they are still in the door". Cleared by
        finishOnboardingAction; a day's expiry covers an abandoned flow. */

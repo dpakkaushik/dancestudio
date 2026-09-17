@@ -33,7 +33,7 @@ const refresh = () => {
 
 /** ⚠ IT RETURNS THE ROW'S ID NOW (16 Sep 2026). The RPC has always returned the
  *  uuid and this action threw it away, which is why `ProofPhotos` had to query
- *  `org_proof_photos` from the BROWSER to find it again when somebody removed a
+ *  `studio_photos` from the BROWSER to find it again when somebody removed a
  *  picture they had just added — a direct Supabase read in a component, against
  *  Rule 5, that existed only to recover a value we already had. Handing it back
  *  deletes that query, and it is what lets a picture be added, staged for

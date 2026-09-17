@@ -11,7 +11,7 @@ export interface PublicTenant {
   area: string | null;
   city: string | null;
   /** WHERE IT IS (11 Sep 2026). Until an owner opens the location picker these
-   *  are the CITY CENTROID `create_tenant_with_owner` defaulted to, which is
+   *  are the CITY CENTROID `create_business_with_owner` defaulted to, which is
    *  why every studio in a city used to sit on the same point and Discover's
    *  distances were all the same number. */
   lat: number | null;

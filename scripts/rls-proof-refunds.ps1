@@ -54,8 +54,8 @@ function New-EmailUser($email, $name, $role) {
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
 function Add-Member($tenantId, $userId, $memberRole, $byUser) {
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $tenantId; user_id = $userId; member_role = $memberRole
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $tenantId; user_id = $userId; member_role = $memberRole
     created_by = $byUser; updated_by = $byUser } | ConvertTo-Json) | Out-Null
 }
 # a real paid seat: order -> provider id -> verified capture (the machine's path)
@@ -64,7 +64,7 @@ function Buy-Seat($learner, $sessionId, $tag) {
   Rpc (Api $learner.token) "attach_provider_order" @{ p_order_id = $o.id; p_provider_order_id = "order_$tag" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_$tag"; p_provider_payment_id = "pay_$tag";
     p_amount_paise = 30000; p_method = "upi" } | Out-Null
-  return (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
+  return (Get-Rows (Api $learner.token) "class_bookings?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
 }
 
 $pass = $true
@@ -80,17 +80,17 @@ $rival = New-EmailUser "refproof-rival-$stamp@example.com" "Rival $stamp" "org"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Refund Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Refund Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $rival.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $settler.id "staff" $owner.id
 Add-Member $ta.id $trainer.id "trainer" $owner.id
@@ -99,22 +99,22 @@ try {
   # a paid class TOMORROW, so cancelling lands inside the 48 h window where the
   # studio decides (Step 9's policy line, S_class 12400)
   $tmr = (Get-Date).AddDays(1)
-  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Refund Class $stamp";
+  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Refund Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
     p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
   $sid = (Get-Rows $svcH "class_sessions?class_id=eq.$($cls.id)&select=id")[0].id
 
   # somebody who holds the REFUNDS job on this class, with their own consent
-  $claim = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $cls.id; p_user_id = $settler.id;
+  $claim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $cls.id; p_user_id = $settler.id;
     p_kind = "assistant"; p_can_attendance = $false; p_can_refunds = $true; p_pay_per_session_inr = 0 }
-  Rpc (Api $settler.token) "respond_to_claim" @{ p_claim_id = $claim.id; p_accept = $true } | Out-Null
+  Rpc (Api $settler.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
 
   $e1 = Buy-Seat $l1 $sid "R1$stamp"
   $e2 = Buy-Seat $l2 $sid "R2$stamp"
 
   # 1. the state that had no door: cancelling inside 48 h files a REQUEST
-  $out1 = Rpc (Api $l1.token) "cancel_booking" @{ p_enrollment_id = $e1; p_reason = "Family emergency" }
-  Rpc (Api $l2.token) "cancel_booking" @{ p_enrollment_id = $e2; p_reason = "Changed my mind" } | Out-Null
+  $out1 = Rpc (Api $l1.token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e1; p_reason = "Family emergency" }
+  Rpc (Api $l2.token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e2; p_reason = "Changed my mind" } | Out-Null
   $r1 = $out1.refund.id
   $r2 = (Get-Rows $svcH "refunds?user_id=eq.$($l2.id)&select=id")[0].id
   Check 1 "Inside 48 h the cancellation files a request ($($out1.refund.status), Rs $($out1.refund.amount_inr))" (
@@ -153,12 +153,12 @@ try {
   #    live as the seat behind it. The membership row is soft-deleted DIRECTLY
   #    with the service role - no RPC - so the claim stays live and the grant
   #    must still end.
-  $seat = (Get-Rows $svcH "tenant_members?tenant_id=eq.$($ta.id)&user_id=eq.$($settler.id)&select=id")[0].id
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenant_members?id=eq.$seat" -Headers $svcH `
+  $seat = (Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($settler.id)&select=id")[0].id
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?id=eq.$seat" -Headers $svcH `
     -Body (@{ deleted_at = (Get-Date).ToString("o") } | ConvertTo-Json) | Out-Null
   $offTeamBlocked = Expect-Fail { Rpc (Api $settler.token) "decide_refund" @{ p_refund_id = $r2; p_decision = "decline" } }
-  $claimStillLive = Get-Rows $svcH "class_claims?id=eq.$($claim.id)&deleted_at=is.null&select=id"
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenant_members?id=eq.$seat" -Headers $svcH `
+  $claimStillLive = Get-Rows $svcH "class_people?id=eq.$($claim.id)&deleted_at=is.null&select=id"
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?id=eq.$seat" -Headers $svcH `
     -Body (@{ deleted_at = $null } | ConvertTo-Json) | Out-Null
   Check 8 "Seat pulled behind the RPC's back -> the refunds job stops working ($offTeamBlocked) with the claim still live ($($claimStillLive.Count))" (
     $offTeamBlocked -and ($claimStillLive.Count -eq 1))
@@ -192,8 +192,8 @@ try {
     ($l2SeesOther.Count -eq 0) -and ($anonSees.Count -eq 0))
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
   foreach ($u in @($owner, $settler, $trainer, $l1, $l2, $rival)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }

@@ -16,8 +16,8 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
   if (!user) {
     redirect("/login");
   }
-  const tenants = await findMyTenants(supabase);
-  if (!tenants.some((t) => t.id === tenantId)) {
+  const businesses = await findMyTenants(supabase);
+  if (!businesses.some((t) => t.id === tenantId)) {
     redirect("/business");
   }
   const role = await findMyMembershipRole(supabase, tenantId);

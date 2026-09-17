@@ -32,7 +32,7 @@ $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 function New-Class($headers, $tenantId, $title, $price, $cap, $daysOut) {
   $starts = (Get-Date).AddDays($daysOut).ToString("yyyy-MM-ddT19:00:00+05:30")
   $ends = (Get-Date).AddDays($daysOut).ToString("yyyy-MM-ddT20:00:00+05:30")
-  $body = @{ p_tenant_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
+  $body = @{ p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
              p_room = "Studio A"; p_price_inr = $price; p_capacity = $cap; p_status = "published";
              p_starts_at = $starts; p_ends_at = $ends } | ConvertTo-Json
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
@@ -74,15 +74,15 @@ $c = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=passwor
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $a.access_token) "create_tenant_with_owner" @{ p_name = "Pay Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $a.access_token) "create_business_with_owner" @{ p_name = "Pay Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
 
 try {
@@ -91,7 +91,7 @@ try {
   $s1 = Session-Of $c1.id
 
   # 1. the free path is closed for priced classes
-  $freeBlocked = Expect-Fail { Rpc (Api $b.access_token) "enroll_in_session" @{ p_session_id = $s1 } }
+  $freeBlocked = Expect-Fail { Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $s1 } }
   Check 1 "Free-enrolling a priced class is rejected" $freeBlocked
 
   # 2. create_payment_order prices from the database
@@ -102,7 +102,7 @@ try {
   # 3. nobody writes money tables directly
   $insertBlocked = Expect-Fail {
     Invoke-RestMethod -Method Post -Uri "$base/rest/v1/orders" -Headers (Api $b.access_token) -Body (@{
-      tenant_id = $ta.id; user_id = $b.user.id; class_id = $c1.id; session_id = $s1; amount_inr = 1 } | ConvertTo-Json)
+      business_id = $ta.id; user_id = $b.user.id; class_id = $c1.id; session_id = $s1; amount_inr = 1 } | ConvertTo-Json)
   }
   Check 3 "Direct insert into orders is rejected" $insertBlocked
 
@@ -114,13 +114,13 @@ try {
 
   # 5. a verified capture books the seat
   $cap1 = Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_PROOF$stamp"; p_provider_payment_id = "pay_PROOF$stamp"; p_amount_paise = 30000; p_method = "upi" }
-  $enr = Get-Rows (Api $b.access_token) "enrollments?session_id=eq.$s1&select=id,status"
+  $enr = Get-Rows (Api $b.access_token) "class_bookings?session_id=eq.$s1&select=id,status"
   $ord = Get-Rows (Api $b.access_token) "orders?id=eq.$($o1.id)&select=status"
   Check 5 "Captured payment enrolls (outcome $($cap1.outcome), order $($ord[0].status))" (($cap1.outcome -eq "enrolled") -and ($enr.Count -eq 1) -and ($enr[0].status -eq "enrolled") -and ($ord[0].status -eq "paid"))
 
   # 6. the same payment event twice is a no-op
   $cap2 = Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_PROOF$stamp"; p_provider_payment_id = "pay_PROOF$stamp"; p_amount_paise = 30000; p_method = "upi" }
-  $enr2 = Get-Rows (Api $b.access_token) "enrollments?session_id=eq.$s1&select=id"
+  $enr2 = Get-Rows (Api $b.access_token) "class_bookings?session_id=eq.$s1&select=id"
   $pays = Get-Rows (Api $b.access_token) "payments?order_id=eq.$($o1.id)&select=id"
   Check 6 "Replayed capture is a no-op (outcome $($cap2.outcome))" (($cap2.outcome -eq "duplicate") -and ($enr2.Count -eq 1) -and ($pays.Count -eq 1))
 
@@ -139,11 +139,11 @@ try {
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_B2$stamp"; p_provider_payment_id = "pay_B2$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
   $capLate = Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_A2$stamp"; p_provider_payment_id = "pay_A2$stamp"; p_amount_paise = 30000; p_method = "card" }
   $refA = Get-Rows (Api $a.access_token) "refunds?order_id=eq.$($oA.id)&select=id,status,reason"
-  $enrA = Get-Rows (Api $a.access_token) "enrollments?session_id=eq.$s2&user_id=eq.$($c.user.id)&status=eq.enrolled&select=id"
+  $enrA = Get-Rows (Api $a.access_token) "class_bookings?session_id=eq.$s2&user_id=eq.$($c.user.id)&status=eq.enrolled&select=id"
   Check 8 "Late capture on a full class refunds (outcome $($capLate.outcome), refund $($refA[0].status), not enrolled)" (($capLate.outcome -eq "refund_pending") -and ($refA.Count -eq 1) -and ($refA[0].status -eq "pending") -and ($enrA.Count -eq 0))
 
   # 9. cancelling outside 48h: seat freed, full refund pending
-  $out9 = Rpc (Api $b.access_token) "cancel_booking" @{ p_enrollment_id = $enr[0].id; p_reason = "Travelling" }
+  $out9 = Rpc (Api $b.access_token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $enr[0].id; p_reason = "Travelling" }
   $counts = Rpc $anonH "session_seat_counts" @{ p_session_ids = @($s1) }
   $seatFreed = (@($counts | Where-Object { $_.session_id -eq $s1 }).Count -eq 0)
   Check 9 "Cancel outside 48h frees the seat and files a pending refund ($($out9.refund.status))" (($out9.refund.status -eq "pending") -and ($out9.refund.amount_inr -eq 300) -and $seatFreed)
@@ -160,22 +160,22 @@ try {
   $o3 = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s3 }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $o3.id; p_provider_order_id = "order_C3$stamp" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_C3$stamp"; p_provider_payment_id = "pay_C3$stamp"; p_amount_paise = 30000; p_method = "upi" } | Out-Null
-  $enr3 = Get-Rows (Api $b.access_token) "enrollments?session_id=eq.$s3&status=eq.enrolled&select=id"
-  $out11 = Rpc (Api $b.access_token) "cancel_booking" @{ p_enrollment_id = $enr3[0].id; p_reason = "Changed my mind" }
+  $enr3 = Get-Rows (Api $b.access_token) "class_bookings?session_id=eq.$s3&status=eq.enrolled&select=id"
+  $out11 = Rpc (Api $b.access_token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $enr3[0].id; p_reason = "Changed my mind" }
   Check 11 "Cancel inside 48h files a request, not a refund ($($out11.refund.status))" ($out11.refund.status -eq "requested")
 
   # 12. a free class still promotes its waitlist on cancel
   $c4 = New-Class (Api $a.access_token) $ta.id "Free Cypher $stamp" 0 1 7
   $s4 = Session-Of $c4.id
-  $e4b = Rpc (Api $b.access_token) "enroll_in_session" @{ p_session_id = $s4 }
-  Rpc (Api $c.access_token) "enroll_in_session" @{ p_session_id = $s4 } | Out-Null
-  Rpc (Api $b.access_token) "cancel_enrollment" @{ p_enrollment_id = $e4b.id } | Out-Null
-  $e4a = Get-Rows (Api $a.access_token) "enrollments?session_id=eq.$s4&user_id=eq.$($c.user.id)&select=status"
+  $e4b = Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $s4 }
+  Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $s4 } | Out-Null
+  Rpc (Api $b.access_token) "cancel_class_booking" @{ p_class_booking_id = $e4b.id } | Out-Null
+  $e4a = Get-Rows (Api $a.access_token) "class_bookings?session_id=eq.$s4&user_id=eq.$($c.user.id)&select=status"
   Check 12 "Free-class cancel still promotes the waitlist (now $($e4a[0].status))" ($e4a[0].status -eq "enrolled")
 }
 finally {
   # the proof cleans up after itself - service role removes the studio, children cascade
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}
   "   (cleanup: proof studio and the throwaway person deleted)"
 }

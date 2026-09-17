@@ -1,17 +1,17 @@
 ﻿# RLS proof: THE COLUMNS AN OWNER MAY NOT WRITE BY HAND (11 Sep 2026).
 #
-# Every write to `tenants` in this app goes through a SECURITY DEFINER door -
-# create_tenant_with_owner, update_tenant_profile, set_tenant_photo,
-# admin_set_tenant_visibility - and each of those validates what a form cannot
+# Every write to `businesses` in this app goes through a SECURITY DEFINER door -
+# create_business_with_owner, update_business_profile, set_business_profile_photo,
+# admin_set_business_visibility - and each of those validates what a form cannot
 # be trusted with. But PostgREST is a door too, and the policy
-# "owners update own tenants" named NO COLUMNS, so an owner could PATCH the row
+# "owners update own businesses" named NO COLUMNS, so an owner could PATCH the row
 # straight past every one of those checks:
 #
 #   * `type` - a studio (which costs a verified organization and Rs 1,200 a
 #     month) flipped to an artist page (which costs the Rs 700 Artist plan), or
 #     back, with neither ever bought. The CHECK constraint allows both values,
 #     so nothing below the policy says no.
-#   * `about` / `phone` / `socials` - update_tenant_profile caps About at 220
+#   * `about` / `phone` / `socials` - update_business_profile caps About at 220
 #     characters, demands a phone that looks like a phone and a link that looks
 #     like a link, and stops at twelve of them. A PATCH obeys none of it.
 #
@@ -48,7 +48,7 @@ Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -He
 $owner = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
 $H = Api $owner.access_token
 
-$t = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers $H -Body (@{ p_name = "Col Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+$t = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $H -Body (@{ p_name = "Col Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
 "0. Owner created '$($t.name)' (type=$($t.type)) - it is theirs, and they are its only owner"
 
 # A PATCH that changes nothing about who may see the row, only what it IS.
@@ -67,14 +67,14 @@ $t = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_o
 # guard trigger raising is a refusal), but it is no longer the only way to be
 # sure — and nothing is believed on the strength of a response body.
 function Get-Col($column) {
-  $row = Invoke-RestMethod -Uri "$base/rest/v1/tenants?id=eq.$($t.id)&select=$column" -Headers $svcH
+  $row = Invoke-RestMethod -Uri "$base/rest/v1/businesses?id=eq.$($t.id)&select=$column" -Headers $svcH
   return ($row | Select-Object -First 1).$column
 }
 function Try-Patch($label, $body, $column) {
   $before = Get-Col $column
   $threw = $false
   try {
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $H -Body $body | Out-Null
+    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $H -Body $body | Out-Null
   } catch {
     $threw = $true
   }
@@ -85,11 +85,11 @@ function Try-Patch($label, $body, $column) {
 }
 
 # ORDER MATTERS. The `type` flip is LAST, because it is itself a way around the
-# visibility gate: guard_tenant_visibility only gates `new.type = 'studio'`, so a
+# visibility gate: guard_business_visibility only gates `new.type = 'studio'`, so a
 # studio flipped to an artist page can then be listed for free. Testing the
 # controls first keeps each claim about one thing.
 
-# 1. VALIDATION. update_tenant_profile caps About at 220 characters.
+# 1. VALIDATION. update_business_profile caps About at 220 characters.
 $long = "x" * 5000
 $r = Try-Patch "about" (@{ about = $long } | ConvertTo-Json) "about"
 "1. Owner writes a 5,000-character About (the RPC caps it at 220): $(if ($r.ok) {"$($r.how) -- BLOCKED"} else {"WROTE 5,000 chars -- !!! VALIDATION BYPASSED !!!"})"
@@ -120,13 +120,13 @@ if (-not $r.ok) { $pass = $false }
 
 # 6. THE PAID GATE. A studio needs a verified org and its own Rs 1,200 subscription;
 #    an artist page needs the Rs 700 Artist plan. Flipping `type` buys neither -
-#    and lands on the side of guard_tenant_visibility that is not gated at all.
-$r = Try-Patch "type" '{"type":"trainer_business"}' "type"
+#    and lands on the side of guard_business_visibility that is not gated at all.
+$r = Try-Patch "type" '{"type":"artist_page"}' "type"
 "6. Owner flips studio -> artist page by hand: $(if ($r.ok) {"$($r.how) -- BLOCKED, the paid gate holds"} else {"$($r.how) -- !!! THE PAID GATE IS BYPASSABLE !!!"})"
 if (-not $r.ok) { $pass = $false }
 
 # 6b. THE TWO TOGETHER. If the flip went through, the row is now an artist page -
-#     and guard_tenant_visibility gates only `new.type = 'studio'`, so listing it
+#     and guard_business_visibility gates only `new.type = 'studio'`, so listing it
 #     is no longer gated by anything. This is the whole bypass, end to end:
 #     a public business on Discover having bought neither plan.
 $r = Try-Patch "visibility" '{"visibility":"listed"}' "visibility"
@@ -135,11 +135,11 @@ if (-not $r.ok) { $pass = $false }
 
 # 7. The door itself must still open: the RPC an owner is MEANT to use still works.
 try {
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/update_tenant_profile" -Headers $H -Body (@{
-    p_tenant_id = $t.id; p_about = "A room in Kothrud."; p_founded_year = 2016; p_phone = "+91 98765 43210"
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/update_business_profile" -Headers $H -Body (@{
+    p_business_id = $t.id; p_about = "A room in Kothrud."; p_founded_year = 2016; p_phone = "+91 98765 43210"
     p_socials = @(@{ platform = "Instagram"; url = "https://instagram.com/example" }); p_enquiry_types = @("Workshop")
     p_accepts_upi = $true; p_accepts_cards = $false; p_accepts_cash = $true; p_accepts_bank = $false } | ConvertTo-Json) | Out-Null
-  $back = Invoke-RestMethod -Uri "$base/rest/v1/tenants?id=eq.$($t.id)&select=about,phone" -Headers $H
+  $back = Invoke-RestMethod -Uri "$base/rest/v1/businesses?id=eq.$($t.id)&select=about,phone" -Headers $H
   $wrote = ($back[0].about -eq "A room in Kothrud.")
   "7. The door an owner is MEANT to use still opens: $(if ($wrote) {'about saved -- OK'} else {'DID NOT SAVE -- !!! FAILED !!!'})"
   if (-not $wrote) { $pass = $false }
@@ -148,7 +148,7 @@ try {
 }
 
 # clean up: the owner goes, and the studio it made is soft-deleted by the service role
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $svcH -Body (@{ deleted_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH -Body (@{ deleted_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
 Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $svcH | Out-Null
 
 if ($pass) { "`nALL TENANT COLUMN CHECKS PASSED"; exit 0 } else { "`nTENANT COLUMN CHECKS FAILED"; exit 1 }

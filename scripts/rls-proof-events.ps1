@@ -72,15 +72,15 @@ function New-EmailUser($email, $name, $role) {
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
 function Add-Member($tenantId, $userId, $memberRole, $byUser) {
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $tenantId; user_id = $userId; member_role = $memberRole
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $tenantId; user_id = $userId; member_role = $memberRole
     created_by = $byUser; updated_by = $byUser } | ConvertTo-Json) | Out-Null
 }
 $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 $in11 = (Get-Date).AddDays(11).ToString("yyyy-MM-dd")
 # the event as the form sends it (repositories/events.ts EventPayload)
 function Ev($cat, $title, $ticketsOn, $tiers, $entries) {
-  return @{ cat = $cat; title = $title; style = "All styles"; start_date = $in10; end_date = $in11; start_time = "18:00"
+  return @{ category = $cat; title = $title; style = "All styles"; start_date = $in10; end_date = $in11; start_time = "18:00"
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof event"
     entry_format = $(if ($entries.Count -eq 3) { "all" } elseif ($entries.Count -eq 1) { $entries[0].format } elseif ($entries.Count -eq 0) { "none" } else { "mixed" })
     bracket = $(if ($cat -eq "battle") { 16 } else { 0 }); rounds = $(if ($cat -eq "tournament") { 3 } else { 0 })
@@ -111,27 +111,27 @@ $l2 = New-EmailUser "ev-l2-$stamp@example.com" "Dancer Two $stamp" "user"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Event Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Event Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
+$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $staffA.id "staff" $ownerA.id
 # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
-# tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+# tenant row (my_org_business), never by one of its studios; save_event refuses a studio outright.
 # The organization is ONE login: its studio's staff are on the studio's team, not on the host's, so
 # they neither run the event nor its door - and they are not "people who run it" at the box office
 # either. The checks below say exactly that (the accounts backlog row records the limitation).
 # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
 Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "EVT$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
-$orgA = [string](Rpc (Api $ownerA.token) "my_org_tenant" @{})
+$orgA = [string](Rpc (Api $ownerA.token) "my_org_business" @{})
 
 try {
   # 1. the owner saves a battle as a DRAFT: three ways in (solo has ONE place), a
@@ -143,7 +143,7 @@ try {
     @{ format = "solo"; fee_inr = 0; capacity = 1 },
     @{ format = "duo"; fee_inr = 0; capacity = 5 },
     @{ format = "crew"; fee_inr = 0; capacity = 5 })
-  $bId = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = $battle }
+  $bId = Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = $battle }
   $bRow = (Get-Rows (Api $ownerA.token) "events?$EVSEL&id=eq.$bId")[0]
   $slug = $bRow.share_slug
   $anonDraft = Get-Rows $anonH "events?$EVSEL&share_slug=eq.$slug"
@@ -154,11 +154,11 @@ try {
   # 2. PUBLISH BLOCKERS, IN THE PROTOTYPE'S WORDS (dosEventBlockers 3061): a
   #    showcase with tickets off, a battle with tickets on and no tier, and the
   #    same battle with tickets off and no way in
-  $showOff = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Proof Showcase $stamp" $false @() @()) }
+  $showOff = Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Proof Showcase $stamp" $false @() @()) }
   $b1 = Fails { Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $showOff } }
-  $bare = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "battle" "Bare Battle $stamp" $true @() @()) }
+  $bare = Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = (Ev "battle" "Bare Battle $stamp" $true @() @()) }
   $b2 = Fails { Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $bare } }
-  Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $bare; p_event = (Ev "battle" "Bare Battle $stamp" $false @() @()) } | Out-Null
+  Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $bare; p_event = (Ev "battle" "Bare Battle $stamp" $false @() @()) } | Out-Null
   $b3 = Fails { Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $bare } }
   # the sentence must be the WHOLE message: the first cut of event_blockers appended
   # with text[] || literal, which Postgres read as array || array, so the caller got
@@ -170,8 +170,8 @@ try {
   #    are not on the HOST's team - R15), and a studio cannot host one at all; the owner publishes,
   #    and now the public reads it WITH its tiers
   $rivalPub = Fails { Rpc (Api $ownerB.token) "publish_event" @{ p_event_id = $bId } }
-  $staffSave = Fails { Rpc (Api $staffA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Staff Try $stamp" $true @(@{ name = "X"; price_inr = 0; capacity = 5; sort = 0 }) @()) } }
-  $studioHost = Fails { Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $ta.id; p_event_id = $null; p_event = (Ev "showcase" "Studio Try $stamp" $true @(@{ name = "X"; price_inr = 0; capacity = 5; sort = 0 }) @()) } }
+  $staffSave = Fails { Rpc (Api $staffA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Staff Try $stamp" $true @(@{ name = "X"; price_inr = 0; capacity = 5; sort = 0 }) @()) } }
+  $studioHost = Fails { Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $ta.id; p_event_id = $null; p_event = (Ev "showcase" "Studio Try $stamp" $true @(@{ name = "X"; price_inr = 0; capacity = 5; sort = 0 }) @()) } }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $bId } | Out-Null
   $pub = Get-Rows $anonH "events?$EVSEL&share_slug=eq.$slug"
   $general = @($pub[0].event_ticket_tiers | Where-Object { $_.name -eq "General" })[0]
@@ -197,7 +197,7 @@ try {
     ($ownerBooks -match "run this event") -and ($staffBooks -match "needs your partner"))
 
   # 7. A SHOWCASE TAKES NO ENTRIES (13245): publish one with a free tier, then try
-  $show = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Open Showcase $stamp" $true @(@{ name = "Free entry"; price_inr = 0; capacity = 50; sort = 0 }) @()) }
+  $show = Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = (Ev "showcase" "Open Showcase $stamp" $true @(@{ name = "Free entry"; price_inr = 0; capacity = 50; sort = 0 }) @()) }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $show } | Out-Null
   $showEntry = Fails { Book $l1 $show "participant" $null 1 "solo" $null $null }
   $showRow = (Get-Rows $anonH "events?$EVSEL&id=eq.$show")[0]
@@ -258,8 +258,8 @@ try {
     ($null -eq $walk.user_id) -and ($walk.entrant_name -eq "Gate Walkin") -and ($null -ne $walk.checked_in_at) -and ($walk.amount_inr -eq 0) -and ($l1Walk -match "run the door"))
 
   # 14. NO DIRECT WRITES: not to bookings, not to events - even by the owner
-  $directB = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/event_bookings" -Headers (Api $l1.token) -Body (@{ event_id = $bId; tenant_id = $ta.id; user_id = $l1.id; kind = "spectator"; ticket_tier_id = $general.id } | ConvertTo-Json) }
-  $directE = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/events" -Headers (Api $ownerA.token) -Body (@{ tenant_id = $ta.id; cat = "battle"; title = "Direct"; style = "x"; start_date = $in10; end_date = $in10; venue = "v"; city = "Pune"; maps_url = "m" } | ConvertTo-Json) }
+  $directB = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/event_bookings" -Headers (Api $l1.token) -Body (@{ event_id = $bId; business_id = $ta.id; user_id = $l1.id; kind = "spectator"; ticket_tier_id = $general.id } | ConvertTo-Json) }
+  $directE = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/events" -Headers (Api $ownerA.token) -Body (@{ business_id = $ta.id; category = "battle"; title = "Direct"; style = "x"; start_date = $in10; end_date = $in10; venue = "v"; city = "Pune"; maps_url = "m" } | ConvertTo-Json) }
   Check 14 "Direct booking insert refused ($directB); direct event insert refused ($directE)" (($directB -ne "") -and ($directE -ne ""))
 
   # 15. DUET AND CREW ENTRIES CARRY THEIR NAMES (Step 22: the partner's from their
@@ -282,10 +282,10 @@ try {
     ($rivalDel -match "owner or a trainer|run its events") -and ($anonShow.Count -eq 0) -and ($null -ne $ownerShow.deleted_at))
 }
 finally {
-  # tenants cascade events -> tiers -> bookings; users cascade profiles (and the organization's
+  # businesses cascade events -> tiers -> bookings; users cascade profiles (and the organization's
   # hosting row, with the events on it, goes with its profile)
   foreach ($t in @($ta, $tb)) {
-    try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $svcH | Out-Null } catch {}
+    try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null } catch {}
   }
   foreach ($u in @($ownerA, $staffA, $ownerB, $l1, $l2)) {
     try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null } catch {}

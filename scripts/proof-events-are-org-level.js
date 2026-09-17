@@ -9,7 +9,7 @@
  *   1  save_event with a STUDIO as the host          → refused, in words
  *   2  a direct PostgREST INSERT into `events`       → refused (no insert policy)
  *   3  save_event with the ORGANIZATION's host row   → accepted
- *   4  the host row is NOT the studio                → they are different tenants
+ *   4  the host row is NOT the studio                → they are different businesses
  *   5  the host row is type 'org' and unlisted       → never on Discover (R15)
  *   6  can_run_events on the studio                  → true (so #1 is the TYPE
  *                                                      check refusing, not a
@@ -93,22 +93,22 @@ async function rpc(headers, fn, args) {
     });
 
     /* a studio of its own, and its events host */
-    const studio = await rpc(me, "create_tenant_with_owner", { p_name: `Proof Studio ${stamp}`, p_type: "studio", p_area: "Kothrud", p_city: "Pune" });
+    const studio = await rpc(me, "create_business_with_owner", { p_name: `Proof Studio ${stamp}`, p_type: "studio", p_area: "Kothrud", p_city: "Pune" });
     studioId = studio.body && studio.body.id;
     if (!studioId) throw new Error(`could not create the studio: ${studio.message.slice(0, 200)}`);
-    const host = await rpc(me, "my_org_tenant", {});
+    const host = await rpc(me, "my_org_business", {});
     hostId = typeof host.body === "string" ? host.body : null;
     if (!hostId) throw new Error(`no events host: ${host.message.slice(0, 200)}`);
 
     const payload = (title) => ({
-      cat: "showcase", title, style: "All styles",
+      category: "showcase", title, style: "All styles",
       start_date: "2027-01-10", end_date: "2027-01-10", start_time: "18:00",
       venue: "Proof Hall", city: "Pune", maps_url: "https://maps.google.com/?q=Pune",
       entry_format: "none", tickets_on: true,
     });
 
     /* ── 1. save_event, hosted by the STUDIO ────────────────────────────── */
-    const onStudio = await rpc(me, "save_event", { p_tenant_id: studioId, p_event_id: null, p_event: payload(`Proof studio-hosted ${stamp}`) });
+    const onStudio = await rpc(me, "save_event", { p_business_id: studioId, p_event_id: null, p_event: payload(`Proof studio-hosted ${stamp}`) });
     check(
       !onStudio.ok && /belongs to the organization/i.test(onStudio.message),
       "save_event refuses a STUDIO as the host, in words",
@@ -118,7 +118,7 @@ async function rpc(headers, fn, args) {
     /* ── 2. the other door: a direct insert, past the RPC entirely ───────── */
     const direct = await fetch(`${URL}/rest/v1/events`, {
       method: "POST", headers: { ...me, Prefer: "return=representation" },
-      body: JSON.stringify({ tenant_id: studioId, cat: "showcase", title: `Proof direct ${stamp}`, style: "All styles", start_date: "2027-01-10", end_date: "2027-01-10", venue: "Proof Hall", city: "Pune", maps_url: "https://maps.google.com/?q=Pune" }),
+      body: JSON.stringify({ business_id: studioId, category: "showcase", title: `Proof direct ${stamp}`, style: "All styles", start_date: "2027-01-10", end_date: "2027-01-10", venue: "Proof Hall", city: "Pune", maps_url: "https://maps.google.com/?q=Pune" }),
     });
     const directBody = await direct.text();
     check(
@@ -128,12 +128,12 @@ async function rpc(headers, fn, args) {
     );
 
     /* ── 3. and the organization's own host row is accepted ─────────────── */
-    const onHost = await rpc(me, "save_event", { p_tenant_id: hostId, p_event_id: null, p_event: payload(`Proof org-hosted ${stamp}`) });
+    const onHost = await rpc(me, "save_event", { p_business_id: hostId, p_event_id: null, p_event: payload(`Proof org-hosted ${stamp}`) });
     check(onHost.ok && typeof onHost.body === "string", "save_event ACCEPTS the organization's host row", `got ${onHost.status}: ${String(onHost.message).slice(0, 160)}`);
 
     /* ── 4-5. and that host is a different tenant, of type org, unlisted ── */
     check(hostId !== studioId, "the events host is NOT the studio");
-    const rows = await (await fetch(`${URL}/rest/v1/tenants?id=eq.${hostId}&select=type,visibility`, { headers: admin })).json();
+    const rows = await (await fetch(`${URL}/rest/v1/businesses?id=eq.${hostId}&select=type,visibility`, { headers: admin })).json();
     const hostRow = Array.isArray(rows) ? rows[0] : null;
     check(
       hostRow && hostRow.type === "org" && hostRow.visibility === "unlisted",
@@ -142,7 +142,7 @@ async function rpc(headers, fn, args) {
     );
 
     /* ── 6. the refusal in #1 is the TYPE check, not a permission check ─── */
-    const mayRun = await rpc(me, "can_run_events", { p_tenant_id: studioId });
+    const mayRun = await rpc(me, "can_run_events", { p_business_id: studioId });
     check(
       mayRun.body === true,
       "can_run_events(studio) is TRUE — so #1 is the org rule refusing, not a permission",
@@ -154,7 +154,7 @@ async function rpc(headers, fn, args) {
   } finally {
     /* everything this made, it removes */
     for (const id of [studioId, hostId]) {
-      if (id) await fetch(`${URL}/rest/v1/tenants?id=eq.${id}`, { method: "DELETE", headers: admin }).catch(() => {});
+      if (id) await fetch(`${URL}/rest/v1/businesses?id=eq.${id}`, { method: "DELETE", headers: admin }).catch(() => {});
     }
     if (orgId) await fetch(`${URL}/auth/v1/admin/users/${orgId}`, { method: "DELETE", headers: admin }).catch(() => {});
     console.log(`\n${pass} passed, ${fail} failed`);

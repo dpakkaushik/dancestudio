@@ -45,7 +45,7 @@ interface ThreadRow {
   account_id: string;
   account_name: string;
   account_role: ProfileRole;
-  account_avatar_path: string | null;
+  account_profile_photo_path: string | null;
   subject: string;
   kind: ThreadKind;
   status: ThreadStatus;
@@ -63,7 +63,7 @@ const toThread = (r: ThreadRow): SupportThread => ({
   accountId: r.account_id,
   accountName: r.account_name,
   accountRole: r.account_role,
-  accountAvatarPath: r.account_avatar_path,
+  accountAvatarPath: r.account_profile_photo_path,
   subject: r.subject,
   kind: r.kind,
   status: r.status,

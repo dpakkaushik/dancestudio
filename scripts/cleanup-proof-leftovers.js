@@ -82,18 +82,18 @@ async function allAuthUsers() {
   const junkIds = new Set(junkProfiles.map((p) => p.id));
   const liveGood = new Set(profiles.filter((p) => !junkIds.has(p.id)).map((p) => p.id));
 
-  const tenants = await get("tenants?select=id,type,name&deleted_at=is.null");
-  const owners = await get("tenant_members?select=tenant_id,user_id&member_role=eq.owner&deleted_at=is.null");
-  const ownedByGood = new Set(owners.filter((m) => liveGood.has(m.user_id)).map((m) => m.tenant_id));
+  const businesses = await get("businesses?select=id,type,name&deleted_at=is.null");
+  const owners = await get("business_members?select=business_id,user_id&member_role=eq.owner&deleted_at=is.null");
+  const ownedByGood = new Set(owners.filter((m) => liveGood.has(m.user_id)).map((m) => m.business_id));
   /* who owns what, so a name match can be bounded to a test-owned row */
-  const ownerOf = new Map(owners.map((m) => [m.tenant_id, m.user_id]));
+  const ownerOf = new Map(owners.map((m) => [m.business_id, m.user_id]));
   const testOwned = (t) => {
     const owner = ownerOf.get(t.id);
     if (!owner) return true;
     if (junkIds.has(owner)) return true;
     return KEEP_PHONES.has(phoneOf.get(owner));
   };
-  const junkTenants = tenants.filter(
+  const junkTenants = businesses.filter(
     (t) => !ownedByGood.has(t.id) || (JUNK_TENANT_NAME.test(t.name) && testOwned(t))
   );
 
@@ -113,11 +113,11 @@ async function allAuthUsers() {
   const pids = junkProfiles.map((p) => p.id);
   const counts = {};
   if (tids.length) {
-    for (const table of ["class_sessions", "classes", "events", "tenant_members"]) {
-      const rows = await patch(`${table}?tenant_id=${inList(tids)}&deleted_at=is.null`, { deleted_at: now });
+    for (const table of ["class_sessions", "classes", "events", "business_members"]) {
+      const rows = await patch(`${table}?business_id=${inList(tids)}&deleted_at=is.null`, { deleted_at: now });
       counts[table] = Array.isArray(rows) ? rows.length : "?";
     }
-    counts.tenants = (await patch(`tenants?id=${inList(tids)}&deleted_at=is.null`, { deleted_at: now })).length;
+    counts.businesses = (await patch(`businesses?id=${inList(tids)}&deleted_at=is.null`, { deleted_at: now })).length;
   }
   if (pids.length) counts.profiles = (await patch(`profiles?id=${inList(pids)}&deleted_at=is.null`, { deleted_at: now })).length;
   console.log("\napplied:", JSON.stringify(counts));

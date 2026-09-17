@@ -18,7 +18,7 @@ export interface EnquiryType {
   sub: string;
   /** the type's tint (ENQ_TINT 5208) */
   c: string;
-  /** who may be sent one — the prototype's entity kinds, mapped onto our tenants */
+  /** who may be sent one — the prototype's entity kinds, mapped onto our businesses */
   to: TenantType[];
   fields: EnquiryField[];
 }
@@ -29,7 +29,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Celebrations",
     sub: "weddings · birthdays · anniversaries",
     c: "#EC4899",
-    to: ["studio", "trainer_business"],
+    to: ["studio", "artist_page"],
     fields: [
       {
         k: "occasion",
@@ -45,7 +45,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Corporate",
     sub: "brand shoots · offsites · employee classes",
     c: "#0EA5E9",
-    to: ["studio", "trainer_business"],
+    to: ["studio", "artist_page"],
     fields: [
       {
         k: "kind",
@@ -61,7 +61,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     sub: "battles · tournaments",
     c: "#F59E0B",
     /* judging is a person's job — offered to artists only (4934) */
-    to: ["trainer_business"],
+    to: ["artist_page"],
     fields: [
       { k: "event", t: "event", label: "Which event" },
       { k: "panel", t: "count", label: "Judges on the panel", min: 1, max: 9, def: 3 },
@@ -72,7 +72,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Private Sessions",
     sub: "one-on-one or small group",
     c: "#22C55E",
-    to: ["studio", "trainer_business"],
+    to: ["studio", "artist_page"],
     fields: [
       { k: "format", t: "select", label: "Session format", opts: ["One-on-one", "Couple", "Small group (3–6)", "Group (7+)"] },
       {
@@ -91,7 +91,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Collaboration",
     sub: "content · workshops · campaigns",
     c: "#8B5CF6",
-    to: ["studio", "trainer_business"],
+    to: ["studio", "artist_page"],
     fields: [
       {
         k: "kind",

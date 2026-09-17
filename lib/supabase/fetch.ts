@@ -10,7 +10,7 @@
  *  every large consumer app applies at its API edge:
  *
  *  - ONLY IDEMPOTENT REQUESTS ARE RETRIED — GET and HEAD. A POST is a write
- *    (every RPC is a POST, and `create_tenant_with_owner` run twice is two
+ *    (every RPC is a POST, and `create_business_with_owner` run twice is two
  *    studios), so it is never repeated here; a write that fails is reported.
  *  - ONLY GATEWAY FAILURES ARE RETRIED — 502, 503, 504, and a request that
  *    never got an answer at all. A 4xx is the app being told something and is

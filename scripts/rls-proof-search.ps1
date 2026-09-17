@@ -76,35 +76,35 @@ $dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "$tag Studio Kothrud"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Kothrud"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "$tag Private Hall"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "$tag Private Hall"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 
 try {
   $crew = Rpc (Api $dancer.token) "create_crew" @{ p_name = "$tag Crew"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
-  $ev = @{ cat = "battle"; title = "Monsoon $tag Battle"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
+  $ev = @{ category = "battle"; title = "Monsoon $tag Battle"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof"
     entry_format = "solo"; bracket = 16; rounds = 0; prizes = @(); tickets_on = $false; ticket_tiers = @()
     entry_tiers = @(@{ format = "solo"; fee_inr = 0; capacity = 8 }) }
   # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
-  # tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+  # tenant row (my_org_business), never by one of its studios; save_event refuses a studio outright.
   # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
   Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "SRC$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
-  $orgA = [string](Rpc (Api $ownerA.token) "my_org_tenant" @{})
-  $pubId = Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = $ev }
+  $orgA = [string](Rpc (Api $ownerA.token) "my_org_business" @{})
+  $pubId = Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = $ev }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $pubId } | Out-Null
   $ev.title = "Draft $tag Battle"
-  Rpc (Api $ownerA.token) "save_event" @{ p_tenant_id = $orgA; p_event_id = $null; p_event = $ev } | Out-Null
+  Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = $ev } | Out-Null
 
   # 1. A STRANGER FINDS THE PUBLIC THINGS - the listed studio, the crew, the published event - and only those
   $anonHits = Search $anonH $tag
@@ -146,9 +146,9 @@ try {
     ($personHit.Count -eq 1) -and ($personHit[0].href -like "/person/*") -and ($personHit[0].sub -like "User*") -and ($anonPersonHit.Count -eq 0))
 
   # 6. THE CAP PER KIND, AND THE HREF EACH ROW OPENS
-  $t2 = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "$tag Studio Two"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
+  $t2 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Two"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
   Subscribe-Studio ([string]$t2.id)
-  $t3 = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "$tag Studio Three"; p_type = "studio"; p_area = "Aundh"; p_city = "Pune" }
+  $t3 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Three"; p_type = "studio"; p_area = "Aundh"; p_city = "Pune" }
   Subscribe-Studio ([string]$t3.id)
   $capped = @((Search $anonH $tag 2) | Where-Object { $_.kind -eq "studio" })
   $all = @((Search $anonH $tag 10) | Where-Object { $_.kind -eq "studio" })
@@ -164,20 +164,20 @@ try {
 
   # 8. DISCOVER'S STYLE FILTER READS PUBLISHED CLASSES ONLY (findPublishedStylesByTenant): a draft's style never narrows a business in
   $tmr = (Get-Date).AddDays(2)
-  Rpc (Api $ownerA.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Pub $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
+  Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Pub $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
     p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") } | Out-Null
-  Rpc (Api $ownerA.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Dr $stamp"; p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
+  Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Dr $stamp"; p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
     p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT18:00:00zzz") } | Out-Null
-  $res = Invoke-WebRequest -Method Get -Uri "$base/rest/v1/classes?select=tenant_id,style&tenant_id=eq.$($ta.id)&status=eq.published&deleted_at=is.null" -Headers $anonH -UseBasicParsing
+  $res = Invoke-WebRequest -Method Get -Uri "$base/rest/v1/classes?select=business_id,style&business_id=eq.$($ta.id)&status=eq.published&deleted_at=is.null" -Headers $anonH -UseBasicParsing
   $styles = @(($res.Content | ConvertFrom-Json) | ForEach-Object { $_.style })
-  $resAll = Invoke-WebRequest -Method Get -Uri "$base/rest/v1/classes?select=style&tenant_id=eq.$($ta.id)&deleted_at=is.null" -Headers $anonH -UseBasicParsing
+  $resAll = Invoke-WebRequest -Method Get -Uri "$base/rest/v1/classes?select=style&business_id=eq.$($ta.id)&deleted_at=is.null" -Headers $anonH -UseBasicParsing
   $allStyles = @(($resAll.Content | ConvertFrom-Json) | ForEach-Object { $_.style })
   Check 8 "Public styles of the studio: $($styles -join ','); a stranger reads $($allStyles.Count) class in all (the Salsa draft is dark)" (
     ($styles.Count -eq 1) -and ($styles[0] -eq "Hip-Hop") -and ($allStyles.Count -eq 1))
 }
 finally {
-  foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $svcH | Out-Null }
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?name=like.$tag*" -Headers $svcH | Out-Null
+  foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null }
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?name=like.$tag*" -Headers $svcH | Out-Null
   foreach ($u in @($ownerA, $ownerB, $dancer)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }

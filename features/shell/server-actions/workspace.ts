@@ -22,8 +22,8 @@ export async function getWorkspaceAction(input: { tenantId: string }): Promise<W
   if (!parsed.success) return null;
   try {
     const supabase = await createSupabaseServerClient();
-    const tenants = await findMyTenants(supabase);
-    const tenant = tenants.find((t) => t.id === parsed.data.tenantId);
+    const businesses = await findMyTenants(supabase);
+    const tenant = businesses.find((t) => t.id === parsed.data.tenantId);
     return tenant ? { name: tenant.name, area: tenant.area, city: tenant.city } : null;
   } catch {
     return null;

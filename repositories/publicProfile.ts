@@ -4,7 +4,7 @@ import type { TenantType } from "@/types/tenant";
 import { findFollowerCounts } from "./follows";
 
 /** Step 15 — a business's public page, assembled from what the public may
- *  already read: the listed tenant (Step 3's "anyone reads listed tenants"),
+ *  already read: the listed tenant (Step 3's "anyone reads listed businesses"),
  *  its published classes and their sessions, and the CONFIRMED claims on them
  *  (Step 11: an unanswered ask never puts a name on a public page). Nothing
  *  here is a new permission; a member of the business sees the same page plus
@@ -21,7 +21,7 @@ interface TenantRow {
   lat?: number | null;
   lng?: number | null;
   created_at: string;
-  photo_path?: string | null;
+  profile_photo_path?: string | null;
   about?: string | null;
   founded_year?: number | null;
   phone?: string | null;
@@ -43,11 +43,11 @@ interface StyleRow {
 interface FacultyRow {
   user_id: string;
   kind: "artist" | "assistant";
-  profiles: { full_name: string; city: string | null; avatar_path: string | null } | null;
-  classes: { tenant_id: string; status: string } | null;
+  profiles: { full_name: string; city: string | null; profile_photo_path: string | null } | null;
+  classes: { business_id: string; status: string } | null;
 }
 
-/** A faculty member with their face: the read already carried `avatar_path`
+/** A faculty member with their face: the read already carried `profile_photo_path`
  *  (profiles is signed-in readable) and the row now keeps it, so a Faculty row
  *  can wear the person's picture the way every other people-row does. Named
  *  here rather than in types/publicProfile.ts, which this slice does not own. */
@@ -60,8 +60,8 @@ export type PublicTenantProfileWithFaces = Omit<PublicTenantProfile, "faculty"> 
  *  caller is not a member (RLS decides, the query does not). */
 export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
   const { data, error } = await supabase
-    .from("tenants")
-    .select("id, type, name, area, city, lat, lng, created_at, photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at")
+    .from("businesses")
+    .select("id, type, name, area, city, lat, lng, created_at, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at")
     .eq("id", tenantId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -73,7 +73,7 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
   }
   const row = data as TenantRow;
   const socials = Array.isArray(row.socials) ? (row.socials as Array<{ platform?: unknown; url?: unknown }>).map((x) => ({ platform: String(x.platform ?? ""), url: String(x.url ?? "") })).filter((x) => x.platform && x.url) : [];
-  return { id: row.id, type: row.type, name: row.name, area: row.area, city: row.city, lat: row.lat ?? null, lng: row.lng ?? null, createdAt: row.created_at, photoPath: row.photo_path ?? null, about: row.about ?? null, foundedYear: row.founded_year == null ? null : Number(row.founded_year), phone: row.phone ?? null, socials, enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null, accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false }, verifiedAt: row.verified_at ?? null };
+  return { id: row.id, type: row.type, name: row.name, area: row.area, city: row.city, lat: row.lat ?? null, lng: row.lng ?? null, createdAt: row.created_at, photoPath: row.profile_photo_path ?? null, about: row.about ?? null, foundedYear: row.founded_year == null ? null : Number(row.founded_year), phone: row.phone ?? null, socials, enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null, accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false }, verifiedAt: row.verified_at ?? null };
 }
 
 export async function findPublicTenantProfile(
@@ -96,14 +96,14 @@ export async function findPublicTenantProfile(
     supabase
       .from("classes")
       .select("id, style, class_sessions (starts_at, deleted_at)")
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       .eq("status", "published")
       .is("deleted_at", null)
       .limit(MAX_CLASSES),
     supabase
-      .from("class_claims")
-      .select("user_id, kind, profiles (full_name, city, avatar_path), classes!inner (tenant_id, status)")
-      .eq("classes.tenant_id", tenantId)
+      .from("class_people")
+      .select("user_id, kind, profiles (full_name, city, profile_photo_path), classes!inner (business_id, status)")
+      .eq("classes.business_id", tenantId)
       .eq("classes.status", "published")
       .eq("status", "confirmed")
       .is("deleted_at", null)
@@ -150,7 +150,7 @@ export async function findPublicTenantProfile(
         city: r.profiles.city,
         role,
         classCount: 1,
-        avatarPath: r.profiles.avatar_path ?? null,
+        avatarPath: r.profiles.profile_photo_path ?? null,
       });
     }
   }

@@ -20,11 +20,11 @@ export default async function EnquiryPage({ params }: { params: Promise<{ enquir
     redirect("/login");
   }
 
-  const [enquiry, tenants] = await Promise.all([findEnquiryById(supabase, enquiryId), findMyTenants(supabase)]);
+  const [enquiry, businesses] = await Promise.all([findEnquiryById(supabase, enquiryId), findMyTenants(supabase)]);
   if (!enquiry) {
     notFound();
   }
-  const mine = tenants.some((t) => t.id === enquiry.tenantId);
+  const mine = businesses.some((t) => t.id === enquiry.tenantId);
 
   return <EnquiryDetail enquiry={enquiry} mine={mine} nowIso={stampNowIso()} />;
 }

@@ -20,7 +20,7 @@ import { whyNotAPhoto } from "@/lib/media/photo";
  *  button and dropped into one that does.
  *
  *  And what they broke was not recoverable. The ✕ ran TWO phases: the row was
- *  soft-deleted through `remove_org_proof_photo`, and then the OBJECT was
+ *  soft-deleted through `remove_studio_photo`, and then the OBJECT was
  *  deleted out of the bucket. The row could in principle come back — there is
  *  no un-delete function in any migration, but the column is `deleted_at` — and
  *  the bytes could not. That asymmetry is why this is staging and not undo: an
@@ -189,7 +189,7 @@ export function useHeaderDraft({ initial, min, max }: { initial: StoredPicture[]
   const canUndo = items.some((i) => i.kind === "stored" && i.removed);
 
   /** The floor is the database's, checked against the DRAFT rather than the
-   *  record: `remove_org_proof_photo` refuses a studio's last live picture, so
+   *  record: `remove_studio_photo` refuses a studio's last live picture, so
    *  offering a press that can only be refused is worse than not offering it.
    *  A picture already marked always keeps its control, because that control is
    *  the way back. */

@@ -3,7 +3,7 @@ import type { ClassMoney, OrderStatus, PaidReceipt, PaymentOrder, PaymentProvide
 
 interface OrderRow {
   id: string;
-  tenant_id: string;
+  business_id: string;
   class_id: string;
   session_id: string;
   amount_inr: number;
@@ -26,7 +26,7 @@ export async function createPaymentOrder(
   const row = data as OrderRow;
   return {
     id: row.id,
-    tenantId: row.tenant_id,
+    tenantId: row.business_id,
     classId: row.class_id,
     sessionId: row.session_id,
     amountInr: row.amount_inr,
@@ -79,8 +79,8 @@ export async function cancelBooking(
   enrollmentId: string,
   reason: string | null
 ): Promise<RefundOutcome | null> {
-  const { data, error } = await supabase.rpc("cancel_booking", {
-    p_enrollment_id: enrollmentId,
+  const { data, error } = await supabase.rpc("cancel_class_booking_with_reason", {
+    p_class_booking_id: enrollmentId,
     p_reason: reason,
   });
   if (error) {
@@ -143,7 +143,7 @@ export async function findPaidReceiptByEnrollment(
   const { data, error } = await supabase
     .from("orders")
     .select("status, payments (provider_payment_id, amount_inr, method, status, created_at)")
-    .eq("enrollment_id", enrollmentId)
+    .eq("class_booking_id", enrollmentId)
     .in("status", ["paid", "refund_pending", "refunded"])
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -249,7 +249,7 @@ export async function findClassMoney(
 
 export interface CaptureOutcome {
   outcome: "enrolled" | "duplicate" | "refund_pending" | "ignored";
-  enrollment_id?: string;
+  class_booking_id?: string;
   order_status?: OrderStatus;
   refund_id?: string;
   provider_payment_id?: string;
@@ -343,7 +343,7 @@ export async function markWebhookProcessed(admin: SupabaseClient, eventId: strin
 }
 
 interface DeckReceiptRow {
-  enrollment_id: string;
+  class_booking_id: string;
   status: OrderStatus;
   payments: Array<{
     provider_payment_id: string;
@@ -367,8 +367,8 @@ export async function findPaidReceiptsByEnrollments(
   }
   const { data, error } = await supabase
     .from("orders")
-    .select("enrollment_id, status, payments (provider_payment_id, amount_inr, method, status, created_at)")
-    .in("enrollment_id", enrollmentIds)
+    .select("class_booking_id, status, payments (provider_payment_id, amount_inr, method, status, created_at)")
+    .in("class_booking_id", enrollmentIds)
     .in("status", ["paid", "refund_pending", "refunded"])
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -378,10 +378,10 @@ export async function findPaidReceiptsByEnrollments(
   }
   // newest order first, so the first hit per booking is the one that stands
   for (const order of (data ?? []) as unknown as DeckReceiptRow[]) {
-    if (out.has(order.enrollment_id)) continue;
+    if (out.has(order.class_booking_id)) continue;
     const paid = order.payments.find((p) => p.status === "captured" || p.status === "refunded");
     if (!paid) continue;
-    out.set(order.enrollment_id, {
+    out.set(order.class_booking_id, {
       amountInr: paid.amount_inr,
       method: paid.method,
       providerPaymentId: paid.provider_payment_id,

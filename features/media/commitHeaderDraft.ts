@@ -13,9 +13,9 @@ import type { DraftItem, StoredPicture } from "./headerDraft";
  *  wrong. The database re-checks its own rules on EVERY call, against the live
  *  count at that instant:
  *
- *    `remove_org_proof_photo`  refuses when `v_live <= 1`  (a studio keeps one)
- *    `add_studio_proof_photo`  refuses when `v_live >= 10`
- *    `add_my_gallery_photo`    refuses at 1 for a plain user, 10 for an artist
+ *    `remove_studio_photo`  refuses when `v_live <= 1`  (a studio keeps one)
+ *    `add_studio_photo`  refuses when `v_live >= 10`
+ *    `add_my_header_photo`    refuses at 1 for a plain user, 10 for an artist
  *
  *  So add-first breaks the swap AT THE CEILING — a studio holding ten, or a
  *  user holding their one, cannot add the replacement before making room — and
@@ -79,7 +79,7 @@ export async function commitHeaderDraft(items: DraftItem[], ports: CommitPorts):
 
   /** ⚠ A REFUSED REMOVAL IS NOT NECESSARILY A PERMANENT ONE (found by review,
    *  16 Sep 2026). `ports.min` models the floor this code KNOWS about — a
-   *  studio keeps one — but `remove_org_proof_photo` has a SECOND floor nobody
+   *  studio keeps one — but `remove_studio_photo` has a SECOND floor nobody
    *  outside it can see: it also refuses while `v_live <= 5` and a verification
    *  request is pending ("DanceOS is checking these now — add a replacement
    *  before you remove one"). A studio at five, under review, swapping a
@@ -185,7 +185,7 @@ export const studioPorts = (tenantId: string, ownerId: string): CommitPorts => (
   max: PROOF_MAX,
 });
 
-/** A PERSON's are their own, in the public bucket. `remove_my_gallery_photo`
+/** A PERSON's are their own, in the public bucket. `remove_my_header_photo`
  *  has NO minimum — a person may hold none — so the floor is 0, not 1. */
 export const personPorts = (userId: string, max: number): CommitPorts => ({
   bucket: MEDIA_BUCKET,

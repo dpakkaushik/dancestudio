@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       /* no studio yet: the hub is where one is made, and the honest place to land */
       publicViewHref = studio ? `/studio/${studio.id}` : "/business";
     } else {
-      const artistPage = owned.find((t) => t.type === "trainer_business");
+      const artistPage = owned.find((t) => t.type === "artist_page");
       publicViewHref = artistPage ? `/artist/${artistPage.id}` : `/person/${profile.id}`;
     }
   }

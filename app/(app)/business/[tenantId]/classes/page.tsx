@@ -23,9 +23,9 @@ export default async function TenantClassesPage({
     redirect("/login");
   }
 
-  // membership check: RLS only returns tenants the user belongs to
-  const tenants = await findMyTenants(supabase);
-  const tenant = tenants.find((t) => t.id === tenantId);
+  // membership check: RLS only returns businesses the user belongs to
+  const businesses = await findMyTenants(supabase);
+  const tenant = businesses.find((t) => t.id === tenantId);
   if (!tenant) {
     redirect("/business");
   }

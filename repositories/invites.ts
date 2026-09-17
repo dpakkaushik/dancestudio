@@ -14,7 +14,7 @@ import type { MemberRole } from "@/repositories/tenants";
 
 interface InviteRow {
   id: string;
-  tenant_id: string;
+  business_id: string;
   name: string;
   email: string;
   member_role: InvitableRole;
@@ -23,11 +23,11 @@ interface InviteRow {
   created_at: string;
 }
 
-const INVITE_COLUMNS = "id, tenant_id, name, email, member_role, code, status, created_at";
+const INVITE_COLUMNS = "id, business_id, name, email, member_role, code, status, created_at";
 
 const toInvite = (row: InviteRow): TenantInvite => ({
   id: row.id,
-  tenantId: row.tenant_id,
+  tenantId: row.business_id,
   name: row.name,
   email: row.email,
   memberRole: row.member_role,
@@ -43,9 +43,9 @@ export async function findPendingInvites(
   tenantId: string
 ): Promise<TenantInvite[]> {
   const { data, error } = await supabase
-    .from("tenant_invites")
+    .from("business_invites")
     .select(INVITE_COLUMNS)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .eq("status", "pending")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -61,8 +61,8 @@ export async function inviteToTenant(
   supabase: SupabaseClient,
   input: { tenantId: string; name: string; email: string; role: InvitableRole }
 ): Promise<TenantInvite> {
-  const { data, error } = await supabase.rpc("invite_to_tenant", {
-    p_tenant_id: input.tenantId,
+  const { data, error } = await supabase.rpc("invite_to_business", {
+    p_business_id: input.tenantId,
     p_name: input.name,
     p_email: input.email,
     p_role: input.role,
@@ -74,7 +74,7 @@ export async function inviteToTenant(
 }
 
 export async function revokeInvite(supabase: SupabaseClient, inviteId: string): Promise<void> {
-  const { error } = await supabase.rpc("revoke_tenant_invite", { p_invite_id: inviteId });
+  const { error } = await supabase.rpc("revoke_business_invite", { p_invite_id: inviteId });
   if (error) {
     throw new Error(error.message);
   }
@@ -82,8 +82,8 @@ export async function revokeInvite(supabase: SupabaseClient, inviteId: string): 
 
 interface PendingRow {
   invite_id: string;
-  tenant_id: string;
-  tenant_name: string;
+  business_id: string;
+  business_name: string;
   member_role: InvitableRole;
   code: string;
   invited_name: string;
@@ -99,8 +99,8 @@ export async function findMyPendingInvites(supabase: SupabaseClient): Promise<Pe
   }
   return (data as PendingRow[]).map((row) => ({
     inviteId: row.invite_id,
-    tenantId: row.tenant_id,
-    tenantName: row.tenant_name,
+    tenantId: row.business_id,
+    tenantName: row.business_name,
     memberRole: row.member_role,
     code: row.code,
     invitedName: row.invited_name,
@@ -109,8 +109,8 @@ export async function findMyPendingInvites(supabase: SupabaseClient): Promise<Pe
 }
 
 interface PreviewRow {
-  tenant_id: string;
-  tenant_name: string;
+  business_id: string;
+  business_name: string;
   member_role: InvitableRole;
   invited_name: string;
   status: InviteStatus;
@@ -124,7 +124,7 @@ export async function previewInvite(
   supabase: SupabaseClient,
   code: string
 ): Promise<InvitePreview | null> {
-  const { data, error } = await supabase.rpc("preview_tenant_invite", { p_code: code });
+  const { data, error } = await supabase.rpc("preview_business_invite", { p_code: code });
   if (error) {
     throw new Error(`invites.preview failed: ${error.message}`);
   }
@@ -134,8 +134,8 @@ export async function previewInvite(
   }
   const row = rows[0];
   return {
-    tenantId: row.tenant_id,
-    tenantName: row.tenant_name,
+    tenantId: row.business_id,
+    tenantName: row.business_name,
     memberRole: row.member_role,
     invitedName: row.invited_name,
     status: row.status,
@@ -145,14 +145,14 @@ export async function previewInvite(
 }
 
 export async function acceptInvite(supabase: SupabaseClient, code: string): Promise<void> {
-  const { error } = await supabase.rpc("accept_tenant_invite", { p_code: code });
+  const { error } = await supabase.rpc("accept_business_invite", { p_code: code });
   if (error) {
     throw new Error(error.message);
   }
 }
 
 export async function declineInvite(supabase: SupabaseClient, code: string): Promise<void> {
-  const { error } = await supabase.rpc("decline_tenant_invite", { p_code: code });
+  const { error } = await supabase.rpc("decline_business_invite", { p_code: code });
   if (error) {
     throw new Error(error.message);
   }
@@ -164,7 +164,7 @@ export async function setMemberRole(
   input: { tenantId: string; userId: string; role: InvitableRole }
 ): Promise<void> {
   const { error } = await supabase.rpc("set_member_role", {
-    p_tenant_id: input.tenantId,
+    p_business_id: input.tenantId,
     p_user_id: input.userId,
     p_role: input.role,
   });
@@ -179,8 +179,8 @@ export async function removeMember(
   supabase: SupabaseClient,
   input: { tenantId: string; userId: string }
 ): Promise<void> {
-  const { error } = await supabase.rpc("remove_tenant_member", {
-    p_tenant_id: input.tenantId,
+  const { error } = await supabase.rpc("remove_business_member", {
+    p_business_id: input.tenantId,
     p_user_id: input.userId,
   });
   if (error) {

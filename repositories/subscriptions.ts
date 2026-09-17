@@ -43,7 +43,7 @@ interface Row {
   id: string;
   kind: SubscriptionKind;
   user_id: string;
-  tenant_id: string | null;
+  business_id: string | null;
   plan_key: string;
   price_inr: number;
   period: "monthly" | "yearly";
@@ -61,7 +61,7 @@ interface Row {
 }
 
 const COLUMNS =
-  "id, kind, user_id, tenant_id, plan_key, price_inr, period, status, current_period_start, current_period_end, cancel_at_period_end, granted, provider_subscription_id, cf_subscription_id, provider_status, next_charge_on, failure_reason, attempt";
+  "id, kind, user_id, business_id, plan_key, price_inr, period, status, current_period_start, current_period_end, cancel_at_period_end, granted, provider_subscription_id, cf_subscription_id, provider_status, next_charge_on, failure_reason, attempt";
 
 const todayIst = (): string => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 
@@ -82,7 +82,7 @@ export const toSubscription = (r: Row): Subscription => {
     id: r.id,
     kind: r.kind,
     userId: r.user_id,
-    tenantId: r.tenant_id,
+    tenantId: r.business_id,
     planKey: r.plan_key,
     priceInr: Number(r.price_inr),
     period: r.period,
@@ -147,7 +147,7 @@ export async function findMyStudioSubscriptions(supabase: SupabaseClient, tenant
   }
   await Promise.all(
     tenantIds.map(async (id) => {
-      const { data } = await supabase.rpc("why_not_public", { p_tenant_id: id });
+      const { data } = await supabase.rpc("why_not_public", { p_business_id: id });
       out[id].whyNotPublic = typeof data === "string" && data.length > 0 ? data : null;
     })
   );
@@ -155,7 +155,7 @@ export async function findMyStudioSubscriptions(supabase: SupabaseClient, tenant
 }
 
 export async function subscribe(supabase: SupabaseClient, planKey: string, tenantId: string | null): Promise<Subscription> {
-  const { data, error } = await supabase.rpc("subscribe", { p_plan_key: planKey, p_tenant_id: tenantId });
+  const { data, error } = await supabase.rpc("subscribe", { p_plan_key: planKey, p_business_id: tenantId });
   if (error) {
     throw new Error(error.message);
   }
@@ -214,7 +214,7 @@ export interface SubscriptionEventOutcome {
   subscription_id?: string;
   kind?: SubscriptionKind;
   status?: SubscriptionStatus;
-  tenant_id?: string | null;
+  business_id?: string | null;
   until?: string | null;
   reason?: string;
 }
@@ -277,8 +277,8 @@ export async function findAdminSubscriptions(
     status: r.status as SubscriptionStatus,
     userId: r.user_id as string,
     userName: (r.user_name as string) ?? "",
-    tenantId: (r.tenant_id as string) ?? null,
-    tenantName: (r.tenant_name as string) ?? null,
+    tenantId: (r.business_id as string) ?? null,
+    tenantName: (r.business_name as string) ?? null,
     planKey: r.plan_key as string,
     priceInr: Number(r.price_inr ?? 0),
     period: r.period as string,

@@ -50,7 +50,7 @@ $orderId = "dos_$uuid"
 $created = Invoke-RestMethod -Method Post -Uri "$base/pg/orders" -Headers $H -Body (@{
   order_id = $orderId; order_amount = 300; order_currency = "INR"
   customer_details = @{ customer_id = "proof$stamp"; customer_phone = "9999999999"; customer_name = "Proof Learner" }
-  order_note = "DanceOS sandbox proof"; order_tags = @{ session_id = "proof"; tenant_id = "proof" } } | ConvertTo-Json -Depth 5)
+  order_note = "DanceOS sandbox proof"; order_tags = @{ session_id = "proof"; business_id = "proof" } } | ConvertTo-Json -Depth 5)
 Check 1 "Order created: $($created.order_status), cf_order_id $($created.cf_order_id), payment session $(if ($created.payment_session_id) {'present'} else {'MISSING'})" (
   ($created.order_status -eq "ACTIVE") -and ($created.order_id -eq $orderId) -and ($created.payment_session_id))
 

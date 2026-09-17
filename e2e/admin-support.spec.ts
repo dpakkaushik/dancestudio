@@ -125,7 +125,7 @@ async function pickCity(page: Page | Locator, city: string) {
 }
 
 async function studioIdOf(name: string): Promise<string> {
-  const rows = (await (await fetch(`${supabaseUrl}/rest/v1/tenants?name=eq.${encodeURIComponent(name)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+  const rows = (await (await fetch(`${supabaseUrl}/rest/v1/businesses?name=eq.${encodeURIComponent(name)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
   const id = rows[0]?.id;
   if (!id) throw new Error(`no studio named ${name}`);
   return id;
@@ -135,16 +135,16 @@ async function studioIdOf(name: string): Promise<string> {
  *  The service role stands in for the owner's Edit sheet and upload strip —
  *  happy-path drives both for real; this spec is about the desk that answers. */
 async function showSpace(studioId: string, ownerId: string) {
-  const linked = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, {
+  const linked = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, {
     method: "PATCH",
     headers: adminHeaders,
     body: JSON.stringify({ socials: [{ platform: "Instagram", url: "https://instagram.com/panelstudio" }] }),
   });
   if (!linked.ok) throw new Error(`could not link the studio: ${linked.status}`);
-  const photos = await fetch(`${supabaseUrl}/rest/v1/org_proof_photos`, {
+  const photos = await fetch(`${supabaseUrl}/rest/v1/studio_photos`, {
     method: "POST",
     headers: adminHeaders,
-    body: JSON.stringify(Array.from({ length: 5 }, (_, i) => ({ org_id: ownerId, tenant_id: studioId, path: `proof/${ownerId}/panel-${studioId.slice(0, 8)}-${i}.png`, sort: i, created_by: ownerId, updated_by: ownerId }))),
+    body: JSON.stringify(Array.from({ length: 5 }, (_, i) => ({ org_id: ownerId, business_id: studioId, path: `proof/${ownerId}/panel-${studioId.slice(0, 8)}-${i}.png`, sort: i, created_by: ownerId, updated_by: ownerId }))),
   });
   if (!photos.ok) throw new Error(`could not add the photos: ${photos.status} ${await photos.text()}`);
 }

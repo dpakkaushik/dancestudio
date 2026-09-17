@@ -249,10 +249,10 @@ test.describe.serial("DanceOS, end to end", () => {
   });
 
   test.afterAll(async () => {
-    /* tenant delete cascades classes → sessions → enrollments; user delete
+    /* tenant delete cascades classes → sessions → class_bookings; user delete
        cascades the profiles. Cleanup failures surface but don't mask the test. */
     if (tenantId) {
-      await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenantId}`, { method: "DELETE", headers: adminHeaders });
+      await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, { method: "DELETE", headers: adminHeaders });
     }
     if (ownerId) await deleteUser(ownerId);
     if (learnerId) await deleteUser(learnerId);
@@ -378,7 +378,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(verifyStrip.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
     await verifyStrip.getByRole("button", { name: `Submit ${studioName} for verification` }).click();
     await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Under review", { timeout: 15_000 });
-    const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/tenants?name=eq.${encodeURIComponent(studioName)}&select=id,socials`, { headers: adminHeaders })).json()) as Array<{ id: string; socials: Array<{ platform: string; url: string }> }>;
+    const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/businesses?name=eq.${encodeURIComponent(studioName)}&select=id,socials`, { headers: adminHeaders })).json()) as Array<{ id: string; socials: Array<{ platform: string; url: string }> }>;
     const studioId = studioRows[0]?.id;
     expect(studioId).toBeTruthy();
     /* the form wrote a real http(s) address from what was typed */
@@ -487,7 +487,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // pressed ✕ destroyed the file outright and Cancel had nothing to undo.
     const proofRows = async () =>
       ((await (
-        await fetch(`${supabaseUrl}/rest/v1/org_proof_photos?tenant_id=eq.${tenantId}&deleted_at=is.null&select=id`, { headers: adminHeaders })
+        await fetch(`${supabaseUrl}/rest/v1/studio_photos?business_id=eq.${tenantId}&deleted_at=is.null&select=id`, { headers: adminHeaders })
       ).json()) as unknown[]).length;
     // this studio showed DanceOS five photos to be verified, and they ARE its header
     const before = await proofRows();
@@ -1416,7 +1416,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── D7: the tick on Discover's cards. Verification is DanceOS's to give
     // (the guard migration makes that a rule, not a comment), so the story sets
     // it the only way anything can: through the service role.
-    const ticked = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenantId}`, {
+    const ticked = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, {
       method: "PATCH",
       headers: adminHeaders,
       body: JSON.stringify({ verified_at: new Date().toISOString() }),
@@ -1569,7 +1569,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
     // the draft exists, and it is a DRAFT — not in any room, so it clashed with nothing
     const rows = (await (
-      await fetch(`${supabaseUrl}/rest/v1/classes?tenant_id=eq.${tenantId}&title=eq.${encodeURIComponent(`E2E Clash ${stamp}`)}&select=status`, { headers: adminHeaders })
+      await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${tenantId}&title=eq.${encodeURIComponent(`E2E Clash ${stamp}`)}&select=status`, { headers: adminHeaders })
     ).json()) as Array<{ status: string }>;
     expect(rows.map((r) => r.status)).toEqual(["draft"]);
   });

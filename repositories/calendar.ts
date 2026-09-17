@@ -8,7 +8,7 @@ import { countEnrolledBySession } from "./enrollments";
 /** Step 14 reads. No table, no RPC, no policy: a calendar is class sessions
  *  read through rows that already exist — a person's bookings and confirmed
  *  claims, a studio's sessions — under the RLS Steps 4, 11 and 3 set. Every
- *  query says whose rows it wants out loud (`user_id = …`, `tenant_id = …`):
+ *  query says whose rows it wants out loud (`user_id = …`, `business_id = …`):
  *  RLS is a ceiling, not a scoping mechanism, and a person who is both a
  *  learner and a studio's member can read far more than their own rows. */
 
@@ -45,13 +45,13 @@ interface MyBookingRow {
   class_id: string;
   class_sessions: SessionBits | null;
   classes: ClassBits | null;
-  tenants: TenantBits | null;
+  businesses: TenantBits | null;
 }
 
 interface MyClaimRow {
   kind: "artist" | "assistant";
   class_id: string;
-  classes: (ClassBits & { tenants: TenantBits | null; class_sessions: SessionBits[] | null }) | null;
+  classes: (ClassBits & { businesses: TenantBits | null; class_sessions: SessionBits[] | null }) | null;
 }
 
 interface TenantSessionRow {
@@ -116,9 +116,9 @@ export async function findMyCalendar(
 ): Promise<CalendarEntry[]> {
   const [bookingsRes, claimsRes] = await Promise.all([
     supabase
-      .from("enrollments")
+      .from("class_bookings")
       .select(
-        `id, status, session_id, class_id, class_sessions!inner (id, starts_at, ends_at), classes!inner (${CLASS_BITS}), tenants (name, city)`
+        `id, status, session_id, class_id, class_sessions!inner (id, starts_at, ends_at), classes!inner (${CLASS_BITS}), businesses (name, city)`
       )
       .eq("user_id", userId)
       .in("status", ["enrolled", "waitlisted"])
@@ -128,9 +128,9 @@ export async function findMyCalendar(
       .lt("class_sessions.starts_at", toIso)
       .limit(MAX_ROWS),
     supabase
-      .from("class_claims")
+      .from("class_people")
       .select(
-        `kind, class_id, classes!inner (${CLASS_BITS}, tenants (name, city), class_sessions (id, starts_at, ends_at, deleted_at))`
+        `kind, class_id, classes!inner (${CLASS_BITS}, businesses (name, city), class_sessions (id, starts_at, ends_at, deleted_at))`
       )
       .eq("user_id", userId)
       .eq("status", "confirmed")
@@ -156,7 +156,7 @@ export async function findMyCalendar(
       const existing = bySession.get(s.id);
       // teaching outranks assisting on the same session
       if (existing && existing.side === "hosting") continue;
-      bySession.set(s.id, entryOf(s, row.class_id, row.classes, row.classes.tenants, side, null));
+      bySession.set(s.id, entryOf(s, row.class_id, row.classes, row.classes.businesses, side, null));
     }
   }
 
@@ -165,7 +165,7 @@ export async function findMyCalendar(
     if (bySession.has(row.session_id)) continue;
     bySession.set(
       row.session_id,
-      entryOf(row.class_sessions, row.class_id, row.classes, row.tenants, "attending", {
+      entryOf(row.class_sessions, row.class_id, row.classes, row.businesses, "attending", {
         id: row.id,
         status: row.status,
       })
@@ -189,7 +189,7 @@ export async function findTenantCalendar(
   const { data, error } = await supabase
     .from("class_sessions")
     .select(`id, starts_at, ends_at, class_id, classes!inner (${CLASS_BITS})`)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .is("classes.deleted_at", null)
     .gte("starts_at", fromIso)
@@ -220,7 +220,7 @@ export async function findTenantCalendar(
  *  classes that have not happened yet, and nothing else — not drafts, not what
  *  is over. "A public schedule is an offer — a list of classes somebody can
  *  still book." RLS already draws this line for a stranger (published classes
- *  of listed tenants); the status and time filters draw it for a member too. */
+ *  of listed businesses); the status and time filters draw it for a member too. */
 export async function findPublicTenantSchedule(
   supabase: SupabaseClient,
   tenantId: string,
@@ -231,7 +231,7 @@ export async function findPublicTenantSchedule(
   const { data, error } = await supabase
     .from("class_sessions")
     .select(`id, starts_at, ends_at, class_id, classes!inner (${CLASS_BITS})`)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .eq("classes.status", "published")
     .is("deleted_at", null)
     .is("classes.deleted_at", null)

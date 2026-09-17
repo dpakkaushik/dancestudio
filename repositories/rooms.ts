@@ -8,17 +8,17 @@ import type { Room } from "@/types/room";
 
 interface RoomRow {
   id: string;
-  tenant_id: string;
+  business_id: string;
   name: string;
   capacity: number;
   amenities: string[] | null;
 }
 
-const ROOM_COLUMNS = "id, tenant_id, name, capacity, amenities";
+const ROOM_COLUMNS = "id, business_id, name, capacity, amenities";
 
 const toRoom = (row: RoomRow): Room => ({
   id: row.id,
-  tenantId: row.tenant_id,
+  tenantId: row.business_id,
   name: row.name,
   capacity: row.capacity,
   amenities: row.amenities ?? [],
@@ -32,7 +32,7 @@ export async function findRoomsByTenant(
   const { data, error } = await supabase
     .from("rooms")
     .select(ROOM_COLUMNS)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(100);
@@ -43,7 +43,7 @@ export async function findRoomsByTenant(
   return (data as RoomRow[]).map(toRoom);
 }
 
-/** How many live rooms each of several tenants has — the hub's "{area, city} ·
+/** How many live rooms each of several businesses has — the hub's "{area, city} ·
  *  N rooms" sub-line (prototype 2655). One query for all of them, grouped here;
  *  a tenant with no rooms is simply absent from the map (read it as 0). */
 export async function countRoomsByTenants(
@@ -55,8 +55,8 @@ export async function countRoomsByTenants(
   }
   const { data, error } = await supabase
     .from("rooms")
-    .select("id, tenant_id")
-    .in("tenant_id", tenantIds)
+    .select("id, business_id")
+    .in("business_id", tenantIds)
     .is("deleted_at", null)
     .limit(1000);
 
@@ -64,8 +64,8 @@ export async function countRoomsByTenants(
     throw new Error(`rooms.countByTenants failed: ${error.message}`);
   }
   const counts: Record<string, number> = {};
-  for (const row of data as Array<{ id: string; tenant_id: string }>) {
-    counts[row.tenant_id] = (counts[row.tenant_id] ?? 0) + 1;
+  for (const row of data as Array<{ id: string; business_id: string }>) {
+    counts[row.business_id] = (counts[row.business_id] ?? 0) + 1;
   }
   return counts;
 }
@@ -95,7 +95,7 @@ export async function createRoom(
   const { data, error } = await supabase
     .from("rooms")
     .insert({
-      tenant_id: input.tenantId,
+      business_id: input.tenantId,
       name: input.name,
       capacity: input.capacity,
       amenities: input.amenities,

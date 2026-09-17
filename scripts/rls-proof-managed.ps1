@@ -65,36 +65,36 @@ function New-EmailUser($email, $name, $role) {
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
 function Add-Member($tenantId, $userId, $memberRole, $byUser) {
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $tenantId; user_id = $userId; member_role = $memberRole
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $tenantId; user_id = $userId; member_role = $memberRole
     created_by = $byUser; updated_by = $byUser } | ConvertTo-Json) | Out-Null
 }
 $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 function Ev($title) {
-  return @{ cat = "showcase"; title = $title; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
+  return @{ category = "showcase"; title = $title; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof event"
     entry_format = "none"; bracket = 0; rounds = 0; prizes = @(); tickets_on = $true
     entry_tiers = @(); ticket_tiers = @(@{ name = "General"; price_inr = 0; capacity = 50; sort = 0 }) }
 }
 function ClassBody($tenantId, $title, $status) {
-  return @{ p_tenant_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "all"; p_room = "Studio A"; p_price_inr = 0; p_capacity = 10
+  return @{ p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "all"; p_room = "Studio A"; p_price_inr = 0; p_capacity = 10
     p_status = $status; p_starts_at = "$($in10)T19:00:00+05:30"; p_ends_at = "$($in10)T20:00:00+05:30" }
 }
 # the page's reads, exactly as repositories/managed.ts makes them: membership
 # first (user_id = me, out loud), then classes and events IN those tenant ids
 function ManagedTenantIds($user) {
-  $m = Rows (Api $user.token) "tenant_members?select=tenant_id&user_id=eq.$($user.id)&deleted_at=is.null"
-  return ,@($m | ForEach-Object { $_.tenant_id })
+  $m = Rows (Api $user.token) "business_members?select=business_id&user_id=eq.$($user.id)&deleted_at=is.null"
+  return ,@($m | ForEach-Object { $_.business_id })
 }
 function ManagedClasses($user) {
   $ids = ManagedTenantIds $user
   if ($ids.Count -eq 0) { return ,@() }
-  return Rows (Api $user.token) "classes?select=id,title,status,tenant_id&tenant_id=in.($($ids -join ','))&deleted_at=is.null"
+  return Rows (Api $user.token) "classes?select=id,title,status,business_id&business_id=in.($($ids -join ','))&deleted_at=is.null"
 }
 function ManagedEvents($user) {
   $ids = ManagedTenantIds $user
   if ($ids.Count -eq 0) { return ,@() }
-  return Rows (Api $user.token) "events?select=id,title,status,tenant_id&tenant_id=in.($($ids -join ','))&deleted_at=is.null"
+  return Rows (Api $user.token) "events?select=id,title,status,business_id&business_id=in.($($ids -join ','))&deleted_at=is.null"
 }
 function Titles($rows) { return (@($rows | ForEach-Object { $_.title }) | Sort-Object) -join ", " }
 
@@ -107,18 +107,18 @@ $stranger = New-EmailUser "mng-stranger-$stamp@example.com" "Stranger $stamp" "u
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Managed A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Managed A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
 # 8 Sep 2026: an organization opens STUDIOS (an artist page is a Pro user's) - B is its second studio
-$tb = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Managed B $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
+$tb = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Managed B $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
 # (a new tenant is listed by default, so a stranger CAN read its published class - the point of check 3)
@@ -127,13 +127,13 @@ $cA1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $ta.id "A P
 $cA2 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $ta.id "A Draft $stamp" "draft")
 $cB1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $tb.id "B Draft $stamp" "draft")
 # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
-# tenant row (my_org_tenant), never by one of its studios; save_event refuses a studio outright.
+# tenant row (my_org_business), never by one of its studios; save_event refuses a studio outright.
 # The owner's two events are both the organization's, whichever studio they are "for".
 # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
 Rpc (Api $owner.token) "verify_gstin" @{ p_gstin = "MNG$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
-$orgT = [string](Rpc (Api $owner.token) "my_org_tenant" @{})
-$eA = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgT; p_event_id = $null; p_event = (Ev "A Event $stamp") }
-$eB = Rpc (Api $owner.token) "save_event" @{ p_tenant_id = $orgT; p_event_id = $null; p_event = (Ev "B Event $stamp") }
+$orgT = [string](Rpc (Api $owner.token) "my_org_business" @{})
+$eA = Rpc (Api $owner.token) "save_event" @{ p_business_id = $orgT; p_event_id = $null; p_event = (Ev "A Event $stamp") }
+$eB = Rpc (Api $owner.token) "save_event" @{ p_business_id = $orgT; p_event_id = $null; p_event = (Ev "B Event $stamp") }
 
 try {
   # 1. the owner of both businesses gets both businesses' classes in ONE read, drafts included
@@ -174,14 +174,14 @@ try {
 
   # 8. the seat count the tile prints is the aggregate RPC - a member gets a number, never a booking row
   $sess = Rows $svcH "class_sessions?select=id&class_id=eq.$($cA1.id)"
-  Rpc (Api $stranger.token) "enroll_in_session" @{ p_session_id = $sess[0].id } | Out-Null
+  Rpc (Api $stranger.token) "book_class_session" @{ p_session_id = $sess[0].id } | Out-Null
   $counts = Rpc (Api $trainer.token) "session_seat_counts" @{ p_session_ids = @($sess[0].id) }
   $n = @($counts | ForEach-Object { [int]$_.enrolled }) | Select-Object -First 1
   Check 8 "the tile's seat count comes from the aggregate RPC (trainer sees 1 enrolled, no row)" ($n -eq 1)
 }
 finally {
-  # cleanup: the tenants cascade their classes, sessions, events and members; the users take their profiles
-  foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $adminH | Out-Null }
+  # cleanup: the businesses cascade their classes, sessions, events and members; the users take their profiles
+  foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $adminH | Out-Null }
   foreach ($u in @($owner, $trainer, $stranger)) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
 }
 

@@ -88,25 +88,25 @@ $rival = New-EmailUser "ntf-rival-$stamp@example.com" "Rival $stamp" "org"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Notif Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Notif Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
 $tmr = (Get-Date).AddDays(2)
 
 try {
   # 1. A SEAT BOOKED TELLS THE STUDIO - and the trigger, not the app, is what tells it
-  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Notif Class $stamp";
+  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Notif Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 1; p_status = "published";
     p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
   $sess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($cls.id)&select=id")[0]
-  Rpc (Api $learner.token) "enroll_in_session" @{ p_session_id = $sess.id } | Out-Null
+  Rpc (Api $learner.token) "book_class_session" @{ p_session_id = $sess.id } | Out-Null
   $ownerBooking = Mine $owner "booking"
   Check 1 "Booking told the studio: $(Titles $ownerBooking)" (
     ($ownerBooking.Count -eq 1) -and ($ownerBooking[0].title -like "*booked Notif Class*") -and ($ownerBooking[0].href -like "/business/*"))
@@ -129,12 +129,12 @@ try {
     ($directInsert -ne "") -and ($callNotify -ne "") -and ($anonNotify -ne ""))
 
   # 4. A CONSENT ASK REACHES THE PERSON ASKED, AND THE ANSWER REACHES THE STUDIO
-  Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Trainer"; p_email = $trainer.email; p_role = "trainer" } | Out-Null
-  $inv = (Get-Rows (Api $owner.token) "tenant_invites?tenant_id=eq.$($ta.id)&select=code")[0]
-  Rpc (Api $trainer.token) "accept_tenant_invite" @{ p_code = $inv.code } | Out-Null
-  $claim = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $cls.id; p_user_id = $trainer.id; p_kind = "artist"; p_pay_per_session_inr = 900 }
+  Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Trainer"; p_email = $trainer.email; p_role = "trainer" } | Out-Null
+  $inv = (Get-Rows (Api $owner.token) "business_invites?business_id=eq.$($ta.id)&select=code")[0]
+  Rpc (Api $trainer.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
+  $claim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $cls.id; p_user_id = $trainer.id; p_kind = "artist"; p_pay_per_session_inr = 900 }
   $asked = Mine $trainer "people"
-  Rpc (Api $trainer.token) "respond_to_claim" @{ p_claim_id = $claim.id; p_accept = $true } | Out-Null
+  Rpc (Api $trainer.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
   $answered = Mine $owner "people"
   Check 4 "The trainer was told they were asked ($(Titles $asked)); the studio was told the answer ($(Titles $answered))" (
     ($asked.Count -eq 1) -and ($asked[0].title -like "*wants you as the artist taking*") -and ($asked[0].href -eq "/inbox") -and
@@ -142,9 +142,9 @@ try {
 
   # 5. THE WAITLIST IS TOLD, OR IT IS NOT A WAITLIST (13647): the promoted learner hears it
   $l2 = New-EmailUser "ntf-l2-$stamp@example.com" "Learner Two $stamp" "user"
-  $wait = Rpc (Api $l2.token) "enroll_in_session" @{ p_session_id = $sess.id }
-  $firstSeat = (Get-Rows (Api $owner.token) "enrollments?session_id=eq.$($sess.id)&user_id=eq.$($learner.id)&select=id")[0]
-  Rpc (Api $learner.token) "cancel_enrollment" @{ p_enrollment_id = $firstSeat.id } | Out-Null
+  $wait = Rpc (Api $l2.token) "book_class_session" @{ p_session_id = $sess.id }
+  $firstSeat = (Get-Rows (Api $owner.token) "class_bookings?session_id=eq.$($sess.id)&user_id=eq.$($learner.id)&select=id")[0]
+  Rpc (Api $learner.token) "cancel_class_booking" @{ p_class_booking_id = $firstSeat.id } | Out-Null
   $offered = Mine $l2 "class"
   Check 5 "L2 was $($wait.status), then the freed seat told them: $(Titles $offered)" (
     ($wait.status -eq "waitlisted") -and ($offered.Count -eq 1) -and ($offered[0].title -like "A place opened in Notif Class*"))
@@ -164,26 +164,26 @@ try {
   }
   # (a) inside the window - the session is tomorrow
   $soon = (Get-Date).AddHours(20)
-  $paidSoon = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Soon Class $stamp";
+  $paidSoon = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Soon Class $stamp";
     p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 5; p_status = "published";
     p_starts_at = $soon.ToString("yyyy-MM-ddTHH:00:00zzz"); p_ends_at = $soon.AddHours(1).ToString("yyyy-MM-ddTHH:00:00zzz") }
   $soonSess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($paidSoon.id)&select=id")[0]
   $orderA = Buy $learner $soonSess.id "a$stamp"
-  $seatA = (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$($soonSess.id)&user_id=eq.$($learner.id)&deleted_at=is.null&select=id")[0]
-  Rpc (Api $learner.token) "cancel_booking" @{ p_enrollment_id = $seatA.id; p_reason = "Cannot make it" } | Out-Null
+  $seatA = (Get-Rows (Api $learner.token) "class_bookings?session_id=eq.$($soonSess.id)&user_id=eq.$($learner.id)&deleted_at=is.null&select=id")[0]
+  Rpc (Api $learner.token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $seatA.id; p_reason = "Cannot make it" } | Out-Null
   $refundA = (Get-Rows (Api $owner.token) "refunds?order_id=eq.$($orderA.id)&select=id,status")[0]
   $asksBack = @((Mine $owner "money") | Where-Object { $_.title -like "*asked for a refund*" })
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $refundA.id; p_decision = "decline"; p_note = "Inside the window, and the class runs" } | Out-Null
   $decided = @((Mine $learner "money") | Where-Object { $_.title -like "Refund declined*" })
   # (b) outside the window - the session is ten days out
   $far = (Get-Date).AddDays(10)
-  $paidFar = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Far Class $stamp";
+  $paidFar = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Far Class $stamp";
     p_style = "Bhangra"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 5; p_status = "published";
     p_starts_at = $far.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $far.ToString("yyyy-MM-ddT18:00:00zzz") }
   $farSess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($paidFar.id)&select=id")[0]
   $orderB = Buy $learner $farSess.id "b$stamp"
-  $seatB = (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$($farSess.id)&user_id=eq.$($learner.id)&deleted_at=is.null&select=id")[0]
-  Rpc (Api $learner.token) "cancel_booking" @{ p_enrollment_id = $seatB.id; p_reason = "Plans changed" } | Out-Null
+  $seatB = (Get-Rows (Api $learner.token) "class_bookings?session_id=eq.$($farSess.id)&user_id=eq.$($learner.id)&deleted_at=is.null&select=id")[0]
+  Rpc (Api $learner.token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $seatB.id; p_reason = "Plans changed" } | Out-Null
   $refundB = (Get-Rows (Api $owner.token) "refunds?order_id=eq.$($orderB.id)&select=id,status")[0]
   $auto = @((Mine $learner "money") | Where-Object { $_.title -like "Refund on its way*" })
   Check 6 "Inside the window ($($refundA.status)): the studio heard it ($(Titles $asksBack)) and the payer heard the decision ($(Titles $decided)). Outside it ($($refundB.status)): the payer was told anyway ($(Titles $auto))" (
@@ -232,12 +232,12 @@ try {
   #     a profile that is gone, and the booking it observed still lands
   $ghost = New-EmailUser "ntf-ghost-$stamp@example.com" "Ghost $stamp" "user"
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($ghost.id)" -Headers $svcH -Body (@{ deleted_at = "now()" } | ConvertTo-Json) | Out-Null
-  $free = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Ghost Class $stamp";
+  $free = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Ghost Class $stamp";
     p_style = "Kathak"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 4; p_status = "published";
     p_starts_at = $tmr.ToString("yyyy-MM-ddT10:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT11:00:00zzz") }
   $freeSess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($free.id)&select=id")[0]
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($ghost.id)" -Headers $svcH -Body (@{ deleted_at = $null } | ConvertTo-Json) | Out-Null
-  $ghostSeat = Rpc (Api $ghost.token) "enroll_in_session" @{ p_session_id = $freeSess.id }
+  $ghostSeat = Rpc (Api $ghost.token) "book_class_session" @{ p_session_id = $freeSess.id }
   $ghostRows = Mine $ghost
   Check 11 "A class created while a profile was deleted still exists, and the later booking landed ($($ghostSeat.status)) with $($ghostRows.Count) notifications for the booker" (
     ($ghostSeat.status -eq "enrolled") -and ($ghostRows.Count -eq 0))
@@ -251,7 +251,7 @@ try {
     ($noTarget -match "which notifications") -and ($gone -ge 1))
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   foreach ($u in @($owner, $trainer, $learner, $rival, $l2)) {
     if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
   }

@@ -47,7 +47,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
 
   const isOwner = memberRole === "owner";
   /* the pair that may change the studio's picture — the same pair the storage
-     policy and set_tenant_photo admit (20260829230000) */
+     policy and set_business_profile_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
   const [photos, deck, roomCounts, stylesByTenant, editable, subs, catalog] = await Promise.all([

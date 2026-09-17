@@ -54,14 +54,14 @@ const rest = async (method, url, body) => {
 
   await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot Org ${stamp}`, role: "org", city: "Pune", created_by: link.id, updated_by: link.id });
   await rest("PATCH", `/rest/v1/profiles?id=eq.${link.id}`, { verified_at: new Date().toISOString() });
-  const [tenant] = await rest("POST", "/rest/v1/tenants", { type: "studio", name: `Shot Studio ${stamp}`, area: "Kothrud", city: "Pune", lat: 18.5204, lng: 73.8567, visibility: "unlisted", created_by: link.id, updated_by: link.id });
-  await rest("POST", "/rest/v1/tenant_members", { tenant_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id });
+  const [tenant] = await rest("POST", "/rest/v1/businesses", { type: "studio", name: `Shot Studio ${stamp}`, area: "Kothrud", city: "Pune", lat: 18.5204, lng: 73.8567, visibility: "unlisted", created_by: link.id, updated_by: link.id });
+  await rest("POST", "/rest/v1/business_members", { business_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id });
   await rest("POST", "/rest/v1/subscriptions", {
-    kind: "studio", user_id: link.id, tenant_id: tenant.id, plan_key: "studio_monthly", price_inr: 0, period: "monthly", status: "active", granted: true,
+    kind: "studio", user_id: link.id, business_id: tenant.id, plan_key: "studio_monthly", price_inr: 0, period: "monthly", status: "active", granted: true,
     current_period_start: new Date().toISOString().slice(0, 10), current_period_end: new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10),
     note: "Granted by a screenshot script - nothing charged", created_by: link.id, updated_by: link.id,
   });
-  await rest("PATCH", `/rest/v1/tenants?id=eq.${tenant.id}`, { visibility: "listed" });
+  await rest("PATCH", `/rest/v1/businesses?id=eq.${tenant.id}`, { visibility: "listed" });
 
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 2 });
@@ -89,10 +89,10 @@ const rest = async (method, url, body) => {
   check((await page.getByText(/Not on the map yet/).count()) === 1, "Hub: a studio on its city centroid is asked for its pin");
   check((await page.getByRole("link", { name: /Put .* on the map/ }).count()) === 1, "Hub: the ask carries the door to the map");
 
-  await rest("PATCH", `/rest/v1/tenants?id=eq.${tenant.id}`, { location_set_at: new Date().toISOString() });
+  await rest("PATCH", `/rest/v1/businesses?id=eq.${tenant.id}`, { location_set_at: new Date().toISOString() });
   await page.reload({ waitUntil: "networkidle" });
   check((await page.getByText(/Not on the map yet/).count()) === 0, "Hub: the ask is gone once the studio is placed");
-  await rest("PATCH", `/rest/v1/tenants?id=eq.${tenant.id}`, { location_set_at: null });
+  await rest("PATCH", `/rest/v1/businesses?id=eq.${tenant.id}`, { location_set_at: null });
 
   /* 3. the New-studio sheet, with the map in it */
   await page.goto(`${BASE}/business`, { waitUntil: "networkidle" });
@@ -121,9 +121,9 @@ const rest = async (method, url, body) => {
 
   await browser.close();
 
-  await rest("DELETE", `/rest/v1/subscriptions?tenant_id=eq.${tenant.id}`);
-  await rest("DELETE", `/rest/v1/tenant_members?tenant_id=eq.${tenant.id}`);
-  await rest("DELETE", `/rest/v1/tenants?id=eq.${tenant.id}`);
+  await rest("DELETE", `/rest/v1/subscriptions?business_id=eq.${tenant.id}`);
+  await rest("DELETE", `/rest/v1/business_members?business_id=eq.${tenant.id}`);
+  await rest("DELETE", `/rest/v1/businesses?id=eq.${tenant.id}`);
   await fetch(`${SUPABASE}/auth/v1/admin/users/${link.id}`, { method: "DELETE", headers: H });
 
   if (problems.length) {

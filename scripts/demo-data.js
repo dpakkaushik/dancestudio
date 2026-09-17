@@ -8,7 +8,7 @@
  * WHY IT IS SAFE TO WIPE. Every demo account is `demo.<name>@example.com`, and
  * every demo row is owned by one of them: businesses are created BY a demo
  * owner, so deleting the business cascades its rooms, classes, sessions,
- * enrollments, claims, leads, invites, orders, payments, refunds, payouts,
+ * class_bookings, claims, leads, invites, orders, payments, refunds, payouts,
  * events and event bookings; deleting the account cascades its profile, and the
  * profile cascades the crews it leads and the follows it made. So the wipe is:
  * delete the demo businesses, then delete the demo users. Nothing untagged is
@@ -17,8 +17,8 @@
  *
  * WHY IT SEEDS THROUGH THE APP'S OWN DOORS. Each demo user signs in for real
  * (password grant) and the data is written by the same RPCs the screens call —
- * `create_tenant_with_owner`, `create_class_with_session`, `enroll_in_session`,
- * `claim_person` / `respond_to_claim`, `create_crew` / `respond_to_crew_ask`,
+ * `create_business_with_owner`, `create_class_with_session`, `book_class_session`,
+ * `ask_class_person` / `respond_to_class_ask`, `create_crew` / `respond_to_crew_ask`,
  * `save_event` / `publish_event` / `book_event`, `send_enquiry` /
  * `send_enquiry_quote`, `set_follow`, `check_in`, `record_payout`. So the demo
  * world obeys every rule the real one does: consent is real, capacity is real,
@@ -142,7 +142,7 @@ async function seed() {
      ₹0, twelve months, no mandate. */
   const grantPlan = (kind, userId, tenantId, note) =>
     insert(H_SERVICE, "subscriptions", {
-      kind, user_id: userId, tenant_id: tenantId, plan_key: kind === "studio" ? "studio_monthly" : "artist_monthly",
+      kind, user_id: userId, business_id: tenantId, plan_key: kind === "studio" ? "studio_monthly" : "artist_monthly",
       price_inr: 0, period: "monthly", status: "active",
       current_period_start: new Date().toISOString().slice(0, 10),
       current_period_end: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
@@ -170,9 +170,9 @@ async function seed() {
 
   /* ── businesses ── */
   console.log("\nBusinesses");
-  const bounce = await rpc(owner.h, "create_tenant_with_owner", { p_name: "Bounce Dance Academy", p_type: "studio", p_area: "Hauz Khas", p_city: "New Delhi" });
-  const eee = await rpc(owner2.h, "create_tenant_with_owner", { p_name: "EEE Dance Studio", p_type: "studio", p_area: "Kothrud", p_city: "Pune" });
-  const meera = await rpc(artist.h, "create_tenant_with_owner", { p_name: "Meera Grewal Dance Co.", p_type: "trainer_business", p_area: "Saket", p_city: "New Delhi" });
+  const bounce = await rpc(owner.h, "create_business_with_owner", { p_name: "Bounce Dance Academy", p_type: "studio", p_area: "Hauz Khas", p_city: "New Delhi" });
+  const eee = await rpc(owner2.h, "create_business_with_owner", { p_name: "EEE Dance Studio", p_type: "studio", p_area: "Kothrud", p_city: "Pune" });
+  const meera = await rpc(artist.h, "create_business_with_owner", { p_name: "Meera Grewal Dance Co.", p_type: "artist_page", p_area: "Saket", p_city: "New Delhi" });
   log(`${bounce.name} (studio · New Delhi)`);
   log(`${eee.name} (studio · Pune)`);
   log(`${meera.name} (artist business · New Delhi)`);
@@ -181,26 +181,26 @@ async function seed() {
   for (const [o, t] of [[owner, bounce], [owner2, eee]]) {
     await grantPlan("studio", o.id, t.id, "Granted by the demo seeder — nothing charged");
     /* 11 Sep 2026: the BADGE first (an admin's approval, which the seeder stands in for), then listed */
-    await patch(H_SERVICE, `tenants?id=eq.${t.id}`, { verified_at: new Date().toISOString(), visibility: "listed" });
+    await patch(H_SERVICE, `businesses?id=eq.${t.id}`, { verified_at: new Date().toISOString(), visibility: "listed" });
   }
   log("Bounce and EEE each hold their own studio subscription (granted, ₹0) and are on Discover");
 
   /* ── rooms ── */
-  await insert(owner.h, "rooms", { tenant_id: bounce.id, name: "Hall 1", capacity: 30, amenities: ["🪞 Mirrors", "🪵 Sprung floor", "🔊 Sound", "❄️ AC"] });
-  await insert(owner.h, "rooms", { tenant_id: bounce.id, name: "Studio B", capacity: 18, amenities: ["🪞 Mirrors", "🔊 Sound"] });
-  await insert(owner2.h, "rooms", { tenant_id: eee.id, name: "Studio A", capacity: 20, amenities: ["🪞 Mirrors", "🪵 Sprung floor"] });
+  await insert(owner.h, "rooms", { business_id: bounce.id, name: "Hall 1", capacity: 30, amenities: ["🪞 Mirrors", "🪵 Sprung floor", "🔊 Sound", "❄️ AC"] });
+  await insert(owner.h, "rooms", { business_id: bounce.id, name: "Studio B", capacity: 18, amenities: ["🪞 Mirrors", "🔊 Sound"] });
+  await insert(owner2.h, "rooms", { business_id: eee.id, name: "Studio A", capacity: 20, amenities: ["🪞 Mirrors", "🪵 Sprung floor"] });
   log("Rooms: Hall 1 · Studio B (Bounce), Studio A (EEE)");
 
   /* ── the team: an invite the trainer really accepts ── */
-  const invite = await rpc(owner.h, "invite_to_tenant", { p_tenant_id: bounce.id, p_name: trainer.name, p_email: trainer.email, p_role: "trainer" });
-  await rpc(trainer.h, "accept_tenant_invite", { p_code: invite.code });
+  const invite = await rpc(owner.h, "invite_to_business", { p_business_id: bounce.id, p_name: trainer.name, p_email: trainer.email, p_role: "trainer" });
+  await rpc(trainer.h, "accept_business_invite", { p_code: invite.code });
   log(`${trainer.name} accepted the trainer invite at ${bounce.name}`);
 
   /* ── classes ── */
   console.log("\nClasses");
   const mkClass = async (h, tenantId, c) =>
     rpc(h, "create_class_with_session", {
-      p_tenant_id: tenantId,
+      p_business_id: tenantId,
       p_title: c.title,
       p_style: c.style,
       p_level: c.level ?? "all",
@@ -233,23 +233,23 @@ async function seed() {
 
   /* ── who is taking what: real asks, really answered ── */
   console.log("\nPeople on classes");
-  const artistClaim = await rpc(owner.h, "claim_person", { p_class_id: hiphop.id, p_user_id: trainer.id, p_kind: "artist", p_pay_per_session_inr: 900 });
-  await rpc(trainer.h, "respond_to_claim", { p_claim_id: artistClaim.id, p_accept: true });
-  const asstClaim = await rpc(owner.h, "claim_person", { p_class_id: past.id, p_user_id: trainer.id, p_kind: "assistant", p_can_attendance: true, p_pay_per_session_inr: 600 });
-  await rpc(trainer.h, "respond_to_claim", { p_claim_id: asstClaim.id, p_accept: true });
+  const artistClaim = await rpc(owner.h, "ask_class_person", { p_class_id: hiphop.id, p_user_id: trainer.id, p_kind: "artist", p_pay_per_session_inr: 900 });
+  await rpc(trainer.h, "respond_to_class_ask", { p_class_person_id: artistClaim.id, p_accept: true });
+  const asstClaim = await rpc(owner.h, "ask_class_person", { p_class_id: past.id, p_user_id: trainer.id, p_kind: "assistant", p_can_attendance: true, p_pay_per_session_inr: 600 });
+  await rpc(trainer.h, "respond_to_class_ask", { p_class_person_id: asstClaim.id, p_accept: true });
   /* and one ask still waiting, so the Inbox has something in it */
-  await rpc(owner.h, "claim_person", { p_class_id: breaking.id, p_user_id: trainer.id, p_kind: "artist", p_pay_per_session_inr: 900 });
+  await rpc(owner.h, "ask_class_person", { p_class_id: breaking.id, p_user_id: trainer.id, p_kind: "artist", p_pay_per_session_inr: 900 });
   log(`${trainer.name}: artist on Hip-Hop (₹900), assistant with attendance on Contemporary Flow, and one ask still waiting on Breaking Lab`);
 
   /* ── bookings, a full class and a real waitlist ── */
   console.log("\nBookings");
-  await rpc(kabir.h, "enroll_in_session", { p_session_id: sHiphop.id });
-  await rpc(zaid.h, "enroll_in_session", { p_session_id: sHiphop.id });
-  await rpc(rhea.h, "enroll_in_session", { p_session_id: sSalsa.id });
-  await rpc(kabir.h, "enroll_in_session", { p_session_id: sContemp.id });
-  await rpc(aki.h, "enroll_in_session", { p_session_id: sBreaking.id });
-  await rpc(zaid.h, "enroll_in_session", { p_session_id: sBreaking.id });
-  const waitlisted = await rpc(rhea.h, "enroll_in_session", { p_session_id: sBreaking.id });
+  await rpc(kabir.h, "book_class_session", { p_session_id: sHiphop.id });
+  await rpc(zaid.h, "book_class_session", { p_session_id: sHiphop.id });
+  await rpc(rhea.h, "book_class_session", { p_session_id: sSalsa.id });
+  await rpc(kabir.h, "book_class_session", { p_session_id: sContemp.id });
+  await rpc(aki.h, "book_class_session", { p_session_id: sBreaking.id });
+  await rpc(zaid.h, "book_class_session", { p_session_id: sBreaking.id });
+  const waitlisted = await rpc(rhea.h, "book_class_session", { p_session_id: sBreaking.id });
   log(`Hip-Hop: 2 booked · Breaking Lab: full (2) with ${rhea.name} ${waitlisted.status} · Salsa and Contemporary: 1 each`);
 
   /* ── the past class: booked, then a register that was actually run ──
@@ -257,16 +257,16 @@ async function seed() {
      booked while the session is still in the future and the session is then
      back-dated with the service role — the one thing no user may do. */
   await patch(H_SERVICE, `class_sessions?id=eq.${sPast.id}`, { starts_at: at(30, "19:00"), ends_at: at(30, "20:00") });
-  const pastKabir = await rpc(kabir.h, "enroll_in_session", { p_session_id: sPast.id });
-  await rpc(aki.h, "enroll_in_session", { p_session_id: sPast.id });
+  const pastKabir = await rpc(kabir.h, "book_class_session", { p_session_id: sPast.id });
+  await rpc(aki.h, "book_class_session", { p_session_id: sPast.id });
   await patch(H_SERVICE, `class_sessions?id=eq.${sPast.id}`, { starts_at: at(-3, "19:00"), ends_at: at(-3, "20:00") });
   /* the register: check_in's window is the clock's, so the attendance row is written
      as the studio, against a session that has ended — service role, same as a backfill */
   await insert(H_SERVICE, "attendance", {
-    enrollment_id: pastKabir.id,
+    class_booking_id: pastKabir.id,
     session_id: sPast.id,
     class_id: past.id,
-    tenant_id: bounce.id,
+    business_id: bounce.id,
     user_id: kabir.id,
     created_by: owner.id,
     updated_by: owner.id,
@@ -286,34 +286,34 @@ async function seed() {
   const providerOrderId2 = `demo_order_${order2.id.slice(0, 8)}`;
   await rpc(aki.h, "attach_provider_order", { p_order_id: order2.id, p_provider_order_id: providerOrderId2 });
   await rpc(H_SERVICE, "apply_captured_payment", { p_provider_order_id: providerOrderId2, p_provider_payment_id: `demo_pay_${order2.id.slice(0, 8)}`, p_amount_paise: 300 * 100, p_method: "card" });
-  const akiBolly = (await rows(aki.h, `enrollments?session_id=eq.${sBolly.id}&user_id=eq.${aki.id}&deleted_at=is.null&select=id`))[0];
-  await rpc(aki.h, "cancel_booking", { p_enrollment_id: akiBolly.id, p_reason: "Injury — cannot make this one" });
+  const akiBolly = (await rows(aki.h, `class_bookings?session_id=eq.${sBolly.id}&user_id=eq.${aki.id}&deleted_at=is.null&select=id`))[0];
+  await rpc(aki.h, "cancel_class_booking_with_reason", { p_class_booking_id: akiBolly.id, p_reason: "Injury — cannot make this one" });
   log("Bollywood Evenings: ₹300 UPI captured (Kabir) and ₹300 card captured then cancelled (Aki) → a refund on the studio's queue");
 
   /* ── the studio settles what it owes ── */
-  await rpc(owner.h, "record_payout", { p_tenant_id: bounce.id, p_user_id: trainer.id, p_session_ids: [sPast.id], p_method: "upi", p_status: "done", p_note: "Contemporary Flow · assisting" });
+  await rpc(owner.h, "record_payout", { p_business_id: bounce.id, p_user_id: trainer.id, p_session_ids: [sPast.id], p_method: "upi", p_status: "done", p_note: "Contemporary Flow · assisting" });
   log(`${trainer.name} paid ₹600 for the session assisted`);
 
   /* ── the desk: leads at three stages ── */
   console.log("\nStudio desk");
   /* one bulk insert, and PostgREST wants every object to carry the same keys */
   await insert(owner.h, "leads", [
-    { tenant_id: bounce.id, name: "Sneha Dutta", mobile: "98100 11223", interest: "Bollywood · twice a week", source: "walk_in", status: "new", trial_class_id: null, trial_on: null, note: "Walked in on Saturday" },
-    { tenant_id: bounce.id, name: "Rohit Sen", mobile: "98100 44556", interest: "Hip-Hop · beginner", source: "enquiry", status: "quoted", trial_class_id: null, trial_on: null, note: "Quoted the monthly rate" },
-    { tenant_id: bounce.id, name: "Priya Iyer", mobile: "98100 77889", interest: "Kathak", source: "referral", status: "trial_booked", trial_class_id: hiphop.id, trial_on: dayShift(1), note: "Coming to Monday's class" },
+    { business_id: bounce.id, name: "Sneha Dutta", mobile: "98100 11223", interest: "Bollywood · twice a week", source: "walk_in", status: "new", trial_class_id: null, trial_on: null, note: "Walked in on Saturday" },
+    { business_id: bounce.id, name: "Rohit Sen", mobile: "98100 44556", interest: "Hip-Hop · beginner", source: "enquiry", status: "quoted", trial_class_id: null, trial_on: null, note: "Quoted the monthly rate" },
+    { business_id: bounce.id, name: "Priya Iyer", mobile: "98100 77889", interest: "Kathak", source: "referral", status: "trial_booked", trial_class_id: hiphop.id, trial_on: dayShift(1), note: "Coming to Monday's class" },
   ]);
   log("Leads: Sneha (new), Rohit (quoted), Priya (trial booked)");
 
   /* ── follows ── */
-  await rpc(kabir.h, "set_follow", { p_tenant_id: bounce.id, p_on: true });
-  await rpc(rhea.h, "set_follow", { p_tenant_id: bounce.id, p_on: true });
-  await rpc(zaid.h, "set_follow", { p_tenant_id: eee.id, p_on: true });
-  await rpc(kabir.h, "set_follow", { p_tenant_id: meera.id, p_on: true });
+  await rpc(kabir.h, "set_follow", { p_business_id: bounce.id, p_on: true });
+  await rpc(rhea.h, "set_follow", { p_business_id: bounce.id, p_on: true });
+  await rpc(zaid.h, "set_follow", { p_business_id: eee.id, p_on: true });
+  await rpc(kabir.h, "set_follow", { p_business_id: meera.id, p_on: true });
   log("Follows: Bounce 2, EEE 1, Meera Grewal 1");
 
   /* ── an enquiry, quoted ── */
   const enq = await rpc(kabir.h, "send_enquiry", {
-    p_tenant_id: bounce.id,
+    p_business_id: bounce.id,
     p_type_key: "private",
     p_fields: [["How many people", "2"], ["Where they train", "At the studio"], ["City", "New Delhi"]],
     p_dates: [dayShift(9)],
@@ -336,17 +336,17 @@ async function seed() {
   console.log("\nEvents");
   /* R15 (9 Sep 2026): an event is the ORGANIZATION's, so it is hosted by the
      organization's own tenant rather than by one of its studios — save_event
-     refuses a studio outright. `my_org_tenant` returns that row, making it on
+     refuses a studio outright. `my_org_business` returns that row, making it on
      first ask, and the public event page prints the organization's name. */
-  const bounceEvents = await rpc(owner.h, "my_org_tenant", {});
-  const eeeEvents = await rpc(owner2.h, "my_org_tenant", {});
+  const bounceEvents = await rpc(owner.h, "my_org_business", {});
+  const eeeEvents = await rpc(owner2.h, "my_org_business", {});
   log("events are held by the organizations themselves (R15), not by their studios");
   const mkEvent = async (h, tenantId, e) => {
     const id = await rpc(h, "save_event", {
-      p_tenant_id: tenantId,
+      p_business_id: tenantId,
       p_event_id: null,
       p_event: {
-        cat: e.cat,
+        category: e.cat,
         title: e.title,
         style: e.style ?? "All styles",
         start_date: e.date,
@@ -447,13 +447,13 @@ async function status() {
     return;
   }
   const ids = users.map((u) => u.id);
-  const tenants = await rows(H_SERVICE, `tenants?created_by=in.(${ids.join(",")})&select=id,name,type,city,deleted_at`);
+  const businesses = await rows(H_SERVICE, `businesses?created_by=in.(${ids.join(",")})&select=id,name,type,city,deleted_at`);
   const crews = await rows(H_SERVICE, `crews?leader_id=in.(${ids.join(",")})&select=id,name,city,deleted_at`);
   const live = (a) => a.filter((r) => !r.deleted_at);
   console.log(`Demo accounts: ${users.length}`);
   users.forEach((u) => console.log(`  ${u.email}`));
-  console.log(`Demo businesses: ${live(tenants).length}`);
-  live(tenants).forEach((t) => console.log(`  ${t.name} (${t.type} · ${t.city})`));
+  console.log(`Demo businesses: ${live(businesses).length}`);
+  live(businesses).forEach((t) => console.log(`  ${t.name} (${t.type} · ${t.city})`));
   console.log(`Demo crews: ${live(crews).length}`);
   live(crews).forEach((c) => console.log(`  ${c.name} (${c.city})`));
   console.log("\nRemove everything with:  node scripts/demo-data.js wipe");
@@ -470,11 +470,11 @@ async function wipe() {
   console.log(`Wiping ${users.length} demo accounts and everything they own…`);
 
   /* the businesses first: deleting a tenant cascades its rooms, classes,
-     sessions, enrollments, claims, invites, leads, orders, payments, refunds,
+     sessions, class_bookings, claims, invites, leads, orders, payments, refunds,
      payouts, events and event bookings */
-  const tenants = await rows(H_SERVICE, `tenants?created_by=in.(${ids.join(",")})&select=id,name`);
-  for (const t of tenants) {
-    await remove(H_SERVICE, `tenants?id=eq.${t.id}`);
+  const businesses = await rows(H_SERVICE, `businesses?created_by=in.(${ids.join(",")})&select=id,name`);
+  for (const t of businesses) {
+    await remove(H_SERVICE, `businesses?id=eq.${t.id}`);
     console.log(`  business removed: ${t.name}`);
   }
   /* then the accounts: deleting a user cascades its profile, and the profile

@@ -65,21 +65,21 @@ const rest = async (method, url, body) => {
 
   /* the studio, made by the service role the way the proofs do — on Pune's
      centroid, which is exactly the guess the picker exists to replace */
-  const [tenant] = await rest("POST", "/rest/v1/tenants", {
+  const [tenant] = await rest("POST", "/rest/v1/businesses", {
     type: "studio", name: `Shot Studio ${stamp}`, area: "Kothrud", city: "Pune",
     lat: 18.5204, lng: 73.8567, visibility: "unlisted", created_by: link.id, updated_by: link.id,
   });
-  await rest("POST", "/rest/v1/tenant_members", {
-    tenant_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id,
+  await rest("POST", "/rest/v1/business_members", {
+    business_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id,
   });
   await rest("POST", "/rest/v1/subscriptions", {
-    kind: "studio", user_id: link.id, tenant_id: tenant.id, plan_key: "studio_monthly", price_inr: 0,
+    kind: "studio", user_id: link.id, business_id: tenant.id, plan_key: "studio_monthly", price_inr: 0,
     period: "monthly", status: "active", granted: true,
     current_period_start: new Date().toISOString().slice(0, 10),
     current_period_end: new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10),
     note: "Granted by a screenshot script - nothing charged", created_by: link.id, updated_by: link.id,
   });
-  await rest("PATCH", `/rest/v1/tenants?id=eq.${tenant.id}`, { visibility: "listed" });
+  await rest("PATCH", `/rest/v1/businesses?id=eq.${tenant.id}`, { visibility: "listed" });
 
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 2 });
@@ -146,15 +146,15 @@ const rest = async (method, url, body) => {
   await browser.close();
 
   /* 4. THE ONLY PROOF THAT COUNTS: the row */
-  const saved = await rest("GET", `/rest/v1/tenants?id=eq.${tenant.id}&select=lat,lng,area,city,location_set_at`);
+  const saved = await rest("GET", `/rest/v1/businesses?id=eq.${tenant.id}&select=lat,lng,area,city,location_set_at`);
   const row = saved[0] ?? {};
   console.log(`       saved: lat=${row.lat} lng=${row.lng} area=${row.area} city=${row.city} location_set_at=${row.location_set_at ?? "null"}`);
   check(Boolean(row.location_set_at), "the pin was saved — location_set_at is stamped");
   check(row.lat !== null && Math.abs(Number(row.lat) - 18.5204) > 0.0005, "the point moved off the city centroid");
 
-  await rest("DELETE", `/rest/v1/subscriptions?tenant_id=eq.${tenant.id}`);
-  await rest("DELETE", `/rest/v1/tenant_members?tenant_id=eq.${tenant.id}`);
-  await rest("DELETE", `/rest/v1/tenants?id=eq.${tenant.id}`);
+  await rest("DELETE", `/rest/v1/subscriptions?business_id=eq.${tenant.id}`);
+  await rest("DELETE", `/rest/v1/business_members?business_id=eq.${tenant.id}`);
+  await rest("DELETE", `/rest/v1/businesses?id=eq.${tenant.id}`);
   await fetch(`${SUPABASE}/auth/v1/admin/users/${link.id}`, { method: "DELETE", headers: H });
 
   if (problems.length) {

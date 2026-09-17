@@ -40,7 +40,7 @@ export default async function BusinessPage() {
     isOrg ? findWhyNoStudio(supabase).catch(() => null) : Promise.resolve(null),
     /* ⚠ THE EVENTS HOST IS NOT READ HERE ANY MORE (15 Sep 2026). This hub is
        "Studios"; its events block duplicated Home's Events tile and read as
-       though a studio had events. Home is the one door — and `my_org_tenant()`
+       though a studio had events. Home is the one door — and `my_org_business()`
        MAKES the host row on first ask, so Home asking for it is enough. */
     isOrg ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
     /* the cities that already have a business in them (11 Sep 2026) — the

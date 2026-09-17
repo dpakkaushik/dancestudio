@@ -15,7 +15,7 @@ interface SessionRow {
 
 interface ClassRow {
   id: string;
-  tenant_id: string;
+  business_id: string;
   title: string;
   share_slug: string;
   style: string;
@@ -30,11 +30,11 @@ interface ClassRow {
 }
 
 interface PublicClassRow extends ClassRow {
-  tenants: { name: string; area: string | null; city: string | null; type?: "studio" | "trainer_business" } | null;
+  businesses: { name: string; area: string | null; city: string | null; type?: "studio" | "artist_page" } | null;
 }
 
 const CLASS_COLUMNS =
-  "id, tenant_id, title, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
+  "id, business_id, title, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -44,7 +44,7 @@ const firstSession = (rows: SessionRow[] | null) => {
 
 const toClass = (row: ClassRow): DanceClass => ({
   id: row.id,
-  tenantId: row.tenant_id,
+  tenantId: row.business_id,
   title: row.title,
   shareSlug: row.share_slug,
   style: row.style,
@@ -81,7 +81,7 @@ export async function createClassWithSession(
   input: CreateClassInput
 ): Promise<string> {
   const { data, error } = await supabase.rpc("create_class_with_session", {
-    p_tenant_id: input.tenantId,
+    p_business_id: input.tenantId,
     p_title: input.title,
     p_style: input.style,
     p_level: input.level,
@@ -109,7 +109,7 @@ export async function findClassesByTenant(
   const { data, error } = await supabase
     .from("classes")
     .select(CLASS_COLUMNS)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -136,7 +136,7 @@ export async function findClassesByTenants(
   const { data, error } = await supabase
     .from("classes")
     .select(CLASS_COLUMNS)
-    .in("tenant_id", tenantIds)
+    .in("business_id", tenantIds)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -185,12 +185,12 @@ export async function findPublishedClasses(
 ): Promise<PublicClassListing[]> {
   let query = supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, tenants${city ? "!inner" : ""} (name, area, city, type)`)
+    .select(`${CLASS_COLUMNS}, businesses${city ? "!inner" : ""} (name, area, city, type)`)
     .eq("status", "published")
     .is("deleted_at", null);
 
   if (city) {
-    query = query.eq("tenants.city", city);
+    query = query.eq("businesses.city", city);
   }
 
   const { data, error } = await query
@@ -202,15 +202,15 @@ export async function findPublishedClasses(
   }
   return (data as unknown as PublicClassRow[]).map((row) => ({
     ...toClass(row),
-    tenantName: row.tenants?.name ?? "",
-    tenantType: row.tenants?.type ?? "studio",
-    tenantArea: row.tenants?.area ?? null,
-    tenantCity: row.tenants?.city ?? null,
+    tenantName: row.businesses?.name ?? "",
+    tenantType: row.businesses?.type ?? "studio",
+    tenantArea: row.businesses?.area ?? null,
+    tenantCity: row.businesses?.city ?? null,
   }));
 }
 
 /** One class by its share slug — the /c/{slug} detail page. No policy of its own:
- *  the public resolves published classes of listed tenants, a member resolves
+ *  the public resolves published classes of listed businesses, a member resolves
  *  their tenant's drafts too, and anyone else gets null. */
 export async function findClassBySlug(
   supabase: SupabaseClient,
@@ -218,7 +218,7 @@ export async function findClassBySlug(
 ): Promise<PublicClassListing | null> {
   const { data, error } = await supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, tenants (name, area, city, type)`)
+    .select(`${CLASS_COLUMNS}, businesses (name, area, city, type)`)
     .eq("share_slug", slug)
     .is("deleted_at", null)
     .maybeSingle();
@@ -232,10 +232,10 @@ export async function findClassBySlug(
   const row = data as unknown as PublicClassRow;
   return {
     ...toClass(row),
-    tenantName: row.tenants?.name ?? "",
-    tenantType: row.tenants?.type ?? "studio",
-    tenantArea: row.tenants?.area ?? null,
-    tenantCity: row.tenants?.city ?? null,
+    tenantName: row.businesses?.name ?? "",
+    tenantType: row.businesses?.type ?? "studio",
+    tenantArea: row.businesses?.area ?? null,
+    tenantCity: row.businesses?.city ?? null,
   };
 }
 
@@ -360,18 +360,18 @@ export async function findPublishedStylesByTenant(
   }
   const { data, error } = await supabase
     .from("classes")
-    .select("tenant_id, style")
-    .in("tenant_id", ids)
+    .select("business_id, style")
+    .in("business_id", ids)
     .eq("status", "published")
     .is("deleted_at", null)
     .limit(2000);
   if (error) {
     throw new Error(`classes.findPublishedStylesByTenant failed: ${error.message}`);
   }
-  ((data ?? []) as Array<{ tenant_id: string; style: string }>).forEach((r) => {
-    const cur = out.get(r.tenant_id) ?? [];
+  ((data ?? []) as Array<{ business_id: string; style: string }>).forEach((r) => {
+    const cur = out.get(r.business_id) ?? [];
     if (!cur.includes(r.style)) cur.push(r.style);
-    out.set(r.tenant_id, cur);
+    out.set(r.business_id, cur);
   });
   return out;
 }
@@ -415,7 +415,7 @@ export async function findRoomClash(
   let q = supabase
     .from("class_sessions")
     .select("starts_at, ends_at, class_id, classes!inner (id, title, room_id, status, deleted_at)")
-    .eq("tenant_id", input.tenantId)
+    .eq("business_id", input.tenantId)
     .is("deleted_at", null)
     .eq("classes.room_id", input.roomId)
     .eq("classes.status", "published")

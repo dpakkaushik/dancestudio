@@ -18,8 +18,8 @@ export default async function TenantStaffPage({
     redirect("/login");
   }
 
-  const tenants = await findMyTenants(supabase);
-  const tenant = tenants.find((t) => t.id === tenantId);
+  const businesses = await findMyTenants(supabase);
+  const tenant = businesses.find((t) => t.id === tenantId);
   if (!tenant) {
     redirect("/business");
   }

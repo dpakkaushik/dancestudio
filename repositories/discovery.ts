@@ -3,7 +3,7 @@ import type { TenantType } from "@/types/tenant";
 
 export interface NearbyTenant {
   id: string;
-  /** filled in by the caller from the tenants it just listed (parity slice 2) */
+  /** filled in by the caller from the businesses it just listed (parity slice 2) */
   photoPath?: string | null;
   /** likewise — DanceOS's own tick, drawn beside the name when it is set (D7) */
   verifiedAt?: string | null;
@@ -33,7 +33,7 @@ interface NearbyRow {
 }
 
 /** Tenants within a radius, nearest first — the caller's RLS decides visibility
- *  (anonymous and strangers see listed tenants only). */
+ *  (anonymous and strangers see listed businesses only). */
 export async function findNearbyTenants(
   supabase: SupabaseClient,
   input: { lat: number; lng: number; radiusKm?: number; type?: TenantType; limit?: number }
@@ -54,7 +54,7 @@ export async function findNearbyTenants(
   if (input.limit !== undefined) {
     args.p_limit = input.limit;
   }
-  const { data, error } = await supabase.rpc("nearby_tenants", args);
+  const { data, error } = await supabase.rpc("nearby_businesses", args);
 
   if (error) {
     throw new Error(`discovery.nearby failed: ${error.message}`);
@@ -75,7 +75,7 @@ export async function findNearbyTenants(
 /** WHAT A CARD KNOWS ABOUT A BUSINESS THAT THE MAP DOES NOT — the face it has
  *  put up, and whether DanceOS has verified it. The nearby RPC answers with
  *  place and distance only, so both are read in ONE second query rather than
- *  one per fact — under the same "anyone reads listed tenants" policy the
+ *  one per fact — under the same "anyone reads listed businesses" policy the
  *  public page uses. A business with no photo simply has none here; a business
  *  nobody has verified carries a null `verifiedAt`, which is not a tick. */
 export interface TenantCardFacts {
@@ -92,12 +92,12 @@ export async function findTenantCardFacts(supabase: SupabaseClient, tenantIds: s
   if (ids.length === 0) {
     return out;
   }
-  const { data, error } = await supabase.from("tenants").select("id, photo_path, verified_at, lat, lng").in("id", ids).is("deleted_at", null).limit(ids.length);
+  const { data, error } = await supabase.from("businesses").select("id, profile_photo_path, verified_at, lat, lng").in("id", ids).is("deleted_at", null).limit(ids.length);
   if (error) {
     throw new Error(`discovery.cardFacts failed: ${error.message}`);
   }
-  ((data ?? []) as Array<{ id: string; photo_path: string | null; verified_at: string | null; lat: number | null; lng: number | null }>).forEach((r) => {
-    out.set(r.id, { photoPath: r.photo_path ?? null, verifiedAt: r.verified_at ?? null, lat: r.lat ?? null, lng: r.lng ?? null });
+  ((data ?? []) as Array<{ id: string; profile_photo_path: string | null; verified_at: string | null; lat: number | null; lng: number | null }>).forEach((r) => {
+    out.set(r.id, { photoPath: r.profile_photo_path ?? null, verifiedAt: r.verified_at ?? null, lat: r.lat ?? null, lng: r.lng ?? null });
   });
   return out;
 }

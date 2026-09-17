@@ -44,16 +44,16 @@ function Meta({ listing, showBusiness }: { listing: ManagedListing; showBusiness
 }
 
 export function ManagedScreen({
-  tenants,
+  businesses,
   listings,
   filter,
 }: {
-  tenants: Tenant[];
+  businesses: Tenant[];
   listings: ManagedListing[];
   filter: "all" | ManagedKind;
 }) {
   const rows = listings.filter((l) => filter === "all" || l.kind === filter);
-  const manyBusinesses = tenants.length > 1;
+  const manyBusinesses = businesses.length > 1;
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div style={{ padding: "14px 16px 0" }}>
@@ -109,13 +109,13 @@ export function ManagedScreen({
           <div style={{ background: "var(--card)", border: "1.5px dashed var(--el)", borderRadius: 16, padding: "22px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 13, fontWeight: 900 }}>Nothing here yet</div>
             <div style={{ fontSize: 11, color: SUB, marginTop: 3 }}>
-              {tenants.length === 0 ? "Set up a studio or artist business, and the classes and events you create show up here." : "Classes and events you create show up here."}
+              {businesses.length === 0 ? "Set up a studio or artist business, and the classes and events you create show up here." : "Classes and events you create show up here."}
             </div>
             <Link
-              href={tenants.length === 0 ? "/business" : `/business/${tenants[0].id}/classes`}
+              href={businesses.length === 0 ? "/business" : `/business/${businesses[0].id}/classes`}
               style={{ display: "inline-block", marginTop: 12, padding: "9px 18px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 11.5, textDecoration: "none" }}
             >
-              {tenants.length === 0 ? "Set up a business" : "Open the classes desk"}
+              {businesses.length === 0 ? "Set up a business" : "Open the classes desk"}
             </Link>
           </div>
         ) : null}

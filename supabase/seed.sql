@@ -7,7 +7,7 @@
 --
 -- Cast (per CLAUDE.md: 1 studio, 1 trainer business, a few learners):
 --   Priya Nair   → owns  Tandav Dance Academy   (studio, Pune)
---   Meera Rao    → owns  Meera Rao Dance Company (trainer_business, Mumbai)
+--   Meera Rao    → owns  Meera Rao Dance Company (artist_page, Mumbai)
 --   Aarav Shah, Zoya Khan (Pune), Ishaan Verma (Mumbai) → learners
 --
 -- Sign in locally with any seeded email — the magic link lands in Inbucket
@@ -55,23 +55,23 @@ values
   ('00000000-0000-4000-8000-000000000013', 'Ishaan Verma', 'dancer',  'Mumbai', '00000000-0000-4000-8000-000000000013', '00000000-0000-4000-8000-000000000013')
 on conflict (id) do nothing;
 
--- ------------------------------------------------------------------- tenants --
--- Coordinates come from city_centroids (same source create_tenant_with_owner uses).
-insert into public.tenants (id, type, name, area, city, lat, lng, visibility, created_by, updated_by)
+-- ------------------------------------------------------------------- businesses --
+-- Coordinates come from cities (same source create_business_with_owner uses).
+insert into public.businesses (id, type, name, area, city, lat, lng, visibility, created_by, updated_by)
 select '00000000-0000-4000-8000-000000000101', 'studio', 'Tandav Dance Academy',
        'Koregaon Park', c.city, c.lat, c.lng, 'listed',
        '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001'
-from public.city_centroids c where c.city = 'Pune'
+from public.cities c where c.city = 'Pune'
 on conflict (id) do nothing;
 
-insert into public.tenants (id, type, name, area, city, lat, lng, visibility, created_by, updated_by)
-select '00000000-0000-4000-8000-000000000102', 'trainer_business', 'Meera Rao Dance Company',
+insert into public.businesses (id, type, name, area, city, lat, lng, visibility, created_by, updated_by)
+select '00000000-0000-4000-8000-000000000102', 'artist_page', 'Meera Rao Dance Company',
        'Bandra West', c.city, c.lat, c.lng, 'listed',
        '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000002'
-from public.city_centroids c where c.city = 'Mumbai'
+from public.cities c where c.city = 'Mumbai'
 on conflict (id) do nothing;
 
-insert into public.tenant_members (id, tenant_id, user_id, member_role, created_by, updated_by)
+insert into public.business_members (id, business_id, user_id, member_role, created_by, updated_by)
 values
   ('00000000-0000-4000-8000-000000000111', '00000000-0000-4000-8000-000000000101',
    '00000000-0000-4000-8000-000000000001', 'owner',
@@ -84,7 +84,7 @@ on conflict (id) do nothing;
 -- ------------------------------------------------------------------- classes --
 -- capacity 2 on the Bollywood class on purpose: with 2 enrolled + 1 waitlisted
 -- below, the seed demos "Class full" and the waitlist UI out of the box.
-insert into public.classes (id, tenant_id, title, style, level, room, price_inr, capacity, status, created_by, updated_by)
+insert into public.classes (id, business_id, title, style, level, room, price_inr, capacity, status, created_by, updated_by)
 values
   ('00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000101',
    'Bolly Blast — Beginners', 'Bollywood', 'beginner', 'Studio A', 299, 2, 'published',
@@ -99,7 +99,7 @@ on conflict (id) do nothing;
 
 -- Sessions sit in the future relative to the reset: evenings two/three days out.
 -- 12:30 UTC = 18:00 IST — the timestamps read as evening classes in the app.
-insert into public.class_sessions (id, class_id, tenant_id, starts_at, ends_at, created_by, updated_by)
+insert into public.class_sessions (id, class_id, business_id, starts_at, ends_at, created_by, updated_by)
 values
   ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000201',
    '00000000-0000-4000-8000-000000000101',
@@ -118,11 +118,11 @@ values
    '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000002')
 on conflict (id) do nothing;
 
--- --------------------------------------------------------------- enrollments --
--- Statuses respect the same invariants the enroll_in_session RPC enforces:
+-- --------------------------------------------------------------- class_bookings --
+-- Statuses respect the same invariants the book_class_session RPC enforces:
 -- Bollywood (capacity 2) holds exactly 2 enrolled, so Ishaan is waitlisted.
 -- Staggered created_at keeps the waitlist promotion order deterministic.
-insert into public.enrollments (id, session_id, class_id, tenant_id, user_id, status, created_at, created_by, updated_by)
+insert into public.class_bookings (id, session_id, class_id, business_id, user_id, status, created_at, created_by, updated_by)
 values
   ('00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000301',
    '00000000-0000-4000-8000-000000000201', '00000000-0000-4000-8000-000000000101',

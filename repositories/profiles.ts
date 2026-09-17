@@ -6,7 +6,7 @@ interface ProfileRow {
   full_name: string;
   role: ProfileRole;
   city: string | null;
-  avatar_path?: string | null;
+  profile_photo_path?: string | null;
   about?: string | null;
   age?: number | null;
   socials?: unknown;
@@ -17,8 +17,8 @@ interface ProfileRow {
 }
 
 /** every column a profile is drawn from — one list, so no read can forget one
- *  (the photos slice found a read that had its own list and never got avatar_path) */
-export const PROFILE_COLUMNS = "id, full_name, role, city, avatar_path, about, age, socials, styles, member_no, verified_at, phone";
+ *  (the photos slice found a read that had its own list and never got profile_photo_path) */
+export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, socials, styles, member_no, verified_at, phone";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -33,7 +33,7 @@ export const toProfile = (row: ProfileRow): Profile => ({
   fullName: row.full_name,
   role: row.role,
   city: row.city,
-  avatarPath: row.avatar_path ?? null,
+  avatarPath: row.profile_photo_path ?? null,
   about: row.about ?? null,
   age: row.age == null ? null : Number(row.age),
   socials: toSocials(row.socials),
@@ -112,7 +112,7 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
 }
 
 /** WHO, AMONG THESE PEOPLE, IS AN ARTIST RIGHT NOW. The plan is a row on
- *  artist_plans, own-rows under RLS, so the badge beside somebody ELSE's name
+ *  artist_plans_legacy, own-rows under RLS, so the badge beside somebody ELSE's name
  *  goes through the aggregate-only `artist_ids` (ids in, the live subset out).
  *  One call per list, never one per row. Empty in, empty out, no round trip. */
 export async function findArtistIds(supabase: SupabaseClient, ids: string[]): Promise<Set<string>> {

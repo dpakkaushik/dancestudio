@@ -2,5 +2,5 @@ import { PublicTenantPage } from "@/features/profiles/components/PublicTenantPag
 
 export default async function Page({ params }: { params: Promise<{ tenantId: string }> }) {
   const { tenantId } = await params;
-  return <PublicTenantPage tenantId={tenantId} expect="trainer_business" />;
+  return <PublicTenantPage tenantId={tenantId} expect="artist_page" />;
 }

@@ -142,7 +142,7 @@ const rest = async (method, url, body) => {
   } finally {
     await browser.close();
     /* the sheet was never submitted, so the only thing to remove is the user */
-    await rest("DELETE", `/rest/v1/tenants?created_by=eq.${link.id}`).catch(() => undefined);
+    await rest("DELETE", `/rest/v1/businesses?created_by=eq.${link.id}`).catch(() => undefined);
     await fetch(`${SUPABASE}/auth/v1/admin/users/${link.id}`, { method: "DELETE", headers: H });
   }
 

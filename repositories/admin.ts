@@ -8,12 +8,12 @@ import type { SocialLink } from "@/types/profile";
  *  by the API; just the studio needs admin verification." So a request in this
  *  table is a STUDIO asking to be checked: its 5-10 photos of the space and its
  *  own public links. An admin approves or rejects with a reason; approval is
- *  `tenants.verified_at`, the badge, and the studio's own subscription is what
+ *  `businesses.verified_at`, the badge, and the studio's own subscription is what
  *  then puts it on Discover.
  *
- *  Rows with a null `tenant_id` are the organization reviews this replaced.
+ *  Rows with a null `business_id` are the organization reviews this replaced.
  *  They are kept as history and are NOT read back into the queue — every read
- *  here asks for `tenant_id` — because there is no longer anybody to decide
+ *  here asks for `business_id` — because there is no longer anybody to decide
  *  them. Every write is an RPC that re-checks who is asking, so nothing in this
  *  file decides anything. */
 
@@ -76,26 +76,26 @@ interface RequestRow {
   /** the request's OWN column, so a card knows it is about a studio even when
    *  the embedded tenant read comes back empty (14 Sep 2026: RLS hid an
    *  unlisted studio from the admin and the card fell back to the organization) */
-  tenant_id: string | null;
+  business_id: string | null;
   status: VerificationStatus;
   note: string | null;
   created_at: string;
   decided_at: string | null;
-  profiles: { full_name: string; city: string | null; avatar_path: string | null; socials: unknown; verified_at: string | null } | null;
-  tenants?: { id: string; name: string; city: string | null; socials: unknown; verified_at: string | null } | null;
+  profiles: { full_name: string; city: string | null; profile_photo_path: string | null; socials: unknown; verified_at: string | null } | null;
+  businesses?: { id: string; name: string; city: string | null; socials: unknown; verified_at: string | null } | null;
 }
 
 const toRequest = (r: RequestRow): VerificationRequest => ({
-  tenantId: r.tenant_id ?? r.tenants?.id ?? null,
-  tenantName: r.tenants?.name ?? null,
-  tenantCity: r.tenants?.city ?? null,
-  tenantSocials: toSocials(r.tenants?.socials),
-  tenantVerifiedAt: r.tenants?.verified_at ?? null,
+  tenantId: r.business_id ?? r.businesses?.id ?? null,
+  tenantName: r.businesses?.name ?? null,
+  tenantCity: r.businesses?.city ?? null,
+  tenantSocials: toSocials(r.businesses?.socials),
+  tenantVerifiedAt: r.businesses?.verified_at ?? null,
   id: r.id,
   orgId: r.org_id,
   orgName: r.profiles?.full_name ?? "An organization",
   orgCity: r.profiles?.city ?? null,
-  orgAvatarPath: r.profiles?.avatar_path ?? null,
+  orgAvatarPath: r.profiles?.profile_photo_path ?? null,
   socials: toSocials(r.profiles?.socials),
   orgVerifiedAt: r.profiles?.verified_at ?? null,
   status: r.status,
@@ -104,16 +104,16 @@ const toRequest = (r: RequestRow): VerificationRequest => ({
   decidedAt: r.decided_at,
 });
 
-const REQUEST_SELECT = "id, org_id, tenant_id, status, note, created_at, decided_at, profiles (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
+const REQUEST_SELECT = "id, org_id, business_id, status, note, created_at, decided_at, profiles (full_name, city, profile_photo_path, socials, verified_at), businesses (id, name, city, socials, verified_at)";
 
 /** THE QUEUE — what is waiting on an admin, oldest first. Under RLS a
  *  non-admin gets their own rows at most; the page refuses them before asking. */
 export async function findVerificationQueue(supabase: SupabaseClient): Promise<VerificationRequest[]> {
   const { data, error } = await supabase
-    .from("org_verification_requests")
+    .from("studio_verification_requests")
     .select(REQUEST_SELECT)
     .eq("status", "pending")
-    .not("tenant_id", "is", null)
+    .not("business_id", "is", null)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(200);
@@ -133,7 +133,7 @@ export async function findMyVerificationRequest(supabase: SupabaseClient): Promi
   } = await supabase.auth.getUser();
   if (!user) return null;
   const { data, error } = await supabase
-    .from("org_verification_requests")
+    .from("studio_verification_requests")
     .select(REQUEST_SELECT)
     .eq("org_id", user.id)
     .is("deleted_at", null)
@@ -180,10 +180,10 @@ const headCount = async (q: PromiseLike<{ count: number | null; error: { message
 
 export async function countVerification(supabase: SupabaseClient): Promise<VerificationCounts> {
   const [pending, rejected, verifiedStudios, studios] = await Promise.all([
-    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "pending").not("tenant_id", "is", null).is("deleted_at", null), "pending"),
-    headCount(supabase.from("org_verification_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").not("tenant_id", "is", null).is("deleted_at", null), "rejected"),
-    headCount(supabase.from("tenants").select("id", { count: "exact", head: true }).eq("type", "studio").is("deleted_at", null).not("verified_at", "is", null), "verified studios"),
-    headCount(supabase.from("tenants").select("id", { count: "exact", head: true }).eq("type", "studio").is("deleted_at", null), "studios"),
+    headCount(supabase.from("studio_verification_requests").select("id", { count: "exact", head: true }).eq("status", "pending").not("business_id", "is", null).is("deleted_at", null), "pending"),
+    headCount(supabase.from("studio_verification_requests").select("id", { count: "exact", head: true }).eq("status", "rejected").not("business_id", "is", null).is("deleted_at", null), "rejected"),
+    headCount(supabase.from("businesses").select("id", { count: "exact", head: true }).eq("type", "studio").is("deleted_at", null).not("verified_at", "is", null), "verified studios"),
+    headCount(supabase.from("businesses").select("id", { count: "exact", head: true }).eq("type", "studio").is("deleted_at", null), "studios"),
   ]);
   return { pending, rejected, verifiedStudios, studios };
 }
@@ -191,7 +191,7 @@ export async function countVerification(supabase: SupabaseClient): Promise<Verif
 /* `!inner` so a filter on the organization's name narrows the REQUESTS, not
    merely the embedded profile — without it a non-matching row still comes back
    with `profiles: null`, which is the opposite of a search */
-const REQUEST_SELECT_INNER = "id, org_id, tenant_id, status, note, created_at, decided_at, profiles!inner (full_name, city, avatar_path, socials, verified_at), tenants (id, name, city, socials, verified_at)";
+const REQUEST_SELECT_INNER = "id, org_id, business_id, status, note, created_at, decided_at, profiles!inner (full_name, city, profile_photo_path, socials, verified_at), businesses (id, name, city, socials, verified_at)";
 
 export interface Page<T> {
   rows: T[];
@@ -207,11 +207,11 @@ export async function findVerificationRequestsPage(
 ): Promise<Page<VerificationRequest>> {
   const from = (input.page - 1) * input.pageSize;
   let query = supabase
-    .from("org_verification_requests")
+    .from("studio_verification_requests")
     .select(REQUEST_SELECT_INNER, { count: "exact" })
     .eq("status", input.status)
     /* a studio's review; the organization reviews this replaced stay history */
-    .not("tenant_id", "is", null)
+    .not("business_id", "is", null)
     .is("deleted_at", null);
   if (input.q) {
     const term = input.q.replace(/[%_,()]/g, " ").trim();
@@ -228,7 +228,7 @@ export async function findVerificationRequestsPage(
 
          WHY NOT ONE `or`: PostgREST scopes an embedded filter to ONE referenced
          table, so "the studio's name OR the organization's" cannot be written
-         as a single clause across `tenants` and `profiles`. Both ids ARE plain
+         as a single clause across `businesses` and `profiles`. Both ids ARE plain
          columns on this table, though — so the names are resolved to ids first
          and the `or` is over columns. Two small indexed reads (`pg_trgm` on
          both names since 20260913090000) for a search box that runs on submit,
@@ -236,13 +236,13 @@ export async function findVerificationRequestsPage(
          so nothing is hidden from the lookup that is visible in the list. */
       const like = `%${term}%`;
       const [studios, orgs] = await Promise.all([
-        supabase.from("tenants").select("id").eq("type", "studio").ilike("name", like).is("deleted_at", null).limit(500),
+        supabase.from("businesses").select("id").eq("type", "studio").ilike("name", like).is("deleted_at", null).limit(500),
         supabase.from("profiles").select("id").ilike("full_name", like).is("deleted_at", null).limit(500),
       ]);
       const tenantIds = ((studios.data ?? []) as Array<{ id: string }>).map((r) => r.id);
       const orgIds = ((orgs.data ?? []) as Array<{ id: string }>).map((r) => r.id);
       const clauses = [
-        ...(tenantIds.length ? [`tenant_id.in.(${tenantIds.join(",")})`] : []),
+        ...(tenantIds.length ? [`business_id.in.(${tenantIds.join(",")})`] : []),
         ...(orgIds.length ? [`org_id.in.(${orgIds.join(",")})`] : []),
       ];
       /* a term that names no studio and no organization matches no request —
@@ -283,8 +283,8 @@ export async function findVerifiedStudiosPage(
 ): Promise<Page<StudioRow>> {
   const from = (input.page - 1) * input.pageSize;
   let query = supabase
-    .from("tenants")
-    .select("id, name, city, area, photo_path, socials, verified_at, visibility, tenant_members (user_id, member_role, deleted_at, profiles (full_name))", { count: "exact" })
+    .from("businesses")
+    .select("id, name, city, area, profile_photo_path, socials, verified_at, visibility, business_members (user_id, member_role, deleted_at, profiles (full_name))", { count: "exact" })
     .eq("type", "studio")
     .is("deleted_at", null)
     .not("verified_at", "is", null);
@@ -299,19 +299,19 @@ export async function findVerifiedStudiosPage(
     throw new Error(`verification.studios page failed: ${error.message}`);
   }
   type Row = {
-    id: string; name: string; city: string | null; area: string | null; photo_path: string | null; socials: unknown; verified_at: string | null; visibility: string;
-    tenant_members: Array<{ user_id: string; member_role: string; deleted_at: string | null; profiles: { full_name: string } | null }> | null;
+    id: string; name: string; city: string | null; area: string | null; profile_photo_path: string | null; socials: unknown; verified_at: string | null; visibility: string;
+    business_members: Array<{ user_id: string; member_role: string; deleted_at: string | null; profiles: { full_name: string } | null }> | null;
   };
   return {
     total: count ?? 0,
     rows: ((data ?? []) as unknown as Row[]).map((r) => {
-      const owner = (r.tenant_members ?? []).find((m) => m.member_role === "owner" && !m.deleted_at) ?? null;
+      const owner = (r.business_members ?? []).find((m) => m.member_role === "owner" && !m.deleted_at) ?? null;
       return {
         id: r.id,
         name: r.name,
         city: r.city,
         area: r.area,
-        photoPath: r.photo_path,
+        photoPath: r.profile_photo_path,
         socials: toSocials(r.socials),
         verifiedAt: r.verified_at,
         visibility: r.visibility,

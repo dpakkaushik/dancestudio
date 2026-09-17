@@ -96,11 +96,11 @@ const count = async (table, col, id) => (await get(`${table}?${col}=eq.${id}&sel
   for (const u of targets) {
     const who = u.email || `+${u.phone}`;
     const [prof] = await get(`profiles?id=eq.${u.id}&select=full_name,role,deleted_at`);
-    const owns = (await get(`tenant_members?user_id=eq.${u.id}&member_role=eq.owner&deleted_at=is.null&select=tenant_id`)).length;
+    const owns = (await get(`business_members?user_id=eq.${u.id}&member_role=eq.owner&deleted_at=is.null&select=business_id`)).length;
     const takes = {
-      bookings: await count("enrollments", "user_id", u.id),
+      bookings: await count("class_bookings", "user_id", u.id),
       follows: await count("follows", "follower_id", u.id),
-      plans: await count("artist_plans", "user_id", u.id),
+      plans: await count("artist_plans_legacy", "user_id", u.id),
       notifications: await count("notifications", "user_id", u.id),
     };
     const admin = admins.includes(u.id) ? " · PLATFORM ADMIN" : "";

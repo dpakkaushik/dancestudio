@@ -18,6 +18,6 @@ export default async function ManagedPage({ searchParams }: { searchParams: Prom
   if (!user) {
     redirect("/login");
   }
-  const [{ kind }, { tenants, listings }] = await Promise.all([searchParams, findEverythingIManage(supabase)]);
-  return <ManagedScreen tenants={tenants} listings={listings} filter={parseManagedFilter(kind)} />;
+  const [{ kind }, { businesses, listings }] = await Promise.all([searchParams, findEverythingIManage(supabase)]);
+  return <ManagedScreen businesses={businesses} listings={listings} filter={parseManagedFilter(kind)} />;
 }

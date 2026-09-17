@@ -151,13 +151,18 @@ try {
     ($r11a -like "*city is required*") -and ($r11b -like "*at least one dance style*") -and
     $mine[0].city -eq "New Delhi" -and $null -eq $mine[0].age -and $null -eq $mine[0].about -and @($mine[0].socials).Count -eq 0 -and @($mine[0].styles).Count -eq 1)
 
-  # 12. an ORGANIZATION keeps at least one link (requirement 4) and carries no styles
+  # 12. an ORGANIZATION carries no styles and — since 20260914110000 (14 Sep 2026,
+  #     "an organization keeps no link") — needs no link of its own: what DanceOS
+  #     checks is each STUDIO's links and photos, and the organization's own
+  #     paperwork is its GST number. This check asserted the OLD rule ("at least
+  #     one link") and had been red since that migration; re-cut 16 Sep 2026.
   $org = New-EmailUser "prof-o-$stamp@example.com" "Org Proof $stamp" "org"
-  $r12 = Fails { Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null $null @() @()) }
+  Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null $null @() @("Hip-Hop")) | Out-Null
+  $noLink = Rows (Api $org.token) "profiles?$SEL&id=eq.$($org.id)"
   Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null $null @(@{ platform = "Instagram"; url = "https://instagram.com/orgproof" }) @("Hip-Hop")) | Out-Null
   $orgRow = Rows (Api $org.token) "profiles?$SEL&id=eq.$($org.id)"
-  Check 12 "an organization with no link is refused ($r12); with one it saves, and its styles are empty ($(@($orgRow[0].styles).Count))" (
-    ($r12 -like "*at least one link*") -and @($orgRow[0].socials).Count -eq 1 -and @($orgRow[0].styles).Count -eq 0)
+  Check 12 "an organization with no link SAVES (links: $(@($noLink[0].socials).Count)); with one it saves that ($(@($orgRow[0].socials).Count)); and its styles are empty either way ($(@($noLink[0].styles).Count), $(@($orgRow[0].styles).Count))" (
+    @($noLink[0].socials).Count -eq 0 -and @($orgRow[0].socials).Count -eq 1 -and @($noLink[0].styles).Count -eq 0 -and @($orgRow[0].styles).Count -eq 0)
 }
 finally {
   foreach ($u in @($rhea, $other, $org)) { if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null } }

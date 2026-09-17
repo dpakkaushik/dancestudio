@@ -103,9 +103,9 @@ const settle = (rows: DeckItem[], nowMs: number): DeckItem[] => {
  *  tickets they hold for today, and the events their businesses are running.
  *  Drafts are not "on" and never appear (the prototype's hosting side reads
  *  Published only, 6934). */
-export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIso: string, tenants: Tenant[]): Promise<DeckItem[]> {
+export async function findMyDeck(supabase: SupabaseClient, userId: string, nowIso: string, businesses: Tenant[]): Promise<DeckItem[]> {
   const { today, from, to } = todayWindow(nowIso);
-  const tenantIds = tenants.map((t) => t.id);
+  const tenantIds = businesses.map((t) => t.id);
   const [entries, tickets, hosted] = await Promise.all([
     findMyCalendar(supabase, userId, from, to),
     findMyEventBookings(supabase, userId),

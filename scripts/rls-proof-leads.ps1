@@ -59,23 +59,23 @@ $orgB = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=pass
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $a.access_token) "create_tenant_with_owner" @{ p_name = "Leads Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $a.access_token) "create_business_with_owner" @{ p_name = "Leads Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $orgB.access_token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $orgB.access_token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 
 try {
   # 1. the owner opens a lead
   $lead = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/leads" -Headers (Api $a.access_token) -Body (@{
-    tenant_id = $ta.id; name = "Priya Iyer $stamp"; mobile = "+91 98110 44219"; interest = "Hip-Hop, evenings"; source = "walk_in" } | ConvertTo-Json)
+    business_id = $ta.id; name = "Priya Iyer $stamp"; mobile = "+91 98110 44219"; interest = "Hip-Hop, evenings"; source = "walk_in" } | ConvertTo-Json)
   $leadRow = if ($lead -is [array]) { $lead[0] } else { $lead }
   Check 1 "Owner opens a lead (stage $($leadRow.status))" ($leadRow.status -eq "new")
 
@@ -90,13 +90,13 @@ try {
   # 4. nor can a rival write into somebody else's desk
   $rivalWriteBlocked = Expect-Fail {
     Invoke-RestMethod -Method Post -Uri "$base/rest/v1/leads" -Headers (Api $b.access_token) -Body (@{
-      tenant_id = $ta.id; name = "Planted"; source = "walk_in" } | ConvertTo-Json)
+      business_id = $ta.id; name = "Planted"; source = "walk_in" } | ConvertTo-Json)
   }
   Check 4 "A rival cannot add a lead to your desk" $rivalWriteBlocked
 
   # 5. the whole team works the desk - STAFF, who are the people who answer the phone
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $ta.id; user_id = $b.user.id; member_role = "staff"; created_by = $a.user.id; updated_by = $a.user.id } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $ta.id; user_id = $b.user.id; member_role = "staff"; created_by = $a.user.id; updated_by = $a.user.id } | ConvertTo-Json) | Out-Null
   $staffSees = Get-Rows (Api $b.access_token) "leads?id=eq.$($leadRow.id)&select=id,name"
   Check 5 "Front-desk staff read the desk ($($staffSees.Count))" ($staffSees.Count -eq 1)
 
@@ -108,7 +108,7 @@ try {
   # 7. a trial is agreed against a REAL class of this studio
   $starts = (Get-Date).AddDays(5).ToString("yyyy-MM-ddT19:00:00zzz")
   $ends = (Get-Date).AddDays(5).ToString("yyyy-MM-ddT20:00:00zzz")
-  $cls = Rpc (Api $a.access_token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Trial Class $stamp";
+  $cls = Rpc (Api $a.access_token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Trial Class $stamp";
     p_style = "Hip-Hop"; p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 10;
     p_status = "published"; p_starts_at = $starts; p_ends_at = $ends }
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/leads?id=eq.$($leadRow.id)" -Headers (Api $a.access_token) -Body (@{
@@ -135,8 +135,8 @@ try {
   Check 10 "Soft delete hides it (live $($live.Count)) but keeps the record (history $($all.Count), $($all[0].status))" (($live.Count -eq 0) -and ($all.Count -eq 1) -and ($all[0].status -eq "converted"))
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
   try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($orgBUser.id)" -Headers $svcH | Out-Null } catch {}
   "   (cleanup: proof studios and the throwaway organization deleted)"
 }

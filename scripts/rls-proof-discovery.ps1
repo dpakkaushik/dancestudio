@@ -28,7 +28,7 @@ function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"
 function Nearby($headers, $type) {
   $body = @{ p_lat = 18.5204; p_lng = 73.8567; p_radius_km = 25 }
   if ($type) { $body["p_type"] = $type }
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_tenants" -Headers $headers -Body ($body | ConvertTo-Json)
+  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_businesses" -Headers $headers -Body ($body | ConvertTo-Json)
 }
 
 $a = Sign-In "+919999999999"
@@ -40,15 +40,15 @@ $stamp = Get-Date -Format "HHmmss"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Near Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Near Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
 Subscribe-Studio ([string]$ta.id)
 $hasCoords = ($null -ne $ta.lat) -and ($null -ne $ta.lng)
 "1. New Pune studio gets coordinates: lat=$($ta.lat) lng=$($ta.lng) $(if ($hasCoords) {'-- OK'} else {'-- !!! FAILED !!!'})"
@@ -64,7 +64,7 @@ $foundOk = $puneIds -contains $tid
 if (-not $foundOk) { $pass = $false }
 
 # type filter: it is not a trainer business
-$trainerIds = & $idsOf (Nearby $anonH "trainer_business")
+$trainerIds = & $idsOf (Nearby $anonH "artist_page")
 $typeOk = -not ($trainerIds -contains $tid)
 "3. Type filter excludes it from 'artists': $(if ($typeOk) {'-- OK'} else {'-- !!! FAILED !!!'})"
 if (-not $typeOk) { $pass = $false }
@@ -72,7 +72,7 @@ if (-not $typeOk) { $pass = $false }
 # The studio is unlisted -> gone from anonymous discovery, still visible to the owner.
 #
 # ⚠ THE SERVICE ROLE UNLISTS IT, not the owner (11 Sep 2026). This line used to
-# PATCH `tenants` with the OWNER's token, and it stopped working the day
+# PATCH `businesses` with the OWNER's token, and it stopped working the day
 # `20260913100000_doors_that_were_not_doors` dropped the column-less update
 # policy that made such a PATCH possible — the same policy that let an owner
 # flip `type` and put a business on Discover having paid nothing. So this proof
@@ -84,7 +84,7 @@ if (-not $typeOk) { $pass = $false }
 # not the subject, and ops is the honest hand for it (Subscribe-Studio above
 # already lists it the same way). A REAL owner-side List / Unlist control has
 # never existed; it is on the UI parity backlog.
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH -Body '{"visibility":"unlisted"}' | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH -Body '{"visibility":"unlisted"}' | Out-Null
 $anonSees = (& $idsOf (Nearby $anonH "studio")) -contains $tid
 $ownerSees = (& $idsOf (Nearby (Api $a.access_token) "studio")) -contains $tid
 $hideOk = (-not $anonSees) -and $ownerSees
@@ -93,8 +93,8 @@ if (-not $hideOk) { $pass = $false }
 
 # far away: search from New Delhi must not contain the Pune studio (re-list first,
 # through the same ops door for the same reason as above)
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH -Body '{"visibility":"listed"}' | Out-Null
-$delhi = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_tenants" -Headers $anonH -Body (@{ p_lat = 28.6139; p_lng = 77.2090; p_radius_km = 25; p_type = "studio" } | ConvertTo-Json)
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH -Body '{"visibility":"listed"}' | Out-Null
+$delhi = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_businesses" -Headers $anonH -Body (@{ p_lat = 28.6139; p_lng = 77.2090; p_radius_km = 25; p_type = "studio" } | ConvertTo-Json)
 $farOk = -not ((& $idsOf $delhi) -contains $tid)
 "5. Search from New Delhi (25 km) excludes the Pune studio: $(if ($farOk) {'-- RADIUS OK'} else {'-- !!! FAILED !!!'})"
 if (-not $farOk) { $pass = $false }

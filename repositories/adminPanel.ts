@@ -50,7 +50,9 @@ export interface AuditEntry {
   actorId: string;
   actorEmail: string | null;
   action: string;
-  subjectKind: "profile" | "tenant" | "request" | "thread";
+  /** `tenant` is the legacy spelling of `business` on rows written before
+   *  16 Sep 2026 — admin_audit is immutable, so they stay; read the two as one */
+  subjectKind: "profile" | "business" | "tenant" | "request" | "thread";
   subjectId: string | null;
   subjectLabel: string | null;
   reason: string | null;
@@ -117,7 +119,7 @@ export async function findAdminAccounts(
   }
   return ((data ?? []) as Array<{
     id: string; email: string | null; full_name: string; role: ProfileRole; city: string | null;
-    avatar_path: string | null; verified_at: string | null; suspended_at: string | null;
+    profile_photo_path: string | null; verified_at: string | null; suspended_at: string | null;
     suspended_reason: string | null; is_admin: boolean; has_plan: boolean; owns: number;
     created_at: string; last_sign_in_at: string | null;
   }>).map((r) => ({
@@ -126,7 +128,7 @@ export async function findAdminAccounts(
     fullName: r.full_name,
     role: r.role,
     city: r.city,
-    avatarPath: r.avatar_path,
+    avatarPath: r.profile_photo_path,
     verifiedAt: r.verified_at,
     suspendedAt: r.suspended_at,
     suspendedReason: r.suspended_reason,
@@ -156,7 +158,7 @@ export async function unsuspendAccount(supabase: SupabaseClient, accountId: stri
 
 export interface AdminBusiness {
   id: string;
-  type: "studio" | "trainer_business";
+  type: "studio" | "artist_page";
   name: string;
   city: string | null;
   area: string | null;
@@ -197,7 +199,7 @@ export async function findAdminBusinesses(
     city: (r.city as string) ?? null,
     area: (r.area as string) ?? null,
     visibility: r.visibility as AdminBusiness["visibility"],
-    photoPath: (r.photo_path as string) ?? null,
+    photoPath: (r.profile_photo_path as string) ?? null,
     verifiedAt: (r.verified_at as string) ?? null,
     ownerId: (r.owner_id as string) ?? null,
     ownerName: (r.owner_name as string) ?? null,
@@ -223,8 +225,8 @@ export async function setTenantVisibility(
   visibility: "listed" | "unlisted",
   reason?: string | null
 ): Promise<void> {
-  const { error } = await supabase.rpc("admin_set_tenant_visibility", {
-    p_tenant_id: tenantId,
+  const { error } = await supabase.rpc("admin_set_business_visibility", {
+    p_business_id: tenantId,
     p_visibility: visibility,
     p_reason: reason ?? null,
   });
@@ -233,7 +235,7 @@ export async function setTenantVisibility(
   }
 }
 
-export type ReportSubjectKind = "tenant" | "profile" | "crew" | "event" | "class";
+export type ReportSubjectKind = "business" | "profile" | "crew" | "event" | "class";
 export type ReportReason = "impersonation" | "not_a_real_business" | "stolen_content" | "offensive" | "spam" | "unsafe" | "other";
 export type ReportStatus = "open" | "actioned" | "dismissed";
 
@@ -399,8 +401,8 @@ export async function findAdminPayments(
       payerId: (r.payer_id as string) ?? null,
       payerName: (r.payer_name as string) ?? "Someone",
       payerEmail: (r.payer_email as string) ?? null,
-      tenantId: (r.tenant_id as string) ?? null,
-      tenantName: (r.tenant_name as string) ?? null,
+      tenantId: (r.business_id as string) ?? null,
+      tenantName: (r.business_name as string) ?? null,
       what: (r.what as string) ?? "",
       refundedInr: n(r.refunded_inr),
     })),
@@ -454,8 +456,8 @@ export async function findAdminRefunds(
       providerRefundId: (r.provider_refund_id as string) ?? null,
       learnerId: (r.learner_id as string) ?? null,
       learnerName: (r.learner_name as string) ?? "Someone",
-      tenantId: (r.tenant_id as string) ?? null,
-      tenantName: (r.tenant_name as string) ?? null,
+      tenantId: (r.business_id as string) ?? null,
+      tenantName: (r.business_name as string) ?? null,
       classTitle: (r.class_title as string) ?? "A class",
       waitingDays: n(r.waiting_days),
     })),
@@ -500,8 +502,8 @@ export async function findAdminPayouts(
       providerRef: (r.provider_ref as string) ?? null,
       paidOn: r.paid_on as string,
       createdAt: r.created_at as string,
-      tenantId: (r.tenant_id as string) ?? null,
-      tenantName: (r.tenant_name as string) ?? null,
+      tenantId: (r.business_id as string) ?? null,
+      tenantName: (r.business_name as string) ?? null,
       personId: (r.person_id as string) ?? null,
       personName: (r.person_name as string) ?? "Someone",
     })),

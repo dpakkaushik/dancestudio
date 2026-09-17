@@ -48,7 +48,7 @@ export default async function VerificationsPage({
   if (tab === "pending") {
     await Promise.all(
       requests.map(async (r) => {
-        /* every request is a studio's now — the reads ask for tenant_id, so a
+        /* every request is a studio's now — the reads ask for business_id, so a
            legacy organization row cannot reach this page at all */
         if (r.tenantId) {
           proof[r.tenantId] = await findStudioProofPhotos(supabase, r.tenantId).catch(() => []);

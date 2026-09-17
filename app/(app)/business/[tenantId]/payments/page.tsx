@@ -18,8 +18,8 @@ export default async function TenantPaymentsPage({ params }: { params: Promise<{
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [role, tenants] = await Promise.all([findMyMembershipRole(supabase, tenantId), findMyTenants(supabase)]);
-  const tenant = tenants.find((t) => t.id === tenantId);
+  const [role, businesses] = await Promise.all([findMyMembershipRole(supabase, tenantId), findMyTenants(supabase)]);
+  const tenant = businesses.find((t) => t.id === tenantId);
   if (!role || !tenant) redirect("/business");
   const rows = await findTenantInvoices(supabase, tenantId);
   return <PaymentsScreen side="tenant" methods={methodUsesOf(rows)} tenant={tenant} canEdit={role === "owner"} />;

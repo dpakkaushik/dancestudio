@@ -9,7 +9,7 @@ import { setTenantLocation } from "@/repositories/tenants";
 /** SAVING A PLACE (11 Sep 2026).
  *
  *  Rule 6: the numbers arrived from a browser, so they are validated here and
- *  AGAIN inside `set_tenant_location`, which re-checks ownership and the same
+ *  AGAIN inside `set_business_location`, which re-checks ownership and the same
  *  bounds. Two checks rather than one because these two are reached by
  *  different doors — a server action and a direct RPC call — and each has to
  *  hold on its own.

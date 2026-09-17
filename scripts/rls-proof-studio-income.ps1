@@ -62,8 +62,8 @@ function New-EmailUser($email, $name, $role) {
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
 function Add-Member($tenantId, $userId, $memberRole, $byUser) {
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $tenantId; user_id = $userId; member_role = $memberRole
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $tenantId; user_id = $userId; member_role = $memberRole
     created_by = $byUser; updated_by = $byUser } | ConvertTo-Json) | Out-Null
 }
 # a captured payment of Rs 300 by the given method, exactly as the webhook applies one
@@ -72,7 +72,7 @@ function Buy-Seat($learner, $sessionId, $tag, $method) {
   Rpc (Api $learner.token) "attach_provider_order" @{ p_order_id = $o.id; p_provider_order_id = "order_$tag" } | Out-Null
   Rpc $svcH "apply_captured_payment" @{ p_provider_order_id = "order_$tag"; p_provider_payment_id = "pay_$tag";
     p_amount_paise = 30000; p_method = $method } | Out-Null
-  return (Get-Rows (Api $learner.token) "enrollments?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
+  return (Get-Rows (Api $learner.token) "class_bookings?session_id=eq.$sessionId&user_id=eq.$($learner.id)&status=eq.enrolled&select=id")[0].id
 }
 # the clock is the only thing the page cannot control, so the proof moves it:
 # a payment row's created_at, rewritten with the service role (no policy admits
@@ -102,9 +102,9 @@ function New-Bucket { return @{ gross = 0; n = 0; refunded = 0; refundCount = 0;
 # the repository's own three queries, verbatim in shape (repositories/income.ts
 # findTenantIncome), then bucketed by IST month the way it buckets them
 function Income-Of($headers, $tenantId) {
-  $pay = Get-Rows $headers "payments?select=amount_inr,status,method,created_at&tenant_id=eq.$tenantId&status=in.(captured,refunded)&deleted_at=is.null&created_at=gte.$fromQ&order=created_at.desc"
-  $ref = Get-Rows $headers "refunds?select=amount_inr,created_at,decided_at,updated_at&tenant_id=eq.$tenantId&status=eq.processed&deleted_at=is.null&updated_at=gte.$fromQ"
-  $open = Get-Rows $headers "refunds?select=amount_inr&tenant_id=eq.$tenantId&status=in.(requested,pending)&deleted_at=is.null"
+  $pay = Get-Rows $headers "payments?select=amount_inr,status,method,created_at&business_id=eq.$tenantId&status=in.(captured,refunded)&deleted_at=is.null&created_at=gte.$fromQ&order=created_at.desc"
+  $ref = Get-Rows $headers "refunds?select=amount_inr,created_at,decided_at,updated_at&business_id=eq.$tenantId&status=eq.processed&deleted_at=is.null&updated_at=gte.$fromQ"
+  $open = Get-Rows $headers "refunds?select=amount_inr&business_id=eq.$tenantId&status=in.(requested,pending)&deleted_at=is.null"
   $months = @{}
   foreach ($p in $pay) {
     $k = Month-Key $p.created_at
@@ -142,17 +142,17 @@ foreach ($i in 0..6) { $learners += New-EmailUser "income-l$i-$stamp@example.com
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Income Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Income Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $rival.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
 
@@ -160,7 +160,7 @@ try {
   $tmr = (Get-Date).AddDays(1)
   # a PAID class tomorrow: every cancellation lands inside the 48 h window where
   # the studio decides, which is how each refund state is produced on purpose
-  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Income Class $stamp";
+  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Income Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
     p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
   $sid = (Get-Rows $svcH "class_sessions?class_id=eq.$($cls.id)&select=id")[0].id
@@ -220,7 +220,7 @@ try {
   # 6. a refund SETTLED at the desk is this month's deduction; the payment it
   #    reverses still COUNTS AS CAME IN - the statement prints gross above and
   #    the refund beneath, never a smaller gross
-  $r2 = (Rpc (Api $learners[2].token) "cancel_booking" @{ p_enrollment_id = $e[2]; p_reason = "Family emergency" }).refund.id
+  $r2 = (Rpc (Api $learners[2].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[2]; p_reason = "Family emergency" }).refund.id
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r2; p_decision = "approve" } | Out-Null
   Rpc (Api $owner.token) "settle_refund_offline" @{ p_refund_id = $r2; p_note = "Cash at the desk" } | Out-Null
   $i5 = Income-Of (Api $owner.token) $ta.id
@@ -228,21 +228,21 @@ try {
     ((M $i5 $curKey "refunded") -eq 300) -and ((M $i5 $curKey "refundCount") -eq 1) -and ((M $i5 $curKey "gross") -eq 900))
 
   # 7. an OPEN request is being asked back - the gold tile - and is not refunded
-  Rpc (Api $learners[3].token) "cancel_booking" @{ p_enrollment_id = $e[3]; p_reason = "Changed my mind" } | Out-Null
+  Rpc (Api $learners[3].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[3]; p_reason = "Changed my mind" } | Out-Null
   $i6 = Income-Of (Api $owner.token) $ta.id
   Check 7 "An open request: Rs $($i6.open) asked back ($($i6.openCount) row), refunded still Rs $(M $i6 $curKey 'refunded')" (
     ($i6.open -eq 300) -and ($i6.openCount -eq 1) -and ((M $i6 $curKey "refunded") -eq 300))
 
   # 8. a DECLINED refund is in neither total - a refusal is a decision, not
   #    money moving (the prototype counts only Paid, and Requested + Processing)
-  $r0 = (Rpc (Api $learners[0].token) "cancel_booking" @{ p_enrollment_id = $e[0]; p_reason = "Too far" }).refund.id
+  $r0 = (Rpc (Api $learners[0].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[0]; p_reason = "Too far" }).refund.id
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r0; p_decision = "decline"; p_note = "Outside our policy" } | Out-Null
   $i7 = Income-Of (Api $owner.token) $ta.id
   Check 8 "A declined refund is in neither total (asked back Rs $($i7.open), refunded Rs $(M $i7 $curKey 'refunded'))" (
     ($i7.open -eq 300) -and ((M $i7 $curKey "refunded") -eq 300))
 
   # 9. nor is a FAILED one - approved, so briefly asked back, then the rail broke
-  $r1 = (Rpc (Api $learners[1].token) "cancel_booking" @{ p_enrollment_id = $e[1]; p_reason = "Injury" }).refund.id
+  $r1 = (Rpc (Api $learners[1].token) "cancel_class_booking_with_reason" @{ p_class_booking_id = $e[1]; p_reason = "Injury" }).refund.id
   Rpc (Api $owner.token) "decide_refund" @{ p_refund_id = $r1; p_decision = "approve" } | Out-Null
   $mid = Income-Of (Api $owner.token) $ta.id
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/refunds?id=eq.$r1" -Headers $svcH `
@@ -253,7 +253,7 @@ try {
 
   # 10. a rival studio's takings are its own: theirs never lands in ours, and
   #     their screen counts only theirs
-  $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_tenant_id = $tb.id; p_title = "Rival Class $stamp";
+  $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_business_id = $tb.id; p_title = "Rival Class $stamp";
     p_style = "Bollywood"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
     p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
   $rsid = (Get-Rows $svcH "class_sessions?class_id=eq.$($rcls.id)&select=id")[0].id
@@ -283,13 +283,13 @@ try {
   Buy-Seat $learners[6] $sid "OLD$stamp" "card" | Out-Null
   Backdate-Payment "OLD$stamp" ($firstOfMonth.AddMonths(-4).AddDays(3).ToString("yyyy-MM-ddTHH:mm:sszzz"))
   $i10 = Income-Of (Api $owner.token) $ta.id
-  $unbounded = (Get-Rows (Api $owner.token) "payments?select=id&tenant_id=eq.$($ta.id)&status=in.(captured,refunded)&deleted_at=is.null").Count
+  $unbounded = (Get-Rows (Api $owner.token) "payments?select=id&business_id=eq.$($ta.id)&status=in.(captured,refunded)&deleted_at=is.null").Count
   Check 13 "The window reads $($i10.payRows) payments; an unbounded read finds $unbounded; this month still Rs $(M $i10 $curKey 'gross')" (
     ($i10.payRows -eq 4) -and ($unbounded -eq 5) -and ((M $i10 $curKey "gross") -eq 900))
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
   foreach ($u in (@($owner, $trainer, $rival) + $learners)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }

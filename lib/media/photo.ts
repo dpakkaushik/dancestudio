@@ -39,7 +39,7 @@ export type PhotoOwner =
    *  verified; `orgId` is that owner */
   | { kind: "studioHeader"; id: string; orgId: string };
 
-const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery" };
+const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "businesses", crew: "crews", gallery: "gallery" };
 
 const extOf = (file: { type: string }): string => (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");
 const randomName = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`);

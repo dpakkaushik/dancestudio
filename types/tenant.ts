@@ -1,8 +1,8 @@
-/** studio | trainer_business (an artist page) | **org** — an organization's own
+/** studio | artist_page (an artist page) | **org** — an organization's own
  *  hosting row (R15, 9 Sep 2026). An `org` tenant is never listed, never on
  *  Discover, never in search and has no public page; it exists so an event can
  *  belong to the organization and print the organization's name as its host. */
-export type TenantType = "studio" | "trainer_business" | "org";
+export type TenantType = "studio" | "artist_page" | "org";
 
 import type { SocialLink } from "@/types/profile";
 
@@ -36,7 +36,7 @@ export interface Tenant {
   /** set by DanceOS after KYC — the tick */
   verifiedAt: string | null;
   /** WHEN AN OWNER PLACED THIS BUSINESS ON THE MAP (11 Sep 2026). Null means
-   *  its lat/lng is still the city centroid `create_tenant_with_owner`
+   *  its lat/lng is still the city centroid `create_business_with_owner`
    *  defaulted to — a guess, not an address — so Discover cannot honestly say
    *  how far away it is, and the hub asks for the pin. */
   locationSetAt?: string | null;

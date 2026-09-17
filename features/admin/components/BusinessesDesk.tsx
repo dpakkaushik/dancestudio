@@ -161,7 +161,7 @@ export function BusinessesDesk({
                never put it back**, because the button was replaced by a sentence
                about a rule that no longer exists ("its organization is not
                verified"). A reversible sanction that cannot be reversed from the
-               panel is not reversible. `guard_tenant_visibility` gates on the
+               panel is not reversible. `guard_business_visibility` gates on the
                STUDIO's badge and a live plan, and so does this now — the screen
                says what the database will actually refuse. */
             const blockedFromListing = !live && b.type === "studio" && (!b.verifiedAt || !(b.subStatus && ["active", "past_due", "canceled"].includes(b.subStatus)));

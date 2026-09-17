@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /** THE CITY LIST IS NOT A LIST ANY MORE (11 Sep 2026) — the user: "instead of
  *  hardcoded city names I want to use APIs… nothing should be hardcoded."
  *
- *  `DOS_CITIES` was twelve names in a TypeScript file and `city_centroids` was
+ *  `DOS_CITIES` was twelve names in a TypeScript file and `cities` was
  *  the same twelve seeded into a table. Between them they decided which cities
  *  could exist at all: a studio in Kochi could not say it was in Kochi.
  *
@@ -31,7 +31,7 @@ export interface DiscoverCity {
  *  search to the middle of India and emptied the shelf for everybody — a broken
  *  Discover, in production, for as long as the migration sat unapplied.
  *
- *  `city_centroids` has existed since Step 5 and is readable by anyone, so the
+ *  `cities` has existed since Step 5 and is readable by anyone, so the
  *  fallback is a plain select over it. It has no business counts, which only
  *  costs the chips their ordering. */
 export async function findDiscoverCities(supabase: SupabaseClient): Promise<DiscoverCity[]> {
@@ -46,7 +46,7 @@ export async function findDiscoverCities(supabase: SupabaseClient): Promise<Disc
   }
 
   const { data: rows, error: tableError } = await supabase
-    .from("city_centroids")
+    .from("cities")
     .select("city, lat, lng")
     .is("deleted_at", null)
     .order("city")

@@ -59,7 +59,7 @@ export default async function ProfilePage() {
      page. It is filtered out here so "Your studios" counts studios and the
      Schedule button never points at a page that does not exist. */
   const businesses = tenants.filter((t) => t.type !== "org");
-  const biz = businesses.find((t) => t.type === "trainer_business") ?? businesses[0];
+  const biz = businesses.find((t) => t.type === "artist_page") ?? businesses[0];
   const scheduleHref = biz ? `/${biz.type === "studio" ? "studio" : "artist"}/${biz.id}/schedule` : null;
 
   return (
@@ -74,7 +74,7 @@ export default async function ProfilePage() {
       scheduleHref={scheduleHref}
       prefs={prefs}
       business={biz ?? null}
-      tenants={businesses}
+      businesses={businesses}
       plan={plan}
       isAdmin={isAdmin}
       gstVerified={Boolean(gst.verifiedAt)}

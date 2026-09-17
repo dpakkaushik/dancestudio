@@ -93,15 +93,15 @@ $owner = New-EmailUser "media-owner-$stamp@example.com" "Media Owner $stamp" "or
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Media Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Media Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
 $crew = Rpc (Api $me.token) "create_crew" @{ p_name = "Media Crew $stamp"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
 $uploaded = @()
@@ -124,11 +124,11 @@ try {
     ($loose -ne "") -and ($rootish -ne "") -and ($stranger -ne ""))
 
   # 3. THE ROW IS SET BY THE RPC, AND ONLY FOR A FILE IN YOUR OWN FOLDER
-  $set = Rpc (Api $me.token) "set_my_avatar" @{ p_path = $mine }
-  $wrongFolder = Fails { Rpc (Api $me.token) "set_my_avatar" @{ p_path = "avatars/$($other.id)/theirs.png" } }
-  $row = (Get-Rows (Api $me.token) "profiles?id=eq.$($me.id)&select=avatar_path")[0]
-  Check 3 "The RPC records '$set'; pointing at somebody else's folder is refused ($wrongFolder); the row now holds $($row.avatar_path)" (
-    ($set -eq $mine) -and ($wrongFolder -match "your own folder") -and ($row.avatar_path -eq $mine))
+  $set = Rpc (Api $me.token) "set_my_profile_photo" @{ p_path = $mine }
+  $wrongFolder = Fails { Rpc (Api $me.token) "set_my_profile_photo" @{ p_path = "avatars/$($other.id)/theirs.png" } }
+  $row = (Get-Rows (Api $me.token) "profiles?id=eq.$($me.id)&select=profile_photo_path")[0]
+  Check 3 "The RPC records '$set'; pointing at somebody else's folder is refused ($wrongFolder); the row now holds $($row.profile_photo_path)" (
+    ($set -eq $mine) -and ($wrongFolder -match "your own folder") -and ($row.profile_photo_path -eq $mine))
 
   # 4. A STRANGER CAN READ IT - that is what a public bucket is for
   $read = Invoke-WebRequest -Method Get -Uri "$base/storage/v1/object/public/media/$mine" -UseBasicParsing
@@ -140,8 +140,8 @@ try {
   Upload $owner.token $bizPath | Out-Null
   $uploaded += @{ token = $owner.token; path = $bizPath }
   $bizSneak = Fails { Upload $me.token "tenants/$($ta.id)/sneak-$stamp.png" }
-  $bizSet = Rpc (Api $owner.token) "set_tenant_photo" @{ p_tenant_id = $ta.id; p_path = $bizPath }
-  $bizSetByOther = Fails { Rpc (Api $me.token) "set_tenant_photo" @{ p_tenant_id = $ta.id; p_path = $bizPath } }
+  $bizSet = Rpc (Api $owner.token) "set_business_profile_photo" @{ p_business_id = $ta.id; p_path = $bizPath }
+  $bizSetByOther = Fails { Rpc (Api $me.token) "set_business_profile_photo" @{ p_business_id = $ta.id; p_path = $bizPath } }
   Check 5 "The owner writes the business folder and records it ('$bizSet'); a bystander cannot write there ($bizSneak) or record one ($bizSetByOther)" (
     ($bizSet -eq $bizPath) -and ($bizSneak -ne "") -and ($bizSetByOther -match "owner"))
 
@@ -158,14 +158,14 @@ try {
 
   # 7. A ROW CANNOT BE MADE TO POINT AT ANOTHER ENTITY'S FILE
   $crossCrew = Fails { Rpc (Api $me.token) "set_crew_photo" @{ p_crew_id = $crew.id; p_path = $bizPath } }
-  $crossBiz = Fails { Rpc (Api $owner.token) "set_tenant_photo" @{ p_tenant_id = $ta.id; p_path = $crewPath } }
-  $crossAvatar = Fails { Rpc (Api $me.token) "set_my_avatar" @{ p_path = $crewPath } }
+  $crossBiz = Fails { Rpc (Api $owner.token) "set_business_profile_photo" @{ p_business_id = $ta.id; p_path = $crewPath } }
+  $crossAvatar = Fails { Rpc (Api $me.token) "set_my_profile_photo" @{ p_path = $crewPath } }
   Check 7 "A crew cannot point at a business's file ($crossCrew); a business at a crew's ($crossBiz); an avatar at either ($crossAvatar)" (
     ($crossCrew -match "belong to this crew") -and ($crossBiz -match "belong to this business") -and ($crossAvatar -match "your own folder"))
 
   # 8. AND A PHOTO CAN BE TAKEN DOWN: the row cleared, the file deleted by its owner
-  Rpc (Api $me.token) "set_my_avatar" @{ p_path = $null } | Out-Null
-  $cleared = (Get-Rows (Api $me.token) "profiles?id=eq.$($me.id)&select=avatar_path")[0]
+  Rpc (Api $me.token) "set_my_profile_photo" @{ p_path = $null } | Out-Null
+  $cleared = (Get-Rows (Api $me.token) "profiles?id=eq.$($me.id)&select=profile_photo_path")[0]
   $deleteByOther = Fails { Remove-Object $other.token $mine }
   Remove-Object $me.token $mine | Out-Null
   # the OBJECT is what a delete removes; the public URL may still be served from
@@ -178,8 +178,8 @@ try {
   $names = @(); foreach ($o in $listed) { if ($o.name) { $names += $o.name } }
   $stillThere = @($names | Where-Object { $_ -eq "proof-$stamp.png" }).Count
   $uploaded = @($uploaded | Where-Object { $_.path -ne $mine })
-  Check 8 "Clearing the row leaves avatar_path=$($cleared.avatar_path); somebody else cannot delete the file ($deleteByOther); its owner can, and the folder now lists $stillThere copies of it" (
-    ($null -eq $cleared.avatar_path) -and ($deleteByOther -ne "") -and ($stillThere -eq 0))
+  Check 8 "Clearing the row leaves profile_photo_path=$($cleared.profile_photo_path); somebody else cannot delete the file ($deleteByOther); its owner can, and the folder now lists $stillThere copies of it" (
+    ($null -eq $cleared.profile_photo_path) -and ($deleteByOther -ne "") -and ($stillThere -eq 0))
 
   # 9. THE BUCKET ITSELF REFUSES WHAT IT SAID IT WOULD: only image types
   $badType = ""
@@ -195,7 +195,7 @@ try {
 }
 finally {
   foreach ($f in $uploaded) { try { Remove-Object $f.token $f.path | Out-Null } catch {} }
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   foreach ($u in @($me, $other, $owner)) {
     if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
   }

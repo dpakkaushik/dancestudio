@@ -9,7 +9,7 @@ const stampNowIso = (): string => new Date().toISOString();
 
 /** The event manager (prototype S_eventmanage 13946): Details, Participants,
  *  Spectators. Any member of the organiser reads it and runs the door — the
- *  RPCs say so too (`is_tenant_member`); editing stays with owners and trainers. */
+ *  RPCs say so too (`is_business_member`); editing stays with owners and trainers. */
 export default async function EventManagePage({ params }: { params: Promise<{ tenantId: string; eventId: string }> }) {
   const { tenantId, eventId } = await params;
   const supabase = await createSupabaseServerClient();
@@ -19,8 +19,8 @@ export default async function EventManagePage({ params }: { params: Promise<{ te
   if (!user) {
     redirect("/login");
   }
-  const tenants = await findMyTenants(supabase);
-  if (!tenants.some((t) => t.id === tenantId)) {
+  const businesses = await findMyTenants(supabase);
+  if (!businesses.some((t) => t.id === tenantId)) {
     redirect("/business");
   }
   const [role, event] = await Promise.all([findMyMembershipRole(supabase, tenantId), findEventById(supabase, eventId)]);

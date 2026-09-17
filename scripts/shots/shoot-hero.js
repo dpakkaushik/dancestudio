@@ -132,16 +132,16 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.getByLabel("Room 1 name").fill("Studio A");
     await org.getByRole("button", { name: "Create studio" }).click();
     await org.getByText("EEE Dance Studio").first().waitFor();
-    const rows = await rest(`tenant_members?user_id=eq.${orgId}&member_role=eq.owner&deleted_at=is.null&select=tenant_id,tenants(type)`);
-    studioId = (rows.find((r) => r.tenants && r.tenants.type === "studio") || {}).tenant_id;
+    const rows = await rest(`business_members?user_id=eq.${orgId}&member_role=eq.owner&deleted_at=is.null&select=business_id,businesses(type)`);
+    studioId = (rows.find((r) => r.businesses && r.businesses.type === "studio") || {}).business_id;
     if (!studioId) throw new Error("the studio was not created");
     /* the badge, a granted ₹0 subscription and the listing, so the page is the one a live studio sees */
-    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ verified_at: new Date().toISOString() }) });
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ verified_at: new Date().toISOString() }) });
     await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
       method: "POST", headers: adminHeaders,
-      body: JSON.stringify({ kind: "studio", user_id: orgId, tenant_id: studioId, plan_key: "studio_monthly", price_inr: 0, period: "monthly", status: "active", current_period_start: today, current_period_end: until, granted: true, note: "Granted by shoot-hero.js — nothing charged", created_by: orgId, updated_by: orgId }),
+      body: JSON.stringify({ kind: "studio", user_id: orgId, business_id: studioId, plan_key: "studio_monthly", price_inr: 0, period: "monthly", status: "active", current_period_start: today, current_period_end: until, granted: true, note: "Granted by shoot-hero.js — nothing charged", created_by: orgId, updated_by: orgId }),
     });
-    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ visibility: "listed" }) });
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ visibility: "listed" }) });
 
     /* ── THE HUB, ONE CARD PER STUDIO (15 Sep 2026) ── */
     await org.goto(`${BASE}/business`);
@@ -234,13 +234,13 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await sheet.getByRole("button", { name: "Change address" }).count()) === 1, "edit studio: Done locks it again");
     await shot("studio-edit-sheet");
 
-    /* the disc's picture — tenants.photo_path, through set_tenant_photo */
+    /* the disc's picture — businesses.profile_photo_path, through set_business_profile_photo */
     await sheet.getByLabel("Add a photo").setInputFiles(FILE);
     await disc(org).locator("img").first().waitFor({ timeout: 20000 });
     check((await discImgs(org)) === 1, "edit studio: the picture landed on the disc behind the sheet");
     check((await railImgs(org)) === 0, "edit studio: and not in the header");
-    const photoPath = await rest(`tenants?id=eq.${studioId}&select=photo_path`);
-    check(String(photoPath[0] && photoPath[0].photo_path).startsWith(`tenants/${studioId}/`), "tenants.photo_path is set, in the studio's own folder");
+    const photoPath = await rest(`businesses?id=eq.${studioId}&select=profile_photo_path`);
+    check(String(photoPath[0] && photoPath[0].profile_photo_path).startsWith(`tenants/${studioId}/`), "businesses.profile_photo_path is set, in the studio's own folder");
 
     /* ── THE HEADER IS A DRAFT (16 Sep 2026) ────────────────────────────────
        The user pressed ✕ on four pictures, pressed CANCEL, and lost all four.
@@ -249,7 +249,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        is what moves anything at all. ⚠ This block used to assert the BUG — it
        pressed ✕ and then waited for the rail behind the sheet to drop. */
     const studioRows = async () => {
-      const live = await rest(`org_proof_photos?tenant_id=eq.${studioId}&deleted_at=is.null&select=id`);
+      const live = await rest(`studio_photos?business_id=eq.${studioId}&deleted_at=is.null&select=id`);
       return Array.isArray(live) ? live.length : -1;
     };
     await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
@@ -311,12 +311,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       check((await org.getByLabel(/is the only one/).count()) === 1, "media desk: the only picture's ✕ is disabled and says why");
       await shot("studio-media");
 
-      /* the public page reads the header through tenant_header_photos, which
+      /* the public page reads the header through business_header_photos, which
          arrives with migration 20260915090000 — say so on the line when it is
          not there yet, so a red line reads as "apply the migration" and not
          as a broken page */
-      const rpcProbe = await fetch(`${supabaseUrl}/rest/v1/rpc/tenant_header_photos`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ p_tenant_id: studioId }) });
-      const rpcNote = rpcProbe.ok ? "" : " (NEEDS migration 20260915090000 — tenant_header_photos is not on the database)";
+      const rpcProbe = await fetch(`${supabaseUrl}/rest/v1/rpc/business_header_photos`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ p_business_id: studioId }) });
+      const rpcNote = rpcProbe.ok ? "" : " (NEEDS migration 20260915090000 — business_header_photos is not on the database)";
       /* to the organization … */
       await org.goto(`${BASE}/studio/${studioId}`);
       await org.getByTestId("public-hero").waitFor();
@@ -389,7 +389,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check(await me.getByText("Mobile", { exact: true }).isVisible(), "edit profile: Name · Mobile · Update profile · Update header, in that order");
     check((await mySheet.getByLabel("Add picture").count()) === 1, "edit profile: a user is offered ONE header picture");
     const personRows = async () => {
-      const live = await rest(`profile_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
+      const live = await rest(`profile_header_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
       return Array.isArray(live) ? live.length : -1;
     };
     await mySheet.getByLabel("Add picture").setInputFiles(FILE);
@@ -432,9 +432,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await mySheet.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 2);
       check((await rail(me).getAttribute("role")) === "region", "artist home: two pictures, so the header swipes");
-      check((await personRows()) === 2, "profile_photos holds the two rows, in the person's folder");
+      check((await personRows()) === 2, "profile_header_photos holds the two rows, in the person's folder");
       await shotMe("artist-home");
-      /* a person's floor is 0 — `remove_my_gallery_photo` has no minimum */
+      /* a person's floor is 0 — `remove_my_header_photo` has no minimum */
       await me.getByRole("button", { name: "Edit profile", exact: true }).click();
       await mySheet.waitFor();
       await mySheet.getByLabel("Remove photo 1").click();
@@ -461,7 +461,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     console.log("FAILED", String(e).slice(0, 400));
     fail += 1;
   } finally {
-    if (studioId) await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, { method: "DELETE", headers: adminHeaders });
+    if (studioId) await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "DELETE", headers: adminHeaders });
     if (orgId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${orgId}`, { method: "DELETE", headers: adminHeaders });
     if (userId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, { method: "DELETE", headers: adminHeaders });
     await browser.close();

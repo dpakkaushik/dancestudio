@@ -54,8 +54,8 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
   if (!link.hashed_token) throw new Error(`generate_link failed: ${JSON.stringify(link)}`);
   await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot Verify ${stamp}`, role: "org", city: "Pune", created_by: link.id, updated_by: link.id });
   /* an unverified studio — the form's whole reason to exist */
-  const [tenant] = await rest("POST", "/rest/v1/tenants", { type: "studio", name: `Shot Verify Studio ${stamp}`, area: "Kothrud", city: "Pune", lat: 18.5204, lng: 73.8567, visibility: "unlisted", created_by: link.id, updated_by: link.id });
-  await rest("POST", "/rest/v1/tenant_members", { tenant_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id });
+  const [tenant] = await rest("POST", "/rest/v1/businesses", { type: "studio", name: `Shot Verify Studio ${stamp}`, area: "Kothrud", city: "Pune", lat: 18.5204, lng: 73.8567, visibility: "unlisted", created_by: link.id, updated_by: link.id });
+  await rest("POST", "/rest/v1/business_members", { business_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id });
 
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 2 });
@@ -117,16 +117,16 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     await page.getByRole("status", { name: "Studio verification: Under review" }).waitFor({ timeout: 15000 });
     await page.waitForTimeout(400);
     await page.screenshot({ path: path.join(OUT, "verify-4-under-review.png"), fullPage: true });
-    const saved = await rest("GET", `/rest/v1/tenants?id=eq.${tenant.id}&select=socials`);
-    const req = await rest("GET", `/rest/v1/org_verification_requests?tenant_id=eq.${tenant.id}&deleted_at=is.null&select=status`);
+    const saved = await rest("GET", `/rest/v1/businesses?id=eq.${tenant.id}&select=socials`);
+    const req = await rest("GET", `/rest/v1/studio_verification_requests?business_id=eq.${tenant.id}&deleted_at=is.null&select=status`);
     check(saved[0]?.socials?.[0]?.url === "https://instagram.com/shotverify", `the typed host was saved as a real address (${saved[0]?.socials?.[0]?.url})`);
     check(req[0]?.status === "pending", "one press filed the request too");
   } finally {
     await browser.close();
-    await rest("DELETE", `/rest/v1/org_proof_photos?tenant_id=eq.${tenant.id}`).catch(() => undefined);
-    await rest("DELETE", `/rest/v1/org_verification_requests?tenant_id=eq.${tenant.id}`).catch(() => undefined);
-    await rest("DELETE", `/rest/v1/tenant_members?tenant_id=eq.${tenant.id}`).catch(() => undefined);
-    await rest("DELETE", `/rest/v1/tenants?id=eq.${tenant.id}`).catch(() => undefined);
+    await rest("DELETE", `/rest/v1/studio_photos?business_id=eq.${tenant.id}`).catch(() => undefined);
+    await rest("DELETE", `/rest/v1/studio_verification_requests?business_id=eq.${tenant.id}`).catch(() => undefined);
+    await rest("DELETE", `/rest/v1/business_members?business_id=eq.${tenant.id}`).catch(() => undefined);
+    await rest("DELETE", `/rest/v1/businesses?id=eq.${tenant.id}`).catch(() => undefined);
     await fetch(`${SUPABASE}/auth/v1/admin/users/${link.id}`, { method: "DELETE", headers: H });
   }
 

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** THE PRICE LIST (10 Sep 2026): what a plan costs is a ROW, not a constant.
  *
- *  `plan_catalog` holds the two prices the user set — ₹700 a month for the
+ *  `plans` holds the two prices the user set — ₹700 a month for the
  *  Artist plan, ₹1,200 a month per studio — and an admin changes them on
  *  /admin/plans. Every screen that prints a price reads it from here, and a new
  *  subscription is priced from the same row and keeps that price for its life:
@@ -61,7 +61,7 @@ const toCatalog = (r: CatalogRow): PlanCatalogRow => ({
 /** The plans on offer, for a signed-in reader. RLS shows the live rows. */
 export async function findPlanCatalog(supabase: SupabaseClient): Promise<PlanCatalogRow[]> {
   const { data, error } = await supabase
-    .from("plan_catalog")
+    .from("plans")
     .select(COLUMNS)
     .is("deleted_at", null)
     .eq("active", true)
@@ -113,14 +113,14 @@ export async function activateArtistPlan(supabase: SupabaseClient, plan: ArtistP
 /** Every plan, inactive ones too, with the provider plan it maps to — for the
  *  admin's price editor.
  *
- *  ⚠ THE ADMIN'S OWN SESSION, never the service role: `admin_plan_catalog()` is
+ *  ⚠ THE ADMIN'S OWN SESSION, never the service role: `admin_plans()` is
  *  `select ... where public.is_platform_admin()`, and a service-role connection
  *  has no `auth.uid()`, so it comes back EMPTY rather than refusing — a silent
  *  nothing that read as "that plan is not on offer" when
  *  `startSubscriptionAction` made this mistake (fixed 10 Sep 2026). Anything
  *  server-side that just needs the price uses `findPlanCatalog`. */
 export async function findAdminPlanCatalog(supabase: SupabaseClient): Promise<PlanCatalogRow[]> {
-  const { data, error } = await supabase.rpc("admin_plan_catalog");
+  const { data, error } = await supabase.rpc("admin_plans");
   if (error) {
     throw new Error(`admin.plans failed: ${error.message}`);
   }

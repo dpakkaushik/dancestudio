@@ -27,7 +27,7 @@ export async function findWhyNoStudio(supabase: SupabaseClient): Promise<string 
  *  events belong to and whose name a public event prints. Made on first ask,
  *  so this is safe to call before one exists. */
 export async function findMyOrgTenantId(supabase: SupabaseClient): Promise<string | null> {
-  const { data, error } = await supabase.rpc("my_org_tenant");
+  const { data, error } = await supabase.rpc("my_org_business");
   if (error) {
     throw new Error(`org.eventsHost failed: ${error.message}`);
   }
@@ -35,7 +35,7 @@ export async function findMyOrgTenantId(supabase: SupabaseClient): Promise<strin
 }
 
 export async function removeProofPhoto(supabase: SupabaseClient, id: string): Promise<void> {
-  const { error } = await supabase.rpc("remove_org_proof_photo", { p_id: id });
+  const { error } = await supabase.rpc("remove_studio_photo", { p_id: id });
   if (error) {
     throw new Error(error.message);
   }

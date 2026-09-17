@@ -25,7 +25,7 @@ test.use({ ...devices["Pixel 7"] });
 const FILTERS = '[aria-label="All filters"]';
 const DIALOG = '[role="dialog"]';
 
-/** Discover reads Supabase through the PostGIS `nearby_tenants` RPC, which can
+/** Discover reads Supabase through the PostGIS `nearby_businesses` RPC, which can
  *  transiently fetch-fail; a retry keeps a network blip from reading as a
  *  regression in back navigation, which is what this spec is actually about. */
 async function openDiscover(page: Page) {

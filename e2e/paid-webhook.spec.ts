@@ -87,13 +87,13 @@ async function subscribeStudio(tenantId: string, ownerId: string) {
     method: "POST",
     headers: serviceHeaders,
     body: JSON.stringify({
-      kind: "studio", user_id: ownerId, tenant_id: tenantId, plan_key: "studio_monthly", price_inr: 0, period: "monthly",
+      kind: "studio", user_id: ownerId, business_id: tenantId, plan_key: "studio_monthly", price_inr: 0, period: "monthly",
       status: "active", current_period_start: today, current_period_end: until, granted: true,
       note: "Granted by the webhook spec — nothing charged", created_by: ownerId, updated_by: ownerId,
     }),
   });
   if (!granted.ok) throw new Error(`could not grant the studio a subscription: ${granted.status} ${await granted.text()}`);
-  const listed = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenantId}`, {
+  const listed = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, {
     method: "PATCH",
     headers: serviceHeaders,
     body: JSON.stringify({ visibility: "listed" }),
@@ -116,7 +116,7 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
   const owner = await signInTestNumber("+919999999999");
   const learner = await signInTestNumber("+918888888888");
 
-  const tenant = await rpc<{ id: string }>(userHeaders(owner.token), "create_tenant_with_owner", {
+  const tenant = await rpc<{ id: string }>(userHeaders(owner.token), "create_business_with_owner", {
     p_name: `Webhook Proof Studio ${stamp}`,
     p_type: "studio",
     p_area: "Kothrud",
@@ -127,7 +127,7 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     await subscribeStudio(tenant.id, owner.userId);
     const inSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const created = await rpc<{ id: string }>(userHeaders(owner.token), "create_class_with_session", {
-      p_tenant_id: tenant.id,
+      p_business_id: tenant.id,
       p_title: `Webhook Paid ${stamp}`,
       p_style: "Hip-Hop",
       p_level: "beginner",
@@ -189,12 +189,12 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     const outcome = (await delivered.json()) as { result?: { outcome?: string } };
     expect(outcome.result?.outcome).toBe("enrolled");
 
-    const enrollments = await rows<{ status: string }>(
+    const class_bookings = await rows<{ status: string }>(
       userHeaders(learner.token),
-      `enrollments?session_id=eq.${sessionId}&select=status`
+      `class_bookings?session_id=eq.${sessionId}&select=status`
     );
-    expect(enrollments).toHaveLength(1);
-    expect(enrollments[0].status).toBe("enrolled");
+    expect(class_bookings).toHaveLength(1);
+    expect(class_bookings[0].status).toBe("enrolled");
     const orderRows = await rows<{ status: string; provider: string }>(
       userHeaders(learner.token),
       `orders?id=eq.${order.id}&select=status,provider`
@@ -273,7 +273,7 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
   } finally {
     // tenant delete cascades class → session → enrollment → order → payment;
     // the webhook_events ledger row is machine history and stays
-    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenant.id}`, {
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenant.id}`, {
       method: "DELETE",
       headers: serviceHeaders,
     });
@@ -290,7 +290,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
 
   const stamp = Date.now().toString(36);
   const owner = await signInTestNumber("+919999999999");
-  const tenant = await rpc<{ id: string; visibility: string }>(userHeaders(owner.token), "create_tenant_with_owner", {
+  const tenant = await rpc<{ id: string; visibility: string }>(userHeaders(owner.token), "create_business_with_owner", {
     p_name: `Mandate Proof Studio ${stamp}`,
     p_type: "studio",
     p_area: "Kothrud",
@@ -312,7 +312,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
         `subscriptions?id=eq.${sub.id}&select=status,current_period_end,granted,cancel_at_period_end,failure_reason`
       )
     )[0];
-  const visibilityNow = async () => (await rows<{ visibility: string }>(serviceHeaders, `tenants?id=eq.${tenant.id}&select=visibility`))[0].visibility;
+  const visibilityNow = async () => (await rows<{ visibility: string }>(serviceHeaders, `businesses?id=eq.${tenant.id}&select=visibility`))[0].visibility;
   const paymentsNow = () =>
     rows<{ kind: string; provider_payment_id: string; amount_inr: number }>(
       userHeaders(owner.token),
@@ -328,7 +328,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
      decision, which this spec has no admin for and is not what it is testing —
      so the service role stamps it, exactly as the proof scripts do. Without
      this the whole mandate story stops at its first line. */
-  const badged = await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenant.id}`, {
+  const badged = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenant.id}`, {
     method: "PATCH",
     headers: serviceHeaders,
     body: JSON.stringify({ verified_at: new Date().toISOString() }),
@@ -339,7 +339,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
   // price list's price, waiting on the mandate
   const sub = await rpc<{ id: string; status: string; price_inr: number; period: string }>(userHeaders(owner.token), "subscribe", {
     p_plan_key: "studio_monthly",
-    p_tenant_id: tenant.id,
+    p_business_id: tenant.id,
   });
   try {
     expect(sub.status).toBe("pending_auth");
@@ -505,7 +505,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
   } finally {
     // the tenant delete cascades the subscription; its payments keep their rows
     // with subscription_id set null (a ledger does not forget money)
-    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenant.id}`, {
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenant.id}`, {
       method: "DELETE",
       headers: serviceHeaders,
     });

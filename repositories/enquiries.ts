@@ -24,7 +24,7 @@ interface QuoteRow {
 
 interface EnquiryRow {
   id: string;
-  tenant_id: string;
+  business_id: string;
   from_user_id: string;
   type_key: EnquiryTypeKey;
   fields: unknown;
@@ -34,13 +34,13 @@ interface EnquiryRow {
   mobile: string | null;
   status: EnquiryStatus;
   created_at: string;
-  tenants: { name: string; type: TenantType; phone: string | null } | null;
+  businesses: { name: string; type: TenantType; phone: string | null } | null;
   profiles: { full_name: string } | null;
   enquiry_quotes: QuoteRow[] | null;
 }
 
 const ENQUIRY_SELECT =
-  "id, tenant_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, tenants (name, type, phone), profiles (full_name), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
+  "id, business_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, businesses (name, type, phone), profiles (full_name), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
 
 const toQuote = (q: QuoteRow): EnquiryQuote => ({
   id: q.id,
@@ -63,12 +63,12 @@ const toFields = (raw: unknown): Array<[string, string]> =>
 
 const toEnquiry = (r: EnquiryRow): Enquiry => ({
   id: r.id,
-  tenantId: r.tenant_id,
-  tenantName: r.tenants?.name ?? "A business",
-  tenantType: r.tenants?.type ?? "studio",
+  tenantId: r.business_id,
+  tenantName: r.businesses?.name ?? "A business",
+  tenantType: r.businesses?.type ?? "studio",
   /* under the policy that already let this join read the name — the same number
      the business's public page prints, not a private one (I4) */
-  tenantPhone: r.tenants?.phone ?? null,
+  tenantPhone: r.businesses?.phone ?? null,
   fromUserId: r.from_user_id,
   fromName: r.profiles?.full_name ?? "Someone",
   typeKey: r.type_key,
@@ -93,7 +93,7 @@ export async function findReceivedEnquiries(supabase: SupabaseClient, tenantIds:
   const { data, error } = await supabase
     .from("enquiries")
     .select(ENQUIRY_SELECT)
-    .in("tenant_id", tenantIds)
+    .in("business_id", tenantIds)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_LIST);
@@ -145,7 +145,7 @@ export async function sendEnquiry(
   }
 ): Promise<string> {
   const { data, error } = await supabase.rpc("send_enquiry", {
-    p_tenant_id: input.tenantId,
+    p_business_id: input.tenantId,
     p_type_key: input.typeKey,
     p_fields: input.fields,
     p_dates: input.dates,

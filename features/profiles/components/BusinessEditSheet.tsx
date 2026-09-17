@@ -24,7 +24,7 @@ import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, gr
  *  same S_profiletab, so its owner edits the same way: the words under About
  *  (≤ 220, the sheet's own counter), the founding year ("Since 2016", 10691),
  *  the number the Call button dials (10879) and the links rail (10760). Saved
- *  through the one owner-only door, `update_tenant_profile`, which re-checks
+ *  through the one owner-only door, `update_business_profile`, which re-checks
  *  ownership inside and validates what a form cannot be trusted to.
  *
  *  AND THE PICTURES, SINCE 16 SEP 2026 (the user: "the update image option
@@ -113,7 +113,7 @@ export function BusinessEditSheet({
 
   /** THE WORDS FIRST, THEN THE PICTURES, AND ONE REFRESH AT THE END.
    *
-   *  The order is deliberate: `update_tenant_profile` is the likeliest thing to
+   *  The order is deliberate: `update_business_profile` is the likeliest thing to
    *  refuse (a 221-character About, a phone that is not a phone, a link that is
    *  not a URL), and a refusal must cost NOTHING — so it happens before a
    *  single byte moves. If the picture commit then half-fails, the sheet STAYS

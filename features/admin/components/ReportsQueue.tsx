@@ -27,7 +27,7 @@ export const REASON_WORDS: Record<ReportReason, string> = {
 };
 
 const KIND_WORDS: Record<AdminReport["subjectKind"], string> = {
-  tenant: "business",
+  business: "business",
   profile: "person",
   crew: "crew",
   event: "event",
@@ -218,7 +218,7 @@ export function ReportsQueue({
                       <button type="button" onClick={() => { setActioned(true); setNote(""); setAnswering(r.id); }} style={btn} aria-label={`Answer the report about ${r.subjectLabel ?? "it"}`}>
                         Answer
                       </button>
-                      {r.subjectKind === "tenant" ? (
+                      {r.subjectKind === "business" ? (
                         <Link href={`/admin/businesses?q=${encodeURIComponent(r.subjectLabel ?? "")}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                           Open in Businesses
                         </Link>

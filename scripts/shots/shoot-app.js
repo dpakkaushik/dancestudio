@@ -106,14 +106,14 @@ async function signUp(page, email) {
     /* the studio's own subscription — the row an admin's grant writes, at ₹0,
        which is also what puts the studio on Discover */
     const studioRows = await (await fetch(
-      `${supabaseUrl}/rest/v1/tenant_members?user_id=eq.${userId}&member_role=eq.owner&deleted_at=is.null&select=tenant_id,tenants(type)`,
+      `${supabaseUrl}/rest/v1/business_members?user_id=eq.${userId}&member_role=eq.owner&deleted_at=is.null&select=business_id,businesses(type)`,
       { headers: adminHeaders }
     )).json();
-    const studioId = (studioRows.find((r) => r.tenants && r.tenants.type === "studio") || {}).tenant_id;
+    const studioId = (studioRows.find((r) => r.businesses && r.businesses.type === "studio") || {}).business_id;
     if (!studioId) throw new Error("the studio was not created");
     /* the BADGE (11 Sep 2026): an admin's approval, which the service role
        stands in for — the studio is verified before it is subscribed */
-    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, {
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, {
       method: "PATCH", headers: adminHeaders, body: JSON.stringify({ verified_at: new Date().toISOString() }),
     });
     const today = new Date().toISOString().slice(0, 10);
@@ -121,13 +121,13 @@ async function signUp(page, email) {
     await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
       method: "POST", headers: adminHeaders,
       body: JSON.stringify({
-        kind: "studio", user_id: userId, tenant_id: studioId, plan_key: "studio_monthly",
+        kind: "studio", user_id: userId, business_id: studioId, plan_key: "studio_monthly",
         price_inr: 0, period: "monthly", status: "active", current_period_start: today,
         current_period_end: until, granted: true, note: "Granted by shoot-app.js — nothing charged",
         created_by: userId, updated_by: userId,
       }),
     });
-    await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${studioId}`, {
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, {
       method: "PATCH", headers: adminHeaders, body: JSON.stringify({ visibility: "listed" }),
     });
     await page.goto(`${BASE}/business`);
@@ -177,7 +177,7 @@ async function signUp(page, email) {
   } catch (e) {
     console.log("FAILED", String(e).slice(0, 300));
   } finally {
-    if (tenantId) await fetch(`${supabaseUrl}/rest/v1/tenants?id=eq.${tenantId}`, { method: "DELETE", headers: adminHeaders });
+    if (tenantId) await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, { method: "DELETE", headers: adminHeaders });
     if (userId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, { method: "DELETE", headers: adminHeaders });
     await browser.close();
   }

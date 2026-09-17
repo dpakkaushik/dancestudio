@@ -101,7 +101,7 @@ type Step = "profile" | "styles" | "socials" | "proof" | "done";
  *
  *  Why the row is created at the end of the FIRST screen rather than the last:
  *  the photo, the styles and the links are written onto the profile ROW, and
- *  `set_my_avatar` / `update_my_profile` both refuse a person with no row
+ *  `set_my_profile_photo` / `update_my_profile` both refuse a person with no row
  *  ("finish onboarding first"). So Continue on the first screen creates the row
  *  and stays; every later screen writes onto it; "Open DanceOS →" leaves. The
  *  role is frozen the moment the row exists (a database guard), which is why the

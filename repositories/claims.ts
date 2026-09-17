@@ -15,11 +15,11 @@ interface ClaimRow {
   can_refunds: boolean;
   pay_per_session_inr: number;
   created_at: string;
-  profiles: { full_name: string; city: string | null; avatar_path?: string | null } | null;
+  profiles: { full_name: string; city: string | null; profile_photo_path?: string | null } | null;
 }
 
 const CLAIM_COLUMNS =
-  "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, created_at, profiles (full_name, city, avatar_path)";
+  "id, class_id, user_id, kind, status, can_attendance, can_refunds, pay_per_session_inr, created_at, profiles (full_name, city, profile_photo_path)";
 
 const toClaim = (row: ClaimRow): ClassClaim => ({
   id: row.id,
@@ -33,7 +33,7 @@ const toClaim = (row: ClaimRow): ClassClaim => ({
   createdAt: row.created_at,
   personName: row.profiles?.full_name ?? "Someone",
   personCity: row.profiles?.city ?? null,
-  avatarPath: row.profiles?.avatar_path ?? null,
+  avatarPath: row.profiles?.profile_photo_path ?? null,
 });
 
 /** Everybody on one class — what the viewer may see is decided by RLS. */
@@ -42,7 +42,7 @@ export async function findClaimsByClass(
   classId: string
 ): Promise<ClassClaim[]> {
   const { data, error } = await supabase
-    .from("class_claims")
+    .from("class_people")
     .select(CLAIM_COLUMNS)
     .eq("class_id", classId)
     .is("deleted_at", null)
@@ -60,7 +60,7 @@ interface MyAskRow extends ClaimRow {
     title: string;
     style: string;
     share_slug: string;
-    tenants: { name: string } | null;
+    businesses: { name: string } | null;
     class_sessions: Array<{ starts_at: string }> | null;
   } | null;
 }
@@ -81,9 +81,9 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
     return [];
   }
   const { data, error } = await supabase
-    .from("class_claims")
+    .from("class_people")
     .select(
-      `${CLAIM_COLUMNS}, classes (title, style, share_slug, tenants (name), class_sessions (starts_at))`
+      `${CLAIM_COLUMNS}, classes (title, style, share_slug, businesses (name), class_sessions (starts_at))`
     )
     .eq("user_id", user.id)
     .eq("status", "asked")
@@ -101,7 +101,7 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
       classTitle: r.classes!.title,
       classStyle: r.classes!.style,
       classShareSlug: r.classes!.share_slug,
-      tenantName: r.classes!.tenants?.name ?? "",
+      tenantName: r.classes!.businesses?.name ?? "",
       startsAt:
         [...(r.classes!.class_sessions ?? [])]
           .map((s) => s.starts_at)
@@ -120,7 +120,7 @@ export async function claimPerson(
     payPerSessionInr?: number;
   }
 ): Promise<void> {
-  const { error } = await supabase.rpc("claim_person", {
+  const { error } = await supabase.rpc("ask_class_person", {
     p_class_id: input.classId,
     p_user_id: input.userId,
     p_kind: input.kind,
@@ -140,8 +140,8 @@ export async function setClaimPay(
   claimId: string,
   payPerSessionInr: number
 ): Promise<void> {
-  const { error } = await supabase.rpc("set_claim_pay", {
-    p_claim_id: claimId,
+  const { error } = await supabase.rpc("set_class_person_pay", {
+    p_class_person_id: claimId,
     p_pay_per_session_inr: payPerSessionInr,
   });
   if (error) {
@@ -154,8 +154,8 @@ export async function respondToClaim(
   claimId: string,
   accept: boolean
 ): Promise<void> {
-  const { error } = await supabase.rpc("respond_to_claim", {
-    p_claim_id: claimId,
+  const { error } = await supabase.rpc("respond_to_class_ask", {
+    p_class_person_id: claimId,
     p_accept: accept,
   });
   if (error) {
@@ -164,7 +164,7 @@ export async function respondToClaim(
 }
 
 export async function withdrawClaim(supabase: SupabaseClient, claimId: string): Promise<void> {
-  const { error } = await supabase.rpc("withdraw_claim", { p_claim_id: claimId });
+  const { error } = await supabase.rpc("withdraw_class_ask", { p_class_person_id: claimId });
   if (error) {
     throw new Error(error.message);
   }
@@ -176,8 +176,8 @@ export async function setClaimPowers(
   canAttendance: boolean,
   canRefunds: boolean
 ): Promise<void> {
-  const { error } = await supabase.rpc("set_claim_powers", {
-    p_claim_id: claimId,
+  const { error } = await supabase.rpc("set_class_person_powers", {
+    p_class_person_id: claimId,
     p_can_attendance: canAttendance,
     p_can_refunds: canRefunds,
   });
@@ -189,18 +189,18 @@ export async function setClaimPowers(
 /** Asks a set of businesses have SENT and are still waiting on — the Requests
  *  desk's Sent side for whoever runs those businesses (prototype 5734: "it is
  *  the reason a class of yours is still a draft, so it says so"). Says which
- *  tenants out loud: members read their tenant's claims under RLS, and a person
+ *  businesses out loud: members read their tenant's claims under RLS, and a person
  *  on two teams would otherwise see both as one list. */
 export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenantIds: string[]): Promise<MyClaimAsk[]> {
   if (tenantIds.length === 0) {
     return [];
   }
   const { data, error } = await supabase
-    .from("class_claims")
+    .from("class_people")
     .select(
-      `${CLAIM_COLUMNS}, classes (title, style, share_slug, tenants (name), class_sessions (starts_at))`
+      `${CLAIM_COLUMNS}, classes (title, style, share_slug, businesses (name), class_sessions (starts_at))`
     )
-    .in("tenant_id", tenantIds)
+    .in("business_id", tenantIds)
     .eq("status", "asked")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -216,7 +216,7 @@ export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenant
       classTitle: r.classes!.title,
       classStyle: r.classes!.style,
       classShareSlug: r.classes!.share_slug,
-      tenantName: r.classes!.tenants?.name ?? "",
+      tenantName: r.classes!.businesses?.name ?? "",
       startsAt:
         [...(r.classes!.class_sessions ?? [])]
           .map((s) => s.starts_at)

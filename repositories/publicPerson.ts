@@ -25,7 +25,7 @@ export interface PersonCrew {
 export interface PersonTeachesAt {
   tenantId: string;
   tenantName: string;
-  tenantType: "studio" | "trainer_business";
+  tenantType: "studio" | "artist_page";
   city: string | null;
   classes: number;
   kinds: string;
@@ -41,7 +41,7 @@ export interface PublicPerson {
   crews: PersonCrew[];
   teachesAt: PersonTeachesAt[];
   /** the businesses this person OWNS, when they are listed (a studio's page is public) */
-  runs: Array<{ tenantId: string; tenantName: string; tenantType: "studio" | "trainer_business"; city: string | null; photoPath: string | null }>;
+  runs: Array<{ tenantId: string; tenantName: string; tenantType: "studio" | "artist_page"; city: string | null; photoPath: string | null }>;
 }
 
 interface StatsRow {
@@ -128,11 +128,11 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
       .order("created_at", { ascending: true })
       .limit(50),
     supabase.rpc("person_teaches_at", { p_user_id: userId }),
-    /* businesses they OWN — public rows only (listed tenants are readable by
+    /* businesses they OWN — public rows only (listed businesses are readable by
        anyone, Step 3), so this names nothing private */
     supabase
-      .from("tenant_members")
-      .select("member_role, tenants!inner (id, name, type, city, visibility, photo_path, deleted_at)")
+      .from("business_members")
+      .select("member_role, businesses!inner (id, name, type, city, visibility, profile_photo_path, deleted_at)")
       .eq("user_id", userId)
       .eq("member_role", "owner")
       .is("deleted_at", null)
@@ -183,26 +183,26 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
   }));
 
   const teachesAt: PersonTeachesAt[] = ((teachesRes.data ?? []) as Array<{
-    tenant_id: string;
-    tenant_name: string;
-    tenant_type: "studio" | "trainer_business";
+    business_id: string;
+    business_name: string;
+    business_type: "studio" | "artist_page";
     city: string | null;
     classes: number;
     kinds: string;
   }>).map((r) => ({
-    tenantId: r.tenant_id,
-    tenantName: r.tenant_name,
-    tenantType: r.tenant_type,
+    tenantId: r.business_id,
+    tenantName: r.business_name,
+    tenantType: r.business_type,
     city: r.city,
     classes: Number(r.classes),
     kinds: r.kinds,
   }));
 
   const runs = ((runsRes.data ?? []) as unknown as Array<{
-    tenants: { id: string; name: string; type: "studio" | "trainer_business"; city: string | null; visibility: string; photo_path: string | null; deleted_at: string | null } | null;
+    businesses: { id: string; name: string; type: "studio" | "artist_page"; city: string | null; visibility: string; profile_photo_path: string | null; deleted_at: string | null } | null;
   }>)
-    .filter((r) => r.tenants && !r.tenants.deleted_at && r.tenants.visibility === "listed")
-    .map((r) => ({ tenantId: r.tenants!.id, tenantName: r.tenants!.name, tenantType: r.tenants!.type, city: r.tenants!.city, photoPath: r.tenants!.photo_path ?? null }));
+    .filter((r) => r.businesses && !r.businesses.deleted_at && r.businesses.visibility === "listed")
+    .map((r) => ({ tenantId: r.businesses!.id, tenantName: r.businesses!.name, tenantType: r.businesses!.type, city: r.businesses!.city, photoPath: r.businesses!.profile_photo_path ?? null }));
 
   const c = countsMap.get(userId) ?? { followers: 0, following: 0 };
   return { profile, isArtist: artistIds.has(userId), stats, followers: c.followers, following: c.following, crews, teachesAt, runs };

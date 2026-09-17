@@ -30,8 +30,8 @@ interface HistRow {
   style: string;
   room: string | null;
   city: string | null;
-  tenant_id: string | null;
-  tenant_name: string | null;
+  business_id: string | null;
+  business_name: string | null;
   artist_name: string | null;
   starts_at: string;
   ends_at: string;
@@ -95,8 +95,8 @@ export async function findMyHistory(supabase: SupabaseClient, limit = 200): Prom
     style: r.style,
     room: r.room,
     city: r.city,
-    tenantId: r.tenant_id,
-    tenantName: r.tenant_name,
+    tenantId: r.business_id,
+    tenantName: r.business_name,
     artistName: r.artist_name,
     startsAt: r.starts_at,
     endsAt: r.ends_at,

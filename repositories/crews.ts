@@ -25,7 +25,7 @@ interface MemberRow {
   status: "asked" | "confirmed" | "rejected";
   sort: number;
   created_at: string;
-  profiles: { full_name: string; city: string | null; avatar_path?: string | null } | null;
+  profiles: { full_name: string; city: string | null; profile_photo_path?: string | null } | null;
 }
 interface MyAskRow extends MemberRow {
   crews: { name: string; city: string; leader_id: string; deleted_at: string | null; profiles: { full_name: string } | null } | null;
@@ -36,7 +36,7 @@ interface EntryRow {
   created_at: string;
   events: {
     title: string;
-    cat: "showcase" | "battle" | "tournament";
+    category: "showcase" | "battle" | "tournament";
     share_slug: string;
     start_date: string;
     end_date: string;
@@ -56,7 +56,7 @@ interface PartnerRow {
 }
 
 const CREW_COLUMNS = "id, name, city, style, leader_id, photo, created_at";
-const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city, avatar_path)";
+const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city, profile_photo_path)";
 
 const toCrew = (r: CrewRow): Crew => ({
   id: r.id,
@@ -77,7 +77,7 @@ const toMember = (r: MemberRow): CrewMember => ({
   createdAt: r.created_at,
   name: r.profiles?.full_name ?? "Someone",
   city: r.profiles?.city ?? null,
-  avatarPath: r.profiles?.avatar_path ?? null,
+  avatarPath: r.profiles?.profile_photo_path ?? null,
 });
 
 const currentUserId = async (supabase: SupabaseClient): Promise<string | null> => {
@@ -244,7 +244,7 @@ export async function findAskedForMyCrews(supabase: SupabaseClient): Promise<Arr
 export async function findCrewEntries(supabase: SupabaseClient, crewId: string): Promise<CrewEntry[]> {
   const { data, error } = await supabase
     .from("event_bookings")
-    .select("id, event_id, created_at, events (title, cat, share_slug, start_date, end_date, city, status)")
+    .select("id, event_id, created_at, events (title, category, share_slug, start_date, end_date, city, status)")
     .eq("crew_id", crewId)
     .eq("status", "booked")
     .is("deleted_at", null)
@@ -259,7 +259,7 @@ export async function findCrewEntries(supabase: SupabaseClient, crewId: string):
       bookingId: r.id,
       eventId: r.event_id,
       eventTitle: r.events!.title,
-      eventCat: r.events!.cat,
+      eventCat: r.events!.category,
       eventShareSlug: r.events!.share_slug,
       startDate: r.events!.start_date,
       endDate: r.events!.end_date,

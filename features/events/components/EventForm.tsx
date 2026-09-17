@@ -176,7 +176,7 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
   const isEntered = cat ? takesEntries(cat) : false;
 
   const payload = (): EventPayload => ({
-    cat: cat as EventCat,
+    category: cat as EventCat,
     title: title.trim(),
     style: style || "All styles",
     start_date: sD,

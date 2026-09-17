@@ -36,17 +36,17 @@ $stamp = Get-Date -Format "HHmmss"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Class Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Class Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
 Subscribe-Studio ([string]$ta.id)
-$clsBody = @{ p_tenant_id = $ta.id; p_title = "Hip-Hop - Beginner $stamp"; p_style = "Hip-Hop"; p_level = "beginner"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 20; p_status = "draft"; p_starts_at = "2026-09-01T19:00:00+05:30"; p_ends_at = "2026-09-01T20:00:00+05:30" }
+$clsBody = @{ p_business_id = $ta.id; p_title = "Hip-Hop - Beginner $stamp"; p_style = "Hip-Hop"; p_level = "beginner"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 20; p_status = "draft"; p_starts_at = "2026-09-01T19:00:00+05:30"; p_ends_at = "2026-09-01T20:00:00+05:30" }
 $cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body ($clsBody | ConvertTo-Json)
 "1. A created draft class '$($cls.title)' on '$($ta.name)'"
 if (-not $cls.id) { $pass = $false }
@@ -72,8 +72,8 @@ try {
 
 # A publishes; now B and even ANONYMOUS must see it (public read of published classes)
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($cls.id)" -Headers (Api $a.access_token) -Body '{"status":"published"}' | Out-Null
-$bPub = Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($cls.id)&select=id,title,tenants(name)" -Headers (Api $b.access_token)
-$bSees = (@($bPub).Count -eq 1) -and $bPub[0].tenants.name
+$bPub = Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($cls.id)&select=id,title,businesses(name)" -Headers (Api $b.access_token)
+$bSees = (@($bPub).Count -eq 1) -and $bPub[0].businesses.name
 "5. B reads the PUBLISHED class (+ studio name): $(if ($bSees) {'VISIBLE -- PUBLIC READ OK'} else {'HIDDEN -- !!! FAILED !!!'})"
 if (-not $bSees) { $pass = $false }
 

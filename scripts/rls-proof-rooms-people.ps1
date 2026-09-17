@@ -75,23 +75,23 @@ $farOverlapEnd = (Get-Date).AddDays(9).ToString("yyyy-MM-ddT21:00:00zzz")
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $a.access_token) "create_tenant_with_owner" @{ p_name = "Rooms Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $a.access_token) "create_business_with_owner" @{ p_name = "Rooms Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $orgB.access_token) "create_tenant_with_owner" @{ p_name = "Other Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $orgB.access_token) "create_business_with_owner" @{ p_name = "Other Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 
 try {
   # 1. the owner adds a room; the public can read it (listed studio)
   $room = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rooms" -Headers (Api $a.access_token) -Body (@{
-    tenant_id = $ta.id; name = "Studio A $stamp"; capacity = 10; amenities = @("Mirrors", "Sound") } | ConvertTo-Json)
+    business_id = $ta.id; name = "Studio A $stamp"; capacity = 10; amenities = @("Mirrors", "Sound") } | ConvertTo-Json)
   $roomRow = if ($room -is [array]) { $room[0] } else { $room }
   $anonRooms = Get-Rows $anonH "rooms?id=eq.$($roomRow.id)&select=id,name,capacity"
   Check 1 "Owner adds a room; anon reads it ($($anonRooms.Count))" ($anonRooms.Count -eq 1)
@@ -99,91 +99,91 @@ try {
   # 2. nobody adds a room to somebody else's studio
   $crossBlocked = Expect-Fail {
     Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rooms" -Headers (Api $b.access_token) -Body (@{
-      tenant_id = $ta.id; name = "Sneaky Room"; capacity = 5 } | ConvertTo-Json)
+      business_id = $ta.id; name = "Sneaky Room"; capacity = 5 } | ConvertTo-Json)
   }
   Check 2 "Adding a room to another studio is rejected" $crossBlocked
 
   # 3. a room caps the class it holds
   $capBlocked = Expect-Fail {
-    New-Class (Api $a.access_token) @{ p_tenant_id = $ta.id; p_title = "Too Big $stamp"; p_style = "Hip-Hop";
+    New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Too Big $stamp"; p_style = "Hip-Hop";
       p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 40; p_status = "published";
       p_starts_at = $farStart; p_ends_at = $farEnd; p_room_id = $roomRow.id }
   }
   Check 3 "Capacity above the room's is rejected" $capBlocked
 
   # 4. the room name resolves to the room itself (trigger), no id needed
-  $byName = New-Class (Api $a.access_token) @{ p_tenant_id = $ta.id; p_title = "By Name $stamp"; p_style = "Hip-Hop";
+  $byName = New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "By Name $stamp"; p_style = "Hip-Hop";
     p_level = "beginner"; p_room = "Studio A $stamp"; p_price_inr = 0; p_capacity = 8; p_status = "published";
     p_starts_at = $farStart; p_ends_at = $farEnd }
   Check 4 "Room name resolved to room_id ($($byName.room_id -eq $roomRow.id))" ([string]$byName.room_id -eq [string]$roomRow.id)
 
   # 5. one room, one class at a time
   $clashBlocked = Expect-Fail {
-    New-Class (Api $a.access_token) @{ p_tenant_id = $ta.id; p_title = "Clash $stamp"; p_style = "Salsa";
+    New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Clash $stamp"; p_style = "Salsa";
       p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 8; p_status = "published";
       p_starts_at = $farOverlap; p_ends_at = $farOverlapEnd; p_room_id = $roomRow.id }
   }
   Check 5 "Overlapping published class in the same room is rejected" $clashBlocked
 
   # 6. a draft is not in any room yet
-  $draft = New-Class (Api $a.access_token) @{ p_tenant_id = $ta.id; p_title = "Draft Same Slot $stamp"; p_style = "Salsa";
+  $draft = New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Draft Same Slot $stamp"; p_style = "Salsa";
     p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 8; p_status = "draft";
     p_starts_at = $farOverlap; p_ends_at = $farOverlapEnd; p_room_id = $roomRow.id }
   Check 6 "A draft may share the slot" ($null -ne $draft.id)
 
   # 7. only the studio's own team can be claimed
   $strangerBlocked = Expect-Fail {
-    Rpc (Api $a.access_token) "claim_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant" }
+    Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant" }
   }
   Check 7 "Claiming somebody outside the team is rejected" $strangerBlocked
 
   # B joins A's studio as STAFF (staff invites arrive with Step 12 - service role
   # stands in). Staff on purpose: a trainer could run the register anyway, so only
   # a staff member proves the attendance JOB is what opens it.
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $ta.id; user_id = $b.user.id; member_role = "staff"; created_by = $a.user.id; updated_by = $a.user.id } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $ta.id; user_id = $b.user.id; member_role = "staff"; created_by = $a.user.id; updated_by = $a.user.id } | ConvertTo-Json) | Out-Null
 
   # 8. the ask goes out, and it is not public until answered
-  $claim = Rpc (Api $a.access_token) "claim_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
-  $anonClaims = Get-Rows $anonH "class_claims?class_id=eq.$($byName.id)&select=id"
+  $claim = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
+  $anonClaims = Get-Rows $anonH "class_people?class_id=eq.$($byName.id)&select=id"
   Check 8 "An unanswered ask is invisible to the public ($($anonClaims.Count) rows)" (($claim.status -eq "asked") -and ($anonClaims.Count -eq 0))
 
   # 9. only the person asked can answer it
-  $ownerCannotAnswer = Expect-Fail { Rpc (Api $a.access_token) "respond_to_claim" @{ p_claim_id = $claim.id; p_accept = $true } }
+  $ownerCannotAnswer = Expect-Fail { Rpc (Api $a.access_token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } }
   Check 9 "The studio cannot answer on their behalf" $ownerCannotAnswer
 
   # 10. they say yes, and the public can now see them
-  Rpc (Api $b.access_token) "respond_to_claim" @{ p_claim_id = $claim.id; p_accept = $true } | Out-Null
-  $anonClaims2 = Get-Rows $anonH "class_claims?class_id=eq.$($byName.id)&select=id,status"
+  Rpc (Api $b.access_token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
+  $anonClaims2 = Get-Rows $anonH "class_people?class_id=eq.$($byName.id)&select=id,status"
   Check 10 "A confirmed name is public ($($anonClaims2.Count))" (($anonClaims2.Count -eq 1) -and ($anonClaims2[0].status -eq "confirmed"))
 
   # 11. an assistant holding attendance runs the register
-  $soon = New-Class (Api $a.access_token) @{ p_tenant_id = $ta.id; p_title = "Register Soon $stamp"; p_style = "Hip-Hop";
+  $soon = New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Register Soon $stamp"; p_style = "Hip-Hop";
     p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 6; p_status = "published";
     p_starts_at = $soonStart; p_ends_at = $soonEnd }
   $soonSession = (Get-Rows $svcH "class_sessions?class_id=eq.$($soon.id)&select=id")[0].id
-  $claim2 = Rpc (Api $a.access_token) "claim_person" @{ p_class_id = $soon.id; p_user_id = $b.user.id; p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
-  Rpc (Api $b.access_token) "respond_to_claim" @{ p_claim_id = $claim2.id; p_accept = $true } | Out-Null
-  $enr = Rpc (Api $c.access_token) "enroll_in_session" @{ p_session_id = $soonSession }
-  Rpc (Api $b.access_token) "check_in" @{ p_enrollment_id = $enr.id } | Out-Null
-  $att = Get-Rows (Api $b.access_token) "attendance?enrollment_id=eq.$($enr.id)&deleted_at=is.null&select=id"
+  $claim2 = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $soon.id; p_user_id = $b.user.id; p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
+  Rpc (Api $b.access_token) "respond_to_class_ask" @{ p_class_person_id = $claim2.id; p_accept = $true } | Out-Null
+  $enr = Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $soonSession }
+  Rpc (Api $b.access_token) "check_in" @{ p_class_booking_id = $enr.id } | Out-Null
+  $att = Get-Rows (Api $b.access_token) "attendance?class_booking_id=eq.$($enr.id)&deleted_at=is.null&select=id"
   Check 11 "Assistant holding attendance checks somebody in ($($att.Count))" ($att.Count -eq 1)
 
   # 12. take the job away and the register closes again
-  Rpc (Api $a.access_token) "set_claim_powers" @{ p_claim_id = $claim2.id; p_can_attendance = $false; p_can_refunds = $false } | Out-Null
-  $noPowerBlocked = Expect-Fail { Rpc (Api $b.access_token) "undo_check_in" @{ p_enrollment_id = $enr.id } }
+  Rpc (Api $a.access_token) "set_class_person_powers" @{ p_class_person_id = $claim2.id; p_can_attendance = $false; p_can_refunds = $false } | Out-Null
+  $noPowerBlocked = Expect-Fail { Rpc (Api $b.access_token) "undo_check_in" @{ p_class_booking_id = $enr.id } }
   Check 12 "Attendance taken away closes the register" $noPowerBlocked
 
   # 13. nobody writes a claim directly (no self-appointing)
   $directBlocked = Expect-Fail {
-    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/class_claims" -Headers (Api $b.access_token) -Body (@{
-      class_id = $soon.id; tenant_id = $ta.id; user_id = $b.user.id; kind = "artist"; status = "confirmed" } | ConvertTo-Json)
+    Invoke-RestMethod -Method Post -Uri "$base/rest/v1/class_people" -Headers (Api $b.access_token) -Body (@{
+      class_id = $soon.id; business_id = $ta.id; user_id = $b.user.id; kind = "artist"; status = "confirmed" } | ConvertTo-Json)
   }
-  Check 13 "Direct insert into class_claims is rejected" $directBlocked
+  Check 13 "Direct insert into class_people is rejected" $directBlocked
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
   try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($cUser.id)" -Headers $svcH | Out-Null } catch {}
   try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($orgBUser.id)" -Headers $svcH | Out-Null } catch {}
   "   (cleanup: proof studios, the throwaway person and organization deleted)"

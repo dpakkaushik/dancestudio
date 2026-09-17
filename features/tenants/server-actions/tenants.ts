@@ -30,7 +30,7 @@ const roomsSchema = z.array(roomSchema).max(20, "That is a lot of rooms — add 
 /** THE CLIENT NO LONGER SAYS WHAT KIND OF BUSINESS THIS IS (8 Sep 2026). The
  *  kind follows from who is asking: an organization opens a STUDIO, a person
  *  with the Artist plan opens their ARTIST PAGE, and nobody else opens anything.
- *  The database enforces the same rule inside create_tenant_with_owner; reading
+ *  The database enforces the same rule inside create_business_with_owner; reading
  *  the role here first is what lets the form be told in words what is missing
  *  BEFORE a row is attempted, and what decides which fields are required. */
 const createTenantSchema = z
@@ -96,7 +96,7 @@ export async function createTenantAction(
   }
 
   /* who is asking decides what is being opened */
-  const type: TenantType = profile.role === "org" ? "studio" : "trainer_business";
+  const type: TenantType = profile.role === "org" ? "studio" : "artist_page";
   if (type === "studio") {
     if (!parsed.data.city) return { error: "A studio needs a city" };
     if (!parsed.data.area) return { error: "A studio needs its area" };
@@ -135,9 +135,9 @@ export async function createTenantAction(
     }
   }
 
-  /* THE PIN, LAST (11 Sep 2026). `create_tenant_with_owner` writes the city
+  /* THE PIN, LAST (11 Sep 2026). `create_business_with_owner` writes the city
      centroid, as it always has; when the owner placed the pin on the sheet's
-     map, `set_tenant_location` replaces the guess with the address the moment
+     map, `set_business_location` replaces the guess with the address the moment
      the studio exists. Two doors rather than a changed signature, so nothing
      that already calls the first one has to learn anything. A pin that does not
      save does not undo a studio that did — it is said in the toast, and the same

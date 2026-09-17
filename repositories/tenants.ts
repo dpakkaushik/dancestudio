@@ -5,7 +5,7 @@ import type { AcceptedMethods, Tenant, TenantType } from "@/types/tenant";
 import type { SocialLink } from "@/types/profile";
 
 interface TenantRow {
-  photo_path?: string | null;
+  profile_photo_path?: string | null;
   id: string;
   type: TenantType;
   name: string;
@@ -24,7 +24,7 @@ interface TenantRow {
   location_set_at?: string | null;
 }
 
-export const TENANT_COLUMNS = "id, type, name, area, city, photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at";
+export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -40,7 +40,7 @@ export const toTenant = (row: TenantRow): Tenant => ({
   name: row.name,
   area: row.area,
   city: row.city,
-  photoPath: row.photo_path ?? null,
+  photoPath: row.profile_photo_path ?? null,
   about: row.about ?? null,
   foundedYear: row.founded_year == null ? null : Number(row.founded_year),
   phone: row.phone ?? null,
@@ -64,8 +64,8 @@ export interface TenantProfileInput {
  *  the enquiry-types sheet 9000, the public page's About / Since / Call / links):
  *  one owner-only door, validated inside. */
 export async function updateTenantProfile(supabase: SupabaseClient, tenantId: string, input: TenantProfileInput): Promise<void> {
-  const { error } = await supabase.rpc("update_tenant_profile", {
-    p_tenant_id: tenantId,
+  const { error } = await supabase.rpc("update_business_profile", {
+    p_business_id: tenantId,
     p_about: input.about,
     p_founded_year: input.foundedYear,
     p_phone: input.phone,
@@ -81,12 +81,12 @@ export async function updateTenantProfile(supabase: SupabaseClient, tenantId: st
   }
 }
 
-/** Atomic create: tenant + owner membership via the create_tenant_with_owner RPC. */
+/** Atomic create: tenant + owner membership via the create_business_with_owner RPC. */
 export async function createTenantWithOwner(
   supabase: SupabaseClient,
   input: { name: string; type: TenantType; area?: string | null; city?: string | null }
 ): Promise<Tenant> {
-  const { data, error } = await supabase.rpc("create_tenant_with_owner", {
+  const { data, error } = await supabase.rpc("create_business_with_owner", {
     p_name: input.name,
     p_type: input.type,
     p_area: input.area ?? null,
@@ -94,13 +94,13 @@ export async function createTenantWithOwner(
   });
 
   if (error) {
-    throw new Error(`tenants.create failed: ${error.message}`);
+    throw new Error(`businesses.create failed: ${error.message}`);
   }
   return toTenant(data as TenantRow);
 }
 
 interface MembershipRow {
-  tenants: TenantRow | null;
+  businesses: TenantRow | null;
 }
 
 export type MemberRole = "owner" | "trainer" | "staff";
@@ -112,7 +112,7 @@ export interface MyMembership {
 
 interface MembershipWithRoleRow {
   member_role: MemberRole;
-  tenants: TenantRow | null;
+  businesses: TenantRow | null;
 }
 
 /** The signed-in user's businesses WITH the relationship — because there are two
@@ -134,25 +134,25 @@ export async function findMyMemberships(supabase: SupabaseClient): Promise<MyMem
   }
 
   const { data, error } = await supabase
-    .from("tenant_members")
-    .select(`created_at, member_role, tenants (${TENANT_COLUMNS})`)
+    .from("business_members")
+    .select(`created_at, member_role, businesses (${TENANT_COLUMNS})`)
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(50);
 
   if (error) {
-    throw new Error(`tenants.findMyMemberships failed: ${error.message}`);
+    throw new Error(`businesses.findMyMemberships failed: ${error.message}`);
   }
   return (data as unknown as MembershipWithRoleRow[])
-    .filter((row): row is MembershipWithRoleRow & { tenants: TenantRow } => row.tenants !== null)
-    .map((row) => ({ tenant: toTenant(row.tenants), memberRole: row.member_role }));
+    .filter((row): row is MembershipWithRoleRow & { businesses: TenantRow } => row.businesses !== null)
+    .map((row) => ({ tenant: toTenant(row.businesses), memberRole: row.member_role }));
 }
 
 /** The signed-in user's role on one tenant, or null when they are not a member.
  *
  *  Says `user_id = auth.uid()` OUT LOUD, and must keep doing so. This query once
- *  leaned on tenant_members being own-rows-only under RLS — then Step 11 let a
+ *  leaned on business_members being own-rows-only under RLS — then Step 11 let a
  *  tenant's members read each other, so on any studio with two people it started
  *  matching several rows and maybeSingle() threw ("multiple (or no) rows
  *  returned"), taking the public class page down with it. Same lesson as
@@ -169,22 +169,22 @@ export async function findMyMembershipRole(
   }
 
   const { data, error } = await supabase
-    .from("tenant_members")
+    .from("business_members")
     .select("member_role")
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .maybeSingle();
 
   if (error) {
-    throw new Error(`tenants.myRole failed: ${error.message}`);
+    throw new Error(`businesses.myRole failed: ${error.message}`);
   }
   return (data?.member_role as MemberRole | undefined) ?? null;
 }
 
 /** Tenants the signed-in user belongs to.
- *  RLS policies OR together — since discovery made listed tenants publicly
- *  readable, selecting from `tenants` directly returns EVERY listed tenant.
+ *  RLS policies OR together — since discovery made listed businesses publicly
+ *  readable, selecting from `businesses` directly returns EVERY listed tenant.
  *  Membership is the query's spine instead — and the spine says whose rows it
  *  wants OUT LOUD: since Step 11 a tenant's members can read each other, so
  *  leaning on the policy to mean "mine" would list one row per teammate. RLS is
@@ -198,18 +198,18 @@ export async function findMyTenants(supabase: SupabaseClient): Promise<Tenant[]>
   }
 
   const { data, error } = await supabase
-    .from("tenant_members")
-    .select(`created_at, tenants (${TENANT_COLUMNS})`)
+    .from("business_members")
+    .select(`created_at, businesses (${TENANT_COLUMNS})`)
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(50);
 
   if (error) {
-    throw new Error(`tenants.findMine failed: ${error.message}`);
+    throw new Error(`businesses.findMine failed: ${error.message}`);
   }
   return (data as unknown as MembershipRow[])
-    .map((row) => row.tenants)
+    .map((row) => row.businesses)
     .filter((tenant): tenant is TenantRow => tenant !== null)
     .map(toTenant);
 }
@@ -231,22 +231,22 @@ export interface TeamMember {
  *  pickers offer (prototype dosTeachPool / dosAssistPool). Staff invites arrive
  *  with Step 12, so today this is whoever the studio already has.
  *
- *  Two queries on purpose: tenant_members.user_id references auth.users, not
+ *  Two queries on purpose: business_members.user_id references auth.users, not
  *  profiles, so PostgREST has no relationship to embed the name through. */
 export async function findTenantTeam(
   supabase: SupabaseClient,
   tenantId: string
 ): Promise<TeamMember[]> {
   const { data, error } = await supabase
-    .from("tenant_members")
+    .from("business_members")
     .select("user_id, member_role")
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: true })
     .limit(100);
 
   if (error) {
-    throw new Error(`tenants.team failed: ${error.message}`);
+    throw new Error(`businesses.team failed: ${error.message}`);
   }
   const rows = data as Array<{ user_id: string; member_role: MemberRole }>;
   if (rows.length === 0) {
@@ -255,7 +255,7 @@ export async function findTenantTeam(
 
   const { data: people, error: peopleError } = await supabase
     .from("profiles")
-    .select("id, full_name, city, role, avatar_path")
+    .select("id, full_name, city, role, profile_photo_path")
     .in(
       "id",
       rows.map((r) => r.user_id)
@@ -263,14 +263,14 @@ export async function findTenantTeam(
     .is("deleted_at", null);
 
   if (peopleError) {
-    throw new Error(`tenants.teamProfiles failed: ${peopleError.message}`);
+    throw new Error(`businesses.teamProfiles failed: ${peopleError.message}`);
   }
   interface PersonRow {
     id: string;
     full_name: string;
     city: string | null;
     role: ProfileRole;
-    avatar_path: string | null;
+    profile_photo_path: string | null;
   }
   const byId = new Map((people as PersonRow[]).map((p) => [p.id, p]));
   const artists = await findArtistIds(supabase, rows.map((r) => r.user_id));
@@ -284,7 +284,7 @@ export async function findTenantTeam(
       city: p?.city ?? null,
       profileRole: p?.role ?? null,
       isArtist: artists.has(row.user_id),
-      avatarPath: p?.avatar_path ?? null,
+      avatarPath: p?.profile_photo_path ?? null,
     };
   });
 }
@@ -292,7 +292,7 @@ export async function findTenantTeam(
 /** WHERE A BUSINESS IS (11 Sep 2026) — the write behind the location picker.
  *
  *  A studio's lat/lng has always been its CITY'S CENTROID, because
- *  `create_tenant_with_owner` had nothing else to write. This is the door that
+ *  `create_business_with_owner` had nothing else to write. This is the door that
  *  replaces the guess with an address the owner chose. The RPC re-checks
  *  ownership, refuses a point outside India, and will only write a city that is
  *  on the app's closed list. */
@@ -300,8 +300,8 @@ export async function setTenantLocation(
   supabase: SupabaseClient,
   input: { tenantId: string; lat: number; lng: number; area: string | null; city: string | null }
 ): Promise<void> {
-  const { error } = await supabase.rpc("set_tenant_location", {
-    p_tenant_id: input.tenantId,
+  const { error } = await supabase.rpc("set_business_location", {
+    p_business_id: input.tenantId,
     p_lat: input.lat,
     p_lng: input.lng,
     p_area: input.area,

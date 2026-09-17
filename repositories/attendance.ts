@@ -28,7 +28,7 @@ interface RegisterQueryRow {
   id: string;
   user_id: string;
   status: "enrolled" | "waitlisted";
-  profiles: { full_name: string; avatar_path?: string | null } | null;
+  profiles: { full_name: string; profile_photo_path?: string | null } | null;
   attendance: Array<{ id: string; deleted_at: string | null }>;
 }
 
@@ -37,8 +37,8 @@ export async function findClassRegister(
   classId: string
 ): Promise<ClassRegister> {
   const { data, error } = await supabase
-    .from("enrollments")
-    .select("id, user_id, status, profiles (full_name, avatar_path), attendance (id, deleted_at)")
+    .from("class_bookings")
+    .select("id, user_id, status, profiles (full_name, profile_photo_path), attendance (id, deleted_at)")
     .eq("class_id", classId)
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
@@ -55,7 +55,7 @@ export async function findClassRegister(
       learnerName: r.profiles?.full_name ?? "Learner",
       checkedIn: r.attendance.some((a) => a.deleted_at === null),
       userId: r.user_id,
-      avatarPath: r.profiles?.avatar_path ?? null,
+      avatarPath: r.profiles?.profile_photo_path ?? null,
     }));
   const waitlist = all
     .filter((r) => r.status === "waitlisted")
@@ -71,21 +71,21 @@ export async function findClassRegister(
 }
 
 export async function checkIn(supabase: SupabaseClient, enrollmentId: string): Promise<void> {
-  const { error } = await supabase.rpc("check_in", { p_enrollment_id: enrollmentId });
+  const { error } = await supabase.rpc("check_in", { p_class_booking_id: enrollmentId });
   if (error) {
     throw new Error(error.message);
   }
 }
 
 export async function undoCheckIn(supabase: SupabaseClient, enrollmentId: string): Promise<void> {
-  const { error } = await supabase.rpc("undo_check_in", { p_enrollment_id: enrollmentId });
+  const { error } = await supabase.rpc("undo_check_in", { p_class_booking_id: enrollmentId });
   if (error) {
     throw new Error(error.message);
   }
 }
 
 export async function giveSpot(supabase: SupabaseClient, enrollmentId: string): Promise<void> {
-  const { error } = await supabase.rpc("give_spot", { p_enrollment_id: enrollmentId });
+  const { error } = await supabase.rpc("give_spot", { p_class_booking_id: enrollmentId });
   if (error) {
     throw new Error(error.message);
   }
@@ -95,7 +95,7 @@ export async function removeFromWaitlist(
   supabase: SupabaseClient,
   enrollmentId: string
 ): Promise<void> {
-  const { error } = await supabase.rpc("remove_from_waitlist", { p_enrollment_id: enrollmentId });
+  const { error } = await supabase.rpc("remove_from_waitlist", { p_class_booking_id: enrollmentId });
   if (error) {
     throw new Error(error.message);
   }

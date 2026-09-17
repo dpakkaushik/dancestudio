@@ -1,4 +1,4 @@
-﻿# RLS proof for Step 2 (tenants): two owners, each sees ONLY their own tenant.
+﻿# RLS proof for Step 2 (businesses): two owners, each sees ONLY their own tenant.
 # Reads keys from .env.local — run from the repo root: pwsh scripts/rls-proof-tenants.ps1
 $ErrorActionPreference = "Stop"
 # Supabase refuses a secret (sb_secret_...) key from anything that looks like a
@@ -53,50 +53,50 @@ $b = New-OrgOwner "st-ownerb-$stamp@example.com" "Owner B $stamp"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Studio A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Studio A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
 Subscribe-Studio ([string]$ta.id)
-$tb = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $b.access_token) -Body (@{ p_name = "Studio B $stamp"; p_type = "studio"; p_area = "Saket"; p_city = "New Delhi" } | ConvertTo-Json)
+$tb = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $b.access_token) -Body (@{ p_name = "Studio B $stamp"; p_type = "studio"; p_area = "Saket"; p_city = "New Delhi" } | ConvertTo-Json)
 # A's studio is subscribed and listed (Subscribe-Studio above); B's is neither, so it stays the
 # private row this proof's isolation claims are about
 "1. A created '$($ta.name)' (subscribed, public); B created '$($tb.name)' (unsubscribed, private)"
 if (-not $ta.id -or -not $tb.id) { $pass = $false }
 
-# A lists tenants — must contain A's studio and NEVER B's
-$mineA = Invoke-RestMethod -Uri "$base/rest/v1/tenants?select=id,name" -Headers (Api $a.access_token)
+# A lists businesses — must contain A's studio and NEVER B's
+$mineA = Invoke-RestMethod -Uri "$base/rest/v1/businesses?select=id,name" -Headers (Api $a.access_token)
 $seesOwn = @($mineA | Where-Object { $_.id -eq $ta.id }).Count -eq 1
 $seesB = @($mineA | Where-Object { $_.id -eq $tb.id }).Count -gt 0
 "2. A sees own studio: $seesOwn; A sees B's UNLISTED studio: $seesB $(if ($seesOwn -and -not $seesB) {'-- ISOLATION OK'} else {'-- !!! FAILED !!!'})"
 if (-not $seesOwn -or $seesB) { $pass = $false }
 
 # A tries to read B's tenant directly by id — must get 0 rows
-$readB = Invoke-RestMethod -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)&select=id" -Headers (Api $a.access_token)
+$readB = Invoke-RestMethod -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)&select=id" -Headers (Api $a.access_token)
 $blockedRead = (@($readB).Count -eq 0)
 "3. A reads B's tenant by id: $(if ($blockedRead) {'0 rows -- BLOCKED, RLS OK'} else {'VISIBLE -- !!! FAILED !!!'})"
 if (-not $blockedRead) { $pass = $false }
 
 # A tries to rename B's tenant — must affect 0 rows
-$upd = Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers (Api $a.access_token) -Body '{"name":"HACKED"}'
+$upd = Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers (Api $a.access_token) -Body '{"name":"HACKED"}'
 $blockedUpd = (@($upd).Count -eq 0)
 "4. A renames B's tenant: $(if ($blockedUpd) {'0 rows -- BLOCKED, RLS OK'} else {'SUCCEEDED -- !!! FAILED !!!'})"
 if (-not $blockedUpd) { $pass = $false }
 
 # A tries to add themselves to B's tenant directly — no insert policy, must be rejected
 try {
-  $body = @{ tenant_id = $tb.id; user_id = $a.user.id; member_role = "owner" } | ConvertTo-Json
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers (Api $a.access_token) -Body $body | Out-Null
+  $body = @{ business_id = $tb.id; user_id = $a.user.id; member_role = "owner" } | ConvertTo-Json
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers (Api $a.access_token) -Body $body | Out-Null
   "5. A self-invites into B's tenant: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
 } catch { "5. A self-invites into B's tenant: REJECTED -- RLS OK" }
 
-# anonymous sees LISTED tenants (Step 5, by design) and never an UNLISTED one
-$anonRead = Invoke-RestMethod -Uri "$base/rest/v1/tenants?select=id" -Headers @{ apikey = $anon }
+# anonymous sees LISTED businesses (Step 5, by design) and never an UNLISTED one
+$anonRead = Invoke-RestMethod -Uri "$base/rest/v1/businesses?select=id" -Headers @{ apikey = $anon }
 $anonSeesA = @($anonRead | Where-Object { $_.id -eq $ta.id }).Count -eq 1
 $anonSeesB = @($anonRead | Where-Object { $_.id -eq $tb.id }).Count -gt 0
 "6. Anonymous sees A's listed studio: $anonSeesA; B's unlisted one: $anonSeesB $(if ($anonSeesA -and -not $anonSeesB) {'-- RLS OK'} else {'-- !!! FAILED !!!'})"

@@ -19,7 +19,7 @@ import { BizPage, BizToast, bizBtn, bizCard, dayWords, eyebrow, rupees } from ".
  *  Cashfree takes a card or a UPI id at checkout and DanceOS stores neither, so
  *  a saved-methods list would be a copy nobody could pay with; the ADD tiles say
  *  so when pressed. The ACCEPTED switches are the business's real answer
- *  (`tenants.accepts_*`, saved through one owner-only door) and the public page
+ *  (`businesses.accepts_*`, saved through one owner-only door) and the public page
  *  reads them back. The verification checklist names the documents Cashfree's
  *  KYC collects; DanceOS holds none of them, and the tick (`verified_at`) is set
  *  when that KYC clears — never by the business itself. */

@@ -81,7 +81,7 @@ function SessionList($user) { return Rows (Api $user.token) "my_session_history"
 # no user may book a session that has already ended)
 function New-Class($owner, $tenantId, $title, $style, $cap, $hoursAgo, $lenH) {
   $future = (Get-Date).AddDays(20)
-  $c = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $tenantId; p_title = $title; p_style = $style;
+  $c = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $tenantId; p_title = $title; p_style = $style;
     p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = $cap; p_status = "published";
     p_starts_at = $future.ToString("yyyy-MM-ddTHH:00:00zzz"); p_ends_at = $future.AddHours($lenH).ToString("yyyy-MM-ddTHH:00:00zzz") }
   $s = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($c.id)&select=id")[0]
@@ -104,23 +104,23 @@ $other = New-EmailUser "st-other-$stamp@example.com" "Stat Other $stamp" "user" 
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Stat Proof Studio $stamp"; p_type = "studio"; p_area = "Sector 17"; p_city = $city }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Stat Proof Studio $stamp"; p_type = "studio"; p_area = "Sector 17"; p_city = $city }
 Subscribe-Studio ([string]$ta.id)
 
 try {
   # ── the world: the teacher takes two past sessions and assists one; the dancer
   #    is checked in to two of them and merely BOOKED into a third
-  Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = $teacher.name; p_email = $teacher.email; p_role = "trainer" } | Out-Null
-  $inv = (Get-Rows (Api $owner.token) "tenant_invites?tenant_id=eq.$($ta.id)&select=code")[0]
-  Rpc (Api $teacher.token) "accept_tenant_invite" @{ p_code = $inv.code } | Out-Null
+  Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = $teacher.name; p_email = $teacher.email; p_role = "trainer" } | Out-Null
+  $inv = (Get-Rows (Api $owner.token) "business_invites?business_id=eq.$($ta.id)&select=code")[0]
+  Rpc (Api $teacher.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
 
   $c1 = New-Class $owner $ta.id "Hip-Hop Past $stamp" "Hip-Hop" 10 30 1      # taught, 1 h
   $c2 = New-Class $owner $ta.id "Breaking Past $stamp" "Breaking" 10 26 2    # taught, 2 h
@@ -129,16 +129,16 @@ try {
   # the teacher is asked and CONFIRMS on c1, c2 (artist) and c3 (assistant);
   # a fourth ask stays UNANSWERED, and must count for nothing
   foreach ($pair in @(@($c1, "artist"), @($c2, "artist"), @($c3, "assistant"))) {
-    $k = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $pair[0].id; p_user_id = $teacher.id; p_kind = $pair[1]; p_pay_per_session_inr = 0 }
-    Rpc (Api $teacher.token) "respond_to_claim" @{ p_claim_id = $k.id; p_accept = $true } | Out-Null
+    $k = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $pair[0].id; p_user_id = $teacher.id; p_kind = $pair[1]; p_pay_per_session_inr = 0 }
+    Rpc (Api $teacher.token) "respond_to_class_ask" @{ p_class_person_id = $k.id; p_accept = $true } | Out-Null
   }
-  $unanswered = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $c4.id; p_user_id = $teacher.id; p_kind = "artist"; p_pay_per_session_inr = 0 }
+  $unanswered = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c4.id; p_user_id = $teacher.id; p_kind = "artist"; p_pay_per_session_inr = 0 }
 
   # the dancer books three, is checked in to two (bookings happen while the
   # sessions are still in the future - the app's own rule)
-  $e1 = Rpc (Api $dancer.token) "enroll_in_session" @{ p_session_id = $c1.sessionId }
-  $e2 = Rpc (Api $dancer.token) "enroll_in_session" @{ p_session_id = $c2.sessionId }
-  $e3 = Rpc (Api $dancer.token) "enroll_in_session" @{ p_session_id = $c3.sessionId }
+  $e1 = Rpc (Api $dancer.token) "book_class_session" @{ p_session_id = $c1.sessionId }
+  $e2 = Rpc (Api $dancer.token) "book_class_session" @{ p_session_id = $c2.sessionId }
+  $e3 = Rpc (Api $dancer.token) "book_class_session" @{ p_session_id = $c3.sessionId }
   # now the sessions move into the past
   Move-Session $c1.sessionId 30 1
   Move-Session $c2.sessionId 26 2
@@ -146,7 +146,7 @@ try {
   # checked in to c1 and c2 only - c3 is a booking nobody marked
   foreach ($pair in @(@($e1, $c1), @($e2, $c2))) {
     Invoke-RestMethod -Method Post -Uri "$base/rest/v1/attendance" -Headers $svcH -Body (@{
-      enrollment_id = $pair[0].id; session_id = $pair[1].sessionId; class_id = $pair[1].id; tenant_id = $ta.id;
+      class_booking_id = $pair[0].id; session_id = $pair[1].sessionId; class_id = $pair[1].id; business_id = $ta.id;
       user_id = $dancer.id; created_by = $owner.id; updated_by = $owner.id } | ConvertTo-Json) | Out-Null
   }
 
@@ -165,7 +165,7 @@ try {
 
   # 3. AN UNANSWERED ASK IS NOT TEACHING, AND A SESSION STILL TO COME IS NOT A RECORD
   $futureTitles = @($hist | Where-Object { $_.title -like "*Future*" }).Count
-  Rpc (Api $teacher.token) "respond_to_claim" @{ p_claim_id = $unanswered.id; p_accept = $true } | Out-Null
+  Rpc (Api $teacher.token) "respond_to_class_ask" @{ p_class_person_id = $unanswered.id; p_accept = $true } | Out-Null
   $st2 = Stats $teacher
   Check 3 "Nothing from the future is on the record ($futureTitles rows); confirming the future class leaves conducted at $($st2.sessions_conducted)" (
     ($futureTitles -eq 0) -and ([int]$st2.sessions_conducted -eq 2))
@@ -246,7 +246,7 @@ try {
     ([int]$bRow.conducted -eq 1) -and ([decimal]$bRow.hours -eq 2) -and ($elsewhere.Count -eq 0))
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
   foreach ($u in @($owner, $teacher, $dancer, $other)) {
     if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
   }

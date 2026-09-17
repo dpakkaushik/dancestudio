@@ -27,7 +27,7 @@ import type { Tenant } from "@/types/tenant";
  *
  *  THE HERO'S TWO PICTURES (15 Sep 2026, the user: "I need a profile picture
  *  for the studio"): the round disc is the studio's OWN picture —
- *  `tenants.photo_path` — and the header is the photos of its space it showed
+ *  `businesses.profile_photo_path` — and the header is the photos of its space it showed
  *  DanceOS for the badge, which are its header pictures now.
  *
  *  ⚠ BOTH ARE CHANGED IN THE PENCIL, NOT ON THE HERO (16 Sep 2026). The user
@@ -36,14 +36,14 @@ import type { Tenant } from "@/types/tenant";
  *  only one pic … in case of a studio the user submits at least 5 images, he
  *  can delete but can't delete all — 1 will always remain, order doesn't
  *  matter." So the hero shows them and `BusinessEditSheet` edits them, and the
- *  min-one rule is the database's own (`remove_org_proof_photo` refuses the
+ *  min-one rule is the database's own (`remove_studio_photo` refuses the
  *  last), said in the grid as a disabled ✕ rather than as a press that can only
  *  be refused. The Media tool is the same pictures as a desk. Nothing here is a
  *  second implementation: the hero is `IdentityHero`, the shelf is
  *  `TodayShelf`, the grid is Home's `ToolGrid`. */
 export function StudioHome({
   tenant,
-  /** the studio's own picture — `tenants.photo_path`, served from the public bucket */
+  /** the studio's own picture — `businesses.profile_photo_path`, served from the public bucket */
   photo,
   /** an owner or trainer — the pair that may change the picture */
   canEditPhoto,

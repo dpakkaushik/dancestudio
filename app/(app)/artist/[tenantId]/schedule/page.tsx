@@ -2,5 +2,5 @@ import { PublicSchedulePage } from "@/features/profiles/components/PublicSchedul
 
 export default async function Page({ params }: { params: Promise<{ tenantId: string }> }) {
   const { tenantId } = await params;
-  return <PublicSchedulePage tenantId={tenantId} expect="trainer_business" />;
+  return <PublicSchedulePage tenantId={tenantId} expect="artist_page" />;
 }

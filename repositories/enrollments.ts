@@ -18,7 +18,7 @@ interface MyEnrollmentRow {
     capacity: number;
     status: ClassStatus;
   } | null;
-  tenants: { name: string; city: string | null } | null;
+  businesses: { name: string; city: string | null } | null;
 }
 
 interface RosterRow {
@@ -33,7 +33,7 @@ export async function enrollInSession(
   supabase: SupabaseClient,
   sessionId: string
 ): Promise<EnrollmentStatus> {
-  const { data, error } = await supabase.rpc("enroll_in_session", {
+  const { data, error } = await supabase.rpc("book_class_session", {
     p_session_id: sessionId,
   });
   if (error) {
@@ -47,8 +47,8 @@ export async function cancelEnrollment(
   supabase: SupabaseClient,
   enrollmentId: string
 ): Promise<void> {
-  const { error } = await supabase.rpc("cancel_enrollment", {
-    p_enrollment_id: enrollmentId,
+  const { error } = await supabase.rpc("cancel_class_booking", {
+    p_class_booking_id: enrollmentId,
   });
   if (error) {
     throw new Error(error.message);
@@ -58,9 +58,9 @@ export async function cancelEnrollment(
 /** The signed-in learner's live bookings, soonest session first. */
 export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnrollment[]> {
   const { data, error } = await supabase
-    .from("enrollments")
+    .from("class_bookings")
     .select(
-      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (title, share_slug, style, level, room, price_inr, capacity, status), tenants (name, city)"
+      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (title, share_slug, style, level, room, price_inr, capacity, status), businesses (name, city)"
     )
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
@@ -68,7 +68,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
     .limit(100);
 
   if (error) {
-    throw new Error(`enrollments.findMine failed: ${error.message}`);
+    throw new Error(`class_bookings.findMine failed: ${error.message}`);
   }
   return (data as unknown as MyEnrollmentRow[])
     .filter((r) => r.classes && r.class_sessions)
@@ -87,8 +87,8 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
       classStatus: r.classes!.status,
       startsAt: r.class_sessions!.starts_at,
       endsAt: r.class_sessions!.ends_at,
-      tenantName: r.tenants?.name ?? "",
-      tenantCity: r.tenants?.city ?? null,
+      tenantName: r.businesses?.name ?? "",
+      tenantCity: r.businesses?.city ?? null,
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
@@ -98,14 +98,14 @@ export async function findMyEnrolledSessionIds(
   supabase: SupabaseClient
 ): Promise<Map<string, { id: string; status: EnrollmentStatus }>> {
   const { data, error } = await supabase
-    .from("enrollments")
+    .from("class_bookings")
     .select("id, status, session_id")
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
     .limit(200);
 
   if (error) {
-    throw new Error(`enrollments.findMySessions failed: ${error.message}`);
+    throw new Error(`class_bookings.findMySessions failed: ${error.message}`);
   }
   const map = new Map<string, { id: string; status: EnrollmentStatus }>();
   (data as { id: string; status: EnrollmentStatus; session_id: string }[]).forEach((r) =>
@@ -120,7 +120,7 @@ export async function findRosterByClass(
   classId: string
 ): Promise<RosterEntry[]> {
   const { data, error } = await supabase
-    .from("enrollments")
+    .from("class_bookings")
     .select("id, status, created_at, profiles (full_name, city)")
     .eq("class_id", classId)
     .in("status", ["enrolled", "waitlisted"])
@@ -129,7 +129,7 @@ export async function findRosterByClass(
     .limit(500);
 
   if (error) {
-    throw new Error(`enrollments.roster failed: ${error.message}`);
+    throw new Error(`class_bookings.roster failed: ${error.message}`);
   }
   return (data as unknown as RosterRow[]).map((r) => ({
     id: r.id,
@@ -152,7 +152,7 @@ export async function countEnrolledBySession(
     p_session_ids: sessionIds,
   });
   if (error) {
-    throw new Error(`enrollments.counts failed: ${error.message}`);
+    throw new Error(`class_bookings.counts failed: ${error.message}`);
   }
   const map = new Map<string, number>();
   (data as { session_id: string; enrolled: number }[]).forEach((r) =>

@@ -45,12 +45,12 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     redirect("/login");
   }
 
-  const [{ kind: rawKind }, enrollments, tickets] = await Promise.all([searchParams, findMyEnrollments(supabase), findMyEventBookings(supabase, user.id)]);
+  const [{ kind: rawKind }, class_bookings, tickets] = await Promise.all([searchParams, findMyEnrollments(supabase), findMyEventBookings(supabase, user.id)]);
   const k = Array.isArray(rawKind) ? rawKind[0] : rawKind;
   const kind: "all" | "class" | "event" = k === "class" || k === "event" ? k : "all";
   const showClasses = kind !== "event";
   const showEvents = kind !== "class";
-  const confirmed = enrollments.filter((e) => e.status === "enrolled").length + tickets.length;
+  const confirmed = class_bookings.filter((e) => e.status === "enrolled").length + tickets.length;
 
   return (
     <div
@@ -109,7 +109,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         })}
       </div>
 
-      {showClasses && enrollments.map((e) => (
+      {showClasses && class_bookings.map((e) => (
         <ClassTile
           key={e.id}
           danceClass={toTileClass(e)}
@@ -128,7 +128,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           }
         />
       ))}
-      {showClasses && enrollments.length === 0 && (
+      {showClasses && class_bookings.length === 0 && (
         <div
           style={{
             textAlign: "center",

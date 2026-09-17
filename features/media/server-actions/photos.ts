@@ -38,7 +38,7 @@ export async function setMyAvatarAction(input: { path: string | null }): Promise
   const parsed = path.safeParse(input.path);
   if (!parsed.success) return { error: "Invalid photo" };
   const supabase = await requireUser();
-  const { data, error } = await supabase.rpc("set_my_avatar", { p_path: parsed.data });
+  const { data, error } = await supabase.rpc("set_my_profile_photo", { p_path: parsed.data });
   if (error) {
     return { error: error.message };
   }
@@ -52,7 +52,7 @@ export async function setTenantPhotoAction(input: { tenantId: string; path: stri
   const parsed = z.object({ tenantId: z.string().uuid(), path }).safeParse(input);
   if (!parsed.success) return { error: "Invalid photo" };
   const supabase = await requireUser();
-  const { data, error } = await supabase.rpc("set_tenant_photo", { p_tenant_id: parsed.data.tenantId, p_path: parsed.data.path });
+  const { data, error } = await supabase.rpc("set_business_profile_photo", { p_business_id: parsed.data.tenantId, p_path: parsed.data.path });
   if (error) {
     return { error: error.message };
   }
@@ -71,7 +71,7 @@ export async function addMyGalleryPhotoAction(input: { path: string }): Promise<
   const parsed = z.string().trim().min(1).max(300).safeParse(input.path);
   if (!parsed.success) return { error: "Invalid photo" };
   const supabase = await requireUser();
-  const { data, error } = await supabase.rpc("add_my_gallery_photo", { p_path: parsed.data });
+  const { data, error } = await supabase.rpc("add_my_header_photo", { p_path: parsed.data });
   if (error) {
     return { error: error.message };
   }
@@ -85,7 +85,7 @@ export async function removeMyGalleryPhotoAction(input: { id: string }): Promise
   const parsed = z.string().uuid().safeParse(input.id);
   if (!parsed.success) return { error: "Invalid photo" };
   const supabase = await requireUser();
-  const { data, error } = await supabase.rpc("remove_my_gallery_photo", { p_id: parsed.data });
+  const { data, error } = await supabase.rpc("remove_my_header_photo", { p_id: parsed.data });
   if (error) {
     return { error: error.message };
   }

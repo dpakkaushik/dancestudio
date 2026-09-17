@@ -21,7 +21,7 @@ interface RefundRow {
 }
 
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, tenant_id, classes (title, style, share_slug), tenants (name))";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, business_id, classes (title, style, share_slug), businesses (name))";
 
 /** a refund with the class it is against — the ledger's row (16665-16680) */
 export interface RefundLedgerRow extends RefundRequest {
@@ -33,7 +33,7 @@ export interface RefundLedgerRow extends RefundRequest {
   tenantName: string;
 }
 interface LedgerRow extends RefundRow {
-  orders: { class_id: string; tenant_id: string; classes: { title: string; style: string; share_slug: string } | null; tenants: { name: string } | null } | null;
+  orders: { class_id: string; business_id: string; classes: { title: string; style: string; share_slug: string } | null; businesses: { name: string } | null } | null;
 }
 const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   id: r.id,
@@ -48,11 +48,11 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   settledOffline: r.settled_offline,
   hasRailReference: r.provider_refund_id !== null,
   classId: r.orders?.class_id ?? "",
-  tenantId: r.orders?.tenant_id ?? "",
+  tenantId: r.orders?.business_id ?? "",
   classTitle: r.orders?.classes?.title ?? "Class",
   classStyle: r.orders?.classes?.style ?? "",
   classShareSlug: r.orders?.classes?.share_slug ?? null,
-  tenantName: r.orders?.tenants?.name ?? "",
+  tenantName: r.orders?.businesses?.name ?? "",
 });
 
 /** every refund against a business's classes, newest first — members read it (Step 9) */
@@ -60,7 +60,7 @@ export async function findRefundsByTenant(supabase: SupabaseClient, tenantId: st
   const { data, error } = await supabase
     .from("refunds")
     .select(REFUND_SELECT)
-    .eq("orders.tenant_id", tenantId)
+    .eq("orders.business_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(300);

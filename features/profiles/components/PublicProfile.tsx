@@ -107,7 +107,7 @@ export function PublicProfile({
 }: {
   profile: PublicTenantProfileWithFaces;
   /** THE HEADER PICTURES (15 Sep 2026): a studio's photos of its space, an
-   *  artist page's owner's own — whatever `tenant_header_photos` let this
+   *  artist page's owner's own — whatever `business_header_photos` let this
    *  viewer see */
   header?: HeaderPhoto[];
   /** this page's own path — what the QR shares */
@@ -369,7 +369,7 @@ export function PublicProfile({
       {/* the quiet control at the foot of a public page (10 Sep 2026) — not for
           its own members, who have the hub for anything that is wrong */}
       {isMember ? null : (
-        <ReportButton subjectKind="tenant" subjectId={tenant.id} subjectName={tenant.name} signedIn={signedIn} />
+        <ReportButton subjectKind="business" subjectId={tenant.id} subjectName={tenant.name} signedIn={signedIn} />
       )}
     </div>
   );

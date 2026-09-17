@@ -50,7 +50,7 @@ export function EditProfileSheet({
   const [pending, start] = useTransition();
   /* the header pictures as a DRAFT (16 Sep 2026) — the same bug lived here:
      `HeaderRemove`'s ✕ deleted a picture on the press, inside a sheet with a
-     Cancel button. A person's floor is 0, not 1: `remove_my_gallery_photo` has
+     Cancel button. A person's floor is 0, not 1: `remove_my_header_photo` has
      no minimum guard, and inventing one here would be a rule nobody wrote. */
   const draft = useHeaderDraft({
     initial: header.map((h) => ({ id: h.id, path: h.path, url: h.url, signed: h.signed })),

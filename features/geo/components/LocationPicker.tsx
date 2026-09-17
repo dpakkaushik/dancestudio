@@ -12,7 +12,7 @@ const MUTED = "var(--muted)";
 export interface PickedLocation {
   lat: number;
   lng: number;
-  /** the locality, as Google names it — what `tenants.area` holds */
+  /** the locality, as Google names it — what `businesses.area` holds */
   area: string | null;
   /** the city, as Google names it. NOT checked against a list any more: the
    *  database folds aliases (Bengaluru/Bangalore) onto one canonical name and
@@ -26,7 +26,7 @@ export interface PickedLocation {
 /** WHERE A BUSINESS ACTUALLY IS (11 Sep 2026, rebuilt on Google).
  *
  *  Until the picker existed, every studio in a city sat on the SAME
- *  coordinates — its city's centroid, written by `create_tenant_with_owner`
+ *  coordinates — its city's centroid, written by `create_business_with_owner`
  *  because there was no way to ask. Discover measured centroid to centroid, so
  *  "2.4 km away" was the same 2.4 km for every studio in Pune and "nearest
  *  first" was not an order at all.

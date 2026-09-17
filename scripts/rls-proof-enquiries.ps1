@@ -70,18 +70,18 @@ function New-EmailUser($email, $name, $role) {
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
 function Add-Member($tenantId, $userId, $memberRole, $byUser) {
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/tenant_members" -Headers $svcH -Body (@{
-    tenant_id = $tenantId; user_id = $userId; member_role = $memberRole
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/business_members" -Headers $svcH -Body (@{
+    business_id = $tenantId; user_id = $userId; member_role = $memberRole
     created_by = $byUser; updated_by = $byUser } | ConvertTo-Json) | Out-Null
 }
 $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 function Send-Enq($user, $tenantId, $type) {
-  return Rpc (Api $user.token) "send_enquiry" @{ p_tenant_id = $tenantId; p_type_key = $type
+  return Rpc (Api $user.token) "send_enquiry" @{ p_business_id = $tenantId; p_type_key = $type
     p_fields = @(@("Enquiry", "Proof"), @("Type of event", "Sangeet"), @("Number of performances", "3"))
     p_dates = @($in10); p_where = "Kothrud, Pune"; p_message = "Proof enquiry"; p_mobile = "+91 98765 43210" }
 }
 # the repository's read, verbatim in shape (repositories/enquiries.ts)
-$SEL = "select=id,tenant_id,from_user_id,type_key,status,enquiry_quotes(id,n,cost_inr,advance_pct,advance_inr,status,advance_paid_at,full_paid_at)"
+$SEL = "select=id,business_id,from_user_id,type_key,status,enquiry_quotes(id,n,cost_inr,advance_pct,advance_inr,status,advance_paid_at,full_paid_at)"
 
 # 10 Sep 2026: the Artist plan is a PAID subscription (Rs 700 a month through Cashfree), so the free
 # RPC refuses it. The service role stands in for an admin's grant - the row admin_grant_subscription
@@ -105,23 +105,23 @@ $l2 = New-EmailUser "enq-l2-$stamp@example.com" "Bystander $stamp" "user"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Enquiry Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Enquiry Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
 # 8 Sep 2026: an artist page is a Pro USER's - the plan comes first. 10 Sep 2026: the plan is PAID
 # (Rs 700 a month), so the free RPC refuses it; the service role grants one as an admin would
 Grant-ArtistPlan $ownerB.id
-$tb = Rpc (Api $ownerB.token) "create_tenant_with_owner" @{ p_name = "Artist Business $stamp"; p_type = "trainer_business"; p_area = "Baner"; p_city = "Pune" }
-$tc = Rpc (Api $ownerA.token) "create_tenant_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Artist Business $stamp"; p_type = "artist_page"; p_area = "Baner"; p_city = "Pune" }
+$tc = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tc.id)
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tc.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tc.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 Add-Member $ta.id $staffA.id "staff" $ownerA.id
 
 try {
@@ -145,8 +145,8 @@ try {
   # 4. READS ARE THE TWO ENDS: the sender reads theirs, the studio's owner AND staff
   #    read the studio's, the artist reads the artist's, a bystander and the public none
   $l1Rows = Get-Rows (Api $l1.token) "enquiries?$SEL&deleted_at=is.null"
-  $ownerRows = Get-Rows (Api $ownerA.token) "enquiries?$SEL&tenant_id=eq.$($ta.id)"
-  $staffRows = Get-Rows (Api $staffA.token) "enquiries?$SEL&tenant_id=eq.$($ta.id)"
+  $ownerRows = Get-Rows (Api $ownerA.token) "enquiries?$SEL&business_id=eq.$($ta.id)"
+  $staffRows = Get-Rows (Api $staffA.token) "enquiries?$SEL&business_id=eq.$($ta.id)"
   $artistRows = Get-Rows (Api $ownerB.token) "enquiries?$SEL"
   $l2Rows = Get-Rows (Api $l2.token) "enquiries?$SEL"
   $anonRows = Get-Rows $anonH "enquiries?$SEL"
@@ -154,7 +154,7 @@ try {
     ($l1Rows.Count -eq 2) -and ($ownerRows.Count -eq 1) -and ($staffRows.Count -eq 1) -and ($artistRows.Count -eq 1) -and ($l2Rows.Count -eq 0) -and ($anonRows.Count -eq 0))
 
   # 5. no direct writes
-  $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/enquiries" -Headers (Api $l2.token) -Body (@{ tenant_id = $ta.id; from_user_id = $l2.id; type_key = "corporate"; message = "x" } | ConvertTo-Json) }
+  $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/enquiries" -Headers (Api $l2.token) -Body (@{ business_id = $ta.id; from_user_id = $l2.id; type_key = "corporate"; message = "x" } | ConvertTo-Json) }
   Check 5 "A direct insert into enquiries is refused ($direct)" ($direct -ne "")
 
   # 6. STAFF QUOTE (the desk is the studio's CRM); the sender cannot quote their own ask
@@ -207,11 +207,11 @@ try {
   Check 11 "Quotes: sender reads $($l1Q.Count), bystander $($l2Q.Count), public $($anonQ.Count)" (($l1Q.Count -eq 2) -and ($l2Q.Count -eq 0) -and ($anonQ.Count -eq 0))
 
   # 12. the public cannot send an enquiry at all
-  $anonSend = Fails { Rpc $anonH "send_enquiry" @{ p_tenant_id = $ta.id; p_type_key = "corporate"; p_fields = @(); p_dates = @($in10); p_where = "x"; p_message = "x" } }
+  $anonSend = Fails { Rpc $anonH "send_enquiry" @{ p_business_id = $ta.id; p_type_key = "corporate"; p_fields = @(); p_dates = @($in10); p_where = "x"; p_message = "x" } }
   Check 12 "The public cannot call send_enquiry ($anonSend)" ($anonSend -ne "")
 }
 finally {
-  foreach ($t in @($ta, $tb, $tc)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $svcH | Out-Null }
+  foreach ($t in @($ta, $tb, $tc)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null }
   foreach ($u in @($ownerA, $staffA, $ownerB, $l1, $l2)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }

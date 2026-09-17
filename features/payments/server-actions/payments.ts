@@ -98,7 +98,7 @@ export async function startCheckoutAction(input: {
       amountInr: order.amountInr,
       customer: { id: user.id, phone: customerPhoneOf(user.phone), name: profile?.fullName ?? null, email: user.email ?? null },
       note: `${parsed.data.businessName} · ${parsed.data.description}`,
-      tags: { order_id: order.id, tenant_id: order.tenantId, class_id: order.classId, session_id: order.sessionId },
+      tags: { order_id: order.id, business_id: order.tenantId, class_id: order.classId, session_id: order.sessionId },
     });
     await attachProviderOrder(supabase, order.id, cfOrder.order_id);
     return {

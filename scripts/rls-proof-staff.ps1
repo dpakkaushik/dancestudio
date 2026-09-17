@@ -4,7 +4,7 @@
 # their powers with them.
 #
 # Checks 16-17 cover the hardening in 20260825140000: check 14 proves
-# remove_tenant_member closes the claims it should, 16 proves the register does
+# remove_business_member closes the claims it should, 16 proves the register does
 # not depend on it doing so (the seat is pulled with the service role, no RPC
 # involved, and the register shuts anyway), 17 proves a soft-deleted class has no
 # register for anybody.
@@ -76,98 +76,98 @@ $ghost = New-EmailUser "staffproof-ghost-$stamp@example.com" "Priya $stamp" "use
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "Staff Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Staff Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $rival.token) "create_tenant_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $rival.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
 Subscribe-Studio ([string]$tb.id)
 
 try {
   # 1. the owner asks somebody to join, as a trainer
-  $inv = Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Vikram Bhatt";
+  $inv = Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Vikram Bhatt";
     p_email = "  StaffProof-Join-$stamp@Example.com  "; p_role = "trainer" }
   Check 1 "Owner invites (status $($inv.status), code $($inv.code), email normalised '$($inv.email)')" (
     ($inv.status -eq "pending") -and ($inv.code.Length -ge 8) -and ($inv.email -eq $joiner.email))
 
   # 2. 'owner' is not a role an invite can hand over (the prototype's SS10.9 footnote)
   $ownerGrantBlocked = Expect-Fail {
-    Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Sneaky"; p_email = "sneak-$stamp@example.com"; p_role = "owner" }
+    Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Sneaky"; p_email = "sneak-$stamp@example.com"; p_role = "owner" }
   }
   Check 2 "An invite cannot grant 'owner'" $ownerGrantBlocked
 
   # 3. a rival studio's owner cannot ask people into YOUR business
   $rivalAskBlocked = Expect-Fail {
-    Rpc (Api $rival.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Planted"; p_email = "planted-$stamp@example.com"; p_role = "staff" }
+    Rpc (Api $rival.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Planted"; p_email = "planted-$stamp@example.com"; p_role = "staff" }
   }
   Check 3 "A rival cannot invite into your business" $rivalAskBlocked
 
   # 4. the invite desk is business-private: the public sees nothing at all
-  $anonSees = Get-Rows $anonH "tenant_invites?select=id"
+  $anonSees = Get-Rows $anonH "business_invites?select=id"
   Check 4 "The public sees no invites ($($anonSees.Count))" ($anonSees.Count -eq 0)
 
   # 5. nor does a rival, nor does the invited person before they join - an email
   #    address is not something the whole app gets to read
-  $rivalSees = Get-Rows (Api $rival.token) "tenant_invites?id=eq.$($inv.id)&select=id"
-  $joinerSees = Get-Rows (Api $joiner.token) "tenant_invites?id=eq.$($inv.id)&select=id"
+  $rivalSees = Get-Rows (Api $rival.token) "business_invites?id=eq.$($inv.id)&select=id"
+  $joinerSees = Get-Rows (Api $joiner.token) "business_invites?id=eq.$($inv.id)&select=id"
   Check 5 "Rival ($($rivalSees.Count)) and invitee ($($joinerSees.Count)) read no rows off the table" (
     ($rivalSees.Count -eq 0) -and ($joinerSees.Count -eq 0))
 
   # 6. but the invited person FINDS it - matched on the address they sign in with
   $mine = Rpc (Api $joiner.token) "my_pending_invites" @{}
   $mineRows = ,@($mine | Where-Object { $null -ne $_ })
-  Check 6 "The invitee finds their own invite ($($mineRows.Count) waiting, from '$($mineRows[0].tenant_name)')" (
-    ($mineRows.Count -eq 1) -and ($mineRows[0].tenant_name -eq "Staff Proof Studio $stamp"))
+  Check 6 "The invitee finds their own invite ($($mineRows.Count) waiting, from '$($mineRows[0].business_name)')" (
+    ($mineRows.Count -eq 1) -and ($mineRows[0].business_name -eq "Staff Proof Studio $stamp"))
 
   # 7. holding the link is NOT consent: the wrong person cannot accept it
-  $wrongPersonBlocked = Expect-Fail { Rpc (Api $rival.token) "accept_tenant_invite" @{ p_code = $inv.code } }
+  $wrongPersonBlocked = Expect-Fail { Rpc (Api $rival.token) "accept_business_invite" @{ p_code = $inv.code } }
   Check 7 "Somebody else holding the link cannot accept it" $wrongPersonBlocked
 
   # 8. ...and the preview tells them so without printing the address in full
-  $prev = Rpc (Api $rival.token) "preview_tenant_invite" @{ p_code = $inv.code }
+  $prev = Rpc (Api $rival.token) "preview_business_invite" @{ p_code = $inv.code }
   $prevRow = ,@($prev | Where-Object { $null -ne $_ })
   Check 8 "Preview masks the address ('$($prevRow[0].email_hint)', is_for_me=$($prevRow[0].is_for_me))" (
     ($prevRow[0].is_for_me -eq $false) -and ($prevRow[0].email_hint -notlike "*staffproof-join*") -and ($prevRow[0].email_hint -like "s***@*"))
 
   # 9. the person themselves accepts, and only then are they on the team
-  $member = Rpc (Api $joiner.token) "accept_tenant_invite" @{ p_code = $inv.code }
-  $invAfter = Get-Rows $svcH "tenant_invites?id=eq.$($inv.id)&select=status,accepted_by"
+  $member = Rpc (Api $joiner.token) "accept_business_invite" @{ p_code = $inv.code }
+  $invAfter = Get-Rows $svcH "business_invites?id=eq.$($inv.id)&select=status,accepted_by"
   Check 9 "They accept -> member as $($member.member_role), invite now $($invAfter[0].status)" (
     ($member.member_role -eq "trainer") -and ($invAfter[0].status -eq "accepted") -and ([string]$invAfter[0].accepted_by -eq [string]$joiner.id))
 
   # 10. asking somebody who is already on the team is pointless, and refused
   $reAskBlocked = Expect-Fail {
-    Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Vikram again"; p_email = $joiner.email; p_role = "staff" }
+    Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Vikram again"; p_email = $joiner.email; p_role = "staff" }
   }
   Check 10 "Re-inviting somebody already on the team is refused" $reAskBlocked
 
   # 11. a trainer is not an owner: inviting and removing stay owner-only
   $nonOwnerAskBlocked = Expect-Fail {
-    Rpc (Api $joiner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Friend"; p_email = "friend-$stamp@example.com"; p_role = "staff" }
+    Rpc (Api $joiner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Friend"; p_email = "friend-$stamp@example.com"; p_role = "staff" }
   }
   $nonOwnerRemoveBlocked = Expect-Fail {
-    Rpc (Api $joiner.token) "remove_tenant_member" @{ p_tenant_id = $ta.id; p_user_id = $owner.id }
+    Rpc (Api $joiner.token) "remove_business_member" @{ p_business_id = $ta.id; p_user_id = $owner.id }
   }
   Check 11 "A trainer can neither invite nor remove" ($nonOwnerAskBlocked -and $nonOwnerRemoveBlocked)
 
   # 12. the owner changes what somebody may do - but 'owner' is still not settable
-  Rpc (Api $owner.token) "set_member_role" @{ p_tenant_id = $ta.id; p_user_id = $joiner.id; p_role = "staff" } | Out-Null
-  $roleNow = Get-Rows $svcH "tenant_members?tenant_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&select=member_role"
+  Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "staff" } | Out-Null
+  $roleNow = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&select=member_role"
   $promoteBlocked = Expect-Fail {
-    Rpc (Api $owner.token) "set_member_role" @{ p_tenant_id = $ta.id; p_user_id = $joiner.id; p_role = "owner" }
+    Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "owner" }
   }
   Check 12 "Owner sets them to $($roleNow[0].member_role); promoting to owner is refused" (
     ($roleNow[0].member_role -eq "staff") -and $promoteBlocked)
 
   # 13. an owner cannot be removed from their own business (so the last owner survives)
   $ownerRemoveBlocked = Expect-Fail {
-    Rpc (Api $owner.token) "remove_tenant_member" @{ p_tenant_id = $ta.id; p_user_id = $owner.id }
+    Rpc (Api $owner.token) "remove_business_member" @{ p_business_id = $ta.id; p_user_id = $owner.id }
   }
   Check 13 "An owner cannot be removed from their own business" $ownerRemoveBlocked
 
@@ -176,25 +176,25 @@ try {
   #     re-checking membership, so a removed assistant would keep the register.
   $starts = (Get-Date).AddDays(3).ToString("yyyy-MM-ddT19:00:00zzz")
   $ends = (Get-Date).AddDays(3).ToString("yyyy-MM-ddT20:00:00zzz")
-  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $ta.id; p_title = "Register Class $stamp";
+  $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Register Class $stamp";
     p_style = "Hip-Hop"; p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 12;
     p_status = "published"; p_starts_at = $starts; p_ends_at = $ends }
-  $claim = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $cls.id; p_user_id = $joiner.id;
+  $claim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $cls.id; p_user_id = $joiner.id;
     p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
-  Rpc (Api $joiner.token) "respond_to_claim" @{ p_claim_id = $claim.id; p_accept = $true } | Out-Null
+  Rpc (Api $joiner.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null
   $couldRun = Rpc (Api $joiner.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
-  Rpc (Api $owner.token) "remove_tenant_member" @{ p_tenant_id = $ta.id; p_user_id = $joiner.id } | Out-Null
+  Rpc (Api $owner.token) "remove_business_member" @{ p_business_id = $ta.id; p_user_id = $joiner.id } | Out-Null
   $canRunAfter = Rpc (Api $joiner.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
-  $seatGone = Get-Rows $svcH "tenant_members?tenant_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&deleted_at=is.null&select=id"
+  $seatGone = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&deleted_at=is.null&select=id"
   Check 14 "Assistant ran the register ($couldRun); removed -> register lost ($canRunAfter), seat gone ($($seatGone.Count))" (
     ($couldRun -eq $true) -and ($canRunAfter -eq $false) -and ($seatGone.Count -eq 0))
 
   # 15. a bogus link is simply not an invite, and a withdrawn one cannot be used
-  $bogusBlocked = Expect-Fail { Rpc (Api $joiner.token) "accept_tenant_invite" @{ p_code = "not-a-real-code" } }
-  $inv2 = Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Meera";
+  $bogusBlocked = Expect-Fail { Rpc (Api $joiner.token) "accept_business_invite" @{ p_code = "not-a-real-code" } }
+  $inv2 = Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Meera";
     p_email = "staffproof-join-$stamp@example.com"; p_role = "staff" }
-  Rpc (Api $owner.token) "revoke_tenant_invite" @{ p_invite_id = $inv2.id } | Out-Null
-  $revokedBlocked = Expect-Fail { Rpc (Api $joiner.token) "accept_tenant_invite" @{ p_code = $inv2.code } }
+  Rpc (Api $owner.token) "revoke_business_invite" @{ p_invite_id = $inv2.id } | Out-Null
+  $revokedBlocked = Expect-Fail { Rpc (Api $joiner.token) "accept_business_invite" @{ p_code = $inv2.code } }
   Check 15 "A bogus code and a withdrawn invite are both dead" ($bogusBlocked -and $revokedBlocked)
 
   # 16. THE HARDENING (20260825140000): check 14 proves the RPC closes the claims
@@ -203,21 +203,21 @@ try {
   #     stays live, exactly like a future offboarding job that forgot about
   #     claims - and the register must still shut. Reviving the seat brings it
   #     back, which is what shows the membership test is what moved.
-  $ghostInv = Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $ta.id; p_name = "Priya Ghost";
+  $ghostInv = Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $ta.id; p_name = "Priya Ghost";
     p_email = $ghost.email; p_role = "staff" }
-  Rpc (Api $ghost.token) "accept_tenant_invite" @{ p_code = $ghostInv.code } | Out-Null
-  $ghostClaim = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $cls.id; p_user_id = $ghost.id;
+  Rpc (Api $ghost.token) "accept_business_invite" @{ p_code = $ghostInv.code } | Out-Null
+  $ghostClaim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $cls.id; p_user_id = $ghost.id;
     p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
-  Rpc (Api $ghost.token) "respond_to_claim" @{ p_claim_id = $ghostClaim.id; p_accept = $true } | Out-Null
+  Rpc (Api $ghost.token) "respond_to_class_ask" @{ p_class_person_id = $ghostClaim.id; p_accept = $true } | Out-Null
   $staffCanRun = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
 
-  $memberRow = Get-Rows $svcH "tenant_members?tenant_id=eq.$($ta.id)&user_id=eq.$($ghost.id)&select=id"
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenant_members?id=eq.$($memberRow[0].id)" -Headers $svcH `
+  $memberRow = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($ghost.id)&select=id"
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?id=eq.$($memberRow[0].id)" -Headers $svcH `
     -Body (@{ deleted_at = (Get-Date).ToString("o") } | ConvertTo-Json) | Out-Null
   $runAfterSeatGone = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
-  $claimStillLive = Get-Rows $svcH "class_claims?id=eq.$($ghostClaim.id)&deleted_at=is.null&select=id"
+  $claimStillLive = Get-Rows $svcH "class_people?id=eq.$($ghostClaim.id)&deleted_at=is.null&select=id"
 
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenant_members?id=eq.$($memberRow[0].id)" -Headers $svcH `
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?id=eq.$($memberRow[0].id)" -Headers $svcH `
     -Body (@{ deleted_at = $null } | ConvertTo-Json) | Out-Null
   $runAfterRevive = Rpc (Api $ghost.token) "can_run_register_for_class" @{ p_class_id = $cls.id }
   Check 16 "Staff assistant runs the register ($staffCanRun); seat soft-deleted behind the RPC's back -> refused ($runAfterSeatGone) with the claim still live ($($claimStillLive.Count)); seat back -> allowed ($runAfterRevive)" (
@@ -234,8 +234,8 @@ try {
     ($ghostOnDeleted -eq $false) -and ($ownerOnDeleted -eq $false))
 }
 finally {
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH | Out-Null
   foreach ($u in @($owner, $joiner, $rival, $ghost)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }

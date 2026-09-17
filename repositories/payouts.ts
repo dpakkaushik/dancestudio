@@ -84,16 +84,16 @@ export async function findTenantPayLedger(
 ): Promise<TenantPayLedger> {
   const [claimsRes, sessionsRes, linesRes, payoutsRes] = await Promise.all([
     supabase
-      .from("class_claims")
+      .from("class_people")
       .select(CLAIM_SELECT)
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       .eq("status", "confirmed")
       .order("created_at", { ascending: false })
       .limit(MAX_CLAIMS),
     supabase
       .from("class_sessions")
       .select("id, class_id, starts_at, ends_at")
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       .lt("ends_at", nowIso)
       .is("deleted_at", null)
       .order("starts_at", { ascending: false })
@@ -101,13 +101,13 @@ export async function findTenantPayLedger(
     supabase
       .from("payout_lines")
       .select("payout_id, session_id, user_id, rate_inr")
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       .is("deleted_at", null)
       .limit(MAX_LINES),
     supabase
       .from("payouts")
       .select(PAYOUT_SELECT)
-      .eq("tenant_id", tenantId)
+      .eq("business_id", tenantId)
       .is("deleted_at", null)
       .order("paid_on", { ascending: false })
       .limit(MAX_PAYOUTS),
@@ -215,13 +215,13 @@ export async function findTenantPayLedger(
 }
 
 interface MyClaimRow extends ClaimRow {
-  tenant_id: string;
-  tenants: { name: string } | null;
+  business_id: string;
+  businesses: { name: string } | null;
 }
 
 interface MyPayoutRow extends PayoutRow {
-  tenant_id: string;
-  tenants: { name: string } | null;
+  business_id: string;
+  businesses: { name: string } | null;
 }
 
 /** The teaching side of the earnings screen: what each studio owes me and what
@@ -234,15 +234,15 @@ export async function findMyEarnings(
 ): Promise<MyEarnings> {
   const [claimsRes, payoutsRes, linesRes] = await Promise.all([
     supabase
-      .from("class_claims")
-      .select(`${CLAIM_SELECT}, tenant_id, tenants (name)`)
+      .from("class_people")
+      .select(`${CLAIM_SELECT}, business_id, businesses (name)`)
       .eq("user_id", userId)
       .eq("status", "confirmed")
       .order("created_at", { ascending: false })
       .limit(MAX_CLAIMS),
     supabase
       .from("payouts")
-      .select(`${PAYOUT_SELECT}, tenant_id, tenants (name)`)
+      .select(`${PAYOUT_SELECT}, business_id, businesses (name)`)
       .eq("user_id", userId)
       .is("deleted_at", null)
       .order("paid_on", { ascending: false })
@@ -297,9 +297,9 @@ export async function findMyEarnings(
   for (const claim of claims) {
     const cutoff = accrualCutoff(claim.deleted_at, nowIso);
     const taught = (sessionsByClass.get(claim.class_id) ?? []).filter((s) => s.ends_at < cutoff);
-    const row = byTenant.get(claim.tenant_id) ?? {
-      tenantId: claim.tenant_id,
-      tenantName: claim.tenants?.name ?? "A studio",
+    const row = byTenant.get(claim.business_id) ?? {
+      tenantId: claim.business_id,
+      tenantName: claim.businesses?.name ?? "A studio",
       sessions: 0,
       ratePerSessionInr: null,
       earnedInr: 0,
@@ -310,14 +310,14 @@ export async function findMyEarnings(
     row.sessions += taught.length;
     row.earnedInr += taught.length * claim.pay_per_session_inr;
     if (taught.length > 0) row.rates.add(claim.pay_per_session_inr);
-    byTenant.set(claim.tenant_id, row);
+    byTenant.set(claim.business_id, row);
   }
 
   // what has actually been settled, per studio
   const paidByTenant = new Map<string, number>();
   for (const p of payoutRows) {
     if (p.status === "done") {
-      paidByTenant.set(p.tenant_id, (paidByTenant.get(p.tenant_id) ?? 0) + p.amount_inr);
+      paidByTenant.set(p.business_id, (paidByTenant.get(p.business_id) ?? 0) + p.amount_inr);
     }
   }
 
@@ -349,7 +349,7 @@ export async function findMyEarnings(
       id: p.id,
       userId: p.user_id,
       personName: p.profiles?.full_name ?? "Someone",
-      tenantName: p.tenants?.name ?? "A studio",
+      tenantName: p.businesses?.name ?? "A studio",
       amountInr: p.amount_inr,
       status: p.status,
       method: p.method,
@@ -375,7 +375,7 @@ export async function recordPayout(
   }
 ): Promise<void> {
   const { error } = await supabase.rpc("record_payout", {
-    p_tenant_id: input.tenantId,
+    p_business_id: input.tenantId,
     p_user_id: input.userId,
     p_session_ids: input.sessionIds,
     p_method: input.method,

@@ -1,6 +1,6 @@
 /** Who an account IS (8 Sep 2026): a person, or an organization that runs
  *  studios. The prototype's dancer | trainer | studio is gone at the user's
- *  instruction — "Pro" is the artist plan, a ROW on `artist_plans`, never a role
+ *  instruction — "Pro" is the artist plan, a ROW on `artist_plans_legacy`, never a role
  *  again. Chosen once at onboarding; only DanceOS may change it afterwards. */
 export type ProfileRole = "user" | "org";
 

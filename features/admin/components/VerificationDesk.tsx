@@ -64,7 +64,7 @@ const TABS: Array<{ key: VerificationTab; label: string }> = [
 ];
 
 /** THE STUDIO A REQUEST IS ABOUT. Every row that reaches this desk has one —
- *  the reads filter on `tenant_id` — but the columns are nullable because the
+ *  the reads filter on `business_id` — but the columns are nullable because the
  *  organization reviews this replaced are still in the table as history, so the
  *  fallbacks are here to keep the types honest rather than to be used. */
 const subjectOf = (r: VerificationRequest) => ({

@@ -81,7 +81,7 @@ export function MyProfilePage({
   scheduleHref,
   prefs,
   business,
-  tenants = [],
+  businesses = [],
   plan,
   isAdmin = false,
   gstVerified = false,
@@ -101,7 +101,7 @@ export function MyProfilePage({
   /** the first business this person runs, for the rows that live on its desk */
   business: Tenant | null;
   /** every business this account runs — an ORGANIZATION's studios, under one hood (8 Sep 2026) */
-  tenants?: Tenant[];
+  businesses?: Tenant[];
   /** the Artist plan, for the settings sheet's switch */
   plan: ArtistPlan | null;
   /** a platform admin gets the verification queue as a row in the settings sheet */
@@ -233,9 +233,9 @@ export function MyProfilePage({
           <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
               {isOrg ? (
                 /* an organization's one figure is its studios — it has no followers, follows nobody, and stands on no board */
-                <Link href="/business" aria-label={`${tenants.length} ${tenants.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
-                  <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{tenants.length}</span>
-                  <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>{tenants.length === 1 ? "Studio" : "Studios"}</span>
+                <Link href="/business" aria-label={`${businesses.length} ${businesses.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
+                  <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{businesses.length}</span>
+                  <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>{businesses.length === 1 ? "Studio" : "Studios"}</span>
                 </Link>
               ) : (
                 <>
@@ -318,11 +318,11 @@ export function MyProfilePage({
             not yet, each a door to its desk. Nobody else sees this list — they see each studio
             on its own page, and never the organization behind it. */}
         {isOrg ? (
-          <Group title="Your studios" n={tenants.length}>
-            {tenants.map((t) => (
+          <Group title="Your studios" n={businesses.length}>
+            {businesses.map((t) => (
               <Row key={t.id} href={`/business/${t.id}/classes`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ") || "Studio"} right={t.verifiedAt ? "Verified" : "Not verified yet"} />
             ))}
-            <Row href="/business" title="＋ Add studio" sub={tenants.length === 0 ? "Your first studio is opened from the hub" : "Opened from the hub — the same organization, another address"} />
+            <Row href="/business" title="＋ Add studio" sub={businesses.length === 0 ? "Your first studio is opened from the hub" : "Opened from the hub — the same organization, another address"} />
           </Group>
         ) : null}
         {person.crews.length ? (

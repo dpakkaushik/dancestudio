@@ -142,7 +142,7 @@ export default async function DiscoverPage({
       ? findNearbyTenants(supabase, {
           ...centre,
           radiusKm: radiusOf(filters),
-          type: tab === "studios" ? "studio" : "trainer_business",
+          type: tab === "studios" ? "studio" : "artist_page",
         })
       : Promise.resolve([]),
     user && tab === "classes" ? findMyEnrolledSessionIds(supabase) : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
@@ -168,9 +168,9 @@ export default async function DiscoverPage({
      classes — and a style filter narrows through the same map */
   const stylesByTenant = wantsBusinesses ? await findPublishedStylesByTenant(supabase, nearby.map((t) => t.id)) : new Map<string, string[]>();
   const businesses = wantsBusinesses ? filterTenants(nearby, filters, stylesByTenant) : [];
-  const followed = following.filter((f) => f.tenantType === (tab === "studios" ? "studio" : "trainer_business"));
+  const followed = following.filter((f) => f.tenantType === (tab === "studios" ? "studio" : "artist_page"));
   /* the follower count sits at the foot of every business card — a number, never a name (Step 15);
-     the faces come from the tenants themselves (the nearby RPC carries none) */
+     the faces come from the businesses themselves (the nearby RPC carries none) */
   const [followerCounts, facts] = await Promise.all([
     wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
     wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.tenantId)]) : Promise.resolve(new Map<string, TenantCardFacts>()),
@@ -193,7 +193,7 @@ export default async function DiscoverPage({
       lng: t.lng as number,
       label: `${t.name}${t.area ? ` · ${t.area}` : ""}`,
       href: publicProfilePath(t),
-      tint: t.type === "trainer_business" ? "#EC4899" : "#3B82F6",
+      tint: t.type === "artist_page" ? "#EC4899" : "#3B82F6",
     }));
   const followedTiles: FollowedTile[] = followed.map((f) => ({
     id: f.tenantId,

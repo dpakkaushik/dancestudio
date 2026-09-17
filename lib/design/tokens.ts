@@ -49,8 +49,8 @@ export const DOS_TINT: Record<"user" | "artist" | "org", string> = {
 /** a business wears its owner-kind's colour: a studio is an organization's, an artist page an artist's */
 /** A business's colour by what it is. An `org` hosting row (R15) wears the
  *  organization's gold, the same as a studio, because that is whose it is. */
-export const tintForTenantType = (type: "studio" | "trainer_business" | "org"): string =>
-  type === "trainer_business" ? DOS_TINT.artist : DOS_TINT.org;
+export const tintForTenantType = (type: "studio" | "artist_page" | "org"): string =>
+  type === "artist_page" ? DOS_TINT.artist : DOS_TINT.org;
 
 /** THE HERO SQUARE (prototype S_profiletab 10588-10589): the sharp 206px cover
  *  every identity page stands its picture in, and the sleeve's thrown shadow.

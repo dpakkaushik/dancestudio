@@ -15,8 +15,8 @@ export default async function TenantInvoicesPage({ params }: { params: Promise<{
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const tenants = await findMyTenants(supabase);
-  if (!tenants.some((t) => t.id === tenantId)) redirect("/business");
+  const businesses = await findMyTenants(supabase);
+  if (!businesses.some((t) => t.id === tenantId)) redirect("/business");
   const rows = await findTenantInvoices(supabase, tenantId);
   return <InvoicesScreen rows={rows} side="tenant" />;
 }

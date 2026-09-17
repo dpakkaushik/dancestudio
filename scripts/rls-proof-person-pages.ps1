@@ -93,19 +93,19 @@ $other = New-EmailUser "pp-other-$stamp@example.com" "PP Other $stamp" "user" $c
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "PP Listed Studio $stamp"; p_type = "studio"; p_area = "Navrangpura"; p_city = $city }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "PP Listed Studio $stamp"; p_type = "studio"; p_area = "Navrangpura"; p_city = $city }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $owner.token) "create_tenant_with_owner" @{ p_name = "PP Private Studio $stamp"; p_type = "studio"; p_area = "Bodakdev"; p_city = $city }
+$tb = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "PP Private Studio $stamp"; p_type = "studio"; p_area = "Bodakdev"; p_city = $city }
 Subscribe-Studio ([string]$tb.id)
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 $soon = (Get-Date).AddDays(9)
 
 try {
@@ -113,14 +113,14 @@ try {
   # listed one, a DRAFT class of the listed one, and a published class of the
   # UNLISTED one. Only the first may ever appear on their page.
   foreach ($t in @($ta, $tb)) {
-    Rpc (Api $owner.token) "invite_to_tenant" @{ p_tenant_id = $t.id; p_name = $teacher.name; p_email = $teacher.email; p_role = "trainer" } | Out-Null
+    Rpc (Api $owner.token) "invite_to_business" @{ p_business_id = $t.id; p_name = $teacher.name; p_email = $teacher.email; p_role = "trainer" } | Out-Null
   }
-  foreach ($inv in (Get-Rows (Api $owner.token) "tenant_invites?select=code&status=eq.pending")) {
-    Rpc (Api $teacher.token) "accept_tenant_invite" @{ p_code = $inv.code } | Out-Null
+  foreach ($inv in (Get-Rows (Api $owner.token) "business_invites?select=code&status=eq.pending")) {
+    Rpc (Api $teacher.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
   }
   $mk = {
     param($tenantId, $title, $style, $status)
-    $c = Rpc (Api $owner.token) "create_class_with_session" @{ p_tenant_id = $tenantId; p_title = $title; p_style = $style;
+    $c = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $tenantId; p_title = $title; p_style = $style;
       p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10; p_status = $status;
       p_starts_at = $soon.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $soon.ToString("yyyy-MM-ddT20:00:00zzz") }
     return $c
@@ -129,8 +129,8 @@ try {
   $draft = & $mk $ta.id "PP Draft $stamp" "Kathak" "draft"
   $hidden = & $mk $tb.id "PP Hidden $stamp" "Salsa" "published"
   foreach ($c in @($pub, $draft, $hidden)) {
-    $k = Rpc (Api $owner.token) "claim_person" @{ p_class_id = $c.id; p_user_id = $teacher.id; p_kind = "artist"; p_pay_per_session_inr = 0 }
-    Rpc (Api $teacher.token) "respond_to_claim" @{ p_claim_id = $k.id; p_accept = $true } | Out-Null
+    $k = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $c.id; p_user_id = $teacher.id; p_kind = "artist"; p_pay_per_session_inr = 0 }
+    Rpc (Api $teacher.token) "respond_to_class_ask" @{ p_class_person_id = $k.id; p_accept = $true } | Out-Null
   }
 
   # and one session that has ENDED, so the record has a real number in it (a
@@ -156,9 +156,9 @@ try {
 
   # 3. TEACHES AT IS PUBLIC ROWS ONLY: the listed studio's published class, and nothing else
   $teaches = Rows (Api $fan.token) "person_teaches_at" @{ p_user_id = $teacher.id }
-  $names = (@($teaches | ForEach-Object { $_.tenant_name }) -join ", ")
+  $names = (@($teaches | ForEach-Object { $_.business_name }) -join ", ")
   Check 3 "Teaches at: $names ($($teaches.Count) row) - the draft's studio counts once, the unlisted one never" (
-    ($teaches.Count -eq 1) -and ($teaches[0].tenant_name -eq "PP Listed Studio $stamp") -and ($teaches[0].classes -eq 1))
+    ($teaches.Count -eq 1) -and ($teaches[0].business_name -eq "PP Listed Studio $stamp") -and ($teaches[0].classes -eq 1))
 
   # 4. THE RECORD MATCHES STEP 25's BOARD - the same arithmetic, so the page shows nothing new
   $mine = (Rows (Api $teacher.token) "my_dance_stats" @{})[0]
@@ -201,7 +201,7 @@ try {
 
   # 8. A FOLLOW NAMES EXACTLY ONE OBJECT - the table cannot hold anything else
   $both = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/follows" -Headers $svcH -Body (@{
-    follower_id = $fan.id; followee_id = $teacher.id; tenant_id = $ta.id; created_by = $fan.id; updated_by = $fan.id } | ConvertTo-Json) }
+    follower_id = $fan.id; followee_id = $teacher.id; business_id = $ta.id; created_by = $fan.id; updated_by = $fan.id } | ConvertTo-Json) }
   $neither = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/follows" -Headers $svcH -Body (@{
     follower_id = $fan.id; created_by = $fan.id; updated_by = $fan.id } | ConvertTo-Json) }
   $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/follows" -Headers (Api $other.token) -Body (@{
@@ -226,9 +226,9 @@ try {
     ([int]$u1.followers -eq 1) -and ([int]$r1.followers -eq 2) -and ($all.Count -eq 2) -and ($live -eq 1))
 
   # 11. FOLLOWING A BUSINESS STILL WORKS THE OLD WAY (the table learned a second object, it did not forget the first)
-  $bizFollow = Rpc (Api $fan.token) "set_follow" @{ p_tenant_id = $ta.id; p_on = $true }
-  $bizCount = @((Rpc $anonH "follower_counts" @{ p_tenant_ids = @($ta.id) }))
-  $bizN = 0; foreach ($r in $bizCount) { if ($r.tenant_id -eq $ta.id) { $bizN = [int]$r.followers } }
+  $bizFollow = Rpc (Api $fan.token) "set_follow" @{ p_business_id = $ta.id; p_on = $true }
+  $bizCount = @((Rpc $anonH "follower_counts" @{ p_business_ids = @($ta.id) }))
+  $bizN = 0; foreach ($r in $bizCount) { if ($r.business_id -eq $ta.id) { $bizN = [int]$r.followers } }
   Check 11 "The fan follows the studio: $($bizFollow.followers); the public count still answers $bizN" (
     ([int]$bizFollow.followers -eq 1) -and ($bizN -eq 1))
 
@@ -242,7 +242,7 @@ try {
   # (the sub reads "User" since 8 Sep 2026: ARTIST is the plan's word, and this teacher took no plan)
 }
 finally {
-  foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($t.id)" -Headers $svcH | Out-Null }
+  foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null }
   foreach ($u in @($owner, $teacher, $fan, $other)) {
     if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
   }

@@ -128,8 +128,8 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
            new mandate below is the one our row will point at */
       }
     }
-    /* The plan is read with the CALLER's own client: `plan_catalog` is
-       signed-in readable by policy, while `admin_plan_catalog()` is gated on
+    /* The plan is read with the CALLER's own client: `plans` is
+       signed-in readable by policy, while `admin_plans()` is gated on
        `is_platform_admin()` and answers a service-role connection with nothing
        at all — which is what made this button say "That plan is not on offer"
        to every customer who pressed it (found 10 Sep 2026 by driving the real
@@ -155,7 +155,7 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
       returnUrl,
       firstChargeOn: addMonths(todayIst(), row.period === "yearly" ? 12 : 1),
       note: `DanceOS ${plan.label}`,
-      tags: { subscription_id: row.id, kind: row.kind, ...(row.tenantId ? { tenant_id: row.tenantId } : {}) },
+      tags: { subscription_id: row.id, kind: row.kind, ...(row.tenantId ? { business_id: row.tenantId } : {}) },
     });
     if (!cfSub.subscription_session_id) {
       return { checkout: null, error: "Cashfree did not return a checkout session" };

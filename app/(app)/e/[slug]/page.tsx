@@ -11,7 +11,7 @@ import { TYPE_LABEL } from "@/types/event";
 
 /** The event page at its booking link — /e/{slug} (prototype S_event 12810).
  *  Works signed out: RLS shows the public only published events of listed
- *  tenants, so a draft's link 404s for strangers and resolves for the
+ *  businesses, so a draft's link 404s for strangers and resolves for the
  *  organiser's own members. */
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{3,38}[a-z0-9]$/;

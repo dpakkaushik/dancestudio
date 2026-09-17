@@ -25,7 +25,7 @@ export interface HeaderPhoto {
  *  would be worse than one that shows the disc alone. */
 export async function findPersonHeaderPhotos(supabase: SupabaseClient, userId: string, max = HEADER_MAX_ARTIST): Promise<HeaderPhoto[]> {
   const { data, error } = await supabase
-    .from("profile_photos")
+    .from("profile_header_photos")
     .select("id, path, sort, created_at")
     .eq("user_id", userId)
     .is("deleted_at", null)
@@ -45,7 +45,7 @@ export async function findPersonHeaderPhotos(supabase: SupabaseClient, userId: s
  *  One RPC decides which and whether the caller may see them at all, so the
  *  page never has to know whose folder anything is in. */
 export async function findTenantHeaderPhotos(supabase: SupabaseClient, tenantId: string): Promise<HeaderPhoto[]> {
-  const { data, error } = await supabase.rpc("tenant_header_photos", { p_tenant_id: tenantId });
+  const { data, error } = await supabase.rpc("business_header_photos", { p_business_id: tenantId });
   if (error) {
     return [];
   }

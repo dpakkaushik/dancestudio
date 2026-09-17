@@ -13,22 +13,22 @@ import type { TenantType } from "@/types/tenant";
 const MAX_LIST = 500;
 
 interface CountRow {
-  tenant_id: string;
+  business_id: string;
   followers: number;
 }
 
 interface MyFollowRow {
   id: string;
-  tenant_id: string;
+  business_id: string;
   created_at: string;
-  tenants: { type: TenantType; name: string; area: string | null; city: string | null } | null;
+  businesses: { type: TenantType; name: string; area: string | null; city: string | null } | null;
 }
 
 interface FollowerRow {
   id: string;
   follower_id: string;
   created_at: string;
-  profiles: { full_name: string; role: ProfileRole; city: string | null; avatar_path: string | null } | null;
+  profiles: { full_name: string; role: ProfileRole; city: string | null; profile_photo_path: string | null } | null;
 }
 
 /** Live follower counts — a number, never a name. Listed businesses answer for
@@ -41,12 +41,12 @@ export async function findFollowerCounts(
   if (ids.length === 0) {
     return new Map();
   }
-  const { data, error } = await supabase.rpc("follower_counts", { p_tenant_ids: ids });
+  const { data, error } = await supabase.rpc("follower_counts", { p_business_ids: ids });
   if (error) {
     throw new Error(`follows.counts failed: ${error.message}`);
   }
   const map = new Map<string, number>();
-  ((data ?? []) as CountRow[]).forEach((r) => map.set(r.tenant_id, Number(r.followers)));
+  ((data ?? []) as CountRow[]).forEach((r) => map.set(r.business_id, Number(r.followers)));
   return map;
 }
 
@@ -62,7 +62,7 @@ export async function isFollowingTenant(supabase: SupabaseClient, tenantId: stri
     .from("follows")
     .select("id")
     .eq("follower_id", user.id)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .limit(1);
   if (error) {
@@ -81,9 +81,9 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
   }
   const { data, error } = await supabase
     .from("follows")
-    .select("id, tenant_id, created_at, tenants (type, name, area, city)")
+    .select("id, business_id, created_at, businesses (type, name, area, city)")
     .eq("follower_id", user.id)
-    .not("tenant_id", "is", null)
+    .not("business_id", "is", null)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_LIST);
@@ -91,14 +91,14 @@ export async function findMyFollowing(supabase: SupabaseClient): Promise<Followe
     throw new Error(`follows.findMine failed: ${error.message}`);
   }
   return ((data ?? []) as unknown as MyFollowRow[])
-    .filter((r) => r.tenants)
+    .filter((r) => r.businesses)
     .map((r) => ({
       followId: r.id,
-      tenantId: r.tenant_id,
-      tenantType: r.tenants!.type,
-      tenantName: r.tenants!.name,
-      tenantArea: r.tenants!.area,
-      tenantCity: r.tenants!.city,
+      tenantId: r.business_id,
+      tenantType: r.businesses!.type,
+      tenantName: r.businesses!.name,
+      tenantArea: r.businesses!.area,
+      tenantCity: r.businesses!.city,
       followedAt: r.created_at,
     }));
 }
@@ -113,8 +113,8 @@ export async function findTenantFollowers(
 ): Promise<TenantFollower[]> {
   const { data, error } = await supabase
     .from("follows")
-    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, avatar_path)")
-    .eq("tenant_id", tenantId)
+    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, profile_photo_path)")
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(MAX_LIST);
@@ -130,7 +130,7 @@ export async function findTenantFollowers(
     role: r.profiles?.role ?? "user",
     isArtist: artists.has(r.follower_id),
     city: r.profiles?.city ?? null,
-    avatarPath: r.profiles?.avatar_path ?? null,
+    avatarPath: r.profiles?.profile_photo_path ?? null,
     followedAt: r.created_at,
   }));
 }
@@ -158,7 +158,7 @@ export async function findMyPersonFollowers(supabase: SupabaseClient): Promise<P
   if (!user) return [];
   const { data, error } = await supabase
     .from("follows")
-    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, avatar_path)")
+    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, profile_photo_path)")
     .eq("followee_id", user.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -166,9 +166,9 @@ export async function findMyPersonFollowers(supabase: SupabaseClient): Promise<P
   if (error) {
     throw new Error(`follows.myFollowers failed: ${error.message}`);
   }
-  const rows = ((data ?? []) as unknown as Array<{ id: string; follower_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; avatar_path: string | null } | null }>).filter((r) => r.profiles);
+  const rows = ((data ?? []) as unknown as Array<{ id: string; follower_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; profile_photo_path: string | null } | null }>).filter((r) => r.profiles);
   const artists = await findArtistIds(supabase, rows.map((r) => r.follower_id));
-  return rows.map((r) => ({ followId: r.id, userId: r.follower_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.follower_id), city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
+  return rows.map((r) => ({ followId: r.id, userId: r.follower_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.follower_id), city: r.profiles!.city, avatarPath: r.profiles!.profile_photo_path, followedAt: r.created_at }));
 }
 
 /** The PEOPLE the signed-in person follows (the businesses are findMyFollowing). */
@@ -179,7 +179,7 @@ export async function findMyFollowedPeople(supabase: SupabaseClient): Promise<Pe
   if (!user) return [];
   const { data, error } = await supabase
     .from("follows")
-    .select("id, followee_id, created_at, profiles!follows_followee_id_fkey (full_name, role, city, avatar_path)")
+    .select("id, followee_id, created_at, profiles!follows_followee_id_fkey (full_name, role, city, profile_photo_path)")
     .eq("follower_id", user.id)
     .not("followee_id", "is", null)
     .is("deleted_at", null)
@@ -188,15 +188,15 @@ export async function findMyFollowedPeople(supabase: SupabaseClient): Promise<Pe
   if (error) {
     throw new Error(`follows.myFollowedPeople failed: ${error.message}`);
   }
-  const rows = ((data ?? []) as unknown as Array<{ id: string; followee_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; avatar_path: string | null } | null }>).filter((r) => r.profiles);
+  const rows = ((data ?? []) as unknown as Array<{ id: string; followee_id: string; created_at: string; profiles: { full_name: string; role: ProfileRole; city: string | null; profile_photo_path: string | null } | null }>).filter((r) => r.profiles);
   const artists = await findArtistIds(supabase, rows.map((r) => r.followee_id));
-  return rows.map((r) => ({ followId: r.id, userId: r.followee_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.followee_id), city: r.profiles!.city, avatarPath: r.profiles!.avatar_path, followedAt: r.created_at }));
+  return rows.map((r) => ({ followId: r.id, userId: r.followee_id, name: r.profiles!.full_name, role: r.profiles!.role, isArtist: artists.has(r.followee_id), city: r.profiles!.city, avatarPath: r.profiles!.profile_photo_path, followedAt: r.created_at }));
 }
 
 /** Follow or unfollow — the RPC is idempotent and refuses an unlisted business
  *  or one the caller belongs to. */
 export async function setFollow(supabase: SupabaseClient, tenantId: string, on: boolean): Promise<FollowState> {
-  const { data, error } = await supabase.rpc("set_follow", { p_tenant_id: tenantId, p_on: on });
+  const { data, error } = await supabase.rpc("set_follow", { p_business_id: tenantId, p_on: on });
   if (error) {
     throw new Error(error.message);
   }

@@ -41,14 +41,14 @@ export default async function InboxPage() {
     redirect("/login");
   }
 
-  const [profile, tenants, plan] = await Promise.all([findProfileById(supabase, user.id), findMyTenants(supabase), findMyArtistPlan(supabase)]);
-  const tenantIds = tenants.map((t) => t.id);
+  const [profile, businesses, plan] = await Promise.all([findProfileById(supabase, user.id), findMyTenants(supabase), findMyArtistPlan(supabase)]);
+  const tenantIds = businesses.map((t) => t.id);
 
   const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesIn, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut] = await Promise.all([
     findMyPendingClaims(supabase),
     findMyPendingInvites(supabase),
     findAskedClaimsForTenants(supabase, tenantIds),
-    Promise.all(tenants.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, tenantName: t.name })))),
+    Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, tenantName: t.name })))),
     findReceivedEnquiries(supabase, tenantIds),
     findSentEnquiries(supabase, user.id),
     findMyPendingCrewAsks(supabase),

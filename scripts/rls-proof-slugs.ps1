@@ -30,13 +30,13 @@ function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"
 function New-Class($headers, $tenantId, $title, $status) {
   $starts = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT19:00:00+05:30")
   $ends = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT20:00:00+05:30")
-  $body = @{ p_tenant_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
+  $body = @{ p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
              p_room = "Studio A"; p_price_inr = 300; p_capacity = 10; p_status = $status;
              p_starts_at = $starts; p_ends_at = $ends } | ConvertTo-Json
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
 }
 function By-Slug($headers, $slug) {
-  return @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?share_slug=eq.$slug&deleted_at=is.null&select=id,title,share_slug,status,tenants(name)" -Headers $headers)
+  return @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?share_slug=eq.$slug&deleted_at=is.null&select=id,title,share_slug,status,businesses(name)" -Headers $headers)
 }
 
 $a = Sign-In "+919999999999"
@@ -48,15 +48,15 @@ $stamp = Get-Date -Format "HHmmss"
 # per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
 # for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
 function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/tenant_members?tenant_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
   $ownerId = [string]$ownerRows[0].user_id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; tenant_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
     current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/tenants?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_tenant_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Slug Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Slug Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
 Subscribe-Studio ([string]$ta.id)
 
 try {
@@ -68,8 +68,8 @@ try {
 
   # 2. anonymous resolves the slug and can name the studio behind it
   $hit = By-Slug $anonH $pub.share_slug
-  $anonOk = ($hit.Count -eq 1) -and ([string]$hit[0].tenants.name -eq [string]$ta.name)
-  "2. Anonymous resolves the booking link (studio named '$($hit[0].tenants.name)'): $(if ($anonOk) {'-- OK'} else {'-- !!! FAILED !!!'})"
+  $anonOk = ($hit.Count -eq 1) -and ([string]$hit[0].businesses.name -eq [string]$ta.name)
+  "2. Anonymous resolves the booking link (studio named '$($hit[0].businesses.name)'): $(if ($anonOk) {'-- OK'} else {'-- !!! FAILED !!!'})"
   if (-not $anonOk) { $pass = $false }
 
   # 3. a draft's link is dark to the public
@@ -95,7 +95,7 @@ finally {
   # the proof cleans up after itself - service role removes the studio, children cascade
   if ($service) {
     $svcH = @{ apikey = $service; Authorization = "Bearer $service" }
-    Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/tenants?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+    Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
     "   (cleanup: proof studio deleted)"
   } else {
     "   (no SUPABASE_SERVICE_ROLE_KEY - proof studio $($ta.id) left behind)"

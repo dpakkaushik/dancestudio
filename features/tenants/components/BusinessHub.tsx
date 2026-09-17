@@ -120,7 +120,7 @@ export function BusinessHub({
   isArtist: boolean;
   /** THE GATE, as the database words it: null when a studio may be created, else
    *  the one sentence still standing in the way. Asked of `why_no_studio()` so
-   *  this screen cannot drift from what `create_tenant_with_owner` enforces. */
+   *  this screen cannot drift from what `create_business_with_owner` enforces. */
   whyNoStudio: string | null;
   /** 10 Sep 2026: each studio's own subscription, and the sentence between it and Discover */
   studioSubscriptions?: Record<string, StudioSubscriptionState>;
@@ -183,7 +183,7 @@ export function BusinessHub({
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);
   const myStudios = mine.filter((t) => t.type === "studio");
-  const myArtistPage = mine.find((t) => t.type === "trainer_business") ?? null;
+  const myArtistPage = mine.find((t) => t.type === "artist_page") ?? null;
 
   /* what the sheet opens is decided by who is here, not by a toggle */
   const isStudio = isOrg;
@@ -207,7 +207,7 @@ export function BusinessHub({
 
   /** THE FACE BEFORE THE NAME (15 Sep 2026, the user: "show the profile pic
    *  before the studio name"). Its own picture when it has one — the same
-   *  `tenants.photo_path` the disc on its home wears — and its kind's mark on
+   *  `businesses.profile_photo_path` the disc on its home wears — and its kind's mark on
    *  the accent when it does not. */
   const face = (t: MyMembership["tenant"], own: boolean) => {
     const src = photoUrl(t.photoPath);

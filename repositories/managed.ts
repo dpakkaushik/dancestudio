@@ -17,13 +17,13 @@ import type { Tenant } from "@/types/tenant";
  *  Order: what is coming first, soonest at the top; what is over after it, most
  *  recent first; a class with no dated session last. A manager opens this list
  *  to act on what is next. */
-export async function findEverythingIManage(supabase: SupabaseClient): Promise<{ tenants: Tenant[]; listings: ManagedListing[] }> {
-  const tenants = await findMyTenants(supabase);
-  if (tenants.length === 0) {
-    return { tenants, listings: [] };
+export async function findEverythingIManage(supabase: SupabaseClient): Promise<{ businesses: Tenant[]; listings: ManagedListing[] }> {
+  const businesses = await findMyTenants(supabase);
+  if (businesses.length === 0) {
+    return { businesses, listings: [] };
   }
-  const ids = tenants.map((t) => t.id);
-  const byId = new Map(tenants.map((t) => [t.id, t]));
+  const ids = businesses.map((t) => t.id);
+  const byId = new Map(businesses.map((t) => [t.id, t]));
   const [classes, events] = await Promise.all([findClassesByTenants(supabase, ids), findEventsByTenants(supabase, ids)]);
   const counts = await countEnrolledBySession(
     supabase,
@@ -73,5 +73,5 @@ export async function findEverythingIManage(supabase: SupabaseClient): Promise<{
     if (ra === 1) return stamp(b) - stamp(a);
     return a.key.localeCompare(b.key);
   });
-  return { tenants, listings };
+  return { businesses, listings };
 }

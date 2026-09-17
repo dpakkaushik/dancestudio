@@ -12,7 +12,7 @@ const MUTED = "var(--muted)";
 /** The reasons, in the words a person would actually use, and only the ones
  *  that make sense for the thing being reported. */
 const REASONS: Record<ReportSubjectKind, Array<[ReportReason, string]>> = {
-  tenant: [
+  business: [
     ["not_a_real_business", "This is not a real studio"],
     ["impersonation", "It is pretending to be someone else"],
     ["stolen_content", "It is using someone else's photos"],
@@ -111,7 +111,7 @@ export function ReportButton({
             aria-label={`Report ${subjectName}`}
             style={{ background: "none", border: "none", padding: "6px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: 10.5, fontWeight: 700, color: MUTED, textDecoration: "underline" }}
           >
-            Report this {subjectKind === "tenant" ? "page" : subjectKind}
+            Report this {subjectKind === "business" ? "page" : subjectKind}
           </button>
         ) : (
           <span style={{ fontSize: 10.5, color: MUTED }}>Sign in to report this page.</span>

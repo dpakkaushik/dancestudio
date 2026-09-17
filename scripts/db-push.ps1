@@ -33,13 +33,21 @@ $ref = ([Uri]$url).Host.Split(".")[0]
 $encoded = [Uri]::EscapeDataString($password)
 $dbUrl = "postgresql://postgres.$ref`:$encoded@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
 
+# 16 Sep 2026: `npx supabase` resolves to a JS shim that spawnSync()s the
+# platform binary, and on this machine that spawn fails with `UNKNOWN` while
+# the very same .exe runs fine from PowerShell. Call the binary directly when
+# pnpm has it, and fall back to the shim where it does not.
+$exe = Get-ChildItem -Path (Join-Path $root "node_modules\.pnpm") -Directory -Filter "@supabase+cli-windows-x64@*" -ErrorAction SilentlyContinue |
+  ForEach-Object { Join-Path $_.FullName "node_modules\@supabase\cli-windows-x64\bin\supabase.exe" } |
+  Where-Object { Test-Path $_ } | Select-Object -First 1
+
 Push-Location $root
 try {
   if ($DryRun) {
     Write-Output "DRY RUN - migrations the CLI considers pending:"
-    & npx.cmd supabase migration list --db-url $dbUrl
+    if ($exe) { & $exe migration list --db-url $dbUrl } else { & npx.cmd supabase migration list --db-url $dbUrl }
   } else {
-    & npx.cmd supabase db push --db-url $dbUrl --include-all --yes
+    if ($exe) { & $exe db push --db-url $dbUrl --include-all --yes } else { & npx.cmd supabase db push --db-url $dbUrl --include-all --yes }
   }
   if ($LASTEXITCODE -ne 0) { throw "supabase CLI exited $LASTEXITCODE" }
 } finally {

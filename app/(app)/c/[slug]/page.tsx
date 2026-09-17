@@ -15,7 +15,7 @@ import type { EnrollmentStatus } from "@/types/enrollment";
 
 /** The class detail page at its booking link — /c/{slug} (prototype S_class; the
  *  link grammar is shareRecOf's danceos.in/c/{slug}). Works signed out: RLS shows
- *  the public only published classes of listed tenants, so a draft's link 404s for
+ *  the public only published classes of listed businesses, so a draft's link 404s for
  *  strangers and resolves for the studio's own members. */
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{4,38}[a-z0-9]$/;

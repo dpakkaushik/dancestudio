@@ -76,7 +76,7 @@ export default async function HomePage() {
      six-step organization card, and that card became the GST card. They were
      four round-trips on every single Home load for a component that is not
      drawn any more; what is still asked for is what is still shown. */
-  const [tenants, invites, plan, eventsHostId, threads] = await Promise.all([
+  const [businesses, invites, plan, eventsHostId, threads] = await Promise.all([
     findMyTenants(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
@@ -114,7 +114,7 @@ export default async function HomePage() {
 
   /* a studio's day is not a person's day (7022-7060): a studio owner's Home shows
      what is running in the studio's rooms, drawn by the same card in the same rail */
-  const studio = isOrg ? (tenants.find((t) => t.type === "studio") ?? null) : null;
+  const studio = isOrg ? (businesses.find((t) => t.type === "studio") ?? null) : null;
   /* AN UNVERIFIED ORGANIZATION'S HOME IS THE STANDING CARD AND NOTHING ELSE
      (10 Sep 2026, the user's ask). Until DanceOS has said yes it owns no studio
      and cannot make one, so "Today's schedule" is always empty and every Studio
@@ -130,7 +130,7 @@ export default async function HomePage() {
      its photos, ask for the badge. It stays a constant so the two folds below
      keep reading as a decision rather than as dead code. */
   const orgAwaitingApproval = false;
-  const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, tenants);
+  const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, businesses);
 
   /* the metal the KIND wears (DOS_RINGS 1462): gold for an organization, silver
      for an artist, bronze for a user — the same pair the Profile tab paints with */
@@ -141,12 +141,12 @@ export default async function HomePage() {
   const metaLine = [profile.age != null ? String(profile.age) : "", place].filter(Boolean).join(", ");
   /* Manage only appears if you actually run something (7135): the door to what you
      manage, and offering it to somebody who manages nothing is a door onto an empty room */
-  const canManage = tenants.length > 0;
+  const canManage = businesses.length > 0;
   /* The Studio Tools doors are a STUDIO's — classes, rooms, students, the team.
      R15 (9 Sep 2026) gave every organization a hidden `org` tenant to hang its
-     events on, and it is created first, so `tenants[0]` is no longer the
+     events on, and it is created first, so `businesses[0]` is no longer the
      business anybody means: an organization's tools open its first studio. */
-  const firstTenant = (isOrg ? studio?.id : tenants.find((t) => t.type !== "org")?.id) ?? null;
+  const firstTenant = (isOrg ? studio?.id : businesses.find((t) => t.type !== "org")?.id) ?? null;
 
   /* the header, shown and nothing else: adding and removing moved into the
      Edit-profile sheet on 16 Sep 2026, at the user's instruction */

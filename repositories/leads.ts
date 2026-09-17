@@ -7,7 +7,7 @@ import type { Lead, LeadSource, LeadStatus } from "@/types/lead";
 
 interface LeadRow {
   id: string;
-  tenant_id: string;
+  business_id: string;
   name: string;
   mobile: string | null;
   interest: string | null;
@@ -21,11 +21,11 @@ interface LeadRow {
 }
 
 const LEAD_COLUMNS =
-  "id, tenant_id, name, mobile, interest, source, status, trial_class_id, trial_on, note, created_at, classes (title)";
+  "id, business_id, name, mobile, interest, source, status, trial_class_id, trial_on, note, created_at, classes (title)";
 
 const toLead = (row: LeadRow): Lead => ({
   id: row.id,
-  tenantId: row.tenant_id,
+  tenantId: row.business_id,
   name: row.name,
   mobile: row.mobile,
   interest: row.interest,
@@ -47,7 +47,7 @@ export async function findLeadsByTenant(
   const { data, error } = await supabase
     .from("leads")
     .select(LEAD_COLUMNS)
-    .eq("tenant_id", tenantId)
+    .eq("business_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -72,7 +72,7 @@ export async function createLead(
   input: CreateLeadInput
 ): Promise<void> {
   const { error } = await supabase.from("leads").insert({
-    tenant_id: input.tenantId,
+    business_id: input.tenantId,
     name: input.name,
     mobile: input.mobile,
     interest: input.interest,
