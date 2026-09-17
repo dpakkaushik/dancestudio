@@ -23,7 +23,9 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const classFields = z.object({
-  title: z.string().trim().min(1, "Give the class a name").max(140),
+  /* no `title`: a class has no name. The form has no field for one (the prototype's
+     has none either, 15309-15531), and the repository writes the database's title
+     column as "{style} · {level}" on every save — see types/class.ts */
   style: z.string().refine((s) => DOS_STYLE_NAMES.includes(s), "Pick a dance style"),
   level: z.enum(["all", "beginner", "intermediate", "professional"]),
   room: z.string().trim().max(140).optional(),
@@ -95,7 +97,6 @@ const readPeople = (formData: FormData) => {
 };
 
 const readFields = (formData: FormData) => ({
-  title: formData.get("title"),
   style: formData.get("style"),
   level: formData.get("level"),
   room: (formData.get("room") as string) || undefined,
@@ -138,7 +139,6 @@ export async function createClassAction(
   try {
     const classId = await createClassWithSession(supabase, {
       tenantId: d.tenantId,
-      title: d.title,
       style: d.style,
       level: d.level,
       room: d.room ?? null,
@@ -179,7 +179,6 @@ export async function updateClassAction(
   const people = readPeople(formData);
   try {
     await updateClassDetails(supabase, d.classId, {
-      title: d.title,
       style: d.style,
       level: d.level,
       room: d.room ?? null,
@@ -292,7 +291,8 @@ const clashSchema = z
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message });
 
-export type RoomClash = { title: string; at: string } | null;
+/** the clashing class's label ("{style} · {level}") and the hour it starts */
+export type RoomClash = { label: string; at: string } | null;
 
 /** The confirm sheet's ROOM ALREADY BUSY question (F3). A read, not a write:
  *  it changes nothing and it is the caller's own tenant's rows. Anything that
@@ -319,7 +319,7 @@ export async function checkRoomClashAction(input: unknown): Promise<RoomClash> {
     const at = new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })
       .format(new Date(hit.startsAt))
       .toLowerCase();
-    return { title: hit.title, at };
+    return { label: hit.label, at };
   } catch {
     return null;
   }

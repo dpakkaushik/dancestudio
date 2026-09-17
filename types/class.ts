@@ -16,6 +16,13 @@ export type PosterChoice = "bold" | "split" | "quiet" | "none";
 export interface DanceClass {
   id: string;
   tenantId: string;
+  /** What the class IS, not a name: "{style} · {level}" (the prototype's own
+   *  dosClassLabel, 176-183). A class has had no typed name since 17 Sep 2026 —
+   *  the form has no field for one, and every repository DERIVES this from
+   *  `style` and `level` rather than reading the stored column, so an old typed
+   *  title can never reach a screen. The database's `classes.title` column
+   *  still exists (the slug trigger, the notification triggers and the admin
+   *  desks print it) and is written with this same label on every save. */
   title: string;
   /** Stable public booking-link slug — the class detail page lives at /c/{shareSlug}. */
   shareSlug: string;

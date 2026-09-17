@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import type { ClaimKind, ClassClaim, MyClaimAsk } from "@/types/claim";
 
 /** Claims move only through the RPCs: the studio asks, and only the person asked
@@ -57,8 +58,8 @@ export async function findClaimsByClass(
 
 interface MyAskRow extends ClaimRow {
   classes: {
-    title: string;
     style: string;
+    level: string;
     share_slug: string;
     businesses: { name: string } | null;
     class_sessions: Array<{ starts_at: string }> | null;
@@ -83,7 +84,7 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
   const { data, error } = await supabase
     .from("class_people")
     .select(
-      `${CLAIM_COLUMNS}, classes (title, style, share_slug, businesses (name), class_sessions (starts_at))`
+      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses (name), class_sessions (starts_at))`
     )
     .eq("user_id", user.id)
     .eq("status", "asked")
@@ -98,7 +99,7 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
     .filter((r) => r.classes)
     .map((r) => ({
       ...toClaim(r),
-      classTitle: r.classes!.title,
+      classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
       classStyle: r.classes!.style,
       classShareSlug: r.classes!.share_slug,
       tenantName: r.classes!.businesses?.name ?? "",
@@ -198,7 +199,7 @@ export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenant
   const { data, error } = await supabase
     .from("class_people")
     .select(
-      `${CLAIM_COLUMNS}, classes (title, style, share_slug, businesses (name), class_sessions (starts_at))`
+      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses (name), class_sessions (starts_at))`
     )
     .in("business_id", tenantIds)
     .eq("status", "asked")
@@ -213,7 +214,7 @@ export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenant
     .filter((r) => r.classes)
     .map((r) => ({
       ...toClaim(r),
-      classTitle: r.classes!.title,
+      classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
       classStyle: r.classes!.style,
       classShareSlug: r.classes!.share_slug,
       tenantName: r.classes!.businesses?.name ?? "",

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus, MyEnrollment, RosterEntry } from "@/types/enrollment";
 
@@ -9,7 +10,6 @@ interface MyEnrollmentRow {
   class_id: string;
   class_sessions: { starts_at: string; ends_at: string } | null;
   classes: {
-    title: string;
     share_slug: string;
     style: string;
     level: ClassLevel;
@@ -60,7 +60,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
   const { data, error } = await supabase
     .from("class_bookings")
     .select(
-      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (title, share_slug, style, level, room, price_inr, capacity, status), businesses (name, city)"
+      "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status), businesses (name, city)"
     )
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
@@ -77,7 +77,7 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
       status: r.status,
       sessionId: r.session_id,
       classId: r.class_id,
-      title: r.classes!.title,
+      title: dosClassLabel(r.classes!.style, r.classes!.level),
       shareSlug: r.classes!.share_slug,
       style: r.classes!.style,
       level: r.classes!.level,

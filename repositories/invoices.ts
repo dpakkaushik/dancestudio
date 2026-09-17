@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 
 /** Invoices (prototype S_invoices 16691-16720): a row per payment — who paid,
  *  for what, how much, its state. A person's ledger is the payments THEY made
@@ -40,7 +41,7 @@ interface OrderPaymentRow {
   created_at: string;
   profiles: { full_name: string } | null;
   orders: {
-    classes: { title: string; style: string; share_slug: string } | null;
+    classes: { style: string; level: string; share_slug: string } | null;
     events: { title: string; share_slug: string } | null;
     businesses: { name: string } | null;
   } | null;
@@ -57,7 +58,7 @@ interface SubscriptionPaymentRow {
 }
 
 const ORDER_SELECT =
-  "id, amount_inr, method, status, created_at, profiles (full_name), orders!inner (classes (title, style, share_slug), events (title, share_slug), businesses (name))";
+  "id, amount_inr, method, status, created_at, profiles (full_name), orders!inner (classes (style, level, share_slug), events (title, share_slug), businesses (name))";
 const SUBSCRIPTION_SELECT = "id, amount_inr, method, status, created_at, kind, subscriptions (kind, businesses (name))";
 
 const numberOf = (id: string, iso: string) => `INV-${new Date(iso).getFullYear()}-${id.replace(/-/g, "").slice(-4).toUpperCase()}`;
@@ -69,7 +70,10 @@ const toOrderRow = (r: OrderPaymentRow, side: "mine" | "tenant"): InvoiceRow => 
     id: r.id,
     number: numberOf(r.id, r.created_at),
     who: side === "mine" ? (r.orders?.businesses?.name ?? "A business") : (r.profiles?.full_name ?? "Someone"),
-    what: cls ? `${cls.style} · ${cls.title}` : ev ? `Ticket · ${ev.title}` : "Booking",
+    /* a class row reads "{style} · {level}" — the label, once; it used to print the
+       style AND a typed title, which since the form lost its name field would have
+       read "Bollywood · Bollywood · All levels" */
+    what: cls ? dosClassLabel(cls.style, cls.level) : ev ? `Ticket · ${ev.title}` : "Booking",
     amountInr: r.amount_inr,
     method: r.method,
     status: r.status === "refunded" ? "refunded" : "paid",

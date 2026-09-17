@@ -194,7 +194,14 @@ test.describe.serial("DanceOS, end to end", () => {
 
   const stamp: string = Date.now().toString(36);
   const studioName: string = `E2E Studio ${stamp}`;
-  const classTitle: string = `E2E Bollywood ${stamp}`;
+  /* NOT stamped, because it is not typed: since 17 Sep 2026 the form has no name
+     field and a class is called "{style} · {level}" (the prototype's own
+     dosClassLabel). So this title is shared with every other Bollywood class on
+     the database, and the locators on SHARED surfaces (Discover) pin the tile to
+     this run's class by its share slug as well as by the name. The studio's own
+     surfaces — its register, calendar and schedule, the learner's own lists —
+     hold exactly one Bollywood class, so the name alone is still unambiguous there. */
+  const classTitle: string = "Bollywood · All levels";
   /* STAMPED, like the studio and the emails. A constant display name on a
      database this suite shares means a killed run's leftover is
      indistinguishable from this run's trainer, and every name-based locator
@@ -558,14 +565,14 @@ test.describe.serial("DanceOS, end to end", () => {
     // ---- the class form is a two-step wizard (Step 11) --------------------
     await owner.goto(`/business/${tenantId}/classes`);
     await owner.getByText("Create class").click();
-    // step 1 — basics: when, what, the name, and the room it runs in
+    // step 1 — basics: when, what, and the room it runs in (no name: the class is
+    // called "{style} · {level}", so the register reads "Bollywood · All levels")
     const inThreeDays = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await owner.getByLabel("Class date").fill(inThreeDays);
     // the style is picked through the app's one picker (F4 / W2): open it, search, choose
     await owner.getByLabel("Dance style", { exact: true }).click();
     await owner.getByLabel("Search styles").fill("Bolly");
     await owner.getByRole("button", { name: "Bollywood", exact: true }).click();
-    await owner.getByLabel("Class name").fill(classTitle);
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
     // the button reads "Continue" once every answer on the step is given (15573-15578)
     await owner.getByRole("button", { name: "Continue" }).click();
@@ -978,16 +985,19 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.waitForURL(new RegExp(`/studio/${tenantId}$`));
 
     await learner.goto("/discover?city=Pune&tab=classes");
-    await expect(learner.getByRole("link", { name: new RegExp(classTitle) })).toBeVisible();
+    /* Discover is a SHARED shelf: any Bollywood class in Pune wears this same
+       derived name, so the tile is pinned to this run's class by its share slug */
+    const ourTile = learner.locator(`a[href="/c/${shareSlug}"][aria-label="Open ${classTitle}"]`);
+    await expect(ourTile).toBeVisible();
     await learner.getByRole("button", { name: "Bollywood", exact: true }).click();
     await learner.waitForURL(/styles=Bollywood/);
     await expect(learner.getByRole("button", { name: "Bollywood", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(learner.getByRole("link", { name: new RegExp(classTitle) })).toBeVisible();
+    await expect(ourTile).toBeVisible();
     // a style the studio does not teach empties the shelf, with a door back
     await learner.goto("/discover?city=Pune&tab=classes&styles=Kalbelia");
     await expect(learner.getByText("Nothing in Pune matches that")).toBeVisible();
     await learner.getByRole("link", { name: "Clear filters" }).click();
-    await expect(learner.getByRole("link", { name: new RegExp(classTitle) })).toBeVisible();
+    await expect(ourTile).toBeVisible();
 
     await learner.goto("/discover?city=Pune&tab=events");
     await expect(learner.getByRole("link", { name: `${eventTitle} — Showcase` })).toBeVisible();
@@ -1554,7 +1564,6 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("Starts").selectOption(when.time);
     await owner.getByLabel("Dance style", { exact: true }).click();
     await owner.getByRole("button", { name: "Salsa", exact: true }).click();
-    await owner.getByLabel("Class name").fill(`E2E Clash ${stamp}`);
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
     await owner.getByRole("button", { name: "Continue" }).click();
     await owner.getByLabel("Price per session").fill("0");
@@ -1567,9 +1576,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(sheet.getByRole("button", { name: "Publish it" })).toHaveCount(0);
     await sheet.getByRole("button", { name: "Save as draft instead" }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
-    // the draft exists, and it is a DRAFT — not in any room, so it clashed with nothing
+    // the draft exists, and it is a DRAFT — not in any room, so it clashed with nothing.
+    // Its name is derived ("Salsa · All levels"), and this studio has one Salsa class.
     const rows = (await (
-      await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${tenantId}&title=eq.${encodeURIComponent(`E2E Clash ${stamp}`)}&select=status`, { headers: adminHeaders })
+      await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${tenantId}&title=eq.${encodeURIComponent("Salsa · All levels")}&select=status`, { headers: adminHeaders })
     ).json()) as Array<{ status: string }>;
     expect(rows.map((r) => r.status)).toEqual(["draft"]);
   });

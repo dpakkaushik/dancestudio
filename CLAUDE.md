@@ -2,6 +2,58 @@
 
 ## LAST SESSION (17 Sep 2026) — replaced on every push (Rule 13)
 
+> ### A CLASS HAS NO NAME — "{style} · {level}" EVERYWHERE, NOTHING TYPED (17 Sep 2026, later the same day)
+> The user: *"remove class name from the class form and remove from everywhere
+> in the app."* The FORM half had landed earlier the same day (audit row F4: the
+> CLASS NAME field gone, the server deriving `title` as the prototype's own
+> `dosClassLabel`, DanceOSApp.jsx:176-183). This is the EVERYWHERE half.
+> * **No repository reads `classes.title` any more.** Every read boundary
+>   derives the label from `style` + `level`: `toClass` (every class list, the
+>   class page, the register, Discover, the roster head, the page's metadata),
+>   the calendar's `entryOf` (Home's deck, My classes, both calendars), the
+>   learner's bookings, both Inbox asks (`classTitle`), a lead's trial class, the
+>   pay ledger, the refund ledger, Invoices, and the ROOM ALREADY BUSY check
+>   (`RoomClash.label`). The `title` field STAYS on `DanceClass` / `CalendarEntry`
+>   / `MyEnrollment` / `HistoryRow` with a doc comment saying what it is — a rename
+>   of the identifier belongs to #0y, not to this push.
+> * **Writes go through the repository.** `CreateClassInput` / `UpdateClassInput`
+>   lost `title`; `repositories/classes.ts` passes `dosClassLabel(style, level)` as
+>   `p_title` and into the update, so the database's column follows the label and
+>   the server action never names a class at all (Rule 4: the RPC keeps its
+>   argument — two overloads of one name is how PostgREST stops finding either).
+> * **One real bug on the way:** Invoices printed `${style} · ${title}` — with a
+>   derived title that would have read "Bollywood · Bollywood · All levels" on
+>   every class receipt. It prints the label once.
+> * **What the app CANNOT reach is the database's own words:** the notification
+>   triggers ("… booked {title}", "A place opened in {title}"), `my_session_history`
+>   (Stats History rows carry no level to derive from), the admin money desk's
+>   `class_title`, and the label a report or audit row gives a class all print the
+>   stored column — and a read-only PostgREST preview found **29 of 31 classes on
+>   production (14 of 16 live)** still carrying typed names: the e2e's "E2E
+>   Bollywood …", the demo world's "Bollywood Evenings" / "Breaking Lab" / "Kathak
+>   Basics", "Tiny class …", a "Tets". **Migration
+>   `20260917150000_a_class_is_named_by_what_it_is.sql` — APPLIED on the user's
+>   "push to live", AFTER that list had been in front of them** (the correction
+>   from the rename, kept): ONE UPDATE renaming every row — deleted ones too — to
+>   the label, plus a comment on the column. No trigger, no function, no policy, no
+>   grant; `share_slug` untouched (Rule 14: a link handed out is a promise —
+>   `bollywood-evenings-e7d1` still opens, and now reads "Bollywood · All
+>   levels"). Dry run showed exactly that one migration pending; read back over
+>   PostgREST afterwards: **31 classes, 0 differing from the label, 10 distinct
+>   titles, every slug as it was.** The database's own words now say what the app
+>   says.
+> * **Harness:** `scripts/demo-data.js` passes the label (its eight class specs
+>   lost `title`; its log lines and one payout note say "Bollywood · All levels"
+>   now), `e2e/paid-webhook.spec.ts` too. The proof scripts still pass typed
+>   `p_title`s and delete their rows afterwards — deliberately untouched, since no
+>   proof asserts a title it did not itself write.
+> * Verified: typecheck 0 · lint 0 · `next build` green · **e2e 51/51 in 8.4 min**,
+>   the whole suite on one worker against the production build on :3100 (#0z) —
+>   including the happy path's register, Discover, notification ("E2E Learner
+>   booked Bollywood · All levels"), Manage, PassDeck and ROOM ALREADY BUSY
+>   assertions, all of which now read the derived label. After the apply, the
+>   proofs: **28/29 in the suite run, then 29/29** — `rls-proof-discovery` was red for a reason that was not its subject (the radius search's 50-row cap, crossed by 70-plus listed proof leftovers in Pune; #0w), re-cut to pass `p_limit = 200` and delete its own studio, and green alone
+
 > ### ⚠ EVENT TICKETS PAY THROUGH CASHFREE, THE ORGANIZATION HAS A DASHBOARD, A SUBSCRIPTION HAS A RECEIPT (17 Sep 2026)
 > The user, on being told event tickets were still free: *"We have Cashfree test
 > — why aren't you recording money? Make sure there is a complete workflow for
@@ -1639,6 +1691,40 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0w. **THE PROOF LEFTOVERS HAVE CROSSED THE RADIUS SEARCH'S 50-ROW CAP — RUN THE
+   SWEEP, AFTER LOOKING AT ITS LIST (found 17 Sep 2026).** `nearby_businesses`
+   answers 50 rows by default (#6 below: no cursor), every proof and e2e studio
+   sits on Pune's exact centroid at distance 0, and the runs of 16–17 Sep have
+   left **70-plus LISTED studios in Pune** — "Class Studio 211450", "Mandate Proof
+   Studio mu3vjylu", "E2E Studio mtwtjmjt", "Mod Studio 3vbbka", "Shot Studio
+   mtwomyyo", a dozen "Near Studio HHMMSS" — beside the demo world's one real
+   "EEE Dance Studio". Two consequences. `rls-proof-discovery` went red in the
+   29-proof run for a reason that was not its subject (its new studio fell
+   outside the arbitrary first 50 — re-cut to pass `p_limit = 200` and to
+   soft-delete its own studio at the end; green alone). And **on live Discover,
+   Pune's shelf is 50 arbitrary junk studios, and EEE Dance Studio may not be
+   among them.** The repo's own sweep is ready and was dry-run:
+```
+   node scripts/cleanup-proof-leftovers.js            # dry run: 27 profiles, 595 businesses would be soft-deleted
+   node scripts/cleanup-proof-leftovers.js --apply    # soft-deletes them — deleted_at only, one UPDATE back
+```
+   NOT applied by the agent: 595 rows is a production sweep the user sees first
+   (their standing instruction). Then worth asking why rows from recent green
+   runs are still live and listed — e.g. "E2E Studio mu3sq1jc", "Mandate Proof
+   Studio mu5ryqky" — when the e2e's `finally` and 17 proofs' cleanups are
+   supposed to take them down.
+
+0x. **~~APPLY `20260917150000_a_class_is_named_by_what_it_is`~~ — DONE 17 Sep
+   2026**, on the user's "push to live" and only after the list (one UPDATE, 29 of
+   31 rows, no trigger / function / policy / grant, slugs untouched) had been put
+   in front of them. Dry run: exactly that one pending. Read-back: 31 classes, 0
+   differing from "{style} · {level}". Proofs afterwards: **28/29 in the suite run, then 29/29** — `rls-proof-discovery` was red for a reason that was not its subject (the radius search's 50-row cap, crossed by 70-plus listed proof leftovers in Pune; #0w), re-cut to pass `p_limit = 200` and delete its own studio, and green alone.
+   Nothing about class names is owed any more. The one loose thread is a WORD,
+   not a behaviour: `DanceClass.title` (and `CalendarEntry.title`,
+   `MyEnrollment.title`, `HistoryRow.title`, every `classTitle`) is a derived
+   LABEL that is still called `title` — #0y's identifier pass is where it would
+   become `label`, if the user wants the word changed at all.
+
 0y. **THE IDENTIFIERS PASS — the second half of the rename, owed by the user's
    own choice ("strings now, identifiers next", 16 Sep 2026).** The database
    and every string that reaches it say `business` / `class_people` /
@@ -1755,7 +1841,9 @@ summary; the report has the evidence.
    distance.
 
 6. **`nearby_tenants` still has no cursor** — it caps at 50 (now a parameter,
-   max 200). Discover can never show a 51st studio in a city.
+   max 200). Discover can never show a 51st studio in a city. **This stopped
+   being theoretical on 17 Sep 2026:** Pune has 70-plus listed studios (proof
+   leftovers, #0w), so its shelf is an arbitrary 50 of them today.
 
 7. **The map runs on Google's Maps Demo Key, and that has a ceiling.** The demo
    key has no billing behind it, a daily quota that PAUSES rather than bills
@@ -1892,6 +1980,17 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A CLASS HAS NO NAME — 17 Sep 2026, no step number — BUILT, MIGRATION
+  APPLIED, e2e 51/51, proofs **28/29 in the suite run, then 29/29** — `rls-proof-discovery` was red for a reason that was not its subject (the radius search's 50-row cap, crossed by 70-plus listed proof leftovers in Pune; #0w), re-cut to pass `p_limit = 200` and delete its own studio, and green alone.** The user: *"remove class name from
+  the class form and remove from everywhere in the app."* The form's CLASS NAME
+  field is gone (audit row F4); a class is called "{style} · {level}" — the
+  prototype's own `dosClassLabel` — written by the repository into the database's
+  `title` column on every save and DERIVED from style and level at every read
+  boundary, so no screen prints a stored name and the server action never names a
+  class. Invoices' doubled label ("Bollywood · Bollywood · All levels") fixed on
+  the way. The 29 typed titles still on production were renamed by one UPDATE
+  (`20260917150000`), applied on the user's "push to live" after the list had
+  been shown; 0 differ from the label now, every slug untouched. Detail at the top.
 - **EVENT MONEY THROUGH THE CASHFREE SANDBOX, THE ORGANIZATION'S DASHBOARD, AND
   SUBSCRIPTION RECEIPTS — 17 Sep 2026, no step number ⚠ (Rule 9: money) —
   MIGRATION APPLIED, 29/29 proofs, e2e run whole.** The user: *"we have Cashfree
@@ -5372,7 +5471,7 @@ refs are the file to open.
 | F1 | Class form: fixed bottom action bar; BEFORE THIS CAN GO ON DISCOVER panel; the confirm sheet with the summary card; Continue names the missing answer | 15551-15625, 15568-15578 | ClassForm.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | F2 | Class form: ← back arrow; level bar glyphs (not emoji); visible Date/Starts/Ends labels and the studio's address; STEPS names; labelStyle var(--muted) | 15540, 15367-15377, 15320-15381, 15206 | ClassForm.tsx | **fixed** (29 Aug 2026, second run) |
 | F3 | Class form: ROOM ALREADY BUSY warning in the confirm sheet | 15628-15650 | ClassForm.tsx, repositories/classes.ts | **fixed** (30 Aug 2026, parity slice 8 — `findRoomClash` asks before the sheet opens; the primary button offers "Save as draft instead", because this database will not run both) |
-| F4 | Class form: the CLASS NAME field and the poster step are additions; DosDatePick calendar, refund-cutoff + memberships toggles. **The searchable style dropdown landed 30 Aug 2026** (parity slice 8 — `DosStylePicker`, on all three forms) | 15108-15540, 9561, 15950 | ClassForm.tsx, components/ui/DosStyleKit.tsx | **fixed** for DosStylePicker; the rest decision (c) |
+| F4 | Class form: ~~the CLASS NAME field~~ **removed 17 Sep 2026 at the user's ask** — a class is named the prototype's way, `dosClassLabel` = "{style} · {level}", written by the REPOSITORY into `classes.title` on every save and DERIVED from `style` + `level` at every read boundary (no repository selects the column; `types/class.ts` says so), so the slug trigger, the notification triggers and every `Open {title}` label keep working; the 29 typed titles that were still on production were renamed by `20260917150000` (applied 17 Sep 2026; 0 differ now). The poster step is still an addition; DosDatePick calendar, refund-cutoff + memberships toggles. **The searchable style dropdown landed 30 Aug 2026** (parity slice 8 — `DosStylePicker`, on all three forms) | 176-183, 15108-15540, 9561, 15950 | ClassForm.tsx, server-actions/classes.ts, components/ui/DosStyleKit.tsx | **fixed** for the name and DosStylePicker; the rest decision (c) |
 | L1 | Learner listings: DosShelfHead scale; "N in {city}"; empty state names the city | 3446-3450, 4787, 4806 | app/(app)/classes/page.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | L2 | My classes (S_bookings): All · Classes · Events filter; "Your bookings" + "N confirmed"; tickets drawn with the same CalTile; BookingActions pill under every row | 6113-6139 | app/(app)/my-classes/page.tsx | **fixed** (29 Aug 2026, second run — the table was not updated when the code was) |
 | L3 | Learner listings: EnrollButton under every card (the prototype's card has one job — open the class) | 4805, 15374 | classes/page.tsx, CalendarScreen.tsx | decision (c) — kept |

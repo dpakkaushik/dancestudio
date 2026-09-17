@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import type { Lead, LeadSource, LeadStatus } from "@/types/lead";
 
 /** Leads are a private business record — no public policy exists, so every read
@@ -17,11 +18,11 @@ interface LeadRow {
   trial_on: string | null;
   note: string | null;
   created_at: string;
-  classes: { title: string } | null;
+  classes: { style: string; level: string } | null;
 }
 
 const LEAD_COLUMNS =
-  "id, business_id, name, mobile, interest, source, status, trial_class_id, trial_on, note, created_at, classes (title)";
+  "id, business_id, name, mobile, interest, source, status, trial_class_id, trial_on, note, created_at, classes (style, level)";
 
 const toLead = (row: LeadRow): Lead => ({
   id: row.id,
@@ -32,7 +33,7 @@ const toLead = (row: LeadRow): Lead => ({
   source: row.source,
   status: row.status,
   trialClassId: row.trial_class_id,
-  trialClassTitle: row.classes?.title ?? null,
+  trialClassTitle: row.classes ? dosClassLabel(row.classes.style, row.classes.level) : null,
   trialOn: row.trial_on,
   note: row.note,
   createdAt: row.created_at,

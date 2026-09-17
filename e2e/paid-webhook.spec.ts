@@ -128,7 +128,8 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     const inSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const created = await rpc<{ id: string }>(userHeaders(owner.token), "create_class_with_session", {
       p_business_id: tenant.id,
-      p_title: `Webhook Paid ${stamp}`,
+      /* a class has no name (17 Sep 2026): its title is "{style} · {level}", what the app writes */
+      p_title: "Hip-Hop · Beginner",
       p_style: "Hip-Hop",
       p_level: "beginner",
       p_room: "Studio A",

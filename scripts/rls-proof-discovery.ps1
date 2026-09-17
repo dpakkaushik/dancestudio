@@ -25,8 +25,16 @@ function Sign-In($phone) {
   return Invoke-RestMethod -Method Post -Uri "$base/auth/v1/verify" -Headers $h -Body ("{`"type`":`"sms`",`"phone`":`"$phone`",`"token`":`"123456`"}")
 }
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
+# p_limit = 200 (17 Sep 2026): nearby_businesses answers at most p_limit rows, 50 by
+# default, and every proof studio sits on Pune's exact centroid at distance 0 — so
+# once more than 50 listed studios share that point, which one of them makes the
+# first 50 is arbitrary. This proof went red on the day the leftovers of earlier runs
+# crossed that line (70+ listed "Near Studio", "Class Studio", "Mandate Proof Studio"
+# rows in Pune), for a reason that was not its subject. The cap itself is a real
+# limit on Discover (backlog: no cursor on the radius search); this asks for the
+# maximum the RPC allows, and the script now deletes its own studio at the end.
 function Nearby($headers, $type) {
-  $body = @{ p_lat = 18.5204; p_lng = 73.8567; p_radius_km = 25 }
+  $body = @{ p_lat = 18.5204; p_lng = 73.8567; p_radius_km = 25; p_limit = 200 }
   if ($type) { $body["p_type"] = $type }
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_businesses" -Headers $headers -Body ($body | ConvertTo-Json)
 }
@@ -94,9 +102,17 @@ if (-not $hideOk) { $pass = $false }
 # far away: search from New Delhi must not contain the Pune studio (re-list first,
 # through the same ops door for the same reason as above)
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH -Body '{"visibility":"listed"}' | Out-Null
-$delhi = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_businesses" -Headers $anonH -Body (@{ p_lat = 28.6139; p_lng = 77.2090; p_radius_km = 25; p_type = "studio" } | ConvertTo-Json)
+$delhi = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/nearby_businesses" -Headers $anonH -Body (@{ p_lat = 28.6139; p_lng = 77.2090; p_radius_km = 25; p_type = "studio"; p_limit = 200 } | ConvertTo-Json)
 $farOk = -not ((& $idsOf $delhi) -contains $tid)
 "5. Search from New Delhi (25 km) excludes the Pune studio: $(if ($farOk) {'-- RADIUS OK'} else {'-- !!! FAILED !!!'})"
 if (-not $farOk) { $pass = $false }
+
+# Clean up: this script used to leave one LISTED Pune studio behind on every run
+# (found 17 Sep 2026 — a dozen "Near Studio HHMMSS" rows on production Discover).
+# Soft-deleted through the service role, the way scripts/cleanup-proof-leftovers.js
+# does it: the row and its membership get deleted_at; nothing is erased.
+$gone = (Get-Date).ToUniversalTime().ToString("o")
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?business_id=eq.$tid&deleted_at=is.null" -Headers $svcH -Body (@{ deleted_at = $gone } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tid&deleted_at=is.null" -Headers $svcH -Body (@{ deleted_at = $gone } | ConvertTo-Json) | Out-Null
 
 if ($pass) { "`nALL DISCOVERY CHECKS PASSED"; exit 0 } else { "`nDISCOVERY CHECKS FAILED"; exit 1 }

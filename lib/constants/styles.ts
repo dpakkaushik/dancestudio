@@ -60,3 +60,11 @@ export const DOS_LEVELS = [
 export const DOS_LEVEL_LABEL: Record<string, string> = Object.fromEntries(
   DOS_LEVELS.map(([code, label]) => [code, label])
 );
+
+/** A class is named by what it IS — its style and its level — never typed.
+ *  The prototype's `dosClassLabel` (DanceOSApp.jsx:176-183) builds every class
+ *  record's `t` this way ("Hip-Hop · Beginner", "Jazz · All levels"), and its
+ *  form has no name field (S_classform 15309-15531). Derived on every save, so
+ *  a class whose style or level is changed is renamed with it. */
+export const dosClassLabel = (style: string, level: string): string =>
+  [style, DOS_LEVEL_LABEL[level] ?? level].filter(Boolean).join(" · ") || "Class";

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import type {
   ClassLevel,
   ClassStatus,
@@ -16,7 +17,6 @@ interface SessionRow {
 interface ClassRow {
   id: string;
   business_id: string;
-  title: string;
   share_slug: string;
   style: string;
   level: ClassLevel;
@@ -33,8 +33,9 @@ interface PublicClassRow extends ClassRow {
   businesses: { name: string; area: string | null; city: string | null; type?: "studio" | "artist_page" } | null;
 }
 
+/* no `title` in the read: the label is derived from style and level (types/class.ts) */
 const CLASS_COLUMNS =
-  "id, business_id, title, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
+  "id, business_id, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -45,7 +46,7 @@ const firstSession = (rows: SessionRow[] | null) => {
 const toClass = (row: ClassRow): DanceClass => ({
   id: row.id,
   tenantId: row.business_id,
-  title: row.title,
+  title: dosClassLabel(row.style, row.level),
   shareSlug: row.share_slug,
   style: row.style,
   level: row.level,
@@ -60,7 +61,6 @@ const toClass = (row: ClassRow): DanceClass => ({
 
 export interface CreateClassInput {
   tenantId: string;
-  title: string;
   style: string;
   level: ClassLevel;
   room: string | null;
@@ -82,7 +82,9 @@ export async function createClassWithSession(
 ): Promise<string> {
   const { data, error } = await supabase.rpc("create_class_with_session", {
     p_business_id: input.tenantId,
-    p_title: input.title,
+    /* the column and the RPC argument still exist (Rule 4 — the overload lesson);
+       what goes in is the label, never a typed name */
+    p_title: dosClassLabel(input.style, input.level),
     p_style: input.style,
     p_level: input.level,
     p_room: input.room,
@@ -261,7 +263,6 @@ export async function updateClassStatus(
 }
 
 export interface UpdateClassInput {
-  title: string;
   style: string;
   level: ClassLevel;
   room: string | null;
@@ -282,7 +283,9 @@ export async function updateClassDetails(
   const { data, error } = await supabase
     .from("classes")
     .update({
-      title: input.title,
+      /* renamed with its style or level, so the database's own words (the
+         notification triggers, the admin desks) follow the label */
+      title: dosClassLabel(input.style, input.level),
       style: input.style,
       level: input.level,
       room: input.room,
@@ -411,10 +414,10 @@ export async function updateClassPoster(
 export async function findRoomClash(
   supabase: SupabaseClient,
   input: { tenantId: string; roomId: string; startsAt: string; endsAt: string; excludeClassId?: string | null }
-): Promise<{ title: string; startsAt: string } | null> {
+): Promise<{ label: string; startsAt: string } | null> {
   let q = supabase
     .from("class_sessions")
-    .select("starts_at, ends_at, class_id, classes!inner (id, title, room_id, status, deleted_at)")
+    .select("starts_at, ends_at, class_id, classes!inner (id, style, level, room_id, status, deleted_at)")
     .eq("business_id", input.tenantId)
     .is("deleted_at", null)
     .eq("classes.room_id", input.roomId)
@@ -431,6 +434,8 @@ export async function findRoomClash(
   if (error) {
     throw new Error(`classes.roomClash failed: ${error.message}`);
   }
-  const row = ((data ?? []) as unknown as Array<{ starts_at: string; classes: { title: string } | null }>)[0];
-  return row ? { title: row.classes?.title ?? "a session", startsAt: row.starts_at } : null;
+  const row = ((data ?? []) as unknown as Array<{ starts_at: string; classes: { style: string; level: string } | null }>)[0];
+  return row
+    ? { label: row.classes ? dosClassLabel(row.classes.style, row.classes.level) : "a session", startsAt: row.starts_at }
+    : null;
 }

@@ -12,7 +12,7 @@ import {
   type RoomClash,
 } from "@/features/classes/server-actions/classes";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
-import { DOS_LEVELS, DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
+import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { TeamMember } from "@/repositories/tenants";
@@ -169,7 +169,9 @@ export function ClassForm({
   };
   const [style, setStyle] = useState<string>(existing?.style ?? "");
   const [level, setLevel] = useState<ClassLevel>(existing?.level ?? "all");
-  const [title, setTitle] = useState(existing?.title ?? "");
+  /* no name field: a class is called what it is — "{style} · {level}" — and the
+     server derives that on save (the prototype's dosClassLabel, 176-183; its form
+     never asked for a name either, 15309-15531) */
   const [date, setDate] = useState(existing?.session ? toDateInput(existing.session.startsAt) : "");
   const [startTime, setStartTime] = useState(
     existing?.session ? toTimeInput(existing.session.startsAt) : "19:00"
@@ -204,10 +206,10 @@ export function ClassForm({
   const room = rooms.find((r) => r.id === roomId) ?? null;
   /* a room defines what the class can hold (prototype 15507-15509) */
   const capacity = room ? room.capacity : capacityInput;
-  const basicsOk = title.trim().length > 0 && style.length > 0 && date.length > 0 && endTime > startTime;
+  const basicsOk = style.length > 0 && date.length > 0 && endTime > startTime;
   const ok = basicsOk;
   /* the first missing answer, in the words the button will wear (15573-15578) */
-  const stepOneErr = !style ? "Pick a dance style" : !level ? "Pick a level" : !date ? "Pick a date" : rooms.length > 0 && !roomId ? "Pick a room" : !title.trim() ? "Name the class" : endTime <= startTime ? "End after the start" : null;
+  const stepOneErr = !style ? "Pick a dance style" : !level ? "Pick a level" : !date ? "Pick a date" : rooms.length > 0 && !roomId ? "Pick a room" : endTime <= startTime ? "End after the start" : null;
   /* BEFORE THIS CAN GO ON DISCOVER (15551-15563, dosClassBlockers): every reason it
      cannot go live, named by the field that answers it. Save draft is never blocked
      by these. */
@@ -218,7 +220,6 @@ export function ClassForm({
   if (rooms.length > 0 && !roomId) blockers.push("Say where it happens — a room");
   if (!(capacity > 0)) blockers.push("Say how many people can book — a class with no places cannot be booked");
   if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
-  if (!title.trim()) blockers.push("Name the class");
   const canPublish = blockers.length === 0 && ok;
 
   const claimOf = (userId: string) => claims.find((c) => c.userId === userId);
@@ -293,7 +294,6 @@ export function ClassForm({
         {isEdit && existing && <input type="hidden" name="classId" value={existing.id} />}
         <input type="hidden" name="style" value={style} />
         <input type="hidden" name="level" value={level} />
-        <input type="hidden" name="title" value={title} />
         <input type="hidden" name="date" value={date} />
         <input type="hidden" name="startTime" value={startTime} />
         <input type="hidden" name="endTime" value={endTime} />
@@ -377,19 +377,10 @@ export function ClassForm({
               ))}
             </div>
 
-            <div style={labelStyle}>4 · CLASS NAME</div>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Hip-Hop · Beginner"
-              aria-label="Class name"
-              style={inputStyle}
-            />
-
             {/* ── ONE PLACE TO SAY WHERE (prototype 15376-15396): a room belongs
                 to a studio, so they are one question — and every room here is
                 already yours ── */}
-            <div style={labelStyle}>5 · WHERE</div>
+            <div style={labelStyle}>4 · WHERE</div>
             {/* the studio's address over its rooms (prototype 15381) */}
             {studioPlace ? (
               <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, margin: "-4px 0 8px" }}>{studioPlace}</div>
@@ -471,7 +462,7 @@ export function ClassForm({
         ) : (
           <>
             {/* ── WHO IS TAKING IT, IN THE FORM THAT ASKS (prototype 15445-15479) ── */}
-            <div style={labelStyle}>6 · WHO IS TAKING IT</div>
+            <div style={labelStyle}>5 · WHO IS TAKING IT</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 7 }}>
               They are asked to confirm. Their name goes on the public class once they do.
             </div>
@@ -552,7 +543,7 @@ export function ClassForm({
             )}
 
             <div style={labelStyle}>
-              7 · CLASS ASSISTANTS <span style={{ color: "var(--muted)", fontWeight: 600 }}>· optional</span>
+              6 · CLASS ASSISTANTS <span style={{ color: "var(--muted)", fontWeight: 600 }}>· optional</span>
             </div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 7 }}>
               An assistant can hold jobs: checking people in, and settling refunds.
@@ -682,7 +673,7 @@ export function ClassForm({
               })}
 
             {/* CAPACITY — the room decides it when there is one (15505-15515) */}
-            <div style={labelStyle}>8 · CAPACITY</div>
+            <div style={labelStyle}>7 · CAPACITY</div>
             {room ? (
               <div style={{ background: CARD, borderRadius: 14, padding: "12px 14px" }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
@@ -701,7 +692,7 @@ export function ClassForm({
               />
             )}
 
-            <div style={labelStyle}>9 · PRICE</div>
+            <div style={labelStyle}>8 · PRICE</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>
               ₹ / session <span style={{ color: "var(--muted)" }}>· 0 = free</span>
             </div>
@@ -747,7 +738,7 @@ export function ClassForm({
                       }}
                     >
                       <PosterBlock
-                        item={{ title: title || style || "Class", style, styleColor: dosStyleColor(style) }}
+                        item={{ title: style ? dosClassLabel(style, level) : "Class", style, styleColor: dosStyleColor(style) }}
                         design={design}
                         size={56}
                       />
@@ -967,7 +958,7 @@ export function ClassForm({
               <div role="alert" style={{ background: "rgba(245,158,11,.14)", border: "1px solid rgba(245,158,11,.4)", borderRadius: 12, padding: "10px 12px", marginTop: 12 }}>
                 <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: "#F59E0B", marginBottom: 3 }}>ROOM ALREADY BUSY</div>
                 <div style={{ fontSize: 11.5, lineHeight: 1.45, color: INK }}>
-                  {room?.name ?? "That room"} already has {clash.title} at {clash.at}.
+                  {room?.name ?? "That room"} already has {clash.label} at {clash.at}.
                 </div>
                 <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>Go back and pick another slot, or save it as a draft — a room is never double-booked.</div>
               </div>

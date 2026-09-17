@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import type { RefundRequest, RefundStatus } from "@/types/refund";
 
 /** The refund queue for one class. RLS already admits the studio's members to
@@ -23,7 +24,7 @@ interface RefundRow {
 /* an order names a class session OR an event (17 Sep 2026) — both are embedded,
    and whichever is there is what the row is "against" */
 const REFUND_SELECT =
-  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, event_id, business_id, classes (title, style, share_slug), events (title, share_slug), businesses (name))";
+  "id, user_id, amount_inr, reason, status, created_at, decided_at, decision_note, settled_offline, provider_refund_id, profiles (full_name), orders!inner (class_id, event_id, business_id, classes (style, level, share_slug), events (title, share_slug), businesses (name))";
 
 /** a refund with the class — or, since 17 Sep 2026, the event — it is against;
  *  the ledger's row (16665-16680). The `class*` names are kept for the class
@@ -43,7 +44,7 @@ interface LedgerRow extends RefundRow {
     class_id: string | null;
     event_id: string | null;
     business_id: string;
-    classes: { title: string; style: string; share_slug: string } | null;
+    classes: { style: string; level: string; share_slug: string } | null;
     events: { title: string; share_slug: string } | null;
     businesses: { name: string } | null;
   } | null;
@@ -62,7 +63,8 @@ const toLedger = (r: LedgerRow): RefundLedgerRow => ({
   hasRailReference: r.provider_refund_id !== null,
   classId: r.orders?.class_id ?? "",
   tenantId: r.orders?.business_id ?? "",
-  classTitle: r.orders?.classes?.title ?? r.orders?.events?.title ?? "Booking",
+  /* a class is called "{style} · {level}", never a stored name (types/class.ts); an event keeps its title */
+  classTitle: r.orders?.classes ? dosClassLabel(r.orders.classes.style, r.orders.classes.level) : (r.orders?.events?.title ?? "Booking"),
   classStyle: r.orders?.classes?.style ?? (r.orders?.events ? "Event ticket" : ""),
   classShareSlug: r.orders?.classes?.share_slug ?? null,
   eventShareSlug: r.orders?.events?.share_slug ?? null,

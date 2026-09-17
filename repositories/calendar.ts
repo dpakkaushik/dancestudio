@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import { dayKeyOf, hourOf } from "@/lib/format/month";
 import type { CalendarEntry, CalendarSide } from "@/types/calendar";
 import type { ClassLevel, ClassStatus } from "@/types/class";
@@ -16,7 +17,6 @@ import { countEnrolledBySession } from "./enrollments";
 const MAX_ROWS = 2000;
 
 interface ClassBits {
-  title: string;
   share_slug: string;
   style: string;
   level: ClassLevel;
@@ -62,7 +62,8 @@ interface TenantSessionRow {
   classes: ClassBits | null;
 }
 
-const CLASS_BITS = "title, share_slug, style, level, room, price_inr, capacity, status";
+/* no `title`: a class's label is "{style} · {level}", derived (types/class.ts) */
+const CLASS_BITS = "share_slug, style, level, room, price_inr, capacity, status";
 
 const entryOf = (
   session: SessionBits,
@@ -75,7 +76,7 @@ const entryOf = (
   sessionId: session.id,
   classId,
   shareSlug: c.share_slug,
-  title: c.title,
+  title: dosClassLabel(c.style, c.level),
   style: c.style,
   level: c.level,
   room: c.room,

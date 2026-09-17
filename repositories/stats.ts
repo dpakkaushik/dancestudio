@@ -91,6 +91,10 @@ export async function findMyHistory(supabase: SupabaseClient, limit = 200): Prom
     side: r.side,
     classId: r.class_id,
     shareSlug: r.share_slug,
+    /* the database's own words: my_session_history returns classes.title and no
+       level to derive from here. That column is "{style} · {level}" for every
+       class the app has saved since 17 Sep 2026, and migration 20260917150000
+       renames the rows from before it the same way. */
     title: r.title,
     style: r.style,
     room: r.room,

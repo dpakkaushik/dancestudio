@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { dosClassLabel } from "@/lib/constants/styles";
 import type {
   MyEarnings,
   PayableSession,
@@ -38,7 +39,7 @@ interface ClaimRow {
   created_at: string;
   deleted_at: string | null;
   profiles: { full_name: string } | null;
-  classes: { title: string; style: string } | null;
+  classes: { style: string; level: string } | null;
 }
 
 interface SessionRow {
@@ -68,7 +69,7 @@ interface PayoutRow {
 }
 
 const CLAIM_SELECT =
-  "id, class_id, user_id, kind, pay_per_session_inr, created_at, deleted_at, profiles (full_name), classes (title, style)";
+  "id, class_id, user_id, kind, pay_per_session_inr, created_at, deleted_at, profiles (full_name), classes (style, level)";
 const PAYOUT_SELECT =
   "id, user_id, amount_inr, status, method, provider_ref, paid_on, note, profiles (full_name)";
 
@@ -147,7 +148,7 @@ export async function findTenantPayLedger(
       unpaid.push({
         sessionId: s.id,
         classId: claim.class_id,
-        classTitle: claim.classes?.title ?? "Class",
+        classTitle: claim.classes ? dosClassLabel(claim.classes.style, claim.classes.level) : "Class",
         classStyle: claim.classes?.style ?? "",
         startsAt: s.starts_at,
         rateInr: claim.pay_per_session_inr,

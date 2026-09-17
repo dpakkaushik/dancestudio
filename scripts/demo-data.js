@@ -198,10 +198,14 @@ async function seed() {
 
   /* ── classes ── */
   console.log("\nClasses");
+  /* 17 Sep 2026: a class has no name. The database's title column is "{style} · {level}" —
+     exactly what the app writes (dosClassLabel) — so the seeder passes the same, never a typed one. */
+  const LEVEL_LABEL = { all: "All levels", beginner: "Beginner", intermediate: "Intermediate", professional: "Professional" };
+  const classLabel = (style, level) => `${style} · ${LEVEL_LABEL[level] ?? level}`;
   const mkClass = async (h, tenantId, c) =>
     rpc(h, "create_class_with_session", {
       p_business_id: tenantId,
-      p_title: c.title,
+      p_title: classLabel(c.style, c.level ?? "all"),
       p_style: c.style,
       p_level: c.level ?? "all",
       p_room: c.room ?? null,
@@ -212,16 +216,16 @@ async function seed() {
       p_ends_at: c.ends,
     });
 
-  const hiphop = await mkClass(owner.h, bounce.id, { title: "Hip-Hop · Beginner", style: "Hip-Hop", level: "beginner", room: "Hall 1", capacity: 12, starts: at(1, "19:00"), ends: at(1, "20:00") });
-  const bolly = await mkClass(owner.h, bounce.id, { title: "Bollywood Evenings", style: "Bollywood", room: "Hall 1", price: 300, capacity: 10, starts: at(3, "18:30"), ends: at(3, "19:30") });
-  const breaking = await mkClass(owner.h, bounce.id, { title: "Breaking Lab", style: "Breaking", level: "intermediate", room: "Studio B", capacity: 2, starts: at(2, "17:00"), ends: at(2, "18:00") });
-  await mkClass(owner.h, bounce.id, { title: "Kathak Basics", style: "Kathak", level: "beginner", room: "Hall 1", capacity: 15, status: "draft", starts: at(5, "18:00"), ends: at(5, "19:15") });
-  const past = await mkClass(owner.h, bounce.id, { title: "Contemporary Flow", style: "Contemporary", room: "Hall 1", capacity: 10, starts: at(-3, "19:00"), ends: at(-3, "20:00") });
-  const salsa = await mkClass(owner2.h, eee.id, { title: "Salsa Social", style: "Salsa", room: "Studio A", capacity: 20, starts: at(2, "20:00"), ends: at(2, "21:30") });
-  await mkClass(owner2.h, eee.id, { title: "Bhangra Blast", style: "Bhangra", room: "Studio A", price: 250, capacity: 15, starts: at(4, "18:00"), ends: at(4, "19:00") });
-  const contemp = await mkClass(artist.h, meera.id, { title: "Contemporary · Intermediate", style: "Contemporary", level: "intermediate", capacity: 14, starts: at(3, "07:30"), ends: at(3, "08:45") });
-  log("Bounce: Hip-Hop · Beginner (free), Bollywood Evenings (₹300), Breaking Lab (2 places), Kathak Basics (draft), Contemporary Flow (3 days ago)");
-  log("EEE: Salsa Social, Bhangra Blast (₹250) · Meera Grewal: Contemporary · Intermediate");
+  const hiphop = await mkClass(owner.h, bounce.id, { style: "Hip-Hop", level: "beginner", room: "Hall 1", capacity: 12, starts: at(1, "19:00"), ends: at(1, "20:00") });
+  const bolly = await mkClass(owner.h, bounce.id, { style: "Bollywood", room: "Hall 1", price: 300, capacity: 10, starts: at(3, "18:30"), ends: at(3, "19:30") });
+  const breaking = await mkClass(owner.h, bounce.id, { style: "Breaking", level: "intermediate", room: "Studio B", capacity: 2, starts: at(2, "17:00"), ends: at(2, "18:00") });
+  await mkClass(owner.h, bounce.id, { style: "Kathak", level: "beginner", room: "Hall 1", capacity: 15, status: "draft", starts: at(5, "18:00"), ends: at(5, "19:15") });
+  const past = await mkClass(owner.h, bounce.id, { style: "Contemporary", room: "Hall 1", capacity: 10, starts: at(-3, "19:00"), ends: at(-3, "20:00") });
+  const salsa = await mkClass(owner2.h, eee.id, { style: "Salsa", room: "Studio A", capacity: 20, starts: at(2, "20:00"), ends: at(2, "21:30") });
+  await mkClass(owner2.h, eee.id, { style: "Bhangra", room: "Studio A", price: 250, capacity: 15, starts: at(4, "18:00"), ends: at(4, "19:00") });
+  const contemp = await mkClass(artist.h, meera.id, { style: "Contemporary", level: "intermediate", capacity: 14, starts: at(3, "07:30"), ends: at(3, "08:45") });
+  log("Bounce: Hip-Hop · Beginner (free), Bollywood · All levels (₹300), Breaking · Intermediate (2 places), Kathak · Beginner (draft), Contemporary · All levels (3 days ago)");
+  log("EEE: Salsa · All levels, Bhangra · All levels (₹250) · Meera Grewal: Contemporary · Intermediate");
 
   const sessionOf = async (h, classId) => (await rows(h, `class_sessions?class_id=eq.${classId}&select=id,starts_at&deleted_at=is.null&order=starts_at.asc`))[0];
   const sHiphop = await sessionOf(owner.h, hiphop.id);
@@ -239,7 +243,7 @@ async function seed() {
   await rpc(trainer.h, "respond_to_class_ask", { p_class_person_id: asstClaim.id, p_accept: true });
   /* and one ask still waiting, so the Inbox has something in it */
   await rpc(owner.h, "ask_class_person", { p_class_id: breaking.id, p_user_id: trainer.id, p_kind: "artist", p_pay_per_session_inr: 900 });
-  log(`${trainer.name}: artist on Hip-Hop (₹900), assistant with attendance on Contemporary Flow, and one ask still waiting on Breaking Lab`);
+  log(`${trainer.name}: artist on Hip-Hop (₹900), assistant with attendance on the Contemporary class, and one ask still waiting on the Breaking class`);
 
   /* ── bookings, a full class and a real waitlist ── */
   console.log("\nBookings");
@@ -250,7 +254,7 @@ async function seed() {
   await rpc(aki.h, "book_class_session", { p_session_id: sBreaking.id });
   await rpc(zaid.h, "book_class_session", { p_session_id: sBreaking.id });
   const waitlisted = await rpc(rhea.h, "book_class_session", { p_session_id: sBreaking.id });
-  log(`Hip-Hop: 2 booked · Breaking Lab: full (2) with ${rhea.name} ${waitlisted.status} · Salsa and Contemporary: 1 each`);
+  log(`Hip-Hop: 2 booked · Breaking: full (2) with ${rhea.name} ${waitlisted.status} · Salsa and Contemporary: 1 each`);
 
   /* ── the past class: booked, then a register that was actually run ──
      A learner cannot book a session that has already ended, so the seat is
@@ -272,7 +276,7 @@ async function seed() {
     updated_by: owner.id,
   });
   await patch(H_SERVICE, `classes?id=eq.${past.id}`, { status: "completed" });
-  log(`Contemporary Flow (3 days ago): 2 booked, ${kabir.name} checked in, class completed`);
+  log(`Contemporary · All levels (3 days ago): 2 booked, ${kabir.name} checked in, class completed`);
 
   /* ── money: one real captured payment, and one refund waiting on the studio ──
      The seat is granted by `apply_captured_payment` — the same RPC the Cashfree
@@ -288,10 +292,10 @@ async function seed() {
   await rpc(H_SERVICE, "apply_captured_payment", { p_provider_order_id: providerOrderId2, p_provider_payment_id: `demo_pay_${order2.id.slice(0, 8)}`, p_amount_paise: 300 * 100, p_method: "card" });
   const akiBolly = (await rows(aki.h, `class_bookings?session_id=eq.${sBolly.id}&user_id=eq.${aki.id}&deleted_at=is.null&select=id`))[0];
   await rpc(aki.h, "cancel_class_booking_with_reason", { p_class_booking_id: akiBolly.id, p_reason: "Injury — cannot make this one" });
-  log("Bollywood Evenings: ₹300 UPI captured (Kabir) and ₹300 card captured then cancelled (Aki) → a refund on the studio's queue");
+  log("Bollywood · All levels: ₹300 UPI captured (Kabir) and ₹300 card captured then cancelled (Aki) → a refund on the studio's queue");
 
   /* ── the studio settles what it owes ── */
-  await rpc(owner.h, "record_payout", { p_business_id: bounce.id, p_user_id: trainer.id, p_session_ids: [sPast.id], p_method: "upi", p_status: "done", p_note: "Contemporary Flow · assisting" });
+  await rpc(owner.h, "record_payout", { p_business_id: bounce.id, p_user_id: trainer.id, p_session_ids: [sPast.id], p_method: "upi", p_status: "done", p_note: "Contemporary · All levels · assisting" });
   log(`${trainer.name} paid ₹600 for the session assisted`);
 
   /* ── the desk: leads at three stages ── */
