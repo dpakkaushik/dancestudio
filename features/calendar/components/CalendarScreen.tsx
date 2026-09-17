@@ -93,6 +93,12 @@ const toTileClass = (e: CalendarEntry): DanceClass => ({
   priceInr: e.priceInr,
   capacity: e.capacity,
   status: e.classStatus,
+  /* a calendar entry carries no venue or pin — the card does not draw them */
+  venueBusinessId: null,
+  venueStatus: null,
+  lat: null,
+  lng: null,
+  mapsUrl: null,
   session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
 });
 

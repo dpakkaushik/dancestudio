@@ -28,6 +28,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -79,11 +80,15 @@ function Stats($user) { return (Rows (Api $user.token) "my_dance_stats" @{})[0] 
 function SessionList($user) { return Rows (Api $user.token) "my_session_history" @{ p_limit = 200 } }
 # a class, its session placed where the test wants it (service role back-dates -
 # no user may book a session that has already ended)
-function New-Class($owner, $tenantId, $title, $style, $cap, $hoursAgo, $lenH) {
+# 18 Sep 2026: a class is born a draft and published once a teacher has accepted.
+# $teacherId is seated as that teacher; the proof's own asks below replace the row
+# where it cares who teaches (ask_class_person closes the live artist row first).
+function New-Class($owner, $tenantId, $title, $style, $cap, $hoursAgo, $lenH, $teacherId) {
   $future = (Get-Date).AddDays(20)
   $c = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $tenantId; p_title = $title; p_style = $style;
-    p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = $cap; p_status = "published";
+    p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = $cap; p_status = "draft";
     p_starts_at = $future.ToString("yyyy-MM-ddTHH:00:00zzz"); p_ends_at = $future.AddHours($lenH).ToString("yyyy-MM-ddTHH:00:00zzz") }
+  Publish-Class ([string]$c.id) $teacherId (Api $owner.token)
   $s = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($c.id)&select=id")[0]
   return [pscustomobject]@{ id = $c.id; sessionId = $s.id; hoursAgo = $hoursAgo; lenH = $lenH }
 }
@@ -122,10 +127,13 @@ try {
   $inv = (Get-Rows (Api $owner.token) "business_invites?business_id=eq.$($ta.id)&select=code")[0]
   Rpc (Api $teacher.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
 
-  $c1 = New-Class $owner $ta.id "Hip-Hop Past $stamp" "Hip-Hop" 10 30 1      # taught, 1 h
-  $c2 = New-Class $owner $ta.id "Breaking Past $stamp" "Breaking" 10 26 2    # taught, 2 h
-  $c3 = New-Class $owner $ta.id "Salsa Past $stamp" "Salsa" 10 22 1          # assisted, 1 h
-  $c4 = New-Class $owner $ta.id "Kathak Future $stamp" "Kathak" 10 -240 1    # still to come
+  # 18 Sep 2026: publishing waits for a teacher's yes, and the teacher this proof
+  # counts takes them. c3 is re-asked as an ASSISTANT below, which closes their
+  # artist row on it, so "assisted" stays one session and "conducted" two.
+  $c1 = New-Class $owner $ta.id "Hip-Hop Past $stamp" "Hip-Hop" 10 30 1 $teacher.id      # taught, 1 h
+  $c2 = New-Class $owner $ta.id "Breaking Past $stamp" "Breaking" 10 26 2 $teacher.id    # taught, 2 h
+  $c3 = New-Class $owner $ta.id "Salsa Past $stamp" "Salsa" 10 22 1 $teacher.id          # assisted, 1 h
+  $c4 = New-Class $owner $ta.id "Kathak Future $stamp" "Kathak" 10 -240 1 $teacher.id    # still to come
   # the teacher is asked and CONFIRMS on c1, c2 (artist) and c3 (assistant);
   # a fourth ask stays UNANSWERED, and must count for nothing
   foreach ($pair in @(@($c1, "artist"), @($c2, "artist"), @($c3, "assistant"))) {

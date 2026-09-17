@@ -1,4 +1,4 @@
-# Proof for Step 10 (attendance + waitlist management): only the studio's
+﻿# Proof for Step 10 (attendance + waitlist management): only the studio's
 # owner/trainer runs the register, the clock owns the check-in window, checking
 # in is idempotent and reversible, a paid class's freed seat waits for the owner
 # (no auto-promote), give_spot respects capacity, and nobody writes attendance
@@ -28,6 +28,7 @@ function Sign-In($phone) {
 }
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 
 function Rpc($headers, $fn, $body) {
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/$fn" -Headers $headers -Body ($body | ConvertTo-Json)
@@ -42,11 +43,16 @@ function Check($n, $label, $ok) {
   "$n. $label $(if ($ok) {'-- OK'} else {'-- !!! FAILED !!!'})"
   if (-not $ok) { $script:pass = $false }
 }
-function New-TimedClass($headers, $tenantId, $title, $price, $cap, $startsAt, $endsAt) {
+# 18 Sep 2026: a class is created as a DRAFT and published once its teacher has
+# accepted. $teacherId is seated as that teacher (can_attendance false, so nobody
+# is handed the register by the setup - which is this proof's whole subject).
+function New-TimedClass($headers, $tenantId, $title, $price, $cap, $startsAt, $endsAt, $teacherId) {
   $body = @{ p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
-             p_room = "Studio A"; p_price_inr = $price; p_capacity = $cap; p_status = "published";
+             p_room = "Studio A"; p_price_inr = $price; p_capacity = $cap; p_status = "draft";
              p_starts_at = $startsAt; p_ends_at = $endsAt } | ConvertTo-Json
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
+  $c = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
+  Publish-Class ([string]$c.id) $teacherId $headers
+  return $c
 }
 function Session-Of($classId) {
   $rows = Get-Rows $svcH "class_sessions?class_id=eq.$classId&select=id"
@@ -87,7 +93,7 @@ Subscribe-Studio ([string]$ta.id)
 
 try {
   # ---- free class starting soon: the register itself -------------------------
-  $cL = New-TimedClass (Api $a.access_token) $ta.id "Register Soon $stamp" 0 3 $soonStart $soonEnd
+  $cL = New-TimedClass (Api $a.access_token) $ta.id "Register Soon $stamp" 0 3 $soonStart $soonEnd $b.user.id
   $sL = Session-Of $cL.id
   $eB = Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $sL }
 
@@ -112,14 +118,14 @@ try {
   Check 4 "Undo check-in (live $($att3.Count), history $($att3all.Count))" (($att3.Count -eq 0) -and ($att3all.Count -eq 1))
 
   # 5. the clock owns the window: a session 7 days out is closed
-  $cF = New-TimedClass (Api $a.access_token) $ta.id "Far Class $stamp" 0 3 $farStart $farEnd
+  $cF = New-TimedClass (Api $a.access_token) $ta.id "Far Class $stamp" 0 3 $farStart $farEnd $b.user.id
   $sF = Session-Of $cF.id
   $eBF = Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $sF }
   $windowBlocked = Expect-Fail { Rpc (Api $a.access_token) "check_in" @{ p_class_booking_id = $eBF.id } }
   Check 5 "Check-in before the window is rejected" $windowBlocked
 
   # ---- paid class, one seat: the owner's queue -------------------------------
-  $cP = New-TimedClass (Api $a.access_token) $ta.id "Paid One Seat $stamp" 300 1 $soonStart $soonEnd
+  $cP = New-TimedClass (Api $a.access_token) $ta.id "Paid One Seat $stamp" 300 1 $soonStart $soonEnd $b.user.id
   $sP = Session-Of $cP.id
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $sP }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_ATT$stamp" } | Out-Null

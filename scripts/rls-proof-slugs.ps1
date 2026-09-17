@@ -1,4 +1,4 @@
-# RLS proof for Step 8 (share links): slugs are stamped, unique, and the /c/{slug}
+﻿# RLS proof for Step 8 (share links): slugs are stamped, unique, and the /c/{slug}
 # lookup respects the existing class visibility policies (no new policy was added).
 # Reads keys from .env.local - run from the repo root: powershell -File scripts/rls-proof-slugs.ps1
 $ErrorActionPreference = "Stop"
@@ -20,6 +20,7 @@ if (-not $base -or -not $anon) { throw "NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY mis
 $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $service) { throw "SUPABASE_SERVICE_ROLE_KEY missing from .env.local" }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 
 function Sign-In($phone) {
   $h = @{ apikey = $anon; "Content-Type" = "application/json" }
@@ -27,19 +28,31 @@ function Sign-In($phone) {
   return Invoke-RestMethod -Method Post -Uri "$base/auth/v1/verify" -Headers $h -Body ("{`"type`":`"sms`",`"phone`":`"$phone`",`"token`":`"123456`"}")
 }
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
+# 18 Sep 2026: every class is born a draft; a published one needs a teacher who
+# accepted, so this seats $script:teacherId (a throwaway person, deleted at the end)
 function New-Class($headers, $tenantId, $title, $status) {
   $starts = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT19:00:00+05:30")
   $ends = (Get-Date).AddDays(7).ToString("yyyy-MM-ddT20:00:00+05:30")
   $body = @{ p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
-             p_room = "Studio A"; p_price_inr = 300; p_capacity = 10; p_status = $status;
+             p_room = "Studio A"; p_price_inr = 300; p_capacity = 10; p_status = "draft";
              p_starts_at = $starts; p_ends_at = $ends } | ConvertTo-Json
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
+  $c = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
+  if ($status -eq "published") { Publish-Class ([string]$c.id) $script:teacherId $headers }
+  return (Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?id=eq.$($c.id)&select=*" -Headers $svcH)[0]
 }
 function By-Slug($headers, $slug) {
-  return @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?share_slug=eq.$slug&deleted_at=is.null&select=id,title,share_slug,status,businesses(name)" -Headers $headers)
+  # the key is named: classes has two into businesses since 18 Sep 2026 (the venue)
+  return @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?share_slug=eq.$slug&deleted_at=is.null&select=id,title,share_slug,status,businesses!classes_business_id_fkey(name)" -Headers $headers)
 }
 
 $a = Sign-In "+919999999999"
+# 18 Sep 2026: a published class needs a teacher who accepted, and this proof has
+# only the organization that owns the studio (an organization cannot take a class).
+# One throwaway person, deleted in the finally below with the studio.
+$tEmail = "sl-teach-$(Get-Date -Format 'HHmmssfff')@example.com"
+$tUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $tEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $tUser.id; full_name = "Slug Teacher"; role = "user"; city = "Pune"; created_by = $tUser.id; updated_by = $tUser.id } | ConvertTo-Json) | Out-Null
+$script:teacherId = [string]$tUser.id
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
@@ -96,7 +109,8 @@ finally {
   if ($service) {
     $svcH = @{ apikey = $service; Authorization = "Bearer $service" }
     Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
-    "   (cleanup: proof studio deleted)"
+    try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($tUser.id)" -Headers $svcH | Out-Null } catch {}
+    "   (cleanup: proof studio and its teacher deleted)"
   } else {
     "   (no SUPABASE_SERVICE_ROLE_KEY - proof studio $($ta.id) left behind)"
   }

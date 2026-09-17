@@ -1,4 +1,4 @@
-# Proof for the person-pages parity slice.
+﻿# Proof for the person-pages parity slice.
 #
 # The claims under test: a person page is SIGNED-IN ONLY, and a stranger gets
 # nothing from any of its reads (the profile row, the record, where they teach,
@@ -28,6 +28,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -118,11 +119,14 @@ try {
   foreach ($inv in (Get-Rows (Api $owner.token) "business_invites?select=code&status=eq.pending")) {
     Rpc (Api $teacher.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
   }
+  # 18 Sep 2026: every class is born a draft, and a published one has a teacher who
+  # accepted. The teacher this proof is about takes them, which is what the page reads.
   $mk = {
     param($tenantId, $title, $style, $status)
     $c = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $tenantId; p_title = $title; p_style = $style;
-      p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10; p_status = $status;
+      p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10; p_status = "draft";
       p_starts_at = $soon.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $soon.ToString("yyyy-MM-ddT20:00:00zzz") }
+    if ($status -eq "published") { Publish-Class ([string]$c.id) ([string]$teacher.id) (Api $owner.token) }
     return $c
   }
   $pub = & $mk $ta.id "PP Public $stamp" "Hip-Hop" "published"

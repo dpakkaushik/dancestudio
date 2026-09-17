@@ -1,111 +1,56 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  claimPerson,
-  findClaimsByClass,
-  setClaimPay,
-  setClaimPowers,
-  withdrawClaim,
-} from "@/repositories/claims";
+import { claimPerson, findClaimsByClass, setClaimPay, withdrawClaim } from "@/repositories/claims";
 
-/** What the class form says about who is on a class. Ids are the studio's own
- *  team members; the RPCs re-check that, so a forged id gets nowhere.
+/** What the class form says about WHO IS TAKING IT. Since 18 Sep 2026 that is
+ *  the only person the form names: the teacher, anyone on DanceOS (the RPC
+ *  refuses an organization account and re-checks the caller is the owner).
+ *  Assistants are not the form's business any more — they are added from the
+ *  class page, by the owner or the teacher, and this service never touches them.
  *
- *  `payInr` is only ever sent by an OWNER — the RPCs refuse a rate from anybody
- *  else, so the form leaves it out when a trainer is the one saving. */
+ *  `artistPayInr` is only ever sent by an OWNER — the RPCs refuse a rate from
+ *  anybody else. */
 export interface ClassPeopleIntent {
   artistUserId: string | null;
   artistPayInr?: number;
-  assistants: Array<{
-    userId: string;
-    canAttendance: boolean;
-    canRefunds: boolean;
-    payInr?: number;
-  }>;
 }
 
-/** Make the class's people match what the form asked for.
+/** Make the class's TEACHER match what the form asked for.
  *
- *  The form states an intent; the claims are the record. Reconciling rather than
+ *  The form states an intent; the claim is the record. Reconciling rather than
  *  re-asking matters because a claim carries CONSENT: somebody who already said
- *  yes must not be asked again just because the owner re-saved the form, and
- *  somebody whose job changed must not lose their answer. So:
- *    · a person newly named is ASKED
- *    · a person still named keeps their answer, and only their job is updated
- *    · a person no longer named has their claim withdrawn
- *  Changing WHAT somebody is (artist ⇄ assistant) is a different ask, so that
- *  re-asks by design. */
+ *  yes must not be asked again just because the owner re-saved the form. So:
+ *    · the same person still named keeps their answer; only the rate may move
+ *    · a different person named: the old ask is withdrawn, the new person ASKED
+ *    · nobody named: the old ask is withdrawn (the class waits for a teacher)
+ *  Assistant claims on the class are left exactly as they are. */
 export async function reconcileClassPeople(
   supabase: SupabaseClient,
   classId: string,
   intent: ClassPeopleIntent
 ): Promise<void> {
   const current = await findClaimsByClass(supabase, classId);
+  const teacher = current.find((c) => c.kind === "artist") ?? null;
 
-  const wanted = new Map<
-    string,
-    {
-      kind: "artist" | "assistant";
-      canAttendance: boolean;
-      canRefunds: boolean;
-      payInr: number | undefined;
+  if (teacher && teacher.userId === intent.artistUserId) {
+    // a rate change is not a re-ask, and it only moves sessions that have not
+    // been settled — paid ones are frozen by their payout line
+    if (intent.artistPayInr !== undefined && intent.artistPayInr !== teacher.payPerSessionInr) {
+      await setClaimPay(supabase, teacher.id, intent.artistPayInr);
     }
-  >();
+    return;
+  }
+  if (teacher) {
+    await withdrawClaim(supabase, teacher.id);
+  }
   if (intent.artistUserId) {
-    wanted.set(intent.artistUserId, {
-      kind: "artist",
-      canAttendance: true,
-      canRefunds: false,
-      payInr: intent.artistPayInr,
-    });
-  }
-  for (const a of intent.assistants) {
-    if (a.userId === intent.artistUserId) continue; // the artist is not their own assistant
-    wanted.set(a.userId, {
-      kind: "assistant",
-      canAttendance: a.canAttendance,
-      canRefunds: a.canRefunds,
-      payInr: a.payInr,
-    });
-  }
-
-  for (const claim of current) {
-    const want = wanted.get(claim.userId);
-    if (!want) {
-      await withdrawClaim(supabase, claim.id);
-      continue;
-    }
-    if (want.kind !== claim.kind) {
-      // a different job entirely — ask again as the new thing
-      await claimPerson(supabase, {
-        classId,
-        userId: claim.userId,
-        kind: want.kind,
-        canAttendance: want.canAttendance,
-        canRefunds: want.canRefunds,
-        payPerSessionInr: want.payInr,
-      });
-    } else {
-      if (want.canAttendance !== claim.canAttendance || want.canRefunds !== claim.canRefunds) {
-        // same person, same role, new powers: their answer stands
-        await setClaimPowers(supabase, claim.id, want.canAttendance, want.canRefunds);
-      }
-      // a rate change is not a re-ask either, and it only moves sessions that
-      // have not been settled — paid ones are frozen by their payout line
-      if (want.payInr !== undefined && want.payInr !== claim.payPerSessionInr) {
-        await setClaimPay(supabase, claim.id, want.payInr);
-      }
-    }
-    wanted.delete(claim.userId);
-  }
-
-  for (const [userId, want] of wanted) {
     await claimPerson(supabase, {
       classId,
-      userId,
-      kind: want.kind,
-      canAttendance: want.canAttendance,
-      canRefunds: want.canRefunds,
-      payPerSessionInr: want.payInr,
+      userId: intent.artistUserId,
+      kind: "artist",
+      /* the teacher takes the register by default; the owner may take it back on the class page */
+      canAttendance: true,
+      canRefunds: false,
+      payPerSessionInr: intent.artistPayInr,
     });
   }
 }

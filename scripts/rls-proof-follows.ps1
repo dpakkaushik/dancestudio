@@ -28,6 +28,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -172,9 +173,11 @@ try {
   # 11. THE PUBLIC SCHEDULE: a published class shows, a draft does not, for a
   #     stranger - the repository's query shape (findPublicTenantSchedule)
   $tmr = (Get-Date).AddDays(2)
-  Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Open Class $stamp";
+  # 18 Sep 2026: born a draft, published once its teacher has accepted (L1 takes it)
+  $openCls = Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Open Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") } | Out-Null
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  Publish-Class ([string]$openCls.id) ([string]$l1.id) (Api $ownerA.token)
   Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Draft Class $stamp";
     p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
     p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT18:00:00zzz") } | Out-Null

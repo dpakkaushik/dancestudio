@@ -202,30 +202,59 @@ async function seed() {
      exactly what the app writes (dosClassLabel) — so the seeder passes the same, never a typed one. */
   const LEVEL_LABEL = { all: "All levels", beginner: "Beginner", intermediate: "Intermediate", professional: "Professional" };
   const classLabel = (style, level) => `${style} · ${LEVEL_LABEL[level] ?? level}`;
+  /* 18 Sep 2026: A CLASS IS BORN A DRAFT AND PUBLISHED ONCE ITS TEACHER HAS SAID YES.
+     The seeder does exactly what a studio does — ask, accept, publish — through the
+     real RPCs, so the demo world cannot contain a state the real one could not. */
   const mkClass = async (h, tenantId, c) =>
     rpc(h, "create_class_with_session", {
       p_business_id: tenantId,
       p_title: classLabel(c.style, c.level ?? "all"),
+      p_venue_business_id: c.venue ?? null,
+      p_lat: c.lat ?? null,
+      p_lng: c.lng ?? null,
+      p_maps_url: c.mapsUrl ?? null,
       p_style: c.style,
       p_level: c.level ?? "all",
       p_room: c.room ?? null,
       p_price_inr: c.price ?? 0,
       p_capacity: c.capacity ?? 12,
-      p_status: c.status ?? "published",
+      /* every class is saved as a draft now; publishing is the step below */
+      p_status: "draft",
       p_starts_at: c.starts,
       p_ends_at: c.ends,
     });
 
-  const hiphop = await mkClass(owner.h, bounce.id, { style: "Hip-Hop", level: "beginner", room: "Hall 1", capacity: 12, starts: at(1, "19:00"), ends: at(1, "20:00") });
-  const bolly = await mkClass(owner.h, bounce.id, { style: "Bollywood", room: "Hall 1", price: 300, capacity: 10, starts: at(3, "18:30"), ends: at(3, "19:30") });
-  const breaking = await mkClass(owner.h, bounce.id, { style: "Breaking", level: "intermediate", room: "Studio B", capacity: 2, starts: at(2, "17:00"), ends: at(2, "18:00") });
-  await mkClass(owner.h, bounce.id, { style: "Kathak", level: "beginner", room: "Hall 1", capacity: 15, status: "draft", starts: at(5, "18:00"), ends: at(5, "19:15") });
-  const past = await mkClass(owner.h, bounce.id, { style: "Contemporary", room: "Hall 1", capacity: 10, starts: at(-3, "19:00"), ends: at(-3, "20:00") });
-  const salsa = await mkClass(owner2.h, eee.id, { style: "Salsa", room: "Studio A", capacity: 20, starts: at(2, "20:00"), ends: at(2, "21:30") });
-  await mkClass(owner2.h, eee.id, { style: "Bhangra", room: "Studio A", price: 250, capacity: 15, starts: at(4, "18:00"), ends: at(4, "19:00") });
-  const contemp = await mkClass(artist.h, meera.id, { style: "Contemporary", level: "intermediate", capacity: 14, starts: at(3, "07:30"), ends: at(3, "08:45") });
-  log("Bounce: Hip-Hop · Beginner (free), Bollywood · All levels (₹300), Breaking · Intermediate (2 places), Kathak · Beginner (draft), Contemporary · All levels (3 days ago)");
-  log("EEE: Salsa · All levels, Bhangra · All levels (₹250) · Meera Grewal: Contemporary · Intermediate");
+  /* the ask, the yes, and the publish — the three real steps, in the real order.
+     An outside teacher who accepts becomes VISITING FACULTY on the studio's team
+     (respond_to_class_ask does that), which is how Meera comes to teach at Bounce. */
+  const teachAndPublish = async (ownerH, cls, teacher, payInr = 0) => {
+    const ask = await rpc(ownerH, "ask_class_person", { p_class_id: cls.id, p_user_id: teacher.id, p_kind: "artist", p_pay_per_session_inr: payInr });
+    await rpc(teacher.h, "respond_to_class_ask", { p_class_person_id: ask.id, p_accept: true });
+    await patch(ownerH, `classes?id=eq.${cls.id}`, { status: "published" });
+    return cls;
+  };
+
+  const hiphop = await teachAndPublish(owner.h, await mkClass(owner.h, bounce.id, { style: "Hip-Hop", level: "beginner", room: "Hall 1", capacity: 12, starts: at(1, "19:00"), ends: at(1, "20:00") }), trainer, 900);
+  const bolly = await teachAndPublish(owner.h, await mkClass(owner.h, bounce.id, { style: "Bollywood", room: "Hall 1", price: 300, capacity: 10, starts: at(3, "18:30"), ends: at(3, "19:30") }), trainer, 900);
+  /* Breaking keeps the demo's one UNANSWERED ask, so the Inbox has something in it —
+     it is an ASSISTANT ask now, because an unanswered TEACHER ask would keep the
+     class a draft and the waitlist below needs it live (18 Sep 2026) */
+  const breaking = await teachAndPublish(owner.h, await mkClass(owner.h, bounce.id, { style: "Breaking", level: "intermediate", room: "Studio B", capacity: 2, starts: at(2, "17:00"), ends: at(2, "18:00") }), trainer, 900);
+  await mkClass(owner.h, bounce.id, { style: "Kathak", level: "beginner", room: "Hall 1", capacity: 15, starts: at(5, "18:00"), ends: at(5, "19:15") });
+  /* the past class is taught by the ARTIST from outside the team: accepting seats
+     Meera at Bounce as VISITING FACULTY, which is the new role in the flesh */
+  const past = await teachAndPublish(owner.h, await mkClass(owner.h, bounce.id, { style: "Contemporary", room: "Hall 1", capacity: 10, starts: at(-3, "19:00"), ends: at(-3, "20:00") }), artist, 1300);
+  const salsa = await teachAndPublish(owner2.h, await mkClass(owner2.h, eee.id, { style: "Salsa", room: "Studio A", capacity: 20, starts: at(2, "20:00"), ends: at(2, "21:30") }), rhea);
+  await teachAndPublish(owner2.h, await mkClass(owner2.h, eee.id, { style: "Bhangra", room: "Studio A", price: 250, capacity: 15, starts: at(4, "18:00"), ends: at(4, "19:00") }), aki);
+  /* AN ARTIST'S OWN CLASS: they are its teacher by construction, and it is held at
+     a place of their own — a map pin, their own capacity, published straight away */
+  const contemp = await mkClass(artist.h, meera.id, {
+    style: "Contemporary", level: "intermediate", capacity: 14, starts: at(3, "07:30"), ends: at(3, "08:45"),
+    lat: 28.5245, lng: 77.2066, mapsUrl: "https://maps.google.com/?q=28.5245,77.2066",
+  });
+  await patch(artist.h, `classes?id=eq.${contemp.id}`, { status: "published" });
+  log("Bounce: Hip-Hop · Beginner (free, taught by Aarav), Bollywood · All levels (₹300), Breaking · Intermediate (2 places), Kathak · Beginner (draft), Contemporary · All levels (3 days ago, taught by Meera as visiting faculty)");
+  log("EEE: Salsa · All levels (Rhea), Bhangra · All levels (₹250, Aki) · Meera Grewal: Contemporary · Intermediate at her own place");
 
   const sessionOf = async (h, classId) => (await rows(h, `class_sessions?class_id=eq.${classId}&select=id,starts_at&deleted_at=is.null&order=starts_at.asc`))[0];
   const sHiphop = await sessionOf(owner.h, hiphop.id);
@@ -235,15 +264,15 @@ async function seed() {
   const sSalsa = await sessionOf(owner2.h, salsa.id);
   const sContemp = await sessionOf(artist.h, contemp.id);
 
-  /* ── who is taking what: real asks, really answered ── */
+  /* ── who else is on a class: real asks, really answered ──
+     The TEACHERS were asked and accepted above (that is what let each class be
+     published). What is left is the assistants, and one ask nobody has answered. */
   console.log("\nPeople on classes");
-  const artistClaim = await rpc(owner.h, "ask_class_person", { p_class_id: hiphop.id, p_user_id: trainer.id, p_kind: "artist", p_pay_per_session_inr: 900 });
-  await rpc(trainer.h, "respond_to_class_ask", { p_class_person_id: artistClaim.id, p_accept: true });
   const asstClaim = await rpc(owner.h, "ask_class_person", { p_class_id: past.id, p_user_id: trainer.id, p_kind: "assistant", p_can_attendance: true, p_pay_per_session_inr: 600 });
   await rpc(trainer.h, "respond_to_class_ask", { p_class_person_id: asstClaim.id, p_accept: true });
   /* and one ask still waiting, so the Inbox has something in it */
-  await rpc(owner.h, "ask_class_person", { p_class_id: breaking.id, p_user_id: trainer.id, p_kind: "artist", p_pay_per_session_inr: 900 });
-  log(`${trainer.name}: artist on Hip-Hop (₹900), assistant with attendance on the Contemporary class, and one ask still waiting on the Breaking class`);
+  await rpc(owner.h, "ask_class_person", { p_class_id: breaking.id, p_user_id: rhea.id, p_kind: "assistant", p_can_attendance: true });
+  log(`${trainer.name}: artist on Hip-Hop and Bollywood (₹900), assistant with attendance on the Contemporary class; one assistant ask still waiting on the Breaking class`);
 
   /* ── bookings, a full class and a real waitlist ── */
   console.log("\nBookings");

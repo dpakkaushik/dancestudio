@@ -103,7 +103,12 @@ interface MembershipRow {
   businesses: TenantRow | null;
 }
 
-export type MemberRole = "owner" | "trainer" | "staff";
+/** VISITING FACULTY (18 Sep 2026): a person from outside the team who accepted a
+ *  studio's ask to teach one of its classes — accepting seats them on the team in
+ *  this role, so the register they teach opens for them the way it opens for any
+ *  live member with the job (can_run_register_for_class). Never invited into
+ *  directly; it is what accepting a class makes you. */
+export type MemberRole = "owner" | "trainer" | "staff" | "visiting_faculty";
 
 export interface MyMembership {
   tenant: Tenant;

@@ -6,6 +6,7 @@ import type {
   DanceClass,
   PosterChoice,
   PublicClassListing,
+  VenueStatus,
 } from "@/types/class";
 
 interface SessionRow {
@@ -26,6 +27,11 @@ interface ClassRow {
   price_inr: number;
   capacity: number;
   status: ClassStatus;
+  venue_business_id: string | null;
+  venue_status: VenueStatus | null;
+  lat: number | null;
+  lng: number | null;
+  maps_url: string | null;
   class_sessions: SessionRow[] | null;
 }
 
@@ -35,7 +41,7 @@ interface PublicClassRow extends ClassRow {
 
 /* no `title` in the read: the label is derived from style and level (types/class.ts) */
 const CLASS_COLUMNS =
-  "id, business_id, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, class_sessions (id, starts_at, ends_at)";
+  "id, business_id, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, class_sessions (id, starts_at, ends_at)";
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -57,6 +63,11 @@ const toClass = (row: ClassRow): DanceClass => ({
   capacity: row.capacity,
   status: row.status,
   session: firstSession(row.class_sessions),
+  venueBusinessId: row.venue_business_id ?? null,
+  venueStatus: row.venue_status ?? null,
+  lat: row.lat ?? null,
+  lng: row.lng ?? null,
+  mapsUrl: row.maps_url ?? null,
 });
 
 export interface CreateClassInput {
@@ -71,6 +82,14 @@ export interface CreateClassInput {
   status: "draft" | "published";
   startsAt: string; // ISO
   endsAt: string;
+  /** an artist's class in a STUDIO's room (18 Sep 2026): the studio asked for
+   *  its room — `roomId` is then one of ITS rooms — or null for a class in the
+   *  business's own room or at a map link */
+  venueBusinessId: string | null;
+  /** an artist's class at a place of their own */
+  lat: number | null;
+  lng: number | null;
+  mapsUrl: string | null;
 }
 
 /** Atomic create: class + first session via the create_class_with_session RPC.
@@ -95,6 +114,10 @@ export async function createClassWithSession(
     p_ends_at: input.endsAt,
     p_room_id: input.roomId,
     p_poster: input.poster,
+    p_venue_business_id: input.venueBusinessId,
+    p_lat: input.lat,
+    p_lng: input.lng,
+    p_maps_url: input.mapsUrl,
   });
 
   if (error) {
@@ -277,6 +300,10 @@ export interface UpdateClassInput {
   capacity: number;
   startsAt: string;
   endsAt: string;
+  venueBusinessId: string | null;
+  lat: number | null;
+  lng: number | null;
+  mapsUrl: string | null;
 }
 
 /** Edit a class's fields and move its session — two updates, both RLS-guarded. */
@@ -298,6 +325,12 @@ export async function updateClassDetails(
       poster: input.poster,
       price_inr: input.priceInr,
       capacity: input.capacity,
+      /* a different venue or room is a new ask — the database resets the
+         venue's answer, and refuses to move a published class (18 Sep 2026) */
+      venue_business_id: input.venueBusinessId,
+      lat: input.lat,
+      lng: input.lng,
+      maps_url: input.mapsUrl,
     })
     .eq("id", classId)
     .is("deleted_at", null)
@@ -405,6 +438,157 @@ export async function updateClassPoster(
   if (!data || data.length === 0) {
     throw new Error("Class not found or not yours to edit");
   }
+}
+
+/** WHAT STANDS BETWEEN EACH CLASS AND PUBLISH (18 Sep 2026): who was asked to
+ *  teach and what they said, which studio was asked for its room and what it
+ *  said, and the one sentence still in the way — `classes_publish_state`, one
+ *  call for the whole register, the database's own decision (the same function
+ *  the publish trigger raises). Keyed by class id. */
+export interface ClassPublishState {
+  classId: string;
+  teacherUserId: string | null;
+  teacherName: string | null;
+  teacherStatus: "asked" | "confirmed" | "rejected" | null;
+  venueBusinessId: string | null;
+  venueName: string | null;
+  venueStatus: VenueStatus | null;
+  /** null means Publish would be accepted */
+  why: string | null;
+}
+
+export async function findClassPublishState(supabase: SupabaseClient, tenantId: string): Promise<Map<string, ClassPublishState>> {
+  const { data, error } = await supabase.rpc("classes_publish_state", { p_business_id: tenantId });
+  if (error) {
+    throw new Error(`classes.publishState failed: ${error.message}`);
+  }
+  const out = new Map<string, ClassPublishState>();
+  for (const r of (data ?? []) as Array<Record<string, unknown>>) {
+    out.set(r.class_id as string, {
+      classId: r.class_id as string,
+      teacherUserId: (r.teacher_user_id as string) ?? null,
+      teacherName: (r.teacher_name as string) ?? null,
+      teacherStatus: (r.teacher_status as ClassPublishState["teacherStatus"]) ?? null,
+      venueBusinessId: (r.venue_business_id as string) ?? null,
+      venueName: (r.venue_name as string) ?? null,
+      venueStatus: (r.venue_status as VenueStatus) ?? null,
+      why: (r.why as string) ?? null,
+    });
+  }
+  return out;
+}
+
+/** The venue studio's owner answers for its room (18 Sep 2026). */
+export async function respondToVenueRequest(supabase: SupabaseClient, classId: string, accept: boolean): Promise<void> {
+  const { error } = await supabase.rpc("respond_to_venue_request", { p_class_id: classId, p_accept: accept });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** An artist's ask for a studio's room, as the Inbox's Requests desk draws it
+ *  from either end (18 Sep 2026). */
+export interface VenueRequest {
+  classId: string;
+  label: string;
+  style: string;
+  room: string | null;
+  startsAt: string | null;
+  shareSlug: string;
+  createdAt: string;
+  artistBusinessId: string;
+  artistName: string;
+  venueBusinessId: string;
+  venueName: string;
+  venueStatus: VenueStatus;
+}
+
+interface VenueRow {
+  id: string;
+  style: string;
+  level: ClassLevel;
+  room: string | null;
+  share_slug: string;
+  created_at: string;
+  business_id: string;
+  venue_business_id: string;
+  venue_status: VenueStatus;
+  class_sessions: Array<{ starts_at: string; deleted_at: string | null }> | null;
+}
+
+/* two reads rather than one embed: `classes` has two keys into `businesses` now,
+   so the names are fetched by id and joined here */
+const namesOf = async (supabase: SupabaseClient, ids: string[]): Promise<Map<string, string>> => {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return new Map();
+  const { data, error } = await supabase.from("businesses").select("id, name").in("id", unique);
+  if (error) {
+    throw new Error(`businesses.names failed: ${error.message}`);
+  }
+  return new Map(((data ?? []) as Array<{ id: string; name: string }>).map((b) => [b.id, b.name]));
+};
+
+const toVenueRequests = async (supabase: SupabaseClient, rows: VenueRow[]): Promise<VenueRequest[]> => {
+  const names = await namesOf(
+    supabase,
+    rows.flatMap((r) => [r.business_id, r.venue_business_id])
+  );
+  return rows.map((r) => ({
+    classId: r.id,
+    label: dosClassLabel(r.style, r.level),
+    style: r.style,
+    room: r.room,
+    startsAt:
+      [...(r.class_sessions ?? [])]
+        .filter((s) => !s.deleted_at)
+        .map((s) => s.starts_at)
+        .sort((a, b) => a.localeCompare(b))[0] ?? null,
+    shareSlug: r.share_slug,
+    createdAt: r.created_at,
+    artistBusinessId: r.business_id,
+    artistName: names.get(r.business_id) ?? "An artist",
+    venueBusinessId: r.venue_business_id,
+    venueName: names.get(r.venue_business_id) ?? "a studio",
+    venueStatus: r.venue_status,
+  }));
+};
+
+const VENUE_SELECT = "id, style, level, room, share_slug, created_at, business_id, venue_business_id, venue_status, class_sessions (starts_at, deleted_at)";
+
+/** The asks waiting on a set of STUDIOS for their rooms — the Requests desk's
+ *  Received side for whoever runs them. Says which studios out loud. */
+export async function findVenueRequestsForTenants(supabase: SupabaseClient, tenantIds: string[]): Promise<VenueRequest[]> {
+  if (tenantIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("classes")
+    .select(VENUE_SELECT)
+    .in("venue_business_id", tenantIds)
+    .eq("venue_status", "requested")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) {
+    throw new Error(`classes.venueRequests failed: ${error.message}`);
+  }
+  return toVenueRequests(supabase, (data ?? []) as unknown as VenueRow[]);
+}
+
+/** The rooms an ARTIST has asked for and not yet been given — waiting, or
+ *  declined — the Requests desk's Sent side. Says which pages out loud. */
+export async function findMyVenueAsks(supabase: SupabaseClient, pageIds: string[]): Promise<VenueRequest[]> {
+  if (pageIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("classes")
+    .select(VENUE_SELECT)
+    .in("business_id", pageIds)
+    .in("venue_status", ["requested", "declined"])
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) {
+    throw new Error(`classes.myVenueAsks failed: ${error.message}`);
+  }
+  return toVenueRequests(supabase, (data ?? []) as unknown as VenueRow[]);
 }
 
 /** IS THE ROOM BUSY THEN? (parity audit F3 — the prototype's dosClash, 4023,

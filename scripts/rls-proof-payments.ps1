@@ -1,4 +1,4 @@
-# Money proof for Step 9 (payments; provider-neutral since the Cashfree rail swap): the free path is closed for priced
+﻿# Money proof for Step 9 (payments; provider-neutral since the Cashfree rail swap): the free path is closed for priced
 # classes, orders/payments/refunds move only through the RPCs, captures are
 # idempotent and capacity-safe, refunds follow the 48h window, and RLS shows
 # money rows only to the payer and the studio.
@@ -27,15 +27,19 @@ function Sign-In($phone) {
 }
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
-function New-Class($headers, $tenantId, $title, $price, $cap, $daysOut) {
+# 18 Sep 2026: created as a DRAFT, published once a teacher has accepted (seated here)
+function New-Class($headers, $tenantId, $title, $price, $cap, $daysOut, $teacherId) {
   $starts = (Get-Date).AddDays($daysOut).ToString("yyyy-MM-ddT19:00:00+05:30")
   $ends = (Get-Date).AddDays($daysOut).ToString("yyyy-MM-ddT20:00:00+05:30")
   $body = @{ p_business_id = $tenantId; p_title = $title; p_style = "Hip-Hop"; p_level = "beginner";
-             p_room = "Studio A"; p_price_inr = $price; p_capacity = $cap; p_status = "published";
+             p_room = "Studio A"; p_price_inr = $price; p_capacity = $cap; p_status = "draft";
              p_starts_at = $starts; p_ends_at = $ends } | ConvertTo-Json
-  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
+  $c = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers $headers -Body $body
+  Publish-Class ([string]$c.id) $teacherId $headers
+  return $c
 }
 function Session-Of($classId) {
   $rows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/class_sessions?class_id=eq.$classId&select=id" -Headers $svcH)
@@ -87,7 +91,7 @@ Subscribe-Studio ([string]$ta.id)
 
 try {
   # class 1: paid (Rs 300), roomy capacity, 7 days out (outside the 48h window)
-  $c1 = New-Class (Api $a.access_token) $ta.id "Paid Foundations $stamp" 300 10 7
+  $c1 = New-Class (Api $a.access_token) $ta.id "Paid Foundations $stamp" 300 10 7 $b.user.id
   $s1 = Session-Of $c1.id
 
   # 1. the free path is closed for priced classes
@@ -130,7 +134,7 @@ try {
   Check 7 "Studio member reads the order ($($ordA.Count)); anon reads none ($($ordAnon.Count))" (($ordA.Count -eq 1) -and ($ordAnon.Count -eq 0))
 
   # 8. a capture landing on a full class refunds instead of overbooking
-  $c2 = New-Class (Api $a.access_token) $ta.id "One Seat $stamp" 300 1 7
+  $c2 = New-Class (Api $a.access_token) $ta.id "One Seat $stamp" 300 1 7 $b.user.id
   $s2 = Session-Of $c2.id
   $oB = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s2 }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $oB.id; p_provider_order_id = "order_B2$stamp" } | Out-Null
@@ -155,7 +159,7 @@ try {
   Check 10 "Refund processed (refund $($ref10[0].status), order $($ord10[0].status))" (($ref10[0].status -eq "processed") -and ($ord10[0].status -eq "refunded"))
 
   # 11. cancelling inside 48h: the studio decides (requested, no auto refund)
-  $c3 = New-Class (Api $a.access_token) $ta.id "Tomorrow $stamp" 300 10 1
+  $c3 = New-Class (Api $a.access_token) $ta.id "Tomorrow $stamp" 300 10 1 $b.user.id
   $s3 = Session-Of $c3.id
   $o3 = Rpc (Api $b.access_token) "create_payment_order" @{ p_session_id = $s3 }
   Rpc (Api $b.access_token) "attach_provider_order" @{ p_order_id = $o3.id; p_provider_order_id = "order_C3$stamp" } | Out-Null
@@ -165,7 +169,7 @@ try {
   Check 11 "Cancel inside 48h files a request, not a refund ($($out11.refund.status))" ($out11.refund.status -eq "requested")
 
   # 12. a free class still promotes its waitlist on cancel
-  $c4 = New-Class (Api $a.access_token) $ta.id "Free Cypher $stamp" 0 1 7
+  $c4 = New-Class (Api $a.access_token) $ta.id "Free Cypher $stamp" 0 1 7 $b.user.id
   $s4 = Session-Of $c4.id
   $e4b = Rpc (Api $b.access_token) "book_class_session" @{ p_session_id = $s4 }
   Rpc (Api $c.access_token) "book_class_session" @{ p_session_id = $s4 } | Out-Null

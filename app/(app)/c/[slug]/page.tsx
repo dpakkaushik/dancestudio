@@ -140,6 +140,9 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       canSettleRefunds={canSettleRefunds}
       classMoney={classMoney}
       paidUserIds={[...paidUserIds]}
+      /* 18 Sep 2026: the owner hands out jobs; the owner or the confirmed teacher adds assistants */
+      isOwner={role === "owner"}
+      canAddAssistant={role === "owner" || (myClaim?.kind === "artist" && myClaim.status === "confirmed")}
     />
   );
 }

@@ -18,6 +18,7 @@ if (-not $base -or -not $anon) { throw "NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY mis
 $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $service) { throw "SUPABASE_SERVICE_ROLE_KEY missing from .env.local" }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 
 function Sign-In($phone) {
   $h = @{ apikey = $anon; "Content-Type" = "application/json" }
@@ -59,7 +60,9 @@ Subscribe-Studio ([string]$ta.id)
 # waitlist claims this script exists to prove belong to a free one. The paid
 # refusal is check 10 below - this proof was red from Step 9 to Step 24 because
 # it still built a Rs 300 class here and nobody re-ran it.
-$cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body (@{ p_business_id = $ta.id; p_title = "Tiny class $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = "Studio A"; p_price_inr = 0; p_capacity = 1; p_status = "published"; p_starts_at = "2027-03-01T19:00:00+05:30"; p_ends_at = "2027-03-01T20:00:00+05:30" } | ConvertTo-Json)
+$cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body (@{ p_business_id = $ta.id; p_title = "Tiny class $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = "Studio A"; p_price_inr = 0; p_capacity = 1; p_status = "draft"; p_starts_at = "2027-03-01T19:00:00+05:30"; p_ends_at = "2027-03-01T20:00:00+05:30" } | ConvertTo-Json)
+# 18 Sep 2026: a class publishes once its teacher has accepted - the third person takes it
+Publish-Class ([string]$cls.id) ([string]$cUser.id) (Api $a.access_token)
 $sess = Invoke-RestMethod -Uri "$base/rest/v1/class_sessions?class_id=eq.$($cls.id)&select=id" -Headers (Api $a.access_token)
 $sid = $sess[0].id
 "0. Studio + published class (cap 1) + session ready"
@@ -120,7 +123,8 @@ if (-not $countOk) { $pass = $false }
 
 # 10. AND THE RULE THAT MADE THIS CLASS FREE: a priced class with open seats
 #     refuses this door and sends you to its page (Step 9's line, kept)
-$paid = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body (@{ p_business_id = $ta.id; p_title = "Paid class $stamp"; p_style = "Salsa"; p_level = "all"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 5; p_status = "published"; p_starts_at = "2027-03-02T19:00:00+05:30"; p_ends_at = "2027-03-02T20:00:00+05:30" } | ConvertTo-Json)
+$paid = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body (@{ p_business_id = $ta.id; p_title = "Paid class $stamp"; p_style = "Salsa"; p_level = "all"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 5; p_status = "draft"; p_starts_at = "2027-03-02T19:00:00+05:30"; p_ends_at = "2027-03-02T20:00:00+05:30" } | ConvertTo-Json)
+Publish-Class ([string]$paid.id) ([string]$cUser.id) (Api $a.access_token)
 $paidSess = Invoke-RestMethod -Uri "$base/rest/v1/class_sessions?class_id=eq.$($paid.id)&select=id" -Headers (Api $a.access_token)
 $paidMsg = ""
 try {

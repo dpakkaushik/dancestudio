@@ -5,20 +5,23 @@ import { useActionState, useRef, useState } from "react";
 import { PosterBlock } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import {
-  checkRoomClashAction,
   createClassAction,
+  searchVenuesAction,
   updateClassAction,
+  venueRoomsAction,
   type ClassActionState,
-  type RoomClash,
 } from "@/features/classes/server-actions/classes";
+import { LocationPicker } from "@/features/geo/components/LocationPicker";
+import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import type { TeamMember } from "@/repositories/tenants";
+import { centreOf } from "@/repositories/cities";
 import type { ClassClaim } from "@/types/claim";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
+import type { TenantType } from "@/types/tenant";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -78,7 +81,7 @@ const POSTER_DESIGNS: Array<[PosterChoice, string]> = [
   ["quiet", "Quiet"],
 ];
 
-const STEPS = ["The session", "Price & publish"];
+const STEPS = ["The session", "Price & save"];
 
 /* the level's glyph (15367-15377): one to three ascending bars, a dot for All levels */
 const LEVEL_BARS: Record<string, number> = { all: 4, beginner: 1, intermediate: 2, professional: 3 };
@@ -100,45 +103,100 @@ const claimWord = (status: string) =>
 const claimTint = (status: string) =>
   status === "confirmed" ? "#22C55E" : status === "rejected" ? "#F87171" : "#F59E0B";
 
-interface AssistantIntent {
-  userId: string;
-  canAttendance: boolean;
-  canRefunds: boolean;
-  /** What the studio pays them per session (Step 13). Owner-only: the RPCs
-   *  refuse a rate from anybody else, so a trainer's save never sends one. */
-  payInr: number;
+/** the rooms of a studio, as a radio list (15381-15396) */
+function RoomList({ rooms, roomId, onPick, emptyWords }: { rooms: Room[]; roomId: string | null; onPick: (id: string | null) => void; emptyWords: string }) {
+  if (rooms.length === 0) {
+    return <div style={{ background: CARD, borderRadius: 14, padding: "12px 14px", fontSize: 12, color: SUB, lineHeight: 1.5 }}>{emptyWords}</div>;
+  }
+  return (
+    <div>
+      {rooms.map((r) => {
+        const on = roomId === r.id;
+        return (
+          <div
+            role="button"
+            tabIndex={0}
+            onKeyDown={dosKey}
+            key={r.id}
+            aria-label={`Hold it in ${r.name}`}
+            aria-pressed={on}
+            onClick={() => onPick(on ? null : r.id)}
+            style={{ display: "flex", alignItems: "center", gap: 11, background: on ? EL : CARD, border: `1.5px solid ${on ? INK : EL}`, borderRadius: 14, padding: "11px 13px", marginBottom: 8, cursor: "pointer" }}
+          >
+            <span style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: on ? "#3B82F633" : EL, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={on ? "#3B82F6" : SUB} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 3.5h9a1.5 1.5 0 0 1 1.5 1.5v15H6z" />
+                <path d="M4.5 20.5h15" />
+              </svg>
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800 }}>{r.name}</div>
+              <div style={{ fontSize: 11, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                Holds {r.capacity}
+                {r.amenities.length ? ` · ${r.amenities.join(" ")}` : ""}
+              </div>
+            </div>
+            {on && (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round">
+                <path d="m5 12.5 4.5 4.5L19 7.5" />
+              </svg>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
+
+type Venue = { id: string; name: string; sub: string };
+type WhereKind = "studio" | "place";
 
 /** Create/edit a class — the prototype's two-step S_classform wizard
  *  (DanceOSApp.jsx:15309-15531). Step 1 is what the class IS and where it runs;
- *  step 2 is who is taking it and what it costs, because those are the two
- *  decisions that gate publishing. The room comes from the studio's own rooms
- *  (15381-15396) and defines the capacity (15507-15509); the people are ASKED
- *  and answer for themselves (15455). Poster uploads stay on the backlog — the
- *  three drawn designs are the prototype's own default. */
+ *  step 2 is who takes it and what it costs.
+ *
+ *  RE-CUT ON 18 SEP 2026, AT THE USER'S INSTRUCTION, FOR TWO KINDS OF OWNER:
+ *   · A STUDIO's form: WHERE is one of its own rooms; WHO IS TAKING IT is anyone
+ *     on DanceOS, found through the app's one people search and ASKED; there is
+ *     no assistants block — assistants are added from the class page, by the
+ *     owner or the teacher; and the form only ever SAVES A DRAFT. Publish lives
+ *     on the register, and the database refuses it until the teacher has said yes.
+ *   · An ARTIST's form: the artist is the teacher, so nobody is asked; WHERE is
+ *     either a STUDIO with one of its rooms — a request the studio must accept
+ *     before the class can be published — or a PLACE of their own, a map pin
+ *     with their own capacity, which may publish straight from the form.
+ *  The rule behind both is the database's (`classes_publish_needs_a_yes`), so
+ *  this form cannot drift from it. */
 export function ClassForm({
   tenantId,
+  tenantType,
   existing,
   rooms,
-  team,
   claims = [],
   isOwner = false,
   studioPlace = "",
+  cityCentres = [],
+  city = null,
 }: {
   tenantId: string;
+  /** a studio's form or an artist page's — decides WHERE and WHO (18 Sep 2026) */
+  tenantType: TenantType;
   existing?: DanceClass;
+  /** the business's OWN rooms — a studio's; an artist page has none */
   rooms: Room[];
-  team: TeamMember[];
   claims?: ClassClaim[];
   /** the studio's own address, printed above the room list (prototype 15381:
    *  `ownStudio().loc` — a room means nothing until you know which building) */
   studioPlace?: string;
   /** Only the owner sets what a session pays (prototype 18434: payout approval
-   *  is owner-only and cannot be granted). A trainer sees the people pickers
-   *  without the money. */
+   *  is owner-only and cannot be granted). */
   isOwner?: boolean;
+  /** where an artist's map opens when they pick a place of their own */
+  cityCentres?: Array<{ city: string; lat: number; lng: number }>;
+  city?: string | null;
 }) {
   const isEdit = Boolean(existing);
+  const isArtist = tenantType === "artist_page";
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState(0);
@@ -147,124 +205,106 @@ export function ClassForm({
     setToast(m);
     setTimeout(() => setToast(null), 2600);
   };
-  /* the confirm sheet before a publish (15586-15625) — the button sets which
+  /* the confirm sheet before a save (15586-15625) — the button sets which
      status the form will carry, and the sheet's own button submits it */
   const [confirm, setConfirm] = useState<"draft" | "publish" | null>(null);
-  /* system back closes the confirm sheet, exactly as its scrim does */
   useCloseOnBack(() => setConfirm(null), Boolean(confirm));
-  /* ROOM ALREADY BUSY (F3, prototype 15628-15632 / dosClash 4023): asked of the
-     database BEFORE the sheet opens, so the answer is read in the sheet rather
-     than as a refusal after Publish. Held here because the sheet is drawn from
-     this state, not fetched by it. */
-  const [clash, setClash] = useState<RoomClash>(null);
-  const [asking, setAsking] = useState(false);
   /* WHAT THIS FORM IS ABOUT TO SUBMIT, IN THE DOM RATHER THAN IN STATE. React
      batches state updates inside a click handler, so setting a status and calling
-     requestSubmit() in the same tick submits the value from the PREVIOUS render —
-     which sent a clashing class as `published` and had the database refuse it.
+     requestSubmit() in the same tick submits the value from the PREVIOUS render.
      Written straight to the input, so what is read is what was just decided. */
   const statusRef = useRef<HTMLInputElement>(null);
   const setSubmitStatus = (v: "draft" | "published") => {
     if (statusRef.current) statusRef.current.value = v;
   };
+
   const [style, setStyle] = useState<string>(existing?.style ?? "");
   const [level, setLevel] = useState<ClassLevel>(existing?.level ?? "all");
-  /* no name field: a class is called what it is — "{style} · {level}" — and the
-     server derives that on save (the prototype's dosClassLabel, 176-183; its form
-     never asked for a name either, 15309-15531) */
   const [date, setDate] = useState(existing?.session ? toDateInput(existing.session.startsAt) : "");
-  const [startTime, setStartTime] = useState(
-    existing?.session ? toTimeInput(existing.session.startsAt) : "19:00"
-  );
-  const [endTime, setEndTime] = useState(
-    existing?.session ? toTimeInput(existing.session.endsAt) : "20:00"
-  );
+  const [startTime, setStartTime] = useState(existing?.session ? toTimeInput(existing.session.startsAt) : "19:00");
+  const [endTime, setEndTime] = useState(existing?.session ? toTimeInput(existing.session.endsAt) : "20:00");
   const [roomId, setRoomId] = useState<string | null>(existing?.roomId ?? null);
   const [poster, setPoster] = useState<PosterChoice | null>(existing?.poster ?? null);
   const [priceInr, setPriceInr] = useState(existing?.priceInr ?? 300);
   const [capacityInput, setCapacityInput] = useState(existing?.capacity ?? 16);
 
+  /* ── WHERE, for an artist (18 Sep 2026) ── */
+  const [whereKind, setWhereKind] = useState<WhereKind>(existing?.venueBusinessId ? "studio" : "place");
+  const [venue, setVenue] = useState<Venue | null>(existing?.venueBusinessId ? { id: existing.venueBusinessId, name: "the studio you asked", sub: "" } : null);
+  const [venueRooms, setVenueRooms] = useState<Room[]>([]);
+  const [venueQ, setVenueQ] = useState("");
+  const [venueHits, setVenueHits] = useState<Venue[]>([]);
+  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(existing?.lat != null && existing?.lng != null ? { lat: existing.lat, lng: existing.lng } : null);
+  const [mapsUrl, setMapsUrl] = useState<string>(existing?.mapsUrl ?? "");
+  const [placeLabel, setPlaceLabel] = useState<string | null>(null);
+
+  const pickVenue = async (v: Venue) => {
+    setVenue(v);
+    setRoomId(null);
+    setVenueHits([]);
+    setVenueQ("");
+    setVenueRooms((await venueRoomsAction(v.id)).map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }) as Room));
+  };
+  const searchVenue = async (q: string) => {
+    setVenueQ(q);
+    setVenueHits(q.trim().length >= 2 ? await searchVenuesAction(q) : []);
+  };
+
+  /* ── WHO IS TAKING IT, for a studio (18 Sep 2026): anyone on DanceOS, asked ── */
   const artistClaim = claims.find((c) => c.kind === "artist");
-  const [artistUserId, setArtistUserId] = useState<string | null>(artistClaim?.userId ?? null);
+  const [teacher, setTeacher] = useState<{ id: string; name: string } | null>(artistClaim ? { id: artistClaim.userId, name: artistClaim.personName } : null);
   const [artistPayInr, setArtistPayInr] = useState(artistClaim?.payPerSessionInr ?? 0);
-  const [assistants, setAssistants] = useState<AssistantIntent[]>(
-    claims
-      .filter((c) => c.kind === "assistant")
-      .map((c) => ({
-        userId: c.userId,
-        canAttendance: c.canAttendance,
-        canRefunds: c.canRefunds,
-        payInr: c.payPerSessionInr,
-      }))
-  );
 
-  const [state, formAction, isPending] = useActionState(
-    isEdit ? updateClassAction : createClassAction,
-    initialState
-  );
+  const [state, formAction, isPending] = useActionState(isEdit ? updateClassAction : createClassAction, initialState);
 
-  const room = rooms.find((r) => r.id === roomId) ?? null;
-  /* a room defines what the class can hold (prototype 15507-15509) */
+  /* the room the class is in: the studio's own, or the venue's */
+  const roomList = isArtist ? venueRooms : rooms;
+  const room = roomList.find((r) => r.id === roomId) ?? null;
+  /* a room defines what the class can hold (prototype 15507-15509); a place of one's own is the artist's number */
   const capacity = room ? room.capacity : capacityInput;
+  const atStudio = isArtist && whereKind === "studio";
+  const atPlace = isArtist && whereKind === "place";
+
   const basicsOk = style.length > 0 && date.length > 0 && endTime > startTime;
-  const ok = basicsOk;
   /* the first missing answer, in the words the button will wear (15573-15578) */
-  const stepOneErr = !style ? "Pick a dance style" : !level ? "Pick a level" : !date ? "Pick a date" : rooms.length > 0 && !roomId ? "Pick a room" : endTime <= startTime ? "End after the start" : null;
-  /* BEFORE THIS CAN GO ON DISCOVER (15551-15563, dosClassBlockers): every reason it
-     cannot go live, named by the field that answers it. Save draft is never blocked
-     by these. */
+  const stepOneErr = !style
+    ? "Pick a dance style"
+    : !level
+      ? "Pick a level"
+      : !date
+        ? "Pick a date"
+        : endTime <= startTime
+          ? "End after the start"
+          : !isArtist && rooms.length > 0 && !roomId
+            ? "Pick a room"
+            : atStudio && !venue
+              ? "Pick a studio"
+              : atStudio && venue && !roomId
+                ? "Pick one of its rooms"
+                : atPlace && !geo
+                  ? "Put it on the map"
+                  : null;
+  const ok = basicsOk && !stepOneErr;
+
+  /* WHAT STANDS BETWEEN THIS AND PUBLISH — said here for an ARTIST'S PLACE, the
+     one case that may publish from the form (15551-15563). A studio's class and
+     an artist's class at a studio always leave here as drafts: their yes comes
+     from somebody else, later, and the register is where Publish lives. */
   const blockers: string[] = [];
-  if (!style) blockers.push("Pick a dance style");
-  if (!level) blockers.push("Pick a level");
-  if (!date) blockers.push("Give it a date and a time");
-  if (rooms.length > 0 && !roomId) blockers.push("Say where it happens — a room");
-  if (!(capacity > 0)) blockers.push("Say how many people can book — a class with no places cannot be booked");
-  if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
-  const canPublish = blockers.length === 0 && ok;
+  if (atPlace) {
+    if (!geo) blockers.push("Put it on the map — a place of your own");
+    if (!(capacity > 0)) blockers.push("Say how many people can book");
+    if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
+  }
+  const canPublishHere = atPlace && ok && blockers.length === 0;
 
-  const claimOf = (userId: string) => claims.find((c) => c.userId === userId);
-  const assistantOf = (userId: string) => assistants.find((a) => a.userId === userId);
+  /* the rate only travels when an OWNER is saving — the RPCs reject it from anybody else */
+  const peoplePayload = isArtist ? "" : JSON.stringify({ artistUserId: teacher?.id ?? null, ...(isOwner ? { artistPayInr } : {}) });
 
-  const toggleAssistant = (userId: string) => {
-    setAssistants((list) =>
-      list.some((a) => a.userId === userId)
-        ? list.filter((a) => a.userId !== userId)
-        : [...list, { userId, canAttendance: false, canRefunds: false, payInr: 0 }]
-    );
-  };
-  const toggleJob = (userId: string, job: "canAttendance" | "canRefunds") => {
-    setAssistants((list) =>
-      list.map((a) => (a.userId === userId ? { ...a, [job]: !a[job] } : a))
-    );
-  };
-  const setAssistantPay = (userId: string, payInr: number) => {
-    setAssistants((list) => list.map((a) => (a.userId === userId ? { ...a, payInr } : a)));
-  };
-
-  /* the rate only travels when an OWNER is saving — the RPCs reject it from
-     anybody else, so sending it from a trainer's form would be an error rather
-     than a permission check */
-  const peoplePayload = JSON.stringify({
-    artistUserId,
-    ...(isOwner ? { artistPayInr } : {}),
-    assistants: assistants
-      .filter((a) => a.userId !== artistUserId)
-      .map((a) => (isOwner ? a : { userId: a.userId, canAttendance: a.canAttendance, canRefunds: a.canRefunds })),
-  });
+  const whereWords = atStudio && venue ? `${room?.name ?? "a room"} at ${venue.name}` : atPlace ? (placeLabel ?? (geo ? "a place on the map" : "—")) : room?.name ?? "—";
 
   return (
-    <div
-      style={{
-        background: LILAC,
-        color: INK,
-        maxWidth: 430,
-        margin: "0 auto",
-        fontFamily: DOS_UI,
-        minHeight: "100vh",
-        padding: "14px 16px 150px",
-        boxSizing: "border-box",
-      }}
-    >
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 150px", boxSizing: "border-box" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 2px" }}>
         <button type="button" aria-label={step > 0 ? "Back a step" : "Back"} onClick={() => (step > 0 ? setStep(step - 1) : router.back())} style={{ fontSize: 20, cursor: "pointer", lineHeight: 1, background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
           ←
@@ -272,22 +312,17 @@ export function ClassForm({
         <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, flex: 1 }}>{isEdit ? "Edit class" : "Add class"}</div>
       </div>
       <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
-        {isEdit
-          ? "Your saved details stay put — step through and change only what you need"
-          : `Step ${step + 1} of ${STEPS.length} — ${STEPS[step]}`}
+        {isEdit ? "Your saved details stay put — step through and change only what you need" : `Step ${step + 1} of ${STEPS.length} — ${STEPS[step]}`}
       </div>
       {/* progress (prototype 15547-15550) */}
       <div style={{ display: "flex", gap: 5, margin: "12px 0 4px" }}>
         {STEPS.map((s, i) => (
-          <div
-            key={s}
-            style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? INK : EL, transition: "all .2s" }}
-          />
+          <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? INK : EL, transition: "all .2s" }} />
         ))}
       </div>
 
       <form action={formAction} ref={formRef}>
-        {!isEdit ? <input type="hidden" name="status" ref={statusRef} defaultValue="published" /> : null}
+        {!isEdit ? <input type="hidden" name="status" ref={statusRef} defaultValue="draft" /> : null}
         {/* every field lives in state and submits as a hidden input, so stepping
             between the two halves never drops what you already answered */}
         <input type="hidden" name="tenantId" value={tenantId} />
@@ -303,489 +338,263 @@ export function ClassForm({
         <input type="hidden" name="priceInr" value={priceInr} />
         <input type="hidden" name="capacity" value={capacity} />
         <input type="hidden" name="people" value={peoplePayload} />
+        {/* WHERE, for an artist: the venue, or the pin (18 Sep 2026) */}
+        <input type="hidden" name="venueBusinessId" value={atStudio && venue ? venue.id : ""} />
+        <input type="hidden" name="lat" value={atPlace && geo ? String(geo.lat) : ""} />
+        <input type="hidden" name="lng" value={atPlace && geo ? String(geo.lng) : ""} />
+        <input type="hidden" name="mapsUrl" value={atPlace ? mapsUrl : ""} />
 
         {step === 0 ? (
           <>
             <div style={labelStyle}>1 · CLASS DATE &amp; TIME</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Date</div>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              aria-label="Class date"
-              style={{ ...inputStyle, colorScheme: "dark" }}
-            />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Class date" style={{ ...inputStyle, colorScheme: "dark" }} />
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Starts</div>
-              <select
-                value={startTime}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setStartTime(v);
-                  if (endTime <= v) {
-                    const next = TIMES.find((t) => t > v);
-                    if (next) setEndTime(next);
-                  }
-                }}
-                aria-label="Starts"
-                style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
-              >
-                {TIMES.slice(0, -1).map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Starts</div>
+                <select
+                  value={startTime}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setStartTime(v);
+                    if (endTime <= v) {
+                      const next = TIMES.find((t) => t > v);
+                      if (next) setEndTime(next);
+                    }
+                  }}
+                  aria-label="Starts"
+                  style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
+                >
+                  {TIMES.slice(0, -1).map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Ends</div>
-              <select
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                aria-label="Ends"
-                style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
-              >
-                {TIMES.filter((t) => t > startTime).map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Ends</div>
+                <select value={endTime} onChange={(e) => setEndTime(e.target.value)} aria-label="Ends" style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
+                  {TIMES.filter((t) => t > startTime).map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div style={labelStyle}>2 · DANCE STYLE</div>
-            {/* the prototype's searchable picker (15336-15360): the picked style's coin on a
-                closed row, a search box and the registry under it — not a wall of 66 chips */}
+            {/* the prototype's searchable picker (15336-15360) */}
             <DosStylePicker value={style} onChange={setStyle} />
 
             <div style={labelStyle}>3 · LEVEL</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {DOS_LEVELS.map(([code, word]) => (
-                <span
-                  key={code}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={level === code}
-                  onClick={() => setLevel(code)}
-                  onKeyDown={dosKey}
-                  style={{ ...chipStyle(level === code), display: "inline-flex", alignItems: "center", gap: 7 }}
-                >
+                <span key={code} role="button" tabIndex={0} aria-pressed={level === code} onClick={() => setLevel(code)} onKeyDown={dosKey} style={{ ...chipStyle(level === code), display: "inline-flex", alignItems: "center", gap: 7 }}>
                   <LevelGlyph code={code} /> {word}
                 </span>
               ))}
             </div>
 
-            {/* ── ONE PLACE TO SAY WHERE (prototype 15376-15396): a room belongs
-                to a studio, so they are one question — and every room here is
-                already yours ── */}
             <div style={labelStyle}>4 · WHERE</div>
-            {/* the studio's address over its rooms (prototype 15381) */}
-            {studioPlace ? (
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, margin: "-4px 0 8px" }}>{studioPlace}</div>
-            ) : null}
-            {rooms.length === 0 ? (
-              <div
-                style={{
-                  background: CARD,
-                  borderRadius: 14,
-                  padding: "12px 14px",
-                  fontSize: 12,
-                  color: SUB,
-                  lineHeight: 1.5,
-                }}
-              >
-                No rooms yet. Add one in <b>Rooms</b> on the studio desk and it will be pickable
-                here — a room also decides what the class can hold.
-              </div>
+            {!isArtist ? (
+              <>
+                {/* ── ONE PLACE TO SAY WHERE (prototype 15376-15396): a room belongs
+                    to a studio, so they are one question — and every room here is
+                    already yours ── */}
+                {studioPlace ? <div style={{ fontSize: 11.5, fontWeight: 700, color: SUB, margin: "-4px 0 8px" }}>{studioPlace}</div> : null}
+                <RoomList rooms={rooms} roomId={roomId} onPick={setRoomId} emptyWords="No rooms yet. Add one in Rooms on the studio's home and it will be pickable here — a room also decides what the class can hold." />
+              </>
             ) : (
-              <div>
-                {rooms.map((r) => {
-                  const on = roomId === r.id;
-                  return (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={dosKey}
-                      key={r.id}
-                      aria-label={`Hold it in ${r.name}`}
-                      aria-pressed={on}
-                      onClick={() => setRoomId(on ? null : r.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 11,
-                        background: on ? EL : CARD,
-                        border: `1.5px solid ${on ? INK : EL}`,
-                        borderRadius: 14,
-                        padding: "11px 13px",
-                        marginBottom: 8,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: 10,
-                          flexShrink: 0,
-                          background: on ? "#3B82F633" : EL,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+              <>
+                {/* ── AN ARTIST'S TWO ANSWERS (18 Sep 2026): a studio's room, asked
+                    for; or a place of their own, pinned ── */}
+                <div role="group" aria-label="Where the class happens" style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, marginBottom: 10 }}>
+                  {(
+                    [
+                      ["studio", "At a studio"],
+                      ["place", "A place of my own"],
+                    ] as Array<[WhereKind, string]>
+                  ).map(([k, word]) => {
+                    const on = whereKind === k;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => {
+                          setWhereKind(k);
+                          setRoomId(null);
                         }}
+                        style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, cursor: "pointer", fontSize: 11.5, fontWeight: 800, border: "none", background: on ? LILAC : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none", fontFamily: "inherit" }}
                       >
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={on ? "#3B82F6" : SUB} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M6 3.5h9a1.5 1.5 0 0 1 1.5 1.5v15H6z" />
-                          <path d="M4.5 20.5h15" />
-                        </svg>
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 800 }}>{r.name}</div>
-                        <div style={{ fontSize: 11, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          Holds {r.capacity}
-                          {r.amenities.length ? ` · ${r.amenities.join(" ")}` : ""}
-                        </div>
-                      </div>
-                      {on && (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round">
-                          <path d="m5 12.5 4.5 4.5L19 7.5" />
-                        </svg>
-                      )}
+                        {word}
+                      </button>
+                    );
+                  })}
+                </div>
+                {whereKind === "studio" ? (
+                  <>
+                    <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
+                      The studio is asked for its room. The class is saved as a draft and you can publish once they accept.
                     </div>
-                  );
-                })}
-              </div>
+                    {venue ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, background: EL, border: `1.5px solid ${INK}`, borderRadius: 14, padding: "11px 13px", marginBottom: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 800 }}>{venue.name}</div>
+                          {venue.sub ? <div style={{ fontSize: 11, color: SUB }}>{venue.sub}</div> : null}
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Pick a different studio"
+                          onClick={() => {
+                            setVenue(null);
+                            setVenueRooms([]);
+                            setRoomId(null);
+                          }}
+                          style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input value={venueQ} onChange={(e) => void searchVenue(e.target.value)} placeholder="Search studios on DanceOS…" aria-label="Search studios" style={inputStyle} />
+                        {venueHits.map((h) => (
+                          <div key={h.id} role="button" tabIndex={0} onKeyDown={dosKey} aria-label={`Ask ${h.name} for a room`} onClick={() => void pickVenue(h)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginTop: 6, cursor: "pointer", background: CARD, border: `1.5px solid ${EL}` }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 800 }}>{h.name}</div>
+                              <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>{h.sub}</div>
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: "#3B82F6" }}>Pick ›</span>
+                          </div>
+                        ))}
+                        {venueQ.trim().length >= 2 && venueHits.length === 0 ? <div style={{ fontSize: 11.5, color: SUB, padding: "8px 2px" }}>No studio on DanceOS by that name.</div> : null}
+                      </div>
+                    )}
+                    {venue ? <RoomList rooms={venueRooms} roomId={roomId} onPick={setRoomId} emptyWords="This studio has not listed its rooms yet — ask them to add one, or pick another studio." /> : null}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>Search the address or drag the map — the pin is what students get directions to.</div>
+                    <LocationPicker
+                      value={{ lat: geo?.lat ?? null, lng: geo?.lng ?? null, area: placeLabel }}
+                      centre={centreOf(cityCentres, city ?? null)}
+                      onChange={(p) => {
+                        setGeo({ lat: p.lat, lng: p.lng });
+                        setMapsUrl(`https://maps.google.com/?q=${p.lat},${p.lng}`);
+                        if (p.label) setPlaceLabel(p.label.split(",").slice(0, 3).join(",").trim());
+                      }}
+                    />
+                  </>
+                )}
+              </>
             )}
           </>
         ) : (
           <>
-            {/* ── WHO IS TAKING IT, IN THE FORM THAT ASKS (prototype 15445-15479) ── */}
-            <div style={labelStyle}>5 · WHO IS TAKING IT</div>
-            <div style={{ fontSize: 12, color: SUB, marginBottom: 7 }}>
-              They are asked to confirm. Their name goes on the public class once they do.
-            </div>
-            {team.map((m) => {
-              const on = artistUserId === m.userId;
-              const claim = claimOf(m.userId);
-              return (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={dosKey}
-                  key={m.userId}
-                  aria-label={`${m.name} takes this class`}
-                  aria-pressed={on}
-                  onClick={() => setArtistUserId(on ? null : m.userId)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 12px",
-                    borderRadius: 13,
-                    marginBottom: 6,
-                    cursor: "pointer",
-                    background: on ? EL : CARD,
-                    border: `1.5px solid ${on ? INK : EL}`,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: 8,
-                      flexShrink: 0,
-                      boxSizing: "border-box",
-                      border: `2px solid ${on ? INK : EL}`,
-                      background: on ? INK : "transparent",
-                    }}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: on ? 900 : 700 }}>{m.name}</div>
-                    <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>
-                      {m.role}
-                      {m.city ? ` · ${m.city}` : ""}
-                    </div>
-                  </div>
-                  {on && claim?.kind === "artist" && (
-                    <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: claimTint(claim.status) }}>
-                      {claimWord(claim.status)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* ── WHAT A SESSION PAYS (Step 13) ─────────────────────────────
-                The studio owner's number, not a platform rate and not a fixed
-                one. It rides the ask, so the person confirming sees what they
-                are agreeing to, and every session of this class that runs adds
-                it to what they are owed. */}
-            {isOwner && artistUserId && (
+            {!isArtist ? (
               <>
-                <div style={labelStyle}>WHAT A SESSION PAYS THEM</div>
-                <input
-                  type="number"
-                  min={0}
-                  max={200000}
-                  step={50}
-                  value={artistPayInr}
-                  aria-label="What a session pays the artist"
-                  onChange={(e) => setArtistPayInr(Math.max(0, Number(e.target.value) || 0))}
-                  style={inputStyle}
-                />
-                <div style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>
-                  ₹ per session. Leave it at 0 if this one is on the house. You settle it yourself and record it on
-                  the earnings desk — DanceOS does not move the money.
+                {/* ── WHO IS TAKING IT (15445-15479), from ANYONE ON DANCEOS (18 Sep 2026):
+                    the app's one people search; the person is ASKED and answers in
+                    their Inbox; the class stays a draft until they say yes ── */}
+                <div style={labelStyle}>5 · WHO IS TAKING IT</div>
+                <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
+                  Any user or artist on DanceOS. They are asked to confirm — the class stays a draft until they do, and their name goes on it once they have.
                 </div>
-              </>
-            )}
+                {teacher ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginBottom: 6, background: EL, border: `1.5px solid ${INK}` }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 900 }}>{teacher.name}</div>
+                      <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>takes this class</div>
+                    </div>
+                    {artistClaim && artistClaim.userId === teacher.id ? (
+                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: claimTint(artistClaim.status) }}>{claimWord(artistClaim.status)}</span>
+                    ) : (
+                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#F59E0B" }}>Will be asked</span>
+                    )}
+                    <button type="button" aria-label="Pick somebody else to take this class" onClick={() => setTeacher(null)} style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <PeoplePicker title="SEARCH DANCEOS, THEN ASK THEM" ariaLabel="Search DanceOS for who takes this class" actionWord="Ask ›" actionColor="#0D9488" onPick={(p) => setTeacher({ id: p.id, name: p.fullName })} pickLabel={(p) => `${p.fullName} takes this class`} />
+                )}
 
-            <div style={labelStyle}>
-              6 · CLASS ASSISTANTS <span style={{ color: "var(--muted)", fontWeight: 600 }}>· optional</span>
-            </div>
-            <div style={{ fontSize: 12, color: SUB, marginBottom: 7 }}>
-              An assistant can hold jobs: checking people in, and settling refunds.
-            </div>
-            {team.filter((m) => m.userId !== artistUserId).length === 0 && (
-              <div style={{ fontSize: 11.5, color: SUB, padding: "2px 2px 8px" }}>
-                Nobody else on your team yet — staff invites arrive with the CRM slice.
+                {/* ── WHAT A SESSION PAYS (Step 13): the studio owner's number, riding the ask ── */}
+                {isOwner && teacher && (
+                  <>
+                    <div style={labelStyle}>WHAT A SESSION PAYS THEM</div>
+                    <input type="number" min={0} max={200000} step={50} value={artistPayInr} aria-label="What a session pays the artist" onChange={(e) => setArtistPayInr(Math.max(0, Number(e.target.value) || 0))} style={inputStyle} />
+                    <div style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>₹ per session. Leave it at 0 if this one is on the house. You settle it yourself and record it on the earnings desk — DanceOS does not move the money.</div>
+                  </>
+                )}
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 14, lineHeight: 1.5 }}>Assistants are added from the class page once it exists — by you, or by whoever takes it.</div>
+              </>
+            ) : (
+              <div style={{ background: CARD, borderRadius: 14, padding: "12px 14px", marginTop: 18, fontSize: 12, color: SUB, lineHeight: 1.5 }}>
+                <b style={{ color: INK }}>You take this class.</b> Assistants are added from the class page once it exists.
               </div>
             )}
-            {team
-              .filter((m) => m.userId !== artistUserId)
-              .map((m) => {
-                const intent = assistantOf(m.userId);
-                const on = Boolean(intent);
-                const claim = claimOf(m.userId);
-                return (
-                  <div
-                    key={m.userId}
-                    style={{
-                      padding: "9px 12px",
-                      borderRadius: 13,
-                      marginBottom: 6,
-                      background: on ? EL : CARD,
-                      border: `1.5px solid ${on ? INK : EL}`,
-                    }}
-                  >
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={dosKey}
-                      aria-label={`${m.name} assists on this class`}
-                      aria-pressed={on}
-                      onClick={() => toggleAssistant(m.userId)}
-                      style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-                    >
-                      <span
-                        style={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: 5,
-                          flexShrink: 0,
-                          boxSizing: "border-box",
-                          border: `2px solid ${on ? INK : EL}`,
-                          background: on ? INK : "transparent",
-                        }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: on ? 900 : 700 }}>{m.name}</div>
-                        <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>
-                          {m.role}
-                          {m.city ? ` · ${m.city}` : ""}
-                        </div>
-                      </div>
-                      {on && claim?.kind === "assistant" && (
-                        <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: claimTint(claim.status) }}>
-                          {claimWord(claim.status)}
-                        </span>
-                      )}
-                    </div>
-                    {on && intent && (
-                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                        {(
-                          [
-                            ["canAttendance", "Attendance"],
-                            ["canRefunds", "Refunds"],
-                          ] as Array<["canAttendance" | "canRefunds", string]>
-                        ).map(([job, word]) => {
-                          const has = intent[job];
-                          return (
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={dosKey}
-                              key={job}
-                              aria-pressed={has}
-                              aria-label={`${m.name} holds ${word}`}
-                              onClick={() => toggleJob(m.userId, job)}
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 800,
-                                padding: "5px 11px",
-                                borderRadius: 999,
-                                cursor: "pointer",
-                                background: has ? INK : CARD,
-                                color: has ? LILAC : SUB,
-                                border: `1px solid ${has ? INK : EL}`,
-                              }}
-                            >
-                              {word}
-                              {has ? " ✓" : ""}
-                            </span>
-                          );
-                        })}
-                        {isOwner && (
-                          <label
-                            style={{ display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto" }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span style={{ fontSize: 10.5, fontWeight: 800, color: SUB }}>₹/session</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={200000}
-                              step={50}
-                              value={intent.payInr}
-                              aria-label={`What a session pays ${m.name}`}
-                              onChange={(e) => setAssistantPay(m.userId, Math.max(0, Number(e.target.value) || 0))}
-                              style={{
-                                width: 78,
-                                boxSizing: "border-box",
-                                background: CARD,
-                                border: `1px solid ${EL}`,
-                                borderRadius: 999,
-                                padding: "5px 9px",
-                                color: INK,
-                                fontSize: 11.5,
-                                outline: "none",
-                                fontFamily: "inherit",
-                              }}
-                            />
-                          </label>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
 
-            {/* CAPACITY — the room decides it when there is one (15505-15515) */}
-            <div style={labelStyle}>7 · CAPACITY</div>
+            {/* CAPACITY — the room decides it when there is one (15505-15515); a place of your own is your number */}
+            <div style={labelStyle}>{isArtist ? "5" : "6"} · CAPACITY</div>
             {room ? (
               <div style={{ background: CARD, borderRadius: 14, padding: "12px 14px" }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>
-                  {room.capacity} students{" "}
-                  <span style={{ color: SUB, fontWeight: 500 }}>· defined by {room.name}</span>
+                  {room.capacity} students <span style={{ color: SUB, fontWeight: 500 }}>· defined by {room.name}</span>
                 </div>
               </div>
             ) : (
-              <input
-                type="number"
-                min={1}
-                value={capacityInput}
-                onChange={(e) => setCapacityInput(Math.max(1, Number(e.target.value) || 1))}
-                aria-label="Capacity"
-                style={inputStyle}
-              />
+              <input type="number" min={1} value={capacityInput} onChange={(e) => setCapacityInput(Math.max(1, Number(e.target.value) || 1))} aria-label="Capacity" style={inputStyle} />
             )}
 
-            <div style={labelStyle}>8 · PRICE</div>
+            <div style={labelStyle}>{isArtist ? "6" : "7"} · PRICE</div>
             <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>
               ₹ / session <span style={{ color: "var(--muted)" }}>· 0 = free</span>
             </div>
-            <input
-              type="number"
-              min={0}
-              value={priceInr}
-              onChange={(e) => setPriceInr(Math.max(0, Number(e.target.value) || 0))}
-              aria-label="Price per session"
-              style={inputStyle}
-            />
-            {priceInr === 0 && (
-              <div style={{ fontSize: 12, color: "#22C55E", fontWeight: 700, marginTop: 6 }}>
-                This session is free.
-              </div>
-            )}
+            <input type="number" min={0} value={priceInr} onChange={(e) => setPriceInr(Math.max(0, Number(e.target.value) || 0))} aria-label="Price per session" style={inputStyle} />
+            {priceInr === 0 && <div style={{ fontSize: 12, color: "#22C55E", fontWeight: 700, marginTop: 6 }}>This session is free.</div>}
 
-            {/* POSTER — drawn, not uploaded, so it can never disagree with the
-                class it belongs to (prototype 6478-6481). Uploads: backlog. */}
+            {/* POSTER — drawn, not uploaded, so it can never disagree with the class it belongs to (6478-6481) */}
             <div style={labelStyle}>
-              10 · POSTER <span style={{ fontWeight: 500, letterSpacing: 0 }}>· optional</span>
+              {isArtist ? "7" : "8"} · POSTER <span style={{ fontWeight: 500, letterSpacing: 0 }}>· optional</span>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
               {POSTER_DESIGNS.map(([design, word]) => {
                 const on = poster === design;
                 return (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={dosKey}
-                    key={design}
-                    aria-label={`${word} poster`}
-                    aria-pressed={on}
-                    onClick={() => setPoster(on ? null : design)}
-                    style={{ textAlign: "center", cursor: "pointer", lineHeight: 0 }}
-                  >
-                    <span
-                      style={{
-                        display: "block",
-                        borderRadius: 10,
-                        padding: 3,
-                        border: `2px solid ${on ? INK : "transparent"}`,
-                      }}
-                    >
-                      <PosterBlock
-                        item={{ title: style ? dosClassLabel(style, level) : "Class", style, styleColor: dosStyleColor(style) }}
-                        design={design}
-                        size={56}
-                      />
+                  <span role="button" tabIndex={0} onKeyDown={dosKey} key={design} aria-label={`${word} poster`} aria-pressed={on} onClick={() => setPoster(on ? null : design)} style={{ textAlign: "center", cursor: "pointer", lineHeight: 0 }}>
+                    <span style={{ display: "block", borderRadius: 10, padding: 3, border: `2px solid ${on ? INK : "transparent"}` }}>
+                      <PosterBlock item={{ title: style ? dosClassLabel(style, level) : "Class", style, styleColor: dosStyleColor(style) }} design={design} size={56} />
                     </span>
-                    <span
-                      style={{
-                        display: "block",
-                        fontSize: 10.5,
-                        fontWeight: 800,
-                        color: on ? INK : SUB,
-                        marginTop: 5,
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {word}
-                    </span>
+                    <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: on ? INK : SUB, marginTop: 5, lineHeight: 1.2 }}>{word}</span>
                   </span>
                 );
               })}
             </div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
-              Left unchosen, a class draws its own from its name — so it always says the right thing.
-              Tap a chosen design again to go back to that.
-            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>Left unchosen, a class draws its own from its name — so it always says the right thing. Tap a chosen design again to go back to that.</div>
           </>
         )}
 
-        {state.error && (
-          <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, marginTop: 14 }}>{state.error}</div>
-        )}
+        {state.error && <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, marginTop: 14 }}>{state.error}</div>}
 
-        {/* BEFORE THIS CAN GO ON DISCOVER (15551-15563): every reason it cannot go
-            live, named by the field that answers it — recomputed as you type */}
-        {step === STEPS.length - 1 && !isEdit && blockers.length > 0 ? (
-          <div style={{ background: "rgba(248,113,113,.10)", border: "1px solid rgba(248,113,113,.35)", borderRadius: 14, padding: "12px 13px", margin: "16px 0 4px" }}>
-            <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, color: "#F87171", marginBottom: 7 }}>BEFORE THIS CAN GO ON DISCOVER</div>
-            {blockers.map((bl, i) => (
-              <div key={bl} style={{ display: "flex", gap: 8, marginTop: i ? 6 : 0 }}>
-                <span aria-hidden="true" style={{ flexShrink: 0, color: "#F87171", fontWeight: 900, fontSize: 12 }}>·</span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: SUB, lineHeight: 1.45 }}>{bl}</span>
-              </div>
-            ))}
+        {/* WHAT HAPPENS ON SAVE (18 Sep 2026): said plainly, because the form no
+            longer publishes a studio's class — the register does, once the yes is in */}
+        {step === STEPS.length - 1 && !isEdit ? (
+          <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "12px 13px", margin: "16px 0 4px", fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
+            {atPlace
+              ? blockers.length
+                ? blockers.map((b) => <div key={b}>· {b}</div>)
+                : "Your place, your capacity — this one can go straight on Discover."
+              : atStudio
+                ? `Saved as a draft. ${venue?.name ?? "The studio"} is asked for the room; publish from Your classes once they accept.`
+                : `Saved as a draft. ${teacher ? `${teacher.name} is asked` : "Nobody is asked yet — pick who takes it"}; publish from the register once they have said yes.`}
           </div>
         ) : null}
 
-        {/* the sticky action bar, gesture-inset aware (15568-15582): the footer is the
-            step's own — nothing publishes from the first half */}
+        {/* the sticky action bar, gesture-inset aware (15568-15582) */}
         <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 310, boxSizing: "border-box", background: "var(--solid)", borderTop: `1px solid ${EL}`, padding: "12px 16px calc(14px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
           {step === 0 ? (
             /* the button NAMES the missing answer rather than greying out (15573-15578) */
@@ -796,59 +605,17 @@ export function ClassForm({
                 if (stepOneErr) return fire(stepOneErr);
                 setStep(1);
               }}
-              style={{
-                flex: 1,
-                padding: "14px",
-                borderRadius: 999,
-                border: "none",
-                background: stepOneErr ? EL : INK,
-                color: stepOneErr ? "var(--muted)" : LILAC,
-                fontWeight: 700,
-                fontSize: stepOneErr ? 13.5 : 15,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                transition: "all .18s",
-              }}
+              style={{ flex: 1, padding: "14px", borderRadius: 999, border: "none", background: stepOneErr ? EL : INK, color: stepOneErr ? "var(--muted)" : LILAC, fontWeight: 700, fontSize: stepOneErr ? 13.5 : 15, cursor: "pointer", fontFamily: "inherit", transition: "all .18s" }}
             >
               {stepOneErr ?? "Continue"}
             </button>
           ) : (
             <>
-              <button
-                type="button"
-                onClick={() => setStep(0)}
-                style={{
-                  flex: 1,
-                  padding: "13px",
-                  borderRadius: 999,
-                  border: `1.5px solid ${EL}`,
-                  background: "transparent",
-                  color: INK,
-                  fontWeight: 800,
-                  fontSize: 13.5,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
+              <button type="button" onClick={() => setStep(0)} style={{ flex: 1, padding: "13px", borderRadius: 999, border: `1.5px solid ${EL}`, background: "transparent", color: INK, fontWeight: 800, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}>
                 Back
               </button>
               {isEdit ? (
-                <button
-                  type="submit"
-                  disabled={!ok || isPending}
-                  style={{
-                    flex: 1.3,
-                    padding: "13px",
-                    borderRadius: 999,
-                    border: "none",
-                    background: ok ? INK : EL,
-                    color: ok ? LILAC : "#707070",
-                    fontWeight: 800,
-                    fontSize: 13.5,
-                    cursor: ok ? "pointer" : "default",
-                    fontFamily: "inherit",
-                  }}
-                >
+                <button type="submit" disabled={!ok || isPending} style={{ flex: 1.3, padding: "13px", borderRadius: 999, border: "none", background: ok ? INK : EL, color: ok ? LILAC : "#707070", fontWeight: 800, fontSize: 13.5, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}>
                   {isPending ? "Saving…" : "Save changes"}
                 </button>
               ) : (
@@ -860,52 +627,23 @@ export function ClassForm({
                       setSubmitStatus("draft");
                       setConfirm("draft");
                     }}
-                    style={{
-                      flex: 1,
-                      padding: "14px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: CARD,
-                      color: ok ? INK : "var(--muted)",
-                      fontWeight: 700,
-                      fontSize: 14,
-                      cursor: ok ? "pointer" : "default",
-                      fontFamily: "inherit",
-                    }}
+                    style={{ flex: canPublishHere ? 1 : 1.6, padding: "14px", borderRadius: 999, border: "none", background: canPublishHere ? CARD : INK, color: !ok ? "var(--muted)" : canPublishHere ? INK : LILAC, fontWeight: 700, fontSize: 14, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}
                   >
-                    Save draft
+                    {isPending ? "Saving…" : atStudio ? "Save & ask the studio" : !isArtist ? (teacher ? "Save & ask them" : "Save draft") : "Save draft"}
                   </button>
-                  <button
-                    type="button"
-                    aria-disabled={!canPublish}
-                    disabled={isPending}
-                    onClick={async () => {
-                      if (!canPublish) return fire(blockers[0] ?? "Finish the session first");
-                      /* the room is asked before the sheet opens (F3); no room, no question */
-                      setAsking(true);
-                      const hit = roomId
-                        ? await checkRoomClashAction({ tenantId, roomId, date, startTime, endTime, excludeClassId: existing?.id ?? null })
-                        : null;
-                      setAsking(false);
-                      setClash(hit);
-                      setSubmitStatus("published");
-                      setConfirm("publish");
-                    }}
-                    style={{
-                      flex: 1.4,
-                      padding: "14px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: canPublish ? INK : EL,
-                      color: canPublish ? LILAC : "var(--muted)",
-                      fontWeight: 700,
-                      fontSize: 15,
-                      cursor: canPublish ? "pointer" : "default",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    {isPending || asking ? "Working…" : "Publish class"}
-                  </button>
+                  {canPublishHere ? (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => {
+                        setSubmitStatus("published");
+                        setConfirm("publish");
+                      }}
+                      style={{ flex: 1.4, padding: "14px", borderRadius: 999, border: "none", background: INK, color: LILAC, fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      {isPending ? "Working…" : "Publish class"}
+                    </button>
+                  ) : null}
                 </>
               )}
             </>
@@ -918,11 +656,18 @@ export function ClassForm({
           <div role="dialog" aria-modal="true" aria-label={confirm === "publish" ? "Publish this class?" : "Save as draft?"} onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "18px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: INK, animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 14px" }} />
             <b style={{ fontSize: 17 }}>{confirm === "publish" ? "Publish this class?" : "Save as draft?"}</b>
-            <div style={{ fontSize: 12, color: SUB, margin: "3px 0 14px" }}>{confirm === "publish" ? "It'll be added to your calendar and go live on Discover." : "Only you can see drafts — edit anytime from the register's Drafts tab."}</div>
+            <div style={{ fontSize: 12, color: SUB, margin: "3px 0 14px" }}>
+              {confirm === "publish"
+                ? "It'll be added to your calendar and go live on Discover."
+                : atStudio
+                  ? `${venue?.name ?? "The studio"} will be asked for ${room?.name ?? "the room"}. Only you can see the draft until they accept and you publish.`
+                  : teacher
+                    ? `${teacher.name} will be asked to take it. Only you can see the draft until they say yes and you publish.`
+                    : "Only you can see drafts — edit anytime from the register's Drafts tab."}
+            </div>
             {/* the calendar-style card (15595-15617) */}
             {(() => {
               const styleColor = dosStyleColor(style);
-              const artistName = team.find((t) => t.userId === artistUserId)?.name ?? null;
               return (
                 <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1px solid ${EL}` }}>
                   <div style={{ background: `${styleColor}40`, padding: "9px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -936,33 +681,15 @@ export function ClassForm({
                     <span style={{ fontSize: 11, fontWeight: 800, color: SUB }}>{DOS_LEVEL_LABEL[level] ?? level}</span>
                   </div>
                   <div style={{ padding: "10px 12px" }}>
-                    <div style={{ fontSize: 12, color: SUB }}>
-                      👤 {artistName ?? "Not assigned yet"}
-                      {!artistName ? <span style={{ color: "var(--muted)" }}>{" · nobody assigned yet"}</span> : null}
-                    </div>
-                    <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>● {room?.name ?? "—"} · cap {capacity}</div>
-                    {studioPlace ? <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>📍 {studioPlace}</div> : null}
+                    <div style={{ fontSize: 12, color: SUB }}>👤 {isArtist ? "You" : teacher?.name ?? "Nobody asked yet"}</div>
+                    <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>● {whereWords} · cap {capacity}</div>
+                    {!isArtist && studioPlace ? <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>📍 {studioPlace}</div> : null}
                     <div style={{ fontSize: 12, marginTop: 4, fontWeight: 800, color: priceInr === 0 ? "#22C55E" : INK }}>{priceInr === 0 ? "FREE" : `₹${priceInr}/session`}</div>
                     {priceInr > 0 ? <div style={{ fontSize: 11.5, marginTop: 4, color: "#22C55E", fontWeight: 700 }}>↩️ Refund until 48 h before start</div> : null}
                   </div>
                 </div>
               );
             })()}
-            {/* ROOM ALREADY BUSY (15628-15632). One departure from the prototype, stated:
-                its second line offers "confirm again to run both", and this database will
-                not run both — Step 11 made "no double-booking" a trigger, because the
-                prototype's own Rooms footnote (18425) promises it. So the sheet says what
-                CAN happen: pick another slot, or keep the class as a draft, which is not
-                in any room yet. */}
-            {clash && confirm === "publish" ? (
-              <div role="alert" style={{ background: "rgba(245,158,11,.14)", border: "1px solid rgba(245,158,11,.4)", borderRadius: 12, padding: "10px 12px", marginTop: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.7, color: "#F59E0B", marginBottom: 3 }}>ROOM ALREADY BUSY</div>
-                <div style={{ fontSize: 11.5, lineHeight: 1.45, color: INK }}>
-                  {room?.name ?? "That room"} already has {clash.label} at {clash.at}.
-                </div>
-                <div style={{ fontSize: 10.5, color: SUB, marginTop: 4 }}>Go back and pick another slot, or save it as a draft — a room is never double-booked.</div>
-              </div>
-            ) : null}
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: INK }}>
                 Keep editing
@@ -971,15 +698,12 @@ export function ClassForm({
                 type="button"
                 disabled={isPending}
                 onClick={() => {
-                  /* a clashing publish is not offered: the database would refuse it, so
-                     the honest second press keeps the class as a draft instead */
-                  if (clash && confirm === "publish") setSubmitStatus("draft");
                   setConfirm(null);
                   formRef.current?.requestSubmit();
                 }}
                 style={{ flex: 1.4, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
               >
-                {confirm === "publish" ? (clash ? "Save as draft instead" : "Publish it") : "Save draft"}
+                {confirm === "publish" ? "Publish it" : atStudio ? "Save & ask" : teacher && !isArtist ? "Save & ask" : "Save draft"}
               </button>
             </div>
           </div>

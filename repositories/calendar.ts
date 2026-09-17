@@ -215,7 +215,55 @@ export async function findTenantCalendar(
         null
       )
     );
-  return withSeatCounts(supabase, entries);
+  /* AND THE ARTISTS' CLASSES IT HOLDS (18 Sep 2026): a class an artist asked to
+     run in one of this studio's rooms, once the studio has ACCEPTED — the room is
+     held from then on, so it belongs on the calendar the rooms are planned from */
+  const hosted = await findVenueEntries(supabase, tenantId, tenant, fromIso, toIso, false);
+  return withSeatCounts(supabase, [...entries, ...hosted]);
+}
+
+interface VenueClassRow {
+  id: string;
+  class_sessions: SessionBits[] | null;
+  share_slug: string;
+  style: string;
+  level: ClassLevel;
+  room: string | null;
+  price_inr: number;
+  capacity: number;
+  status: ClassStatus;
+}
+
+/** the classes a studio HOSTS for artists (venue accepted), as calendar entries;
+ *  `publishedOnly` for the public schedule, drafts included for the studio's own */
+async function findVenueEntries(
+  supabase: SupabaseClient,
+  tenantId: string,
+  tenant: TenantBits,
+  fromIso: string,
+  toIso: string,
+  publishedOnly: boolean
+): Promise<CalendarEntry[]> {
+  let q = supabase
+    .from("classes")
+    .select(`id, ${CLASS_BITS}, class_sessions (id, starts_at, ends_at, deleted_at)`)
+    .eq("venue_business_id", tenantId)
+    .eq("venue_status", "accepted")
+    .is("deleted_at", null)
+    .limit(MAX_ROWS);
+  if (publishedOnly) q = q.eq("status", "published");
+  const { data, error } = await q;
+  if (error) {
+    throw new Error(`calendar.findVenueEntries failed: ${error.message}`);
+  }
+  const out: CalendarEntry[] = [];
+  for (const row of (data ?? []) as unknown as VenueClassRow[]) {
+    for (const s of row.class_sessions ?? []) {
+      if (s.deleted_at || !inWindow(s.starts_at, fromIso, toIso)) continue;
+      out.push(entryOf(s, row.id, row, tenant, "hosting", null));
+    }
+  }
+  return out;
 }
 
 /** A business's PUBLIC schedule (prototype `pubSchedule`, 8902-8907): published
@@ -258,5 +306,7 @@ export async function findPublicTenantSchedule(
         null
       )
     );
-  return withSeatCounts(supabase, entries);
+  /* the artists' published classes it holds are on offer here too (18 Sep 2026) */
+  const hosted = await findVenueEntries(supabase, tenantId, tenant, nowIso, toIso, true);
+  return withSeatCounts(supabase, [...entries, ...hosted]);
 }

@@ -13,6 +13,14 @@ export interface ClassSession {
  *  poster, or null for "not chosen" — which the UI answers with dosPosterAuto. */
 export type PosterChoice = "bold" | "split" | "quiet" | "none";
 
+/** WHERE AN ARTIST'S CLASS HAPPENS (18 Sep 2026). A studio's class is in one of
+ *  its own rooms. An artist's class is either in a STUDIO's room — a venue the
+ *  artist asks for, and the class cannot be published until that studio says
+ *  yes — or at a place of their own, a map link with their own capacity, which
+ *  publishes directly. `venueStatus` is the studio's answer; null means the
+ *  class has no venue request (a studio's own class, or an artist's map link). */
+export type VenueStatus = "requested" | "accepted" | "declined";
+
 export interface DanceClass {
   id: string;
   tenantId: string;
@@ -38,6 +46,13 @@ export interface DanceClass {
   status: ClassStatus;
   /** The next (or only) dated occurrence — null only for legacy rows. */
   session: ClassSession | null;
+  /** an artist's class held in a STUDIO's room: that studio, and its answer (18 Sep 2026) */
+  venueBusinessId: string | null;
+  venueStatus: VenueStatus | null;
+  /** an artist's class at a place of their own — the pin and the map link */
+  lat: number | null;
+  lng: number | null;
+  mapsUrl: string | null;
 }
 
 /** A published class as the learner listing sees it — with the business behind it. */

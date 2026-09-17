@@ -1,4 +1,4 @@
-# Proof for Step 13b part 2b - the studio's money IN (prototype S_earn 17992-18085,
+﻿# Proof for Step 13b part 2b - the studio's money IN (prototype S_earn 17992-18085,
 # 18171-18178): GROSS by month, the vs-last-month badge's two inputs, REFUNDED,
 # what is being asked back, and HOW STUDENTS PAID.
 #
@@ -33,6 +33,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -162,7 +163,9 @@ try {
   # the studio decides, which is how each refund state is produced on purpose
   $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Income Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  # 18 Sep 2026: published once its teacher has accepted
+  Publish-Class ([string]$cls.id) ([string]$trainer.id) (Api $owner.token)
   $sid = (Get-Rows $svcH "class_sessions?class_id=eq.$($cls.id)&select=id")[0].id
 
   # 1. a studio that has taken nothing prints zero everywhere - zero because
@@ -255,7 +258,8 @@ try {
   #     their screen counts only theirs
   $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_business_id = $tb.id; p_title = "Rival Class $stamp";
     p_style = "Bollywood"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  Publish-Class ([string]$rcls.id) ([string]$trainer.id) (Api $rival.token)
   $rsid = (Get-Rows $svcH "class_sessions?class_id=eq.$($rcls.id)&select=id")[0].id
   Buy-Seat $learners[5] $rsid "RIV$stamp" "upi" | Out-Null
   $i9 = Income-Of (Api $owner.token) $ta.id

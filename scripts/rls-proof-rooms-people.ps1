@@ -1,4 +1,4 @@
-# Proof for Step 11 (rooms & people): a room caps its classes and cannot be
+﻿# Proof for Step 11 (rooms & people): a room caps its classes and cannot be
 # double-booked, a draft holds no room, only the studio's owner/trainer puts
 # people on a class and only the person asked can answer, an unconfirmed name
 # never reaches the public, and an assistant handed attendance gets the register.
@@ -27,6 +27,7 @@ function Sign-In($phone) {
 }
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
 function Rpc($headers, $fn, $body) {
@@ -105,23 +106,32 @@ try {
 
   # 3. a room caps the class it holds
   $capBlocked = Expect-Fail {
+    # a draft is refused for capacity too: assert_room_ok checks the room's size
+    # before it returns early on an unpublished class
     New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Too Big $stamp"; p_style = "Hip-Hop";
-      p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 40; p_status = "published";
+      p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 40; p_status = "draft";
       p_starts_at = $farStart; p_ends_at = $farEnd; p_room_id = $roomRow.id }
   }
   Check 3 "Capacity above the room's is rejected" $capBlocked
 
   # 4. the room name resolves to the room itself (trigger), no id needed
   $byName = New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "By Name $stamp"; p_style = "Hip-Hop";
-    p_level = "beginner"; p_room = "Studio A $stamp"; p_price_inr = 0; p_capacity = 8; p_status = "published";
+    p_level = "beginner"; p_room = "Studio A $stamp"; p_price_inr = 0; p_capacity = 8; p_status = "draft";
     p_starts_at = $farStart; p_ends_at = $farEnd }
+  # 18 Sep 2026: publishing waits for a teacher's yes - and only a PUBLISHED class
+  # holds its room, which is what checks 5 and 6 below are about
+  Publish-Class ([string]$byName.id) ([string]$b.user.id) (Api $a.access_token)
+  $byName = (Get-Rows $svcH "classes?id=eq.$($byName.id)&select=*")[0]
   Check 4 "Room name resolved to room_id ($($byName.room_id -eq $roomRow.id))" ([string]$byName.room_id -eq [string]$roomRow.id)
 
-  # 5. one room, one class at a time
+  # 5. one room, one class at a time. Since 18 Sep 2026 a class cannot be born
+  #    published, so the clash is met where it now happens: at the PUBLISH, with a
+  #    teacher already seated - otherwise this check would pass on the wrong refusal.
   $clashBlocked = Expect-Fail {
-    New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Clash $stamp"; p_style = "Salsa";
-      p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 8; p_status = "published";
+    $clashCls = New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Clash $stamp"; p_style = "Salsa";
+      p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 8; p_status = "draft";
       p_starts_at = $farOverlap; p_ends_at = $farOverlapEnd; p_room_id = $roomRow.id }
+    Publish-Class ([string]$clashCls.id) ([string]$b.user.id) (Api $a.access_token)
   }
   Check 5 "Overlapping published class in the same room is rejected" $clashBlocked
 
@@ -131,11 +141,16 @@ try {
     p_starts_at = $farOverlap; p_ends_at = $farOverlapEnd; p_room_id = $roomRow.id }
   Check 6 "A draft may share the slot" ($null -ne $draft.id)
 
-  # 7. only the studio's own team can be claimed
-  $strangerBlocked = Expect-Fail {
-    Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant" }
+  # 7. ANYONE ON DANCEOS CAN BE ASKED, AND AN ORGANIZATION CANNOT (18 Sep 2026).
+  #    This check used to assert the opposite - "only your own team" - which the
+  #    user replaced: "who is taking class should be any user or artist and should
+  #    send a request". B is not on this team yet (they join below), so asking them
+  #    is exactly the case that used to be refused.
+  $offTeamAsk = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant" }
+  $orgRefused = Expect-Fail {
+    Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $a.user.id; p_kind = "assistant" }
   }
-  Check 7 "Claiming somebody outside the team is rejected" $strangerBlocked
+  Check 7 "Somebody outside the team can be asked ($($offTeamAsk.status)), an organization cannot" (($offTeamAsk.status -eq "asked") -and $orgRefused)
 
   # B joins A's studio as STAFF (staff invites arrive with Step 12 - service role
   # stands in). Staff on purpose: a trainer could run the register anyway, so only
@@ -159,8 +174,9 @@ try {
 
   # 11. an assistant holding attendance runs the register
   $soon = New-Class (Api $a.access_token) @{ p_business_id = $ta.id; p_title = "Register Soon $stamp"; p_style = "Hip-Hop";
-    p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 6; p_status = "published";
+    p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 6; p_status = "draft";
     p_starts_at = $soonStart; p_ends_at = $soonEnd }
+  Publish-Class ([string]$soon.id) ([string]$b.user.id) (Api $a.access_token)
   $soonSession = (Get-Rows $svcH "class_sessions?class_id=eq.$($soon.id)&select=id")[0].id
   $claim2 = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $soon.id; p_user_id = $b.user.id; p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
   Rpc (Api $b.access_token) "respond_to_class_ask" @{ p_class_person_id = $claim2.id; p_accept = $true } | Out-Null

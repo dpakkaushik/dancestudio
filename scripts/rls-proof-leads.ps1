@@ -1,4 +1,4 @@
-# Proof for Step 12 (Studio CRM): a lead is a PRIVATE business record. The whole
+﻿# Proof for Step 12 (Studio CRM): a lead is a PRIVATE business record. The whole
 # team works the desk, another studio sees nothing, the public sees nothing, and
 # a lead moves along its stages without ever faking an enrollment.
 # Reads keys from .env.local - run from the repo root: powershell -File scripts/rls-proof-leads.ps1
@@ -26,6 +26,7 @@ function Sign-In($phone) {
 }
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
 function Rpc($headers, $fn, $body) {
@@ -110,7 +111,9 @@ try {
   $ends = (Get-Date).AddDays(5).ToString("yyyy-MM-ddT20:00:00zzz")
   $cls = Rpc (Api $a.access_token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Trial Class $stamp";
     p_style = "Hip-Hop"; p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 10;
-    p_status = "published"; p_starts_at = $starts; p_ends_at = $ends }
+    p_status = "draft"; p_starts_at = $starts; p_ends_at = $ends }
+  # 18 Sep 2026: the trial class is published once its teacher has accepted
+  Publish-Class ([string]$cls.id) ([string]$b.user.id) (Api $a.access_token)
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/leads?id=eq.$($leadRow.id)" -Headers (Api $a.access_token) -Body (@{
     status = "trial_booked"; trial_class_id = $cls.id } | ConvertTo-Json) | Out-Null
   $trial = Get-Rows (Api $a.access_token) "leads?id=eq.$($leadRow.id)&select=status,trial_class_id"

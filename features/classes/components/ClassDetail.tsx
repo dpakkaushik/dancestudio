@@ -33,6 +33,7 @@ import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { ClassMoney, PaidReceipt } from "@/types/payment";
 import type { RefundRequest } from "@/types/refund";
+import { AddAssistant, AssistantControls } from "./ClassTeamControls";
 import { PassSheet } from "./PassSheet";
 import { DOS_POSTERS, DOS_SLEEVE, DosPosterSleeve, PosterBlock, dosPosterAuto, useDosFold } from "./poster";
 import { dosKey } from "./ShareSheet";
@@ -160,6 +161,10 @@ export interface ClassDetailProps {
   /** on a priced class, the learners whose seat is paid — the register row's
    *  meta line (12126); empty for a free class and for anyone not running it */
   paidUserIds?: string[];
+  /** the business's OWNER — the jobs an assistant holds are theirs to hand out (18 Sep 2026) */
+  isOwner?: boolean;
+  /** the owner, or the class's confirmed teacher: the two who may add an assistant (18 Sep 2026) */
+  canAddAssistant?: boolean;
 }
 
 export function ClassDetail({
@@ -180,6 +185,8 @@ export function ClassDetail({
   canSettleRefunds = false,
   classMoney = null,
   paidUserIds = [],
+  isOwner = false,
+  canAddAssistant = false,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -567,7 +574,9 @@ export function ClassDetail({
               >
                 {[levelWord, "CLASS"].join(" · ")}
               </div>
-              {canManage && !done ? (
+              {/* a STUDIO's owner may pick somebody else to take it; an artist's own
+                  class is theirs, so there is nobody to change (18 Sep 2026) */}
+              {isOwner && !done && c.tenantType === "studio" ? (
                 <div style={{ display: "flex", alignItems: "center", marginTop: 4, minWidth: 0 }}>
                   <Link href={`/business/${c.tenantId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: col, padding: "2px 7px", borderRadius: 999, border: `1px solid ${col}66`, textDecoration: "none" }}>
                     Change
@@ -1087,7 +1096,7 @@ export function ClassDetail({
             whole permission model made visible: "Edit ›" only where you may change
             it, "View ›" everywhere else. Confirmed names only reach a stranger; the
             studio's own people see the asks too. ── */}
-        {(!isDraft || canManage) && (
+        {(!isDraft || canManage || canAddAssistant) && (
           <Sec
             col={col}
             label="CLASS ASSISTANTS"
@@ -1119,23 +1128,23 @@ export function ClassDetail({
                       </div>
                     </div>
                   </Link>
-                  <Link href={canManage ? `/business/${c.tenantId}/classes/${c.id}/edit` : `/person/${cl.userId}`} aria-label={canManage ? `Edit ${cl.personName}'s job` : `View ${cl.personName}`} style={{ fontSize: 10.5, fontWeight: 800, color: col, flexShrink: 0, textDecoration: "none" }}>
-                    {canManage ? "Edit ›" : "View ›"}
-                  </Link>
+                  {/* the jobs and Remove, for whoever may (18 Sep 2026): the owner on
+                      any assistant, the teacher on the assistants they asked; the
+                      teacher's own row is changed from the form, not here */}
+                  {cl.kind === "assistant" && (isOwner || canAddAssistant) ? (
+                    <AssistantControls claim={cl} isOwner={isOwner} col={col} />
+                  ) : (
+                    <Link href={`/person/${cl.userId}`} aria-label={`View ${cl.personName}`} style={{ fontSize: 10.5, fontWeight: 800, color: col, flexShrink: 0, textDecoration: "none" }}>
+                      View ›
+                    </Link>
+                  )}
                 </div>
               );
             })}
-            {assistants.length === 0 && pendingAsks.length === 0 && !canManage ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
-            {canManage ? (
-              <Link href={`/business/${c.tenantId}/classes/${c.id}/edit`} aria-label="Add someone to the team" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0 3px", color: col, textDecoration: "none" }}>
-                <div style={{ width: 34, height: 34, borderRadius: 11, border: "1.5px dashed var(--el)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2.2" strokeLinecap="round">
-                    <path d="M12 5.5v13M5.5 12h13" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800 }}>Add someone to the team</div>
-              </Link>
-            ) : null}
+            {assistants.length === 0 && pendingAsks.length === 0 && !canAddAssistant ? <div style={{ fontSize: 11, color: "var(--muted)", padding: "6px 0" }}>No assistants on this class.</div> : null}
+            {/* the owner, or the person taking the class, asks somebody — from here,
+                not from the form (18 Sep 2026) */}
+            {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={claims.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} /> : null}
             {assisting ? (
               <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--el)" }}>
                 You are assisting on this class{canAtt || canRef ? ` — you hold ${[canAtt ? "attendance" : null, canRef ? "refunds" : null].filter(Boolean).join(" and ")}.` : "."}

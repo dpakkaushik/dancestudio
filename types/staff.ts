@@ -49,22 +49,31 @@ export const MEMBER_LEVEL: Record<MemberRole, string> = {
   owner: "Admin",
   trainer: "Admin",
   staff: "Staff",
+  visiting_faculty: "Faculty",
 };
 
-/** and the line under the name — what this role may actually do (18428-18429) */
+/** and the line under the name — what this role may actually do (18428-18429).
+ *  18 Sep 2026: classes are the OWNER's to create and edit; faculty teach them,
+ *  run the register and see their students. */
 export const MEMBER_GRANTS: Record<MemberRole, string> = {
-  owner: "everything, including payouts",
-  trainer: "register ✓ classes ✓ students ✓",
+  owner: "everything, including classes and payouts",
+  trainer: "register ✓ students ✓ teaches the classes they accept",
   staff: "students ✓ register when asked ✓",
+  visiting_faculty: "teaches the class they accepted · register on it",
 };
 
+/** THE WORDS ON THE TEAM DESK (18 Sep 2026, the user: "add Faculty, Assistants and
+ *  other type of members"; an outside teacher who accepts "becomes Visiting
+ *  Faculty in Team"). `trainer` is the role's name in the database and Faculty
+ *  is its word on the screen. */
 export const MEMBER_ROLE_WORD: Record<MemberRole, string> = {
   owner: "Owner",
-  trainer: "Trainer",
+  trainer: "Faculty",
   staff: "Staff",
+  visiting_faculty: "Visiting faculty",
 };
 
 export const INVITABLE_ROLES: ReadonlyArray<readonly [InvitableRole, string]> = [
-  ["trainer", "Trainer"],
+  ["trainer", "Faculty"],
   ["staff", "Staff"],
 ];

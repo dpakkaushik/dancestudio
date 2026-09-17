@@ -1,4 +1,4 @@
-# Proof for Step 13 (Earnings & payouts). The money questions this has to answer:
+﻿# Proof for Step 13 (Earnings & payouts). The money questions this has to answer:
 #   * only the OWNER sets what a session pays, and only the owner records money
 #   * the AMOUNT is never the client's to state - it is counted from the rates
 #   * a session can NEVER be paid twice
@@ -26,6 +26,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -107,7 +108,11 @@ try {
   # the service role: create_class_with_session quite rightly makes future ones
   $c1 = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Pay Class $stamp";
     p_style = "Hip-Hop"; p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 12;
-    p_status = "published"; p_starts_at = (& $mk $soon 19); p_ends_at = (& $mk $soon 20) }
+    p_status = "draft"; p_starts_at = (& $mk $soon 19); p_ends_at = (& $mk $soon 20) }
+  # 18 Sep 2026: publishing waits for a teacher's yes. The ARTIST is seated here at
+  # Rs 0 and the proof's own ask below replaces that row with the agreed Rs 900 -
+  # ask_class_person closes the live artist row before it inserts, so they cannot collide.
+  Publish-Class ([string]$c1.id) ([string]$artist.id) (Api $owner.token)
   $s1row = Get-Rows $svcH "class_sessions?class_id=eq.$($c1.id)&select=id"
   $s1 = $s1row[0].id
   $past1 = (Get-Date).AddDays(-9)
@@ -122,13 +127,15 @@ try {
   # a second class whose session really has not happened yet
   $c2 = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Future Class $stamp";
     p_style = "Contemporary"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
-    p_status = "published"; p_starts_at = (& $mk $soon 17); p_ends_at = (& $mk $soon 18) }
+    p_status = "draft"; p_starts_at = (& $mk $soon 17); p_ends_at = (& $mk $soon 18) }
+  Publish-Class ([string]$c2.id) ([string]$artist.id) (Api $owner.token)
   $s3 = (Get-Rows $svcH "class_sessions?class_id=eq.$($c2.id)&select=id")[0].id
 
   # and a class belonging to the rival studio
   $c3 = Rpc (Api $rival.token) "create_class_with_session" @{ p_business_id = $tb.id; p_title = "Rival Class $stamp";
     p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
-    p_status = "published"; p_starts_at = (& $mk $soon 18); p_ends_at = (& $mk $soon 19) }
+    p_status = "draft"; p_starts_at = (& $mk $soon 18); p_ends_at = (& $mk $soon 19) }
+  Publish-Class ([string]$c3.id) ([string]$ghost.id) (Api $rival.token)
   $s4 = (Get-Rows $svcH "class_sessions?class_id=eq.$($c3.id)&select=id")[0].id
 
   # 1. the owner asks somebody onto the class AT A RATE, and the rate is theirs to set

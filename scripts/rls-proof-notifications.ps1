@@ -28,6 +28,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -103,8 +104,12 @@ $tmr = (Get-Date).AddDays(2)
 try {
   # 1. A SEAT BOOKED TELLS THE STUDIO - and the trigger, not the app, is what tells it
   $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Notif Class $stamp";
-    p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 1; p_status = "published";
+    p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 1; p_status = "draft";
     p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  # 18 Sep 2026: publishing waits for a teacher's yes. Seated by the service role as
+  # a CONFIRMED artist, which raises no notification (notify_class_person speaks on
+  # an ASK and on the answer to one) - so the counts below stay this proof's own.
+  Publish-Class ([string]$cls.id) ([string]$trainer.id) (Api $owner.token)
   $sess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($cls.id)&select=id")[0]
   Rpc (Api $learner.token) "book_class_session" @{ p_session_id = $sess.id } | Out-Null
   $ownerBooking = Mine $owner "booking"
@@ -165,8 +170,9 @@ try {
   # (a) inside the window - the session is tomorrow
   $soon = (Get-Date).AddHours(20)
   $paidSoon = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Soon Class $stamp";
-    p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 5; p_status = "published";
+    p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 5; p_status = "draft";
     p_starts_at = $soon.ToString("yyyy-MM-ddTHH:00:00zzz"); p_ends_at = $soon.AddHours(1).ToString("yyyy-MM-ddTHH:00:00zzz") }
+  Publish-Class ([string]$paidSoon.id) ([string]$trainer.id) (Api $owner.token)
   $soonSess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($paidSoon.id)&select=id")[0]
   $orderA = Buy $learner $soonSess.id "a$stamp"
   $seatA = (Get-Rows (Api $learner.token) "class_bookings?session_id=eq.$($soonSess.id)&user_id=eq.$($learner.id)&deleted_at=is.null&select=id")[0]
@@ -178,8 +184,9 @@ try {
   # (b) outside the window - the session is ten days out
   $far = (Get-Date).AddDays(10)
   $paidFar = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Far Class $stamp";
-    p_style = "Bhangra"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 5; p_status = "published";
+    p_style = "Bhangra"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 5; p_status = "draft";
     p_starts_at = $far.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $far.ToString("yyyy-MM-ddT18:00:00zzz") }
+  Publish-Class ([string]$paidFar.id) ([string]$trainer.id) (Api $owner.token)
   $farSess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($paidFar.id)&select=id")[0]
   $orderB = Buy $learner $farSess.id "b$stamp"
   $seatB = (Get-Rows (Api $learner.token) "class_bookings?session_id=eq.$($farSess.id)&user_id=eq.$($learner.id)&deleted_at=is.null&select=id")[0]
@@ -233,8 +240,9 @@ try {
   $ghost = New-EmailUser "ntf-ghost-$stamp@example.com" "Ghost $stamp" "user"
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($ghost.id)" -Headers $svcH -Body (@{ deleted_at = "now()" } | ConvertTo-Json) | Out-Null
   $free = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Ghost Class $stamp";
-    p_style = "Kathak"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 4; p_status = "published";
+    p_style = "Kathak"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 4; p_status = "draft";
     p_starts_at = $tmr.ToString("yyyy-MM-ddT10:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT11:00:00zzz") }
+  Publish-Class ([string]$free.id) ([string]$trainer.id) (Api $owner.token)
   $freeSess = (Get-Rows (Api $owner.token) "class_sessions?class_id=eq.$($free.id)&select=id")[0]
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($ghost.id)" -Headers $svcH -Body (@{ deleted_at = $null } | ConvertTo-Json) | Out-Null
   $ghostSeat = Rpc (Api $ghost.token) "book_class_session" @{ p_session_id = $freeSess.id }

@@ -11,8 +11,11 @@ import {
   updateClassDetails,
   updateClassPoster,
   findRoomClash,
+  respondToVenueRequest,
   updateClassStatus,
 } from "@/repositories/classes";
+import { findRoomsByTenant } from "@/repositories/rooms";
+import { searchEverything } from "@/repositories/search";
 import { reconcileClassPeople } from "@/services/classPeople";
 
 export interface ClassActionState {
@@ -39,6 +42,14 @@ const classFields = z.object({
   date: z.string().regex(DATE_RE, "Pick a date"),
   startTime: z.string().regex(TIME_RE, "Pick a start time"),
   endTime: z.string().regex(TIME_RE, "Pick an end time"),
+  /* WHERE AN ARTIST'S CLASS HAPPENS (18 Sep 2026): a studio's room — the venue,
+     with `roomId` one of ITS rooms — or a place of their own. The RPC and the
+     triggers re-check the room belongs to the venue and that a venue class is
+     saved as a draft, so a forged id or status gets nowhere. */
+  venueBusinessId: z.string().uuid().optional(),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  mapsUrl: z.string().url().max(400).optional(),
 });
 
 const endsAfterStart = {
@@ -65,22 +76,14 @@ const toIst = (date: string, time: string): string => `${date}T${time}:00+05:30`
 
 /** Who the form says is on this class. Parsed separately from the class fields
  *  because a bad people payload must never stop the class itself saving. */
+/* 18 Sep 2026: the form names the TEACHER only. Assistants left it — they are
+   added from the class page by the owner or the teacher, each addition an ask. */
 const peopleSchema = z.object({
   artistUserId: z.string().uuid().nullable(),
   /* ⚠ Step 13: a rate is optional here because only an OWNER's form sends one.
      Validating the range is not the authorization — ask_class_person and
      set_class_person_pay refuse a rate from anybody but the owner, server-side. */
   artistPayInr: z.number().int().min(0).max(200000).optional(),
-  assistants: z
-    .array(
-      z.object({
-        userId: z.string().uuid(),
-        canAttendance: z.boolean(),
-        canRefunds: z.boolean(),
-        payInr: z.number().int().min(0).max(200000).optional(),
-      })
-    )
-    .max(12),
 });
 
 const readPeople = (formData: FormData) => {
@@ -107,6 +110,10 @@ const readFields = (formData: FormData) => ({
   date: formData.get("date"),
   startTime: formData.get("startTime"),
   endTime: formData.get("endTime"),
+  venueBusinessId: (formData.get("venueBusinessId") as string) || undefined,
+  lat: (formData.get("lat") as string) || undefined,
+  lng: (formData.get("lng") as string) || undefined,
+  mapsUrl: (formData.get("mapsUrl") as string) || undefined,
 });
 
 async function requireUser() {
@@ -149,6 +156,10 @@ export async function createClassAction(
       status: d.status,
       startsAt: toIst(d.date, d.startTime),
       endsAt: toIst(d.date, d.endTime),
+      venueBusinessId: d.venueBusinessId ?? null,
+      lat: d.lat ?? null,
+      lng: d.lng ?? null,
+      mapsUrl: d.mapsUrl ?? null,
     });
     // the asks go out once the class they are about exists
     if (people) {
@@ -188,6 +199,10 @@ export async function updateClassAction(
       capacity: d.capacity,
       startsAt: toIst(d.date, d.startTime),
       endsAt: toIst(d.date, d.endTime),
+      venueBusinessId: d.venueBusinessId ?? null,
+      lat: d.lat ?? null,
+      lng: d.lng ?? null,
+      mapsUrl: d.mapsUrl ?? null,
     });
     if (people) {
       await reconcileClassPeople(supabase, d.classId, people);
@@ -290,6 +305,51 @@ const clashSchema = z
     excludeClassId: z.string().uuid().nullable().optional(),
   })
   .refine(endsAfterStart.check, { message: endsAfterStart.message });
+
+/** THE VENUE'S ANSWER (18 Sep 2026): the studio's owner accepts or declines an
+ *  artist's ask for one of its rooms — from the Inbox's Requests desk. The RPC
+ *  decides who may answer. */
+const venueSchema = z.object({ classId: z.string().uuid(), accept: z.boolean() });
+export async function respondToVenueRequestAction(input: unknown): Promise<ClassActionState> {
+  const parsed = venueSchema.safeParse(input);
+  if (!parsed.success) return { error: "Invalid request" };
+  const supabase = await requireUser();
+  try {
+    await respondToVenueRequest(supabase, parsed.data.classId, parsed.data.accept);
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not answer" };
+  }
+  revalidatePath("/inbox");
+  revalidatePath("/my-classes");
+  revalidatePath("/");
+  return { error: null };
+}
+
+/** THE VENUE PICKER'S TWO READS (18 Sep 2026): the studios an artist may ask for
+ *  a room — the same search box Discover uses, narrowed to studios (a stranger's
+ *  own RLS decides what is found, so an unlisted studio is never offered) — and
+ *  a chosen studio's rooms, which anyone may read on a listed studio. */
+export async function searchVenuesAction(term: unknown): Promise<Array<{ id: string; name: string; sub: string }>> {
+  const q = typeof term === "string" ? term.trim().slice(0, 60) : "";
+  if (q.length < 2) return [];
+  const supabase = await requireUser();
+  try {
+    return (await searchEverything(supabase, q, 6)).filter((h) => h.kind === "studio").map((h) => ({ id: h.id, name: h.name, sub: h.sub }));
+  } catch {
+    return [];
+  }
+}
+
+export async function venueRoomsAction(businessId: unknown): Promise<Array<{ id: string; name: string; capacity: number; amenities: string[] }>> {
+  const parsed = z.string().uuid().safeParse(businessId);
+  if (!parsed.success) return [];
+  const supabase = await requireUser();
+  try {
+    return (await findRoomsByTenant(supabase, parsed.data)).map((r) => ({ id: r.id, name: r.name, capacity: r.capacity, amenities: r.amenities }));
+  } catch {
+    return [];
+  }
+}
 
 /** the clashing class's label ("{style} · {level}") and the hour it starts */
 export type RoomClash = { label: string; at: string } | null;

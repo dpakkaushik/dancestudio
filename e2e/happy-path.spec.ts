@@ -511,7 +511,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
     // ---- the room came with the studio; give it an amenity (Step 11) ------
-    await owner.getByRole("link", { name: "Rooms ›" }).click();
+    // 18 Sep 2026: the register's chip rail is gone (the user: "the row below the
+    // classes heading … should be removed") — every door it held is a tile on the
+    // studio's own home, which is where this goes now.
+    await owner.goto(`/business/${tenantId}`);
+    await owner.getByRole("link", { name: "Rooms", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/rooms$/);
     // amenities live with the room and show up on the public class page
     await owner.getByRole("button", { name: "Amenities in Studio A" }).click();
@@ -578,31 +582,64 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Continue" }).click();
     // the room now defines the capacity (prototype: "defined by Studio A")
     await expect(owner.getByText(/defined by Studio A/)).toBeVisible();
-    // and the payoff of Step 12b: the artist picker finally has somebody to
-    // offer, because a real person accepted a real invite
-    await expect(owner.getByRole("button", { name: `${trainerName} takes this class` })).toBeVisible();
-    // Step 13: put them on it AT A RATE. The rate field is the owner's alone —
-    // a trainer's form never shows it, and the RPCs refuse it from anybody else.
+    // ---- WHO IS TAKING IT: ANYONE ON DANCEOS, ASKED (18 Sep 2026) ----------
+    // The team list is gone from this form — the user: "Who is taking class should
+    // be any user or artist and should send a request to the user or artist for
+    // accepting". So it is the app's one people search, and the person is ASKED.
+    await owner.getByLabel("Search DanceOS for who takes this class").fill(trainerName);
     await owner.getByRole("button", { name: `${trainerName} takes this class` }).click();
+    // Step 13: at a RATE. The rate field is the owner's alone — the RPCs refuse it
+    // from anybody else, and since 18 Sep 2026 only an owner reaches this form at all.
     await owner.getByLabel("What a session pays the artist").fill("900");
+    // and assistants are NOT on this form any more: they are added from the class page
+    await expect(owner.getByText(/Assistants are added from the class page/)).toBeVisible();
     // step 2 — people & price. Free trial: the ₹300 default would route booking
     // through Razorpay (Step 9), which the paid-webhook spec covers.
     await owner.getByLabel("Price per session").fill("0");
-    // Publish asks first — the confirm sheet with the calendar-style card (15586-15625)
-    await owner.getByRole("button", { name: "Publish class" }).click();
-    await owner.getByRole("dialog", { name: "Publish this class?" }).getByRole("button", { name: "Publish it" }).click();
+    // ---- IT CAN ONLY BE SAVED AS A DRAFT (18 Sep 2026) ---------------------
+    // "All classes when submitting should only go in drafts and can only be
+    // published once the who is taking the class accepts." So the form offers no
+    // Publish at all for a studio, and says what the save will do.
+    await expect(owner.getByRole("button", { name: "Publish class" })).toHaveCount(0);
+    await expect(owner.getByText(new RegExp(`Saved as a draft\\. ${trainerName} is asked`))).toBeVisible();
+    await owner.getByRole("button", { name: "Save & ask them" }).click();
+    await owner.getByRole("dialog", { name: "Save as draft?" }).getByRole("button", { name: "Save & ask" }).click();
 
-    // back on the register, the class sits under the Published tab — the tile
-    // headlines the STYLE (a class is its style, per the prototype), so the
-    // title only appears in the tile's aria-label (a link now: it opens /c/{slug})
+    // back on the register, and the class is a DRAFT waiting on the person asked
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
+    await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
+    registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
+    await expect(registerTile).toBeVisible();
+    // the row wears the request it waits on, and Publish says why it cannot yet
+    // (the chip is drawn uppercase by CSS; the DOM text is the sentence itself)
+    await expect(owner.getByText(`⏳ ${trainerName} asked`, { exact: true })).toBeVisible();
+    await owner.getByRole("button", { name: /^Publish — Publish waits for the teacher/ }).click();
+    await expect(owner.getByText("Publish waits for the teacher — nobody has accepted this class yet")).toBeVisible();
+
+    // ---- THE TEACHER SAYS YES, AND ONLY THEN CAN IT GO LIVE ----------------
+    await trainer.goto("/inbox");
+    // the Inbox opens on All, which counts what waits; the cards with their two
+    // answers live on the Requests desk (S_chats)
+    await pressPill(trainer, /^Requests — \d+ waiting/);
+    await trainer.getByRole("button", { name: `Confirm ${classTitle}` }).click();
+    await expect(trainer.getByText(/Confirmed · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
+    // now the owner publishes from the register — the door the form no longer is
+    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
+    await owner.getByRole("button", { name: "Publish", exact: true }).click();
+    await owner.getByRole("dialog", { name: "Publish this class?" }).getByRole("button", { name: "Publish it" }).click();
+    // the register stays on the tab you were reading — the class has moved to Published
+    await expect(owner.getByRole("button", { name: /^Published, [1-9]\d* classes$/ })).toBeVisible({ timeout: 15_000 });
+    await owner.getByRole("button", { name: /^Published, [1-9]\d* classes$/ }).click();
     registerTile = owner.locator(`[aria-label="Open ${classTitle}"]`);
     await expect(registerTile).toBeVisible();
 
     // ---- the studio calendar (Step 14): the same session, on the schedule ---
     // Schedule lists every day with something on it, so the class three days
     // out is there; Month opens on today, which honestly has nothing on.
-    await owner.getByRole("link", { name: "Calendar ›" }).click();
+    // (18 Sep 2026: from the studio's own home, the register's chip rail being gone)
+    await owner.goto(`/business/${tenantId}`);
+    await owner.getByRole("link", { name: "Calendar", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/calendar$/);
     await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     await owner.getByRole("button", { name: "Month", exact: true }).click();
@@ -614,11 +651,16 @@ test.describe.serial("DanceOS, end to end", () => {
     // ---- the earnings desk reads that same ledger (Step 13) ---------------
     // Owner-only, and it is the pay side of the prototype's S_earn — not a
     // payroll desk: the studio settles by bank or UPI and records it here.
-    await owner.getByRole("link", { name: "Earnings ›" }).click();
+    await owner.goto(`/business/${tenantId}`);
+    await owner.getByRole("link", { name: "Earnings", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/earnings$/);
     await expect(owner.getByText(/DanceOS does not move this money/)).toBeVisible();
-    // the class runs in three days, so nothing has been taught yet
-    await expect(owner.getByText(/Nobody has taught a session yet/)).toBeVisible();
+    // 18 Sep 2026: the trainer is ON the ledger from here, because accepting the
+    // class is what let it be published at all — and nothing is owed yet, because
+    // the session is three days out. (Until today the ask was still unanswered at
+    // this point and the desk read "Nobody has taught a session yet".)
+    await expect(owner.getByText(trainerName).first()).toBeVisible();
+    await expect(owner.getByText("₹0", { exact: true }).first()).toBeVisible();
 
     // ---- the income half of the same screen (Step 13b part 2b) --------------
     // GROSS · {month} is counted from captured payments — none yet, so the card
@@ -667,7 +709,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Details" }).click();
     // the team section is always drawn (12356), with the owner's door to add somebody
     await expect(owner.getByText("CLASS ASSISTANTS")).toBeVisible();
-    await expect(owner.getByRole("link", { name: "Add someone to the team" })).toBeVisible();
+    // 18 Sep 2026: adding an assistant is done HERE, not in the form — the owner or
+    // the person taking the class searches DanceOS and the person is asked
+    await expect(owner.getByRole("button", { name: "Add someone to the team" })).toBeVisible();
     // the artist column is a door to the person (11900), and Change goes to the form
     await expect(owner.getByRole("link", { name: `Open ${trainerName}` })).toBeVisible();
     await expect(owner.getByRole("link", { name: "Change the artist taking this class" })).toBeVisible();
@@ -1116,7 +1160,14 @@ test.describe.serial("DanceOS, end to end", () => {
        violation that only shows up when the suite runs its specs in parallel and
        this page is opened cold. The name on this page is an <h1>; ask for that. */
     await expect(learner.getByRole("heading", { name: trainerName, exact: true })).toBeVisible();
-    await expect(learner.getByText("ARTIST")).toBeVisible();
+    /* THE EYEBROW ON THE HERO, scoped (18 Sep 2026). A class cannot be published
+       until the person taking it accepts, so the trainer accepted back in segment
+       1 — and their page now carries what that makes true: a TEACHES AT row for
+       the studio, whose own meta line reads "Artist · 1 class · Pune". Two matches
+       for a bare "ARTIST", so the one that is the hero's is asked for by name. */
+    await expect(learner.getByTestId("person-hero").getByText("ARTIST")).toBeVisible();
+    // and the studio they teach at is on the page now, because they really do
+    await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toBeVisible();
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
     // following a person is one bit, and the count moves
@@ -1401,14 +1452,16 @@ test.describe.serial("DanceOS, end to end", () => {
     // the deck is the one list; the door to all bookings is still named beside it
     await expect(learner.getByRole("link", { name: "All bookings", exact: true })).toBeVisible();
 
-    // the trainer, who was ASKED to take the class, is teaching it only once they say yes —
-    // an unanswered ask is not a session you are running, and Home says 0 today until then
-    await trainer.goto("/");
-    await expect(trainer.getByText("0 today")).toBeVisible();
+    // the trainer accepted this class back in segment 1 — a class cannot be
+    // published until they do (18 Sep 2026) — so the session is on their day from
+    // the moment it is on the clock, wearing Teaching: no pass, no invoice, because
+    // it is not a booking
+    // (their name is in the class's artist column, which is what accepting put there;
+    // "You’re on this class" is the toast the accept fires, and that happened in
+    // segment 1, in their Inbox)
     await trainer.goto(`/c/${shareSlug}`);
-    await trainer.getByRole("button", { name: "Accept this ask" }).click();
-    await expect(trainer.getByText("You’re on this class")).toBeVisible({ timeout: 15_000 });
-    // now the same session is on their day, wearing Teaching — no pass, no invoice: it is not a booking
+    await expect(trainer.getByRole("link", { name: `Open ${trainerName}` })).toBeVisible();
+    await expect(trainer.getByRole("button", { name: "Accept this ask" })).toHaveCount(0);
     await trainer.goto("/");
     const taught = trainer.getByTestId("deck-card").first();
     await expect(taught.getByText("Teaching", { exact: true })).toBeVisible();
@@ -1576,6 +1629,10 @@ test.describe.serial("DanceOS, end to end", () => {
     });
     expect(parked.ok).toBeTruthy();
 
+    /* 18 SEP 2026: THE CLASH IS MET AT THE PUBLISH, NOT AT THE FORM. A class is
+       saved as a draft now and a draft holds no room, so there is nothing to clash
+       with until somebody presses Publish on the register — which is where the
+       question is asked and the sheet answers it. */
     await owner.goto(`/business/${tenantId}/classes/new`);
     await owner.getByLabel("Class date").fill(when.date);
     await owner.getByLabel("Starts").selectOption(when.time);
@@ -1583,17 +1640,32 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Salsa", exact: true }).click();
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
     await owner.getByRole("button", { name: "Continue" }).click();
+    await owner.getByLabel("Search DanceOS for who takes this class").fill(trainerName);
+    await owner.getByRole("button", { name: `${trainerName} takes this class` }).click();
     await owner.getByLabel("Price per session").fill("0");
-    await owner.getByRole("button", { name: "Publish class" }).click();
+    await owner.getByRole("button", { name: "Save & ask them" }).click();
+    await owner.getByRole("dialog", { name: "Save as draft?" }).getByRole("button", { name: "Save & ask" }).click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
+
+    // the teacher says yes, so the only thing left in the way is the room
+    await trainer.goto("/inbox");
+    await pressPill(trainer, /^Requests — \d+ waiting/);
+    await trainer.getByRole("button", { name: "Confirm Salsa · All levels" }).click();
+    await expect(trainer.getByText(/Confirmed · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
+
+    await owner.goto(`/business/${tenantId}/classes`);
+    await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
+    await owner.getByRole("button", { name: "Publish", exact: true }).click();
     const sheet = owner.getByRole("dialog", { name: "Publish this class?" });
-    await expect(sheet.getByText("ROOM ALREADY BUSY")).toBeVisible();
+    await expect(sheet.getByText(/ROOM ALREADY BUSY/)).toBeVisible();
     await expect(sheet.getByText(new RegExp(`Studio A already has ${classTitle} at`))).toBeVisible();
-    await expect(sheet.getByText(/a room is never double-booked/)).toBeVisible();
+    await expect(sheet.getByText(/A room is never double-booked/)).toBeVisible();
     // the primary button no longer offers what the database would refuse
     await expect(sheet.getByRole("button", { name: "Publish it" })).toHaveCount(0);
-    await sheet.getByRole("button", { name: "Save as draft instead" }).click();
-    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
-    // the draft exists, and it is a DRAFT — not in any room, so it clashed with nothing.
+    await expect(sheet.getByRole("link", { name: "Change the slot" })).toBeVisible();
+    // (exact: the chrome's own "Go back" chip matches a loose "Back")
+    await owner.getByRole("button", { name: "Back", exact: true }).click();
+    // and it is still a DRAFT — not in any room, so it clashed with nothing.
     // Its name is derived ("Salsa · All levels"), and this studio has one Salsa class.
     const rows = (await (
       await fetch(`${supabaseUrl}/rest/v1/classes?business_id=eq.${tenantId}&title=eq.${encodeURIComponent("Salsa · All levels")}&select=status`, { headers: adminHeaders })

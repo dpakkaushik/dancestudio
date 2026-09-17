@@ -1,4 +1,4 @@
-# Proof for Step 13b part 1 (the refund settlement queue). The hole being closed:
+﻿# Proof for Step 13b part 1 (the refund settlement queue). The hole being closed:
 # Step 9 files an in-window cancellation as 'requested' - "the studio decides" -
 # and the only writer of that row was the service-role webhook function, so
 # nobody in the app could decide it. A learner's money sat in a queue with no
@@ -24,6 +24,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -101,7 +102,10 @@ try {
   $tmr = (Get-Date).AddDays(1)
   $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Refund Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  # 18 Sep 2026: published once its teacher has accepted. The TRAINER takes it and
+  # holds no refunds job - which is exactly what check 3 is about.
+  Publish-Class ([string]$cls.id) ([string]$trainer.id) (Api $owner.token)
   $sid = (Get-Rows $svcH "class_sessions?class_id=eq.$($cls.id)&select=id")[0].id
 
   # somebody who holds the REFUNDS job on this class, with their own consent

@@ -1,4 +1,4 @@
-# Proof for Step 13b part 2a - "WHAT THIS SESSION MADE" (prototype S_class 12008-12042).
+﻿# Proof for Step 13b part 2a - "WHAT THIS SESSION MADE" (prototype S_class 12008-12042).
 #
 # The claim under test is arithmetic, not a new permission: this slice adds no
 # table, no RPC and no policy. It reads orders/payments/refunds that Step 9
@@ -32,6 +32,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -122,13 +123,16 @@ try {
   # where the studio decides - which is how we get each refund state on purpose
   $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Earnings Class $stamp";
     p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  # 18 Sep 2026: publishing waits for the teacher's yes - the trainer takes it
+  Publish-Class ([string]$cls.id) ([string]$trainer.id) (Api $owner.token)
   $sid = (Get-Rows $svcH "class_sessions?class_id=eq.$($cls.id)&select=id")[0].id
 
   # a FREE class, for the zero case
   $free = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Free Class $stamp";
     p_style = "Contemporary"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT18:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT18:00:00zzz") }
+  Publish-Class ([string]$free.id) ([string]$trainer.id) (Api $owner.token)
   $freeSid = (Get-Rows $svcH "class_sessions?class_id=eq.$($free.id)&select=id")[0].id
   Rpc (Api $learners[0].token) "book_class_session" @{ p_session_id = $freeSid } | Out-Null
 
@@ -188,7 +192,8 @@ try {
   # 7. the rival's own paid class money never lands in ours
   $rcls = Rpc (Api $rival.token) "create_class_with_session" @{ p_business_id = $tb.id; p_title = "Rival Class $stamp";
     p_style = "Bollywood"; p_level = "all"; p_room = $null; p_price_inr = 300; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  Publish-Class ([string]$rcls.id) ([string]$trainer.id) (Api $rival.token)
   $rsid = (Get-Rows $svcH "class_sessions?class_id=eq.$($rcls.id)&select=id")[0].id
   Buy-Seat $learners[4] $rsid "RIV$stamp" | Out-Null
   $m6 = Money-Of (Api $owner.token) $cls.id

@@ -1,4 +1,4 @@
-# Proof for Step 23 - search + Discover filters.
+﻿# Proof for Step 23 - search + Discover filters.
 #
 # The claims under test: search_dance_os is SECURITY INVOKER, so what it finds
 # is what the caller may read - a stranger finds a listed studio, a live crew
@@ -29,6 +29,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -164,8 +165,10 @@ try {
 
   # 8. DISCOVER'S STYLE FILTER READS PUBLISHED CLASSES ONLY (findPublishedStylesByTenant): a draft's style never narrows a business in
   $tmr = (Get-Date).AddDays(2)
-  Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Pub $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
-    p_status = "published"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") } | Out-Null
+  # 18 Sep 2026: born a draft, published once its teacher has accepted (the dancer takes it)
+  $pubCls = Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Pub $stamp"; p_style = "Hip-Hop"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
+    p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT19:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT20:00:00zzz") }
+  Publish-Class ([string]$pubCls.id) ([string]$dancer.id) (Api $ownerA.token)
   Rpc (Api $ownerA.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Dr $stamp"; p_style = "Salsa"; p_level = "all"; p_room = $null; p_price_inr = 0; p_capacity = 10;
     p_status = "draft"; p_starts_at = $tmr.ToString("yyyy-MM-ddT17:00:00zzz"); p_ends_at = $tmr.ToString("yyyy-MM-ddT18:00:00zzz") } | Out-Null
   $res = Invoke-WebRequest -Method Get -Uri "$base/rest/v1/classes?select=business_id,style&business_id=eq.$($ta.id)&status=eq.published&deleted_at=is.null" -Headers $anonH -UseBasicParsing

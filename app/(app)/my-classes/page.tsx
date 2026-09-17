@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyConfirmedClaims } from "@/repositories/claims";
-import { findMyEnrollments } from "@/repositories/enrollments";
+import { findClassPublishState, findClassesByTenant } from "@/repositories/classes";
+import { countEnrolledBySession, findMyEnrollments } from "@/repositories/enrollments";
 import { findMyMemberships } from "@/repositories/tenants";
 import type { MyClaimAsk } from "@/types/claim";
 import type { DanceClass } from "@/types/class";
@@ -27,6 +29,11 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   capacity: e.capacity,
   status: e.classStatus,
   session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
+  venueBusinessId: null,
+  venueStatus: null,
+  lat: null,
+  lng: null,
+  mapsUrl: null,
 });
 
 /** YOUR CLASSES — the Home grid's Classes tile (18 Sep 2026, the user's list for
@@ -41,10 +48,14 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
  *     Completed already live (ClassesManager), rather than a second copy here.
  *  Events left this page for /my-events the same day; `?kind=event` links that
  *  are out in the world land there (Rule 14). */
-type Show = "booked" | "assist";
+type Show = "booked" | "assist" | "manage";
 const SHOWS: Array<{ k: Show; label: string; aria: string }> = [
   { k: "booked", label: "Booked", aria: "Show the classes you booked" },
   { k: "assist", label: "Assist", aria: "Show the classes you teach or assist on" },
+  /* MANAGE, IN PLACE (18 Sep 2026, the user: "Manage class should not take to a
+     separate page for artist — should be handled from within the same page"):
+     the artist's own register, drawn here as a third segment */
+  { k: "manage", label: "Manage", aria: "Manage the classes on your artist page" },
 ];
 
 const when = (iso: string | null): string =>
@@ -67,7 +78,6 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     redirect("/my-events");
   }
   const rawShow = Array.isArray(params.show) ? params.show[0] : params.show;
-  const show: Show = rawShow === "assist" ? "assist" : "booked";
 
   const [class_bookings, artistOn, assistantOn, memberships] = await Promise.all([
     findMyEnrollments(supabase),
@@ -75,12 +85,27 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     findMyConfirmedClaims(supabase, "assistant"),
     findMyMemberships(supabase),
   ]);
+  const myPage = memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null;
+  const show: Show = rawShow === "assist" ? "assist" : rawShow === "manage" && myPage ? "manage" : "booked";
+  /* the teacher's own classes are theirs to manage, not to "assist on": an
+     artist page's owner is its every class's confirmed teacher by construction */
   const jobs: Array<MyClaimAsk & { job: "Teaching" | "Assisting" }> = [
-    ...artistOn.map((c) => ({ ...c, job: "Teaching" as const })),
+    ...artistOn.filter((c) => !myPage || c.tenantName !== myPage.name).map((c) => ({ ...c, job: "Teaching" as const })),
     ...assistantOn.map((c) => ({ ...c, job: "Assisting" as const })),
   ].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
-  const myPage = memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null;
   const booked = class_bookings.filter((e) => e.status === "enrolled").length;
+
+  /* the register, when Manage is open: the page's classes, their seats, and what
+     each one still waits for before it can be published */
+  const manage =
+    show === "manage" && myPage
+      ? await (async () => {
+          const classes = await findClassesByTenant(supabase, myPage.id);
+          const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
+          const [counts, state] = await Promise.all([countEnrolledBySession(supabase, sessionIds), findClassPublishState(supabase, myPage.id).catch(() => new Map())]);
+          return { classes, filled: Object.fromEntries(counts), state: Object.fromEntries(state) };
+        })()
+      : null;
 
   return (
     <div
@@ -100,7 +125,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         <h1 style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2, margin: 0 }}>Your classes</h1>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
-            {show === "booked" ? `${booked} booked` : `${jobs.length} on`}
+            {show === "booked" ? `${booked} booked` : show === "assist" ? `${jobs.length} on` : `${manage?.classes.length ?? 0} on your page`}
           </div>
           {/* the same classes as a calendar (Step 14) — day, week, month, schedule */}
           <Link href="/calendar" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
@@ -110,7 +135,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
-        {SHOWS.map(({ k, label, aria }) => {
+        {SHOWS.filter((s) => s.k !== "manage" || myPage).map(({ k, label, aria }) => {
           const on = show === k;
           return (
             <Link key={k} href={k === "booked" ? "/my-classes" : `/my-classes?show=${k}`} aria-label={aria} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
@@ -118,15 +143,13 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
             </Link>
           );
         })}
-        {myPage ? (
-          /* MANAGE (an artist's own register): a door, not a third copy of Draft / Published / Completed */
-          <Link href={`/business/${myPage.id}/classes`} aria-label="Manage the classes on your artist page" style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", color: SUB }}>
-            Manage ›
-          </Link>
-        ) : null}
       </div>
 
-      {show === "booked" ? (
+      {show === "manage" && myPage && manage ? (
+        /* the artist's register, in place: Create, Draft · Published · Completed,
+           each row wearing the request it waits on (ClassesManager, embedded) */
+        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} publishState={manage.state} nowIso={new Date().toISOString()} />
+      ) : show === "booked" ? (
         <>
           {class_bookings.map((e) => (
             <ClassTile

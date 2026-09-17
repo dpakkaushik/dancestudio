@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
+import { respondToVenueRequestAction } from "@/features/classes/server-actions/classes";
 import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
@@ -37,8 +38,9 @@ import { DOS_MONO, EnqIcon, agoWords, initialsOf, moneyShort, pressKey } from ".
  *  detail page supersedes them ("A QUOTE IS A CONVERSATION, NOT A FIELD"). */
 
 export interface RequestItem {
-  /** Step 22 added crew asks and duet-partner asks to the two Step 18 kinds */
-  kind: "claim" | "invite" | "crew" | "partner";
+  /** Step 22 added crew asks and duet-partner asks to the two Step 18 kinds;
+   *  18 Sep 2026 added the VENUE ask — an artist asking a studio for a room */
+  kind: "claim" | "invite" | "crew" | "partner" | "venue";
   id: string;
   dir: "in" | "out";
   /** in: who is asking; out: who is being asked */
@@ -61,9 +63,11 @@ export interface RequestItem {
   memberId?: string;
   crewId?: string;
   bookingId?: string;
+  /** a venue ask is keyed on the CLASS that wants the room */
+  classId?: string;
 }
 
-const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet" };
+const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room" };
 
 const REQ_TINT = "#8B5CF6";
 
@@ -176,7 +180,9 @@ export function InboxScreen({
           : declineInviteAction({ code: r.inviteCode! })
         : r.kind === "crew"
           ? respondToCrewAskAction({ memberId: r.memberId!, accept })
-          : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
+          : r.kind === "venue"
+            ? respondToVenueRequestAction({ classId: r.classId!, accept })
+            : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
   const withdraw = (r: RequestItem) =>
     r.kind === "claim"
       ? withdrawClaimAction({ claimId: r.claimId! })
@@ -184,7 +190,9 @@ export function InboxScreen({
         ? revokeInviteAction({ tenantId: r.tenantId!, inviteId: r.inviteId! })
         : r.kind === "crew"
           ? withdrawCrewAskAction({ memberId: r.memberId!, crewId: r.crewId })
-          : Promise.resolve({ error: "A duet entry is withdrawn from the event page" });
+          : r.kind === "venue"
+            ? Promise.resolve({ error: "Pick another studio or room from the class's Edit form — that is the withdrawal" })
+            : Promise.resolve({ error: "A duet entry is withdrawn from the event page" });
 
   const requestCard = (r: RequestItem) => {
     const c = REQ_TINT;
@@ -259,7 +267,7 @@ export function InboxScreen({
           <>
             <div style={{ fontSize: 10.5, color: "#F59E0B", margin: "9px 0 0", fontWeight: 800 }}>
               ⏳ Waiting on {r.who}
-              {r.kind === "claim" ? <span style={{ color: "var(--sub)", fontWeight: 700 }}> — this class stays a draft until they confirm</span> : null}
+              {r.kind === "claim" || r.kind === "venue" ? <span style={{ color: "var(--sub)", fontWeight: 700 }}> — this class stays a draft until they {r.kind === "venue" ? "accept" : "confirm"}</span> : null}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
               <button

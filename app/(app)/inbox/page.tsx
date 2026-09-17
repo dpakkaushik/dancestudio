@@ -4,11 +4,12 @@ import { DOS_TINT } from "@/lib/design/tokens";
 import { sessionDayLabel } from "@/lib/format/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/claims";
+import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/classes";
 import { findAskedForMyCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
 import { findReceivedEnquiries, findSentEnquiries } from "@/repositories/enquiries";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
 import { findProfileById } from "@/repositories/profiles";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { kindOf } from "@/types/profile";
 
@@ -23,6 +24,8 @@ const TEAM_WORDS = { what: "on the team", verb: "add you to the team at" } as co
 /* Step 22: the crew ask (DOS_LINK_WHAT.member) and the duet partner (DOS_LINK_WHAT.partner) */
 const CREW_WORDS = { what: "a crew member", verb: "add you to" } as const;
 const PARTNER_WORDS = { what: "your entry partner", verb: "enter with you into" } as const;
+/* 18 Sep 2026: an artist asks a studio for one of its rooms — the class waits for the answer */
+const VENUE_WORDS = { what: "the room for a class", verb: "hold a class in" } as const;
 const dayWords = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
   return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" }).format(new Date(Date.UTC(y, m - 1, d)));
@@ -41,10 +44,14 @@ export default async function InboxPage() {
     redirect("/login");
   }
 
-  const [profile, businesses, plan] = await Promise.all([findProfileById(supabase, user.id), findMyTenants(supabase), findMyArtistPlan(supabase)]);
+  const [profile, memberships, plan] = await Promise.all([findProfileById(supabase, user.id), findMyMemberships(supabase), findMyArtistPlan(supabase)]);
+  const businesses = memberships.map((m) => m.tenant);
   const tenantIds = businesses.map((t) => t.id);
+  /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
+  const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id);
+  const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "artist_page").map((m) => m.tenant.id);
 
-  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesIn, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut] = await Promise.all([
+  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesIn, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut, venueIn, venueOut] = await Promise.all([
     findMyPendingClaims(supabase),
     findMyPendingInvites(supabase),
     findAskedClaimsForTenants(supabase, tenantIds),
@@ -55,9 +62,28 @@ export default async function InboxPage() {
     findAskedForMyCrews(supabase),
     findMyPendingPartnerAsks(supabase),
     findMyUnansweredPartners(supabase),
+    findVenueRequestsForTenants(supabase, ownedStudioIds).catch(() => []),
+    findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
   ]);
 
   const requestsIn: RequestItem[] = [
+    /* an artist wants one of your rooms (18 Sep 2026): accepting holds the room
+       and lets them publish; the class itself is theirs, and so is its money */
+    ...venueIn.map((v): RequestItem => ({
+      kind: "venue",
+      id: v.classId,
+      dir: "in",
+      who: v.artistName,
+      what: VENUE_WORDS.what,
+      verb: `${VENUE_WORDS.verb} ${v.room ?? "a room"} at ${v.venueName}:`,
+      subjectKind: "CLASS",
+      subjectTitle: v.label,
+      when: v.startsAt ? sessionDayLabel(v.startsAt) : null,
+      href: `/c/${v.shareSlug}`,
+      at: v.createdAt,
+      note: "Accepting holds the room for them; the class is theirs to publish, and its bookings are theirs.",
+      classId: v.classId,
+    })),
     ...claimsIn.map((c): RequestItem => ({
       kind: "claim",
       id: c.id,
@@ -123,6 +149,22 @@ export default async function InboxPage() {
   ].sort((a, b) => b.at.localeCompare(a.at));
 
   const requestsOut: RequestItem[] = [
+    /* the rooms your page has asked for and not yet been given — waiting, or declined */
+    ...venueOut.map((v): RequestItem => ({
+      kind: "venue",
+      id: v.classId,
+      dir: "out",
+      who: v.venueName,
+      what: `${v.room ?? "a room"} at ${v.venueName}`,
+      verb: VENUE_WORDS.verb,
+      subjectKind: "CLASS",
+      subjectTitle: v.label,
+      when: v.startsAt ? sessionDayLabel(v.startsAt) : null,
+      href: `/c/${v.shareSlug}`,
+      at: v.createdAt,
+      note: v.venueStatus === "declined" ? `${v.venueName} declined — pick another studio, or a place of your own, from the class's Edit form.` : "The class stays a draft until the studio accepts.",
+      classId: v.classId,
+    })),
     ...claimsOut.map((c): RequestItem => ({
       kind: "claim",
       id: c.id,

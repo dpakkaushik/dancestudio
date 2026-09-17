@@ -5,14 +5,50 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  checkRoomClashAction,
   deleteClassAction,
   publishClassAction,
   type ClassActionState,
+  type RoomClash,
 } from "@/features/classes/server-actions/classes";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import type { ClassPublishState } from "@/repositories/classes";
 import type { ClassStatus, DanceClass } from "@/types/class";
+
+/* the IST date and clock of a session, in the shape the clash check takes */
+const istParts = (iso: string) => {
+  const d = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  const t = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso)).replace("24", "00");
+  return { date: d, time: t };
+};
+
+/* the request chips a row wears (18 Sep 2026): who was asked to teach and what
+   they said; which studio was asked for its room and what it said */
+const stateChips = (st: ClassPublishState | undefined): Array<[string, string]> => {
+  const out: Array<[string, string]> = [];
+  if (!st) return out;
+  if (st.teacherName && st.teacherStatus) {
+    out.push(
+      st.teacherStatus === "confirmed"
+        ? [`✓ ${st.teacherName}`, "#22C55E"]
+        : st.teacherStatus === "rejected"
+          ? [`✕ ${st.teacherName} said no`, "#F87171"]
+          : [`⏳ ${st.teacherName} asked`, "#F59E0B"]
+    );
+  }
+  if (st.venueName && st.venueStatus) {
+    out.push(
+      st.venueStatus === "accepted"
+        ? [`✓ Room at ${st.venueName}`, "#22C55E"]
+        : st.venueStatus === "declined"
+          ? [`✕ ${st.venueName} declined`, "#F87171"]
+          : [`⏳ Waiting on ${st.venueName}`, "#F59E0B"]
+    );
+  }
+  return out;
+};
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -241,23 +277,33 @@ export function ClassesManager({
   tenantId,
   classes,
   filledBySession = {},
-  isOwner = false,
   nowIso,
+  publishState = {},
+  embedded = false,
 }: {
   tenantId: string;
   classes: DanceClass[];
   /** Enrolled count per session id — real numbers from Step 4. */
   filledBySession?: Record<string, number>;
-  /** Owner-only tools (the earnings desk) are only offered to the owner. */
-  isOwner?: boolean;
   /** The server's clock at render — the LIVE filter is arithmetic over it. */
   nowIso: string;
+  /** WHAT STANDS BETWEEN EACH CLASS AND PUBLISH (18 Sep 2026), keyed by class id:
+   *  the teacher asked and their answer, the venue asked and its answer, and the
+   *  database's own sentence — Publish is offered only when it is null. */
+  publishState?: Record<string, ClassPublishState>;
+  /** drawn INSIDE another page (an artist's Your classes, its Manage segment):
+   *  no hero of its own, no page background — the rows, the tabs, Create */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<ClassStatus>("published");
   const [liveOnly, setLiveOnly] = useState(false);
-  const [ask, setAsk] = useState<{ kind: "publish" | "draft" | "published"; c: DanceClass } | null>(null);
-  const [publishState, publishFormAction] = useActionState(publishClassAction, initialState);
+  const [ask, setAsk] = useState<{ kind: "publish" | "draft" | "published"; c: DanceClass; clash?: RoomClash } | null>(null);
+  /* the sentence a refused Publish would have raised, said before the press */
+  const [note, setNote] = useState<string | null>(null);
+  /* named for what it is — the action's result — so the `publishState` PROP
+     (what each class still waits for) keeps the name that reads correctly */
+  const [publishResult, publishFormAction] = useActionState(publishClassAction, initialState);
   const [deleteState, deleteFormAction] = useActionState(deleteClassAction, initialState);
 
   /* "Delete & manage refunds" (15102-15104): the delete runs, and once it has
@@ -279,7 +325,7 @@ export function ClassesManager({
   if (liveOnly) list = list.filter((c) => isLiveAt(c, nowMs));
   const countOf = (k: ClassStatus) => classes.filter((c) => c.status === k).length;
   const filledOf = (c: DanceClass) => (c.session ? filledBySession[c.session.id] ?? 0 : 0);
-  const actionError = publishState.error || deleteState.error;
+  const actionError = publishResult.error || deleteState.error;
 
   const hiddenRefs = (c: DanceClass) => (
     <>
@@ -291,75 +337,42 @@ export function ClassesManager({
   return (
     <div
       style={{
-        background: LILAC,
+        background: embedded ? "transparent" : LILAC,
         color: INK,
         maxWidth: 430,
         margin: "0 auto",
         fontFamily: DOS_UI,
-        minHeight: "100vh",
-        paddingBottom: 40,
+        minHeight: embedded ? undefined : "100vh",
+        paddingBottom: embedded ? 0 : 40,
       }}
     >
       {/* the tool's hero (BizShell 2964-2976): the tile's paint, the tile's name,
-          and nothing else — "a tool's page says what the tile said" (2960-2962) */}
-      <div
-        style={{
-          margin: "12px 16px 0",
-          borderRadius: 22,
-          padding: "15px 17px 14px",
-          color: "#fff",
-          position: "relative",
-          overflow: "hidden",
-          background: toolPaint(TOOL_COLOUR),
-        }}
-      >
-        <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
-          Classes
+          and nothing else — "a tool's page says what the tile said" (2960-2962).
+          Not drawn when this register sits inside Your classes (18 Sep 2026). */}
+      {!embedded ? (
+        <div
+          style={{
+            margin: "12px 16px 0",
+            borderRadius: 22,
+            padding: "15px 17px 14px",
+            color: "#fff",
+            position: "relative",
+            overflow: "hidden",
+            background: toolPaint(TOOL_COLOUR),
+          }}
+        >
+          <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
+          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>
+            Classes
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <div style={{ padding: "12px 16px 0" }}>
-        {/* the studio desk's tools, as they arrive — a chip rail, so a fifth
-            door does not squeeze the title. The prototype's studio deck opens
-            "Classes · Calendar ›" side by side (7140-7148). Earnings is
-            owner-only (payout approval cannot be granted, prototype 18434), so
-            a trainer is not offered a door that would only shut on them.
-
-            EVENTS IS NOT HERE ANY MORE (R15, 9 Sep 2026): an event belongs to
-            the organization, not to one of its studios, and `save_event`
-            refuses a studio host. Its door is "Your events" on the business
-            hub — one desk for the organization rather than one per studio. */}
-        <div style={{ display: "flex", gap: 8, margin: "0 0 12px", overflowX: "auto", scrollbarWidth: "none" }}>
-          {(
-            [
-              ["calendar", "Calendar"],
-              ["media", "Media"],
-              ["students", "Students"],
-              ["rooms", "Rooms"],
-              ["staff", "Staff"],
-              ...(isOwner ? ([["earnings", "Earnings"]] as Array<[string, string]>) : []),
-            ] as Array<[string, string]>
-          ).map(([slug, word]) => (
-            <Link
-              key={slug}
-              href={`/business/${tenantId}/${slug}`}
-              style={{
-                flexShrink: 0,
-                fontSize: 11.5,
-                fontWeight: 800,
-                color: INK,
-                textDecoration: "none",
-                border: `1px solid ${EL}`,
-                borderRadius: 999,
-                padding: "6px 12px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {word} ›
-            </Link>
-          ))}
-        </div>
+      <div style={{ padding: embedded ? 0 : "12px 16px 0" }}>
+        {/* THE CHIP RAIL IS GONE (18 Sep 2026, the user: "the row below the classes
+            heading … which has options like events, students etc. should be
+            removed"). Every door it held — Calendar, Media, Students, Rooms,
+            Staff, Earnings — is a tile on the studio's own home since 14 Sep. */}
 
         {/* Create class is the bizBtn pill (14989-14990) */}
         <Link
@@ -410,8 +423,11 @@ export function ClassesManager({
         </div>
 
         {actionError && (
-          <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, margin: "8px 0" }}>{actionError}</div>
+          <div role="alert" style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, margin: "8px 0" }}>{actionError}</div>
         )}
+        {note && !actionError ? (
+          <div role="status" style={{ fontSize: 12, color: "#F59E0B", fontWeight: 700, margin: "8px 0" }}>{note}</div>
+        ) : null}
 
         {list.length === 0 && (
           <div
@@ -427,13 +443,25 @@ export function ClassesManager({
             <div style={{ fontSize: 11, color: SUB, marginTop: 4 }}>
               {liveOnly
                 ? "Nothing is running right now — tap the live filter to show all."
-                : "Create a class — save it as a draft or publish straight away."}
+                : "Create a class — it is saved as a draft, and published here once the yes it waits for is in."}
             </div>
           </div>
         )}
 
         <div style={{ marginTop: 8 }}>
-          {list.map((c) => (
+          {list.map((c) => {
+            const st = publishState[c.id];
+            const chips = stateChips(st);
+            const chipRow = chips.length ? (
+              <span style={{ display: "flex", gap: 6, flexWrap: "wrap", flexBasis: "100%" }}>
+                {chips.map(([w, tint]) => (
+                  <span key={w} style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: `${tint}1f`, color: tint, textTransform: "uppercase" }}>
+                    {w}
+                  </span>
+                ))}
+              </span>
+            ) : null;
+            return (
             <ClassTile
               key={c.id}
               danceClass={c}
@@ -442,10 +470,39 @@ export function ClassesManager({
               actions={
                 c.status === "draft" ? (
                   <>
+                    {chipRow}
                     <Link href={`/business/${tenantId}/classes/${c.id}/edit`} style={{ ...pill(false), textDecoration: "none" }}>
                       Edit
                     </Link>
-                    <button type="button" onClick={() => setAsk({ kind: "publish", c })} style={pill(false)}>
+                    {/* PUBLISH WAITS FOR A YES (18 Sep 2026): the database's own sentence is
+                        what the button says when pressed too early — the same words the
+                        trigger would raise, so the screen cannot drift from the rule */}
+                    {/* NOT disabled, on purpose (18 Sep 2026): the prototype's own rule
+                        for a button that cannot do its job yet is that it NAMES the
+                        missing answer rather than greying out (15573-15578). Pressing
+                        it says the database's own sentence; it just cannot publish. */}
+                    <button
+                      type="button"
+                      aria-label={st?.why ? `Publish — ${st.why}` : "Publish"}
+                      onClick={async () => {
+                        if (st?.why) {
+                          setNote(st.why);
+                          return;
+                        }
+                        setNote(null);
+                        /* the room is asked before the sheet opens (F3) — the class's own
+                           room; a venue's rooms are the venue's to read, so the database
+                           answers for those at the press */
+                        let clash: RoomClash = null;
+                        if (c.roomId && c.session && !c.venueBusinessId) {
+                          const s = istParts(c.session.startsAt);
+                          const e = istParts(c.session.endsAt);
+                          clash = await checkRoomClashAction({ tenantId, roomId: c.roomId, date: s.date, startTime: s.time, endTime: e.time, excludeClassId: c.id });
+                        }
+                        setAsk({ kind: "publish", c, clash });
+                      }}
+                      style={{ ...pill(false), opacity: st?.why ? 0.55 : 1 }}
+                    >
                       Publish
                     </button>
                     <button type="button" onClick={() => setAsk({ kind: "draft", c })} style={pill(true)}>
@@ -454,6 +511,7 @@ export function ClassesManager({
                   </>
                 ) : c.status === "published" ? (
                   <>
+                    {chipRow}
                     {/* the Roster pill stays: it is the app's register page (a documented departure) */}
                     <Link
                       href={`/business/${tenantId}/classes/${c.id}/roster`}
@@ -474,24 +532,36 @@ export function ClassesManager({
                 )
               }
             />
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {ask?.kind === "publish" && (
         <ConfirmSheet
           title="Publish this class?"
-          body={`${ask.c.title} · ${schedLine(ask.c)}. It goes on your calendar and anyone can book one of the ${ask.c.capacity} places.`}
-          keepLabel="Not yet"
+          body={
+            ask.clash
+              ? `ROOM ALREADY BUSY — ${ask.c.room ?? "that room"} already has ${ask.clash.label} at ${ask.clash.at}. A room is never double-booked: pick another slot from Edit.`
+              : `${ask.c.title} · ${schedLine(ask.c)}. It goes on your calendar and anyone can book one of the ${ask.c.capacity} places.`
+          }
+          keepLabel={ask.clash ? "Back" : "Not yet"}
           goLabel="Publish it"
           goDanger={false}
           onClose={() => setAsk(null)}
-          form={(go) => (
-            <form action={publishFormAction} onSubmit={() => setAsk(null)} style={{ flex: 1.3, display: "flex" }}>
-              {hiddenRefs(ask.c)}
-              {go}
-            </form>
-          )}
+          form={(go) =>
+            ask.clash ? (
+              /* a clashing publish is not offered: the database would refuse it */
+              <Link href={`/business/${tenantId}/classes/${ask.c.id}/edit`} onClick={() => setAsk(null)} style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13, textDecoration: "none" }}>
+                Change the slot
+              </Link>
+            ) : (
+              <form action={publishFormAction} onSubmit={() => setAsk(null)} style={{ flex: 1.3, display: "flex" }}>
+                {hiddenRefs(ask.c)}
+                {go}
+              </form>
+            )
+          }
         />
       )}
       {ask?.kind === "draft" && (

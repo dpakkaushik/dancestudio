@@ -18,6 +18,7 @@ if (-not $base -or -not $anon) { throw "NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY mis
 $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $service) { throw "SUPABASE_SERVICE_ROLE_KEY missing from .env.local" }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 
 function Sign-In($phone) {
   $h = @{ apikey = $anon; "Content-Type" = "application/json" }
@@ -70,9 +71,16 @@ try {
   "4. B creates a class in A's tenant: SUCCEEDED -- !!! FAILED !!!"; $pass = $false
 } catch { "4. B creates a class in A's tenant: REJECTED -- RLS OK" }
 
-# A publishes; now B and even ANONYMOUS must see it (public read of published classes)
+# A publishes; now B and even ANONYMOUS must see it (public read of published classes).
+# 18 Sep 2026: publishing waits for the teacher's yes, so B is seated as the class's
+# confirmed artist first (the ask-and-accept, by the service role) and the OWNER
+# still presses publish through RLS - which is what this check is about.
+Seat-Teacher ([string]$cls.id) ([string]$b.user.id)
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/classes?id=eq.$($cls.id)" -Headers (Api $a.access_token) -Body '{"status":"published"}' | Out-Null
-$bPub = Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($cls.id)&select=id,title,businesses(name)" -Headers (Api $b.access_token)
+# the key is NAMED (18 Sep 2026): classes has two foreign keys into businesses now -
+# the one that owns it and the VENUE an artist asked for - and PostgREST answers
+# 300 Multiple Choices to an ambiguous embed (the 28 Aug lesson, follows -> profiles)
+$bPub = Invoke-RestMethod -Uri "$base/rest/v1/classes?id=eq.$($cls.id)&select=id,title,businesses!classes_business_id_fkey(name)" -Headers (Api $b.access_token)
 $bSees = (@($bPub).Count -eq 1) -and $bPub[0].businesses.name
 "5. B reads the PUBLISHED class (+ studio name): $(if ($bSees) {'VISIBLE -- PUBLIC READ OK'} else {'HIDDEN -- !!! FAILED !!!'})"
 if (-not $bSees) { $pass = $false }

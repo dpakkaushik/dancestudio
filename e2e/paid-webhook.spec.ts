@@ -128,17 +128,45 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     const inSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const created = await rpc<{ id: string }>(userHeaders(owner.token), "create_class_with_session", {
       p_business_id: tenant.id,
-      /* a class has no name (17 Sep 2026): its title is "{style} · {level}", what the app writes */
+      /* a class has no name (17 Sep 2026): its title is "{style} · {level}", what the app writes.
+         And since 18 Sep 2026 it is born a DRAFT: publishing waits for the teacher's
+         yes, which the learner gives below — so a seat can be sold at all. */
       p_title: "Hip-Hop · Beginner",
       p_style: "Hip-Hop",
       p_level: "beginner",
       p_room: "Studio A",
       p_price_inr: 300,
       p_capacity: 5,
-      p_status: "published",
+      p_status: "draft",
       p_starts_at: `${inSevenDays}T19:00:00+05:30`,
       p_ends_at: `${inSevenDays}T20:00:00+05:30`,
     });
+    /* the ask and the yes, then the owner publishes — what the register does. The
+       service role stands in for the ask-and-accept the way it stands in for the
+       admin's grant above; the PUBLISH itself still goes through the trigger. */
+    const seated = await fetch(`${supabaseUrl}/rest/v1/class_people`, {
+      method: "POST",
+      headers: serviceHeaders,
+      body: JSON.stringify({
+        class_id: created.id,
+        business_id: tenant.id,
+        user_id: learner.userId,
+        kind: "artist",
+        status: "confirmed",
+        can_attendance: false,
+        can_refunds: false,
+        pay_per_session_inr: 0,
+        created_by: learner.userId,
+        updated_by: learner.userId,
+      }),
+    });
+    if (!seated.ok) throw new Error(`could not seat the teacher: ${seated.status} ${await seated.text()}`);
+    const published = await fetch(`${supabaseUrl}/rest/v1/classes?id=eq.${created.id}`, {
+      method: "PATCH",
+      headers: userHeaders(owner.token),
+      body: JSON.stringify({ status: "published" }),
+    });
+    if (!published.ok) throw new Error(`could not publish the class: ${published.status} ${await published.text()}`);
     const sessions = await rows<{ id: string }>(serviceHeaders, `class_sessions?class_id=eq.${created.id}&select=id`);
     const sessionId = sessions[0].id;
 

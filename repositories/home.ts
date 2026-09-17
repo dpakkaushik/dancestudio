@@ -44,6 +44,12 @@ const classOf = (e: CalendarEntry): DanceClass => ({
   capacity: e.capacity,
   status: e.classStatus,
   session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
+  /* the calendar entry does not carry the venue; the deck's card does not draw it */
+  venueBusinessId: null,
+  venueStatus: null,
+  lat: null,
+  lng: null,
+  mapsUrl: null,
 });
 
 /* an event's day on the IST clock the form took it in (managed.ts does the same);

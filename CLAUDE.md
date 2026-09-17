@@ -2,6 +2,98 @@
 
 ## LAST SESSION (17–18 Sep 2026) — replaced on every push (Rule 13)
 
+> ### ⚠ A CLASS HAS A TEACHER WHO SAID YES, AND A PLACE THAT SAID YES (18 Sep 2026) — TWO MIGRATIONS APPLIED
+> The user re-cut the class form and the publish rule in one message, and answered
+> four questions when asked: *"Classes form artist — 1. Where: should either be a
+> studio with selection of room (should send a request to the studio for accepting)
+> or map link. 2. Assistants should be removed from form and should be able to add
+> from the manage inside the class section, which sends a request. 3. Who is taking
+> class should be the artist themselves. Classes form Studio — Where is the studio
+> itself with selection of room; who is taking class should be any user or artist
+> and should send a request for accepting. All classes when submitting should only
+> go in drafts and can only be published once the who is taking the class accepts
+> … in case an artist is adding a class with a map link [they] can publish
+> directly. An artist should not create form on behalf of a studio. Manage class
+> should not take to a separate page for artist … and the row below the classes
+> heading which has options like events, student etc should be removed."*
+> The four answers: an outside teacher who accepts becomes **Visiting Faculty**;
+> **the owner alone** creates and edits a studio's classes; **both** the teacher
+> and the studio add assistants; and **the rule lives in the database**, with the
+> test harness rewritten to match.
+>
+> **`20260918120000_a_class_has_a_teacher_and_a_venue.sql` (applied).** The Inbox
+> has promised "this class stays a draft until they confirm" since 28 Aug and
+> nothing enforced it; now `classes_publish_needs_a_yes` does, for every door.
+> * **`classes` gains a venue**: `venue_business_id`, `venue_status`
+>   (requested → accepted | declined), `lat`, `lng`, `maps_url`. An artist's class
+>   is held in a STUDIO's room — the studio is asked, and the class cannot publish
+>   until it accepts — or at a place of their own, which publishes directly with
+>   the artist's own capacity. `classes_room_guard` and `assert_room_ok` resolve
+>   and check the room against the VENUE as well as the owner, so the clash check
+>   works across both and a studio can never publish into a slot an artist holds.
+>   Moving a venue or room re-opens the request; moving a PUBLISHED class is refused.
+> * **`class_publish_blocker` is the one sentence**, read by `why_no_publish(class)`
+>   for a screen, by `classes_publish_state(business)` for the whole register, and
+>   raised by the trigger — so the screen cannot drift from the rule.
+> * **`create_class_with_session` is the OWNER's alone** (a trainer could create
+>   until today) and takes the venue and the pin; an ARTIST PAGE's class is seated
+>   with its owner as its confirmed teacher at birth. **`ask_class_person` opens to
+>   anyone on DanceOS** for the teacher (the owner chooses) and for an assistant
+>   (the owner OR the confirmed teacher); the jobs and the pay stay the owner's.
+>   **`respond_to_class_ask` seats an outside teacher as `visiting_faculty`**, a
+>   fourth `member_role`, so the register they teach opens for them under the
+>   25 Aug membership rule. `set_member_role` admits it; the Team desk says
+>   **Faculty** for `trainer` and **Visiting faculty** for the new one.
+> * **RLS**: `owners and trainers update own classes` → **owners only** (same for
+>   sessions); two new SELECT policies let a VENUE's team read the classes and
+>   sessions held at their studio, so the room is defended and the request is
+>   readable. `respond_to_venue_request` is the studio owner's answer, and
+>   `notify_venue_request` tells each side.
+> * **`20260918130000_asking_again_is_a_re_ask.sql` (applied) — found by the proofs
+>   within the hour.** The first migration refused to ask a class's confirmed
+>   teacher to be its assistant. It reads sensibly and it is wrong: asking again is
+>   a RE-ASK, which is how changing what somebody is on a class has worked since
+>   Step 11. It broke three proofs mid-run AND made a fourth check pass for the
+>   wrong reason (rooms-people's "outside the team is rejected" went green off THAT
+>   refusal, not the rule it was written for — and that rule is gone anyway).
+>
+> **The app**: the form is two forms now. A studio's asks WHO through the app's one
+> people search and can only **Save & ask them** — there is no Publish on it —
+> while an artist's asks WHERE (a studio's room, searched and requested; or a map
+> pin, which may publish straight away). Assistants left the form for the class
+> page, where the owner or the teacher searches DanceOS and the person is asked
+> (`ClassTeamControls`). The register carries each row's request as a chip
+> (⏳ asked · ✓ confirmed · ✕ declined, and the venue's answer) and its Publish
+> button says the database's own sentence when pressed too early. **The chip rail
+> under the Classes heading is gone** (every door is a tile on the studio's home),
+> and an artist's register is the **Manage** segment of Your classes, in place —
+> `/business/{artistPage}/classes` redirects there (Rule 14).
+>
+> **The harness, rewritten (the price the user agreed to):** `scripts/proof-lib.ps1`
+> is new — `Seat-Teacher` / `Publish-Class` / `New-Published-Class`, dot-sourced by
+> 18 proofs, doing what a studio does (a teacher, then Publish) with the service
+> role standing in for the ask-and-accept. Two things it had to learn: the seated
+> row is **erased**, not soft-deleted, because `my_dance_stats` counts confirmed
+> claims WITHOUT filtering `deleted_at` (a real pre-existing bug — backlog row —
+> which made stats read 5 conducted where 2 happened); and every embed from
+> `classes` to `businesses` now **names its key**, because the venue is a second
+> foreign key and PostgREST answers **300 Multiple Choices** to an ambiguous embed
+> (the 28 Aug `follows` → `profiles` lesson, met again). The app's own embeds were
+> named and pushed FIRST, in their own commit, so the live site was ready before
+> the second key existed. `demo-data.js` asks and accepts for real — and its past
+> class is taught by Meera, an artist from outside the team, which is Visiting
+> Faculty in the flesh.
+>
+> **Verified:** typecheck 0 · lint 0 · `next build` green · **29/29 proofs** ·
+> **happy path 14/14** (segment 1 now drives the whole new story: save & ask →
+> the teacher confirms in their Inbox → the owner publishes from the register;
+> the clash segment meets ROOM ALREADY BUSY at the Publish, where it now lives).
+> ⚠ Two specs are red for a reason that is NOT this slice and is proven:
+> `admin-moderation` and `paid-webhook` both die on the **proof-leftover pile**
+> (#0w). Measured: Pune has **88 listed studios**, `nearby_businesses` answers
+> **50**, and the test's own studio is outside that cap — at `p_limit=200` it is
+> there. The sweep is the user's to run.
+
 > ### THE HOME GRID FOR ALL FOUR KINDS OF ACCOUNT — THE USER'S LIST, TILE FOR TILE (18 Sep 2026)
 > The user, in one message: *"home tab options for all different users. A. Users
 > — 1. Classes: Booked, Assist 2. Events: Booked as Participant, Booked as
@@ -2108,6 +2200,20 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **A CLASS HAS A TEACHER WHO SAID YES, AND A PLACE THAT SAID YES — 18 Sep 2026,
+  no step number ⚠ (Rule 9: RLS + consent) — TWO MIGRATIONS APPLIED, 29/29 proofs,
+  happy path 14/14.** The user re-cut both class forms and the publish rule. A
+  class is saved as a DRAFT and can only be published once the person taking it
+  has accepted — or, for an artist's class in a studio's room, once that studio
+  has accepted — and the database enforces it for every door. An artist's class at
+  a map link publishes directly. The owner alone creates and edits; assistants
+  moved from the form to the class page, where the owner or the teacher asks
+  anyone on DanceOS; an outside teacher who accepts becomes Visiting Faculty. The
+  register shows each row's request and the chip rail is gone; an artist manages
+  in place, on Your classes. The 18-proof harness was rewritten to ask and accept
+  before publishing, which is what the user chose when told the price. Detail at
+  the top.
 
 - **THE HOME GRID FOR ALL FOUR KINDS OF ACCOUNT — 18 Sep 2026, no step number —
   BUILT, no migration.** The user's list, tile for tile (deviation row R18): a
@@ -5440,6 +5546,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R15 | An event belongs to the business hosting it, and a studio account IS that business | **An event belongs to the ORGANIZATION.** Each organization gets one tenant of its own (`tenants.type = 'org'`, unlisted for ever) which hosts its events, so `/business/<id>/events` is ONE desk instead of one per studio, and the public event page prints the organization's name as its host. `save_event` refuses a studio host. The organization stays unbrowsable — the hosting row is excluded from Discover, search, `admin_businesses` and every public page, and cannot be followed; `event_host_is_public()` (a verified organization, or a listed studio / artist page) is what decides an event's publicness now, so "listed" keeps meaning "on Discover" | The user's ask (9 Sep 2026): "right now event is inside studio, though it should be at org level." An event has always carried its own venue, city and map link, so the studio on it was never the place — only the owner. Asked whose name a public event should carry, given R9, the user chose the organization, "events only" |
 | R16 | Onboarding asks for a photo and links; nothing else is evidence | **An organization must attach 5–10 photos of its space at signup**, on a fifth onboarding screen, and `request_org_verification` refuses a request under five. They live in a PRIVATE bucket (`org-proof`) readable only by the organization and a platform admin, through short-lived signed URLs; the admin's queue draws them beside the links | The user's ask (9 Sep 2026): "at the time of signup along with the social media the org must attach min 5 to max 10 pics which will be visible to admin for the verification." The public `media` bucket would have made pictures of somebody's premises readable by anybody who guessed the URL — so this is the one thing in the app with a private bucket, and the screen tells the organization so |
 | R17 | A studio owner's Home IS the studio: Today's schedule is its rooms, Studio Tools are its desks (S_homebiz 7354-7660) | **An ORGANIZATION's Home carries no studio's desk and no classes option at all** (17 Sep 2026): the deck is the events it hosts today, the doors are Manage and Events, the grid is Studios · Events · Stats. Each studio's day and desks are on that studio's own home (`/business/{id}`, since 14 Sep). The database refuses a class on the hosting row, and on an artist page whose plan has lapsed (`why_no_class`, `20260917180000`) | The user: *"organization home tab should not have classes options. classes can only be created by users with artist subscription and studios."* The prototype's studio Home is ONE studio's; an organization runs several, so its Home was pointing at the first by accident, and a class is a studio's or an artist's to open |
+| R19 | The class form asks WHO from the studio's own team, offers its own rooms, carries the assistants block, and publishes straight from the form (S_classform 15309-15531) | **Two forms, and neither publishes a studio's class** (18 Sep 2026). A STUDIO's asks WHO from anyone on DanceOS through the people search and saves a DRAFT; an ARTIST's asks WHERE — a studio's room, requested, or a map pin that may publish. Assistants left the form for the class page, where the owner or the confirmed teacher asks. Only the OWNER creates or edits. Publishing waits for a yes, enforced by the database (`classes_publish_needs_a_yes`), and lives on the register | The user, in one message: *"All classes when submitting should only go in drafts and can only be published once the who is taking the class accepts … an artist should not create form on behalf of a studio."* The prototype has one studio and one team; this app has artists who teach at studios they do not belong to, and a room somebody else owns cannot be taken without being asked |
 | R18 | ONE tool grid, the prototype's (DOS_TOOLS 2931; BizSection 2497-2583 on a dancer's or artist's Home; S_homebiz 7590-7620 on a studio's) | **The Home grid is the user's list, kind by kind** (18 Sep 2026). USER — Classes (Booked, Assist) · Events (Participant, Spectator, Assisting) · Calendar · Crews · Stats · Studios (taken classes at). ARTIST (plan live) — the same six, then Team · Students · Routines · Earnings · Memberships · Assets · Media. ORGANIZATION — Events · Studios · Team · Earnings (combined) · Stats. STUDIO (its own home) — Classes · Calendar · Stats · Team · Students · Earnings · Memberships · Assets · Rooms · Media. Routines, Memberships, Assets and an organization's Team open the prototype's own "nothing here yet" until their desks exist | The user: *"this should fix all home tab option logics for all 4 types of users."* The prototype has one grid for three roles it no longer has; the app has four kinds of account, and each gets the doors that are its |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
@@ -5492,6 +5599,8 @@ nothing to lift.
 | **The lightbox (16 Sep 2026) is an ADDITION, not a lift.** The prototype's photo tiles have no `onClick` at all and its album grid draws plain divs (11119-11121); what it DOES have is a full-screen viewer for an AVATAR (11440-11447) and a `photoView` state declared `null \| "avatar" \| "cover"` (8705) whose `"cover"` branch is never rendered. So this completes a stub rather than inventing a pattern — but the grid-tile-opens-it half has no counterpart. Also: the prototype's studio Photos is a 104×78 horizontal RAIL (10965-10968), not a square grid | 8705, 11440-11447, 11119-11121 | nothing owed unless the user wants the rail |
 | **The workspace strip, what it left (16 Sep 2026):** `Exit studio ›` is kept on the desks over the user's objection, with the reason written at the top of this file (back retraces, and a TWA deep-link has nothing to retrace) — **one line in `WorkspaceStrip` to remove if they say so again**; the strip still costs a server action per desk visit to learn the studio's name, which is a round trip for one word | 19267-19294 | the user's call; the name could ride the layout instead of a client fetch |
 | **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
+| **A withdrawn or re-asked claim still counts on somebody's record** (found 18 Sep 2026 by the proof harness). `my_dance_stats` and `my_session_history` count `class_people` rows with `status = 'confirmed'` and do NOT filter `deleted_at`, so a claim that was closed — withdrawn, or replaced by a re-ask — keeps adding sessions, hours and POINTS to that person's record and to the boards. It never showed because nothing used to close a confirmed claim; `ask_class_person` does it on every re-ask. The fix is not simply "filter deleted_at": somebody removed from a team should keep credit for sessions they actually taught (the payouts ledger draws that line with `accrualCutoff`), so stats needs the same test — count a claim's sessions up to the moment it closed | — | one migration over the two stats functions, in the shape of payouts' accrual cutoff |
+| **The class form, what the 18 Sep re-cut left:** an artist's class at a studio shows the venue as "the studio you asked" when the form is REOPENED (the name is not read back, only the id); a declined venue is said in the Inbox and on the register but the artist must reopen Edit to choose again (no one-press "pick another"); there is no rent, invoice or payout between an artist and the studio whose room they used (the prototype's unbuilt S_rentals); the venue request has no withdrawal of its own (moving the class is the withdrawal); a studio cannot see, on its own calendar, which of ITS rooms an artist has asked for until it accepts (the request is in the Inbox, the room is held only once accepted); and `why_no_publish` is not read by the form before Save — the register is where the sentence is printed | S_rentals 16489 | a rentals slice; the rest are decisions |
 | **An owner cannot reach a 51st business.** `findMyTenants` and `findMyMemberships` read the oldest 50 memberships (`order created_at asc, limit 50`), and every desk page finds its business in that list — so the 51st studio an account opens has a hub card that opens nothing but the hub. Found 17 Sep 2026 on the test phone owner (55 proof-leftover studios); no real organization is near it, but a cap that silently hides the newest is the wrong shape | — (the prototype's hub is localStorage-sized) | order newest-first, or read the one membership the page needs by id instead of searching a capped list |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |

@@ -1,4 +1,4 @@
-# Proof for Step 12b (Staff invites): joining a business is CONSENT-BASED. The
+﻿# Proof for Step 12b (Staff invites): joining a business is CONSENT-BASED. The
 # owner alone asks, only the person asked can answer, holding the link is never
 # enough, 'owner' is not a grantable role, and taking somebody off the team takes
 # their powers with them.
@@ -31,6 +31,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -178,7 +179,10 @@ try {
   $ends = (Get-Date).AddDays(3).ToString("yyyy-MM-ddT20:00:00zzz")
   $cls = Rpc (Api $owner.token) "create_class_with_session" @{ p_business_id = $ta.id; p_title = "Register Class $stamp";
     p_style = "Hip-Hop"; p_level = "beginner"; p_room = $null; p_price_inr = 0; p_capacity = 12;
-    p_status = "published"; p_starts_at = $starts; p_ends_at = $ends }
+    p_status = "draft"; p_starts_at = $starts; p_ends_at = $ends }
+  # 18 Sep 2026: published once a teacher has accepted; the joiner then holds the
+  # ATTENDANCE job as an assistant, which is what this proof is about
+  Publish-Class ([string]$cls.id) ([string]$ghost.id) (Api $owner.token)
   $claim = Rpc (Api $owner.token) "ask_class_person" @{ p_class_id = $cls.id; p_user_id = $joiner.id;
     p_kind = "assistant"; p_can_attendance = $true; p_can_refunds = $false }
   Rpc (Api $joiner.token) "respond_to_class_ask" @{ p_class_person_id = $claim.id; p_accept = $true } | Out-Null

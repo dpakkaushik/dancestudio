@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassById } from "@/repositories/classes";
+import { findDiscoverCities } from "@/repositories/cities";
 import { findClaimsByClass } from "@/repositories/claims";
+import { findClassById } from "@/repositories/classes";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyMembershipRole, findMyTenants, findTenantTeam } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/tenants";
 
+/** Edit class — the owner alone (18 Sep 2026), like Add class. */
 export default async function EditClassPage({
   params,
 }: {
@@ -20,33 +22,41 @@ export default async function EditClassPage({
     redirect("/login");
   }
 
-  const businesses = await findMyTenants(supabase);
-  const tenant = businesses.find((t) => t.id === tenantId);
-  if (!tenant) {
+  const memberships = await findMyMemberships(supabase);
+  const membership = memberships.find((m) => m.tenant.id === tenantId);
+  if (!membership) {
     redirect("/business");
+  }
+  const { tenant, memberRole } = membership;
+  if (tenant.type === "org") {
+    redirect(`/business/${tenantId}/events`);
+  }
+  if (memberRole !== "owner") {
+    redirect(tenant.type === "artist_page" ? "/my-classes" : `/business/${tenantId}/classes`);
   }
 
   const danceClass = await findClassById(supabase, classId);
   if (!danceClass || danceClass.tenantId !== tenantId) {
-    redirect(`/business/${tenantId}/classes`);
+    redirect(tenant.type === "artist_page" ? "/my-classes?show=manage" : `/business/${tenantId}/classes`);
   }
 
-  const [rooms, team, claims, role] = await Promise.all([
-    findRoomsByTenant(supabase, tenantId),
-    findTenantTeam(supabase, tenantId),
+  const [rooms, claims, cityCentres] = await Promise.all([
+    tenant.type === "studio" ? findRoomsByTenant(supabase, tenantId) : Promise.resolve([]),
     findClaimsByClass(supabase, classId),
-    findMyMembershipRole(supabase, tenantId),
+    tenant.type === "artist_page" ? findDiscoverCities(supabase).catch(() => []) : Promise.resolve([]),
   ]);
 
   return (
     <ClassForm
       tenantId={tenantId}
+      tenantType={tenant.type}
       existing={danceClass}
       rooms={rooms}
-      team={team}
       claims={claims}
-      isOwner={role === "owner"}
+      isOwner
       studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
+      cityCentres={cityCentres}
+      city={tenant.city}
     />
   );
 }

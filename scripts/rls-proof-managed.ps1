@@ -1,4 +1,4 @@
-# Proof for the S_managed parity slice - "everything you manage".
+﻿# Proof for the S_managed parity slice - "everything you manage".
 #
 # Nothing new is stored, so what is under test is the READ the page makes
 # (repositories/managed.ts): every class and every event of every business the
@@ -29,6 +29,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -123,7 +124,9 @@ Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
 # (a new tenant is listed by default, so a stranger CAN read its published class - the point of check 3)
 
-$cA1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $ta.id "A Published $stamp" "published")
+# 18 Sep 2026: born a draft, published once its teacher has accepted (the trainer takes it)
+$cA1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $ta.id "A Published $stamp" "draft")
+Publish-Class ([string]$cA1.id) ([string]$trainer.id) (Api $owner.token)
 $cA2 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $ta.id "A Draft $stamp" "draft")
 $cB1 = Rpc (Api $owner.token) "create_class_with_session" (ClassBody $tb.id "B Draft $stamp" "draft")
 # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
