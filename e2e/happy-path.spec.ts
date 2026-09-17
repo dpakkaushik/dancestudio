@@ -1409,12 +1409,24 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(taught.getByText("Teaching", { exact: true })).toBeVisible();
     await expect(taught.getByRole("button", { name: "Invoice" })).toHaveCount(0);
 
-    // a studio's Home asks the studio's question — what is running in its rooms — with its own doors
+    // AN ORGANIZATION'S HOME ASKS NO STUDIO'S QUESTION (17 Sep 2026, the user:
+    // "organization home tab should not have classes options"): its doors are Manage
+    // and Events, its grid is Studios · Events · Stats, and nothing on it opens a
+    // register or a studio calendar — it used to open its FIRST studio's.
     await owner.goto("/");
+    await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toBeVisible();
+    await expect(owner.getByRole("link", { name: "Open the events desk" }).first()).toHaveAttribute("href", /\/business\/[0-9a-f-]+\/events$/);
+    await expect(owner.getByRole("link", { name: "Classes at this studio" })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: "Open the studio calendar" })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: "Students", exact: true })).toHaveCount(0);
+    await expect(owner.getByRole("link", { name: "Studios", exact: true })).toBeVisible();
+    await expect(owner.getByRole("link", { name: "Stats", exact: true })).toBeVisible();
+    // the studio's question — what is running in its rooms — is asked on the STUDIO's own home
+    await owner.goto(`/business/${tenantId}`);
     await expect(owner.getByTestId("deck-card").first().getByText("At your studio", { exact: true })).toBeVisible();
     await expect(owner.getByRole("link", { name: "Classes at this studio" })).toHaveAttribute("href", `/business/${tenantId}/classes`);
-    await expect(owner.getByRole("link", { name: "Open the studio calendar" })).toHaveAttribute("href", `/business/${tenantId}/calendar`);
-    await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toBeVisible();
+    await expect(owner.getByRole("link", { name: "Open the studio calendar" }).first()).toHaveAttribute("href", `/business/${tenantId}/calendar`);
   });
 
   test("the wiring slice: a tick, two numbers, a followers list and two buttons that had no door", async () => {

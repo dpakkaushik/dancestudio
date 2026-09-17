@@ -2,6 +2,64 @@
 
 ## LAST SESSION (17 Sep 2026) — replaced on every push (Rule 13)
 
+> ### AN ORGANIZATION'S HOME OFFERS NO CLASSES — AND THE DATABASE WILL NOT LET IT HAVE ONE (17 Sep 2026, later again)
+> The user: *"organization home tab should not have classes options. classes can
+> only be created by users with artist subscription and studios."*
+> * **What the organization's Home was doing:** its "Today's schedule" was its
+>   FIRST studio's rooms, with **Classes** and **Calendar ›** doors into that
+>   studio's register — one studio chosen by `businesses.find(studio)`, an
+>   accident for an organization with two — and its Studio Tools grid carried
+>   Classes · Students · Team pointing at that same first studio, plus Calendar ·
+>   Crews · Earnings, three doors a PERSON has and an organization cannot use at
+>   all (`guard_person_only` refuses it in a crew; `/earnings` is a payee's
+>   ledger; `/calendar` is a person's).
+> * **Now:** the deck is what `findMyDeck` gives an organization — the events it
+>   hosts today and nothing else, since it books, teaches and assists nothing —
+>   with **Manage** and **Events ›** as its doors, and the grid is **Studios ·
+>   Events · Stats**. Every studio's desks (Classes, Calendar, Media, Students,
+>   Team, Earnings, Rooms) are where they have been since 14 Sep: on the studio's
+>   own home, one tap inside Studios. `/business/{host}/classes` and
+>   `…/classes/new` redirect the hosting row to its events desk. Deviation row
+>   R17.
+> * **The database keeps the rule — APPLIED on the user's second "push to live",
+>   after the list above had been in front of them:**
+>   `20260917180000_classes_belong_to_a_studio_or_an_artist.sql`. Until then the
+>   only thing between an organization and a class on its own hosting row was
+>   the app not drawing the door: `create_class_with_session` checks membership,
+>   and the organization OWNS that row. One BEFORE INSERT trigger on `classes`
+>   (the `events_need_a_verified_gstin` pattern — the RPC keeps its signature,
+>   UPDATE untouched) raising `why_no_class(business)`: an `org` row never carries
+>   a class; an `artist_page` only while its owner's Artist plan is live
+>   (`artist_plan_active(business_owner(id))`, the same test that sizes the
+>   gallery and prints the badge). A studio is gated by nothing new — its
+>   subscription decides whether it is PUBLIC, not whether it may teach. Live
+>   data: 0 classes on org rows, 2 on artist pages whose owners hold the plan, 17
+>   on studios; nothing existing is touched. No policy change; the two new
+>   functions carry their own grants (`why_no_class` to authenticated, the
+>   trigger function to nobody). `rls-proof-classes` gained checks 9–10 (the
+>   hosting row refused in words; `why_no_class` null for a studio, the sentence
+>   for the host) — red until the migration was applied, the same shape
+>   `rls-proof-tenant-columns` had on 11 Sep. After the apply: dry run showed
+>   exactly that one pending; `why_no_class` read back over PostgREST as null for
+>   a studio, the sentence for a hosting row, null for both artist pages (their
+>   owners hold the plan); proofs **28/29 in the suite run, then 29/29** — the one red was `rls-proof-classes` on MY OWN harness bug (`my_org_business()` returns the hosting row's uuid itself, not a row, so `.id` off it was "" and the RPC refused a blank uuid — which check 9 rightly reported as "the wrong reason"); fixed, and 10/10 alone with the hosting row refused in the trigger's words and `why_no_class` null for a studio.
+> * Verified: typecheck 0 · lint 0 · `next build` green · **e2e: the happy path
+>   14/14 alone** (the re-cut segment 12 asserts the organization's Home offers
+>   Manage and Events, no Classes / Students tile, no register or studio-calendar
+>   door, and that the studio's own home still asks the studio's question);
+>   the other seven specs 26/26 in the whole-suite run. ⚠ Three reds on the way,
+>   none the product: the whole-suite run lost `crews` on a 5-second wait for an
+>   Inbox re-render and the first re-run lost `person-pages` on a 5-second wait
+>   for the search dropdown's People section — each passed the next time, the
+>   11 Sep lesson again — and **`paid-webhook`'s UI leg is red for a
+>   DETERMINISTIC harness reason:** the test phone owner (+919999999999) now
+>   holds **55 live studios** of proof leftovers, `findMyTenants` reads the
+>   oldest 50, so the studio the spec has just created is invisible to the app and
+>   `/business/{id}/earnings` bounces to the hub. It stays red until the sweep in
+>   #0w runs (or that account's leftovers go). The classes proof's two new checks
+>   were parse-checked, not run: running them before the migration would leave
+>   one more studio on that account.
+
 > ### A CLASS HAS NO NAME — "{style} · {level}" EVERYWHERE, NOTHING TYPED (17 Sep 2026, later the same day)
 > The user: *"remove class name from the class form and remove from everywhere
 > in the app."* The FORM half had landed earlier the same day (audit row F4: the
@@ -1691,6 +1749,15 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0v. **~~APPLY `20260917180000_classes_belong_to_a_studio_or_an_artist`~~ — DONE
+   17 Sep 2026**, on the user's second "push to live", after the list (two
+   functions, one BEFORE INSERT trigger on `classes`, no existing row / policy /
+   grant touched) had been put in front of them. Dry run: exactly that one
+   pending. Read-back: `why_no_class` null for a studio, the sentence for a
+   hosting row, null for both live artist pages. Proofs: **28/29 in the suite run, then 29/29** — the one red was `rls-proof-classes` on MY OWN harness bug (`my_org_business()` returns the hosting row's uuid itself, not a row, so `.id` off it was "" and the RPC refused a blank uuid — which check 9 rightly reported as "the wrong reason"); fixed, and 10/10 alone with the hosting row refused in the trigger's words and `why_no_class` null for a studio.
+   What it leaves is a WORD on a screen, not a rule: the register's Create class
+   button does not read `why_no_class` before the form (backlog row).
+
 0w. **THE PROOF LEFTOVERS HAVE CROSSED THE RADIUS SEARCH'S 50-ROW CAP — RUN THE
    SWEEP, AFTER LOOKING AT ITS LIST (found 17 Sep 2026).** `nearby_businesses`
    answers 50 rows by default (#6 below: no cursor), every proof and e2e studio
@@ -1708,6 +1775,12 @@ summary; the report has the evidence.
    node scripts/cleanup-proof-leftovers.js            # dry run: 27 profiles, 595 businesses would be soft-deleted
    node scripts/cleanup-proof-leftovers.js --apply    # soft-deletes them — deleted_at only, one UPDATE back
 ```
+   **A THIRD CONSEQUENCE, FOUND THE SAME EVENING:** the test phone owner holds
+   55 of those leftovers as its OWN studios, `findMyTenants` reads the oldest 50,
+   and so every app page for a studio that account creates now bounces to the
+   hub — `paid-webhook`'s UI leg (the earnings desk) is red for exactly that, and
+   will be until the sweep runs. Until then: a red on that spec's earnings step
+   is this, not the product.
    NOT applied by the agent: 595 rows is a production sweep the user sees first
    (their standing instruction). Then worth asking why rows from recent green
    runs are still live and listed — e.g. "E2E Studio mu3sq1jc", "Mandate Proof
@@ -1980,6 +2053,16 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **AN ORGANIZATION'S HOME OFFERS NO CLASSES — 17 Sep 2026, no step number —
+  BUILT, MIGRATION APPLIED, happy path 14/14, proofs **28/29 in the suite run, then 29/29** — the one red was `rls-proof-classes` on MY OWN harness bug (`my_org_business()` returns the hosting row's uuid itself, not a row, so `.id` off it was "" and the RPC refused a blank uuid — which check 9 rightly reported as "the wrong reason"); fixed, and 10/10 alone with the hosting row refused in the trigger's words and `why_no_class` null for a studio.** The user:
+  *"organization home tab should not have classes options. classes can only be
+  created by users with artist subscription and studios."* The organization's
+  Home stops asking its first studio's question: its deck is the events it hosts
+  today, its doors Manage and Events, its grid Studios · Events · Stats; a
+  studio's desks are on the studio's own home. The database rule — no class on
+  the hosting row, none on an artist page without a live plan — is one BEFORE
+  INSERT trigger (`why_no_class`), applied after the list was shown. Deviation
+  row R17. Detail at the top.
 - **A CLASS HAS NO NAME — 17 Sep 2026, no step number — BUILT, MIGRATION
   APPLIED, e2e 51/51, proofs **28/29 in the suite run, then 29/29** — `rls-proof-discovery` was red for a reason that was not its subject (the radius search's 50-row cap, crossed by 70-plus listed proof leftovers in Pune; #0w), re-cut to pass `p_limit = 200` and delete its own studio, and green alone.** The user: *"remove class name from
   the class form and remove from everywhere in the app."* The form's CLASS NAME
@@ -5291,6 +5374,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R14 | Any account opens a business the moment it exists (2660-2684) | **A studio needs a VERIFIED organization to be CREATED, and ITS OWN paid subscription to be PUBLIC** (re-cut 10 Sep 2026 from "a verified and subscribed organization"). `why_no_studio()` is the one sentence the hub prints under a disabled control and `create_tenant_with_owner` raises — verification alone. A studio is born UNLISTED; `why_not_public(tenant)` is the sentence between it and Discover; `guard_tenant_visibility` refuses listing without a live plan; the authorisation webhook (or an admin's audited grant, which charges nothing) lists it. ⚠ **₹1,200 a month per studio, ₹700 a month for the Artist plan, through a Cashfree Subscriptions mandate** — the authorisation pays the first period, the mandate charges each next one, cancel = stop renewing and keep what was paid for, three days' grace on a failed charge; prices are the admin's to change (`/admin/plans`) and snapshotted on every subscription | The user's asks: "studio creation must be after verification and paying for the subscription" (9 Sep 2026), then "keep 1200 for an org … each studio need a subscription … if an org has two studios will need two subscription each linked to studio … keep 700 as artist subscription and link gateway … keep the subscription amount dynamic, admin has the access to change" and "make sure this subscription follows standard approach how it is dealt in real apps" (10 Sep 2026). The first cut sold prepaid periods as one-off orders; a real subscription is a mandate with a status machine, so that is what was built |
 | R15 | An event belongs to the business hosting it, and a studio account IS that business | **An event belongs to the ORGANIZATION.** Each organization gets one tenant of its own (`tenants.type = 'org'`, unlisted for ever) which hosts its events, so `/business/<id>/events` is ONE desk instead of one per studio, and the public event page prints the organization's name as its host. `save_event` refuses a studio host. The organization stays unbrowsable — the hosting row is excluded from Discover, search, `admin_businesses` and every public page, and cannot be followed; `event_host_is_public()` (a verified organization, or a listed studio / artist page) is what decides an event's publicness now, so "listed" keeps meaning "on Discover" | The user's ask (9 Sep 2026): "right now event is inside studio, though it should be at org level." An event has always carried its own venue, city and map link, so the studio on it was never the place — only the owner. Asked whose name a public event should carry, given R9, the user chose the organization, "events only" |
 | R16 | Onboarding asks for a photo and links; nothing else is evidence | **An organization must attach 5–10 photos of its space at signup**, on a fifth onboarding screen, and `request_org_verification` refuses a request under five. They live in a PRIVATE bucket (`org-proof`) readable only by the organization and a platform admin, through short-lived signed URLs; the admin's queue draws them beside the links | The user's ask (9 Sep 2026): "at the time of signup along with the social media the org must attach min 5 to max 10 pics which will be visible to admin for the verification." The public `media` bucket would have made pictures of somebody's premises readable by anybody who guessed the URL — so this is the one thing in the app with a private bucket, and the screen tells the organization so |
+| R17 | A studio owner's Home IS the studio: Today's schedule is its rooms, Studio Tools are its desks (S_homebiz 7354-7660) | **An ORGANIZATION's Home carries no studio's desk and no classes option at all** (17 Sep 2026): the deck is the events it hosts today, the doors are Manage and Events, the grid is Studios · Events · Stats. Each studio's day and desks are on that studio's own home (`/business/{id}`, since 14 Sep). The database refuses a class on the hosting row, and on an artist page whose plan has lapsed (`why_no_class`, `20260917180000`) | The user: *"organization home tab should not have classes options. classes can only be created by users with artist subscription and studios."* The prototype's studio Home is ONE studio's; an organization runs several, so its Home was pointing at the first by accident, and a class is a studio's or an artist's to open |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -5333,6 +5417,7 @@ nothing to lift.
 |-----|--------------|-------------|
 | **THE IDENTIFIERS PASS (owed since 16 Sep 2026, by the user's choice — "strings now, identifiers next").** The database and every string that reaches it say `business`, `class_people`, `class_bookings`, `studio_photos`, `category`…; the TypeScript still says `Tenant`, `tenantId`, `findMyTenants`, `Claim`, `enrollInSession`, `ev.cat`, `EventCat`, and the files and folders are still `repositories/tenants.ts`, `features/tenants/`, `features/enrollments/`, `app/…/[tenantId]`, `scripts/rls-proof-tenants.ps1`. ~2,200 occurrences in 207 files, camelCase and file names only — a pure identifier rename `tsc` verifies. Route FOLDER names are Next param names, not URLs, so `[tenantId]` → `[businessId]` changes no public path (Rule 14 is not triggered) | — | one mechanical pass, typecheck as the gate; nothing else in the same push |
 | **What the rename deliberately left (16 Sep 2026):** `admin_audit.subject_kind` holds `tenant` on its 161 pre-rename rows for ever — the table is immutable by design, so its CHECK admits both words and `AuditLog` reads the old one as the new; three policy-pinned helpers keep `p_tenant_id` as their PARAMETER name (`is_business_member`, `is_business_owner`, `event_host_is_public` — called positionally, invisible to callers; freeing them means dropping and re-creating the policies that pin them); two `storage.objects` policy NAMES still say "…their tenant folder" (Supabase owns that table and refused the rename — cosmetic); the storage folders `tenants/`, `proof/`, `avatars/`, `gallery/` keep their names because objects live there; `class_bookings.status = 'enrolled'`, `businesses.type = 'org'`, `business_members.member_role`, `profiles.role`, `leads`, `classes.room` are unrenamed by decision (each has a COMMENT); `artist_plans_legacy` is dead history that could simply be dropped | — | the parameter names when a policy is next rewritten anyway; `drop table artist_plans_legacy` when somebody is sure |
+| **The organization's Home re-cut, what it left (17 Sep 2026):** the register's **Create class** button does not read `why_no_class` before the form — an artist whose plan has lapsed fills the form and meets the database's sentence on Publish (the hosting row never reaches the form: it redirects to the events desk); the organization's grid heading still says **Studio Tools** over Studios · Events · Stats (the prototype's word for a studio owner's grid, 7616 — an organization has no prototype screen of its own); `/managed` still lists the organization's studios' classes as things it manages (a view with Manage › doors, not a door to creating one) | S_homebiz 7590-7620 | one `why_no_class` read on the register page; the heading is the user's word to pick |
 | **The chrome re-cut, what it left (15 Sep 2026):** a **studio cannot be renamed** from its home — `update_tenant_profile` takes no `p_name`, so the pencil edits About, Since, phone, links and the pin but not the name (a person's name IS editable); an **organization with several studios** gets the eye pointing at its FIRST studio (a chooser is a decision); the eye on the bar is a door, so the **Profile and Stats pages have no lit tab** while open — they read as drill pages with the back chip | 19313-19396; S_profiletab 10613 | a `p_name` on `update_tenant_profile` (drop + recreate — the overload lesson); a studio chooser if an organization asks |
 | **The header slice, what it left (15 Sep 2026, re-read 16 Sep):** the **crew page** still draws its own 206 square rather than `IdentityHero` (a crew has a photo and no header pictures — a decision about what a crew's header would show); ~~reordering~~ **settled 16 Sep 2026 — the user: "order doesn't matter"**, so insertion order stands and there is nothing to build; an **organization's Home** has an empty header (it is not a place — decision (c)); a **trainer** may change a studio's disc but not its header, because the files go into the OWNER's folder in the proof bucket (a per-studio folder would let a trainer add — needs a storage-policy change), and since 16 Sep the header block simply is not drawn in a trainer's Edit sheet; the header is the **206 square**, not a full-width banner, by the user's choice — `HERO_HEAD_W/H` are the tweak; no **proof script** yet for the min-one rule or the public read policy (`shoot-hero.js` covers both from the browser) | S_profiletab 10577, 11093 | a crew decision; a per-studio proof folder if a trainer ever needs to add; a `.ps1` proof after the migration lands |
 | **The pictures moved into the Edit sheets (16 Sep 2026), what that left:** a studio's header can be added to from **three** places now — the pencil, the Media desk and the verification form — one component in three frames rather than three implementations, but still three doors to one job; the Edit sheets have **no drag-to-reorder and no cropper** (`object-fit: cover`, and the user settled the order question); a person's header grid has **no min-one rule**, deliberately — only a studio's header is evidence somebody else checks | S_profiletab 11364; DosCropper 6604 | the cropper with the posters slice; the rest is decision (c) |
@@ -5340,6 +5425,7 @@ nothing to lift.
 | **The lightbox (16 Sep 2026) is an ADDITION, not a lift.** The prototype's photo tiles have no `onClick` at all and its album grid draws plain divs (11119-11121); what it DOES have is a full-screen viewer for an AVATAR (11440-11447) and a `photoView` state declared `null \| "avatar" \| "cover"` (8705) whose `"cover"` branch is never rendered. So this completes a stub rather than inventing a pattern — but the grid-tile-opens-it half has no counterpart. Also: the prototype's studio Photos is a 104×78 horizontal RAIL (10965-10968), not a square grid | 8705, 11440-11447, 11119-11121 | nothing owed unless the user wants the rail |
 | **The workspace strip, what it left (16 Sep 2026):** `Exit studio ›` is kept on the desks over the user's objection, with the reason written at the top of this file (back retraces, and a TWA deep-link has nothing to retrace) — **one line in `WorkspaceStrip` to remove if they say so again**; the strip still costs a server action per desk visit to learn the studio's name, which is a round trip for one word | 19267-19294 | the user's call; the name could ride the layout instead of a client fetch |
 | **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
+| **An owner cannot reach a 51st business.** `findMyTenants` and `findMyMemberships` read the oldest 50 memberships (`order created_at asc, limit 50`), and every desk page finds its business in that list — so the 51st studio an account opens has a hub card that opens nothing but the hub. Found 17 Sep 2026 on the test phone owner (55 proof-leftover studios); no real organization is near it, but a cap that silently hides the newest is the wrong shape | — (the prototype's hub is localStorage-sized) | order newest-first, or read the one membership the page needs by id instead of searching a capped list |
 | **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |
 | **The map runs on Google's Maps Demo Key, and that has a ceiling.** No billing behind it, a daily quota that pauses rather than bills, not licensed for production; the Places/Geocoding cache in `lib/geo/places.ts` is in memory PER INSTANCE | — (same) | a billed Google Cloud project with Maps JavaScript API + Places API (New) + Geocoding API enabled, a referrer-restricted browser key and an IP-restricted server key in `NEXT_PUBLIC_GOOGLE_MAPS_KEY` / `GOOGLE_MAPS_KEY` — a deploy, not a rewrite |

@@ -23,6 +23,10 @@ export default async function NewClassPage({
   if (!tenant) {
     redirect("/business");
   }
+  /* the hosting row has no classes and no form for one (17 Sep 2026) — see the register */
+  if (tenant.type === "org") {
+    redirect(`/business/${tenantId}/events`);
+  }
 
   const [rooms, team, role] = await Promise.all([
     findRoomsByTenant(supabase, tenantId),

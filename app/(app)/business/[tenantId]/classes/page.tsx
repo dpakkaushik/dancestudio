@@ -29,6 +29,12 @@ export default async function TenantClassesPage({
   if (!tenant) {
     redirect("/business");
   }
+  /* an organization's hosting row (R15) runs events, never classes (17 Sep 2026,
+     the user: "classes can only be created by users with artist subscription and
+     studios") — the database refuses one there, so the register is not a place either */
+  if (tenant.type === "org") {
+    redirect(`/business/${tenantId}/events`);
+  }
 
   const classes = await findClassesByTenant(supabase, tenantId);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];

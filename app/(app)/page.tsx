@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
-import { findMyDeck, findStudioDeck } from "@/repositories/home";
+import { findMyDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { findMyTenants } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
@@ -112,9 +112,16 @@ export default async function HomePage() {
   const rank = profile.role === "org" ? null : await findMyPlace(supabase, chartSeg);
   const tier = rank ? tierOf(rank.place) : null;
 
-  /* a studio's day is not a person's day (7022-7060): a studio owner's Home shows
-     what is running in the studio's rooms, drawn by the same card in the same rail */
-  const studio = isOrg ? (businesses.find((t) => t.type === "studio") ?? null) : null;
+  /* AN ORGANIZATION'S HOME ASKS NO STUDIO'S QUESTION (17 Sep 2026, the user:
+     "organization home tab should not have classes options. classes can only be
+     created by users with artist subscription and studios"). Until today an
+     organization's deck was its FIRST studio's rooms, with Classes and Calendar
+     doors into that studio's register — one studio chosen by accident, and a
+     door to creating classes on a screen that is not a studio's. A studio's day
+     is asked on the studio's own home (7022-7060, `StudioHome`); here the deck
+     is what `findMyDeck` gives an organization — the events it hosts today, and
+     nothing a person would have, since an organization books, teaches and
+     assists nothing (`guard_person_only`). */
   /* AN UNVERIFIED ORGANIZATION'S HOME IS THE STANDING CARD AND NOTHING ELSE
      (10 Sep 2026, the user's ask). Until DanceOS has said yes it owns no studio
      and cannot make one, so "Today's schedule" is always empty and every Studio
@@ -130,7 +137,7 @@ export default async function HomePage() {
      its photos, ask for the badge. It stays a constant so the two folds below
      keep reading as a decision rather than as dead code. */
   const orgAwaitingApproval = false;
-  const deck = studio ? await findStudioDeck(supabase, studio, nowIso) : await findMyDeck(supabase, user.id, nowIso, businesses);
+  const deck = await findMyDeck(supabase, user.id, nowIso, businesses);
 
   /* the metal the KIND wears (DOS_RINGS 1462): gold for an organization, silver
      for an artist, bronze for a user — the same pair the Profile tab paints with */
@@ -142,11 +149,13 @@ export default async function HomePage() {
   /* Manage only appears if you actually run something (7135): the door to what you
      manage, and offering it to somebody who manages nothing is a door onto an empty room */
   const canManage = businesses.length > 0;
-  /* The Studio Tools doors are a STUDIO's — classes, rooms, students, the team.
-     R15 (9 Sep 2026) gave every organization a hidden `org` tenant to hang its
-     events on, and it is created first, so `businesses[0]` is no longer the
-     business anybody means: an organization's tools open its first studio. */
-  const firstTenant = (isOrg ? studio?.id : businesses.find((t) => t.type !== "org")?.id) ?? null;
+  /* A PERSON's grid may carry their own page's desks (an artist's register,
+     students, team). R15 (9 Sep 2026) gave every organization a hidden `org`
+     tenant to hang its events on, so `businesses[0]` is never the business
+     anybody means. AN ORGANIZATION GETS NO DESK HERE AT ALL (17 Sep 2026): its
+     grid is Studios · Events · Stats, and each studio's desks are on that
+     studio's own home — `tilesFor` in home-kit says why. */
+  const firstTenant = isOrg ? null : (businesses.find((t) => t.type !== "org")?.id ?? null);
 
   /* the header, shown and nothing else: adding and removing moved into the
      Edit-profile sheet on 16 Sep 2026, at the user's instruction */
@@ -266,20 +275,21 @@ export default async function HomePage() {
           <TodayShelf
             deck={deck}
             right={
-              studio ? (
-                /* a studio's doors are its own (7143-7150): the register for what is on now,
-                   the calendar for the rest of the week — and the one list of everything it
-                   runs, which the app has and the prototype's single-studio world did not need */
+              isOrg ? (
+                /* an organization's doors are an organization's (17 Sep 2026): the one list
+                   of everything its studios run, and its events desk — no register, no
+                   studio calendar; those are on each studio's own home */
                 <>
-                  <Link href="/managed" aria-label="Everything you manage" style={HEAD_LINK}>
-                    Manage
-                  </Link>
-                  <Link href={`/business/${studio.id}/classes`} aria-label="Classes at this studio" style={HEAD_LINK}>
-                    Classes
-                  </Link>
-                  <Link href={`/business/${studio.id}/calendar`} aria-label="Open the studio calendar" style={HEAD_LINK}>
-                    Calendar ›
-                  </Link>
+                  {canManage ? (
+                    <Link href="/managed" aria-label="Everything you manage" style={HEAD_LINK}>
+                      Manage
+                    </Link>
+                  ) : null}
+                  {eventsHostId ? (
+                    <Link href={`/business/${eventsHostId}/events`} aria-label="Open the events desk" style={HEAD_LINK}>
+                      Events ›
+                    </Link>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -294,10 +304,10 @@ export default async function HomePage() {
                 </>
               )
             }
-            emptyTitle={studio ? "Nothing in your rooms today" : "Nothing on today"}
+            emptyTitle="Nothing on today"
             emptyBody={
-              studio
-                ? "Every class and event running in this studio’s rooms shows up here on the day."
+              isOrg
+                ? "Events you host today appear here. What runs in each studio’s rooms is on that studio’s own home."
                 : "Classes and events you book, assist on or run today all appear here."
             }
             /* both doors, when both apply (7176-7181) */
@@ -308,10 +318,16 @@ export default async function HomePage() {
                     See everything you manage
                   </Link>
                 ) : null}
-                {studio ? (
-                  <Link href={`/business/${studio.id}/calendar`} aria-label="Open the studio calendar" style={PILL_DARK}>
-                    Open the calendar
-                  </Link>
+                {isOrg ? (
+                  eventsHostId ? (
+                    <Link href={`/business/${eventsHostId}/events`} aria-label="Open the events desk" style={PILL_DARK}>
+                      Open events
+                    </Link>
+                  ) : (
+                    <Link href="/business" style={PILL_DARK}>
+                      Open your studios
+                    </Link>
+                  )
                 ) : (
                   <Link href="/my-classes" style={PILL_DARK}>
                     See all bookings
