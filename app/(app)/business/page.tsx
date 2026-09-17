@@ -6,6 +6,7 @@ import { findProfileById } from "@/repositories/profiles";
 import { findDiscoverCities } from "@/repositories/cities";
 import { findWhyNoStudio } from "@/repositories/orgStanding";
 import { countRoomsByTenants } from "@/repositories/rooms";
+import { findStudiosAttended } from "@/repositories/enrollments";
 import { findStudioVerificationStates } from "@/repositories/studioVerification";
 import { findMyStudioSubscriptions } from "@/repositories/subscriptions";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -50,7 +51,7 @@ export default async function BusinessPage() {
   ]);
   const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const studioIds = owned.filter((t) => t.type === "studio").map((t) => t.id);
-  const [roomCounts, studioSubscriptions, studioVerification] = await Promise.all([
+  const [roomCounts, studioSubscriptions, studioVerification, attended] = await Promise.all([
     countRoomsByTenants(supabase, owned.map((t) => t.id)),
     isOrg ? findMyStudioSubscriptions(supabase, studioIds).catch(() => ({})) : Promise.resolve({}),
     /* WHERE EACH STUDIO STANDS WITH DANCEOS (11 Sep 2026): its badge, its
@@ -61,10 +62,13 @@ export default async function BusinessPage() {
           owned.filter((t) => t.type === "studio").map((t) => ({ id: t.id, verifiedAt: t.verifiedAt }))
         )
       : Promise.resolve({}),
+    /* the Studios tile's second list for a person (18 Sep 2026): where they have been a student */
+    isOrg ? Promise.resolve([]) : findStudiosAttended(supabase, user.id).catch(() => []),
   ]);
   return (
     <BusinessHub
       memberships={memberships}
+      attended={attended}
       roomCounts={roomCounts}
       role={profile.role}
       isArtist={Boolean(plan?.active)}

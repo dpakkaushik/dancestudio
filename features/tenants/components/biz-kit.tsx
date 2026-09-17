@@ -24,6 +24,16 @@ export const DOS_TOOLS = {
      it as a tab on the home page along with calendar, classes") — the violet
      the Charts hero opens on */
   stats: { name: "Stats", c: "#A855F7" },
+  /* THE HOME GRID FOR ALL FOUR KINDS (18 Sep 2026, the user's list): three
+     tools the prototype has a screen for and this app does not yet —
+     S_choreos 17115, S_memberships 16846, S_assets 16791. Their tiles open the
+     prototype's own "nothing here yet"; their colours are the prototype's
+     hero paints for those screens */
+  routines: { name: "Routines", c: "#EC4899" },
+  memberships: { name: "Memberships", c: "#0EA5E9" },
+  assets: { name: "Assets", c: "#7C3AED" },
+  calendar: { name: "Calendar", c: "#5AC8FA" },
+  crews: { name: "Crews", c: "#DC2626" },
 } as const;
 export type DosToolKey = keyof typeof DOS_TOOLS;
 

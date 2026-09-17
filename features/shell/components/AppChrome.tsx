@@ -119,11 +119,18 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/stats$/, "Stats"],
   [/^\/classes$/, "Classes"],
   [/^\/c\/[^/]+$/, "Class"],
-  [/^\/my-classes$/, "All bookings"],
+  /* the Home grid's own words (18 Sep 2026): Classes and Events are two tiles now */
+  [/^\/my-classes$/, "Your classes"],
+  [/^\/my-events$/, "Your events"],
+  [/^\/routines$/, "Routines"],
+  [/^\/memberships$/, "Memberships"],
+  [/^\/assets$/, "Assets"],
   [/^\/business$/, "Your business"],
-  /* the organization's combined figures (17 Sep 2026) — a static segment, so it
-     must be matched before the studio id below swallows it */
+  /* the organization's combined figures (17 Sep 2026) — static segments, so they
+     must be matched before the studio id below swallows them */
   [/^\/business\/stats$/, "Studios · combined"],
+  [/^\/business\/earnings$/, "Earnings · combined"],
+  [/^\/business\/team$/, "Team"],
   [/^\/business\/[^/]+$/, "Studio"],
   [/^\/business\/[^/]+\/classes$/, "Classes"],
   [/^\/business\/[^/]+\/classes\/new$/, "Add class"],
@@ -136,6 +143,8 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/business\/[^/]+\/events\/[^/]+\/edit$/, "Edit event"],
   [/^\/business\/[^/]+\/events\/[^/]+$/, "Manage event"],
   [/^\/business\/[^/]+\/staff$/, "Team"],
+  [/^\/business\/[^/]+\/memberships$/, "Memberships"],
+  [/^\/business\/[^/]+\/assets$/, "Assets"],
   [/^\/e\/[^/]+$/, "Event"],
   [/^\/calendar$/, "Calendar"],
   [/^\/studio\/[^/]+$/, "Studio"],

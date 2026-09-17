@@ -74,21 +74,27 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     isOwner ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
   ]);
 
-  /* the prototype's studio grid (7359-7373) minus the doors that do not exist —
-     Expenses, Assets and Reports have no page, and a tile that opens nothing
-     is a lie. Earnings is the owner's (the desk is server-checked owner-only).
-     MEDIA (15 Sep 2026, the user: "create a tab for media along with classes,
-     calendar, earnings") is the studio's two pictures as a desk. */
+  /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, their list for all four
+     kinds of account — deviation row R18): Classes · Calendar · Stats · Team ·
+     Students · Earnings · Memberships · Assets · Rooms · Media. Earnings is the
+     owner's (the desk is server-checked owner-only). Memberships and Assets have
+     a prototype screen (S_memberships 16846, S_assets 16791) and no desk yet, so
+     they open the prototype's own "nothing here yet" rather than nothing — a
+     tile that opens nothing is a lie, and so is a grid missing what the user
+     asked to see on it. MEDIA (15 Sep 2026) is the studio's two pictures as a desk. */
+  const desk = (path: string) => `/business/${tenantId}/${path}`;
   const tiles: Tile[] = [
-    { name: "Classes", href: `/business/${tenantId}/classes`, k: "classesmod", c: "#0D9488" },
-    { name: "Calendar", href: `/business/${tenantId}/calendar`, k: "calendar", c: "#5AC8FA" },
+    { name: DOS_TOOLS.classes.name, href: desk("classes"), k: "classesmod", c: DOS_TOOLS.classes.c },
+    { name: DOS_TOOLS.calendar.name, href: desk("calendar"), k: "calendar", c: DOS_TOOLS.calendar.c },
     /* Stats left the tab bar for the grid (15 Sep 2026) — a studio's is the studio board */
     { name: DOS_TOOLS.stats.name, href: "/stats?tab=charts&seg=studio", k: "stats", c: DOS_TOOLS.stats.c },
-    { name: DOS_TOOLS.media.name, href: `/business/${tenantId}/media`, k: "media", c: DOS_TOOLS.media.c },
-    { name: "Students", href: `/business/${tenantId}/students`, k: "students", c: "#8B5CF6" },
-    { name: "Team", href: `/business/${tenantId}/staff`, k: "team", c: "#F97316" },
-    ...(isOwner ? [{ name: "Earnings", href: `/business/${tenantId}/earnings`, k: "earn", c: "#22C55E" } as Tile] : []),
-    { name: "Rooms", href: `/business/${tenantId}/rooms`, k: "rooms", c: "#3498DB" },
+    { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
+    { name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c },
+    ...(isOwner ? [{ name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c } as Tile] : []),
+    { name: DOS_TOOLS.memberships.name, href: desk("memberships"), k: "memberships", c: DOS_TOOLS.memberships.c },
+    { name: DOS_TOOLS.assets.name, href: desk("assets"), k: "assets", c: DOS_TOOLS.assets.c },
+    { name: DOS_TOOLS.rooms.name, href: desk("rooms"), k: "rooms", c: DOS_TOOLS.rooms.c },
+    { name: DOS_TOOLS.media.name, href: desk("media"), k: "media", c: DOS_TOOLS.media.c },
   ];
 
   return (

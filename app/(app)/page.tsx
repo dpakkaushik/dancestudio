@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findSupportThreads } from "@/repositories/support";
@@ -76,8 +76,10 @@ export default async function HomePage() {
      six-step organization card, and that card became the GST card. They were
      four round-trips on every single Home load for a component that is not
      drawn any more; what is still asked for is what is still shown. */
-  const [businesses, invites, plan, eventsHostId, threads] = await Promise.all([
-    findMyTenants(supabase),
+  const [memberships, invites, plan, eventsHostId, threads] = await Promise.all([
+    /* WITH the role (18 Sep 2026): an artist's grid needs the page they OWN, not
+       the first business they belong to — a studio they teach at is not theirs */
+    findMyMemberships(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
     findMyPendingInvites(supabase),
@@ -91,6 +93,7 @@ export default async function HomePage() {
        from Home. One read, drawn only when a thread exists. */
     isOrg ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
   ]);
+  const businesses = memberships.map((m) => m.tenant);
   /* the newest conversation, and whether DanceOS has said something unread */
   const thread = threads[0] ?? null;
   const unread = threads.reduce((n, t) => n + t.unread, 0);
@@ -149,13 +152,12 @@ export default async function HomePage() {
   /* Manage only appears if you actually run something (7135): the door to what you
      manage, and offering it to somebody who manages nothing is a door onto an empty room */
   const canManage = businesses.length > 0;
-  /* A PERSON's grid may carry their own page's desks (an artist's register,
-     students, team). R15 (9 Sep 2026) gave every organization a hidden `org`
-     tenant to hang its events on, so `businesses[0]` is never the business
-     anybody means. AN ORGANIZATION GETS NO DESK HERE AT ALL (17 Sep 2026): its
-     grid is Studios · Events · Stats, and each studio's desks are on that
-     studio's own home — `tilesFor` in home-kit says why. */
-  const firstTenant = isOrg ? null : (businesses.find((t) => t.type !== "org")?.id ?? null);
+  /* THE GRID FOR THIS KIND OF ACCOUNT (18 Sep 2026, the user's list for all four
+     — `tilesFor` in home-kit carries it). An artist's grid opens the desks of the
+     page they OWN (Team, Students); a user's and an organization's carry no
+     desk of a business at all — a studio's desks are on the studio's own home. */
+  const homeKind = isOrg ? "org" : isArtist ? "artist" : "user";
+  const pageId = isOrg ? null : (memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant.id ?? null);
 
   /* the header, shown and nothing else: adding and removing moved into the
      Edit-profile sheet on 16 Sep 2026, at the user's instruction */
@@ -342,7 +344,7 @@ export default async function HomePage() {
             sheet that covers the deck, so it is opaque and it is above. ── */}
         {orgAwaitingApproval ? null : (
           <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-            <BizSection role={profile.role} tenantId={firstTenant} eventsHostId={isOrg ? eventsHostId : null} plan={profile.role === "org" ? null : isArtist ? "active" : "locked"}>
+            <BizSection kind={homeKind} pageId={pageId} eventsHostId={isOrg ? eventsHostId : null} plan={isOrg ? null : isArtist ? "active" : "locked"}>
               {/* somebody has asked you onto their team, and only you can answer —
                   the same gold ask the class page wears when a class is handed over */}
               {invites.map((inv) => (

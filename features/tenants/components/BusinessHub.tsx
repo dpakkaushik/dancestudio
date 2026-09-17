@@ -112,8 +112,13 @@ export function BusinessHub({
   cityCentres = [],
   studioVerification = {},
   userId = null,
+  attended = [],
 }: {
   memberships: MyMembership[];
+  /** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid:
+   *  a person's Studios tile lists them) — every business behind one of your
+   *  bookings, once each. A person's list; an organization books nothing. */
+  attended?: MyMembership["tenant"][];
   roomCounts: Record<string, number>;
   role: ProfileRole;
   /** the plan is live — a person may open their artist page */
@@ -514,6 +519,22 @@ export function BusinessHub({
             {theirs.map((t) => plainCard(t, false))}
           </div>
         )}
+
+        {/* and the places you have been a student at (18 Sep 2026): the Studios
+            tile's second list. A studio you also teach at is not repeated. */}
+        {!isOrg && attended.filter((t) => !theirs.some((x) => x.id === t.id) && !mine.some((x) => x.id === t.id)).length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <Head>STUDIOS YOU HAVE TAKEN CLASSES AT</Head>
+            {attended
+              .filter((t) => !theirs.some((x) => x.id === t.id) && !mine.some((x) => x.id === t.id))
+              .map((t) => plainCard(t, false))}
+          </div>
+        )}
+        {!isOrg && attended.length === 0 && theirs.length === 0 && !myArtistPage ? (
+          <div style={{ marginTop: 20, fontSize: 11.5, color: SUB, padding: "0 2px" }}>
+            The studios you take classes at will be listed here once you have booked one.
+          </div>
+        ) : null}
       </div>
 
       {/* "New studio" bottom sheet — lifted from DanceOSApp.jsx:2659-2685 */}

@@ -2,12 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
-import { EvIcon, bookingWords, eventCodeOf, eventTimeWords, eventWhen } from "@/features/events/components/event-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findMyConfirmedClaims } from "@/repositories/claims";
 import { findMyEnrollments } from "@/repositories/enrollments";
-import { findMyEventBookings } from "@/repositories/events";
-import { EV_TINT, TYPE_LABEL } from "@/types/event";
+import { findMyMemberships } from "@/repositories/tenants";
+import type { MyClaimAsk } from "@/types/claim";
 import type { DanceClass } from "@/types/class";
 import type { MyEnrollment } from "@/types/enrollment";
 
@@ -29,14 +29,30 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
 });
 
-/** The learner's bookings — the prototype's "your calendar" view of booked classes. */
-const KINDS: Array<{ k: "all" | "class" | "event"; label: string }> = [
-  { k: "all", label: "All" },
-  { k: "class", label: "Classes" },
-  { k: "event", label: "Events" },
+/** YOUR CLASSES — the Home grid's Classes tile (18 Sep 2026, the user's list for
+ *  every kind of account: "Classes — Booked, Assist", and for an artist
+ *  "Manage — Create, Draft, Published, Completed"). Two segments and, for an
+ *  artist with a page, one door:
+ *   · BOOKED — the seats you hold (the prototype's S_bookings 6099, as before);
+ *   · ASSIST — the classes somebody put you on and you said yes to, as the
+ *     artist or as an assistant (a confirmed class_people row; an unanswered
+ *     ask is the Inbox's, not a class you are on);
+ *   · MANAGE › — your own page's register, where Create / Draft / Published /
+ *     Completed already live (ClassesManager), rather than a second copy here.
+ *  Events left this page for /my-events the same day; `?kind=event` links that
+ *  are out in the world land there (Rule 14). */
+type Show = "booked" | "assist";
+const SHOWS: Array<{ k: Show; label: string; aria: string }> = [
+  { k: "booked", label: "Booked", aria: "Show the classes you booked" },
+  { k: "assist", label: "Assist", aria: "Show the classes you teach or assist on" },
 ];
 
-export default async function MyClassesPage({ searchParams }: { searchParams: Promise<{ kind?: string | string[] }> }) {
+const when = (iso: string | null): string =>
+  iso
+    ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso))
+    : "no date yet";
+
+export default async function MyClassesPage({ searchParams }: { searchParams: Promise<{ show?: string | string[]; kind?: string | string[] }> }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -44,13 +60,27 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   if (!user) {
     redirect("/login");
   }
+  const params = await searchParams;
+  const kind = Array.isArray(params.kind) ? params.kind[0] : params.kind;
+  if (kind === "event") {
+    /* the old Events filter of this page (Rule 14: a link is a promise) */
+    redirect("/my-events");
+  }
+  const rawShow = Array.isArray(params.show) ? params.show[0] : params.show;
+  const show: Show = rawShow === "assist" ? "assist" : "booked";
 
-  const [{ kind: rawKind }, class_bookings, tickets] = await Promise.all([searchParams, findMyEnrollments(supabase), findMyEventBookings(supabase, user.id)]);
-  const k = Array.isArray(rawKind) ? rawKind[0] : rawKind;
-  const kind: "all" | "class" | "event" = k === "class" || k === "event" ? k : "all";
-  const showClasses = kind !== "event";
-  const showEvents = kind !== "class";
-  const confirmed = class_bookings.filter((e) => e.status === "enrolled").length + tickets.length;
+  const [class_bookings, artistOn, assistantOn, memberships] = await Promise.all([
+    findMyEnrollments(supabase),
+    findMyConfirmedClaims(supabase, "artist"),
+    findMyConfirmedClaims(supabase, "assistant"),
+    findMyMemberships(supabase),
+  ]);
+  const jobs: Array<MyClaimAsk & { job: "Teaching" | "Assisting" }> = [
+    ...artistOn.map((c) => ({ ...c, job: "Teaching" as const })),
+    ...assistantOn.map((c) => ({ ...c, job: "Assisting" as const })),
+  ].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
+  const myPage = memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null;
+  const booked = class_bookings.filter((e) => e.status === "enrolled").length;
 
   return (
     <div
@@ -65,127 +95,82 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         boxSizing: "border-box",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          padding: "8px 0 10px",
-        }}
-      >
-        {/* DosShelfHead "Your bookings" · "N confirmed" (6120) */}
-        <div style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2 }}>
-          Your bookings
-        </div>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "8px 0 10px", gap: 10 }}>
+        {/* DosShelfHead "Your classes" · "N booked" (6120) */}
+        <h1 style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2, margin: 0 }}>Your classes</h1>
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)" }}>{confirmed} confirmed</div>
-          {/* the same bookings as a calendar (Step 14) — day, week, month, schedule */}
-          <Link
-            href="/calendar"
-            style={{
-              fontSize: 11.5,
-              fontWeight: 800,
-              color: INK,
-              textDecoration: "none",
-              border: "1px solid var(--el)",
-              borderRadius: 999,
-              padding: "6px 12px",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
+            {show === "booked" ? `${booked} booked` : `${jobs.length} on`}
+          </div>
+          {/* the same classes as a calendar (Step 14) — day, week, month, schedule */}
+          <Link href="/calendar" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
             Calendar ›
           </Link>
         </div>
       </div>
 
       <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
-        {KINDS.map(({ k: key, label }) => {
-          const on = kind === key;
+        {SHOWS.map(({ k, label, aria }) => {
+          const on = show === k;
           return (
-            <Link key={key} href={key === "all" ? "/my-classes" : `/my-classes?kind=${key}`} aria-label={key === "all" ? "Show all bookings" : key === "class" ? "Show classes only" : "Show events only"} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+            <Link key={k} href={k === "booked" ? "/my-classes" : `/my-classes?show=${k}`} aria-label={aria} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
               {label}
             </Link>
           );
         })}
+        {myPage ? (
+          /* MANAGE (an artist's own register): a door, not a third copy of Draft / Published / Completed */
+          <Link href={`/business/${myPage.id}/classes`} aria-label="Manage the classes on your artist page" style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", color: SUB }}>
+            Manage ›
+          </Link>
+        ) : null}
       </div>
 
-      {showClasses && class_bookings.map((e) => (
-        <ClassTile
-          key={e.id}
-          danceClass={toTileClass(e)}
-          tenantName={e.tenantName}
-          city={e.tenantCity}
-          href={`/c/${e.shareSlug}`}
-          actions={
-            <EnrollButton
-              sessionId={e.sessionId}
-              isFull={false}
-              isSignedIn
-              mine={{ id: e.id, status: e.status }}
-              priceInr={e.priceInr}
-              shareSlug={e.shareSlug}
-            />
-          }
-        />
-      ))}
-      {showClasses && class_bookings.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px 20px",
-            color: SUB,
-            border: "1.5px dashed var(--el)",
-            borderRadius: 20,
-            fontSize: 13,
-          }}
-        >
-          Nothing booked yet —{" "}
-          <Link href="/classes" style={{ color: "#5AC8FA", fontWeight: 800 }}>
-            find a class
-          </Link>{" "}
-          to get started.
-        </div>
-      )}
-
-      {/* ── YOUR TICKETS (Step 21) — the seats and entries you hold, soonest first.
-          An event booking is a booking too (S_bookings 6099); each row opens the
-          event's own page, where the pass and the cancel live. ── */}
-      {showEvents && tickets.length > 0 && (
+      {show === "booked" ? (
         <>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "22px 0 10px" }}>
-            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>Your tickets</div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: SUB }}>
-              {tickets.length} {tickets.length === 1 ? "booking" : "bookings"}
+          {class_bookings.map((e) => (
+            <ClassTile
+              key={e.id}
+              danceClass={toTileClass(e)}
+              tenantName={e.tenantName}
+              city={e.tenantCity}
+              href={`/c/${e.shareSlug}`}
+              actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
+            />
+          ))}
+          {class_bookings.length === 0 && (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13 }}>
+              Nothing booked yet —{" "}
+              <Link href="/classes" style={{ color: "#5AC8FA", fontWeight: 800 }}>
+                find a class
+              </Link>{" "}
+              to get started.
             </div>
-          </div>
-          {tickets.map((t) => {
-            const tint = EV_TINT[t.eventCat];
-            return (
-              <Link
-                key={t.id}
-                href={`/e/${t.eventShareSlug}`}
-                aria-label={`Open ${t.eventTitle}`}
-                style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${tint}`, borderRadius: 16, padding: "11px 13px", marginBottom: 8, textDecoration: "none", color: INK }}
-              >
-                <span style={{ width: 34, height: 34, borderRadius: 11, flexShrink: 0, background: `${tint}1f`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                  <EvIcon cat={t.eventCat} size={18} color={tint} />
+          )}
+        </>
+      ) : (
+        <>
+          {jobs.map((c) => (
+            <Link
+              key={c.id}
+              href={`/c/${c.classShareSlug}`}
+              aria-label={`Open ${c.classTitle}`}
+              style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${c.job === "Teaching" ? "#F59E0B" : "#8B5CF6"}`, borderRadius: 16, padding: "11px 13px", marginBottom: 8, textDecoration: "none", color: INK }}
+            >
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.classTitle}</span>
+                <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
+                  {c.tenantName} · {when(c.startsAt)}
                 </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.eventTitle}</span>
-                  <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
-                    {eventWhen(t.startDate, t.startDate)} · {eventTimeWords(t.startTime)} · {t.venue}
-                  </span>
-                  <span style={{ display: "block", fontSize: 10, color: "var(--muted)", marginTop: 2 }}>
-                    {TYPE_LABEL[t.eventCat]} · {bookingWords(t)}
-                  </span>
-                </span>
-                <span style={{ flexShrink: 0, textAlign: "right" }}>
-                  <span style={{ display: "block", fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace', fontSize: 10, color: "var(--muted)" }}>{eventCodeOf(t.id)}</span>
-                  <span style={{ display: "block", fontSize: 10.5, fontWeight: 800, color: tint, marginTop: 3 }}>{t.checkedInAt ? "Checked in" : t.amountInr > 0 ? `₹${t.amountInr}` : "Free"}</span>
-                </span>
-              </Link>
-            );
-          })}
+              </span>
+              <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: c.job === "Teaching" ? "#F59E0B" : "#8B5CF6" }}>{c.job}</span>
+            </Link>
+          ))}
+          {jobs.length === 0 && (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
+              Nothing you teach or assist on yet. A studio asks you onto a class, you say yes in your Inbox, and it appears here.
+            </div>
+          )}
         </>
       )}
     </div>

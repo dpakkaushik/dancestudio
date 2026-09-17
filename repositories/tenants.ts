@@ -4,7 +4,7 @@ import type { ProfileRole } from "@/types/profile";
 import type { AcceptedMethods, Tenant, TenantType } from "@/types/tenant";
 import type { SocialLink } from "@/types/profile";
 
-interface TenantRow {
+export interface TenantRow {
   profile_photo_path?: string | null;
   id: string;
   type: TenantType;

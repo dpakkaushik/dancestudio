@@ -110,6 +110,48 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
     }));
 }
 
+/** THE CLASSES YOU ASSIST ON, OR TEACH (18 Sep 2026, the user's Home grid: a
+ *  person's Classes tile is "Booked, Assist"). Confirmed claims of one kind for
+ *  the signed-in person, with the class behind each — the same row shape the
+ *  Inbox's asks use, so the tile draws them with the same card. Says
+ *  `user_id = auth.uid()` out loud for the reason findMyPendingClaims does. */
+export async function findMyConfirmedClaims(supabase: SupabaseClient, kind: ClaimKind): Promise<MyClaimAsk[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("class_people")
+    .select(
+      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses (name), class_sessions (starts_at))`
+    )
+    .eq("user_id", user.id)
+    .eq("kind", kind)
+    .eq("status", "confirmed")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    throw new Error(`claims.findMineConfirmed failed: ${error.message}`);
+  }
+  return (data as unknown as MyAskRow[])
+    .filter((r) => r.classes)
+    .map((r) => ({
+      ...toClaim(r),
+      classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
+      classStyle: r.classes!.style,
+      classShareSlug: r.classes!.share_slug,
+      tenantName: r.classes!.businesses?.name ?? "",
+      startsAt:
+        [...(r.classes!.class_sessions ?? [])]
+          .map((s) => s.starts_at)
+          .sort((a, b) => a.localeCompare(b))[0] ?? null,
+    }));
+}
+
 export async function claimPerson(
   supabase: SupabaseClient,
   input: {

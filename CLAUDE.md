@@ -1,6 +1,62 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (17 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (17–18 Sep 2026) — replaced on every push (Rule 13)
+
+> ### THE HOME GRID FOR ALL FOUR KINDS OF ACCOUNT — THE USER'S LIST, TILE FOR TILE (18 Sep 2026)
+> The user, in one message: *"home tab options for all different users. A. Users
+> — 1. Classes: Booked, Assist 2. Events: Booked as Participant, Booked as
+> Spectator, for Assisting 3. Calendar 4. Crews: crews you lead, crews you are a
+> member of, add crew 5. Stats 6. Studios: studios you have taken classes at.
+> B. Users pro with artist tools — the same, plus Classes: Manage (Create, Draft,
+> Published, Completed); Studios: taught at, taken classes at; 7. Team 8. Students
+> 9. Routines 10. Earnings 11. Memberships 12. Assets 13. Media. C. Organization —
+> 1. Events (Create; Draft, Published, Completed) 2. Studios (Create) 3. Team
+> 4. Earnings (combined from events and all studios) 5. Stats. D. Studio —
+> 1. Classes (Manage) 2. Calendar 3. Stats 4. Team (Faculty, Assistants, other
+> members) 5. Students 6. Earnings 7. Memberships 8. Assets 9. Rooms 10. Media.
+> this should fix all home tab option logics for all 4 types of users."*
+> Deviation row R18 carries it.
+> * **`tilesFor(kind, pageId, eventsHostId)`** in `home-kit.tsx` is the whole
+>   decision for a user, an artist (plan live) and an organization; a studio's
+>   grid sits beside its home in `app/(app)/business/[tenantId]/page.tsx`. Every
+>   tile's name and colour comes from `DOS_TOOLS` (biz-kit), which gained
+>   Routines · Memberships · Assets · Calendar · Crews so both ends of a door read
+>   one vocabulary. Home reads `findMyMemberships` WITH roles now: an artist's
+>   Team and Students tiles open the page they OWN, not the first business they
+>   belong to (a studio they teach at was that, before).
+> * **New pages:** `/my-events` — Participant · Spectator · Assisting: the tickets
+>   you hold by kind, and the events run by a business you are on the team of but
+>   do not own, drawn with the one event card and opening the manager;
+>   `/business/earnings` — an organization's earnings COMBINED: the `my_org_stats`
+>   rows turned to face the money, the total across every studio and the hosting
+>   row, then a row per source with its own ledger door. **Re-cut:** `/my-classes`
+>   is Booked · Assist (confirmed `class_people` rows of either kind, labelled
+>   Teaching / Assisting, via the new `findMyConfirmedClaims`) with **Manage ›**
+>   to an artist's own register rather than a second Draft / Published / Completed;
+>   Events left it, and `?kind=event` redirects (Rule 14). The **hub** gained
+>   STUDIOS YOU HAVE TAKEN CLASSES AT for a person (`findStudiosAttended`: every
+>   business behind one of your bookings, once each, a cancelled booking included
+>   — you were still there).
+> * **Four tiles open the prototype's own "nothing here yet" (19164-19169), not
+>   nothing:** Routines (S_choreos 17115), Memberships (S_memberships 16846) and
+>   Assets (S_assets 16791) have a prototype screen and no desk; an
+>   organization's Team has neither table nor screen (an organization is one
+>   login, 8 Sep). `NotBuiltYet` says what the desk will be, that it is not
+>   built, and offers Go back. Each has a backlog row. Drawing them was the
+>   user's explicit ask — a grid missing what was asked for is as much a lie as
+>   a tile that opens nothing.
+> * **Words settled in passing:** an artist's **Media** tile opens the Profile
+>   tab, where their pictures are edited (the Media desk is a studio's); a
+>   person's **Studios** tile opens the hub; a studio's **Team** still offers
+>   trainer | staff — "Faculty, Assistants and other members" is a vocabulary
+>   change on `member_role`, a CHECK, left for a decision (backlog).
+> * Verified: typecheck 0 · lint 0 · `next build` green (eight new routes) ·
+>   **e2e 50/51 in 8.6 min**, the whole suite on one worker against the
+>   production build — the happy path 14/14 in the same run, its spectator seat
+>   now asserted under `/my-events?show=spectator` and absent under Participant.
+>   The one red is `paid-webhook`'s earnings step, the harness cap recorded in
+>   #0w (the test phone owner's 55 leftover studios against `findMyTenants`'
+>   oldest-50 read) — deterministic, and not this slice.
 
 > ### AN ORGANIZATION'S HOME OFFERS NO CLASSES — AND THE DATABASE WILL NOT LET IT HAVE ONE (17 Sep 2026, later again)
 > The user: *"organization home tab should not have classes options. classes can
@@ -2053,6 +2109,15 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE HOME GRID FOR ALL FOUR KINDS OF ACCOUNT — 18 Sep 2026, no step number —
+  BUILT, no migration.** The user's list, tile for tile (deviation row R18): a
+  user, an artist, an organization and a studio each get the doors that are
+  theirs. Two new pages (`/my-events` with Participant · Spectator · Assisting;
+  `/business/earnings`, an organization's money combined), `/my-classes` re-cut
+  to Booked · Assist · Manage ›, the hub's STUDIOS YOU HAVE TAKEN CLASSES AT, and
+  four tiles that open the prototype's own "nothing here yet" (Routines,
+  Memberships, Assets, an organization's Team) until their desks exist. Detail
+  at the top.
 - **AN ORGANIZATION'S HOME OFFERS NO CLASSES — 17 Sep 2026, no step number —
   BUILT, MIGRATION APPLIED, happy path 14/14, proofs **28/29 in the suite run, then 29/29** — the one red was `rls-proof-classes` on MY OWN harness bug (`my_org_business()` returns the hosting row's uuid itself, not a row, so `.id` off it was "" and the RPC refused a blank uuid — which check 9 rightly reported as "the wrong reason"); fixed, and 10/10 alone with the hosting row refused in the trigger's words and `why_no_class` null for a studio.** The user:
   *"organization home tab should not have classes options. classes can only be
@@ -5375,6 +5440,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R15 | An event belongs to the business hosting it, and a studio account IS that business | **An event belongs to the ORGANIZATION.** Each organization gets one tenant of its own (`tenants.type = 'org'`, unlisted for ever) which hosts its events, so `/business/<id>/events` is ONE desk instead of one per studio, and the public event page prints the organization's name as its host. `save_event` refuses a studio host. The organization stays unbrowsable — the hosting row is excluded from Discover, search, `admin_businesses` and every public page, and cannot be followed; `event_host_is_public()` (a verified organization, or a listed studio / artist page) is what decides an event's publicness now, so "listed" keeps meaning "on Discover" | The user's ask (9 Sep 2026): "right now event is inside studio, though it should be at org level." An event has always carried its own venue, city and map link, so the studio on it was never the place — only the owner. Asked whose name a public event should carry, given R9, the user chose the organization, "events only" |
 | R16 | Onboarding asks for a photo and links; nothing else is evidence | **An organization must attach 5–10 photos of its space at signup**, on a fifth onboarding screen, and `request_org_verification` refuses a request under five. They live in a PRIVATE bucket (`org-proof`) readable only by the organization and a platform admin, through short-lived signed URLs; the admin's queue draws them beside the links | The user's ask (9 Sep 2026): "at the time of signup along with the social media the org must attach min 5 to max 10 pics which will be visible to admin for the verification." The public `media` bucket would have made pictures of somebody's premises readable by anybody who guessed the URL — so this is the one thing in the app with a private bucket, and the screen tells the organization so |
 | R17 | A studio owner's Home IS the studio: Today's schedule is its rooms, Studio Tools are its desks (S_homebiz 7354-7660) | **An ORGANIZATION's Home carries no studio's desk and no classes option at all** (17 Sep 2026): the deck is the events it hosts today, the doors are Manage and Events, the grid is Studios · Events · Stats. Each studio's day and desks are on that studio's own home (`/business/{id}`, since 14 Sep). The database refuses a class on the hosting row, and on an artist page whose plan has lapsed (`why_no_class`, `20260917180000`) | The user: *"organization home tab should not have classes options. classes can only be created by users with artist subscription and studios."* The prototype's studio Home is ONE studio's; an organization runs several, so its Home was pointing at the first by accident, and a class is a studio's or an artist's to open |
+| R18 | ONE tool grid, the prototype's (DOS_TOOLS 2931; BizSection 2497-2583 on a dancer's or artist's Home; S_homebiz 7590-7620 on a studio's) | **The Home grid is the user's list, kind by kind** (18 Sep 2026). USER — Classes (Booked, Assist) · Events (Participant, Spectator, Assisting) · Calendar · Crews · Stats · Studios (taken classes at). ARTIST (plan live) — the same six, then Team · Students · Routines · Earnings · Memberships · Assets · Media. ORGANIZATION — Events · Studios · Team · Earnings (combined) · Stats. STUDIO (its own home) — Classes · Calendar · Stats · Team · Students · Earnings · Memberships · Assets · Rooms · Media. Routines, Memberships, Assets and an organization's Team open the prototype's own "nothing here yet" until their desks exist | The user: *"this should fix all home tab option logics for all 4 types of users."* The prototype has one grid for three roles it no longer has; the app has four kinds of account, and each gets the doors that are its |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -5417,6 +5483,7 @@ nothing to lift.
 |-----|--------------|-------------|
 | **THE IDENTIFIERS PASS (owed since 16 Sep 2026, by the user's choice — "strings now, identifiers next").** The database and every string that reaches it say `business`, `class_people`, `class_bookings`, `studio_photos`, `category`…; the TypeScript still says `Tenant`, `tenantId`, `findMyTenants`, `Claim`, `enrollInSession`, `ev.cat`, `EventCat`, and the files and folders are still `repositories/tenants.ts`, `features/tenants/`, `features/enrollments/`, `app/…/[tenantId]`, `scripts/rls-proof-tenants.ps1`. ~2,200 occurrences in 207 files, camelCase and file names only — a pure identifier rename `tsc` verifies. Route FOLDER names are Next param names, not URLs, so `[tenantId]` → `[businessId]` changes no public path (Rule 14 is not triggered) | — | one mechanical pass, typecheck as the gate; nothing else in the same push |
 | **What the rename deliberately left (16 Sep 2026):** `admin_audit.subject_kind` holds `tenant` on its 161 pre-rename rows for ever — the table is immutable by design, so its CHECK admits both words and `AuditLog` reads the old one as the new; three policy-pinned helpers keep `p_tenant_id` as their PARAMETER name (`is_business_member`, `is_business_owner`, `event_host_is_public` — called positionally, invisible to callers; freeing them means dropping and re-creating the policies that pin them); two `storage.objects` policy NAMES still say "…their tenant folder" (Supabase owns that table and refused the rename — cosmetic); the storage folders `tenants/`, `proof/`, `avatars/`, `gallery/` keep their names because objects live there; `class_bookings.status = 'enrolled'`, `businesses.type = 'org'`, `business_members.member_role`, `profiles.role`, `leads`, `classes.room` are unrenamed by decision (each has a COMMENT); `artist_plans_legacy` is dead history that could simply be dropped | — | the parameter names when a policy is next rewritten anyway; `drop table artist_plans_legacy` when somebody is sure |
+| **The Home grid for all four kinds, what it left (18 Sep 2026):** **Routines**, **Memberships** and **Assets** are tiles onto `NotBuiltYet` — S_choreos (17115), S_memberships (16846) and S_assets (16791) are the screens to lift, the two money ones after the live Cashfree account; an **organization's Team** is the same door with no table behind it (organization members and their powers are a decision — an organization is one login); a studio's **Team** offers trainer \| staff where the user said "Faculty, Assistants and other members" — `member_role` is a CHECK, so new words are a migration and a decision; an artist's **Media** tile opens the Profile tab (their pictures live in its Edit sheet) rather than a desk of its own; **for Assisting** events are those of a business you are on the team of but do not own — there is no per-event helper role (E7); an artist's own page's events have no tile of their own (the register's Events › chip is the door); the org's grid heading is still the prototype's **Studio Tools** | S_choreos 17115, S_memberships 16846, S_assets 16791, S_bizhub 2585 | three lifts; a vocabulary decision; an organization-members slice |
 | **The organization's Home re-cut, what it left (17 Sep 2026):** the register's **Create class** button does not read `why_no_class` before the form — an artist whose plan has lapsed fills the form and meets the database's sentence on Publish (the hosting row never reaches the form: it redirects to the events desk); the organization's grid heading still says **Studio Tools** over Studios · Events · Stats (the prototype's word for a studio owner's grid, 7616 — an organization has no prototype screen of its own); `/managed` still lists the organization's studios' classes as things it manages (a view with Manage › doors, not a door to creating one) | S_homebiz 7590-7620 | one `why_no_class` read on the register page; the heading is the user's word to pick |
 | **The chrome re-cut, what it left (15 Sep 2026):** a **studio cannot be renamed** from its home — `update_tenant_profile` takes no `p_name`, so the pencil edits About, Since, phone, links and the pin but not the name (a person's name IS editable); an **organization with several studios** gets the eye pointing at its FIRST studio (a chooser is a decision); the eye on the bar is a door, so the **Profile and Stats pages have no lit tab** while open — they read as drill pages with the back chip | 19313-19396; S_profiletab 10613 | a `p_name` on `update_tenant_profile` (drop + recreate — the overload lesson); a studio chooser if an organization asks |
 | **The header slice, what it left (15 Sep 2026, re-read 16 Sep):** the **crew page** still draws its own 206 square rather than `IdentityHero` (a crew has a photo and no header pictures — a decision about what a crew's header would show); ~~reordering~~ **settled 16 Sep 2026 — the user: "order doesn't matter"**, so insertion order stands and there is nothing to build; an **organization's Home** has an empty header (it is not a place — decision (c)); a **trainer** may change a studio's disc but not its header, because the files go into the OWNER's folder in the proof bucket (a per-studio folder would let a trainer add — needs a storage-policy change), and since 16 Sep the header block simply is not drawn in a trainer's Edit sheet; the header is the **206 square**, not a full-width banner, by the user's choice — `HERO_HEAD_W/H` are the tweak; no **proof script** yet for the min-one rule or the public read policy (`shoot-hero.js` covers both from the browser) | S_profiletab 10577, 11093 | a crew decision; a per-studio proof folder if a trainer ever needs to add; a `.ps1` proof after the migration lands |

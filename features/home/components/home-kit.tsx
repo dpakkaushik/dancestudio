@@ -3,8 +3,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { CrewI, dosToolPaint } from "@/features/crews/components/crew-kit";
 import { EventI } from "@/features/discovery/components/discover-kit";
 import { StudioI } from "@/features/shell/components/shell-glyphs";
+import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, INK, MUTED } from "@/lib/design/tokens";
-import type { ProfileRole } from "@/types/profile";
 
 /** Home's small parts, lifted from the prototype: the type scale a shelf is
  *  headed in (DOS_TYPE 3427), the shelf head itself (DosShelfHead 3446) and the
@@ -93,6 +93,27 @@ const GLYPH: Record<string, ReactNode> = {
       <path d="M20.5 15.5l-4.6-4.6a1.5 1.5 0 0 0-2.1 0L6.5 18.2" />
     </>
   ),
+  /* the three desks named on 18 Sep 2026 before they exist: a routine is a
+     piece of music you move to, a membership is a card, an asset is a box */
+  routines: I(
+    <>
+      <path d="M9 18V6l9-2v12" />
+      <circle cx="6.5" cy="18" r="2.5" />
+      <circle cx="15.5" cy="16" r="2.5" />
+    </>
+  ),
+  memberships: I(
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2.5" />
+      <path d="M3 10.5h18M7 14.5h4" />
+    </>
+  ),
+  assets: I(
+    <>
+      <path d="M12 3.5 20 7.5v9l-8 4-8-4v-9z" />
+      <path d="M4 7.5l8 4 8-4M12 11.5v9" />
+    </>
+  ),
 };
 
 export interface Tile {
@@ -102,73 +123,94 @@ export interface Tile {
   c: string;
 }
 
-/** The tiles, in the prototype's order and colours (DOS_TOOLS 2931), each mapped
- *  to a door that exists in the app. Events is not an artist tool (2531-2540);
- *  Routines and Reports have no page yet, so they are not drawn — a tile that
- *  opens nothing is a lie. Students and Team are a business's own, so they need
- *  one to point at.
- *
- *  EVENTS IS AN ORGANIZATION'S TOOL (11 Sep 2026, the user: "I told you events
- *  are gonna be at org level — right now I can't see events on my org page").
- *  R15 made an event belong to the organization, hosted on its own hidden
- *  tenant row, and the desk for it has existed at /business/{host}/events since
- *  — but the only door was a row inside the studios hub, two taps away, and an
- *  organization's Home never mentioned it. Now it is a tile, where the other
- *  tools are, pointing at the organization's ONE events desk.
- *
- *  AN ORGANIZATION'S TOOLS ARE THE THINGS IT IS (17 Sep 2026, the user:
- *  "organization home tab should not have classes options. classes can only be
- *  created by users with artist subscription and studios"). It runs studios, it
- *  hosts events, it reads the board across them — Studios · Events · Stats. A
- *  class, a room, a student, a team member and a studio calendar are a STUDIO's,
- *  and live on the studio's own home one tap inside Studios; a person's calendar,
- *  crews and earnings are a person's, and an organization is not one
- *  (`guard_person_only`). Every tile that used to open the FIRST studio's desk is
- *  gone with them — an organization with two studios was being pointed at one of
- *  them by accident. The database keeps the rule too: a class on the hosting row
- *  is refused (`20260917180000`). */
-const tilesFor = (role: ProfileRole, tenantId: string | null, eventsHostId: string | null, statsHref: string): Tile[] =>
-  role === "org"
-    ? [
-        { name: "Studios", href: "/business", k: "studios", c: "#3B82F6" },
-        ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
-        { name: "Stats", href: statsHref, k: "stats", c: "#A855F7" },
-      ]
-    : personTiles(tenantId, eventsHostId, statsHref);
+/** WHO THE GRID IS FOR. A person is a user, or an artist while the plan is live;
+ *  an organization is the third. A STUDIO's own grid is built beside the studio's
+ *  home (`app/(app)/business/[tenantId]/page.tsx`), because every one of its
+ *  doors is that studio's. */
+export type HomeKind = "user" | "artist" | "org";
 
-/** a person's grid — a user's, or an artist's with their page's desks */
-const personTiles = (tenantId: string | null, eventsHostId: string | null, statsHref: string): Tile[] => [
-  { name: "Calendar", href: "/calendar", k: "calendar", c: "#5AC8FA" },
-  /* Stats left the tab bar for the grid (15 Sep 2026) — the record, the history
-     and the boards. AN ORGANIZATION'S STATS ARE ITS STUDIOS' (17 Sep 2026): it
-     does not dance, so its tile opens the combined dashboard, not a person's record */
-  { name: "Stats", href: statsHref, k: "stats", c: "#A855F7" },
-  ...(eventsHostId ? [{ name: "Events", href: `/business/${eventsHostId}/events`, k: "events", c: "#F59E0B" } as Tile] : []),
-  { name: "Crews", href: "/crews", k: "crews", c: "#DC2626" },
-  { name: "Studios", href: "/business", k: "studios", c: "#3B82F6" },
-  { name: "Classes", href: tenantId ? `/business/${tenantId}/classes` : "/classes", k: "classesmod", c: "#0D9488" },
-  { name: "Earnings", href: "/earnings", k: "earn", c: "#22C55E" },
-  ...(tenantId
-    ? [
-        { name: "Students", href: `/business/${tenantId}/students`, k: "students", c: "#8B5CF6" } as Tile,
-        { name: "Team", href: `/business/${tenantId}/staff`, k: "team", c: "#F97316" } as Tile,
-      ]
-    : []),
-];
+/** THE HOME GRID, FOR ALL FOUR KINDS OF ACCOUNT (18 Sep 2026 — the user's list,
+ *  verbatim in the deviations table, row R18). It replaces a grid that had grown
+ *  by accretion: a plain user was offered Earnings and an artist's Students, an
+ *  organization its first studio's register, everybody a Classes tile that
+ *  opened the Discover listing.
+ *
+ *  A. USER — Classes (booked, assist) · Events (participant, spectator, assisting)
+ *     · Calendar · Crews · Stats · Studios (taken classes at).
+ *  B. ARTIST (the plan is live) — the same six, then Team · Students · Routines ·
+ *     Earnings · Memberships · Assets · Media. The desks that are their PAGE's
+ *     (Team, Students) open that page, or the hub where the page is made when
+ *     there is none yet; Media is their pictures, which live in the Profile tab's
+ *     Edit sheet (16 Sep 2026); Routines, Memberships and Assets open the
+ *     prototype's own "nothing here yet" until their desks exist.
+ *  C. ORGANIZATION — Events · Studios · Team · Earnings (combined) · Stats. Team
+ *     is "nothing here yet": an organization is one login today.
+ *  D. STUDIO — on its own home: Classes · Calendar · Stats · Team · Students ·
+ *     Earnings · Memberships · Assets · Rooms · Media.
+ *
+ *  The prototype's list (DOS_TOOLS 2931) is the vocabulary — names, colours,
+ *  glyphs; which tiles a kind gets is the user's decision. Events on an
+ *  organization points at its ONE events desk (R15). */
+export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: string | null): Tile[] => {
+  if (kind === "org") {
+    return [
+      { name: DOS_TOOLS.events.name, href: eventsHostId ? `/business/${eventsHostId}/events` : "/business", k: "events", c: DOS_TOOLS.events.c },
+      { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
+      { name: DOS_TOOLS.team.name, href: "/business/team", k: "team", c: DOS_TOOLS.team.c },
+      { name: DOS_TOOLS.earn.name, href: "/business/earnings", k: "earn", c: DOS_TOOLS.earn.c },
+      { name: DOS_TOOLS.stats.name, href: "/business/stats", k: "stats", c: DOS_TOOLS.stats.c },
+    ];
+  }
+  const person: Tile[] = [
+    { name: DOS_TOOLS.classes.name, href: "/my-classes", k: "classesmod", c: DOS_TOOLS.classes.c },
+    { name: DOS_TOOLS.events.name, href: "/my-events", k: "events", c: DOS_TOOLS.events.c },
+    { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
+    { name: DOS_TOOLS.crews.name, href: "/crews", k: "crews", c: DOS_TOOLS.crews.c },
+    { name: DOS_TOOLS.stats.name, href: "/stats", k: "stats", c: DOS_TOOLS.stats.c },
+    { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
+  ];
+  if (kind === "user") return person;
+  /* an artist's page's desks — or the hub, which is where the page is made */
+  const desk = (path: string) => (pageId ? `/business/${pageId}/${path}` : "/business");
+  return [
+    ...person,
+    { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
+    { name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c },
+    { name: DOS_TOOLS.routines.name, href: "/routines", k: "routines", c: DOS_TOOLS.routines.c },
+    { name: DOS_TOOLS.earn.name, href: "/earnings", k: "earn", c: DOS_TOOLS.earn.c },
+    { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
+    { name: DOS_TOOLS.assets.name, href: "/assets", k: "assets", c: DOS_TOOLS.assets.c },
+    { name: DOS_TOOLS.media.name, href: "/profile", k: "media", c: DOS_TOOLS.media.c },
+  ];
+};
 
 /** BizSection (2497-2583) — the ONE "Run your business" section on Home. The
  *  heading is the prototype's own word for the grid: "Artist Tools" on a
- *  dancer's or artist's Home, "Studio Tools" on a studio owner's (7616). The
- *  artist-plan lock is a product decision nobody has made, so every tile is
- *  open. `children` sits between the heading and the grid — Home puts the
- *  pending team invites there. */
-export function BizSection({ role, tenantId, eventsHostId = null, plan = null, children }: { role: ProfileRole; tenantId: string | null; /** R15: the organization's own events host — the Events tile points at its desk; null draws no tile */ eventsHostId?: string | null; /** the Artist plan's state — the badge on the head (2500-2520); null draws none (a studio) */ plan?: "active" | "locked" | null; children?: ReactNode }) {
-  const tiles = tilesFor(role, tenantId, eventsHostId, role === "org" ? "/business/stats" : "/stats");
+ *  dancer's or artist's Home, "Studio Tools" on a studio owner's (7616).
+ *  `children` sits between the heading and the grid — Home puts the pending
+ *  team invites there. */
+export function BizSection({
+  kind,
+  pageId,
+  eventsHostId = null,
+  plan = null,
+  children,
+}: {
+  kind: HomeKind;
+  /** an artist's own page (the one they OWN), for the desks that are its */
+  pageId: string | null;
+  /** R15: the organization's own events host — the Events tile points at its desk */
+  eventsHostId?: string | null;
+  /** the Artist plan's state — the badge on the head (2500-2520); null draws none (an organization) */
+  plan?: "active" | "locked" | null;
+  children?: ReactNode;
+}) {
+  const tiles = tilesFor(kind, pageId, eventsHostId);
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
         <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_DISPLAY }}>
-          {role === "org" ? "Studio Tools" : "Artist Tools"}
+          {kind === "org" ? "Studio Tools" : "Artist Tools"}
         </span>
         {plan === "active" ? (
           <Link href="/subscription" aria-label="Artist plan active" style={{ marginLeft: "auto", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "rgba(236,72,153,.16)", color: "#EC4899", textDecoration: "none" }}>

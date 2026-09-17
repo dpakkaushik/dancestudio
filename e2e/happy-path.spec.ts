@@ -856,10 +856,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByTestId("held-booking")).toBeVisible({ timeout: 15_000 });
     await expect(learner.getByText(/You.re booked/)).toBeVisible();
     await expect(learner.getByText("1 booked · 149 still available")).toBeVisible();
-    // and it sits under Your tickets on My classes
-    await learner.goto("/my-classes");
-    await expect(learner.getByText("Your tickets")).toBeVisible();
+    // and it sits on YOUR EVENTS, under "Booked as a spectator" (18 Sep 2026: the
+    // Home grid's Events tile — participant · spectator · assisting — replaced the
+    // Your tickets shelf that used to sit under the classes)
+    await learner.goto("/my-events?show=spectator");
+    await expect(learner.getByRole("heading", { name: "Your events" })).toBeVisible();
     await expect(learner.getByRole("link", { name: `Open ${eventTitle}` })).toBeVisible();
+    // and not under participants, which is a different thing to be at an event
+    await learner.goto("/my-events");
+    await expect(learner.getByRole("link", { name: `Open ${eventTitle}` })).toHaveCount(0);
 
     // the owner runs the door: the manager's Spectators register, Check in → In
     await owner.getByRole("link", { name: `${eventTitle} — Showcase` }).click();

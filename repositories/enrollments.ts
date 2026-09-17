@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus, MyEnrollment, RosterEntry } from "@/types/enrollment";
+import type { Tenant } from "@/types/tenant";
+import { TENANT_COLUMNS, toTenant, type TenantRow } from "./tenants";
 
 interface MyEnrollmentRow {
   id: string;
@@ -91,6 +93,35 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
       tenantCity: r.businesses?.city ?? null,
     }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
+/** THE STUDIOS YOU HAVE TAKEN CLASSES AT (18 Sep 2026, the user's Home grid: a
+ *  person's Studios tile lists "studios which they have taken classes at").
+ *  Every business behind one of your bookings, once each, most recent first —
+ *  a booking you cancelled still means you were there, so status is not
+ *  filtered; a business you can no longer read (unlisted, gone) simply does not
+ *  come back through RLS. Says `user_id = auth.uid()` out loud. */
+export async function findStudiosAttended(supabase: SupabaseClient, userId: string): Promise<Tenant[]> {
+  const { data, error } = await supabase
+    .from("class_bookings")
+    .select(`created_at, businesses (${TENANT_COLUMNS})`)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(300);
+
+  if (error) {
+    throw new Error(`class_bookings.studiosAttended failed: ${error.message}`);
+  }
+  const seen = new Set<string>();
+  const out: Tenant[] = [];
+  for (const row of (data ?? []) as unknown as Array<{ businesses: TenantRow | null }>) {
+    const b = row.businesses;
+    if (!b || seen.has(b.id) || b.type === "org") continue;
+    seen.add(b.id);
+    out.push(toTenant(b));
+  }
+  return out;
 }
 
 /** Session ids of the learner's live bookings — marks tiles on the public listing. */
