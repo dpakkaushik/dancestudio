@@ -131,7 +131,8 @@ export async function findMyCalendar(
     supabase
       .from("class_people")
       .select(
-        `kind, class_id, classes!inner (${CLASS_BITS}, businesses (name, city), class_sessions (id, starts_at, ends_at, deleted_at))`
+        /* the key is named: classes has two into businesses since 18 Sep 2026 (the venue) */
+        `kind, class_id, classes!inner (${CLASS_BITS}, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at, deleted_at))`
       )
       .eq("user_id", userId)
       .eq("status", "confirmed")

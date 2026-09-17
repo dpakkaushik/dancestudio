@@ -84,7 +84,7 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
   const { data, error } = await supabase
     .from("class_people")
     .select(
-      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses (name), class_sessions (starts_at))`
+      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses!classes_business_id_fkey (name), class_sessions (starts_at))`
     )
     .eq("user_id", user.id)
     .eq("status", "asked")
@@ -125,7 +125,7 @@ export async function findMyConfirmedClaims(supabase: SupabaseClient, kind: Clai
   const { data, error } = await supabase
     .from("class_people")
     .select(
-      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses (name), class_sessions (starts_at))`
+      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses!classes_business_id_fkey (name), class_sessions (starts_at))`
     )
     .eq("user_id", user.id)
     .eq("kind", kind)
@@ -241,7 +241,7 @@ export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenant
   const { data, error } = await supabase
     .from("class_people")
     .select(
-      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses (name), class_sessions (starts_at))`
+      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses!classes_business_id_fkey (name), class_sessions (starts_at))`
     )
     .in("business_id", tenantIds)
     .eq("status", "asked")

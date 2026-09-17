@@ -187,7 +187,12 @@ export async function findPublishedClasses(
 ): Promise<PublicClassListing[]> {
   let query = supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, businesses${city ? "!inner" : ""} (name, area, city, type)`)
+    /* ⚠ THE KEY IS NAMED (18 Sep 2026): `classes` gains a second foreign key
+       into `businesses` — the VENUE an artist's class is held at — and PostgREST
+       answers 300 Multiple Choices to an unqualified embed through an ambiguous
+       relationship (the 28 Aug lesson, `follows` → `profiles`). Every embed
+       from classes to businesses says which key it means. */
+    .select(`${CLASS_COLUMNS}, businesses!classes_business_id_fkey${city ? "!inner" : ""} (name, area, city, type)`)
     .eq("status", "published")
     .is("deleted_at", null);
 
@@ -220,7 +225,7 @@ export async function findClassBySlug(
 ): Promise<PublicClassListing | null> {
   const { data, error } = await supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, businesses (name, area, city, type)`)
+    .select(`${CLASS_COLUMNS}, businesses!classes_business_id_fkey (name, area, city, type)`)
     .eq("share_slug", slug)
     .is("deleted_at", null)
     .maybeSingle();
