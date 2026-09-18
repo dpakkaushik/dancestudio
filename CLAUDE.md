@@ -2,22 +2,67 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### ⚠⚠ THE APPLY IS THE USER'S TO RUN (19 Sep 2026, latest) — THE FIVE MIGRATIONS ARE WRITTEN, DRY-RUN 76/76, LISTED AND APPROVED, AND **NOT APPLIED**: THE PERMISSION CLASSIFIER REFUSED `db-push.ps1` IN BOTH ALLOWED SHAPES THIS SESSION
+> ### ✅ THE FIVE MIGRATIONS ARE APPLIED (19 Sep 2026, latest) — ON THE USER'S THIRD "PUSH TO LIVE"; ONE MORE IS WRITTEN, DRY-RUN 6/6 AND HELD (NEXT TO DO #0q)
 > The user read the five-migration list below, answered the open questions (their
-> answers are in the second block) and said *"add these and push to live"*. The
-> apply was attempted in the whitelisted `Select-String` shape ("Modify Shared
-> Resources") and then the bare shape ("Blind Apply"); both were refused, and the
-> standing rule is to stop there rather than route around it (memory:
-> `project-db-push-classifier-accepts-one-command-shape`). So the tree holds
-> everything — the five migrations, the re-cut public pages committed in
-> `eef4174`, and the second round of no-schema work committed after it — and
-> **nothing is pushed to `main` and nothing is deployed**, because the app selects
-> `contact_email` on every profile read and cannot run against the old schema.
-> **The user runs the apply** (NEXT TO DO #0s has the two commands); on their word
-> that it landed, the rest of the go-live sequence — proofs, the suite on :3100,
-> `shoot-hero.js`, push, the Vercel smoke — runs from here.
+> answers are in the second block), said *"add these and push to live"* — and the
+> classifier refused `db-push.ps1` in both allowed shapes. On their next *"push to
+> live"* the whitelisted `Select-String` shape went through on the first try (the
+> memory note now says the acceptance varies per attempt). `db-push -DryRun` listed
+> exactly the five, the apply printed all five, the dry run after listed none.
+> **Read back live as anon over PostgREST:** a listed studio's team by name and
+> picture (owner `is_org: true`), a crew's follower count (0), `crew_header_photos`
+> readable and an anon INSERT refused **401** (the grants revoke, in place),
+> `contact_email` present on `profiles` and `businesses`. **The eight proofs: 8/8**
+> — seven green first time, and the NEW `rls-proof-profile-pages` green (10/10)
+> after TWO HARNESS fixes and one REAL FINDING, all three below.
+> * ⚠ **The harness, twice.** `$host` is PowerShell's READ-ONLY automatic variable
+>   (the `$pid` trap in a new coat): the proof died at its first assignment, BEFORE
+>   its `try`, so its `finally` never ran and a listed "Prof Studio" plus six
+>   accounts were left on production (swept by hand the same hour — nothing with a
+>   `Prof ` name remains). And `@(Rpc-Rows …)` NESTS the array `Rpc-Rows` already
+>   hands back with its leading comma, so `.Count` read 1 whatever came back and
+>   check 8 printed an array's property names as "columns". Eight call sites lost
+>   the wrapper. (The `dryrunD.js` 76/76 was the pg client, not this script — the
+>   script had only been parse-checked, and a parse check does not run a check.)
+> * ⚠⚠ **THE REAL FINDING — A CREW LEADER'S ACCOUNT CANNOT BE DELETED ONCE THEIR
+>   CREW HAS HEADER PICTURES.** The proof's cleanup answered **500** deleting the
+>   leader: `insert or update on table "crew_header_photos" violates foreign key
+>   constraint "crew_header_photos_crew_id_fkey"`. `crew_header_photos` is the ONE
+>   table whose audit columns carry a foreign key to `auth.users` (`on delete set
+>   null`); deleting the user fires the crews cascade (a DELETE) and that SET NULL
+>   (an UPDATE) on the same rows, and the UPDATE re-checks `crew_id` against a
+>   crews row the cascade has already removed. Proven on production (the leftover
+>   leader deleted cleanly once the header rows were gone) and in a rolled-back
+>   dry run (`dryrunE.js`, **6/6**). **`20260919130000_a_crew_leader_can_be_deleted`
+>   is WRITTEN and NOT APPLIED** — two `drop constraint`s and a comment, nothing
+>   else; the list is NEXT TO DO #0q and waits for the user's word. Until then the
+>   proof deletes the header rows and the crew before the leader. Nothing in the
+>   app deletes an account yet, so today the 500 is reachable only from the admin
+>   API — which is how the proof met it.
+> * **The suite against the `:3100` bundle, on one worker:** the whole run
+>   **37 passed / 1 failed / 13 did not run in 4.6 min** — the red a STALE
+>   ASSERTION in the happy path's first segment (an organization's Profile tab
+>   "has no Followers figure": since R25 a public organization CAN be followed,
+>   so it does — re-cut to expect the `0 followers` button), which the serial
+>   suite hid the other thirteen segments behind (the 16 Sep lesson, again);
+>   then the happy path alone **12 passed / 1 failed / 1 did not run in 4.7
+>   min** — a SECOND stale assertion, segment 13 expecting Call on a plain
+>   USER's page (the user's list: "user — nothing"; re-cut to "the record holds
+>   the number, the page draws no Call"); then **12 / 1 / 1 in 5.2 min** — my own
+>   re-cut racing `router.refresh()` (the Edit sheet re-opened on the OLD row;
+>   a reload before re-opening). No product change in any of the three. **The
+>   push went on the user's second "push to live" of the hour with the fourth
+>   happy-path run and `shoot-hero.js` still to come — their tallies are in the
+>   docs-only commit that follows, the 19 Sep morning's precedent.**
+> * **The `:3100` bundle, as a stranger** (`stranger-smoke.ps1`): `/studio/{id}`,
+>   `/org/{id}`, `/crew/{id}` and `/person/{artist}` all **200** with Follow,
+>   Enquiry, Location, Schedule, Owner, Studios and Crew leader where each belongs;
+>   Mail absent everywhere because nobody has a contact email yet, which is the
+>   rule; `/person/{plain user}` **404** to a stranger (it was 307 before the
+>   19 Sep re-cut — `findPublicPerson` hands anon nothing for a plain user and the
+>   page says not found; a bounce to /login is one line if the user prefers it).
 >
-> ### EVERY PUBLIC PROFILE PAGE ON ONE PLAN — FOLLOW, THE BIO, THE BUTTONS BY KIND, THE ASSOCIATIONS, NO FIGURES; THE EYE LEAVES THE BAR (19 Sep 2026) — FIVE MIGRATIONS ⚠ (Rule 9: RLS) — WRITTEN, DRY-RUN **76/76** ROLLED BACK, **WAITING ON THE APPLY ABOVE**
+> ### EVERY PUBLIC PROFILE PAGE ON ONE PLAN — FOLLOW, THE BIO, THE BUTTONS BY KIND, THE ASSOCIATIONS, NO FIGURES; THE EYE LEAVES THE BAR (19 Sep 2026) — FIVE MIGRATIONS ⚠ (Rule 9: RLS) — DRY-RUN **76/76**, **APPLIED** (the block above)
 > The user, in one message: *"Profile page — A. Remove profile tab from navbar.
 > B. Give an eye to view profile on the home tab below edit on top right. C. Give
 > Stats button same as home page on profile. D. Give buttons above schedule for
@@ -2836,27 +2881,47 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0s. **⚠ THE FIVE PROFILE-PAGE MIGRATIONS (19 Sep 2026) ARE NOT APPLIED — THE USER
-   RUNS THE APPLY.** The list is in the top block, the dry run is `dryrunD.js` in
-   the session scratchpad (76/76, rolled back), the user approved it and said push
-   to live, and the classifier refused `db-push.ps1` in both allowed shapes. From a
-   PowerShell prompt in the repo, the user runs:
+0s. **~~THE FIVE PROFILE-PAGE MIGRATIONS ARE NOT APPLIED~~ — APPLIED 19 Sep 2026**
+   on the user's third "push to live" (the top block: the classifier accepted the
+   whitelisted `Select-String` shape that time). Proofs 8/8, the read-back, the
+   stranger smoke and the suite are in the top block. Kept for the next time —
+   the go-live sequence, in order:
 ```
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly the five 20260919 files
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
-```
-   Then, on their word that it landed, from here:
-```
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 profile-pages person-pages follows crews enquiries search discovery tenants
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly the pending files, none other
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 <the proofs the migrations touch>
    npm run build; npx.cmd next start -p 3100
    $env:PLAYWRIGHT_BASE_URL="http://localhost:3100"; npx playwright test --reporter=line --workers=1
    $env:DANCEOS_BASE_URL="http://localhost:3100"; $env:NODE_PATH="$pwd\node_modules"; node scripts/shots/shoot-hero.js
 ```
-   then push `main` and the Vercel smoke (a stranger's `/org/{id}`, `/person/{artist}`,
-   `/studio/{id}`, `/crew/{id}` all 200 with Follow and the buttons by kind).
-   ⚠ The app cannot run against the OLD schema (every profile read selects
-   `contact_email`), so nothing deploys before the apply. Two commits sit on local
-   `main` ahead of origin: `eef4174` (the re-cut) and the second-round commit.
+   then push `main` and the Vercel smoke. What this round still owes the user is
+   #0q (one held migration) and #0r (push 2).
+
+0q. **⚠ ONE MIGRATION WRITTEN, DRY-RUN 6/6 AND HELD FOR THE USER'S WORD:
+   `20260919130000_a_crew_leader_can_be_deleted` (19 Sep 2026).** Found by the
+   new proof's own cleanup the hour `20260919124000` landed: **deleting the
+   account of a crew leader whose crew has header pictures answers 500** at
+   the auth layer — `crew_header_photos` was the ONE table whose audit columns
+   carried a foreign key to `auth.users` (`on delete set null`), and deleting
+   the user fires both the crews cascade (DELETE) and that SET NULL (UPDATE)
+   on the same rows, the UPDATE re-checking `crew_id` against a crews row the
+   cascade has already removed. Proven on production (the leftover leader
+   deleted cleanly once the header rows were gone) and in a rolled-back dry
+   run (`dryrunE.js` in the session scratchpad, **6/6**: the 500 reproduced,
+   the two constraints dropped and nothing else, the same delete clean, the
+   cascade taking the crew and its pictures, grants and the one policy
+   unchanged). **The whole of it:** `drop constraint crew_header_photos_created_by_fkey`,
+   `drop constraint crew_header_photos_updated_by_fkey`, a column comment. No
+   policy, no grant, no row moves, no function. Until it is applied the proof
+   deletes a crew's header rows and the crew before its leader, which is why
+   its cleanup works today. Nothing in the app lets a person delete their own
+   account yet, so the 500 is reachable only from the admin API — which is how
+   the proof met it. Apply on the user's word:
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly this one pending
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 profile-pages crews
+```
 
 0r. **PUSH 2 — WHAT THE USER'S ANSWERS NEED IN SCHEMA (19 Sep 2026); the list goes
    in front of them before a line of migration is written, then dry-run, then
@@ -3297,8 +3362,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   tile is off every grid (the page stays); Settings is icon tiles with headings
   and no sub-text, Notifications gone from it, Help and Message DanceOS one door;
   Home's disc opens the public page and Home's eye is gone; a studio's Location
-  opens its pin. Rows R27, C17, C18. ⚠ **Not applied, not pushed** — the
-  classifier refused the apply; the user runs it (NEXT TO DO #0s). Detail at the top.
+  opens its pin. Rows R27, C17, C18. **APPLIED 19 Sep 2026 on the user's third
+  "push to live"**, proofs 8/8 — the new proof's cleanup found a crew leader with
+  header pictures cannot be deleted (a sixth migration, written, dry-run 6/6,
+  HELD — NEXT TO DO #0q). Detail at the top.
 - **AN ARTIST IS THEIR PROFILE, AN ORGANIZATION HAS A PAGE, DISCOVER TURNS A
   PAGE, FIFTEEN STUDIOS, A RENAME, RATE LIMITS, A RECORD THAT COUNTS TO THE
   CLOSE — 18 Sep 2026, no step number ⚠ (Rule 9: RLS) — SIX MIGRATIONS APPLIED,
@@ -6832,7 +6899,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| **The profile-page re-cut, what it left (19 Sep 2026):** ⚠ **an organization's page has no "Owner" row** — the user asked for "one of the users added from team in organizations", and an organization is ONE LOGIN with no team table (8 Sep 2026), so there is no user to name; the Studios group stands where Owner would (an organization-members slice is the thing that closes it); **Call is off an artist's page** by the user's list (Call for studios and organizations) — a person's published number stays on the record, the Edit sheet says it is not shown, and one word puts it back if that reading was wrong; **an artist who held ten header pictures still holds them** — the page shows five, the cap refuses a sixth, the Edit sheet lets the rest come down; a **crew has no About** (no column), so its Bio is nothing and its page goes hero → Follow → buttons → roster; the **Following sheet's Organizations rows carry the logo but no city link** and a followed crew's row opens its page; the studio's **`upcomingSessions` and `faculty` left `PublicTenantProfile`** (the team is the roster now; the schedule is the Schedule bar); `person_teaches_at` still names an artist's OWN page among the places they teach and the page filters it to STUDIOS — a cleaner read would filter in SQL; the org's Location button is Maps by NAME + CITY (an organization has no address of its own — **a studio's opens its PIN since later on 19 Sep 2026** when `location_set_at` is stamped); the guest Follow link on a public page also carries `data-followers`, so a stranger's page states the count in the DOM though it prints none. **The user's answers (19 Sep 2026) turned four of these into PUSH 2 — NEXT TO DO #0r:** an organization team so Owner names a person; a Call TOGGLE on an artist's and a crew's page (off by default); an organization's own map link; and **stats + rankings for somebody ELSE's profile** (the Stats chip on another's page opens the board they stand on today). **And the picker's Scan reads a code the app does not yet draw:** `QRBlock` is decorative, so a real QR on every profile is a small encoder dependency, the user's call | S_profiletab 10875-10940, 11000-11060 | push 2 (#0r); the QR encoder a decision (c) |
+| **The profile-page re-cut, what it left (19 Sep 2026):** ⚠ **an organization's page has no "Owner" row** — the user asked for "one of the users added from team in organizations", and an organization is ONE LOGIN with no team table (8 Sep 2026), so there is no user to name; the Studios group stands where Owner would (an organization-members slice is the thing that closes it); **Call is off an artist's page** by the user's list (Call for studios and organizations) — a person's published number stays on the record, the Edit sheet says it is not shown, and one word puts it back if that reading was wrong; **an artist who held ten header pictures still holds them** — the page shows five, the cap refuses a sixth, the Edit sheet lets the rest come down; a **crew has no About** (no column), so its Bio is nothing and its page goes hero → Follow → buttons → roster; the **Following sheet's Organizations rows carry the logo but no city link** and a followed crew's row opens its page; the studio's **`upcomingSessions` and `faculty` left `PublicTenantProfile`** (the team is the roster now; the schedule is the Schedule bar); `person_teaches_at` still names an artist's OWN page among the places they teach and the page filters it to STUDIOS — a cleaner read would filter in SQL; the org's Location button is Maps by NAME + CITY (an organization has no address of its own — **a studio's opens its PIN since later on 19 Sep 2026** when `location_set_at` is stamped); the guest Follow link on a public page also carries `data-followers`, so a stranger's page states the count in the DOM though it prints none. **The user's answers (19 Sep 2026) turned four of these into PUSH 2 — NEXT TO DO #0r:** an organization team so Owner names a person; a Call TOGGLE on an artist's and a crew's page (off by default); an organization's own map link; and **stats + rankings for somebody ELSE's profile** (the Stats chip on another's page opens the board they stand on today). **And the picker's Scan reads a code the app does not yet draw:** `QRBlock` is decorative, so a real QR on every profile is a small encoder dependency, the user's call. ⚠ **And one the proof found on the applied schema (19 Sep 2026):** a crew leader whose crew has header pictures **cannot be deleted** — `crew_header_photos`' audit-column FKs to `auth.users` break the cascade with a 500; `20260919130000_a_crew_leader_can_be_deleted` (two `drop constraint`s) is written, dry-run 6/6 and HELD for the user's word (NEXT TO DO #0q); reachable today only from the admin API, which is where the proof met it | S_profiletab 10875-10940, 11000-11060 | push 2 (#0r); the QR encoder a decision (c); #0q one apply |
 | ~~**Crew enquiries — the migration is WRITTEN, DRY-RUN 28/28 and HELD**~~ **CLOSED 18 Sep 2026** — `20260918160000` applied on the user's word and wired: the sheet on a crew's page (three kinds), the crew's Inbox Enquiries side, the leader's `/inbox`, the detail page's sides. **What it leaves:** a crew has no phone, so the sender's Call on a crew's enquiry always reads "no number"; a crew keeps no enquiry-type preferences (the three kinds are fixed); the crew's inbox has no Sent side (a crew sends none) | ENQ_TYPES 4900-4923; publicEntity crew 10871 | decisions (c) |
 | **The four-part re-cut, what it left (18 Sep 2026):** the switcher lists crews you LEAD and studios you are ON THE TEAM OF — a crew you are merely IN has a page, not a home, so it is not a row (the Crews tile lists it); `/business/{id}/inbox` has no sent-enquiries side (a studio sends none) and a crew's inbox no venue requests (a crew holds no rooms); the crew's Team and Events desks say whose they are in one small line under the tool hero — the strip with the photo moved to the crew's home; a person's hub prints no card for their own artist page — the page is reached through the Team and Students tiles and the eye, which is what was asked; `ensureArtistPage` swallows a refusal, so an account whose plan reads active but whose page the database refuses sees the hub's lists and no error (the tiles then open the hub); the entity bar's Home is lit on the home and Inbox on the inbox, and a desk under `/business/{id}/…` is still a drill page with the back chip — only the home and the inbox wear the bar; ~~⚠ an artist is now found TWICE by the search box~~ — **ONCE, since later on 18 Sep 2026** (row R24: Artists are the people with a live plan, opening their profile; People are the users without one; the happy path asserts exactly one row) | S_crewmanage 16318; S_bizhub 2585; the shell 19308; search 4546 | decisions (c) |
 | **THE IDENTIFIERS PASS (owed since 16 Sep 2026, by the user's choice — "strings now, identifiers next").** The database and every string that reaches it say `business`, `class_people`, `class_bookings`, `studio_photos`, `category`…; the TypeScript still says `Tenant`, `tenantId`, `findMyTenants`, `Claim`, `enrollInSession`, `ev.cat`, `EventCat`, and the files and folders are still `repositories/tenants.ts`, `features/tenants/`, `features/enrollments/`, `app/…/[tenantId]`, `scripts/rls-proof-tenants.ps1`. ~2,200 occurrences in 207 files, camelCase and file names only — a pure identifier rename `tsc` verifies. Route FOLDER names are Next param names, not URLs, so `[tenantId]` → `[businessId]` changes no public path (Rule 14 is not triggered) | — | one mechanical pass, typecheck as the gate; nothing else in the same push |

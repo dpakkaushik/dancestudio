@@ -114,7 +114,8 @@ Grant-ArtistPlan $artist.id
 $studio = Rpc (Api $org.token) "create_business_with_owner" @{ p_name = "Prof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
 Subscribe-Studio ([string]$studio.id)
 # the organization's hosting row (R15) - what an enquiry to it is sent to
-$host = [string](Rpc (Api $org.token) "my_org_business" @{})
+# ($host is PowerShell's READ-ONLY automatic variable, like $pid - never a name here)
+$hostRow = [string](Rpc (Api $org.token) "my_org_business" @{})
 $hostPriv = [string](Rpc (Api $private.token) "my_org_business" @{})
 
 try {
@@ -126,7 +127,9 @@ try {
   # 1. one door, idempotent, and the count is a stranger's to read
   $c1 = Rpc (Api $fan.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true }
   $c1b = Rpc (Api $fan.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true }
-  $anonCount = @(Rpc-Rows $anonH "crew_follower_counts" @{ p_crew_ids = @($crew.id) })
+  # Rpc-Rows already hands back ONE array (the leading comma stops PowerShell unrolling it);
+  # wrapping it in @() again NESTS it, and .Count reads 1 whatever came back
+  $anonCount = Rpc-Rows $anonH "crew_follower_counts" @{ p_crew_ids = @($crew.id) }
   $anonN = 0; foreach ($r in $anonCount) { if ($r.crew_id -eq $crew.id) { $anonN = [int]$r.followers } }
   Check 1 "The fan follows the crew: following $($c1.following), $($c1.followers) follower; again still $($c1b.followers); a stranger reads the count $anonN" (
     ($c1.following -eq $true) -and ([int]$c1.followers -eq 1) -and ([int]$c1b.followers -eq 1) -and ($anonN -eq 1))
@@ -154,17 +157,17 @@ try {
   $o1 = Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $org.id; p_on = $true }
   $priv = Fails { Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $private.id; p_on = $true } }
   $orgCaller = Fails { Rpc (Api $org.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $true } }
-  $anonOrgCount = @(Rpc-Rows $anonH "person_follower_counts" @{ p_user_ids = @($org.id) })
-  $mine = @(Rpc-Rows (Api $fan.token) "my_followed_organizations" @{})
+  $anonOrgCount = Rpc-Rows $anonH "person_follower_counts" @{ p_user_ids = @($org.id) }
+  $mine = Rpc-Rows (Api $fan.token) "my_followed_organizations" @{}
   Check 4 "The fan follows the public organization ($($o1.followers)); a private one is refused ($priv); an organization following is refused ($orgCaller); a stranger reads the public one's count ($($anonOrgCount.Count) row, $($anonOrgCount[0].followers)); the fan's Following sheet lists $($mine.Count) organization ($($mine[0].name))" (
     ([int]$o1.followers -eq 1) -and ($priv -match "not open to the public") -and ($orgCaller -match "organization") -and ($anonOrgCount.Count -eq 1) -and ([int]$anonOrgCount[0].followers -eq 1) -and ($mine.Count -eq 1) -and ($mine[0].org_id -eq $org.id))
 
   # -- AN ORGANIZATION TAKES ENQUIRIES ------------------------------------------
   # 5. through its hosting row, for the three kinds it can be asked for
-  $enq = Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $host; p_type_key = "celebration"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "A wedding sangeet - can you host?"; p_mobile = $null; p_crew_id = $null }
-  $judge = Fails { Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $host; p_type_key = "judge"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "Judge?"; p_mobile = $null; p_crew_id = $null } }
+  $enq = Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $hostRow; p_type_key = "celebration"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "A wedding sangeet - can you host?"; p_mobile = $null; p_crew_id = $null }
+  $judge = Fails { Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $hostRow; p_type_key = "judge"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "Judge?"; p_mobile = $null; p_crew_id = $null } }
   $privateAsk = Fails { Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $hostPriv; p_type_key = "celebration"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "Hello?"; p_mobile = $null; p_crew_id = $null } }
-  $orgReads = Get-Rows (Api $org.token) "enquiries?business_id=eq.$host&select=id,type_key,status"
+  $orgReads = Get-Rows (Api $org.token) "enquiries?business_id=eq.$hostRow&select=id,type_key,status"
   $fanReads = Get-Rows (Api $fan.token) "enquiries?id=eq.$($enq.id)&select=id"
   $leadReads = Get-Rows (Api $lead.token) "enquiries?id=eq.$($enq.id)&select=id"
   $told = @(Get-Rows (Api $org.token) "notifications?select=id,title,body&deleted_at=is.null" | Where-Object { ($_.title + " " + $_.body) -match "enquir" }).Count
@@ -176,7 +179,7 @@ try {
   $bad = Fails { Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_about = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "not-an-address" } }
   Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_about = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "artist@example.com" } | Out-Null
   $artistRow = @(Get-Rows $svcH "profiles?id=eq.$($artist.id)&select=contact_email")[0]
-  $pubArtist = @(Rpc-Rows $anonH "public_artist" @{ p_user_id = $artist.id })
+  $pubArtist = Rpc-Rows $anonH "public_artist" @{ p_user_id = $artist.id }
   Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_about = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "" } | Out-Null
   $cleared = @(Get-Rows $svcH "profiles?id=eq.$($artist.id)&select=contact_email")[0]
   Check 6 "A bad address is refused ($bad); a good one lands ($($artistRow.contact_email)) and a stranger reads it off public_artist ($($pubArtist[0].contact_email)); an empty string clears it (now '$($cleared.contact_email)')" (
@@ -190,7 +193,7 @@ try {
   $crewBad = Fails { Rpc (Api $lead.token) "update_crew" @{ p_crew_id = $crew.id; p_name = $crew.name; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = "nope" } }
   $crewOutsider = Fails { Rpc (Api $fan.token) "update_crew" @{ p_crew_id = $crew.id; p_name = "Taken"; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = $null } }
   Rpc (Api $org.token) "update_my_profile" @{ p_full_name = $org.name; p_city = "Pune"; p_age = $null; p_about = "We run studios"; p_socials = @(); p_styles = @(); p_phone = "+91 91234 56789"; p_contact_email = "org@example.com" } | Out-Null
-  $pubOrg = @(Rpc-Rows $anonH "public_organization" @{ p_org_id = $org.id })
+  $pubOrg = Rpc-Rows $anonH "public_organization" @{ p_org_id = $org.id }
   Check 7 "The studio's lands ($($bizRow.contact_email)) and a bad one is refused ($bizBad); the crew's lands ($($crewRow.contact_email)), a bad one is refused ($crewBad), an outsider is refused ($crewOutsider); a stranger reads the organization's phone ($($pubOrg[0].phone)) and email ($($pubOrg[0].contact_email)) off its page" (
     ($bizRow.contact_email -eq "hello@studio.example") -and ($bizBad -match "not an email address") -and ($crewRow.contact_email -eq "crew@example.com") -and ($crewBad -match "not an email address") -and ($crewOutsider -match "leader") -and ($pubOrg.Count -eq 1) -and ($pubOrg[0].phone -eq "+91 91234 56789") -and ($pubOrg[0].contact_email -eq "org@example.com"))
 
@@ -199,12 +202,12 @@ try {
   Rpc (Api $org.token) "invite_to_business" @{ p_business_id = $studio.id; p_name = $member.name; p_email = $member.email; p_role = "trainer" } | Out-Null
   $inv = @(Get-Rows (Api $org.token) "business_invites?business_id=eq.$($studio.id)&status=eq.pending&select=code")[0]
   Rpc (Api $member.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
-  $team = @(Rpc-Rows $anonH "public_studio_team" @{ p_business_id = $studio.id })
+  $team = Rpc-Rows $anonH "public_studio_team" @{ p_business_id = $studio.id }
   $cols = @($team[0].PSObject.Properties | ForEach-Object { $_.Name } | Sort-Object) -join ","
   $ownerRow = @($team | Where-Object { $_.member_role -eq "owner" })[0]
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($studio.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
-  $hidden = @(Rpc-Rows $anonH "public_studio_team" @{ p_business_id = $studio.id })
-  $teamSees = @(Rpc-Rows (Api $member.token) "public_studio_team" @{ p_business_id = $studio.id })
+  $hidden = Rpc-Rows $anonH "public_studio_team" @{ p_business_id = $studio.id }
+  $teamSees = Rpc-Rows (Api $member.token) "public_studio_team" @{ p_business_id = $studio.id }
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($studio.id)" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
   Check 8 "A stranger reads the listed studio's team ($($team.Count) rows: $(@($team | ForEach-Object { $_.member_role }) -join ', '); owner is_org $($ownerRow.is_org); columns $cols); unlisted -> a stranger reads $($hidden.Count), a member $($teamSees.Count)" (
     ($team.Count -eq 2) -and ($team[0].member_role -eq "owner") -and ($ownerRow.is_org -eq $true) -and ($ownerRow.full_name -eq $org.name) -and ($cols -eq "full_name,is_org,member_role,photo_path,user_id") -and ($hidden.Count -eq 0) -and ($teamSees.Count -eq 2))
@@ -239,7 +242,14 @@ try {
     ($ids.Count -eq 5) -and ($sixth -match "five header pictures") -and ($elsewhere -match "does not belong") -and ($notLeader -match "leader") -and ($anonHeader.Count -eq 5) -and ($direct -ne "") -and ($stillThere.Count -eq 1) -and ($removed -eq "crews/$($crew.id)/h1.jpg") -and ($after.Count -eq 4) -and ($notLeaderRemove -match "leader"))
 }
 finally {
-  foreach ($bid in @([string]$studio.id, $host, $hostPriv)) { if ($bid) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$bid" -Headers $svcH | Out-Null } }
+  # the crew's header rows and the crew go BEFORE its leader: until 20260919130000 lands, deleting the
+  # leader's account with header rows still on the crew answers 500 (the FK to auth.users on the
+  # audit columns fires an UPDATE on rows the crews cascade is removing) - the bug that proof found
+  if ($crew) {
+    Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/crew_header_photos?crew_id=eq.$($crew.id)" -Headers $svcH | Out-Null
+    Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/crews?id=eq.$($crew.id)" -Headers $svcH | Out-Null
+  }
+  foreach ($bid in @([string]$studio.id, $hostRow, $hostPriv)) { if ($bid) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$bid" -Headers $svcH | Out-Null } }
   foreach ($u in @($org, $private, $lead, $member, $fan, $artist)) {
     if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
   }

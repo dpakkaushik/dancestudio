@@ -492,13 +492,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/");
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
     // and its own Profile is the ONE place its studios appear together (R9, 8 Sep
-    // 2026): the group, the studio's door, the figure — and no Followers figure,
-    // because nobody follows an organization; people follow its studios
+    // 2026): the group, the studio's door, the figure. Since 19 Sep 2026 a PUBLIC
+    // organization can be followed (R25, the user: "all profiles can be followed"),
+    // so the Profile tab carries its Followers figure too — none yet, and a button
     await owner.goto("/profile");
     await expect(owner.getByText("Your studios")).toBeVisible();
     await expect(owner.getByRole("link", { name: `Open ${studioName}` })).toBeVisible();
     await expect(owner.getByRole("link", { name: "1 studio — open the hub" })).toBeVisible();
-    await expect(owner.getByRole("button", { name: /followers$/ })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: "0 followers" })).toHaveCount(1);
 
     // ---- create + publish a class ----------------------------------------
     // ⚠ FROM THE HUB, because that is the door this asserts. The hub's CARD
@@ -1603,25 +1604,37 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(studioCard).toBeVisible();
     await expect(studioCard.getByLabel("Verified")).toBeVisible();
 
-    // ── N8: a person publishes a number, and their page grows a Call. The field
-    // has existed since the settings slice with no way in — the Edit profile
-    // sheet is that way in, and the same sheet takes it back down.
+    // ── N8: a person publishes a number through the Edit profile sheet — the one
+    // way in since parity slice 7 — and takes it back down through the same sheet.
+    // ⚠ Since 19 Sep 2026 the number is NOT drawn on a person's page: the user's
+    // list gives Call to studios and organizations only (R25 — "user: nothing";
+    // an artist's Call is a toggle in push 2, NEXT TO DO #0r). So the record holds
+    // it, the sheet reads it back, and a stranger's page shows no Call either way.
     await learner.goto("/profile");
     await learner.getByLabel("Edit profile").click();
     const editSheet = learner.getByRole("dialog", { name: "Edit profile" });
     await editSheet.getByLabel("Phone").fill("+91 98765 43210");
     await editSheet.getByRole("button", { name: "Save" }).click();
     await expect(editSheet).toHaveCount(0);
-    // somebody else's read of it: the trainer opens the learner's page and can ring
-    await trainer.goto(`/person/${learnerId}`);
-    await expect(trainer.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+919876543210");
-    // and it is the person's to withdraw: an empty box saves null, and the Call goes
+    // the record kept it: the sheet re-opens holding the number. RELOAD first — the
+    // sheet's draft is read off the page's props when it mounts, and re-opening it
+    // in the same breath as the save races router.refresh() and reads the OLD row
+    await learner.reload();
     await learner.getByLabel("Edit profile").click();
+    await expect(editSheet.getByLabel("Phone")).toHaveValue("+91 98765 43210", { timeout: 15_000 });
+    // somebody else's read of it: the trainer opens the learner's page — no Call on a user's page
+    await trainer.goto(`/person/${learnerId}`);
+    await expect(trainer.getByRole("button", { name: "Follow" })).toBeVisible();
+    await expect(trainer.getByRole("link", { name: "Call" })).toHaveCount(0);
+    // and it is the person's to withdraw: an empty box saves null
     await editSheet.getByLabel("Phone").fill("");
     await editSheet.getByRole("button", { name: "Save" }).click();
     await expect(editSheet).toHaveCount(0);
-    await trainer.reload();
-    await expect(trainer.getByRole("link", { name: "Call" })).toHaveCount(0);
+    await learner.reload();
+    await learner.getByLabel("Edit profile").click();
+    await expect(editSheet.getByLabel("Phone")).toHaveValue("", { timeout: 15_000 });
+    await editSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(editSheet).toHaveCount(0);
 
     // ── I4: the OTHER end of an enquiry can ring too. The business publishes its
     // number on its own page; the person who asked reads it on the enquiry they sent.
