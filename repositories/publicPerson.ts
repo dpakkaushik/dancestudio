@@ -114,10 +114,35 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     .eq("id", userId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (profileError || !profileRow) {
-    return null;
+  let profile: Profile | null = profileError || !profileRow ? null : toProfile(profileRow as Parameters<typeof toProfile>[0]);
+  if (!profile) {
+    /* A STRANGER (19 Sep 2026): the row itself is signed-in only, and an ARTIST's
+       public face comes through `public_artist` — the public columns and no more:
+       no age, no account number (`20260919090000`). Nothing for anybody else, so
+       a plain user's page is still the sign-in door for a stranger. */
+    const { data: pub, error: pubError } = await supabase.rpc("public_artist", { p_user_id: userId });
+    const row = (Array.isArray(pub) ? pub[0] : pub) as
+      | { id: string; full_name: string; role: string; city: string | null; profile_photo_path: string | null; about: string | null; socials: unknown; styles: string[] | null; verified_at: string | null; phone: string | null }
+      | undefined
+      | null;
+    if (pubError || !row) {
+      return null;
+    }
+    profile = toProfile({
+      id: row.id,
+      full_name: row.full_name,
+      role: row.role,
+      city: row.city,
+      profile_photo_path: row.profile_photo_path,
+      about: row.about,
+      age: null,
+      socials: row.socials,
+      styles: row.styles ?? [],
+      member_no: null,
+      verified_at: row.verified_at,
+      phone: row.phone,
+    } as Parameters<typeof toProfile>[0]);
   }
-  const profile: Profile = toProfile(profileRow as Parameters<typeof toProfile>[0]);
 
   const [statsRes, countsMap, crewsRes, teachesRes, runsRes, artistIds, artistPageRes] = await Promise.all([
     supabase.rpc("person_dance_stats", { p_user_id: userId }),

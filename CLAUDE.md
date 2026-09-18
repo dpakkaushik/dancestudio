@@ -52,6 +52,31 @@
 >   row on production). Row R24 (item 1). ⚠ Said to the user before the apply:
 >   the whole row is public for an artist — including their age and account
 >   number, which the old page did not show. A plain user stays signed-in only.
+>   **And on the user's "fix all", the same day (19 Sep 2026 IST):
+>   `20260919090000_a_stranger_sees_an_artists_public_face`** — the row policy
+>   is DROPPED; `public_artist(uuid)` (definer) hands a stranger exactly the
+>   public columns — name, city, picture, About, links, styles, the tick, the
+>   number they chose to publish — and neither age nor account number;
+>   `public_artists()` (definer) feeds `discover_artists` and search's Artists
+>   branch so both stay INVOKER and a stranger keeps the shelf and the search;
+>   `findPublicPerson` falls back to `public_artist` when the row is not
+>   readable, so a stranger's page draws no age and no number while a
+>   signed-in reader still gets the whole row (Step 1). Dry run **20/20**,
+>   rolled back: the policy gone, exactly two functions added, no ACL changed,
+>   anon 36 → 38, the public face carries ten columns and none of the two, a
+>   plain user's stays empty. Applied on the user's *"push to live what's
+>   done"* after that list; `db-push -DryRun` exactly the one pending; proofs
+>   `person-pages` · `search` · `discovery` **3/3** on the migrated schema; read
+>   back live as anon: the artist's row `[]`, the face without the two columns,
+>   the plain user empty, the shelf three, search once; a stranger's
+>   `/person/{artist}` on the :3100 build prints the name and NOT the account
+>   number, `/person/{plain user}` still 307; typecheck 0 · lint 0 · build
+>   green · the whole suite re-run against THIS bundle was in flight — **22 of
+>   51 green, no red** — when the user said *"commit and push to live"*, so it
+>   was pushed on their word with the suite still running; the only app change
+>   since the 45 + 14 green run an hour earlier is the anon-only fallback in
+>   `findPublicPerson`, which no e2e reaches and the :3100 stranger smoke did.
+>   ⚠ The finished tally is owed in the next push.
 > * **Item 3 needed no schema**: `findWhyNoClass` reads `why_no_class` on the
 >   register and the artist's Manage segment, and when the database would refuse
 >   a new class the Create class pill IS its sentence.
@@ -2598,11 +2623,10 @@ summary; the report has the evidence.
 
 0t. **WHAT THE 18 Sep FIX LIST LEAVES FOR THE USER** (the six migrations of the
    second push are APPLIED — the top block):
-   * **An artist's age and account number are public now** — the whole
-     `profiles` row is what the new policy admits for a person with a live plan,
-     and a SELECT policy is a ROW decision, not a column one. Narrowing it means
-     a definer read for the person page (the `public_organization` shape) or a
-     view; one message and it is done. Said before the apply; not asked for.
+   * ~~**An artist's age and account number are public now**~~ — **narrowed
+     19 Sep 2026** on the user's "fix all": `20260919090000` drops the row
+     policy and `public_artist` hands a stranger the public columns only (the
+     top block).
    * **The legal pages are a draft for counsel** (`/legal/terms`,
      `/legal/privacy`) and the grievance officer's name and postal address are
      "published before launch" — both the user's to supply.
@@ -6458,7 +6482,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R18 | ONE tool grid, the prototype's (DOS_TOOLS 2931; BizSection 2497-2583 on a dancer's or artist's Home; S_homebiz 7590-7620 on a studio's) | **The Home grid is the user's list, kind by kind** (18 Sep 2026). USER — Classes (Booked, Assist) · Events (Participant, Spectator, Assisting) · Calendar · Crews · ~~Stats~~ · Studios (taken classes at). ARTIST (plan live) — the same, then Team · Students · Routines · Earnings · Memberships · Assets · Media. ORGANIZATION — Events · Studios · Team · Earnings (combined) · ~~Stats~~. STUDIO (its own home) — Classes · Calendar · ~~Stats~~ · Team · Students · Earnings · Memberships · Assets · Rooms · Media. Routines, Memberships, Assets and an organization's Team open the prototype's own "nothing here yet" until their desks exist. ⚠ **Stats left every one of the four lists later on 18 Sep 2026** for the chip beside the QR (row C9) — the user's own re-cut of their own list | The user: *"this should fix all home tab option logics for all 4 types of users."* The prototype has one grid for three roles it no longer has; the app has four kinds of account, and each gets the doors that are its |
 | R22 | Anyone opens an independent-trainer business from the hub's sheet (2660-2684); R3 narrowed that to "a Pro user opens ONE artist page" | **Nobody opens an artist page any more — Home PROVISIONS it** (`ensureArtistPage`, `repositories/tenants.ts`) the first time it renders for an account with a live plan, named after the person and in their city; the hub's person view is two lists — STUDIOS YOU HAVE TAUGHT AT and STUDIOS YOU HAVE LEARNT AT — headed Studios in the tile's colour like everyone's, with no artist-page card, button or sheet. A crew you lead opens a HOME (`CrewHome`) with Team and Events tiles; the old desk is those two pages | 18 Sep 2026, the user: *"there is no need for a separate artist page to be created — should be managed from the artist profile only, you just subscribe from a user to artist to get the additional tools … Studios in user should show where they have learnt from and for artist studios where they have taught and learned … crews managed by you should take to Crew home tab with Teams and events."* The row is still `businesses.type = 'artist_page'` — every class, ask and payout of an artist hangs off it, and `create_business_with_owner` still refuses one without the plan or a second one — the person just never meets it as a thing to set up |
 | R23 | R9 (8 Sep 2026): an organization is never a public entity — not in search, no page of its own, neither follows nor is followed; the eye on its bar opened its FIRST studio (C2) | **An organization has ONE public page, `/org/{id}`** (18 Sep 2026): name, logo, city, About, links, the GST tick, the listed studios it runs and the published events it hosts — readable signed out through three SECURITY DEFINER reads (`public_organization`, `public_organization_studios`, `event_host_cards`, `20260918173000`) that answer only for a PUBLIC organization (GST-verified or the legacy tick, or running a listed studio) and hand back exactly those columns. An event card and the event page name the host with its picture and open that page. The eye points there. Still not in search's People, still neither follows nor is followed, its `profiles` row still unreadable directly (R12) | 18 Sep 2026, the user: *"Should show organization Profile Page and same should reflect inside the event cards with photo."* An organization with two studios had no page that was its own, and an event named its host in words with nothing behind them |
-| R24 | R3 / R22: an artist's public face is the `artist_page` business at `/artist/{id}`, and search found them twice — the page under Artists, themselves under People | **An artist's public face is their PROFILE** (18 Sep 2026): a person with a live Artist plan is readable signed out (one SELECT policy on `profiles`, `20260918175000`); `/artist/{id}` redirects to `/person/{owner}`; search lists them ONCE, under Artists, as the person, and People is the users without a plan; Discover's Artists tab lists people with a live plan (`discover_artists`, INVOKER); the Enquiry on their profile goes to the page behind them (`artist_page_of`); a stranger reads an artist's record, teaches-at and follower COUNT and an empty answer for anybody else. The `artist_page` row stays what it is underneath — the business their classes, team, students and money hang off — never a destination. Follows of the page became follows of the person | 18 Sep 2026, the user: *"Should only come as their profile as artist, no separate page required."* ⚠ Rule 9: the WHOLE profile row is what becomes public for an artist — name, city, styles, About, picture, the number they chose to publish, and their age and account number, the two the old page did not show. Said in the list before the apply; a plain user's profile stays signed-in only |
+| R24 | R3 / R22: an artist's public face is the `artist_page` business at `/artist/{id}`, and search found them twice — the page under Artists, themselves under People | **An artist's public face is their PROFILE** (18 Sep 2026): a person with a live Artist plan is readable signed out — through `public_artist(uuid)`, the public columns only, since `20260919090000` (the row-level policy of `20260918175000` lived one day; a signed-in reader still gets the row, Step 1); `/artist/{id}` redirects to `/person/{owner}`; search lists them ONCE, under Artists, as the person, and People is the users without a plan; Discover's Artists tab lists people with a live plan (`discover_artists`, INVOKER); the Enquiry on their profile goes to the page behind them (`artist_page_of`); a stranger reads an artist's record, teaches-at and follower COUNT and an empty answer for anybody else. The `artist_page` row stays what it is underneath — the business their classes, team, students and money hang off — never a destination. Follows of the page became follows of the person | 18 Sep 2026, the user: *"Should only come as their profile as artist, no separate page required."* ⚠ Rule 9: what a stranger reads about an artist is name, city, styles, About, picture, links, the tick and the number they chose to publish — ~~and, for one day, their age and account number~~ (the 18 Sep policy admitted the whole row; said in the list, and on the user's *"fix all"* the next day `20260919090000` replaced the policy with `public_artist`, which carries neither). A plain user's profile stays signed-in only |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
