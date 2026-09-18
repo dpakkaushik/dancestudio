@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useId, useSyncExternalStore, type ReactNode } from "react";
 import { signOutAction } from "@/features/auth/server-actions/auth";
 import { DOS_UI, INK } from "@/lib/design/tokens";
-import { WorkspaceStrip } from "./WorkspaceStrip";
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round
@@ -232,18 +231,13 @@ export function AppChrome({
   const isTab = activeTab !== null;
   /* the eye is a door out of the bar, never a lit tab — the page it opens is a drill */
   const bar = publicViewHref ? [...TAB_SET, { label: "Public view", href: publicViewHref }] : TAB_SET;
-  /* a studio is a WORKSPACE you enter from Home (19267): every route under
-     /business/[tenantId] is inside one, and the strip is the way back out.
-     ⚠ NOT ON THE STUDIO'S OWN HOME (16 Sep 2026, the user: "isn't it
-     unnecessary — name, location etc already there below the profile image?").
-     Right: `/business/{id}` IS the identity hero, which carries the name, the
-     place, the rooms and the picture at full size, so the strip was the same
-     sentence twice and the widest thing on the screen. Every DEEPER route —
-     the register, the calendar, Students, Rooms, the Team — has a tool hero
-     that names the TOOL and nothing that names the studio, and an organization
-     runs several, so there the strip is the only thing standing between
-     publishing a class here and publishing it into the studio next door. */
-  const workspaceId = pathname.match(/^\/business\/([0-9a-f-]{36})\/.+/i)?.[1] ?? null;
+  /* ⚠ THE "MANAGING {STUDIO}" STRIP IS GONE (18 Sep 2026, the user: "remove the
+     blue bar which shows exit studio from all pages"). It was asked about once
+     before, on 16 Sep, and kept on the DESKS with the argument that a tool hero
+     names the tool and nothing names the studio — the user has now answered that
+     argument, so `WorkspaceStrip` and its server action are deleted rather than
+     hidden. The back chip in the bar above is the way out of a desk; from a
+     notification deep link, Home and Discover are one tap away in the tab bar. */
 
   /* theme lives on <html> (set pre-paint by the root layout's boot script) and is
      persisted under the prototype's key — the <html> class IS the store, so the
@@ -434,7 +428,6 @@ export function AppChrome({
           boxSizing: "border-box",
         }}
       >
-        {workspaceId ? <WorkspaceStrip tenantId={workspaceId} /> : null}
         {children}
       </div>
 

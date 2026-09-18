@@ -182,6 +182,17 @@ export default async function HomePage() {
           grad={ring}
           tint={ring[1]}
           eyebrow={KIND_WORD[kind]}
+          /* the account number belongs under the word that names the account
+             (18 Sep 2026) — it used to sit under the styles, a block away */
+          eyebrowSub={
+            profile.memberNo != null ? (
+              <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none", color: MUTED }}>
+                <span style={{ display: "block", ...HOME_TYPE.micro, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
+                  {memberNoWords(profile.memberNo)}
+                </span>
+              </Link>
+            ) : null
+          }
           /* the tick is DanceOS's to give (7292) — set when a verification actually clears.
              ⚠ NO CHIP ON AN ORGANIZATION'S NAME ANY MORE (11 Sep 2026): nobody
              looks at an organization now, the badge moved to the studio. An
@@ -205,17 +216,11 @@ export default async function HomePage() {
              the Profile tab's own sheet: name, mobile, the pictures, the rest */
           corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} />}
         >
-          {/* the account number (7308-7323) — the ROLE WORD that used to head this
-              line moved to the eyebrow on 18 Sep 2026, because saying it twice on
-              one hero is saying it once and then again */}
+          {/* ⚠ WHAT WAS HERE HAS GONE UP INTO THE HERO (18 Sep 2026). The role
+              word moved to the eyebrow, and the account number under it — both
+              now read as one line beside the picture. The rank is what is left,
+              because it is a figure rather than a label. */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-            {profile.memberNo != null ? (
-              <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none", color: INK }}>
-                <span style={{ display: "block", ...HOME_TYPE.micro, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
-                  {memberNoWords(profile.memberNo)}
-                </span>
-              </Link>
-            ) : null}
             {/* the rank, in the metal it earned — drawn only once there IS a place
                 to stand, because Step 25's rule is that "#0" is not a rank (7324-7333) */}
             {rank && tier ? (

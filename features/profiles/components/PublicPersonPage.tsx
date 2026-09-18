@@ -92,6 +92,12 @@ export function PublicPersonPage({
           grad={ring}
           tint={RC}
           eyebrow={KIND_BADGE[kind]}
+          /* the account number reads under the word that names the account (18 Sep 2026) */
+          eyebrowSub={
+            profile.memberNo ? (
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3 }}>{memberNoWords(profile.memberNo)}</div>
+            ) : null
+          }
           verified={Boolean(profile.verifiedAt)}
           /* an organization has no page to share — this one is the admin's view of it (8 Sep 2026) */
           share={kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
@@ -114,8 +120,6 @@ export function PublicPersonPage({
           avatarAlt={profile.fullName}
           shots={shots}
         >
-          {profile.memberNo ? <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 8 }}>{memberNoWords(profile.memberNo)}</div> : null}
-
           {/* the figures, at the size of figures */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
             <span aria-label={`${person.followers} followers`}>

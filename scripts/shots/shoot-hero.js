@@ -26,8 +26,7 @@
        service role grants the Artist plan (₹0, nothing charged) → the sheet
        offers another, a second picture goes up, its ✕ takes it down.
 
-   Also: the "Managing {studio}" strip is gone from a studio's own home (the
-   hero says it) and still there, name only, on its desks.
+   Also: the "Managing {studio}" strip is gone from EVERY page (18 Sep 2026).
 
    Needs migration 20260915090000 on the database for the header half; without
    it the failures say so and the run carries on.
@@ -185,9 +184,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByLabel("Add a header picture").count()) === 0, "studio home: NO Add tile on the header — same reason");
     check((await org.getByLabel("Remove this picture").count()) === 0, "studio home: NO ✕ on a header square");
     check((await rail(org).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
-    /* 16 Sep 2026, the user: "isn't it unnecessary — name, location etc already
-       there below the profile image?" — right, so the strip is off THIS page */
-    check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip — the hero already says the name and the place");
+    check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: a Stats tile among the tools (it left the tab bar)");
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
@@ -196,21 +193,15 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the eye opens the studio's public page");
     await shot("studio-initials");
 
-    /* … and the strip IS on a desk, where nothing else names the studio */
+    /* ⚠ AND IT IS OFF THE DESKS TOO NOW (18 Sep 2026, the user: "remove the blue
+       bar which shows exit studio from all pages"). It was kept there on 16 Sep
+       with the argument that a tool hero names the tool and nothing names the
+       studio; the user has answered that argument, and `WorkspaceStrip` is
+       deleted rather than hidden. The back chip is the way out of a desk. */
     await org.goto(`${BASE}/business/${studioId}/classes`);
-    await org.getByText(/^Managing/).first().waitFor();
-    /* the name arrives from a server action, so the strip holds its height with
-       an ellipsis first — assert what it settles on, not what it starts as */
-    await org
-      .waitForFunction(() => {
-        const el = Array.from(document.querySelectorAll("span")).find((n) => /^Managing/.test(n.textContent || ""));
-        return Boolean(el) && !(el.textContent || "").includes("…");
-      }, null, { timeout: 15000 })
-      .catch(() => {});
-    const strip = await org.getByText(/^Managing/).first().innerText();
-    check(strip.includes("EEE Dance Studio"), "a desk: the Managing strip names the studio");
-    check(!strip.includes("Kothrud"), "a desk: and not its address — the name is what tells you which register this is");
-    check((await org.getByRole("link", { name: /Leave this studio/ }).count()) === 1, "a desk: Exit studio is still the one press back to the studio list");
+    await org.getByRole("heading", { name: "Classes" }).first().waitFor();
+    check((await org.getByText(/^Managing/).count()) === 0, "a desk: no Managing strip either — it is gone from every page");
+    check((await org.getByRole("link", { name: /Leave this studio/ }).count()) === 0, "a desk: and no blue Exit studio pill");
 
     /* ── EVERY PICTURE, THROUGH THE PENCIL (16 Sep 2026) ── */
     await org.goto(`${BASE}/business/${studioId}`);

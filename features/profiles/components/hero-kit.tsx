@@ -4,7 +4,7 @@ import { HeroRail, ProfileDisc, type HeroShot } from "@/features/profiles/compon
 import { TYPE, mapsHref } from "@/features/profiles/components/profile-kit";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { HERO_DISC, HERO_DISC_DROP, INK, LILAC, LINE } from "@/lib/design/tokens";
+import { INK, LILAC, LINE } from "@/lib/design/tokens";
 
 /** THE IDENTITY HERO — one object, every profile page (14 Sep 2026; re-cut
  *  15 Sep 2026).
@@ -21,10 +21,11 @@ import { HERO_DISC, HERO_DISC_DROP, INK, LILAC, LINE } from "@/lib/design/tokens
  *  same way for the artist page … the current image you are showing in artist
  *  should go in the drawn circle." So the hero is laid out the way every
  *  social profile is: the HEADER across the top — the pictures of a place or a
- *  body of work, swiped, up to ten — and the round PROFILE DISC overlapping the
- *  header's bottom-left edge. Then who it is in the order you read a name: the
- *  micro caps, the name with its tick and its QR, the line under it, the
- *  styles, and whatever the page adds.
+ *  body of work, swiped, up to ten — and the round PROFILE DISC beneath it.
+ *  ⚠ SINCE 18 SEP 2026 THE DISC NO LONGER OVERLAPS THE HEADER: it is the first
+ *  thing on ONE LINE with the account's word, its number, its name and its
+ *  place, because a picture riding above the words it belongs to is not "beside"
+ *  them. The styles and whatever the page adds follow underneath, full width.
  *
  *  ⚠ THE HERO SHOWS; EDIT PROFILE EDITS (16 Sep 2026). It carried two picture
  *  controls of its own — the ＋ on the disc's rim and the dashed Add tile with a
@@ -75,6 +76,7 @@ export function IdentityHero({
   grad,
   tint,
   eyebrow,
+  eyebrowSub = null,
   verified,
   share = null,
   meta = null,
@@ -94,6 +96,11 @@ export function IdentityHero({
   tint: string;
   /** the micro caps over the name */
   eyebrow: string;
+  /** the line directly UNDER the eyebrow and above the name — the account number
+   *  (18 Sep 2026, the user: "account number below user, artist, studio and
+   *  organization"). It used to sit under the styles, a whole block away from the
+   *  word it belongs to. */
+  eyebrowSub?: ReactNode;
   /** the tick is DanceOS's to give — set when a verification actually clears */
   verified: boolean;
   /** the QR beside the name, or null when there is no public page to share */
@@ -114,39 +121,41 @@ export function IdentityHero({
   /** whatever the page adds under the styles — Home's role word, code and rank */
   children?: ReactNode;
 }) {
-  /* ⚠ THE PICTURE STANDS BESIDE THE NAME (18 Sep 2026, the user: "Profile Pic
-     should be besides Name and Location"). The disc keeps the place they drew it
-     on 15 Sep — over the header's bottom-left edge — and what moved is the text:
-     until today the block began BELOW the disc, so the picture, the name and the
-     place read as a stack down the left edge. The identity column is indented
-     past the disc now and the three sit on one line. Only that column is
-     indented: the styles and whatever the page adds run the full width beneath,
-     under the disc, which is why the disc stays absolutely placed rather than
-     becoming a flex row's first child. */
-  const blockTop = 12;
-  /* the disc's width plus a breath — where the name starts */
-  const asideLeft = HERO_DISC + 13;
+  /* ⚠ THE PICTURE IS THE FIRST THING ON ONE LINE (18 Sep 2026, the user:
+     "Profile Pic should be placed properly on the left side in line with user
+     type account number name and location — should not be above it, should be in
+     the same line").
+     Two earlier cuts are both undone here. Until 15 Sep the disc hung OVER the
+     header's bottom-left edge, so it sat above everything it belonged to; the
+     first answer that day only indented the text past it, which left the picture
+     still riding higher than the words. It is a plain flex row now — the disc,
+     then the column that says what this account is, who it is and where — with
+     the two centred against each other, so the eye reads one line rather than a
+     picture and a stack. The disc is in flow, so nothing overlaps the header any
+     more and `HERO_DISC_DROP` has no reader left. The styles and whatever the
+     page adds still run the FULL width underneath, which is why they sit outside
+     this row rather than inside the column. */
   return (
     <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: heroWash(tint) }}>
       {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", gap: 6 }}>{corner}</div> : null}
 
       <HeroRail name={name} grad={grad} shots={shots} />
 
-      <div style={{ position: "relative", padding: `${blockTop}px 16px 14px` }}>
-        {/* the disc, where the user drew it: over the header's bottom-left edge */}
-        <div style={{ position: "absolute", left: 16, top: -HERO_DISC_DROP, zIndex: 2 }}>
+      <div style={{ position: "relative", padding: "14px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
           <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
-        </div>
 
-        {/* who it is, beside the picture: the word, the name, the place */}
-        <div style={{ paddingLeft: asideLeft, minHeight: HERO_DISC - HERO_DISC_DROP - blockTop }}>
-          <div style={HERO_EYEBROW}>{eyebrow}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-            <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>
-            {verified ? <VerifiedTick size={18} /> : null}
-            {share}
+          {/* what it is, its number, who it is, where — in that order, beside the picture */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={HERO_EYEBROW}>{eyebrow}</div>
+            {eyebrowSub ? <div style={{ marginTop: 3 }}>{eyebrowSub}</div> : null}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+              <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>
+              {verified ? <VerifiedTick size={18} /> : null}
+              {share}
+            </div>
+            {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
           </div>
-          {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
         </div>
         {styles.length ? (
           <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>

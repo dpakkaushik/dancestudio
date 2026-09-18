@@ -196,6 +196,11 @@ export function MyProfilePage({
           grad={ring}
           tint={RC}
           eyebrow={KIND_BADGE[kind]}
+          /* the account number reads under the word that names the account
+             (18 Sep 2026) — it sat under the styles until today */
+          eyebrowSub={
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3 }}>{memberNoWords(profile.memberNo)}</div>
+          }
           verified={Boolean(profile.verifiedAt)}
           share={isOrg ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
           /* age and place read as one introduction — "24, New Delhi" (10664) */
@@ -226,9 +231,6 @@ export function MyProfilePage({
             </>
           }
         >
-          {/* ── WHO, IN THE ORDER YOU READ A PERSON (10632): the account number under the name ── */}
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3, marginTop: 8 }}>{memberNoWords(profile.memberNo)}</div>
-
           {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
               {isOrg ? (
