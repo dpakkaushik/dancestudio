@@ -471,6 +471,16 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     fail += 1;
   } finally {
     if (studioId) await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, { method: "DELETE", headers: adminHeaders });
+    /* every business either account owns goes with it (18 Sep 2026): the
+       organization's hosting row, and the artist page Home provisions for the
+       user once the plan is granted — otherwise an ownerless row is left behind */
+    for (const uid of [orgId, userId]) {
+      if (!uid) continue;
+      const owned = await rest(`business_members?user_id=eq.${uid}&member_role=eq.owner&select=business_id`);
+      if (Array.isArray(owned) && owned.length) {
+        await fetch(`${supabaseUrl}/rest/v1/businesses?id=in.(${owned.map((o) => o.business_id).join(",")})`, { method: "DELETE", headers: adminHeaders });
+      }
+    }
     if (orgId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${orgId}`, { method: "DELETE", headers: adminHeaders });
     if (userId) await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, { method: "DELETE", headers: adminHeaders });
     await browser.close();

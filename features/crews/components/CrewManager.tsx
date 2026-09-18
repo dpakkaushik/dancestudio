@@ -13,22 +13,30 @@ import {
   type CrewActionResult,
 } from "@/features/crews/server-actions/crews";
 import { EvIcon } from "@/features/events/components/event-kit";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
+import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { photoUrl } from "@/lib/media/photo";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { CREW_GRAD, CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
+import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
 import { EV_TINT } from "@/types/event";
-import { CrewFace, Toast, bizBtn, bizCard, pressKey, sinceWords } from "./crew-kit";
+import { Toast, bizBtn, bizCard, pressKey, sinceWords } from "./crew-kit";
 
-/** The crew desk — prototype S_crewmanage (16318-16480), lifted: the BizShell
- *  strip (photo and name, both doors to the crew's own page), the three tiles,
- *  Members | Battle record. Members: a row per person with the role's colour
- *  on its edge, the photo and the name one door, ASKED IS NOT JOINED ("⏳
- *  Waiting on them to confirm"), Promote / Make leader / Remove — a row only
- *  offers what it can actually change — and the ↑ ↓ that arrange the public
- *  roster; ＋ Add member opens SEARCH DANCEOS, THEN ASK THEM. Battle record: the
- *  events the crew entered, each a door to its page.
+/** The crew desks — prototype S_crewmanage (16318-16480), lifted: the three
+ *  tiles, then Members OR Battle record. Members: a row per person with the
+ *  role's colour on its edge, the photo and the name one door, ASKED IS NOT
+ *  JOINED ("⏳ Waiting on them to confirm"), Promote / Make leader / Remove — a
+ *  row only offers what it can actually change — and the ↑ ↓ that arrange the
+ *  public roster; ＋ Add member opens SEARCH DANCEOS, THEN ASK THEM. Battle
+ *  record: the events the crew entered, each a door to its page.
+ *
+ *  TWO DESKS, NOT ONE WITH A SWITCH (18 Sep 2026, the user: "crews managed by
+ *  you should take to Crew home tab with Teams and events to manage the
+ *  section"). The prototype's segment switch became two tiles on the crew's
+ *  home (`CrewHome`), so this component draws ONE section — `section` says
+ *  which — headed by the tool's own hero the way every other desk is (the user:
+ *  "all heading when inside the page should have similar design as Crew,
+ *  Calendar etc."). The BizShell strip with the photo and the picker moved to
+ *  the crew's home, where the identity belongs.
  *
  *  Departures, stated: the tiles read Members / Entered / Upcoming where the
  *  prototype's read Members / Battles won / Points — results and points need
@@ -45,9 +53,9 @@ const monthDay = (iso: string) => {
   return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }).format(new Date(Date.UTC(y, m - 1, d)));
 };
 
-export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; todayKey: string }) {
+export function CrewManager({ crew, members, entries, todayKey, section }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; todayKey: string; section: "members" | "battles" }) {
   const router = useRouter();
-  const [seg, setSeg] = useState<"members" | "battles">("members");
+  const seg = section;
   const [add, setAdd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -72,38 +80,16 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
 
   const confirmed = members.filter((m) => m.status === "confirmed");
   const upcoming = entries.filter((e) => e.endDate >= todayKey && e.eventStatus !== "completed").length;
-  const SEGS: Array<["members" | "battles", string]> = [
-    ["members", "Members"],
-    ["battles", "Battle record"],
-  ];
-  const pageHref = `/crew/${crew.id}`;
-  const face = photoUrl(crew.photo);
 
   return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
-      {/* the strip: the photo and the name, both opening the crew's own page (BizShell) */}
-      <div style={{ margin: "12px 16px 12px", borderRadius: 22, padding: "16px 16px 14px", background: `linear-gradient(135deg,${CREW_GRAD[0]},${CREW_GRAD[1]})`, color: "#fff", display: "flex", alignItems: "center", gap: 12 }}>
-        <Link href={pageHref} aria-label={`Open ${crew.name}'s profile`} style={{ display: "block", width: 52, height: 52, borderRadius: 16, overflow: "hidden", border: "2px solid rgba(255,255,255,.55)", flexShrink: 0 }}>
-          {face ? (
-            <Image src={face} alt="" width={52} height={52} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          ) : (
-            <CrewFace name={crew.name} size={52} grad={["rgba(255,255,255,.2)", "rgba(255,255,255,.2)"]} radius={14} />
-          )}
-        </Link>
-        <Link href={pageHref} style={{ flex: 1, minWidth: 0, color: "#fff", textDecoration: "none" }}>
-          <div style={{ fontSize: 19, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crew.name}</div>
-          <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>
-            {crew.style} · {crew.city}
-          </div>
-        </Link>
-      </div>
-      {/* the leader is the only person who may change the crew, so the picker
-          lives on the desk rather than the public page */}
-      <div style={{ padding: "0 16px 12px" }}>
-        <PhotoPicker owner={{ kind: "crew", id: crew.id }} hasPhoto={Boolean(crew.photo)} label="Change the crew photo" />
-      </div>
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "0 16px 40px", boxSizing: "border-box" }}>
+      {/* the tool's hero, as every desk wears it; the line under it says whose */}
+      <DeskHero tool={seg === "members" ? "team" : "events"} as="h1" margin="12px 0 8px" />
+      <Link href={`/crews/${crew.id}/manage`} aria-label={`Back to ${crew.name}'s home`} style={{ display: "block", fontSize: 11, fontWeight: 800, color: "var(--sub)", textDecoration: "none", margin: "0 2px 12px" }}>
+        {crew.name} · {crew.style} · {crew.city}
+      </Link>
 
-      <div style={{ padding: "0 16px" }}>
+      <div>
         <div style={{ ...bizCard, borderLeft: "4px solid #EC4899", display: "flex", gap: 8 }}>
           {(
             [
@@ -117,13 +103,6 @@ export function CrewManager({ crew, members, entries, todayKey }: { crew: Crew; 
                 {v}
               </div>
               <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
-          {SEGS.map(([k, l]) => (
-            <div key={k} role="button" tabIndex={0} aria-pressed={seg === k} onKeyDown={pressKey(() => setSeg(k))} onClick={() => setSeg(k)} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, cursor: "pointer", fontSize: 10, fontWeight: 800, background: seg === k ? "var(--solid)" : "transparent", color: seg === k ? "var(--text)" : "var(--sub)", boxShadow: seg === k ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
-              {l}
             </div>
           ))}
         </div>

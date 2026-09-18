@@ -104,11 +104,11 @@ export function IdentityHero({
   eyebrowSub?: ReactNode;
   /** the tick is DanceOS's to give — set when a verification actually clears */
   verified: boolean;
-  /** the QR — one of the two chips under the place line (18 Sep 2026); null when
-   *  there is no public page to share */
+  /** the QR — the upper of the two chips stacked at the row's right edge (18 Sep
+   *  2026); null when there is no public page to share */
   share?: ReactNode;
-  /** the Stats chip beside the QR (18 Sep 2026, the user: "remove stats from tools
-   *  and place like a button similar to the qr code in the same area") — a
+  /** the Stats chip under the QR (18 Sep 2026, the user: "remove stats from tools
+   *  and place like a button similar to the qr code … QR above the Stats") — a
    *  `StatsChip` pointing at this account's own board; null on a public page */
   stats?: ReactNode;
   /** the line under the name — "24, New Delhi", or "Kothrud, Pune · 1 room" */
@@ -166,8 +166,8 @@ export function IdentityHero({
                 name is getting hidden which should not happen"). It used to be one
                 line with an ellipsis, and it shared that line with the QR chip — so
                 a long name beside a 96px disc had about 200px to live in and lost
-                its end. The chips have their own row below now, and the name wraps
-                onto a second line rather than truncating. `overflowWrap: anywhere`
+                its end. The chips have their own column on the right now (QR above
+                Stats), and the name wraps onto a second line rather than truncating. `overflowWrap: anywhere`
                 is for the one-word name longer than the column, which is the only
                 case a wrap alone cannot handle. */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6 }}>
@@ -175,15 +175,18 @@ export function IdentityHero({
               {verified ? <span style={{ flexShrink: 0, marginTop: 6 }}><VerifiedTick size={18} /></span> : null}
             </div>
             {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
-            {/* the two things you can do with this profile from here, as one row of
-                chips in the page's ink: see its record, and share it (18 Sep 2026) */}
-            {share || stats ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
-                {stats}
-                {share}
-              </div>
-            ) : null}
           </div>
+          {/* THE TWO CHIPS, STACKED ON THE RIGHT — the QR above Stats (18 Sep 2026, the
+              user: "place the stats and qr code buttons together on the right side of
+              the home tab, QR above the Stats"). Their own column at the row's edge,
+              so the name's column never shares a line with them and the two read as
+              one control: share this profile, see its record. */}
+          {share || stats ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+              {share}
+              {stats}
+            </div>
+          ) : null}
         </div>
         {styles.length ? (
           <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>

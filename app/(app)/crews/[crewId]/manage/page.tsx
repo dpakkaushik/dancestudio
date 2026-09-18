@@ -1,33 +1,18 @@
-import { notFound, redirect } from "next/navigation";
-import { CrewManager } from "@/features/crews/components/CrewManager";
+import { CrewHome } from "@/features/crews/components/CrewHome";
+import { requireLedCrew } from "@/features/crews/server/requireLedCrew";
 import { dayKeyOf } from "@/lib/format/month";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findCrewById, findCrewEntries, findCrewMembers } from "@/repositories/crews";
+import { findCrewEntries, findCrewMembers } from "@/repositories/crews";
 
 const stampNowIso = (): string => new Date().toISOString();
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** The crew desk — the leader's, and nobody else's (S_crewmanage 16318). A
- *  member who is not the leader is sent to the crew's page instead. */
+/** THE CREW'S HOME (18 Sep 2026) — what a crew you lead opens. It was the
+ *  members desk itself (S_crewmanage) until the user asked for a home with
+ *  tools; the desk is one tile away at /manage/team, the battle record at
+ *  /manage/events, and the URL stays what the hub, the Inbox and the e2e have
+ *  always pointed at (Rule 14). */
 export default async function CrewManagePage({ params }: { params: Promise<{ crewId: string }> }) {
   const { crewId } = await params;
-  if (!UUID_RE.test(crewId)) {
-    notFound();
-  }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-  const crew = await findCrewById(supabase, crewId);
-  if (!crew) {
-    notFound();
-  }
-  if (crew.leaderId !== user.id) {
-    redirect(`/crew/${crewId}`);
-  }
+  const { supabase, crew } = await requireLedCrew(crewId);
   const [members, entries] = await Promise.all([findCrewMembers(supabase, crewId), findCrewEntries(supabase, crewId)]);
-  return <CrewManager crew={crew} members={members} entries={entries} todayKey={dayKeyOf(stampNowIso())} />;
+  return <CrewHome crew={crew} members={members} entries={entries} todayKey={dayKeyOf(stampNowIso())} />;
 }

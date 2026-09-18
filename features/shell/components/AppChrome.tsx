@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useId, useSyncExternalStore, type ReactNode } from "react";
+import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Portal } from "@/components/ui/Portal";
 import { signOutAction } from "@/features/auth/server-actions/auth";
 import { DOS_UI, INK } from "@/lib/design/tokens";
 
@@ -19,7 +20,22 @@ import { DOS_UI, INK } from "@/lib/design/tokens";
  *  the layout works out per account. /profile and /stats are still routes (a
  *  route is a promise, Rule 14): the gear opens the first, the tile the second,
  *  and both read as drill pages now, with the back chip and a title. Recorded
- *  in CLAUDE.md's deviations table. */
+ *  in CLAUDE.md's deviations table.
+ *
+ *  THE MARK IS THE PROFILE SWITCHER (18 Sep 2026, the user: "DanceOS icon on top
+ *  left should give a drop down for profile switcher which takes to different
+ *  profiles managed by that specific user"). One person runs several things —
+ *  their own profile, the studios they are on the team of, the crews they lead —
+ *  and each has a home of its own. The layout lists them (`switcher`); pressing
+ *  the mark opens the list, the one you are on is marked, and each row is a
+ *  door. Nothing is switched in a session sense: every row is a route.
+ *
+ *  A STUDIO'S HOME AND A CREW'S HOME ARE HOMES (18 Sep 2026, the user: "both
+ *  crew and studios should get a home and inbox tab below on their home pages
+ *  as both have enquiries to deal with"). On `/business/{id}` and
+ *  `/crews/{id}/manage` — and on their inboxes — the bar is the ENTITY's: Home ·
+ *  Inbox, and the top-left is the mark with the switcher rather than a back
+ *  chip, because you are somewhere, not inside something. */
 
 /* ── the DanceOS mark — lifted from prototype DosMark (DanceOSApp.jsx:1614-1628) ── */
 function DosMark({ size = 28 }: { size?: number }) {
@@ -111,6 +127,39 @@ const TAB_SET: Array<{ label: string; href: string }> = [
   { label: "Inbox", href: "/inbox" },
 ];
 
+/** ONE ROW OF THE PROFILE SWITCHER — a home this account can go to. Built by the
+ *  layout, drawn here. */
+export interface SwitcherItem {
+  key: string;
+  href: string;
+  label: string;
+  /** what this is to you — "Your profile", "Owner", "Faculty", "Crew you lead" */
+  sub: string;
+  kind: "me" | "studio" | "crew";
+}
+
+const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studio: "#3B82F6", crew: "#DC2626" };
+
+/* AN ENTITY'S HOME (18 Sep 2026): a studio's own home and a crew's, with their
+   inboxes — the pages that wear the entity's Home · Inbox bar instead of the
+   main bar. Matched on a uuid so the static /business/stats, /earnings and /team
+   are not mistaken for a studio. */
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const STUDIO_HOME_RE = new RegExp(`^/business/(${UUID})(/inbox)?$`, "i");
+const CREW_HOME_RE = new RegExp(`^/crews/(${UUID})/(manage|inbox)$`, "i");
+interface Entity {
+  kind: "studio" | "crew";
+  home: string;
+  inbox: string;
+}
+const entityOf = (pathname: string): Entity | null => {
+  const s = pathname.match(STUDIO_HOME_RE);
+  if (s) return { kind: "studio", home: `/business/${s[1]}`, inbox: `/business/${s[1]}/inbox` };
+  const c = pathname.match(CREW_HOME_RE);
+  if (c) return { kind: "crew", home: `/crews/${c[1]}/manage`, inbox: `/crews/${c[1]}/inbox` };
+  return null;
+};
+
 /* drill-page titles — the top bar names where you are (prototype 19241) */
 const DRILL_TITLES: Array<[RegExp, string]> = [
   /* the two that were tabs until 15 Sep 2026 */
@@ -124,13 +173,16 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/routines$/, "Routines"],
   [/^\/memberships$/, "Memberships"],
   [/^\/assets$/, "Assets"],
-  [/^\/business$/, "Your business"],
+  /* the Studios tile's word (18 Sep 2026) — it read "Your business" while a
+     person's hub still offered to open one */
+  [/^\/business$/, "Studios"],
   /* the organization's combined figures (17 Sep 2026) — static segments, so they
      must be matched before the studio id below swallows them */
   [/^\/business\/stats$/, "Studios · combined"],
   [/^\/business\/earnings$/, "Earnings · combined"],
   [/^\/business\/team$/, "Team"],
   [/^\/business\/[^/]+$/, "Studio"],
+  [/^\/business\/[^/]+\/inbox$/, "Inbox"],
   [/^\/business\/[^/]+\/classes$/, "Classes"],
   [/^\/business\/[^/]+\/classes\/new$/, "Add class"],
   [/^\/business\/[^/]+\/classes\/[^/]+\/edit$/, "Edit class"],
@@ -153,6 +205,10 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/crews$/, "Crews"],
   [/^\/crews\/new$/, "Create crew"],
   [/^\/crews\/[^/]+\/manage$/, "Crew"],
+  /* the crew's two desks (18 Sep 2026) — the crew home is an entity page above */
+  [/^\/crews\/[^/]+\/manage\/team$/, "Team"],
+  [/^\/crews\/[^/]+\/manage\/events$/, "Events"],
+  [/^\/crews\/[^/]+\/inbox$/, "Inbox"],
   [/^\/crew\/[^/]+$/, "Crew"],
   [/^\/notifications$/, "Notifications"],
   [/^\/admin$/, "Admin"],
@@ -211,11 +267,14 @@ const chipStyle: React.CSSProperties = {
   border: "1px solid var(--chip-line)",
 };
 
+const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+
 export function AppChrome({
   children,
   unread = 0,
   adminOnly = false,
   publicViewHref = null,
+  switcher = [],
 }: {
   children: ReactNode;
   /** what the bell says — counted server-side for this render */
@@ -224,13 +283,38 @@ export function AppChrome({
   adminOnly?: boolean;
   /** where the eye goes — this account's page as a stranger sees it; null draws no eye */
   publicViewHref?: string | null;
+  /** the homes this account can go to — its own, its studios, the crews it leads (18 Sep 2026) */
+  switcher?: SwitcherItem[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeTab = TAB_SET.find((t) => t.href === pathname)?.label ?? null;
   const isTab = activeTab !== null;
+  /* a studio's or a crew's own pages wear the entity's bar and the mark */
+  const entity = entityOf(pathname);
+  const showMark = isTab || entity !== null;
+  const showBar = (isTab || entity !== null) && !adminOnly;
   /* the eye is a door out of the bar, never a lit tab — the page it opens is a drill */
-  const bar = publicViewHref ? [...TAB_SET, { label: "Public view", href: publicViewHref }] : TAB_SET;
+  const mainBar = publicViewHref ? [...TAB_SET, { label: "Public view", href: publicViewHref }] : TAB_SET;
+  const bar = entity
+    ? [
+        { label: "Home", href: entity.home },
+        { label: "Inbox", href: entity.inbox },
+      ]
+    : mainBar;
+  const lit = entity ? (pathname === entity.home ? "Home" : "Inbox") : activeTab;
+  /* THE SWITCHER'S OPEN STATE IS KEYED ON THE PAGE IT WAS OPENED ON: a navigation
+     changes the pathname, so the menu closes by itself without an effect writing
+     state (this repo's setState-in-effect rule) */
+  const [openFor, setOpenFor] = useState<string | null>(null);
+  const menuOpen = openFor === pathname;
+  /* a crew's home is /crews/{id}/manage, its inbox /crews/{id}/inbox — both are
+     "here" for that crew, so the match is on the crew's root */
+  const isHere = (item: SwitcherItem) => {
+    if (item.href === "/") return pathname === "/";
+    const root = item.kind === "crew" ? item.href.replace(/\/manage$/, "") : item.href;
+    return pathname === root || pathname.startsWith(`${root}/`);
+  };
   /* ⚠ THE "MANAGING {STUDIO}" STRIP IS GONE (18 Sep 2026, the user: "remove the
      blue bar which shows exit studio from all pages"). It was asked about once
      before, on 16 Sep, and kept on the DESKS with the argument that a tool hero
@@ -271,7 +355,7 @@ export function AppChrome({
           /* how much room a page leaves at the bottom (19173-19180): the tab bar floats
              over the end of a tab page, so the shell publishes the clearance and a
              screen reads it as padding-bottom: var(--dos-foot) */
-          "--dos-foot": isTab ? "calc(80px + var(--dos-safe-bottom))" : "calc(16px + var(--dos-safe-bottom))",
+          "--dos-foot": showBar ? "calc(80px + var(--dos-safe-bottom))" : "calc(16px + var(--dos-safe-bottom))",
         } as React.CSSProperties
       }
     >
@@ -302,10 +386,28 @@ export function AppChrome({
           borderBottom: "1px solid var(--hdr-line)",
         }}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: isTab ? 9 : 4, minWidth: 0, flex: 1 }}>
-          {isTab ? (
+        <span style={{ display: "flex", alignItems: "center", gap: showMark ? 9 : 4, minWidth: 0, flex: 1 }}>
+          {showMark ? (
             <>
-              <DosMark size={30} />
+              {/* THE MARK OPENS THE PROFILE SWITCHER (18 Sep 2026) — a real button, so
+                  the list of homes is one press away wherever the mark is drawn */}
+              {switcher.length > 0 && !adminOnly ? (
+                <button
+                  type="button"
+                  aria-label="Switch profile"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={() => setOpenFor(menuOpen ? null : pathname)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  <DosMark size={30} />
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform .16s" }}>
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+              ) : (
+                <DosMark size={30} />
+              )}
               <span style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI }}>
                 Dance<span style={{ color: "#EC4899" }}>OS</span>
               </span>
@@ -418,25 +520,69 @@ export function AppChrome({
         </span>
       </div>
 
+      {/* ── THE PROFILE SWITCHER, dropped from the mark (18 Sep 2026). Portalled: the
+          top bar is a transformed element, so a fixed backdrop drawn inside it would
+          cover the bar and nothing else. The one you are on is marked; every row is
+          a door, and a navigation closes the menu by changing the pathname. ── */}
+      {menuOpen && switcher.length > 0 ? (
+        <Portal>
+          <div onClick={() => setOpenFor(null)} style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,.28)" }} />
+          <div
+            role="menu"
+            aria-label="Your profiles"
+            style={{ position: "fixed", top: "calc(var(--dos-top) + 6px)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", padding: "0 12px", zIndex: 710, pointerEvents: "none", fontFamily: DOS_UI }}
+          >
+            <div style={{ pointerEvents: "auto", width: 300, maxWidth: "100%", background: "var(--solid)", color: "var(--text)", border: "1px solid var(--el)", borderRadius: 18, boxShadow: "0 18px 48px rgba(0,0,0,.45)", padding: 6, animation: "dosSheetUp .18s ease" }}>
+              <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)", padding: "8px 10px 6px" }}>SWITCH PROFILE</div>
+              {switcher.map((item) => {
+                const here = isHere(item);
+                const tint = SWITCH_TINT[item.kind];
+                return (
+                  <Link
+                    key={item.key}
+                    role="menuitem"
+                    href={item.href}
+                    aria-current={here ? "page" : undefined}
+                    aria-label={`${item.label} — ${item.sub}${here ? " — you are here" : ""}`}
+                    onClick={() => setOpenFor(null)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 13, textDecoration: "none", color: "var(--text)", background: here ? "var(--el)" : "transparent" }}
+                  >
+                    <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${tint},${tint}88)`, color: "#fff", fontSize: 12, fontWeight: 900 }}>
+                      {initialsOf(item.label)}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+                      <span style={{ display: "block", fontSize: 10, fontWeight: 800, color: tint, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>{item.sub}</span>
+                    </span>
+                    {here ? <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.6, padding: "3px 7px", borderRadius: 999, background: "var(--text)", color: "var(--solid)" }}>HERE</span> : null}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </Portal>
+      ) : null}
+
       {/* everything else flows below the bar; tabs also leave room for the pill bar */}
       <div
         id="dos-main"
         role="main"
         style={{
           paddingTop: "var(--dos-top)",
-          paddingBottom: isTab ? "calc(80px + var(--dos-safe-bottom))" : "calc(16px + var(--dos-safe-bottom))",
+          paddingBottom: showBar ? "calc(80px + var(--dos-safe-bottom))" : "calc(16px + var(--dos-safe-bottom))",
           boxSizing: "border-box",
         }}
       >
         {children}
       </div>
 
-      {/* ── the floating pill bar — only a tab draws it (19308-19397). The selected tab
-          expands into a filled capsule carrying its icon AND name; the others are their
-          icon alone, each keeping its aria-label so a screen reader names all four. ── */}
-      {isTab && !adminOnly && (
+      {/* ── the floating pill bar — a tab draws the main one, an entity's home its own
+          (19308-19397). The selected tab expands into a filled capsule carrying its
+          icon AND name; the others are their icon alone, each keeping its aria-label
+          so a screen reader names all of them. ── */}
+      {showBar && (
         <nav
-          aria-label="Main"
+          aria-label={entity ? (entity.kind === "studio" ? "Studio" : "Crew") : "Main"}
           style={{
             position: "fixed",
             bottom: "calc(12px + var(--dos-safe-bottom))",
@@ -455,7 +601,7 @@ export function AppChrome({
           }}
         >
           {bar.map(({ label, href }) => {
-            const on = activeTab === label;
+            const on = lit === label;
             const tint = TAB_TINT[label];
             const c = on ? "#FFFFFF" : "var(--tab-rest)";
             return (

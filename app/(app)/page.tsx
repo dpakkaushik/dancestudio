@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
-import { findMyMemberships } from "@/repositories/tenants";
+import { ensureArtistPage, findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findSupportThreads } from "@/repositories/support";
@@ -157,7 +157,12 @@ export default async function HomePage() {
      page they OWN (Team, Students); a user's and an organization's carry no
      desk of a business at all — a studio's desks are on the studio's own home. */
   const homeKind = isOrg ? "org" : isArtist ? "artist" : "user";
-  const pageId = isOrg ? null : (memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant.id ?? null);
+  /* THE ARTIST PAGE IS PROVISIONED HERE, NOT SET UP IN A SHEET (18 Sep 2026, the
+     user: "no need for a separate artist page to be created … you just subscribe
+     from a user to artist to get the additional tools"). A live plan and no page
+     yet → the page is made now, named after the person; the Team and Students
+     tiles below open it from the first render. */
+  const pageId = isOrg || !isArtist ? null : await ensureArtistPage(supabase, profile, memberships);
 
   /* the header, shown and nothing else: adding and removing moved into the
      Edit-profile sheet on 16 Sep 2026, at the user's instruction */

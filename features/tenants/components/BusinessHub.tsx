@@ -13,7 +13,7 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { centreOf } from "@/repositories/cities";
-import { DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
@@ -90,11 +90,14 @@ const pill: React.CSSProperties = { display: "inline-block", padding: "9px 16px"
  *  as it runs, in one city or several — but only once it is VERIFIED and
  *  SUBSCRIBED (R14, 9 Sep 2026): a studio is no longer created and left private
  *  to wait, it cannot be created at all until both are true, and the one it does
- *  create is public straight away. A PERSON with the Artist plan opens ONE
- *  artist page. A person without the plan opens nothing, and is told what
- *  unlocks what instead of being shown a button that would be refused. The
- *  Studio / Independent-trainer toggle the sheet used to carry is gone: the kind
- *  follows from who is asking, here and in the database.
+ *  create is public straight away. ⚠ A PERSON OPENS NOTHING HERE ANY MORE
+ *  (18 Sep 2026, the user: "there is no need for a separate artist page to be
+ *  created — managed from the artist profile only; you just subscribe from a
+ *  user to artist to get the additional tools"). The "Set up your artist page"
+ *  control is gone: the page behind an artist's tools is PROVISIONED the first
+ *  time Home renders with a live plan (`ensureArtistPage`), and a person's hub is
+ *  the STUDIOS tile's two lists — where they have taught, where they have learnt.
+ *  This screen is headed the tile's word, in the tile's colour, for everyone.
  *
  *  WHERE THE VERIFICATION CARD WENT (R13, 9 Sep 2026): to Home. An organization
  *  waiting on a stranger's decision, and its way of writing to that stranger,
@@ -121,7 +124,8 @@ export function BusinessHub({
   attended?: MyMembership["tenant"][];
   roomCounts: Record<string, number>;
   role: ProfileRole;
-  /** the plan is live — a person may open their artist page */
+  /** the plan is live — decides which empty-state sentence a person reads (the
+   *  page itself is provisioned on Home since 18 Sep 2026, not opened here) */
   isArtist: boolean;
   /** THE GATE, as the database words it: null when a studio may be created, else
    *  the one sentence still standing in the way. Asked of `why_no_studio()` so
@@ -188,16 +192,19 @@ export function BusinessHub({
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);
   const myStudios = mine.filter((t) => t.type === "studio");
-  const myArtistPage = mine.find((t) => t.type === "artist_page") ?? null;
+  /* where a person has LEARNT: every studio behind one of their bookings, less
+     the ones they teach at or own — a studio is listed once, under one heading */
+  const learnt = attended.filter((t) => !theirs.some((x) => x.id === t.id) && !mine.some((x) => x.id === t.id));
 
-  /* what the sheet opens is decided by who is here, not by a toggle */
+  /* what the sheet opens is decided by who is here, not by a toggle — and since
+     18 Sep 2026 only an organization opens anything here */
   const isStudio = isOrg;
   const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity > 0);
   const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk));
   /* R14: an organization may open the sheet only when the gate is open. A button
      that would be refused is not offered; the reason is printed in its place. */
   const gateShut = isOrg ? whyNoStudio : null;
-  const canOpen = isOrg ? gateShut === null : isArtist && !myArtistPage;
+  const canOpen = isOrg ? gateShut === null : false;
 
   const cardStyle = (own: boolean): React.CSSProperties => ({
     position: "relative",
@@ -346,15 +353,12 @@ export function BusinessHub({
     );
   };
 
-  /* an artist page, and the studios somebody only teaches at: the same card
-     without the studio's paperwork */
-  const plainCard = (t: MyMembership["tenant"], own: boolean) => (
-    <div key={t.id} style={cardStyle(own)}>
-      {openLink(
-        own ? `/business/${t.id}/classes` : publicProfilePath(t),
-        `${t.name} — ${own ? "open your artist page" : "open the profile"}`
-      )}
-      {identity(t, own)}
+  /* a studio somebody teaches or learns at: the same card without the studio's
+     paperwork, opening its public page */
+  const plainCard = (t: MyMembership["tenant"]) => (
+    <div key={t.id} style={cardStyle(false)}>
+      {openLink(publicProfilePath(t), `${t.name} — open the profile`)}
+      {identity(t, false)}
     </div>
   );
 
@@ -382,7 +386,7 @@ export function BusinessHub({
             position: "relative",
             overflow: "hidden",
             color: "#fff",
-            background: dosToolPaint(isOrg ? ACCENT : DOS_TINT.artist),
+            background: dosToolPaint(ACCENT),
           }}
         >
           <div
@@ -406,7 +410,7 @@ export function BusinessHub({
               lineHeight: 1.18,
             }}
           >
-            {isOrg ? DOS_TOOLS.studios.name : "Your business"}
+            {DOS_TOOLS.studios.name}
           </div>
         </div>
 
@@ -471,68 +475,33 @@ export function BusinessHub({
                 usually a component in the wrong place. ONE door now, on Home,
                 where the user went looking for it on 11 Sep. */}
           </>
-        ) : (
-          <>
-            <Head>YOUR ARTIST PAGE</Head>
-            {myArtistPage ? (
-              plainCard(myArtistPage, true)
-            ) : isArtist ? (
-              <>
-                <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>One page for your classes, bookings and earnings — it goes on Discover&apos;s Artists tab.</div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={dosKey}
-                  onClick={() => setSheetOpen(true)}
-                  style={{
-                    textAlign: "center",
-                    padding: "13px",
-                    borderRadius: 16,
-                    border: `1.5px dashed ${DOS_TINT.artist}`,
-                    color: DOS_TINT.artist,
-                    fontWeight: 800,
-                    fontSize: 13,
-                    cursor: "pointer",
-                  }}
-                >
-                  ＋ Set up your artist page
-                </div>
-              </>
-            ) : (
-              <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "13px 14px" }}>
-                <b style={{ fontSize: 13 }}>Artist tools need the Artist plan</b>
-                <div style={{ fontSize: 11.5, color: SUB, marginTop: 4, lineHeight: 1.5 }}>
-                  Teach, publish classes, get booked and paid — one profile, more tools. Studios are set up by <b style={{ color: INK }}>organizations</b>; if you run one, that is a separate account.
-                </div>
-                <Link href="/subscription" style={{ ...pill, marginTop: 10, background: "var(--text)", color: "var(--solid)" }}>
-                  See the plan ›
-                </Link>
-              </div>
-            )}
-          </>
-        )}
+        ) : null}
 
-        {/* and below it, the places that are not yours to run */}
+        {/* ── A PERSON'S TWO LISTS (18 Sep 2026, the user: "Studios in user should
+            show where they have learnt from, and for artist studios where they have
+            taught and learned"). TAUGHT AT is every studio whose team you are on —
+            a trainer's seat, or the Visiting Faculty seat accepting a class gives
+            you; LEARNT AT is every studio behind one of your bookings. A studio is
+            never listed twice, and there is no "Your artist page" block: an
+            artist's tools live on Home, and the page behind them is provisioned,
+            not set up here. ── */}
         {theirs.length > 0 && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: isOrg ? 20 : 0 }}>
             <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
-            {theirs.map((t) => plainCard(t, false))}
+            {theirs.map((t) => plainCard(t))}
           </div>
         )}
-
-        {/* and the places you have been a student at (18 Sep 2026): the Studios
-            tile's second list. A studio you also teach at is not repeated. */}
-        {!isOrg && attended.filter((t) => !theirs.some((x) => x.id === t.id) && !mine.some((x) => x.id === t.id)).length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <Head>STUDIOS YOU HAVE TAKEN CLASSES AT</Head>
-            {attended
-              .filter((t) => !theirs.some((x) => x.id === t.id) && !mine.some((x) => x.id === t.id))
-              .map((t) => plainCard(t, false))}
+        {!isOrg && learnt.length > 0 && (
+          <div style={{ marginTop: theirs.length > 0 ? 20 : 0 }}>
+            <Head>STUDIOS YOU HAVE LEARNT AT</Head>
+            {learnt.map((t) => plainCard(t))}
           </div>
         )}
-        {!isOrg && attended.length === 0 && theirs.length === 0 && !myArtistPage ? (
-          <div style={{ marginTop: 20, fontSize: 11.5, color: SUB, padding: "0 2px" }}>
-            The studios you take classes at will be listed here once you have booked one.
+        {!isOrg && learnt.length === 0 && theirs.length === 0 ? (
+          <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px" }}>
+            {isArtist
+              ? "The studios you teach at and learn at will be listed here — teach a class at one, or book one."
+              : "The studios you learn at will be listed here once you have booked a class."}
           </div>
         ) : null}
       </div>

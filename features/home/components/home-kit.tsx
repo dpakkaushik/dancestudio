@@ -31,8 +31,8 @@ export const DosShelfHead = ({ children, right, pad = "0 16px 10px" }: { childre
  *  today a user's Home was headed "Artist Tools" (the prototype's word for a grid
  *  that carried artist tools, 2497), an organization's "Studio Tools" (a studio
  *  owner's word, 7616), and a studio's own home drew its own copy of the line. */
-export type ToolsKind = HomeKind | "studio";
-export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", org: "Organization Tools", studio: "Studio Tools" };
+export type ToolsKind = HomeKind | "studio" | "crew";
+export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", org: "Organization Tools", studio: "Studio Tools", crew: "Crew Tools" };
 export function ToolsHead({ kind, right }: { kind: ToolsKind; right?: ReactNode }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 7px" }}>

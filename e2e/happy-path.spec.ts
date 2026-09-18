@@ -93,10 +93,15 @@ const FIVE_PNGS = Array.from({ length: 5 }, (_, i) => ({
 async function confirmCrop(page: Page, times = 1) {
   const dialog = page.getByRole("dialog", { name: "Crop & preview" });
   for (let k = 0; k < times; k += 1) {
-    if (times > 1) await expect(dialog.getByText(`${k + 1} of ${times}`)).toBeVisible();
+    /* fifteen seconds, not five: between two pictures the button reads "Saving…"
+       while the canvas encodes the JPEG, and on a machine running its fourth
+       suite of the hour that took longer than five once (18 Sep 2026) — the same
+       allowance the Profile tab's "Since 2016" wait got */
+    if (times > 1) await expect(dialog.getByText(`${k + 1} of ${times}`)).toBeVisible({ timeout: 15_000 });
     await dialog.getByRole("button", { name: "Use this photo" }).click();
   }
-  await expect(dialog).toHaveCount(0);
+  /* the last picture's encode is the same wait as the ones between */
+  await expect(dialog).toHaveCount(0, { timeout: 15_000 });
 }
 
 /** Walk onboarding as it stands since 8 Sep 2026: WHO IS HERE first (User is
@@ -280,6 +285,17 @@ test.describe.serial("DanceOS, end to end", () => {
        cascades the profiles. Cleanup failures surface but don't mask the test. */
     if (tenantId) {
       await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenantId}`, { method: "DELETE", headers: adminHeaders });
+    }
+    /* EVERY BUSINESS THESE ACCOUNTS OWN GOES WITH THEM (18 Sep 2026): the
+       organization's hosting row, and the artist page Home provisions for the
+       trainer the moment their plan is live — a business whose owner is deleted
+       is otherwise left ownerless on production (the #0w pile). */
+    for (const uid of [ownerId, learnerId, trainerId]) {
+      if (!uid) continue;
+      const owned = (await (await fetch(`${supabaseUrl}/rest/v1/business_members?user_id=eq.${uid}&member_role=eq.owner&select=business_id`, { headers: adminHeaders })).json()) as Array<{ business_id: string }>;
+      if (Array.isArray(owned) && owned.length) {
+        await fetch(`${supabaseUrl}/rest/v1/businesses?id=in.(${owned.map((o) => o.business_id).join(",")})`, { method: "DELETE", headers: adminHeaders });
+      }
     }
     if (ownerId) await deleteUser(ownerId);
     if (learnerId) await deleteUser(learnerId);
@@ -970,6 +986,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("dialog", { name: "Confirm · create crew" }).getByRole("button", { name: "Confirm & create" }).click();
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage$/);
     crewId = learner.url().match(/\/crews\/([0-9a-f-]+)\/manage$/)![1];
+    // the crew's HOME (18 Sep 2026): the hero, the Team and Events tiles, the crew's own bar
+    await expect(learner.getByTestId("crew-hero")).toBeVisible();
+    await expect(learner.getByRole("navigation", { name: "Crew" }).getByRole("link", { name: "Inbox" })).toBeVisible();
+    await learner.getByRole("link", { name: "Team", exact: true }).click();
+    await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage\/team$/);
     // ASKED IS NOT JOINED: the desk says the trainer has not answered, and counts one member
     await expect(learner.getByText("⏳ Waiting on them to confirm")).toBeVisible();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("1");
@@ -1174,7 +1195,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // roster, and the search dropdown's People section (Step 23 left people out
     // for exactly this reason). They open now, and the page is made of what the
     // story already did.
-    await learner.goto(`/crews/${crewId}/manage`);
+    await learner.goto(`/crews/${crewId}/manage/team`);
     await learner.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
     /* THE HEADING, not the text (16 Sep 2026). `exact: true` was put here to
@@ -1208,7 +1229,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto("/discover?city=Pune&tab=classes");
     await learner.getByLabel("Search DanceOS").fill(trainerName);
     await expect(learner.getByText("People")).toBeVisible();
-    await learner.getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) }).click();
+    /* TWO ROWS WEAR THIS NAME NOW (18 Sep 2026): Home provisions an artist's page
+       the moment their plan is live, and search lists that page under Artists
+       with the same "{name} — Artist · Pune" label the PERSON carries under
+       People. This segment is about the person page, so the row is the one that
+       opens /person — a page is a business and lives at /artist. */
+    await learner
+      .getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) })
+      .and(learner.locator('[href^="/person/"]'))
+      .click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
 
     // an organization is never a result and has no page for anybody else (R9):
@@ -1218,7 +1247,12 @@ test.describe.serial("DanceOS, end to end", () => {
     /* two claims, each on a term that cannot be crowded out by a leftover: this
        run stamp finds the trainer, and the organization name finds nobody */
     await learner.getByLabel("Search DanceOS").fill(stamp);
-    await expect(learner.getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) })).toBeVisible();
+    /* the stamp finds the trainer TWICE since 18 Sep 2026 — as themselves under
+       People and as the page Home provisioned for them under Artists — so each
+       row is asked for by where it opens */
+    const trainerRows = learner.getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) });
+    await expect(trainerRows.and(learner.locator('[href^="/person/"]'))).toBeVisible();
+    await expect(trainerRows.and(learner.locator('[href^="/artist/"]'))).toBeVisible();
     await learner.getByLabel("Search DanceOS").fill("E2E Owner");
     await expect(learner.getByRole("option", { name: /^E2E Owner/ })).toHaveCount(0);
     const orgPage = await learner.goto(`/person/${ownerId}`);
@@ -1367,17 +1401,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(settings.getByRole("link", { name: "All notification settings ›" })).toBeVisible();
     // and Log out is here, where the prototype keeps it
     await expect(settings.getByRole("button", { name: /Log out/ })).toBeVisible();
-    // Enquiry types is the prototype's own sheet (9000-9030) — a studio takes four kinds (no judge, 4934)
+    /* Enquiry types is the prototype's own sheet (9000-9030). Since 18 Sep 2026 the
+       trainer OWNS an artist page — Home provisioned it the moment their plan was
+       live — and the Profile tab configures THAT business first. An artist takes
+       all five kinds, judge included (4934); a studio would take four. */
     await settings.getByRole("button", { name: /Enquiry types/ }).click();
     const enqTypes = trainer.getByRole("dialog", { name: "Enquiry types" });
-    await expect(enqTypes.getByText("4 of 4 switched on")).toBeVisible();
+    await expect(enqTypes.getByText("5 of 5 switched on")).toBeVisible();
     await enqTypes.getByRole("button", { name: "Done" }).click();
-    // Payments is a real screen now (S_payments 16531): the trainer's goes to the studio's desk
+    // Payments is a real screen now (S_payments 16531): the trainer's goes to their OWN page's desk
     await settings.getByRole("link", { name: /Payments & verification/ }).click();
-    await expect(trainer).toHaveURL(new RegExp(`/business/${tenantId}/payments`));
+    await expect(trainer).toHaveURL(/\/business\/[0-9a-f-]+\/payments$/);
+    expect(trainer.url()).not.toContain(tenantId);
     await expect(trainer.getByRole("heading", { name: "Payments & verification" })).toBeVisible();
     await expect(trainer.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
-    // a trainer is not the owner — the switches are drawn but refuse to move
+    // on the STUDIO's desk the trainer is not the owner — the switches are drawn but refuse to move
+    await trainer.goto(`/business/${tenantId}/payments`);
+    await expect(trainer.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
     await trainer.getByRole("switch", { name: "Bank transfer" }).click();
     await expect(trainer.getByText("Only the owner changes what the business accepts")).toBeVisible();
     await trainer.getByRole("button", { name: "Verification" }).click();
@@ -1605,8 +1645,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.waitForURL(/tab=history/);
     await expect(learner.getByTestId("history-count")).toBeVisible();
 
-    await learner.goto(`/crews/${crewId}/manage`);
-    await learner.getByRole("button", { name: "Battle record" }).click();
+    // the battle record is the crew's Events desk since 18 Sep 2026
+    await learner.goto(`/crews/${crewId}/manage/events`);
     const rankingBtn = learner.getByRole("link", { name: "See crew ranking" });
     await expect(rankingBtn).toHaveAttribute("href", "/stats?tab=charts&seg=crew");
     await rankingBtn.click();

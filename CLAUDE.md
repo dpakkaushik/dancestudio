@@ -2,7 +2,105 @@
 
 ## LAST SESSION (17–18 Sep 2026) — replaced on every push (Rule 13)
 
-> ### EVERY PICTURE IS CROPPED, THE DISC IS A SQUIRCLE, STATS IS A CHIP, AND NO NAME IS CUT (18 Sep 2026, latest)
+> ### THE STUDIOS TILE IS HEADED STUDIOS, A CREW HAS A HOME WITH TOOLS, BOTH HAVE AN INBOX TAB, AND THE MARK SWITCHES PROFILES (18 Sep 2026, latest)
+> The user, in one message: *"1. user and artist profile have Studios in tools
+> which has wrong heading plus there is no need for a separate artist page to be
+> created — should be managed from the artist profile only, you just subscribe
+> from a user to artist to get the additional tools. Studios in user should show
+> where they have learnt from and for artist studios where they have taught and
+> learned. 2. Crew — should have list of crews you lead and are a part of. Crews
+> managed by you should take to Crew home tab with Teams and events to manage the
+> section, crews can also get enquiries. 3. Both Crew and Studios should get a
+> home and Inbox tab below on their home pages as both have enquiries to deal
+> with and studios have their request to deal with it as well. 4. DanceOS icon on
+> top left should give a drop down for profile switcher which takes to different
+> profiles managed by that specific user."* And mid-way: *"place the stats and qr
+> code buttons together on the right side of the home tab, QR above the Stats."*
+> * **The hub is headed Studios, in the tile's colour, for everyone.** It read
+>   "Your business" in the artist tint for a person while it still offered to
+>   open one. **"Set up your artist page" is GONE** — the button, the plan card
+>   and the person's half of the sheet. The `artist_page` row every class, ask
+>   and payout of an artist hangs off is **provisioned by Home** the first time
+>   it renders for an account with a live plan (`ensureArtistPage`: named after
+>   the person, in their city; the database's own gates still decide, and a
+>   refusal is swallowed so Home never fails on it). A person's hub is two
+>   lists — STUDIOS YOU HAVE TAUGHT AT (every studio whose team you are on: a
+>   trainer's seat, or the Visiting Faculty seat accepting a class gives you)
+>   and STUDIOS YOU HAVE LEARNT AT (every studio behind one of your bookings),
+>   a studio never listed twice. ⚠ Every test cleanup (the happy path's
+>   afterAll, `shoot-hero.js`) now deletes every business its accounts OWN
+>   before the accounts: a provisioned page whose owner is deleted is otherwise
+>   the #0w pile growing back one row per run.
+> * **A crew you lead opens a HOME, not the desk.** `/crews/{id}/manage` is
+>   `CrewHome`: the identity hero (photo, style, city, members, the QR and Stats
+>   to the crew board, the eye to the public page, the photo picker), then
+>   **Crew Tools** — Team and Events, the two halves of S_crewmanage's segment
+>   switch as two tiles at `/manage/team` and `/manage/events`, each wearing
+>   the tool's own `DeskHero` (the user's rule from earlier today: every
+>   inside page is headed like Crew and Calendar). The URL the hub, the Inbox
+>   and the e2e always pointed at still opens (Rule 14); one guard,
+>   `requireLedCrew`, fronts all four crew routes.
+> * **A studio's home and a crew's home wear their OWN bar — Home · Inbox.**
+>   `AppChrome` recognises `/business/{uuid}` and `/crews/{uuid}/manage` (and
+>   their inboxes) as ENTITY pages: the mark instead of the back chip, a
+>   two-tab pill bar, 80px clearance. `/business/{id}/inbox` is the studio's:
+>   its enquiries, the rooms artists asked it for, the teachers it asked, the
+>   invites it sent — read by every member (Step 12's rule, and RLS already
+>   admits them to each row). `/crews/{id}/inbox` is the crew's roster asks,
+>   withdrawable there. The mapping of asks into rows left `/inbox/page.tsx`
+>   for `features/inbox/requestItems.ts`, so three inboxes draw one row.
+> * **The mark is the profile switcher.** The layout lists every home this
+>   account has — its own, each studio it is on the team of (its seat named),
+>   each crew it leads — and the mark is a button (`Switch profile`) dropping
+>   that list, the one you are on marked HERE. Nothing is switched in a session
+>   sense: every row is a route, and a navigation closes the menu by changing
+>   the pathname (no effect writes state — this repo's lint).
+> * **QR above Stats, at the row's right edge.** The two chips left the line
+>   under the place for a column of their own at the identity row's end, on
+>   every page that stands on `IdentityHero`. Row C13.
+> * ⚠ **"CREWS CAN ALSO GET ENQUIRIES" NEEDS THE DATABASE, AND THAT IS HELD FOR
+>   THE USER'S WORD** — the standing rule: the list goes in front of them before
+>   `db push`. `20260918160000_a_crew_can_be_asked.sql` is WRITTEN and
+>   DRY-RUN: applied inside a rolled-back transaction against production and
+>   checked as real roles (`set local role authenticated` + the JWT claim) —
+>   **28/28**: a person asks EEE Crew for a celebration and the row names the
+>   crew; judge for a crew is refused in words; the leader asking their own
+>   crew is refused; the leader reads it, the sender reads it, a bystander
+>   reads nothing; the leader is told; the sender cannot quote, the leader
+>   quotes ₹5,000 at 30% and the quote names the crew; the sender's
+>   notification says "EEE Crew quoted"; the sender accepts, the leader
+>   records the advance; an open BUSINESS enquiry still quotes exactly as
+>   before; every touched function's ACL identical, anon's executable set
+>   25 → 25; nothing persisted. **Not applied.** The list is NEXT TO DO #0u.
+>   Until it lands the crew's Inbox has a Requests side and no Enquiries side,
+>   and its page comment says so.
+>
+> **Verified:** typecheck 0 · lint 0 · `next build` green (five new routes:
+> the crew home's two desks and inbox, the studio inbox) · the held migration
+> dry-run 28/28, rolled back · the whole suite on one worker **45 passed / 1
+> failed / 5 not run in 6.1 min**, then the happy path alone **14/14 in 5.3
+> min** — every one of the 51 green across the two runs, and no app file
+> changed between them. ⚠ **The happy path took SEVEN runs to get there, and
+> what they found is worth keeping.** (1) The provisioned page changes what
+> the story sees: search finds the trainer TWICE (their page under Artists,
+> themselves under People, one label), and the Profile tab's Enquiry types
+> sheet reads **5 of 5** — it configures the trainer's OWN page now, which
+> takes the judge type — while its Payments link opens THAT page's desk,
+> where the owner's switches move; the studio-desk refusal is still asserted,
+> reached by URL. Three test re-cuts, no product change. (2) ⚠ **Three runs
+> were lost to the cropper's canvas encode**: between two pictures the button
+> reads "Saving…" while a 760px JPEG is drawn and encoded, and on this machine
+> tonight that took over five seconds twice at picture 2 and once at picture 5
+> — where the same step had taken ~400 ms in the two earlier runs. No console
+> error, no page error, nothing in the trace but the wait; the machine showed
+> 22% CPU and 5 GB free. Both cropper waits are fifteen seconds now, the same
+> allowance the "Since 2016" flake got. It is not a product regression (the
+> cropper is untouched since the morning's push) and it is not fully
+> explained either — if a real phone ever shows "Saving…" for seconds, the
+> blur pass (`filter: blur(26px)` over the whole canvas) is the first thing to
+> measure.
+
+> ### EVERY PICTURE IS CROPPED, THE DISC IS A SQUIRCLE, STATS IS A CHIP, AND NO NAME IS CUT (18 Sep 2026)
 > The user, in one message: *"1. every photo uploaded in the app should have a
 > way to crop and preview it according to the layout of the photo in the app.
 > 2. profile pic should be squircle. 3. all tools in the home tab should have the
@@ -2323,6 +2421,51 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0u. **⚠ APPLY `20260918160000_a_crew_can_be_asked` — WRITTEN AND DRY-RUN, WAITING
+   ON THE USER'S WORD (18 Sep 2026).** The user: *"crews can also get
+   enquiries."* The list — exactly what the file does, nothing else:
+   * `enquiries.business_id` becomes NULLABLE; `+crew_id` (FK → `crews`, on
+     delete cascade); CHECK `enquiries_one_target` — exactly one of the two is
+     set; a partial index on `(crew_id, created_at desc)`. Every existing row
+     names a business and satisfies the CHECK by construction (4 live rows).
+   * `enquiry_quotes` the same: `business_id` nullable, `+crew_id`, CHECK
+     `enquiry_quotes_one_target`.
+   * Two new SELECT policies, both `to authenticated`: "crew leaders read their
+     crew's enquiries" and "…quotes", deciding through `is_crew_leader` (Step
+     22's definer, already executable by authenticated). The sender's and the
+     business's policies are untouched. No INSERT/UPDATE/DELETE policy anywhere,
+     as before.
+   * `is_enquiry_member(uuid)` — `create or replace` (ACL kept): a business's
+     members OR the crew's leader. `set_enquiry_status`, `send_enquiry_quote`,
+     `answer_enquiry_quote` and `record_enquiry_payment` decide through it and
+     are otherwise untouched.
+   * `send_enquiry` — DROPPED and re-created with `p_crew_id uuid default null`
+     LAST, so the app's named-argument call resolves exactly as before (no
+     overload — the Step 11 lesson). A crew takes `celebration | corporate |
+     collab` only ("a crew can be asked for a celebration, a corporate show or a
+     collaboration"); the leader and any confirmed member are refused ("you are
+     in this crew"); both-or-neither targets are refused. ACL restated to
+     exactly today's — authenticated + service_role, never anon (a re-created
+     function otherwise arrives with anon on it, the 16 Sep lesson).
+   * `send_enquiry_quote` — `create or replace`: the quote copies `business_id`
+     AND `crew_id` from its enquiry.
+   * `notify_enquiry` / `notify_enquiry_quote` — `create or replace`: a crew's
+     enquiry is raised to its LEADER ("… sent your crew an enquiry"); the quote
+     notification names the crew. Triggers stay bound.
+   * No table dropped, no row changed, no grant widened: anon's executable set
+     25 → 25 and every touched function's ACL identical — ASSERTED by the dry
+     run, not assumed.
+   Proven: `dryrun.js` in the session scratchpad — BEGIN, the whole file, 28
+   checks as real roles, ROLLBACK — **28/28**, nothing persisted. To apply, on
+   the user's word:
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly this one pending
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 enquiries crews notifications
+```
+   Then the app side in its own push (the backlog row "Crew enquiries" lists
+   it) — not written yet, because against today's schema it would 400.
+
 0v. **~~APPLY `20260917180000_classes_belong_to_a_studio_or_an_artist`~~ — DONE
    17 Sep 2026**, on the user's second "push to live", after the list (two
    functions, one BEFORE INSERT trigger on `classes`, no existing row / policy /
@@ -2647,6 +2790,19 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE STUDIOS TILE IS HEADED STUDIOS, A CREW HAS A HOME, TWO ENTITY INBOXES,
+  THE PROFILE SWITCHER — 18 Sep 2026, no step number — BUILT; one migration
+  WRITTEN, DRY-RUN 28/28 AND HELD (NEXT TO DO #0u).** The user's four-part
+  message plus "QR above the Stats": the hub is headed Studios for everyone and
+  a person's is two lists (taught at / learnt at) with no "Set up your artist
+  page" — Home provisions the page the first time it renders with a live plan;
+  a crew you lead opens `CrewHome` with Team and Events tiles over the two
+  halves of the old desk; a studio's home and a crew's home wear their own
+  Home · Inbox bar with `/business/{id}/inbox` and `/crews/{id}/inbox` behind
+  it; the DanceOS mark drops the profile switcher (your home, your studios,
+  the crews you lead); the QR and Stats chips are a right-hand column. Crew
+  ENQUIRIES wait on `20260918160000_a_crew_can_be_asked` — written, proven in a
+  rolled-back transaction, not applied. Deviation rows C13–C15 and R22.
 - **EVERY PICTURE IS CROPPED, THE DISC IS A SQUIRCLE, STATS IS A CHIP, NO NAME
   IS CUT — 18 Sep 2026, no step number — BUILT, no migration.** The user's
   seven-part message. `PhotoCropper` is the prototype's `DosCropper` lifted —
@@ -6084,6 +6240,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R20 | Every tool has the prototype's own paint (DOS_TOOLS 2931-2941) — Students violet, Team orange, Classes teal, Rooms the blue the parity audit gave it | **Seven tools repainted so no two tiles on ONE grid read alike**: Students → lime, Rooms → indigo, Memberships → bronze, Assets → slate, Calendar → deeper cyan, Classes → deeper teal, Team → deep rust | 18 Sep 2026, the user: *"fix colors for all tiles on home tab for all profiles, colours should not be repeated."* The prototype's palette was drawn for SIX tiles; this app's artist grid has thirteen, and at that size the set had collapsed into four blues and three violets. Four of the seven changed are the prototype's own (Students, Team, Classes, Rooms) — hence a row here. Verified by walking each kind's real tile list and flagging any saturated pair within 20° of hue at the same lightness. ⚠ Assets is deliberately the one NEUTRAL: the wheel is full at thirteen, and one slate among twelve saturated tiles is the most distinguishable thing on the grid |
 | R21 | The calendar is `S_profiletab calendarOnly` — class sessions, three sides, one Classes/Events switch it never wires up | **Events are on the calendar**, behind that switch: a person's tickets, entries and the events they run; an organization's own events, drafts included, as the whole of its calendar | 18 Sep 2026, the user: *"fix problems with calendar for all kinds of profiles."* The prototype draws the switch and has no events behind it; this app has had events since Step 21 and Home's deck has shown them since. An organization was the sharp end: it can hold no booking and no class seat (`guard_person_only`), so its calendar was empty by construction and its empty state offered to find it a class it could not book |
 | R18 | ONE tool grid, the prototype's (DOS_TOOLS 2931; BizSection 2497-2583 on a dancer's or artist's Home; S_homebiz 7590-7620 on a studio's) | **The Home grid is the user's list, kind by kind** (18 Sep 2026). USER — Classes (Booked, Assist) · Events (Participant, Spectator, Assisting) · Calendar · Crews · ~~Stats~~ · Studios (taken classes at). ARTIST (plan live) — the same, then Team · Students · Routines · Earnings · Memberships · Assets · Media. ORGANIZATION — Events · Studios · Team · Earnings (combined) · ~~Stats~~. STUDIO (its own home) — Classes · Calendar · ~~Stats~~ · Team · Students · Earnings · Memberships · Assets · Rooms · Media. Routines, Memberships, Assets and an organization's Team open the prototype's own "nothing here yet" until their desks exist. ⚠ **Stats left every one of the four lists later on 18 Sep 2026** for the chip beside the QR (row C9) — the user's own re-cut of their own list | The user: *"this should fix all home tab option logics for all 4 types of users."* The prototype has one grid for three roles it no longer has; the app has four kinds of account, and each gets the doors that are its |
+| R22 | Anyone opens an independent-trainer business from the hub's sheet (2660-2684); R3 narrowed that to "a Pro user opens ONE artist page" | **Nobody opens an artist page any more — Home PROVISIONS it** (`ensureArtistPage`, `repositories/tenants.ts`) the first time it renders for an account with a live plan, named after the person and in their city; the hub's person view is two lists — STUDIOS YOU HAVE TAUGHT AT and STUDIOS YOU HAVE LEARNT AT — headed Studios in the tile's colour like everyone's, with no artist-page card, button or sheet. A crew you lead opens a HOME (`CrewHome`) with Team and Events tiles; the old desk is those two pages | 18 Sep 2026, the user: *"there is no need for a separate artist page to be created — should be managed from the artist profile only, you just subscribe from a user to artist to get the additional tools … Studios in user should show where they have learnt from and for artist studios where they have taught and learned … crews managed by you should take to Crew home tab with Teams and events."* The row is still `businesses.type = 'artist_page'` — every class, ask and payout of an artist hangs off it, and `create_business_with_owner` still refuses one without the plan or a second one — the person just never meets it as a thing to set up |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -6112,6 +6269,9 @@ Home. **Do not "restore parity" on these.**
 | C10 | The grid is headed "Artist Tools" on a dancer's or artist's Home (2497) and "Studio Tools" on a studio owner's (7616) | **`ToolsHead` — the account's word, then "Tools"**: User Tools · Artist Tools · Organization Tools · Studio Tools, one line at one scale on all four homes, the plan badge on its right where there is a plan | 18 Sep 2026, the user: *"all tools in the home tab should have the heading in the same way."* A plain user's Home was headed "Artist Tools" and an organization's "Studio Tools" — each the prototype's word for somebody else's grid; the tile itself is untouched (the prototype's, in the tool's colour) |
 | C11 | The profile disc, drawn round since 15 Sep at the user's drawn circle | **A squircle** — the corner is `DISC_RADIUS` (30%) of the side, the proportion the crew face and the hub's 42px studio face already use; the cropper's disc frame is masked to the same shape | 18 Sep 2026, the user: *"profile pic should be squircle."* |
 | C12 | S_bookings heads the learner's list with a shelf head — "Your bookings" · "N confirmed" (6120) — and the unbuilt drills draw only the shrug (19164) | **Every tile's page wears the tool's hero** (`DeskHero`, 2966-2975): Your classes and Your events open on the Classes / Events card in the tile's own colour, with the count and the pill link on a slim row beneath; the not-built desks (Routines, Memberships, Assets, an organization's Team) wear theirs above the shrug | 18 Sep 2026, the user: *"all heading when inside the page should have similar design as Crew, Calendar etc."* — which is the desks' tool hero. The Studios hub, Calendar, Crews, Earnings, Team, Students, Rooms, Media and the register already had it; Stats keeps its record page, which is a different screen by design (S_profiletab historyOnly) |
+| C13 | The QR sits on the name's line (10688); the prototype has no Stats chip at all | **The QR and Stats are a COLUMN at the identity row's right edge, QR above Stats** — a third flex child beside the disc and the text column, on every page that stands on `IdentityHero`; nothing shares the name's line, so a long name wraps under nothing | 18 Sep 2026, the user: *"place the stats and qr code buttons together on the right side of the home tab, QR above the Stats."* Earlier the same day they were a row under the place line (C9) |
+| C14 | A studio's own home (S_homebiz) and the crew desk (S_crewmanage) are drill pages under the account's one bar | **A studio's home and a crew's home wear the ENTITY's own bar — Home · Inbox** — with the mark top-left instead of a back chip. `/business/{id}/inbox` (every member: enquiries, room requests in, teacher asks and invites out) and `/crews/{id}/inbox` (the leader: roster asks; enquiries once #0u lands) are the two new tabs; the row-building moved to `features/inbox/requestItems.ts` so the person's Inbox and both entity inboxes draw one row | 18 Sep 2026, the user: *"both crew and studios should get a home and inbox tab below on their home pages as both have enquiries to deal with and studios have their request to deal with it as well."* |
+| C15 | The mark on the top bar is decoration (DosMark, 1614; the shell 19230) | **The mark is a button that drops the PROFILE SWITCHER**: this account's own home, every studio it is on the team of (its seat named), every crew it leads — the one you are on marked HERE; every row a route. Drawn wherever the mark is: the four tabs and the entity homes | 18 Sep 2026, the user: *"DanceOS icon on top left should give a drop down for profile switcher which takes to different profiles managed by that specific user."* |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -6131,6 +6291,8 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **Crew enquiries — the migration is WRITTEN, DRY-RUN 28/28 and HELD (18 Sep 2026).** The user: *"crews can also get enquiries."* `20260918160000_a_crew_can_be_asked.sql` is in the repo and NOT applied — its list is NEXT TO DO #0u, for the user's word. What follows it, in one app push once it lands (not written yet: against today's schema every line would 400): `ENQUIRY_SELECT` gains `crews (name)` beside the business embed and `Enquiry` gains `crewId` / `crewName`; `sendEnquiry` and `EnquirySheet` take a crew, offered from `CrewPublicPage` with the three crew types; `findReceivedEnquiries` learns a crew scope so `/crews/{id}/inbox` gets its Enquiries side and the person's `/inbox` counts the crews they lead; `EnquiryDetail`'s Call and STATUS sides read the crew as "the business". Until then the crew's Inbox is Requests only, and says so | ENQ_TYPES 4900-4923; publicEntity crew 10871 | apply #0u on approval, then one app push |
+| **The four-part re-cut, what it left (18 Sep 2026):** the switcher lists crews you LEAD and studios you are ON THE TEAM OF — a crew you are merely IN has a page, not a home, so it is not a row (the Crews tile lists it); `/business/{id}/inbox` has no sent-enquiries side (a studio sends none) and a crew's inbox no venue requests (a crew holds no rooms); the crew's Team and Events desks say whose they are in one small line under the tool hero — the strip with the photo moved to the crew's home; a person's hub prints no card for their own artist page — the page is reached through the Team and Students tiles and the eye, which is what was asked; `ensureArtistPage` swallows a refusal, so an account whose plan reads active but whose page the database refuses sees the hub's lists and no error (the tiles then open the hub); the entity bar's Home is lit on the home and Inbox on the inbox, and a desk under `/business/{id}/…` is still a drill page with the back chip — only the home and the inbox wear the bar; ⚠ **an artist is now found TWICE by the search box** — their provisioned page under Artists and themselves under People, both labelled "{name} — Artist · {city}" (found by the happy path's person-pages segment, which now picks the `/person` row): whether People should skip a person whose page is already listed, or the two labels should differ, is a decision | S_crewmanage 16318; S_bizhub 2585; the shell 19308; search 4546 | decisions (c) |
 | **THE IDENTIFIERS PASS (owed since 16 Sep 2026, by the user's choice — "strings now, identifiers next").** The database and every string that reaches it say `business`, `class_people`, `class_bookings`, `studio_photos`, `category`…; the TypeScript still says `Tenant`, `tenantId`, `findMyTenants`, `Claim`, `enrollInSession`, `ev.cat`, `EventCat`, and the files and folders are still `repositories/tenants.ts`, `features/tenants/`, `features/enrollments/`, `app/…/[tenantId]`, `scripts/rls-proof-tenants.ps1`. ~2,200 occurrences in 207 files, camelCase and file names only — a pure identifier rename `tsc` verifies. Route FOLDER names are Next param names, not URLs, so `[tenantId]` → `[businessId]` changes no public path (Rule 14 is not triggered) | — | one mechanical pass, typecheck as the gate; nothing else in the same push |
 | **What the rename deliberately left (16 Sep 2026):** `admin_audit.subject_kind` holds `tenant` on its 161 pre-rename rows for ever — the table is immutable by design, so its CHECK admits both words and `AuditLog` reads the old one as the new; three policy-pinned helpers keep `p_tenant_id` as their PARAMETER name (`is_business_member`, `is_business_owner`, `event_host_is_public` — called positionally, invisible to callers; freeing them means dropping and re-creating the policies that pin them); two `storage.objects` policy NAMES still say "…their tenant folder" (Supabase owns that table and refused the rename — cosmetic); the storage folders `tenants/`, `proof/`, `avatars/`, `gallery/` keep their names because objects live there; `class_bookings.status = 'enrolled'`, `businesses.type = 'org'`, `business_members.member_role`, `profiles.role`, `leads`, `classes.room` are unrenamed by decision (each has a COMMENT); `artist_plans_legacy` is dead history that could simply be dropped | — | the parameter names when a policy is next rewritten anyway; `drop table artist_plans_legacy` when somebody is sure |
 | **The Home re-cut, what it left (18 Sep 2026):** ⚠ **`/managed` has no tile on any grid**, so with `HEAD_LINK` deleted it is reachable from Home only through the empty day's "See everything you manage" pill — a door that is drawn only when there is nothing on today, which is backwards; either it earns a tile or the Manage link comes back. The identity column sits **beside the disc in a flex row** (re-cut the same day — row C8), top-aligned since the chips moved in; ~~a long name ellipsizes ~109px sooner~~ — **the name WRAPS now and is never cut** (later on 18 Sep 2026, the user: *"full name is getting hidden which should not happen"*: the `nowrap` + ellipsis is gone, the QR left the name's line for the chip row under the place, and the place wraps too); the header rail, the styles and the page's own block are unchanged and still full width, and the disc no longer overlaps the header at all. The prototype's **time-of-day greeting is gone** for good (row C6) — if a greeting is ever wanted again it is a second line, not the eyebrow, because the eyebrow is now load-bearing | 7212-7213, 7143-7150 | a Manage tile, or the user's word that the pill is enough |

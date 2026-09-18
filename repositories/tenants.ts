@@ -99,6 +99,34 @@ export async function createTenantWithOwner(
   return toTenant(data as TenantRow);
 }
 
+/** THE ARTIST PAGE IS PROVISIONED, NEVER "SET UP" (18 Sep 2026, the user: "there
+ *  is no need for a separate artist page to be created — should be managed from
+ *  the artist profile only; you just subscribe from a user to artist to get the
+ *  additional tools"). The row behind an artist's classes, team, students and
+ *  earnings is still `businesses.type = 'artist_page'` — every class, ask and
+ *  payout in this database hangs off a business — but nobody opens it from a
+ *  sheet any more. The first time an account with a LIVE plan renders Home
+ *  without one, this makes it, named after the person and in their city, the
+ *  way `my_org_business()` makes an organization's hosting row on first ask.
+ *  The database keeps its own gate (`create_business_with_owner` refuses one
+ *  without the plan, and a second one), and a refusal here is swallowed: Home is
+ *  not the place to fail, and the tiles fall back to the hub. Returns the page's
+ *  id, existing or new, or null. */
+export async function ensureArtistPage(
+  supabase: SupabaseClient,
+  profile: { fullName: string; city: string | null },
+  memberships: MyMembership[]
+): Promise<string | null> {
+  const have = memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page");
+  if (have) return have.tenant.id;
+  try {
+    const page = await createTenantWithOwner(supabase, { name: profile.fullName, type: "artist_page", area: null, city: profile.city });
+    return page.id;
+  } catch {
+    return null;
+  }
+}
+
 interface MembershipRow {
   businesses: TenantRow | null;
 }
