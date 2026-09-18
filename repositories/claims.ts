@@ -105,6 +105,41 @@ export async function findClassArtists(
   return out;
 }
 
+/** WHICH OF THESE CLASSES HAS A TEACHER AT ALL (18 Sep 2026, the user: "remove
+ *  all classes on discover without an artist in it").
+ *
+ *  ⚠ THIS IS A SEPARATE READ FROM `findClassArtists` ON PURPOSE, and the reason
+ *  is the whole trick: a CONFIRMED claim on a PUBLISHED class of a LISTED
+ *  business is readable by ANYBODY (Step 11), while the teacher's NAME and PHOTO
+ *  live on `profiles`, which is signed-in-only (Step 1). So everyone — signed
+ *  out included — can be told WHETHER a class has a teacher, even where only a
+ *  signed-in reader can be told WHO. Filtering on the row rather than on the
+ *  hydrated name is what keeps Discover's shelf identical for both, instead of
+ *  emptying it for every stranger. */
+export async function findClassesWithArtist(
+  supabase: SupabaseClient,
+  classIds: string[]
+): Promise<Set<string>> {
+  const ids = [...new Set(classIds)].filter(Boolean);
+  const out = new Set<string>();
+  if (!ids.length) return out;
+
+  const { data, error } = await supabase
+    .from("class_people")
+    .select("class_id")
+    .in("class_id", ids)
+    .eq("kind", "artist")
+    .eq("status", "confirmed")
+    .is("deleted_at", null)
+    .limit(500);
+
+  if (error) {
+    throw new Error(`claims.findClassesWithArtist failed: ${error.message}`);
+  }
+  for (const row of (data ?? []) as Array<{ class_id: string }>) out.add(row.class_id);
+  return out;
+}
+
 interface MyAskRow extends ClaimRow {
   classes: {
     style: string;

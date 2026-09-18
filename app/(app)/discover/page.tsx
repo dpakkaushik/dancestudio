@@ -20,7 +20,7 @@ import { dayKeyOf } from "@/lib/format/month";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassArtists } from "@/repositories/claims";
+import { findClassArtists, findClassesWithArtist } from "@/repositories/claims";
 import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
 import { findNearbyTenants, findTenantCardFacts, type TenantCardFacts } from "@/repositories/discovery";
@@ -153,14 +153,24 @@ export default async function DiscoverPage({
   /* Discover's Crews tab (Step 22) */
   const crews = tab === "crews" ? filterCrews(await findCrewsByCity(supabase, city), filters) : [];
 
-  const classes = filterClasses(
+  const inCity = filterClasses(
     allClasses.filter((c) => c.tenantCity === city),
     filters
   );
+  /* ⚠ A CLASS WITH NOBODY TAKING IT IS NOT ON DISCOVER (18 Sep 2026, the user:
+     "remove all classes on discover without an artist in it"). The test is the
+     confirmed claim ROW, which everybody may read — not the teacher's name,
+     which only a signed-in reader may — so the shelf is the same list for a
+     stranger as for a member. (A published class should always have one since
+     `classes_publish_needs_a_yes`; what this removes is what was published
+     BEFORE that rule, on 18 Sep 2026.) */
+  const taught = tab === "classes" ? await findClassesWithArtist(supabase, inCity.map((c) => c.id)) : new Set<string>();
+  const classes = tab === "classes" ? inCity.filter((c) => taught.has(c.id)) : inCity;
   const counts = tab === "classes" ? await countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : new Map<string, number>();
-  /* the teacher each class card wears in its centre (18 Sep 2026) — one read for
-     the whole shelf. A signed-out visitor may not read `profiles`, so the map is
-     simply empty for them and the cards keep the style square. */
+  /* WHO that teacher is — name and face, for the card's centre. A signed-out
+     visitor may not read `profiles`, so this map is empty for them and the card
+     falls back to the style square; the class is still ON the shelf, because the
+     filter above asked a question anon can answer. */
   const classArtists = tab === "classes" ? await findClassArtists(supabase, classes.map((c) => c.id)) : new Map<string, ClassArtist>();
 
   /* every business card ends with its styles — the styles of its published
@@ -248,24 +258,22 @@ export default async function DiscoverPage({
     >
       {/* THE TOP OF DISCOVER (4501-4531): a small word saying what this is, the title set large, THE PLACE ONCE */}
       <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>DISCOVER</div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: 5, minWidth: 0 }}>
-        <span style={{ flex: 1, minWidth: 0, fontSize: 27, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1, lineHeight: 1.05, color: INK }}>Dance near you</span>
-        <CityChip city={city || "Anywhere"} cities={cities.map((c) => c.city)} tab={tab} extra={filtersToParams(filters)} />
-      </div>
-
-      {/* "near you" can now mean YOU (11 Sep 2026) — the chip swaps the city's
-          centre for the browser's own point, and the distance on every card
-          becomes a distance to the person reading it */}
-      {/* ⚠ THE MAP TOGGLE THAT SAT BESIDE THIS CHIP IS GONE (18 Sep 2026, the
-          user: "remove map from discover which is on the right side on near
-          me"). Near me now stands alone: it is the one control that changes
-          what the shelf means, by measuring every distance from the person
-          rather than from the city's centre. */}
-      {wantsBusinesses ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, minWidth: 0, flexWrap: "wrap" }}>
-          <NearMeChip on={near !== null} params={{ city, tab, ...filtersToParams(filters) }} />
+      {/* ⚠ WHERE YOU ARE, ON ONE LINE (18 Sep 2026, the user: "place near me
+          alongside Location drop down, adjust in the best way"). The two controls
+          answer the SAME question — measure from this city, or measure from me —
+          so they belong side by side rather than stacked, and Near me sat on a
+          row of its own only because the map toggle used to keep it company.
+          The title takes the line above and the pair takes the one under it, at
+          the right, because a 27px display heading and two chips cannot share a
+          line on a 430px phone without the heading losing words. */}
+      <div style={{ marginTop: 5, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 27, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1, lineHeight: 1.05, color: INK }}>Dance near you</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 8, minWidth: 0, flexWrap: "wrap" }}>
+          {/* Near me first: it is the one that CHANGES what the city chip means */}
+          {wantsBusinesses ? <NearMeChip on={near !== null} params={{ city, tab, ...filtersToParams(filters) }} /> : null}
+          <CityChip city={city || "Anywhere"} cities={cities.map((c) => c.city)} tab={tab} extra={filtersToParams(filters)} />
         </div>
-      ) : null}
+      </div>
 
       {/* the search box, the five tabs, the style rail, Filters + quick chips, the filter sheet (Step 23) */}
       <DiscoverFilters tab={tab} city={city} filters={filters} styleOrder={styleOrder} tabs={tabTiles} />

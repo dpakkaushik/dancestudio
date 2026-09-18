@@ -48,6 +48,42 @@
 > The tell is free and worth keeping: `git diff --stat` said **270 insertions /
 > 250 deletions** for what should have been nine lines.
 
+> ### A CLASS WITH NOBODY TAKING IT IS NOT ON DISCOVER, AND NEAR ME JOINS THE CITY CHIP (18 Sep 2026, last)
+> The user: *"1. place near me alongside Location drop down, adjust in the best
+> way. 2. in class cards photo of artist in centre below artist name and nothing
+> else. remove all classes on discover without an artist in it, and should not
+> break anything."*
+> * **Near me sits with the city chip.** They answer the same question — measure
+>   from this city, or from me — so they are one row now, right-aligned under the
+>   heading. Near me had a row of its own only because the map toggle used to keep
+>   it company, and that went this morning. The heading keeps its own line: a
+>   27px display heading and two chips cannot share one on a 430px phone without
+>   the heading losing words.
+> * **NO DANCE STYLE IN THE CENTRE, EVER.** The column's fallback square printed
+>   the style's name, which is the one thing that column is not about — and the
+>   style is already the headline on the right, full size, in its own ink. With
+>   nobody to draw it is a quiet person mark and no caption: a draft whose ask is
+>   unanswered, or a reader who may not read `profiles`.
+> * ⚠ **THE FILTER ASKS A QUESTION A STRANGER CAN ANSWER, and that is the whole
+>   trick.** A class with no confirmed artist is off Discover — but the test is
+>   the CLAIM ROW, not the teacher's name. Step 11 makes a confirmed claim on a
+>   published class of a listed business readable by ANYBODY, while `profiles` is
+>   signed-in-only (Step 1). Filtering on the hydrated NAME would have emptied
+>   Discover's classes shelf for every signed-out visitor; filtering on the row
+>   gives a stranger the same shelf as a member. `findClassesWithArtist` is that
+>   read, deliberately separate from `findClassArtists`.
+> * What it removes in practice is HISTORY: since `classes_publish_needs_a_yes`
+>   this morning a class cannot be published without its teacher's yes, so the
+>   only artist-less published classes are the ones published before that rule.
+>
+> **Verified:** typecheck 0 · lint 0 · `next build` green · **29/29 proofs** ·
+> the whole suite on one worker **41 passed / 2 failed in 9.7 min**, the happy
+> path's 14 segments all among the passes — its Discover segment included, which
+> is what proves the new filter does not empty the shelf (the class it looks for
+> has a confirmed teacher, because accepting is what let it be published). The
+> two reds are the same proof-leftover pile (#0w). Supabase was probed before the
+> run this time, after last night's network drop cost a whole suite.
+
 > ### THE CLASS CARD SHOWS ITS TEACHER, AND STOPS NAMING THE STUDIO (18 Sep 2026, last)
 > The user: *"class cards should show teacher photo instead of dance style in
 > centre. Remove studio names from class cards — should only be visible inside

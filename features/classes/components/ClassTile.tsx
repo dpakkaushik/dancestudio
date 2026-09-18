@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { dosStyleColor, DOS_LEVEL_LABEL } from "@/lib/constants/styles";
 import { DOS_DISPLAY, INK, LINE, SUB } from "@/lib/design/tokens";
-import { dosStyleInk, dosToolPaint, initialsOf, personGrad } from "@/lib/format/styleInk";
+import { dosStyleInk, initialsOf, personGrad } from "@/lib/format/styleInk";
 import { dateParts, timeRangeOf } from "@/lib/format/session";
 import { photoUrl } from "@/lib/media/photo";
 import type { DanceClass } from "@/types/class";
@@ -249,7 +249,17 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
             )}
           </span>
         ) : (
+          /* ⚠ NO DANCE STYLE IN THE CENTRE, EVER (18 Sep 2026, the user: "photo
+             of artist in centre, below artist name, and nothing else"). This
+             square used to print the style's name, which is the one thing this
+             column is not about — and the style is already the headline on the
+             right, at full size, in its own ink. When there is nobody to draw,
+             the column says so quietly: a person mark and no caption. That is a
+             DRAFT whose ask is unanswered, or a reader who may not read
+             `profiles`; on Discover it is neither, because a class with no
+             teacher is off the shelf entirely. */
           <span
+            aria-hidden="true"
             style={{
               position: "relative",
               width: 54,
@@ -258,20 +268,16 @@ export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, 
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              padding: "0 4px",
               boxSizing: "border-box",
-              background: dosToolPaint(bc),
-              boxShadow: "0 4px 12px -2px rgba(0,0,0,.5)",
-              color: "#fff",
-              fontSize: 10,
-              fontWeight: 900,
-              fontFamily: DOS_DISPLAY,
-              lineHeight: 1.1,
-              textAlign: "center",
-              overflowWrap: "anywhere",
+              background: "var(--el)",
+              border: `1.5px dashed ${LINE}`,
+              color: "var(--muted)",
             }}
           >
-            {c.style || headText}
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="8.5" r="3.6" />
+              <path d="M5 20c.9-4 3.7-6 7-6s6.1 2 7 6" />
+            </svg>
           </span>
         )}
         {/* the teacher's name, under their picture — TWO LINES, ALWAYS: a fixed
