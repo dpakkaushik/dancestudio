@@ -39,7 +39,14 @@ export type PhotoOwner =
    *  verified; `orgId` is that owner */
   | { kind: "studioHeader"; id: string; orgId: string };
 
-const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "businesses", crew: "crews", gallery: "gallery" };
+/* ⚠ THESE ARE STORAGE FOLDERS, NOT TABLE NAMES, AND THEY ARE NEVER RENAMED (Rule
+   16): objects live under them, the storage policies test them by name, and the
+   RPCs that record a path check the same prefix. The 16 Sep 2026 rename sweep
+   turned `tenants` into `businesses` HERE while the migration deliberately kept
+   the bucket's `tenants/` — so every studio disc upload was refused by the
+   storage policy ("new row violates row-level security policy", a 400) from
+   16 to 19 Sep 2026, and nothing typed could see it. Found by shoot-hero.js. */
+const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery" };
 
 const extOf = (file: { type: string }): string => (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");
 const randomName = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`);

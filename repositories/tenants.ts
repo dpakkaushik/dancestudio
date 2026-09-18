@@ -52,6 +52,8 @@ export const toTenant = (row: TenantRow): Tenant => ({
 });
 
 export interface TenantProfileInput {
+  /** the NAME (18 Sep 2026) — sent only when it changed; omitted, the row keeps its own */
+  name?: string | null;
   about: string | null;
   foundedYear: number | null;
   phone: string | null;
@@ -75,6 +77,9 @@ export async function updateTenantProfile(supabase: SupabaseClient, tenantId: st
     p_accepts_cards: input.accepts.cards,
     p_accepts_cash: input.accepts.cash,
     p_accepts_bank: input.accepts.bank,
+    /* `p_name` is LAST with a default on the RPC (`20260918172000`), so a null here
+       is "leave it" and the call resolves against the one signature there is */
+    p_name: input.name ?? null,
   });
   if (error) {
     throw new Error(error.message);

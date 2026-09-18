@@ -144,13 +144,16 @@ try {
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/class_sessions?id=eq.$($sess.id)" -Headers $svcH -Body (@{
     starts_at = $past.ToString("yyyy-MM-ddTHH:mm:ssZ"); ends_at = $past.AddHours(1).ToString("yyyy-MM-ddTHH:mm:ssZ") } | ConvertTo-Json) | Out-Null
 
-  # 1. A STRANGER GETS NOTHING - not the profile row, not the record, not the page's lists
+  # 1. A STRANGER GETS NOTHING about a PLAIN USER - not the profile row, not the
+  #    record, not the page's lists. Since 18 Sep 2026 (an artist is their
+  #    profile) the three reads are EXECUTABLE by anon, so an artist's page can be
+  #    public; for anybody else they answer with an EMPTY SET, not a refusal.
   $anonProfile = Get-Rows $anonH "profiles?id=eq.$($teacher.id)&select=id,full_name"
-  $anonStats = Fails { Rpc $anonH "person_dance_stats" @{ p_user_id = $teacher.id } }
-  $anonTeaches = Fails { Rpc $anonH "person_teaches_at" @{ p_user_id = $teacher.id } }
-  $anonCounts = Fails { Rpc $anonH "person_follower_counts" @{ p_user_ids = @($teacher.id) } }
-  Check 1 "A stranger reads $($anonProfile.Count) profile rows, and is refused the record ($anonStats), the teaches list ($anonTeaches) and the counts ($anonCounts)" (
-    ($anonProfile.Count -eq 0) -and ($anonStats -ne "") -and ($anonTeaches -ne "") -and ($anonCounts -ne ""))
+  $anonStats = Rows $anonH "person_dance_stats" @{ p_user_id = $teacher.id }
+  $anonTeaches = Rows $anonH "person_teaches_at" @{ p_user_id = $teacher.id }
+  $anonCounts = Rows $anonH "person_follower_counts" @{ p_user_ids = @($teacher.id) }
+  Check 1 "A stranger reads $($anonProfile.Count) profile rows, $($anonStats.Count) record rows, $($anonTeaches.Count) teaches rows and $($anonCounts.Count) count rows about a plain user" (
+    ($anonProfile.Count -eq 0) -and ($anonStats.Count -eq 0) -and ($anonTeaches.Count -eq 0) -and ($anonCounts.Count -eq 0))
 
   # 2. A SIGNED-IN PERSON SEES THE PAGE'S PARTS
   $seen = Get-Rows (Api $fan.token) "profiles?id=eq.$($teacher.id)&select=id,full_name,role,city"

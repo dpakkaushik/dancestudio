@@ -200,6 +200,8 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/calendar$/, "Calendar"],
   [/^\/studio\/[^/]+$/, "Studio"],
   [/^\/artist\/[^/]+$/, "Artist"],
+  /* an organization's own public page (18 Sep 2026) */
+  [/^\/org\/[^/]+$/, "Organization"],
   [/^\/(studio|artist)\/[^/]+\/schedule$/, "Schedule"],
   [/^\/inbox\/enquiries\/[^/]+$/, "Enquiry"],
   [/^\/crews$/, "Crews"],

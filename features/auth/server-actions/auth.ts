@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ONBOARDING_COOKIE } from "@/lib/auth/onboarding";
+import { LIMITS, clientKey, withinLimit } from "@/lib/rateLimit";
 import { emailSchema } from "@/features/auth/types/email";
 import {
   resetPasswordSchema,
@@ -68,6 +69,11 @@ export async function signUpAction(
 
   const origin = await emailLinkOrigin();
   const supabase = await createSupabaseServerClient();
+  /* five accounts an hour from one address (18 Sep 2026): a household, not a farm.
+     The caller is signed out, so the key is a hash of where the request came from */
+  if (!(await withinLimit(supabase, LIMITS.signUp, await clientKey()))) {
+    return { error: LIMITS.signUp.words };
+  }
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,

@@ -27,18 +27,20 @@ export async function generateMetadata({ params }: { params: Promise<{ userId: s
     : { title: "Person — DanceOS" };
 }
 
-/** A person's page. Signed-in only, deliberately: `profiles` is readable by
- *  signed-in users (Step 1), and whether a person page should be PUBLIC is a
- *  decision about somebody else's data — it stays on the backlog rather than
- *  being taken in passing here.
+/** A person's page. Signed-in only for a plain user, as it has been since the
+ *  first parity slice: `profiles` is readable by signed-in users (Step 1), and
+ *  whether a plain user's page should be PUBLIC is a decision about somebody
+ *  else's data. ⚠ **An ARTIST's page is public since 18 Sep 2026** (the user:
+ *  "should only come as their profile as artist — no separate page required"):
+ *  a person with a live Artist plan is readable signed out
+ *  (`20260918175000_an_artist_is_their_profile.sql`), because this page is now
+ *  what /artist/{id} used to be — the one public face of an artist. So a
+ *  stranger is not sent to sign in first; RLS decides: a row comes back for an
+ *  artist and for nobody else, and "not found" is the honest answer otherwise.
  *
- *  An ORGANIZATION has no page here (R9, 8 Sep 2026 — the user's rule): to
- *  everyone else it is not an entity; its studios are, each on its own page.
- *  The two who still open it are the organization itself and a platform admin,
- *  who reads it as the evidence behind a verification. Everybody else gets the
- *  404 a bad id gets. RLS still lets a signed-in user read the row (Step 1's
- *  policy) — this is the app's decision on top of that ceiling, like the 404
- *  on the admin queue. */
+ *  An ORGANIZATION has no page here (R9, 8 Sep 2026 — the user's rule); since
+ *  18 Sep 2026 it has one at /org/{id} instead, and this address sends it there.
+ *  The organization itself and a platform admin still read this one. */
 export default async function PersonPage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = await params;
   if (!UUID_RE.test(userId)) {
@@ -48,25 +50,28 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/person/${userId}`)}`);
-  }
 
   const person = await loadPerson(userId);
   if (!person) {
+    /* a stranger who cannot read this row: a plain user's page is still a
+       signed-in page, so the honest door is sign-in with the way back */
+    if (!user) {
+      redirect(`/login?next=${encodeURIComponent(`/person/${userId}`)}`);
+    }
     notFound();
   }
-  const isMe = user.id === userId;
+  const isMe = Boolean(user) && user!.id === userId;
   const isOrg = person.profile.role === "org";
-  if (isOrg && !isMe && !(await amIPlatformAdmin(supabase))) {
-    notFound();
+  if (isOrg && !isMe && !(user && (await amIPlatformAdmin(supabase)))) {
+    /* an organization's public face is its own page now (18 Sep 2026) */
+    redirect(`/org/${userId}`);
   }
   /* an organization neither follows nor is followed — the button is not drawn
      when either side is one (the RPC refuses it too) */
-  const viewer = isMe ? person.profile : await findProfileById(supabase, user.id);
+  const viewer = isMe ? person.profile : user ? await findProfileById(supabase, user.id) : null;
   const canFollow = !isMe && !isOrg && viewer?.role !== "org";
   const [following, header] = await Promise.all([
-    canFollow ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
+    canFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their plan shows */
     isOrg ? Promise.resolve([]) : findPersonHeaderPhotos(supabase, userId, headerMaxFor(person.isArtist)),
   ]);

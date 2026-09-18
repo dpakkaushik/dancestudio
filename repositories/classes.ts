@@ -478,6 +478,20 @@ export async function findClassPublishState(supabase: SupabaseClient, tenantId: 
   return out;
 }
 
+/** THE ONE SENTENCE BETWEEN A BUSINESS AND A NEW CLASS — `why_no_class`
+ *  (17 Sep 2026's trigger, read by a screen since 18 Sep 2026): null means the
+ *  form may open; a sentence means the register prints it where Create class
+ *  was, instead of letting the form be filled and refused on Publish. An
+ *  organization's hosting row never carries a class; an artist page only while
+ *  its owner's plan is live. A failed read answers null — the trigger still
+ *  decides, so the worst case is the old behaviour. */
+export async function findWhyNoClass(supabase: SupabaseClient, tenantId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc("why_no_class", { p_business_id: tenantId });
+  if (error) return null;
+  const s = typeof data === "string" ? data.trim() : "";
+  return s.length > 0 ? s : null;
+}
+
 /** The venue studio's owner answers for its room (18 Sep 2026). */
 export async function respondToVenueRequest(supabase: SupabaseClient, classId: string, accept: boolean): Promise<void> {
   const { error } = await supabase.rpc("respond_to_venue_request", { p_class_id: classId, p_accept: accept });

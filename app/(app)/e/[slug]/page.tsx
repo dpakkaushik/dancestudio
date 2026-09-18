@@ -6,7 +6,9 @@ import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findEventBySlug, findMyBookingsForEvent } from "@/repositories/events";
+import { findEventHostCards } from "@/repositories/publicOrganization";
 import { findMyMembershipRole } from "@/repositories/tenants";
+import { photoUrl } from "@/lib/media/photo";
 import { TYPE_LABEL } from "@/types/event";
 
 /** The event page at its booking link — /e/{slug} (prototype S_event 12810).
@@ -52,11 +54,14 @@ export default async function EventSharePage({ params }: { params: Promise<{ slu
 
   /* Step 22: a crew is entered from the crews you LEAD (13397-13420) */
   const wantsCrews = Boolean(user) && ev.entryTiers.some((t) => t.format === "crew");
-  const [role, mine, ledCrews] = await Promise.all([
+  const [role, mine, ledCrews, hosts] = await Promise.all([
     user ? findMyMembershipRole(supabase, ev.tenantId) : Promise.resolve(null),
     user ? findMyBookingsForEvent(supabase, ev.id, user.id) : Promise.resolve([]),
     wantsCrews ? findMyLedCrews(supabase) : Promise.resolve([]),
+    /* the organization behind the event, with its picture and its page (18 Sep 2026) */
+    findEventHostCards(supabase, [ev.tenantId]),
   ]);
+  const hostCard = hosts.get(ev.tenantId) ?? null;
 
   return (
     <EventPage
@@ -67,6 +72,7 @@ export default async function EventSharePage({ params }: { params: Promise<{ slu
       mine={mine}
       ledCrews={ledCrews.map((c) => ({ id: c.id, name: c.name, members: c.members }))}
       todayKey={dayKeyOf(stampNowIso())}
+      host={hostCard ? { name: hostCard.name, photo: photoUrl(hostCard.photoPath ?? undefined), href: hostCard.orgId ? `/org/${hostCard.orgId}` : null } : null}
     />
   );
 }

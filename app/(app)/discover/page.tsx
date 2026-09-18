@@ -9,7 +9,7 @@ import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
 import { NearMeChip } from "@/features/discovery/components/NearMeChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
-import { ArtistI, ClassI, DosFollowers, EventI, kmLabel, StudioI } from "@/features/discovery/components/discover-kit";
+import { ArtistI, ClassI, DosFollowers, EventI, StudioI } from "@/features/discovery/components/discover-kit";
 import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
 import { EventCard } from "@/features/events/components/EventCard";
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
@@ -23,13 +23,27 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists, findClassesWithArtist } from "@/repositories/claims";
 import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
-import { findNearbyTenants, findTenantCardFacts, type TenantCardFacts } from "@/repositories/discovery";
+import { findDiscoverArtists, findNearbyTenants, findTenantCardFacts, type DiscoverArtist, type TenantCardFacts } from "@/repositories/discovery";
 import { findPublishedEvents } from "@/repositories/events";
-import { findFollowerCounts, findMyFollowing } from "@/repositories/follows";
+import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/repositories/follows";
+import { findPersonFollowerCounts } from "@/repositories/publicPerson";
+import { findEventHostCards, type EventHostCard } from "@/repositories/publicOrganization";
 import type { ClassArtist } from "@/types/claim";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findProfileById } from "@/repositories/profiles";
 import type { EnrollmentStatus } from "@/types/enrollment";
+
+/** ONE PAGE OF A SHELF (18 Sep 2026, the user: "should give option for second
+ *  page after that"). The radius search answered 50 rows and stopped, so a city
+ *  with a 51st studio could never show it. `?page=N` is the offset now — the
+ *  address is the state, as every other filter on this page — and the foot of
+ *  the shelf offers the next page while a full page came back, and the one
+ *  before while this is not the first. */
+const PAGE_SIZE = 50;
+const parsePage = (raw: string | undefined): number => {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= 400 ? n : 1;
+};
 
 const EL = "var(--el)";
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase" };
@@ -109,13 +123,20 @@ export default async function DiscoverPage({
      none, and then the country is the honest place to measure from */
   const centre = near ?? centreOf(cities, city) ?? INDIA_CENTRE;
   const filters = parseFilters(params, DOS_STYLE_NAMES);
-  const wantsBusinesses = tab === "studios" || tab === "artists";
+  const page = parsePage(params.page);
+  const offset = (page - 1) * PAGE_SIZE;
+  /* ⚠ AN ARTIST ON DISCOVER IS A PERSON (18 Sep 2026, the user: "should only come
+     as their profile as artist, no separate page required"): the Artists tab
+     lists the PEOPLE in this city with a live Artist plan, opening their
+     profile, and the radius search answers Studios alone */
+  const wantsBusinesses = tab === "studios";
+  const wantsArtists = tab === "artists";
   /* the follow shelf heads Studios and Artists for a signed-in person; a crew has no follow yet */
-  const wantsFollows = Boolean(user) && wantsBusinesses;
+  const wantsFollows = Boolean(user) && (wantsBusinesses || wantsArtists);
 
   /* every published class is read on every tab: the classes shelf needs them,
      and the style rail is ORDERED by how many classes each style has (4212) */
-  const [allClasses, nearby, mine, following] = await Promise.all([
+  const [allClasses, nearby, mine, following, artistsRaw, followedPeople] = await Promise.all([
     /* narrowed to the city IN THE QUERY (11 Sep 2026): asking for the newest 200
        nationally and filtering here made a city's classes disappear once the
        platform passed 200 published classes — see repositories/classes.ts */
@@ -137,11 +158,16 @@ export default async function DiscoverPage({
       ? findNearbyTenants(supabase, {
           ...centre,
           radiusKm: radiusOf(filters),
-          type: tab === "studios" ? "studio" : "artist_page",
+          type: "studio",
+          /* `p_limit`/`p_offset` are sent only for a page past the first, so the
+             first page never depends on the paged signature (Rule 4's overload lesson) */
+          ...(offset > 0 ? { limit: PAGE_SIZE, offset } : {}),
         })
       : Promise.resolve([]),
     user && tab === "classes" ? findMyEnrolledSessionIds(supabase) : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
-    wantsFollows ? findMyFollowing(supabase) : Promise.resolve([]),
+    wantsFollows && wantsBusinesses ? findMyFollowing(supabase) : Promise.resolve([]),
+    wantsArtists ? findDiscoverArtists(supabase, { city: city || null, limit: PAGE_SIZE, offset }) : Promise.resolve([] as DiscoverArtist[]),
+    wantsFollows && wantsArtists ? findMyFollowedPeople(supabase) : Promise.resolve([]),
   ]);
 
   const styleCount = new Map<string, number>();
@@ -150,6 +176,8 @@ export default async function DiscoverPage({
 
   /* Discover's Events tab (Step 21): published, still to come, in this city */
   const events = tab === "events" ? filterEvents(await findPublishedEvents(supabase, dayKeyOf(stampNowIso()), city), filters) : [];
+  /* who hosts each of them, with a picture and the organization's page (18 Sep 2026) */
+  const hosts = tab === "events" ? await findEventHostCards(supabase, events.map((e) => e.tenantId)) : new Map<string, EventHostCard>();
   /* Discover's Crews tab (Step 22) */
   const crews = tab === "crews" ? filterCrews(await findCrewsByCity(supabase, city), filters) : [];
 
@@ -177,12 +205,15 @@ export default async function DiscoverPage({
      classes — and a style filter narrows through the same map */
   const stylesByTenant = wantsBusinesses ? await findPublishedStylesByTenant(supabase, nearby.map((t) => t.id)) : new Map<string, string[]>();
   const businesses = wantsBusinesses ? filterTenants(nearby, filters, stylesByTenant) : [];
-  const followed = following.filter((f) => f.tenantType === (tab === "studios" ? "studio" : "artist_page"));
-  /* the follower count sits at the foot of every business card — a number, never a name (Step 15);
+  const followed = following.filter((f) => f.tenantType === "studio");
+  /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
+  const artists = wantsArtists ? artistsRaw.filter((a) => filters.styles.length === 0 || a.styles.some((s) => filters.styles.includes(s))) : [];
+  /* the follower count sits at the foot of every card — a number, never a name (Step 15);
      the faces come from the businesses themselves (the nearby RPC carries none) */
-  const [followerCounts, facts] = await Promise.all([
+  const [followerCounts, facts, personCounts] = await Promise.all([
     wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
     wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.tenantId)]) : Promise.resolve(new Map<string, TenantCardFacts>()),
+    wantsArtists ? findPersonFollowerCounts(supabase, artists.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
   ]);
   /* the face and the tick reach the cards together — one read, two facts (D7).
      The pin used to ride along for the map view; the map went on 18 Sep 2026. */
@@ -190,18 +221,37 @@ export default async function DiscoverPage({
     t.photoPath = facts.get(t.id)?.photoPath ?? null;
     t.verifiedAt = facts.get(t.id)?.verifiedAt ?? null;
   });
-  const followedTiles: FollowedTile[] = followed.map((f) => ({
-    id: f.tenantId,
-    name: f.tenantName,
-    kind: f.tenantType === "studio" ? "studio" : "artist",
-    href: publicProfilePath({ id: f.tenantId, type: f.tenantType }),
-    photo: photoUrl(facts.get(f.tenantId)?.photoPath ?? undefined),
-    grad: gradientOf(f.tenantName),
-  }));
+  const followedTiles: FollowedTile[] = wantsArtists
+    ? /* the ARTISTS you follow are people (18 Sep 2026): the ones with a live plan, opening their profile */
+      followedPeople
+        .filter((p) => p.isArtist)
+        .map((p) => ({ id: p.userId, name: p.name, kind: "artist" as const, href: `/person/${p.userId}`, photo: photoUrl(p.avatarPath ?? undefined), grad: gradientOf(p.name) }))
+    : followed.map((f) => ({
+        id: f.tenantId,
+        name: f.tenantName,
+        kind: "studio" as const,
+        href: publicProfilePath({ id: f.tenantId, type: f.tenantType }),
+        photo: photoUrl(facts.get(f.tenantId)?.photoPath ?? undefined),
+        grad: gradientOf(f.tenantName),
+      }));
 
   const shelfHead = tab === "classes" ? "Upcoming classes" : tab === "studios" ? "Studios near you" : tab === "artists" ? "Artists" : tab === "crews" ? "Crews" : "Events near you";
-  const shelfCount = tab === "classes" ? classes.length : tab === "events" ? events.length : tab === "crews" ? crews.length : businesses.length;
+  const shelfCount = tab === "classes" ? classes.length : tab === "events" ? events.length : tab === "crews" ? crews.length : tab === "artists" ? artists.length : businesses.length;
   const narrowed = filters.styles.length > 0 || Object.keys(params).some((k) => ["sort", "dist", "when", "dur", "price", "cat", "fmt", "q"].includes(k));
+  /* the shelf's foot (18 Sep 2026): the Studios and Artists shelves are paged —
+     "Next page" while a FULL page came back (a shorter one is the end), "Previous"
+     past the first; every other filter rides along in the address */
+  const paged = wantsBusinesses || wantsArtists;
+  const rawCount = wantsBusinesses ? nearby.length : wantsArtists ? artistsRaw.length : 0;
+  const hasNext = paged && rawCount >= PAGE_SIZE;
+  const hasPrev = paged && page > 1;
+  const pageHref = (n: number): string => {
+    const q = new URLSearchParams({ city, tab, ...filtersToParams(filters) });
+    if (params.near) q.set("near", params.near);
+    if (n > 1) q.set("page", String(n));
+    return `/discover?${q.toString()}`;
+  };
+  const pageFoot: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", padding: "9px 14px", borderRadius: 999, border: `1.5px solid ${EL}`, background: "var(--card)" };
 
   /* five section tabs (4571-4585): flex:1 tiles, the mark over a 10px word, the open one on the ink */
   const tabTiles = (
@@ -317,23 +367,24 @@ export default async function DiscoverPage({
 
       {tab === "studios" && businesses.map((t) => <StudioCard key={t.id} tenant={t} followers={followerCounts.get(t.id) ?? 0} styles={stylesByTenant.get(t.id) ?? []} />)}
 
-      {/* artists draw the CompactCard, two to a row (4376-4423, 4815) */}
-      {tab === "artists" && businesses.length > 0 && (
+      {/* artists draw the CompactCard, two to a row (4376-4423, 4815) — each one
+          a PERSON with a live plan, opening their profile (18 Sep 2026) */}
+      {tab === "artists" && artists.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {businesses.map((t) => (
+          {artists.map((a) => (
             <CompactCard
-              key={t.id}
-              href={publicProfilePath(t)}
-              ariaLabel={`Open ${t.name}`}
-              name={t.name}
+              key={a.id}
+              href={`/person/${a.id}`}
+              ariaLabel={`Open ${a.name}`}
+              name={a.name}
               label="ARTIST"
-              photo={photoUrl(t.photoPath)}
-              grad={gradientOf(t.name)}
-              city={t.city ?? t.area ?? "—"}
-              km={t.located ? kmLabel(t.distanceKm) : null}
-              styles={stylesByTenant.get(t.id) ?? []}
-              verified={Boolean(t.verifiedAt)}
-              foot={<DosFollowers n={followerCounts.get(t.id) ?? 0} size={11} />}
+              photo={photoUrl(a.photoPath ?? undefined)}
+              grad={gradientOf(a.name)}
+              city={a.city ?? "—"}
+              km={null}
+              styles={a.styles}
+              verified={Boolean(a.verifiedAt)}
+              foot={<DosFollowers n={personCounts.get(a.id)?.followers ?? 0} size={11} />}
             />
           ))}
         </div>
@@ -347,7 +398,32 @@ export default async function DiscoverPage({
         </div>
       )}
 
-      {tab === "events" && events.map((e) => <EventCard key={e.id} event={e} href={`/e/${e.shareSlug}`} />)}
+      {tab === "events" &&
+        events.map((e) => {
+          const h = hosts.get(e.tenantId);
+          return <EventCard key={e.id} event={e} href={`/e/${e.shareSlug}`} host={h ? { name: h.name, photo: photoUrl(h.photoPath ?? undefined), href: h.orgId ? `/org/${h.orgId}` : null } : null} />;
+        })}
+
+      {/* the shelf's foot: one page at a time (18 Sep 2026) */}
+      {(hasPrev || hasNext) && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 14 }} data-testid="shelf-pager">
+          {hasPrev ? (
+            <Link href={pageHref(page - 1)} style={pageFoot} aria-label="Previous page">
+              ‹ Previous
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span style={{ fontSize: 10.5, fontWeight: 800, color: SUB }}>Page {page}</span>
+          {hasNext ? (
+            <Link href={pageHref(page + 1)} style={pageFoot} aria-label="Next page">
+              Next page ›
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
+      )}
 
       {shelfCount === 0 && (
         <div
@@ -374,6 +450,10 @@ export default async function DiscoverPage({
             "No events match that yet."
           ) : tab === "crews" ? (
             `No crews in ${city} yet — lead one from Crews on Home.`
+          ) : tab === "artists" ? (
+            hasPrev ? "No more artists here." : `No artists in ${city} yet.`
+          ) : hasPrev ? (
+            "No more studios here."
           ) : (
             `Nothing within ${radiusOf(filters)} km of ${city} yet.`
           )}

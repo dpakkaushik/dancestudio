@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
@@ -27,7 +28,7 @@ import {
   type EntryFormat,
   type EventBooking,
 } from "@/types/event";
-import { EventCard } from "./EventCard";
+import { EventCard, type EventCardHost } from "./EventCard";
 import { EvFormatIcon, bookingWords, eventCodeOf, eventTimeWords, eventWhen } from "./event-kit";
 
 /** The event page at its booking link — /e/{slug}. Lifted from prototype S_event
@@ -140,9 +141,15 @@ export interface EventPageProps {
   ledCrews?: Array<{ id: string; name: string; members: number }>;
   /** the IST day, stamped server-side so the page never runs a clock in render */
   todayKey: string;
+  /** WHO HOSTS IT, with a picture (18 Sep 2026, the user: "should show
+   *  organization profile page and the same should reflect inside the event
+   *  cards with photo") — the organization behind the event and the door to
+   *  its page; null when the host is not public, and then the venue line
+   *  prints the name alone as it always did */
+  host?: EventCardHost | null;
 }
 
-export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, ledCrews = [], todayKey }: EventPageProps) {
+export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, ledCrews = [], todayKey, host: hostCard = null }: EventPageProps) {
   const router = useRouter();
   const cat = ev.cat;
   const col = EV_TINT[cat];
@@ -332,7 +339,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
       {/* ── THE CARD ITSELF, ON THE PAGE (12928-12951) ── */}
       <div style={{ padding: "0 16px 10px", position: "relative", zIndex: 1, background: "var(--bg)" }}>
         <div style={{ height: 1, background: "var(--el)", margin: "16px 0 20px" }} />
-        <EventCard event={ev} />
+        <EventCard event={ev} host={hostCard} />
         {liveNow ? (
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 2 }}>
             <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, padding: "4px 11px", borderRadius: 999, background: GREEN, color: "#fff" }}>● LIVE NOW</span>
@@ -459,7 +466,19 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 900 }}>{ev.venue}</div>
               <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2, lineHeight: 1.45 }}>{ev.address ?? ev.city}</div>
-              <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 3 }}>by {ev.tenantName}</div>
+              {/* the host, as a door to its page when it has one (18 Sep 2026):
+                  its picture the size of a word, its name, and the organization's
+                  own page behind the press — the same line the card prints */}
+              {hostCard?.href ? (
+                <Link href={hostCard.href} aria-label={`Open ${hostCard.name}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 4, textDecoration: "none", color: "var(--sub)", fontSize: 10.5, fontWeight: 800, minWidth: 0, maxWidth: "100%" }}>
+                  <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: 6, flexShrink: 0, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${col}99,${col}44)`, color: "#fff", fontSize: 9, fontWeight: 900, fontFamily: DOS_DISPLAY }}>
+                    {hostCard.photo ? <Image src={hostCard.photo} alt="" width={18} height={18} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : hostCard.name.trim()[0]?.toUpperCase() ?? "•"}
+                  </span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>by {hostCard.name} ›</span>
+                </Link>
+              ) : (
+                <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 3 }}>by {hostCard?.name ?? ev.tenantName}</div>
+              )}
             </div>
             <a href={mapsHref} target="_blank" rel="noopener noreferrer" aria-label="Open the venue in Maps" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 800, color: col, cursor: "pointer", flexShrink: 0, textDecoration: "none" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">

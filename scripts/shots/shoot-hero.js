@@ -126,6 +126,20 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
   try {
     /* ── ONE: the organization and its studio ─────────────────────────────── */
     const org = await browser.newPage({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 1 });
+    /* the browser's own complaints are the first thing to read when a wait
+       below times out — printed, never asserted (a third-party warning is not
+       a failed check) */
+    org.on("console", (m) => { if (m.type() === "error") console.log("CONSOLE", m.text().slice(0, 300)); });
+    org.on("pageerror", (e) => console.log("PAGEERROR", String(e).slice(0, 300)));
+    /* and every failed request, with its body — a 400 from Storage or PostgREST
+       says in words what a blank "Failed to load resource" does not */
+    org.on("response", async (r) => {
+      if (r.status() >= 400 && !r.url().includes("/_next/")) {
+        let body = "";
+        try { body = (await r.text()).slice(0, 300); } catch { /* no body */ }
+        console.log("HTTP", r.status(), r.request().method(), r.url().slice(0, 180), body);
+      }
+    });
     const shot = shotOf(org);
     orgId = await signUp(org, `hero-org-${stamp}@example.com`);
     await onboard(org, "EEE Dance Company", "Organization", "New Delhi");
@@ -210,7 +224,10 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        studio; the user has answered that argument, and `WorkspaceStrip` is
        deleted rather than hidden. The back chip is the way out of a desk. */
     await org.goto(`${BASE}/business/${studioId}/classes`);
-    await org.getByRole("heading", { name: "Classes" }).first().waitFor();
+    /* the register's hero is the tool card, not a heading element (the 18 Sep
+       class-form re-cut drew it as a div) — its one stable control is the
+       Create class pill, so that is what says the page is up */
+    await org.getByRole("link", { name: /Create class/ }).waitFor();
     check((await org.getByText(/^Managing/).count()) === 0, "a desk: no Managing strip either — it is gone from every page");
     check((await org.getByRole("link", { name: /Leave this studio/ }).count()) === 0, "a desk: and no blue Exit studio pill");
 
@@ -239,8 +256,14 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     /* the disc's picture — businesses.profile_photo_path, through set_business_profile_photo */
     await sheet.getByLabel("Add a photo").setInputFiles(FILE);
     await useIt(org);
-    await disc(org).locator("img").first().waitFor({ timeout: 20000 });
-    check((await discImgs(org)) === 1, "edit studio: the picture landed on the disc behind the sheet");
+    /* a wait that says what it saw when it fails, rather than ending the run:
+       the sheet's own status line and how many dialogs are open */
+    const discUp = await disc(org).locator("img").first().waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+    if (!discUp) {
+      const words = await sheet.locator('[role="status"], [role="alert"]').allTextContents().catch(() => []);
+      console.log("DISC DID NOT LAND — sheet says:", JSON.stringify(words), "| open dialogs:", await org.getByRole("dialog").count(), "| disc imgs:", await discImgs(org), "| url:", org.url());
+    }
+    check(discUp && (await discImgs(org)) === 1, "edit studio: the picture landed on the disc behind the sheet");
     check((await railImgs(org)) === 0, "edit studio: and not in the header");
     const photoPath = await rest(`businesses?id=eq.${studioId}&select=profile_photo_path`);
     check(String(photoPath[0] && photoPath[0].profile_photo_path).startsWith(`tenants/${studioId}/`), "businesses.profile_photo_path is set, in the studio's own folder");
@@ -354,7 +377,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     /* the chrome, re-cut 15 Sep 2026: four in the bar and an eye, Edit on the hero, Stats in the grid */
     const bar = org.getByRole("navigation", { name: "Main" });
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
-    check((await bar.getByRole("link", { name: "Public view" }).getAttribute("href")) === `/studio/${studioId}`, "bar: the eye opens the organization's studio as a stranger sees it");
+    /* 18 Sep 2026: an organization has a page of its own now, and the eye opens THAT */
+    check((await bar.getByRole("link", { name: "Public view" }).getAttribute("href")) === `/org/${orgId}`, "bar: the eye opens the organization's own page as a stranger sees it");
     check((await bar.getByRole("link").count()) === 4, "bar: Home · Discover · Inbox · the eye — four");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: Edit profile is a pencil on the hero");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");

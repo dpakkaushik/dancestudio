@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { LIMITS, withinLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { searchProfiles } from "@/repositories/profiles";
 import type { Profile } from "@/types/profile";
@@ -32,6 +33,10 @@ export async function searchPeopleAction(input: { term: string; exclude?: string
   } = await supabase.auth.getUser();
   if (!user) {
     return { people: [], error: "Sign in to search DanceOS" };
+  }
+  /* sixty searches a minute is typing; more is a script (18 Sep 2026) */
+  if (!(await withinLimit(supabase, LIMITS.peopleSearch))) {
+    return { people: [], error: LIMITS.peopleSearch.words };
   }
   try {
     const people = await searchProfiles(supabase, parsed.data.term, parsed.data.exclude ?? []);

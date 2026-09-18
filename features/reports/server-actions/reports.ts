@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { LIMITS, withinLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { reportContent } from "@/repositories/adminPanel";
 
@@ -27,6 +28,10 @@ export async function reportContentAction(input: unknown): Promise<{ error: stri
     return { error: parsed.error.issues[0]?.message ?? "Pick a reason" };
   }
   const supabase = await createSupabaseServerClient();
+  /* five reports an hour is a person; more is a campaign (18 Sep 2026) */
+  if (!(await withinLimit(supabase, LIMITS.report))) {
+    return { error: LIMITS.report.words };
+  }
   try {
     await reportContent(supabase, {
       subjectKind: parsed.data.subjectKind,

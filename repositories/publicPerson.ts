@@ -42,6 +42,9 @@ export interface PublicPerson {
   teachesAt: PersonTeachesAt[];
   /** the businesses this person OWNS, when they are listed (a studio's page is public) */
   runs: Array<{ tenantId: string; tenantName: string; tenantType: "studio" | "artist_page"; city: string | null; photoPath: string | null }>;
+  /** the listed artist page behind an artist — what an Enquiry on their profile is
+   *  sent to (18 Sep 2026: an artist's public face is their profile); null otherwise */
+  artistPageId: string | null;
 }
 
 interface StatsRow {
@@ -116,7 +119,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
   }
   const profile: Profile = toProfile(profileRow as Parameters<typeof toProfile>[0]);
 
-  const [statsRes, countsMap, crewsRes, teachesRes, runsRes, artistIds] = await Promise.all([
+  const [statsRes, countsMap, crewsRes, teachesRes, runsRes, artistIds, artistPageRes] = await Promise.all([
     supabase.rpc("person_dance_stats", { p_user_id: userId }),
     findPersonFollowerCounts(supabase, [userId]),
     supabase
@@ -138,6 +141,8 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
       .is("deleted_at", null)
       .limit(20),
     findArtistIds(supabase, [userId]),
+    /* the page behind an artist, readable signed out (`artist_page_of`, 18 Sep 2026) */
+    supabase.rpc("artist_page_of", { p_user_id: userId }),
   ]);
 
   const sRow = (Array.isArray(statsRes.data) ? statsRes.data[0] : statsRes.data) as StatsRow | undefined;
@@ -205,5 +210,6 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     .map((r) => ({ tenantId: r.businesses!.id, tenantName: r.businesses!.name, tenantType: r.businesses!.type, city: r.businesses!.city, photoPath: r.businesses!.profile_photo_path ?? null }));
 
   const c = countsMap.get(userId) ?? { followers: 0, following: 0 };
-  return { profile, isArtist: artistIds.has(userId), stats, followers: c.followers, following: c.following, crews, teachesAt, runs };
+  const artistPageId = artistPageRes.error ? null : ((artistPageRes.data as string | null) ?? null);
+  return { profile, isArtist: artistIds.has(userId), stats, followers: c.followers, following: c.following, crews, teachesAt, runs, artistPageId };
 }

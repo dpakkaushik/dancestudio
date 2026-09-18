@@ -6,6 +6,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { PersonFollowButton } from "./PersonFollowButton";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
 import { ProfileShare } from "./ProfileShare";
 import { CallButton, fmtFollowers } from "./PublicProfile";
@@ -183,16 +184,18 @@ export function PublicPersonPage({
             <Link href="/stats" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
               This is you · Your record ›
             </Link>
-          ) : profile.phone ? (
-            /* two things you can do, so they share the row — the same tel: the
-               business page hands off with, from the same component */
-            <div style={{ display: "grid", gridTemplateColumns: canFollow ? "2fr 1fr" : "1fr", gap: 6 }}>
+          ) : (
+            /* WHAT YOU CAN DO TO A PERSON, in one row (10875-10888): follow them;
+               ring them, when they published a number; and — since 18 Sep 2026,
+               an artist's public face being their profile — ASK them, the enquiry
+               going to the page behind them (celebration, corporate, judge,
+               private sessions, collaboration), the way it went from /artist. */
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${[canFollow, Boolean(profile.phone), Boolean(person.artistPageId)].filter(Boolean).length || 1}, 1fr)`, gap: 6 }}>
               {canFollow ? <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} /> : null}
-              <CallButton phone={profile.phone} />
+              {profile.phone ? <CallButton phone={profile.phone} /> : null}
+              {person.artistPageId ? <EnquiryButton tenantId={person.artistPageId} tenantName={profile.fullName} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
             </div>
-          ) : canFollow ? (
-            <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} />
-          ) : null}
+          )}
         </div>
 
         {/* THE PLACE THIS PROFILE GOES (10905-10940): a business's schedule is a

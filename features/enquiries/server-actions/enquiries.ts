@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { LIMITS, withinLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   answerEnquiryQuote,
@@ -73,6 +74,10 @@ export async function sendEnquiryAction(input: z.input<typeof sendSchema>): Prom
     return { error: parsed.error.issues[0]?.message ?? "Check the enquiry" };
   }
   const supabase = await requireUser();
+  /* ten enquiries an hour (18 Sep 2026): a sincere asker, not a script */
+  if (!(await withinLimit(supabase, LIMITS.enquiry))) {
+    return { error: LIMITS.enquiry.words };
+  }
   try {
     const id = await sendEnquiry(supabase, parsed.data);
     revalidateInbox();

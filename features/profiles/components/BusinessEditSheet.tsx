@@ -67,6 +67,9 @@ export function BusinessEditSheet({
   onClose: () => void;
 }) {
   const router = useRouter();
+  /* the name (18 Sep 2026, the user: "give option to rename") — the owner's alone,
+     like everything else this sheet saves through the one door */
+  const [name, setName] = useState(tenant.name);
   const [about, setAbout] = useState(tenant.about ?? "");
   const [founded, setFounded] = useState(tenant.foundedYear ? String(tenant.foundedYear) : "");
   const [phone, setPhone] = useState(tenant.phone ?? "");
@@ -126,6 +129,7 @@ export function BusinessEditSheet({
       const yr = founded ? Number(founded) : null;
       const out = await updateTenantProfileAction({
         tenantId: tenant.id,
+        name: name.trim() !== tenant.name ? name.trim() : undefined,
         about: about.trim() || null,
         foundedYear: yr,
         phone: phone.trim() || null,
@@ -211,6 +215,8 @@ export function BusinessEditSheet({
           800. The explicit aria-label on each control is NOT optional: the
           wrapper was what gave these fields their accessible name, and the e2e
           suite finds three of them by it. */}
+      <div style={fieldLabel}>Name</div>
+      <input aria-label="Name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder={isStudio ? "The studio's name" : "Your page's name"} style={fieldInput} />
       <div style={fieldLabel}>About</div>
       <textarea aria-label="About" value={about} maxLength={220} onChange={(e) => setAbout(e.target.value)} rows={3} placeholder={isStudio ? "Where the city comes to move…" : "Movement is a language…"} style={{ ...fieldInput, resize: "none", lineHeight: 1.5 }} />
       <span style={{ display: "block", textAlign: "right", fontSize: 10.5, color: about.length > 200 ? "#F59E0B" : MUTED, marginTop: 3 }}>{about.length}/220</span>

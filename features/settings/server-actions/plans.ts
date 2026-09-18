@@ -72,6 +72,9 @@ export async function endArtistPlanAction(): Promise<{ error: string | null }> {
 
 const tenantProfileSchema = z.object({
   tenantId: z.string().uuid(),
+  /* the NAME (18 Sep 2026, the user: "give option to rename") — optional, so
+     every older caller that never sends one leaves it exactly as it was */
+  name: z.string().trim().min(1, "a business needs a name").max(80, "a name is at most 80 characters").optional(),
   about: z.string().trim().max(220).nullable(),
   foundedYear: z.number().int().min(1950).max(2100).nullable(),
   phone: z
@@ -102,6 +105,9 @@ export async function updateTenantProfileAction(input: TenantProfileActionInput)
     revalidatePath(`/studio/${tenantId}`);
     revalidatePath(`/artist/${tenantId}`);
     revalidatePath(`/business/${tenantId}/payments`);
+    /* a rename shows on the studio's own home, the hub and the switcher */
+    revalidatePath(`/business/${tenantId}`);
+    revalidatePath("/business");
     revalidatePath("/profile");
     return { error: null };
   } catch (error: unknown) {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { LIMITS, withinLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   adminOpenSupportThread,
@@ -71,6 +72,10 @@ export async function openSupportThreadAction(input: unknown): Promise<{ error: 
     return { error: parsed.error.issues[0]?.message ?? "Invalid input", threadId: null };
   }
   const supabase = await createSupabaseServerClient();
+  /* five new conversations an hour (18 Sep 2026) — replies inside one are not counted */
+  if (!(await withinLimit(supabase, LIMITS.supportThread))) {
+    return { error: LIMITS.supportThread.words, threadId: null };
+  }
   try {
     const threadId = await openSupportThread(supabase, parsed.data);
     refresh(threadId);

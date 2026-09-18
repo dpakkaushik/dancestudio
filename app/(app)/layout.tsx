@@ -51,15 +51,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   let publicViewHref: string | null = null;
   const switcher: SwitcherItem[] = [];
   if (profile) {
-    const owned = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
-    if (profile.role === "org") {
-      const studio = owned.find((t) => t.type === "studio");
-      /* no studio yet: the hub is where one is made, and the honest place to land */
-      publicViewHref = studio ? `/studio/${studio.id}` : "/business";
-    } else {
-      const artistPage = owned.find((t) => t.type === "artist_page");
-      publicViewHref = artistPage ? `/artist/${artistPage.id}` : `/person/${profile.id}`;
-    }
+    /* THE EYE (re-cut 18 Sep 2026, the user): an organization's is its OWN page
+       now — /org/{id}, the profile a stranger reads, with its studios and events
+       under it (row R9 amended) — where it used to be its first studio; and an
+       artist's is their PROFILE, /person/{id}, because an artist's public face is
+       their profile and the artist page is only the business behind it. A plain
+       user's was always their person page. */
+    publicViewHref = profile.role === "org" ? `/org/${profile.id}` : `/person/${profile.id}`;
     switcher.push({ key: "me", href: "/", label: profile.fullName, sub: profile.role === "org" ? "Organization" : "Your profile", kind: "me" });
     for (const m of memberships) {
       if (m.tenant.type !== "studio") continue;

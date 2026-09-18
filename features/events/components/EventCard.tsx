@@ -3,6 +3,7 @@
 /* a client component on purpose: it draws PosterBlock and dosPosterAuto from poster.tsx,
    which is a client module — a server component (Discover) may RENDER this card but
    could never CALL dosPosterAuto itself (found by the e2e, 28 Aug 2026) */
+import Image from "next/image";
 import Link from "next/link";
 import { PosterBlock, dosPosterAuto } from "@/features/classes/components/poster";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
@@ -28,7 +29,18 @@ const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mon
  *  the price, the title, the venue, and TWO BARS, TWO AUDIENCES, ONE ROW: how
  *  full the floor is and how full the seats are, both read the same way. One
  *  card for Discover, the desk and the event page itself. */
-export function EventCard({ event: e, href, compact = false }: { event: DanceEvent; href?: string; compact?: boolean }) {
+/** WHO IS HOSTING, ON THE CARD (18 Sep 2026, the user: "the same should reflect
+ *  inside the event cards with photo"). An organization's name and logo, or a
+ *  business's name and picture — read through `event_host_cards`, which answers
+ *  for public hosts only. Optional: a card drawn without it looks as it did. */
+export interface EventCardHost {
+  name: string;
+  photo: string | null;
+  /** the organization's own page, when the host is one */
+  href: string | null;
+}
+
+export function EventCard({ event: e, href, compact = false, host = null }: { event: DanceEvent; href?: string; compact?: boolean; host?: EventCardHost | null }) {
   const tint = EV_TINT[e.cat];
   const price = eventPriceLabel(e);
   const isFree = price === "Free";
@@ -77,6 +89,16 @@ export function EventCard({ event: e, href, compact = false }: { event: DanceEve
             {e.venue}
             {e.city ? ` · ${e.city}` : ""}
           </div>
+          {/* the host: a face the size of a word, and the name — the organization
+              behind the event, with its picture (18 Sep 2026) */}
+          {host ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4, minWidth: 0 }}>
+              <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: 5, flexShrink: 0, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${tint}99,${tint}44)`, color: "#fff", fontSize: 8, fontWeight: 900, fontFamily: DOS_DISPLAY }}>
+                {host.photo ? <Image src={host.photo} alt="" width={16} height={16} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : host.name.trim()[0]?.toUpperCase() ?? "•"}
+              </span>
+              <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--sub)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>by {host.name}</span>
+            </div>
+          ) : null}
           {/* how full each side is — the question anybody reading a listing is actually asking */}
           <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 6 }}>
             {bars.map(([l, now, max, c]) => {

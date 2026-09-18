@@ -282,6 +282,7 @@ export function ClassesManager({
   nowIso,
   publishState = {},
   embedded = false,
+  whyNoClass = null,
 }: {
   tenantId: string;
   classes: DanceClass[];
@@ -301,6 +302,12 @@ export function ClassesManager({
   /** drawn INSIDE another page (an artist's Your classes, its Manage segment):
    *  no hero of its own, no page background — the rows, the tabs, Create */
   embedded?: boolean;
+  /** THE DATABASE'S OWN SENTENCE, if a new class would be refused here
+   *  (`why_no_class`, read by the page since 18 Sep 2026 — the user: "fix").
+   *  Null means Create class is a door; a sentence means it is drawn as the
+   *  sentence, so an artist whose plan has lapsed reads why BEFORE filling a
+   *  form the trigger would refuse on Publish. */
+  whyNoClass?: string | null;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<ClassStatus>("published");
@@ -381,16 +388,26 @@ export function ClassesManager({
             removed"). Every door it held — Calendar, Media, Students, Rooms,
             Staff, Earnings — is a tile on the studio's own home since 14 Sep. */}
 
-        {/* Create class is the bizBtn pill (14989-14990) */}
-        <Link
-          href={`/business/${tenantId}/classes/new`}
-          style={{ ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Create class
-        </Link>
+        {/* Create class is the bizBtn pill (14989-14990) — or, when the database
+            would refuse a new class here, ITS sentence in the pill's place
+            (why_no_class; the `why_no_event` shape the events desk has worn
+            since 14 Sep). A closed door that says why beats a form that is
+            refused at the end. */}
+        {whyNoClass ? (
+          <div role="status" data-testid="why-no-class" style={{ ...bizBtn, cursor: "default", background: EL, color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, padding: "12px 16px", marginBottom: 12 }}>
+            {whyNoClass}
+          </div>
+        ) : (
+          <Link
+            href={`/business/${tenantId}/classes/new`}
+            style={{ ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create class
+          </Link>
+        )}
 
         <LiveBanner n={liveN} on={liveOnly} setOn={setLiveOnly} />
 

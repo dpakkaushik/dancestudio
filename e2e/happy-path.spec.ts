@@ -1228,12 +1228,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // the search box offers people now — and the row opens the person
     await learner.goto("/discover?city=Pune&tab=classes");
     await learner.getByLabel("Search DanceOS").fill(trainerName);
-    await expect(learner.getByText("People")).toBeVisible();
-    /* TWO ROWS WEAR THIS NAME NOW (18 Sep 2026): Home provisions an artist's page
-       the moment their plan is live, and search lists that page under Artists
-       with the same "{name} — Artist · Pune" label the PERSON carries under
-       People. This segment is about the person page, so the row is the one that
-       opens /person — a page is a business and lives at /artist. */
+    /* AN ARTIST IS LISTED UNDER ARTISTS, AS THE PERSON (later on 18 Sep 2026, the
+       user: "should only come as their profile as artist, no separate page
+       required"): the trainer holds a live plan, so the dropdown's section for
+       them is Artists — People is the users WITHOUT a plan — and the one row
+       opens /person. The heading is asked for inside the results listbox,
+       because the Discover tab tile says "Artists" too. */
+    await expect(learner.getByRole("listbox", { name: "Search results" }).getByText("Artists")).toBeVisible();
     await learner
       .getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) })
       .and(learner.locator('[href^="/person/"]'))
@@ -1247,12 +1248,13 @@ test.describe.serial("DanceOS, end to end", () => {
     /* two claims, each on a term that cannot be crowded out by a leftover: this
        run stamp finds the trainer, and the organization name finds nobody */
     await learner.getByLabel("Search DanceOS").fill(stamp);
-    /* the stamp finds the trainer TWICE since 18 Sep 2026 — as themselves under
-       People and as the page Home provisioned for them under Artists — so each
-       row is asked for by where it opens */
+    /* AN ARTIST IS FOUND ONCE (later on 18 Sep 2026, the user: "should only come
+       as their profile as artist, no separate page required"): search lists the
+       trainer under Artists as the PERSON — one row, opening their profile — and
+       the page Home provisioned for them is nobody's destination any more */
     const trainerRows = learner.getByRole("option", { name: new RegExp(`^${trainerName} — Artist`) });
+    await expect(trainerRows).toHaveCount(1);
     await expect(trainerRows.and(learner.locator('[href^="/person/"]'))).toBeVisible();
-    await expect(trainerRows.and(learner.locator('[href^="/artist/"]'))).toBeVisible();
     await learner.getByLabel("Search DanceOS").fill("E2E Owner");
     await expect(learner.getByRole("option", { name: /^E2E Owner/ })).toHaveCount(0);
     const orgPage = await learner.goto(`/person/${ownerId}`);

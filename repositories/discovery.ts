@@ -36,7 +36,7 @@ interface NearbyRow {
  *  (anonymous and strangers see listed businesses only). */
 export async function findNearbyTenants(
   supabase: SupabaseClient,
-  input: { lat: number; lng: number; radiusKm?: number; type?: TenantType; limit?: number }
+  input: { lat: number; lng: number; radiusKm?: number; type?: TenantType; limit?: number; offset?: number }
 ): Promise<NearbyTenant[]> {
   /* `p_limit` IS ONLY SENT WHEN ASKED FOR (11 Sep 2026). It arrives with
      migration 20260913120000, and PostgREST resolves an RPC by its exact
@@ -54,6 +54,11 @@ export async function findNearbyTenants(
   if (input.limit !== undefined) {
     args.p_limit = input.limit;
   }
+  /* the same care for `p_offset` (18 Sep 2026, `20260918171000`): only sent when a
+     page past the first is asked for, so the first page never depends on it */
+  if (input.offset) {
+    args.p_offset = input.offset;
+  }
   const { data, error } = await supabase.rpc("nearby_businesses", args);
 
   if (error) {
@@ -69,6 +74,40 @@ export async function findNearbyTenants(
     /* absent until migration 20260913120000 lands, and absent means "we cannot
        say", which is the same answer as false here */
     located: Boolean(r.located),
+  }));
+}
+
+/** AN ARTIST ON DISCOVER IS A PERSON (18 Sep 2026, the user: "should only come as
+ *  their profile as artist, no separate page required"). The Artists tab lists
+ *  the people in a city who hold a live Artist plan — their name, face, styles
+ *  and tick — opening their profile. `discover_artists` is SECURITY INVOKER: the
+ *  policy that lets a stranger read an artist's profile is what fills this for a
+ *  stranger too (`20260918175000_an_artist_is_their_profile.sql`). */
+export interface DiscoverArtist {
+  id: string;
+  name: string;
+  city: string | null;
+  photoPath: string | null;
+  styles: string[];
+  verifiedAt: string | null;
+}
+
+export async function findDiscoverArtists(supabase: SupabaseClient, input: { city: string | null; limit?: number; offset?: number }): Promise<DiscoverArtist[]> {
+  const { data, error } = await supabase.rpc("discover_artists", {
+    p_city: input.city,
+    p_limit: input.limit ?? 50,
+    p_offset: input.offset ?? 0,
+  });
+  if (error) {
+    throw new Error(`discovery.artists failed: ${error.message}`);
+  }
+  return ((data ?? []) as Array<{ id: string; full_name: string; city: string | null; photo_path: string | null; styles: string[] | null; verified_at: string | null }>).map((r) => ({
+    id: r.id,
+    name: r.full_name,
+    city: r.city,
+    photoPath: r.photo_path,
+    styles: Array.isArray(r.styles) ? r.styles : [],
+    verifiedAt: r.verified_at,
   }));
 }
 

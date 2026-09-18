@@ -7,7 +7,7 @@ import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists, findMyConfirmedClaims } from "@/repositories/claims";
-import { findClassPublishState, findClassesByTenant } from "@/repositories/classes";
+import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrollments } from "@/repositories/enrollments";
 import { findMyMemberships } from "@/repositories/tenants";
 import type { MyClaimAsk } from "@/types/claim";
@@ -105,12 +105,15 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
       ? await (async () => {
           const classes = await findClassesByTenant(supabase, myPage.id);
           const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
-          const [counts, state, artists] = await Promise.all([
+          const [counts, state, artists, whyNoClass] = await Promise.all([
             countEnrolledBySession(supabase, sessionIds),
             findClassPublishState(supabase, myPage.id).catch(() => new Map()),
             findClassArtists(supabase, classes.map((c) => c.id)),
+            /* an artist page carries a class only while the plan is live: the
+               register says so BEFORE the form (18 Sep 2026) */
+            findWhyNoClass(supabase, myPage.id),
           ]);
-          return { classes, filled: Object.fromEntries(counts), state: Object.fromEntries(state), artists: Object.fromEntries(artists) };
+          return { classes, filled: Object.fromEntries(counts), state: Object.fromEntries(state), artists: Object.fromEntries(artists), whyNoClass };
         })()
       : null;
 
@@ -155,7 +158,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
       {show === "manage" && myPage && manage ? (
         /* the artist's register, in place: Create, Draft · Published · Completed,
            each row wearing the request it waits on (ClassesManager, embedded) */
-        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} nowIso={new Date().toISOString()} />
+        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
       ) : show === "booked" ? (
         <>
           {class_bookings.map((e) => (
