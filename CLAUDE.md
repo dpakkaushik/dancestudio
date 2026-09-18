@@ -71,12 +71,13 @@
 >   the plain user empty, the shelf three, search once; a stranger's
 >   `/person/{artist}` on the :3100 build prints the name and NOT the account
 >   number, `/person/{plain user}` still 307; typecheck 0 · lint 0 · build
->   green · the whole suite re-run against THIS bundle was in flight — **22 of
->   51 green, no red** — when the user said *"commit and push to live"*, so it
->   was pushed on their word with the suite still running; the only app change
->   since the 45 + 14 green run an hour earlier is the anon-only fallback in
->   `findPublicPerson`, which no e2e reaches and the :3100 stranger smoke did.
->   ⚠ The finished tally is owed in the next push.
+>   green · the whole suite on one worker against THIS bundle **51 passed in
+>   7.4 min** — it was at 22 of 51 with no red when the user said *"commit and
+>   push to live"*, so the push went on their word with the suite still
+>   running, and the tally landed green minutes later (recorded in the docs-only
+>   commit that followed). The only app change since the 45 + 14 green run an
+>   hour earlier was the anon-only fallback in `findPublicPerson`, which no e2e
+>   reaches and the :3100 stranger smoke did.
 > * **Item 3 needed no schema**: `findWhyNoClass` reads `why_no_class` on the
 >   register and the artist's Manage segment, and when the database would refuse
 >   a new class the Create class pill IS its sentence.
