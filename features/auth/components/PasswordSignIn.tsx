@@ -16,7 +16,8 @@ import { Label } from "@/components/ui/label";
 
 const initialState: AuthActionState = { error: null };
 
-/** SIGN IN — "Sign in" from the welcome screen. Email + password, no email sent.
+/** SIGN IN — "Log In" from the welcome screen (the button's word since 18 Sep
+ *  2026; this screen's own submit still reads "Sign in"). Email + password, no email sent.
  *
  *  This is the prototype's sign-in screen (3727-3747) with the phone field
  *  swapped for a pair of credentials — the deliberate deviation logged with the

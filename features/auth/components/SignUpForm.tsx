@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 
 const initialState: AuthActionState = { error: null };
 
-/** SIGN UP — "Start dancing" from the welcome screen.
+/** SIGN UP — "Start Dancing" from the welcome screen.
  *
  *  RULE 2 NOTE: the prototype has no sign-up screen and no password field
  *  anywhere — its one auth screen is "Sign in or join" with a phone number

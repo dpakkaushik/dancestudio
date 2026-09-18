@@ -9,7 +9,12 @@ import { BTN_STYLE, DOS_DISPLAY, GOLD, INK, LINE, PINK, SUB } from "@/lib/design
  *  1. THE TWO BUTTONS NOW GO TO DIFFERENT PLACES. In the prototype both called
  *     setStep("signin") — one destination, because its model was passwordless
  *     and joining and returning were the same act. With passwords they are not:
- *     "Start dancing" creates an account, "Sign in" proves an existing one.
+ *     "Start Dancing" creates an account, "Log In" proves an existing one.
+ *     ⚠ THE WORDS (18 Sep 2026, the user): "sign in should be called Log In,
+ *     because Start Dancing is Sign In technically" — a new account is signing
+ *     in for the first time, so "Sign in" on the second button was a second
+ *     name for the same thing the first one does. And the D is a capital: both
+ *     buttons are titles, so both are title-cased. Deviation row A9.
  *  2. THEY STACK RATHER THAN SIT SIDE BY SIDE. Two 50%-width buttons at the
  *     bottom of a phone read as equal choices; these are not equal — most
  *     people arriving here are new. Full width, primary first.
@@ -87,7 +92,7 @@ export default function LoginWelcomePage() {
             textDecoration: "none",
           }}
         >
-          Start dancing
+          Start Dancing
         </Link>
         <Link
           href="/login/email"
@@ -100,10 +105,10 @@ export default function LoginWelcomePage() {
             textDecoration: "none",
           }}
         >
-          Sign in
+          Log In
         </Link>
         <p style={{ marginTop: 2, fontSize: 12.5, color: SUB, textAlign: "center", lineHeight: 1.5 }}>
-          New here? Start dancing takes a minute.
+          New here? Start Dancing takes a minute.
         </p>
       </div>
 

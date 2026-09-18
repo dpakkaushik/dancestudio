@@ -48,6 +48,28 @@
 > The tell is free and worth keeping: `git diff --stat` said **270 insertions /
 > 250 deletions** for what should have been nine lines.
 
+> ### THE WELCOME SCREEN SAYS "START DANCING" AND "LOG IN" (18 Sep 2026, last)
+> The user: *"on the first page sign in should be called Log In because Start
+> dancing is Sign In technically. make sure D is also in capital in Dancing."*
+> Two words on one screen, and the reasoning is theirs and right: a new account
+> IS signing in, for the first time, so "Sign in" on the second button was a
+> second name for what the first button does — the returning person's button
+> needed a word of its own. Both are titles now, so both are title-cased; the
+> helper line under them follows ("New here? Start Dancing takes a minute.").
+> **Scoped to the first page**, as asked: the sign-in FORM's own submit still
+> reads "Sign in", because that screen is where the act happens. Deviation row
+> A9. `password-auth` asserts both link names with `exact: true`.
+>
+> **Verified:** typecheck 0 · lint 0 · `next build` green · the whole suite on
+> one worker **37 passed / 3 failed in 8.9 min** — the two usual reds (#0w) and
+> **one flake**: the happy path's Profile-tab segment lost a FIVE-second wait for
+> "Since 2016" on the studio's public page right after the Edit sheet's save,
+> while the About line from the SAME saved row, given fifteen, had passed a
+> moment earlier. The happy path alone: **14/14 in 6.0 min**, nothing on that
+> page touched by this push. The assertion has the same fifteen seconds now. No
+> proof run: two words of copy have no database surface and the 29 were green an
+> hour earlier on the same schema.
+
 > ### A CLASS WITH NOBODY TAKING IT IS NOT ON DISCOVER, AND NEAR ME JOINS THE CITY CHIP (18 Sep 2026, last)
 > The user: *"1. place near me alongside Location drop down, adjust in the best
 > way. 2. in class cards photo of artist in centre below artist name and nothing
@@ -2482,6 +2504,12 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE WELCOME SCREEN SAYS "START DANCING" AND "LOG IN" — 18 Sep 2026, no step
+  number — BUILT, no migration.** The user: *"sign in should be called Log In
+  because Start dancing is Sign In technically. make sure D is also in capital
+  in Dancing."* A new account is signing in for the first time, so the returning
+  person's button needed its own word; both are title-cased as titles. The
+  sign-in form's own submit is untouched. Deviation row A9.
 - **THE CLASS CARD SHOWS ITS TEACHER, AND STOPS NAMING THE STUDIO — 18 Sep 2026,
   no step number — BUILT, no migration.** The user: *"class cards should show
   teacher photo instead of dance style in centre. Remove studio names from class
@@ -5854,6 +5882,7 @@ phone OTP, so its auth screens cannot be lifted part for part any more.
 | A6 | No password field anywhere; no sign-up, reset or recovery screen | `/login/forgot` + `/login/reset`, driven by `resetPasswordForEmail` | A password model without recovery locks people out permanently. Not optional. |
 | A7 | No account-enumeration concern (localStorage, no server) | Sign-up reports success for an existing address; sign-in says "Invalid login credentials" either way | Both forms would otherwise become a way to discover who has an account. Two e2e tests assert the two messages are the same string. |
 | A8 | `shell()` never distributes space; content always flows from the top | `AuthShell` gained an optional `footer` slot after a `flex-1` spacer | A short form on a tall phone ends half way down and leaves a hole. Anchoring the secondary action to the bottom edge gives the space two edges to be between. |
+| A9 | The two welcome buttons read "Start dancing" and "Sign in" (3710-3712) | **"Start Dancing" and "Log In"** | 18 Sep 2026, the user: *"sign in should be called Log In because Start dancing is Sign In technically. make sure D is also in capital in Dancing."* A new account IS signing in, for the first time — so "Sign in" on the second button was a second name for what the first one does, and the returning person's button needed a word of its own. Title case on both, because both are titles. The sign-in FORM's own submit still reads "Sign in": that screen is where the act happens, and the ask was the first page. `password-auth` asserts both words with `exact: true` |
 
 **What is NOT a deviation, and was kept on purpose:** the shell, the dark palette
 pinned on the auth root, the ← , the 26px `DOS_DISPLAY` heading at -.5 tracking,

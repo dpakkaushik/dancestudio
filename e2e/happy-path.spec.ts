@@ -1396,7 +1396,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await bizEdit.getByLabel("Phone", { exact: true }).fill("+91 98765 43210");
     await bizEdit.getByRole("button", { name: "Save" }).click();
     await expect(owner.getByText("Where Pune comes to move.")).toBeVisible({ timeout: 15_000 });
-    await expect(owner.getByText("Since 2016")).toBeVisible();
+    /* the same window as the line above: both land in the one re-render the save
+       triggers, and on 18 Sep 2026 a whole-suite run lost this segment to the
+       default five seconds here while the About line, given fifteen, had passed —
+       a green re-run alone, and nothing on this page had changed */
+    await expect(owner.getByText("Since 2016")).toBeVisible({ timeout: 15_000 });
     // a stranger reads the same words, and Call is a real tel: hand-off
     await learner.goto(studioUrl);
     await expect(learner.getByText("Where Pune comes to move.")).toBeVisible();

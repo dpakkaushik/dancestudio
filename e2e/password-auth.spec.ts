@@ -65,12 +65,15 @@ test.describe("email + password auth", () => {
   test("the welcome screen's two buttons go to different screens", async ({ page }) => {
     await page.goto("/login");
 
-    /* The whole point of the change: these were the same destination before. */
-    await expect(page.getByRole("link", { name: "Start dancing" })).toHaveAttribute(
+    /* The whole point of the change: these were the same destination before.
+       (The words are the user's, 18 Sep 2026: "Start Dancing" with a capital D,
+       and "Log In" rather than "Sign in" — because a new account IS signing in
+       for the first time, so the second button needed a name of its own.) */
+    await expect(page.getByRole("link", { name: "Start Dancing", exact: true })).toHaveAttribute(
       "href",
       "/login/signup"
     );
-    await expect(page.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Log In", exact: true })).toHaveAttribute(
       "href",
       "/login/email"
     );
