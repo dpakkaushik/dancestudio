@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { HeroRail, ProfileDisc, type HeroShot } from "@/features/profiles/components/HeroRail";
@@ -85,6 +86,7 @@ export function IdentityHero({
   styleAria = (s) => s,
   avatar,
   avatarAlt,
+  avatarHref,
   shots = [],
   corner,
   testId,
@@ -119,6 +121,10 @@ export function IdentityHero({
   /** THE PROFILE PICTURE — the round disc; null draws the initials */
   avatar: string | null;
   avatarAlt?: string;
+  /** where the disc opens when pressed (19 Sep 2026, the user: "clicking on the
+   *  profile photo on home tab takes to profile") — Home hands it the account's
+   *  public page; a page that passes nothing draws a plain disc */
+  avatarHref?: string;
   /** THE HEADER — what swipes across the top */
   shots?: HeroShot[];
   /** controls pinned to the hero's top-right corner (the Profile tab's Edit and
@@ -160,7 +166,13 @@ export function IdentityHero({
 
       <div style={{ position: "relative", padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>
-          <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
+          {avatarHref ? (
+            <Link href={avatarHref} aria-label="Public view" style={{ display: "block", flexShrink: 0, textDecoration: "none" }}>
+              <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
+            </Link>
+          ) : (
+            <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
+          )}
 
           {/* what it is, its number, who it is, where — in that order, beside the picture */}
           <div style={{ flex: 1, minWidth: 0 }}>

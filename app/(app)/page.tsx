@@ -20,7 +20,7 @@ import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/To
 import { EditProfileButton } from "@/features/profiles/components/EditProfileSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
-import { EyeIcon, ROLE_RING, cornerChip, tierOf } from "@/features/profiles/components/profile-kit";
+import { ROLE_RING, tierOf } from "@/features/profiles/components/profile-kit";
 import { KIND_WORD, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
@@ -223,22 +223,17 @@ export default async function HomePage() {
              one place rather than two controls on a hero */
           avatar={face}
           avatarAlt={profile.fullName}
+          /* THE PICTURE IS THE DOOR TO YOUR PUBLIC PAGE (19 Sep 2026, the user:
+             "clicking on the profile photo on home tab takes to profile so can
+             remove the eye from top right on home") — the eye that sat under the
+             pencil for a few hours the same day, and in the bar before that, is
+             gone from Home; the disc opens the page a stranger reads */
+          avatarHref={publicHref}
           shots={shots}
           /* EDIT PROFILE, FROM HOME (15 Sep 2026, the user: "where is the edit
              profile button?") — the pencil on the hero's corner (10613), opening
-             the Profile tab's own sheet: name, mobile, the pictures, the rest.
-             AND THE EYE UNDER IT (19 Sep 2026, the user: "remove profile tab from
-             navbar … give an eye to view profile on the home tab below edit on top
-             right") — this account's page as a stranger reads it, which was the
-             bar's fourth slot from 15 Sep */
-          corner={
-            <>
-              <EditProfileButton profile={profile} header={header} headerMax={headerMax} />
-              <Link href={publicHref} aria-label="Public view" style={cornerChip}>
-                <EyeIcon />
-              </Link>
-            </>
-          }
+             the Profile tab's own sheet: name, mobile, the pictures, the rest */
+          corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} />}
         >
           {/* ⚠ WHAT WAS HERE HAS GONE UP INTO THE HERO (18 Sep 2026). The role
               word moved to the eyebrow, and the account number under it — both
@@ -308,7 +303,10 @@ export default async function HomePage() {
                 ? "Events you host today appear here. What runs in each studio’s rooms is on that studio’s own home."
                 : "Classes and events you book, assist on or run today all appear here."
             }
-            /* both doors, when both apply (7176-7181) */
+            /* both doors, when both apply (7176-7181) — the Manage TILE left the
+               grid on 19 Sep 2026 ("just need to remove manage as the tile in
+               tools, nothing else changes"), so this pill is Home's one door to
+               /managed again */
             emptyActions={
               <>
                 {canManage ? (

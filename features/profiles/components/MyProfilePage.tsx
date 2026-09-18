@@ -18,7 +18,6 @@ import { KIND_BADGE, kindOf, memberNoWords, type Profile, type SocialLink } from
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
-import type { NotificationPrefs } from "@/types/notification";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -87,7 +86,6 @@ export function MyProfilePage({
   followingCrews = [],
   place,
   scheduleHref,
-  prefs,
   business,
   businesses = [],
   plan,
@@ -107,8 +105,6 @@ export function MyProfilePage({
   followingCrews?: FollowedCrew[];
   place: { place: number; population: number } | null;
   scheduleHref: string | null;
-  /** what reaches you — the settings sheet's Notifications row */
-  prefs: NotificationPrefs;
   /** the first business this person runs, for the rows that live on its desk */
   business: Tenant | null;
   /** every business this account runs — an ORGANIZATION's studios, under one hood (8 Sep 2026) */
@@ -548,7 +544,6 @@ export function MyProfilePage({
         gstVerified={gstVerified}
         business={business}
         plan={plan}
-        prefs={prefs}
       />
 
       {toast ? <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: `1.5px solid ${PINK}`, color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 390, textAlign: "center", zIndex: 650 }}>{toast}</div> : null}

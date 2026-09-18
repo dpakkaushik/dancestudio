@@ -135,10 +135,21 @@ export async function findArtistIds(supabase: SupabaseClient, ids: string[]): Pr
   return new Set(((data ?? []) as Array<string | { artist_ids: string }>).map((x) => (typeof x === "string" ? x : x.artist_ids)));
 }
 
-/** SEARCH DANCEOS (prototype 16413-16447): live profiles whose name contains the
- *  term, the caller left out, at most eight. Signed-in users read live
- *  profiles (Step 1's policy), so this is a plain read — the pickers that add
- *  a crew member or name a duet partner both go through it. */
+/** HOW MANY A PEOPLE SEARCH OFFERS (19 Sep 2026, the user: "a drop down with
+ *  max 5 options with their profile pics") — was eight. */
+export const PEOPLE_SEARCH_MAX = 5;
+/** HOW MANY SUGGESTIONS BEFORE A TERM IS TYPED — "max 3 suggestions according to history" */
+export const PEOPLE_RECENT_MAX = 3;
+
+/** SEARCH DANCEOS (prototype 16413-16447): live profiles whose NAME contains the
+ *  term or whose PUBLISHED NUMBER contains its digits (19 Sep 2026, the user:
+ *  "option to search name, mobile no."), the caller left out, at most five.
+ *  Signed-in users read live profiles (Step 1's policy), so this is a plain
+ *  read — the pickers that add a crew member, an assistant or a duet partner
+ *  all go through it. ⚠ The number searched is `profiles.phone` — the one a
+ *  person chose to publish on their page (N8, 30 Aug 2026), read by every
+ *  signed-in caller already; a person with no published number is found by
+ *  name alone. */
 export async function searchProfiles(
   supabase: SupabaseClient,
   term: string,
@@ -152,20 +163,81 @@ export async function searchProfiles(
     data: { user },
   } = await supabase.auth.getUser();
   const skip = new Set([...(user ? [user.id] : []), ...excludeIds]);
+  /* PostgREST's `or` grammar separates clauses with a comma and groups with
+     parentheses, so none of the three may ride inside a value; `%` and `_` are
+     LIKE's own wildcards and are stripped as before */
+  const name = q.replace(/[%_,().]/g, "");
+  const digits = q.replace(/\D/g, "");
+  const clauses: string[] = [];
+  if (name.length >= 2) clauses.push(`full_name.ilike.%${name}%`);
+  /* three digits is a number being typed, not a name with a digit in it */
+  if (digits.length >= 3) clauses.push(`phone.ilike.%${digits}%`);
+  if (clauses.length === 0) {
+    return [];
+  }
   const { data, error } = await supabase
     .from("profiles")
     .select(PROFILE_COLUMNS)
-    .ilike("full_name", `%${q.replace(/[%_]/g, "")}%`)
+    .or(clauses.join(","))
     .is("deleted_at", null)
     /* an organization is not a person to pick (8 Sep 2026): a crew member, a duet partner, a trainer are people */
     .neq("role", "org")
     .order("full_name", { ascending: true })
-    .limit(8 + skip.size);
+    .limit(PEOPLE_SEARCH_MAX + skip.size);
 
   if (error) {
     throw new Error(`profiles.search failed: ${error.message}`);
   }
-  const rows = ((data ?? []) as ProfileRow[]).filter((r) => !skip.has(r.id)).slice(0, 8);
+  const rows = ((data ?? []) as ProfileRow[]).filter((r) => !skip.has(r.id)).slice(0, PEOPLE_SEARCH_MAX);
+  const artists = await findArtistIds(supabase, rows.map((r) => r.id));
+  return rows.map((r) => ({ ...toProfile(r), isArtist: artists.has(r.id) }));
+}
+
+/** RECENTLY ASKED (19 Sep 2026, the user: "max 3 suggestions according to
+ *  history"): the last three people THIS account put on a class or a crew,
+ *  newest first, each once — offered by the picker before a term is typed. The
+ *  history is the rows the asks already left (`class_people`, `crew_members`,
+ *  `created_by = me`), read under their own policies: a row the caller may not
+ *  read is simply not a suggestion. The caller and the people already on the
+ *  roster are left out; an organization is never a person to suggest. */
+export async function findRecentlyAskedPeople(
+  supabase: SupabaseClient,
+  excludeIds: string[] = []
+): Promise<Array<Profile & { isArtist: boolean }>> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const skip = new Set([user.id, ...excludeIds]);
+  const [asks, crewAsks] = await Promise.all([
+    supabase.from("class_people").select("user_id, created_at").eq("created_by", user.id).order("created_at", { ascending: false }).limit(20),
+    supabase.from("crew_members").select("user_id, created_at").eq("created_by", user.id).order("created_at", { ascending: false }).limit(20),
+  ]);
+  if (asks.error) {
+    throw new Error(`profiles.recent failed: ${asks.error.message}`);
+  }
+  if (crewAsks.error) {
+    throw new Error(`profiles.recent failed: ${crewAsks.error.message}`);
+  }
+  type AskRow = { user_id: string; created_at: string };
+  const ids: string[] = [];
+  for (const r of [...((asks.data ?? []) as AskRow[]), ...((crewAsks.data ?? []) as AskRow[])].sort((a, b) => b.created_at.localeCompare(a.created_at))) {
+    if (skip.has(r.user_id) || ids.includes(r.user_id)) continue;
+    ids.push(r.user_id);
+    if (ids.length === PEOPLE_RECENT_MAX) break;
+  }
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(PROFILE_COLUMNS)
+    .in("id", ids)
+    .is("deleted_at", null)
+    .neq("role", "org");
+  if (error) {
+    throw new Error(`profiles.recent failed: ${error.message}`);
+  }
+  const byId = new Map(((data ?? []) as ProfileRow[]).map((r) => [r.id, r]));
+  const rows = ids.map((id) => byId.get(id)).filter((r): r is ProfileRow => Boolean(r));
   const artists = await findArtistIds(supabase, rows.map((r) => r.id));
   return rows.map((r) => ({ ...toProfile(r), isArtist: artists.has(r.id) }));
 }

@@ -9,7 +9,7 @@ import type { TenantFollower } from "@/types/follow";
 import type { PublicTeamMember, PublicTenantProfile } from "@/types/publicProfile";
 import { BioBlock } from "./BioBlock";
 import { BusinessEditButton } from "./BusinessEditSheet";
-import { ActionRow, CallButton, LocationButton, MailButton } from "./ContactButtons";
+import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
@@ -99,6 +99,10 @@ export function PublicProfile({
   /* the owner is an organization more often than not — its row opens the organization's page */
   const teamRow = (m: PublicTeamMember, sub: string) => <Row key={m.userId} href={m.isOrg ? `/org/${m.userId}` : `/person/${m.userId}`} title={m.name} sub={sub} photo={photoUrl(m.photoPath)} />;
   const canAsk = !isMember && enquiryTypesFor(tenant.type).length > 0;
+  /* the Location button is the studio's own pin once the owner has placed it
+     (19 Sep 2026); until then the centroid is nobody's address, so Maps is asked
+     by name and place */
+  const pinHref = tenant.locationSetAt && tenant.lat != null && tenant.lng != null ? mapsPinHref(tenant.lat, tenant.lng) : null;
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -169,7 +173,7 @@ export function PublicProfile({
           {canAsk ? <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} enquiryTypes={tenant.enquiryTypes} /> : null}
           {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
           {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
-          {place ? <LocationButton query={`${tenant.name} ${place}`} /> : null}
+          {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${tenant.name} ${place}`} /> : null}
         </ActionRow>
 
         {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919): the schedule ── */}

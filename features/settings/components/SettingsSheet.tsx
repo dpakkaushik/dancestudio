@@ -2,47 +2,98 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { signOutAction } from "@/features/auth/server-actions/auth";
-import { setNotificationPrefsAction } from "@/features/notifications/server-actions/notifications";
 import { endArtistPlanAction, updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ArtistPlan } from "@/repositories/plans";
 import { enquiryTypesFor } from "@/types/enquiry";
-import type { NotificationPrefs } from "@/types/notification";
-import { NOTIF_KINDS } from "@/types/notification";
 import type { ProfileRole } from "@/types/profile";
 import type { Tenant } from "@/types/tenant";
 import { dateWords } from "./settings-kit";
 
 /** THE SETTINGS SHEET — prototype S_profiletab 11402-11440, opened by the top
  *  bar's gear (19263: "if you are on the Profile tab, open settings now; else go
- *  there and open it"). The blue-grey hero "Settings · profiles · appearance ·
- *  account", YOUR PLAN with the Artist tools strip (8850-8870: "Dancer is who you
- *  are; Artist is a TOOLSET on that same profile — never a second identity") and
- *  its PRO badge, then one card per row — Payments · Invoices · Refunds ·
- *  Enquiry types · Subscription · Notifications · Language · Privacy & data ·
- *  Help & support · Log out.
+ *  there and open it"). YOUR PLAN with the Artist tools switch (8850-8870:
+ *  "Dancer is who you are; Artist is a TOOLSET on that same profile — never a
+ *  second identity") and its PRO badge, then the rows.
  *
- *  Every row that has a screen in the prototype has one here now: Payments
- *  (S_payments), Invoices (S_invoices), Refunds (S_refunds) and Subscription
- *  (S_subscr) are pages, Enquiry types is the prototype's own sheet (9000-9030)
- *  saved onto the business, Notifications is the real prefs. The Artist tools
- *  switch is what the prototype makes it — the Artist plan's switch (8855: a
- *  locked strip opens the plan; an active one shows PRO and its date) — so
- *  switching it on with no plan goes to /subscription, where the plan is free
- *  during the pilot. Language, Privacy and Help keep their honest panels. */
+ *  TILES, NOT ROWS (19 Sep 2026, the user: "remove all extra information from
+ *  all setting options and give as buttons with headings and icons. also merge
+ *  certain options which have similar functionality … can remove notifications
+ *  and keep it inside the notifications section only"). Every option is one
+ *  tile — an icon and its heading, nothing under it — in a two-column grid
+ *  under a small group head: YOUR PLAN · MONEY · BUSINESS · ACCOUNT. What was
+ *  merged: Help & support and Message DanceOS were two doors to one
+ *  conversation and are one tile (`/support`); Privacy & data opens the privacy
+ *  policy (`/legal/privacy`), which is the one privacy text that exists;
+ *  Notifications is GONE from here — the bell's own screen carries "What
+ *  reaches you" (S_notif 13800), and it was the same switches twice. Language
+ *  stays a tile and says the one true thing when pressed.
+ *
+ *  The Artist tools tile is what the prototype makes it — the Artist plan's
+ *  switch (8855: a locked strip opens the plan; an active one shows PRO and
+ *  ends it) — and keeps its name, its pressed state and its toast, which the
+ *  happy path reads. Payments (S_payments), Invoices (S_invoices), Refunds
+ *  (S_refunds) and Subscription (S_subscr) are pages; Enquiry types is the
+ *  prototype's own sheet (9000-9030) saved onto the business; the GST number is
+ *  an organization's one-time errand (11 Sep 2026). */
 
-const card: React.CSSProperties = { background: "var(--card)", borderRadius: 16, padding: "12px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, cursor: "pointer", width: "100%", textAlign: "left", border: "none", fontFamily: "inherit", color: INK, textDecoration: "none", boxSizing: "border-box" };
-const panel: React.CSSProperties = { background: "var(--el)", borderRadius: 12, padding: "10px 12px", margin: "-4px 0 8px", fontSize: 12.5, color: INK, lineHeight: 1.5 };
-const link: React.CSSProperties = { color: "#5AC8FA", fontWeight: 800, textDecoration: "none" };
+const grid: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 };
+const tile: CSSProperties = { background: "var(--card)", borderRadius: 16, padding: "13px 12px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, cursor: "pointer", width: "100%", textAlign: "left", border: "1px solid var(--el)", fontFamily: "inherit", color: INK, textDecoration: "none", boxSizing: "border-box", minHeight: 86 };
+const head: CSSProperties = { fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: MUTED, margin: "14px 0 8px" };
+const label: CSSProperties = { fontSize: 12.5, fontWeight: 900, lineHeight: 1.2 };
+const badgeStyle = (on: boolean): CSSProperties => ({ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 999, background: on ? "rgba(34,197,94,.16)" : "var(--el)", color: on ? "#22C55E" : SUB, whiteSpace: "nowrap" });
 
-function Toggle({ on }: { on: boolean }) {
+/** the icon in its tinted circle — one shape for every tile */
+function Glyph({ c, children }: { c: string; children: ReactNode }) {
   return (
-    <span aria-hidden="true" style={{ width: 36, height: 20, borderRadius: 10, background: on ? "#22C55E" : "var(--card)", position: "relative", transition: "background .15s", flexShrink: 0, display: "inline-block" }}>
-      <span style={{ position: "absolute", top: 2, left: on ? 18 : 2, width: 16, height: 16, borderRadius: 8, background: "#fff", transition: "left .15s" }} />
+    <span style={{ width: 34, height: 34, borderRadius: 12, flexShrink: 0, background: `${c}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {children}
+      </svg>
     </span>
+  );
+}
+
+const ICONS = {
+  gst: (c: string) => <Glyph c={c}><path d="M7 3h7l4 4v14H7z" /><path d="M14 3v4h4" /><path d="M9.5 13h5M9.5 17h5" /></Glyph>,
+  payments: (c: string) => <Glyph c={c}><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M3 10.5h18" /><path d="M7 15h3" /></Glyph>,
+  invoices: (c: string) => <Glyph c={c}><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></Glyph>,
+  refunds: (c: string) => <Glyph c={c}><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></Glyph>,
+  enquiries: (c: string) => <Glyph c={c}><path d="M4 6h16v10H9l-5 4z" /><path d="M8 10h8M8 13h5" /></Glyph>,
+  subscription: (c: string) => <Glyph c={c}><path d="m12 3 2.7 5.6 6.1.8-4.4 4.3 1.1 6.1L12 17l-5.5 2.8 1.1-6.1L3.2 9.4l6.1-.8z" /></Glyph>,
+  artist: (c: string) => <Glyph c={c}><circle cx="12" cy="7.5" r="3.2" /><path d="M5.5 20c.8-3.6 3.2-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /></Glyph>,
+  language: (c: string) => <Glyph c={c}><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.6 3.8 5.4 3.8 8.5s-1.2 5.9-3.8 8.5c-2.6-2.6-3.8-5.4-3.8-8.5S9.4 6.1 12 3.5z" /></Glyph>,
+  privacy: (c: string) => <Glyph c={c}><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9.5 4.1-1.9 7-5.3 7-9.5V6z" /><path d="m9.5 12 1.8 1.8L15 10" /></Glyph>,
+  help: (c: string) => <Glyph c={c}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.2" /><path d="m6 6 3.7 3.7M18 6l-3.7 3.7M18 18l-3.7-3.7M6 18l3.7-3.7" /></Glyph>,
+  admin: (c: string) => <Glyph c={c}><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9.5 4.1-1.9 7-5.3 7-9.5V6z" /><path d="M12 8v4M12 15.5v.5" /></Glyph>,
+  logout: (c: string) => <Glyph c={c}><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" /><path d="m15 8 5 4-5 4M20 12H9" /></Glyph>,
+};
+
+function Tile({ icon, children, href, onClick, badge, ariaLabel, pressed, disabled, onNavigate, danger = false }: { icon: ReactNode; children: ReactNode; href?: string; onClick?: () => void; badge?: ReactNode; ariaLabel?: string; pressed?: boolean; disabled?: boolean; onNavigate?: () => void; danger?: boolean }) {
+  const body = (
+    <>
+      <span style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%", gap: 6 }}>
+        {icon}
+        {badge}
+      </span>
+      <span style={{ ...label, color: danger ? RED : INK }}>{children}</span>
+    </>
+  );
+  const style: CSSProperties = danger ? { ...tile, border: `1.5px solid ${RED}` } : tile;
+  if (href) {
+    return (
+      <Link href={href} onClick={onNavigate} style={style} aria-label={ariaLabel}>
+        {body}
+      </Link>
+    );
+  }
+  return (
+    <button type={onClick ? "button" : "submit"} onClick={onClick} disabled={disabled} aria-label={ariaLabel} aria-pressed={pressed} style={style}>
+      {body}
+    </button>
   );
 }
 
@@ -54,25 +105,21 @@ export function SettingsSheet({
   gstVerified = false,
   business,
   plan,
-  prefs,
 }: {
   open: boolean;
   onClose: () => void;
   role: ProfileRole;
-  /** a platform admin gets the verification queue as a row; nobody else sees it exists */
+  /** a platform admin gets the panel as a tile; nobody else sees it exists */
   isAdmin?: boolean;
-  /** whether the organization's GST number is verified — the GST row says which
-   *  (11 Sep 2026). False for everybody who is not an organization. */
+  /** whether the organization's GST number is verified — the GST tile's badge
+   *  says which (11 Sep 2026). False for everybody who is not an organization. */
   gstVerified?: boolean;
-  /** the first business this person runs, for the rows that live on its desk */
+  /** the first business this person runs, for the tiles that live on its desk */
   business: Tenant | null;
   /** the Artist plan, when one has been taken */
   plan: ArtistPlan | null;
-  prefs: NotificationPrefs;
 }) {
   const router = useRouter();
-  const [menu, setMenu] = useState<string | null>(null);
-  const [lang, setLang] = useState("English");
   const [enqOpen, setEnqOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -84,12 +131,11 @@ export function SettingsSheet({
   };
   if (!open) return null;
 
-  /* a person with no business pays like a person; an organization's money rows live on its first studio's desk */
-  /* the prototype's "dancer" is the KIND user — a person with no live plan; an artist (the plan) or an
-     organization gets the business desk's rows (Payments & verification, Invoices, Refunds) */
+  /* the prototype's "dancer" is the KIND user — a person with no live plan; an
+     artist (the plan) or an organization gets the business desk's money tiles */
   const isDancer = role === "user" && !plan?.active;
   const artistOn = Boolean(plan?.active);
-  /* the strip is the plan's switch (8855): off → the plan page; on → end it, which puts the role back */
+  /* the tile is the plan's switch (8855): off → the plan page; on → end it */
   const flipArtist = () => {
     if (!artistOn) {
       onClose();
@@ -103,12 +149,6 @@ export function SettingsSheet({
       router.refresh();
     });
   };
-  const flipKind = (k: keyof NotificationPrefs["kinds"]) =>
-    start(async () => {
-      const out = await setNotificationPrefsAction({ ...prefs, kinds: { ...prefs.kinds, [k]: !prefs.kinds[k] } });
-      if (out.error) return fire(out.error);
-      router.refresh();
-    });
 
   /* ENQUIRIES YOU ACCEPT — null on the record means every type the kind allows (9010) */
   const enqAll = business ? enquiryTypesFor(business.type) : [];
@@ -124,133 +164,87 @@ export function SettingsSheet({
   };
   const enqCount = enqAll.filter((t) => enqOn(t.k)).length;
 
-  const kindsOn = Object.values(prefs.kinds).filter(Boolean).length;
   const desk = business ? `/business/${business.id}` : null;
-  /* a business's rows go to its desk; a person's to their own */
-  const rows: Array<{ l: string; v: string; href?: string; sheet?: "enq" }> = [
-    /* ── THE GST NUMBER, ONCE (11 Sep 2026 — the user: "make it one of the
-       options in settings where the org user can click and enter the GST, a
-       one-time option"). It was a card on Home, which turned a one-time errand
-       into a permanent fixture on the screen an organization opens most. Only
-       an organization has one, so only an organization sees the row. ── */
-    ...(role === "org"
-      ? [{ l: "🧾 GST number", v: gstVerified ? "verified · events are open" : "not verified · needed for events", href: "/gst" }]
-      : []),
-    { l: isDancer || !desk ? "💳 Payments" : "💳 Payments & verification", v: isDancer || !desk ? "cards · UPI · saved methods" : "cards · UPI · cash · KYC", href: isDancer || !desk ? "/payments" : `${desk}/payments` },
-    { l: "🧾 Invoices", v: "billing history · export", href: isDancer || !desk ? "/invoices" : `${desk}/invoices` },
-    { l: "↩️ Refunds", v: "requests · approvals · receipts", href: isDancer || !desk ? "/refunds" : `${desk}/refunds` },
-    ...(business ? [{ l: "📩 Enquiry types", v: `${enqCount} of ${enqAll.length} switched on`, sheet: "enq" as const }] : []),
-    ...(!isDancer || artistOn ? [{ l: "⭐ Subscription", v: artistOn && plan ? `Artist plan · until ${dateWords(plan.until)}` : "your DanceOS plan · billing", href: "/subscription" }] : []),
-    { l: "🔔 Notifications", v: `${kindsOn} categor${kindsOn === 1 ? "y" : "ies"} · ${prefs.whatsapp ? "WhatsApp on" : "WhatsApp off"}` },
-    { l: "🌐 Language", v: "English · हिन्दी coming" },
-    { l: "🛡 Privacy & data", v: "Export · Delete (DPDP)" },
-    { l: "🆘 Help & support", v: "FAQ · report a problem" },
-    /* a person on the other side of DanceOS, for anybody (10 Sep 2026) */
-    { l: "💬 Message DanceOS", v: "ask a question · read our replies", href: "/support" },
-    ...(isAdmin ? [{ l: "🛡 Admin panel", v: "verifications · support · accounts · audit", href: "/admin" }] : []),
-  ];
-
-  const panelFor = (l: string) => {
-    if (l.includes("Notifications"))
-      return (
-        <div style={panel}>
-          {NOTIF_KINDS.map(({ k, label }) => (
-            <button type="button" key={k} disabled={pending} onClick={() => flipKind(k)} aria-pressed={prefs.kinds[k]} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "6px 0", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: INK, fontSize: 12.5 }}>
-              <span>{label}</span>
-              <Toggle on={prefs.kinds[k]} />
-            </button>
-          ))}
-          <Link href="/notifications" style={{ ...link, display: "block", marginTop: 6, fontSize: 12 }}>All notification settings ›</Link>
-        </div>
-      );
-    if (l.includes("Language"))
-      return (
-        <div style={panel}>
-          {["English", "हिन्दी", "मराठी"].map((x) => (
-            <button type="button" key={x} onClick={() => (x === "English" ? setLang(x) : fire(`${x} — coming`))} style={{ display: "flex", justifyContent: "space-between", width: "100%", padding: "7px 0", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: INK, fontSize: 12.5 }}>
-              <span>{x}</span>
-              {lang === x ? <span style={{ color: "#22C55E", fontWeight: 900 }}>✓</span> : null}
-            </button>
-          ))}
-        </div>
-      );
-    if (l.includes("Privacy"))
-      return (
-        <div style={panel}>
-          <div style={{ padding: "5px 0" }}>Export my data (DPDP)</div>
-          <div style={{ padding: "5px 0" }}>Download activity log</div>
-          <div style={{ padding: "5px 0", color: "#F87171" }}>Delete account…</div>
-          <div style={{ fontSize: 11, color: SUB, marginTop: 4 }}>Self-serve export and deletion arrive with the privacy slice — until then, ask the studio that invited you or the DanceOS team, and it is done by hand.</div>
-        </div>
-      );
-    if (l.includes("Help"))
-      return (
-        <div style={panel}>
-          <div style={{ padding: "5px 0" }}>FAQ</div>
-          <div style={{ padding: "5px 0" }}>Report a problem</div>
-          <div style={{ padding: "5px 0" }}>Contact support</div>
-          <div style={{ fontSize: 11, color: SUB, marginTop: 4 }}>The help centre is not written yet — this row keeps its place until it is.</div>
-        </div>
-      );
-    return null;
-  };
+  const personal = isDancer || !desk;
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600, fontFamily: DOS_UI }}>
       <div role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "16px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", maxHeight: "84vh", overflowY: "auto", color: INK, animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
-        <div style={{ borderRadius: 18, padding: "14px 16px 12px", background: "linear-gradient(135deg,#64748B,#0EA5E9)", color: "#fff", marginBottom: 4 }}>
+        <div style={{ borderRadius: 18, padding: "14px 16px 13px", background: "linear-gradient(135deg,#64748B,#0EA5E9)", color: "#fff", marginBottom: 4 }}>
           <div style={{ fontSize: 19, fontWeight: 900 }}>Settings</div>
-          <div style={{ fontSize: 10.5, opacity: 0.88, marginTop: 1 }}>profiles · appearance · account</div>
         </div>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: MUTED, margin: "14px 0 8px" }}>YOUR PLAN</div>
 
-        {/* ONE profile, no switcher — only the artist toolset lives here (8855) */}
-        {role !== "org" ? (
-          <button type="button" disabled={pending} onClick={flipArtist} aria-pressed={artistOn} aria-label="Artist tools" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 13px", borderRadius: 14, marginBottom: 12, cursor: "pointer", width: "100%", textAlign: "left", fontFamily: "inherit", color: INK, background: artistOn ? "rgba(236,72,153,.10)" : "var(--card)", border: `1px solid ${artistOn ? "rgba(236,72,153,.45)" : "var(--el)"}` }}>
-            <span style={{ width: 32, height: 32, borderRadius: 11, flexShrink: 0, background: "rgba(236,72,153,.16)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="7.5" r="3.2" /><path d="M5.5 20c.8-3.6 3.2-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /></svg>
-            </span>
-            <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 900 }}>Artist tools</span>
-                {artistOn ? <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 999, background: "rgba(236,72,153,.18)", color: "#EC4899" }}>PRO ACTIVE</span> : <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 999, background: "var(--el)", color: SUB }}>PRO</span>}
-              </span>
-              <span style={{ display: "block", fontSize: 9.5, color: SUB, marginTop: 1 }}>{artistOn && plan ? `teach · publish · earnings · until ${dateWords(plan.until)}` : "teach · publish · earnings · students"}</span>
-            </span>
-            <span aria-hidden="true" style={{ width: 40, height: 22, borderRadius: 11, flexShrink: 0, position: "relative", transition: "background .2s", background: artistOn ? "#EC4899" : "var(--el)", display: "inline-block" }}>
-              <span style={{ position: "absolute", top: 2, left: artistOn ? 20 : 2, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .2s" }} />
-            </span>
-          </button>
-        ) : null}
-        <div style={{ fontSize: 9, color: MUTED, margin: "0 2px 10px", lineHeight: 1.5 }}>Your studios and crews live on the Home tab under “Run your business”. An organization sets up its studios there; a person unlocks an artist page with the plan above.</div>
+        {/* ── YOUR PLAN: the Artist tools switch (a person), the plan's page (whoever holds one) ── */}
+        <div style={head}>YOUR PLAN</div>
+        <div style={grid}>
+          {role !== "org" ? (
+            <Tile icon={ICONS.artist("#EC4899")} onClick={flipArtist} disabled={pending} ariaLabel="Artist tools" pressed={artistOn} badge={<span style={{ ...badgeStyle(artistOn), background: artistOn ? "rgba(236,72,153,.18)" : "var(--el)", color: artistOn ? "#EC4899" : SUB }}>{artistOn ? "PRO ACTIVE" : "PRO"}</span>}>
+              Artist tools
+            </Tile>
+          ) : null}
+          {!isDancer || artistOn ? (
+            <Tile icon={ICONS.subscription("#F59E0B")} href="/subscription" onNavigate={onClose} badge={artistOn && plan ? <span style={badgeStyle(true)}>until {dateWords(plan.until)}</span> : undefined}>
+              Subscription
+            </Tile>
+          ) : null}
+        </div>
 
-        {rows.map((r) =>
-          r.href ? (
-            <Link key={r.l} href={r.href} onClick={onClose} style={card}>
-              <b style={{ fontSize: 13.5 }}>{r.l}</b>
-              <span style={{ color: SUB, fontSize: 12, textAlign: "right" }}>{r.v} ›</span>
-            </Link>
-          ) : r.sheet === "enq" ? (
-            <button type="button" key={r.l} onClick={() => setEnqOpen(true)} style={card}>
-              <b style={{ fontSize: 13.5 }}>{r.l}</b>
-              <span style={{ color: SUB, fontSize: 12, textAlign: "right" }}>{r.v} ›</span>
-            </button>
-          ) : (
-            <div key={r.l}>
-              <button type="button" onClick={() => setMenu((m) => (m === r.l ? null : r.l))} aria-expanded={menu === r.l} style={card}>
-                <b style={{ fontSize: 13.5 }}>{r.l}</b>
-                <span style={{ color: SUB, fontSize: 12, textAlign: "right" }}>{r.v}</span>
-              </button>
-              {menu === r.l ? panelFor(r.l) : null}
+        {/* ── MONEY: a person's own screens, or the first business's desk ── */}
+        <div style={head}>MONEY</div>
+        <div style={grid}>
+          {/* THE GST NUMBER, ONCE (11 Sep 2026): only an organization has one, so only an organization sees the tile */}
+          {role === "org" ? (
+            <Tile icon={ICONS.gst("#0EA5E9")} href="/gst" onNavigate={onClose} badge={<span style={badgeStyle(gstVerified)}>{gstVerified ? "verified" : "needed for events"}</span>}>
+              GST number
+            </Tile>
+          ) : null}
+          <Tile icon={ICONS.payments("#22C55E")} href={personal ? "/payments" : `${desk}/payments`} onNavigate={onClose}>
+            {personal ? "Payments" : "Payments & verification"}
+          </Tile>
+          <Tile icon={ICONS.invoices("#3B82F6")} href={personal ? "/invoices" : `${desk}/invoices`} onNavigate={onClose}>
+            Invoices
+          </Tile>
+          <Tile icon={ICONS.refunds("#F97316")} href={personal ? "/refunds" : `${desk}/refunds`} onNavigate={onClose}>
+            Refunds
+          </Tile>
+        </div>
+
+        {/* ── BUSINESS: what the page you run accepts ── */}
+        {business ? (
+          <>
+            <div style={head}>BUSINESS</div>
+            <div style={grid}>
+              <Tile icon={ICONS.enquiries("#8B5CF6")} onClick={() => setEnqOpen(true)} badge={<span style={badgeStyle(enqCount > 0)}>{enqCount} of {enqAll.length}</span>}>
+                Enquiry types
+              </Tile>
             </div>
-          ),
-        )}
-        <form action={signOutAction}>
-          <button type="submit" style={{ ...card, border: `1.5px solid ${RED}` }}>
-            <b style={{ fontSize: 13.5, color: RED }}>↪ Log out</b>
-            <span style={{ color: SUB, fontSize: 12 }}>sign out on this device · data stays safe</span>
-          </button>
+          </>
+        ) : null}
+
+        {/* ── ACCOUNT ── */}
+        <div style={head}>ACCOUNT</div>
+        <div style={grid}>
+          <Tile icon={ICONS.language("#06B6D4")} onClick={() => fire("English — more languages are coming")}>
+            Language
+          </Tile>
+          <Tile icon={ICONS.privacy("#64748B")} href="/legal/privacy" onNavigate={onClose}>
+            Privacy & data
+          </Tile>
+          {/* Help & support and Message DanceOS were two doors to one conversation (10 Sep 2026) — one tile */}
+          <Tile icon={ICONS.help("#0EA5E9")} href="/support" onNavigate={onClose}>
+            Help & support
+          </Tile>
+          {isAdmin ? (
+            <Tile icon={ICONS.admin("#A855F7")} href="/admin" onNavigate={onClose}>
+              Admin panel
+            </Tile>
+          ) : null}
+        </div>
+        <form action={signOutAction} style={{ ...grid, marginTop: 4 }}>
+          <Tile icon={ICONS.logout(RED)} danger>
+            ↪ Log out
+          </Tile>
         </form>
 
         {/* ── ENQUIRIES YOU ACCEPT (9000-9030) ── */}

@@ -1328,6 +1328,9 @@ test.describe.serial("DanceOS, end to end", () => {
        pill, so this segment gets in by address. */
     await owner.goto("/");
     await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toHaveCount(0);
+    /* and no Manage TILE either (19 Sep 2026, the user: "just need to remove
+       manage as the tile in tools, nothing else changes") */
+    await expect(owner.getByRole("link", { name: "Manage", exact: true })).toHaveCount(0);
     await owner.goto("/managed");
     await owner.waitForURL(/\/managed$/);
     // the class the story published and both events it created are here, whatever their status
@@ -1409,9 +1412,14 @@ test.describe.serial("DanceOS, end to end", () => {
     const settings = trainer.getByRole("dialog", { name: "Settings" });
     await expect(settings).toBeVisible();
     await expect(settings.getByText("YOUR PLAN")).toBeVisible();
-    // a row opens where its subject lives rather than pretending
-    await settings.getByRole("button", { name: /Notifications/ }).click();
-    await expect(settings.getByRole("link", { name: "All notification settings ›" })).toBeVisible();
+    /* 19 Sep 2026: TILES, and no Notifications among them — "What reaches you"
+       lives on the bell's own screen, once (the user: "can remove notifications
+       and keep it inside the notifications section only"); Help & support and
+       Message DanceOS merged into one door to the conversation */
+    await expect(settings.getByRole("button", { name: /Notifications/ })).toHaveCount(0);
+    await expect(settings.getByRole("link", { name: /Notifications/ })).toHaveCount(0);
+    await expect(settings.getByRole("link", { name: /Help & support/ })).toHaveAttribute("href", "/support");
+    await expect(settings.getByRole("link", { name: /Message DanceOS/ })).toHaveCount(0);
     // and Log out is here, where the prototype keeps it
     await expect(settings.getByRole("button", { name: /Log out/ })).toBeVisible();
     /* Enquiry types is the prototype's own sheet (9000-9030). Since 18 Sep 2026 the

@@ -374,13 +374,15 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByLabel("Share this profile — QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
     check(await org.getByText("Organization", { exact: true }).isVisible(), "org home: the role word under the sleeve");
     check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed in Edit profile");
-    /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the eye under the pencil on the hero, Stats the chip */
+    /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the DISC is the door to the public page (the eye left Home
+       later the same day — the user: "clicking on the profile photo on home tab takes to profile so can remove
+       the eye from top right on home"), Stats the chip */
     const bar = org.getByRole("navigation", { name: "Main" });
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
     check((await bar.getByRole("link", { name: "Public view" }).count()) === 0, "bar: the eye left the bar (19 Sep 2026, the user: 'remove profile tab from navbar')");
     check((await bar.getByRole("link").count()) === 3, "bar: Home · Discover · Inbox — three");
-    /* 18 Sep 2026: an organization has a page of its own, and the eye opens THAT — from the hero's corner, under the pencil */
-    check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: the eye under the pencil opens the organization's own page as a stranger sees it");
+    /* 18 Sep 2026: an organization has a page of its own, and the disc opens THAT (the one "Public view" link on Home) */
+    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: the logo on the disc is the one door to the organization's own page as a stranger sees it — no eye in the corner");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: Edit profile is a pencil on the hero");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
     await org.getByRole("button", { name: "Edit profile", exact: true }).click();
@@ -408,7 +410,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled from Edit profile");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText("User", { exact: true }).isVisible(), "user home: the role word");
-    check((await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the eye under the pencil opens their person page (off the bar since 19 Sep 2026)");
+    check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the disc is the one door to their person page (the eye left the bar and then the corner, 19 Sep 2026)");
     check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "user home: Edit profile is a pencil on the hero");
 
     /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026) ── */

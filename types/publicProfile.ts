@@ -16,6 +16,10 @@ export interface PublicTenant {
    *  distances were all the same number. */
   lat: number | null;
   lng: number | null;
+  /** when the owner PLACED the pin (11 Sep 2026's `set_business_location`);
+   *  null means lat/lng are still the city's centroid, and the Location button
+   *  opens Maps by name and place instead of a point nobody chose (19 Sep 2026) */
+  locationSetAt: string | null;
   /** when the business joined DanceOS — the honest stand-in for the prototype's
    *  founding year, which no field holds yet */
   createdAt: string;

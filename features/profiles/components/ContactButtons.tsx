@@ -44,11 +44,15 @@ export function MailButton({ email }: { email: string }) {
   );
 }
 
-/** Location — opens the place in Maps (dosOpenMaps 206 builds the same URL). A
- *  studio's is its name and address; an organization's its name and city. */
-export function LocationButton({ query }: { query: string }) {
+/** Location — opens the place in Maps. THE PIN WHEN THERE IS ONE (19 Sep 2026,
+ *  the user: "locations should be the google map link for the particular
+ *  organization and studio"): a studio that has placed itself hands its own
+ *  Maps link (`href`); one that has not, and an organization, fall back to Maps
+ *  by name and place (`query`, the URL dosOpenMaps 206 builds). */
+export const mapsPinHref = (lat: number, lng: number) => `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+export function LocationButton({ query, href }: { query?: string; href?: string }) {
   return (
-    <a href={mapsHref(query)} target="_blank" rel="noreferrer" aria-label="Location" style={box}>
+    <a href={href ?? mapsHref(query ?? "")} target="_blank" rel="noreferrer" aria-label="Location" style={box}>
       <span style={glyph}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 21s-6.5-5.7-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.3-6.5 10-6.5 10z" />

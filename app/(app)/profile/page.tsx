@@ -4,7 +4,6 @@ import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
-import { findMyNotificationPrefs } from "@/repositories/notifications";
 import { findPublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyPlace } from "@/repositories/stats";
@@ -18,8 +17,8 @@ import { kindOf } from "@/types/profile";
  *  (`?settings=1`, prototype 19263). Everything on it is a row this app keeps:
  *  the profile with its fields, the person's followers and the people,
  *  businesses, organizations and crews they follow, their place on the board
- *  their role belongs to, what reaches them, and the same crews / teaches-at /
- *  runs groups the person page draws. */
+ *  their role belongs to, and the same crews / teaches-at / runs groups the
+ *  person page draws. */
 export default async function ProfilePage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -33,7 +32,8 @@ export default async function ProfilePage() {
     redirect("/onboarding");
   }
   const role = person.profile.role;
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, prefs, plan, isAdmin, gst] = await Promise.all([
+  /* what reaches you left this page on 19 Sep 2026 — the bell's own screen carries it, once */
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -41,7 +41,6 @@ export default async function ProfilePage() {
     findMyFollowedOrganizations(supabase),
     findMyFollowedCrews(supabase),
     findMyTenants(supabase),
-    findMyNotificationPrefs(supabase),
     findMyArtistPlan(supabase),
     amIPlatformAdmin(supabase),
     /* the Settings sheet's GST row says verified or not (11 Sep 2026); only an
@@ -79,7 +78,6 @@ export default async function ProfilePage() {
       followingCrews={followingCrews}
       place={place ? { place: place.place, population: place.population } : null}
       scheduleHref={scheduleHref}
-      prefs={prefs}
       business={biz ?? null}
       businesses={businesses}
       plan={plan}
