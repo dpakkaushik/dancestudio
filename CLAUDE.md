@@ -108,6 +108,22 @@
 > specs on the chip-mode bug above, and the happy path about to die in segment 1
 > on the same. No proof run: no database surface (no migration, no RPC, no
 > policy); the 29 were green this afternoon on the same schema.
+>
+> **⚠ AND THEN THE SWEEP RAN (18 Sep 2026, after the push) — production data,
+> soft-deleted, on the user's word.** Asked *"if I solve the profile problem how
+> many genuine ones will be left for each kind?"*, the answer was counted rather
+> than guessed — and counting the KEPT set found the sweep script itself was
+> wrong twice (a 1,000-row read cap PostgREST imposes silently, and two whole
+> families of leftovers its patterns missed, four of them LISTED on Discover).
+> Fixed, dry-run with `--show-kept`, the kept set listed by email, and on
+> *"remove junk profiles"* applied: 51 profiles, 1,004 businesses. What remains
+> is exactly the genuine set — 10 users, 6 organizations, 9 studios (one in
+> Pune), 2 artist pages, 6 hosting rows — and `admin-moderation` and
+> `paid-webhook`, red since 17 Sep on that pile, are **9/9 and 3/3**: the whole
+> suite is green. Detail and the numbers in NEXT TO DO #0w. **The lesson is the
+> one this file keeps re-learning in a new coat: a dry run that reads a capped
+> list is not a dry run — count the total, and read what STAYS, not only what
+> goes.**
 
 > ### ⚠ THE ASK WAS INVISIBLE TO THE PERSON ASKED — A BELL WITH AN EMPTY INBOX BEHIND IT (18 Sep 2026) — MIGRATION APPLIED
 > The user, an hour after the slice below shipped: *"when studio creating class
@@ -2316,8 +2332,28 @@ summary; the report has the evidence.
    What it leaves is a WORD on a screen, not a rule: the register's Create class
    button does not read `why_no_class` before the form (backlog row).
 
-0w. **THE PROOF LEFTOVERS HAVE CROSSED THE RADIUS SEARCH'S 50-ROW CAP — RUN THE
-   SWEEP, AFTER LOOKING AT ITS LIST (found 17 Sep 2026).** `nearby_businesses`
+0w. **~~THE PROOF LEFTOVERS HAVE CROSSED THE RADIUS SEARCH'S 50-ROW CAP — RUN THE
+   SWEEP~~ — DONE 18 Sep 2026, on the user's "remove junk profiles", after the
+   kept set had been listed to them by email.** Applied: **51 profiles and
+   1,004 businesses** soft-deleted (with 210 events, 10 classes, 29 sessions and
+   142 memberships beneath them). What is live now is exactly the genuine set:
+   **10 users** (the owner's two accounts, one real user, the six demo people,
+   the test-phone learner), **6 organizations** (three real, two demo, the
+   test-phone owner), **9 studios** (6 listed — Pune has ONE, down from 88),
+   **2 artist pages, 6 hosting rows**. The test-phone owner holds one row, not
+   55. Re-run straight after: `admin-moderation` **9/9** and `paid-webhook`
+   **3/3** — the two standing reds since 17 Sep, both the pile and nothing else.
+   ⚠ **Two things the script got wrong, fixed before it ran** (found by counting
+   the kept set rather than trusting the dry run): it read `businesses` with ONE
+   GET and PostgREST caps a response at 1,000 rows — production held 1,021, so
+   21 would never have been examined; every list is PAGED now. And its patterns
+   missed two whole families the newer scripts leave — `sv-admin-*` (17
+   studio-verification admins) and `shot.*` (the shot scripts, dotted) — plus
+   the names "Shot Studio …" (four of them LISTED on Discover) and "Mandate Test
+   …" without "Studio". Writes go in chunks of 80 ids (a thousand uuids in one
+   URL is a request a gateway may refuse). `--show-kept` prints what STAYS,
+   which is the list to read before any future run. Kept below for the record:
+   `nearby_businesses`
    answers 50 rows by default (#6 below: no cursor), every proof and e2e studio
    sits on Pune's exact centroid at distance 0, and the runs of 16–17 Sep have
    left **70-plus LISTED studios in Pune** — "Class Studio 211450", "Mandate Proof
@@ -6110,8 +6146,8 @@ nothing to lift.
 | **`GoogleMapPicker` keeps a `markers` prop with no caller** (18 Sep 2026) — `DiscoverMap` was its only one and it is deleted. Left in place on purpose rather than pruned in the same push: it is a general map component, the location picker that stands on it is load-bearing, and that picker is where the 16 Sep data-loss bug lived | — | prune when `GoogleMap` is next opened for its own reasons |
 | **A withdrawn or re-asked claim still counts on somebody's record** (found 18 Sep 2026 by the proof harness). `my_dance_stats` and `my_session_history` count `class_people` rows with `status = 'confirmed'` and do NOT filter `deleted_at`, so a claim that was closed — withdrawn, or replaced by a re-ask — keeps adding sessions, hours and POINTS to that person's record and to the boards. It never showed because nothing used to close a confirmed claim; `ask_class_person` does it on every re-ask. The fix is not simply "filter deleted_at": somebody removed from a team should keep credit for sessions they actually taught (the payouts ledger draws that line with `accrualCutoff`), so stats needs the same test — count a claim's sessions up to the moment it closed | — | one migration over the two stats functions, in the shape of payouts' accrual cutoff |
 | **The class form, what the 18 Sep re-cut left:** an artist's class at a studio shows the venue as "the studio you asked" when the form is REOPENED (the name is not read back, only the id); a declined venue is said in the Inbox and on the register but the artist must reopen Edit to choose again (no one-press "pick another"); there is no rent, invoice or payout between an artist and the studio whose room they used (the prototype's unbuilt S_rentals); the venue request has no withdrawal of its own (moving the class is the withdrawal); a studio cannot see, on its own calendar, which of ITS rooms an artist has asked for until it accepts (the request is in the Inbox, the room is held only once accepted); and `why_no_publish` is not read by the form before Save — the register is where the sentence is printed | S_rentals 16489 | a rentals slice; the rest are decisions |
-| **An owner cannot reach a 51st business.** `findMyTenants` and `findMyMemberships` read the oldest 50 memberships (`order created_at asc, limit 50`), and every desk page finds its business in that list — so the 51st studio an account opens has a hub card that opens nothing but the hub. Found 17 Sep 2026 on the test phone owner (55 proof-leftover studios); no real organization is near it, but a cap that silently hides the newest is the wrong shape | — (the prototype's hub is localStorage-sized) | order newest-first, or read the one membership the page needs by id instead of searching a capped list |
-| **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
+| **An owner cannot reach a 51st business.** `findMyTenants` and `findMyMemberships` read the oldest 50 memberships (`order created_at asc, limit 50`), and every desk page finds its business in that list — so the 51st studio an account opens has a hub card that opens nothing but the hub. Found 17 Sep 2026 on the test phone owner (55 proof-leftover studios — swept 18 Sep 2026, it holds one row now, and `paid-webhook` is green again); no real organization is near it, but a cap that silently hides the newest is the wrong shape | — (the prototype's hub is localStorage-sized) | order newest-first, or read the one membership the page needs by id instead of searching a capped list |
+| **Discover cannot show a 51st studio.** `nearby_tenants` caps its answer (a parameter since 11 Sep 2026, max 200) and has no cursor, so a city with more businesses than the cap silently ends there. It bit for real from 17 to 18 Sep 2026 — 88 listed proof leftovers in Pune — until the sweep (#0w); Pune has ONE listed studio now, so the cap is theoretical again, and still the wrong shape | — (the prototype's list is localStorage-sized) | cursor pagination on the radius search, with the shelf's "load more" |
 | **No rate limiting anywhere** — not on search, `report_content`, `send_enquiry`, `open_support_thread` or sign-up. RLS decides who may do a thing, never how often; this is the main abuse surface a public consumer app has | — (a backend concern the prototype cannot have) | a `rate_limits` table + one `rate_limit_hit(bucket, limit, window)` definer called from the server actions — additive, touches no existing RPC body. Needs the user's call on the limits |
 | **The map runs on Google's Maps Demo Key, and that has a ceiling.** No billing behind it, a daily quota that pauses rather than bills, not licensed for production; the Places/Geocoding cache in `lib/geo/places.ts` is in memory PER INSTANCE | — (same) | a billed Google Cloud project with Maps JavaScript API + Places API (New) + Geocoding API enabled, a referrer-restricted browser key and an IP-restricted server key in `NEXT_PUBLIC_GOOGLE_MAPS_KEY` / `GOOGLE_MAPS_KEY` — a deploy, not a rewrite |
 | Notifications: a real web **push** (VAPID keys + a service worker + a `push_subscriptions` table), **WhatsApp** and **email** delivery — the three switches are stored and honest about waiting; the prototype's swipe-left-to-clear gesture (the × is the way; no test drives a touch gesture); the theme chip inside S_notif's own hero (the chrome carries one) | S_notif 13800-13810, 13746, 13727 | push as its own slice; WhatsApp with Step 26; email with the verified Resend domain |
