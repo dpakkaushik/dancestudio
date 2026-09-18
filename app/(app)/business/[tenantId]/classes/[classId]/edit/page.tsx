@@ -5,7 +5,7 @@ import { findDiscoverCities } from "@/repositories/cities";
 import { findClaimsByClass } from "@/repositories/claims";
 import { findClassById } from "@/repositories/classes";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyMemberships } from "@/repositories/tenants";
+import { findBusinessName, findMyMemberships } from "@/repositories/tenants";
 
 /** Edit class — the owner alone (18 Sep 2026), like Add class. */
 export default async function EditClassPage({
@@ -40,10 +40,13 @@ export default async function EditClassPage({
     redirect(tenant.type === "artist_page" ? "/my-classes?show=manage" : `/business/${tenantId}/classes`);
   }
 
-  const [rooms, claims, cityCentres] = await Promise.all([
+  const [rooms, claims, cityCentres, venueName] = await Promise.all([
     tenant.type === "studio" ? findRoomsByTenant(supabase, tenantId) : Promise.resolve([]),
     findClaimsByClass(supabase, classId),
     tenant.type === "artist_page" ? findDiscoverCities(supabase).catch(() => []) : Promise.resolve([]),
+    /* the studio an artist asked for a room, BY NAME — the form used to reopen on
+       "the studio you asked" because only the id was on the row (18 Sep 2026) */
+    danceClass.venueBusinessId ? findBusinessName(supabase, danceClass.venueBusinessId).catch(() => null) : Promise.resolve(null),
   ]);
 
   return (
@@ -51,6 +54,7 @@ export default async function EditClassPage({
       tenantId={tenantId}
       tenantType={tenant.type}
       existing={danceClass}
+      venueName={venueName}
       rooms={rooms}
       claims={claims}
       isOwner

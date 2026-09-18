@@ -6,7 +6,7 @@ import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { enquiryTypesFor, type EnquiryField, type EnquiryType } from "@/types/enquiry";
+import { enquiryTypesFor, enquiryTypesForCrew, type EnquiryField, type EnquiryType } from "@/types/enquiry";
 import type { TenantType } from "@/types/tenant";
 import { pressKey } from "@/features/inbox/components/inbox-kit";
 
@@ -57,7 +57,9 @@ export function EnquiryButton({
   signedIn,
   accent,
   enquiryTypes = null,
+  crewId = null,
 }: {
+  /** the business asked — ignored when `crewId` is set */
   tenantId: string;
   tenantName: string;
   tenantType: TenantType;
@@ -65,6 +67,9 @@ export function EnquiryButton({
   accent: string;
   /** the types the business switched on (ENQUIRIES YOU ACCEPT, 9005) — null means every one its kind allows */
   enquiryTypes?: string[] | null;
+  /** A CREW CAN BE ASKED (18 Sep 2026): set on a crew's page, the enquiry goes to
+   *  the crew — its leader answers — and offers the three kinds a crew takes */
+  crewId?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const box: React.CSSProperties = {
@@ -106,7 +111,7 @@ export function EnquiryButton({
         <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>Enquiry
       </button>
       {open ? (
-        <EnquirySheet tenantId={tenantId} tenantName={tenantName} tenantType={tenantType} accent={accent} enquiryTypes={enquiryTypes} onClose={() => setOpen(false)} />
+        <EnquirySheet tenantId={tenantId} tenantName={tenantName} tenantType={tenantType} accent={accent} enquiryTypes={enquiryTypes} crewId={crewId} onClose={() => setOpen(false)} />
       ) : null}
     </>
   );
@@ -118,6 +123,7 @@ export function EnquirySheet({
   tenantType,
   onClose,
   enquiryTypes = null,
+  crewId = null,
 }: {
   tenantId: string;
   tenantName: string;
@@ -125,11 +131,14 @@ export function EnquirySheet({
   enquiryTypes?: string[] | null;
   /** the business page's colour — the sheet wears each TYPE's own colour instead (5119), so this is accepted and unused */
   accent?: string;
+  /** the crew asked (18 Sep 2026) — the sheet then goes to the crew, not the business */
+  crewId?: string | null;
   onClose: () => void;
 }) {
   useCloseOnBack(onClose);
-  /* only the types the business switched on appear (9007) */
-  const allowed = enquiryTypesFor(tenantType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
+  /* only the types the business switched on appear (9007); a crew takes its own
+     three and keeps no preferences */
+  const allowed = crewId ? enquiryTypesForCrew() : enquiryTypesFor(tenantType).filter((t) => !enquiryTypes || enquiryTypes.includes(t.k));
   const [type, setType] = useState<EnquiryType | null>(null);
   const [dateMode, setDateMode] = useState<"single" | "multi">("single");
   const [dates, setDates] = useState<string[]>([""]);
@@ -175,7 +184,8 @@ export function EnquirySheet({
 
     setBusy(true);
     const out = await sendEnquiryAction({
-      tenantId,
+      tenantId: crewId ? null : tenantId,
+      crewId,
       typeKey: type.k,
       fields: rows,
       dates: cleanDates,

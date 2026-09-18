@@ -177,11 +177,15 @@ export function ClassForm({
   studioPlace = "",
   cityCentres = [],
   city = null,
+  venueName = null,
 }: {
   tenantId: string;
   /** a studio's form or an artist page's — decides WHERE and WHO (18 Sep 2026) */
   tenantType: TenantType;
   existing?: DanceClass;
+  /** the NAME of the studio an artist's class asked for a room — the row holds
+   *  only the id, and a reopened form should say who was asked (18 Sep 2026) */
+  venueName?: string | null;
   /** the business's OWN rooms — a studio's; an artist page has none */
   rooms: Room[];
   claims?: ClassClaim[];
@@ -230,7 +234,7 @@ export function ClassForm({
 
   /* ── WHERE, for an artist (18 Sep 2026) ── */
   const [whereKind, setWhereKind] = useState<WhereKind>(existing?.venueBusinessId ? "studio" : "place");
-  const [venue, setVenue] = useState<Venue | null>(existing?.venueBusinessId ? { id: existing.venueBusinessId, name: "the studio you asked", sub: "" } : null);
+  const [venue, setVenue] = useState<Venue | null>(existing?.venueBusinessId ? { id: existing.venueBusinessId, name: venueName ?? "the studio you asked", sub: "" } : null);
   const [venueRooms, setVenueRooms] = useState<Room[]>([]);
   const [venueQ, setVenueQ] = useState("");
   const [venueHits, setVenueHits] = useState<Venue[]>([]);

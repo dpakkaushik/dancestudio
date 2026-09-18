@@ -479,9 +479,18 @@ export function ClassesManager({
                 c.status === "draft" ? (
                   <>
                     {chipRow}
-                    <Link href={`/business/${tenantId}/classes/${c.id}/edit`} style={{ ...pill(false), textDecoration: "none" }}>
-                      Edit
-                    </Link>
+                    {/* A DECLINED ROOM OFFERS THE WAY OUT IN ONE PRESS (18 Sep 2026): the
+                        studio said no, so the class is going nowhere until it is moved —
+                        the form's WHERE step is where it is moved, and this names it */}
+                    {st?.venueStatus === "declined" ? (
+                      <Link href={`/business/${tenantId}/classes/${c.id}/edit`} style={{ ...pill(true), textDecoration: "none" }}>
+                        Pick another studio ›
+                      </Link>
+                    ) : (
+                      <Link href={`/business/${tenantId}/classes/${c.id}/edit`} style={{ ...pill(false), textDecoration: "none" }}>
+                        Edit
+                      </Link>
+                    )}
                     {/* PUBLISH WAITS FOR A YES (18 Sep 2026): the database's own sentence is
                         what the button says when pressed too early — the same words the
                         trigger would raise, so the screen cannot drift from the rule */}

@@ -58,9 +58,20 @@ export function SignUpForm() {
               Sign in
             </Link>
           </p>
+          {/* THE TWO WORDS ARE LINKS NOW (18 Sep 2026): the pages exist at /legal, so
+              the one screen every account passes through can point at them. The
+              second sentence is the DPDP consent line (audit row U3): what a person
+              agrees to, said on the screen where they agree to it. */}
           <p className="mt-3 text-center text-[10.5px] leading-[1.6] text-muted-foreground">
-            By continuing you agree to the <b className="text-foreground">Terms</b> &amp;{" "}
-            <b className="text-foreground">Privacy Policy</b>.
+            By continuing you agree to the{" "}
+            <Link href="/legal/terms" data-slot="link" className="font-extrabold text-foreground underline-offset-2 hover:underline focus-visible:ring-[2.5px] focus-visible:ring-ring focus-visible:outline-none">
+              Terms
+            </Link>{" "}
+            &amp;{" "}
+            <Link href="/legal/privacy" data-slot="link" className="font-extrabold text-foreground underline-offset-2 hover:underline focus-visible:ring-[2.5px] focus-visible:ring-ring focus-visible:outline-none">
+              Privacy Policy
+            </Link>
+            , and consent to DanceOS processing the details you give it to run the service, as the Digital Personal Data Protection Act, 2023 asks.
           </p>
         </>
       }

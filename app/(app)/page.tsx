@@ -327,6 +327,18 @@ export default async function HomePage() {
         {orgAwaitingApproval ? null : (
           <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
             <BizSection kind={homeKind} pageId={pageId} eventsHostId={isOrg ? eventsHostId : null} plan={isOrg ? null : isArtist ? "active" : "locked"}>
+              {/* THE PAGE COULD NOT BE MADE (18 Sep 2026): the plan is live and Home just
+                  tried to provision the page the artist tools run through, and the
+                  database said no — a refusal Home swallows so it never fails on it.
+                  Said in one sentence rather than left as tiles that open the hub. */}
+              {isArtist && !pageId ? (
+                <div role="status" style={{ background: CARD, border: `1px solid ${GOLD}66`, borderLeft: `3px solid ${GOLD}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>
+                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 900, color: INK }}>Your artist page is still being set up</span>
+                  <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
+                    Team, Students and Earnings run through it. It could not be made just now — open Home again in a moment, and if this stays, message DanceOS from Settings.
+                  </span>
+                </div>
+              ) : null}
               {/* somebody has asked you onto their team, and only you can answer —
                   the same gold ask the class page wears when a class is handed over */}
               {invites.map((inv) => (

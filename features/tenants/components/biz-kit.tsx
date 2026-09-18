@@ -63,6 +63,10 @@ export const DOS_TOOLS = {
      paint follows it */
   calendar: { name: "Calendar", c: "#06B6D4" },
   crews: { name: "Crews", c: "#DC2626" },
+  /* S_managed — everything you run, one list (18 Sep 2026: a tile, since the
+     shelf head lost its doors). Violet: Stats' family left the grids for the
+     chip, so the hue is free again, and it sits 24° from Rooms' indigo */
+  managed: { name: "Manage", c: "#7C3AED" },
 } as const;
 export type DosToolKey = keyof typeof DOS_TOOLS;
 

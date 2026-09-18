@@ -57,6 +57,15 @@ const GLYPH: Record<string, ReactNode> = {
       <path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" />
     </>
   ),
+  /* the managed list: rows, each with its dot — one list over everything you run */
+  managed: I(
+    <>
+      <path d="M9 6.5h11.5M9 12h11.5M9 17.5h11.5" />
+      <circle cx="4.5" cy="6.5" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="17.5" r="1.3" fill="currentColor" stroke="none" />
+    </>
+  ),
   crews: <CrewI size={20} color="currentColor" />,
   studios: <StudioI size={20} color="currentColor" />,
   events: <EventI size={20} color="currentColor" />,
@@ -171,8 +180,14 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
     return [
       { name: DOS_TOOLS.events.name, href: eventsHostId ? `/business/${eventsHostId}/events` : "/business", k: "events", c: DOS_TOOLS.events.c },
       { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
+      /* 18 Sep 2026, the user: "only events calendar required here" — an
+         organization's calendar IS its events (row R21), so the tile opens it */
+      { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
       { name: DOS_TOOLS.team.name, href: "/business/team", k: "team", c: DOS_TOOLS.team.c },
       { name: DOS_TOOLS.earn.name, href: "/business/earnings", k: "earn", c: DOS_TOOLS.earn.c },
+      /* everything you run, in one list (S_managed) — a tile now (18 Sep 2026),
+         after `HEAD_LINK` took its only door off the shelf head */
+      { name: DOS_TOOLS.managed.name, href: "/managed", k: "managed", c: DOS_TOOLS.managed.c },
     ];
   }
   const person: Tile[] = [
@@ -194,6 +209,10 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
     { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
     { name: DOS_TOOLS.assets.name, href: "/assets", k: "assets", c: DOS_TOOLS.assets.c },
     { name: DOS_TOOLS.media.name, href: "/profile", k: "media", c: DOS_TOOLS.media.c },
+    /* an artist RUNS things — classes on their page, the events they help with —
+       so the managed list is theirs; a plain user runs nothing and gets no door
+       onto an empty room (the prototype's own objection, 7135) */
+    { name: DOS_TOOLS.managed.name, href: "/managed", k: "managed", c: DOS_TOOLS.managed.c },
   ];
 };
 

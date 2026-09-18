@@ -60,14 +60,52 @@ type Pt = { x: number; y: number };
 const toJpegFile = (blob: Blob, original: File): File =>
   new File([blob], `${original.name.replace(/\.[^.]+$/, "") || "photo"}.jpg`, { type: "image/jpeg" });
 
+/** THE ENCODE HAS A DEADLINE (18 Sep 2026). `toBlob` answers on its own schedule
+ *  — off the main thread, back on it when done — and on one machine tonight it
+ *  answered in 400 ms four times and then not for five seconds, with nothing to
+ *  explain the difference. "Saving…" must never be a wait without an end: past
+ *  the deadline the picture goes up uncropped rather than not at all, which is
+ *  the same rule the decode already follows ("Use it as it is"). */
+const ENCODE_DEADLINE_MS = 4000;
 const canvasToBlob = (c: HTMLCanvasElement): Promise<Blob | null> =>
   new Promise((resolve) => {
+    let done = false;
+    const finish = (b: Blob | null) => {
+      if (done) return;
+      done = true;
+      clearTimeout(t);
+      resolve(b);
+    };
+    const t = setTimeout(() => finish(null), ENCODE_DEADLINE_MS);
     try {
-      c.toBlob((b) => resolve(b), "image/jpeg", JPEG_QUALITY);
+      c.toBlob((b) => finish(b), "image/jpeg", JPEG_QUALITY);
     } catch {
-      resolve(null);
+      finish(null);
     }
   });
+
+/** THE BLURRED BACKFILL, CHEAPLY. A canvas `filter: blur(26px)` over the whole
+ *  760px output is the one expensive line in the export — a wide Gaussian over
+ *  half a million pixels in software. The same look for a fraction of the work:
+ *  the picture drawn into a thumbnail of a few dozen pixels, then that thumbnail
+ *  drawn back up with smoothing on. What the eye sees is the same soft wash. */
+const BACKFILL_PX = 28;
+const drawBackfill = (g: CanvasRenderingContext2D, img: HTMLImageElement, nat: Size, out: number, scale: number) => {
+  const tiny = document.createElement("canvas");
+  tiny.width = BACKFILL_PX;
+  tiny.height = BACKFILL_PX;
+  const tg = tiny.getContext("2d");
+  if (!tg) return;
+  /* cover the tiny square with the picture, centred, the way the fill would */
+  const s = Math.max(BACKFILL_PX / nat.w, BACKFILL_PX / nat.h) * scale;
+  tg.drawImage(img, (BACKFILL_PX - nat.w * s) / 2, (BACKFILL_PX - nat.h * s) / 2, nat.w * s, nat.h * s);
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = "low";
+  g.drawImage(tiny, 0, 0, out, out);
+  /* a touch of the ground so the wash reads as behind the picture, not as it */
+  g.fillStyle = "rgba(11,11,12,.35)";
+  g.fillRect(0, 0, out, out);
+};
 
 /* the whole geometry, in one place: fit = the picture entirely inside the frame,
    fill = the picture covering it; the preview, the clamp and the canvas all read it */
@@ -263,12 +301,9 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
       g.fillStyle = "#0B0B0C";
       g.fillRect(0, 0, c.width, c.height);
       try {
-        const bs = fill * k * 1.25;
-        g.filter = "blur(26px)";
-        g.drawImage(img, (c.width - nat.w * bs) / 2, (c.height - nat.h * bs) / 2, nat.w * bs, nat.h * bs);
-        g.filter = "none";
+        drawBackfill(g, img, nat, S.out, 1.25);
       } catch {
-        /* a browser without canvas filters draws the picture on the plain ground */
+        /* the picture on the plain ground is fine; the wash is decoration */
       }
       g.drawImage(img, P.x * k, P.y * k, P.w * k, P.h * k);
       const blob = await canvasToBlob(c);

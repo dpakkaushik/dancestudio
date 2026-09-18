@@ -40,5 +40,5 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
   /* the public page prints the confirmed; the leader's own asked rows are the desk's business */
   const confirmed = members.filter((m) => m.status === "confirmed");
   const viewer = user ? (crew.leaderId === user.id ? "leader" : confirmed.some((m) => m.userId === user.id) ? "member" : "other") : "other";
-  return <CrewPublicPage crew={crew} members={confirmed} entries={entries} viewer={viewer} todayKey={dayKeyOf(stampNowIso())} />;
+  return <CrewPublicPage crew={crew} members={confirmed} entries={entries} viewer={viewer} signedIn={Boolean(user)} todayKey={dayKeyOf(stampNowIso())} />;
 }

@@ -24,7 +24,8 @@ interface QuoteRow {
 
 interface EnquiryRow {
   id: string;
-  business_id: string;
+  business_id: string | null;
+  crew_id: string | null;
   from_user_id: string;
   type_key: EnquiryTypeKey;
   fields: unknown;
@@ -35,12 +36,15 @@ interface EnquiryRow {
   status: EnquiryStatus;
   created_at: string;
   businesses: { name: string; type: TenantType; phone: string | null } | null;
+  crews: { name: string } | null;
   profiles: { full_name: string } | null;
   enquiry_quotes: QuoteRow[] | null;
 }
 
+/* an enquiry names a business OR a crew (18 Sep 2026): both embeds ride along and
+   exactly one comes back non-null */
 const ENQUIRY_SELECT =
-  "id, business_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, businesses (name, type, phone), profiles (full_name), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
+  "id, business_id, crew_id, from_user_id, type_key, fields, dates, where_text, message, mobile, status, created_at, businesses (name, type, phone), crews (name), profiles (full_name), enquiry_quotes (id, n, cost_inr, advance_pct, advance_inr, status, advance_paid_at, full_paid_at, created_at, deleted_at)";
 
 const toQuote = (q: QuoteRow): EnquiryQuote => ({
   id: q.id,
@@ -63,12 +67,15 @@ const toFields = (raw: unknown): Array<[string, string]> =>
 
 const toEnquiry = (r: EnquiryRow): Enquiry => ({
   id: r.id,
-  tenantId: r.business_id,
-  tenantName: r.businesses?.name ?? "A business",
+  tenantId: r.business_id ?? "",
+  /* who was asked, in words: a crew's enquiry carries the crew's name where a
+     business's carries the business's, so every desk prints one field */
+  tenantName: r.crew_id ? (r.crews?.name ?? "A crew") : (r.businesses?.name ?? "A business"),
   tenantType: r.businesses?.type ?? "studio",
   /* under the policy that already let this join read the name — the same number
-     the business's public page prints, not a private one (I4) */
+     the business's public page prints, not a private one (I4). A crew has none. */
   tenantPhone: r.businesses?.phone ?? null,
+  crewId: r.crew_id,
   fromUserId: r.from_user_id,
   fromName: r.profiles?.full_name ?? "Someone",
   typeKey: r.type_key,
@@ -99,6 +106,25 @@ export async function findReceivedEnquiries(supabase: SupabaseClient, tenantIds:
     .limit(MAX_LIST);
   if (error) {
     throw new Error(`enquiries.findReceived failed: ${error.message}`);
+  }
+  return ((data ?? []) as unknown as EnquiryRow[]).map(toEnquiry);
+}
+
+/** Enquiries that came IN to the crews I lead (18 Sep 2026) — the crew's Inbox,
+ *  and the leader's own. RLS admits the leader; the ids are said out loud anyway. */
+export async function findReceivedEnquiriesForCrews(supabase: SupabaseClient, crewIds: string[]): Promise<Enquiry[]> {
+  if (crewIds.length === 0) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("enquiries")
+    .select(ENQUIRY_SELECT)
+    .in("crew_id", crewIds)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(MAX_LIST);
+  if (error) {
+    throw new Error(`enquiries.findReceivedForCrews failed: ${error.message}`);
   }
   return ((data ?? []) as unknown as EnquiryRow[]).map(toEnquiry);
 }
@@ -135,7 +161,10 @@ export async function findEnquiryById(supabase: SupabaseClient, enquiryId: strin
 export async function sendEnquiry(
   supabase: SupabaseClient,
   input: {
-    tenantId: string;
+    /** the business asked — or null when the enquiry goes to a crew */
+    tenantId: string | null;
+    /** the crew asked (18 Sep 2026) — exactly one of the two is set; the RPC keeps the same rule */
+    crewId?: string | null;
     typeKey: EnquiryTypeKey;
     fields: Array<[string, string]>;
     dates: string[];
@@ -152,6 +181,7 @@ export async function sendEnquiry(
     p_where: input.whereText,
     p_message: input.message,
     p_mobile: input.mobile,
+    p_crew_id: input.crewId ?? null,
   });
   if (error) {
     throw new Error(error.message);

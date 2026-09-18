@@ -117,6 +117,14 @@ export const enquiryTypeOf = (k: string): EnquiryType | null => ENQ_TYPES.find((
 /** the types a business of this kind may be sent (dosEnqTypesFor 4935) */
 export const enquiryTypesFor = (kind: TenantType): EnquiryType[] => ENQ_TYPES.filter((t) => t.to.includes(kind));
 
+/** A CREW CAN BE ASKED (18 Sep 2026, the user: "crews can also get enquiries"):
+ *  a crew dances at a celebration, a corporate show or a collaboration. Judging
+ *  is a person's job and private sessions are a teacher's — `send_enquiry`
+ *  refuses both for a crew, and this is the same list so the sheet never offers
+ *  what the database would refuse. */
+export const CREW_ENQUIRY_TYPES: EnquiryTypeKey[] = ["celebration", "corporate", "collab"];
+export const enquiryTypesForCrew = (): EnquiryType[] => ENQ_TYPES.filter((t) => CREW_ENQUIRY_TYPES.includes(t.k));
+
 /** The stages, in the prototype's own words and order (ENQ_STATUSES 4938). */
 export type EnquiryStatus = "new" | "in_talks" | "quoted" | "advance_paid" | "confirmed" | "won" | "lost";
 
@@ -148,11 +156,15 @@ export interface EnquiryQuote {
 
 export interface Enquiry {
   id: string;
+  /** the business asked — "" when the enquiry went to a CREW (exactly one of the two is set) */
   tenantId: string;
+  /** who was asked, in words: the business's name, or the crew's */
   tenantName: string;
   tenantType: TenantType;
-  /** the business's published number, so the person who ASKED can ring back (I4) */
+  /** the business's published number, so the person who ASKED can ring back (I4); a crew has none */
   tenantPhone: string | null;
+  /** the crew asked (18 Sep 2026) — null when the enquiry went to a business */
+  crewId: string | null;
   fromUserId: string;
   fromName: string;
   typeKey: EnquiryTypeKey;

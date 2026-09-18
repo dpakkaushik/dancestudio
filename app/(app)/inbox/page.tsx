@@ -5,8 +5,8 @@ import { DOS_TINT } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/claims";
 import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/classes";
-import { findAskedForMyCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
-import { findReceivedEnquiries, findSentEnquiries } from "@/repositories/enquiries";
+import { findAskedForMyCrews, findMyLedCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
+import { findReceivedEnquiries, findReceivedEnquiriesForCrews, findSentEnquiries } from "@/repositories/enquiries";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -30,19 +30,29 @@ export default async function InboxPage() {
     redirect("/login");
   }
 
-  const [profile, memberships, plan] = await Promise.all([findProfileById(supabase, user.id), findMyMemberships(supabase), findMyArtistPlan(supabase)]);
+  const [profile, memberships, plan, ledCrews] = await Promise.all([
+    findProfileById(supabase, user.id),
+    findMyMemberships(supabase),
+    findMyArtistPlan(supabase),
+    /* the crews you lead take enquiries too (18 Sep 2026); an organization leads none */
+    findMyLedCrews(supabase).catch(() => []),
+  ]);
   const businesses = memberships.map((m) => m.tenant);
   const tenantIds = businesses.map((t) => t.id);
   /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
   const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id);
   const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "artist_page").map((m) => m.tenant.id);
 
-  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesIn, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut, venueIn, venueOut] = await Promise.all([
+  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesToBusinesses, enquiriesToCrews, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut, venueIn, venueOut] = await Promise.all([
     findMyPendingClaims(supabase),
     findMyPendingInvites(supabase),
     findAskedClaimsForTenants(supabase, tenantIds),
     Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, tenantName: t.name })))),
     findReceivedEnquiries(supabase, tenantIds),
+    findReceivedEnquiriesForCrews(
+      supabase,
+      ledCrews.map((c) => c.id)
+    ),
     findSentEnquiries(supabase, user.id),
     findMyPendingCrewAsks(supabase),
     findAskedForMyCrews(supabase),
@@ -64,6 +74,9 @@ export default async function InboxPage() {
     crewOut,
     partnerOut,
   });
+
+  /* one desk: what your businesses were asked, and what your crews were asked, newest first */
+  const enquiriesIn = [...enquiriesToBusinesses, ...enquiriesToCrews].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const accent = DOS_TINT[kindOf(profile?.role ?? "user", Boolean(plan?.active))];
 

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { gradientOf } from "@/features/profiles/components/PublicProfile";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -18,8 +19,13 @@ import { initialsOf } from "./crew-kit";
  *  unanswered ask never puts a name on a public page). Under them, the battle
  *  record — each event a door to its page.
  *
+ *  ENQUIRY (18 Sep 2026, the user: "crews can also get enquiries"): the same
+ *  button a business's page wears, aimed at the crew — a celebration, a corporate
+ *  show or a collaboration — and answered by its leader from the crew's Inbox.
+ *  Offered to a stranger only: the leader and the members are the crew.
+ *
  *  Not lifted, tracked in the backlog: Follow (follows target businesses;
- *  following a crew needs its own row), Enquiry, About, photos, the rank. */
+ *  following a crew needs its own row), About, photos, the rank. */
 
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
 const shelf: React.CSSProperties = { fontSize: 15, fontWeight: 900, letterSpacing: -0.3, fontFamily: DOS_DISPLAY };
@@ -62,7 +68,22 @@ function Group({ title, n, children }: { title: string; n: number; children: Rea
   );
 }
 
-export function CrewPublicPage({ crew, members, entries, viewer, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; viewer: "leader" | "member" | "other"; todayKey: string }) {
+export function CrewPublicPage({
+  crew,
+  members,
+  entries,
+  viewer,
+  signedIn,
+  todayKey,
+}: {
+  crew: Crew;
+  members: CrewMember[];
+  entries: CrewEntry[];
+  viewer: "leader" | "member" | "other";
+  /** a stranger who is signed out is offered the Enquiry as a door to sign in */
+  signedIn: boolean;
+  todayKey: string;
+}) {
   const RG = gradientOf(crew.name);
   const RC = RG[1];
   const SQ = 206;
@@ -130,7 +151,10 @@ export function CrewPublicPage({ crew, members, entries, viewer, todayKey }: { c
             </Link>
           ) : viewer === "member" ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}` }}>You are in this crew</div>
-          ) : null}
+          ) : (
+            /* ask the crew — for a wedding, a corporate show, a collaboration; its leader answers */
+            <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} />
+          )}
         </div>
 
         {/* the people, in one language: a row per person, the group headed with a count */}

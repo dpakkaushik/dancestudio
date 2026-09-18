@@ -127,6 +127,17 @@ export async function ensureArtistPage(
   }
 }
 
+/** One business's NAME, as the caller may read it — a listed studio to anybody,
+ *  an unlisted one to its team. Null when RLS says no. Used where a form holds
+ *  only an id and should say a name (the venue an artist asked, 18 Sep 2026). */
+export async function findBusinessName(supabase: SupabaseClient, businessId: string): Promise<string | null> {
+  const { data, error } = await supabase.from("businesses").select("name").eq("id", businessId).is("deleted_at", null).maybeSingle();
+  if (error) {
+    throw new Error(`tenants.findBusinessName failed: ${error.message}`);
+  }
+  return (data as { name: string } | null)?.name ?? null;
+}
+
 interface MembershipRow {
   businesses: TenantRow | null;
 }
