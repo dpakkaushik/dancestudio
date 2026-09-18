@@ -12,6 +12,7 @@ import {
   revokeInviteAction,
   setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
+import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
@@ -163,7 +164,9 @@ export function StaffDesk({
       }}
     >
       {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
-      <div aria-label={`${tenantName} — Team`} style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg,#F97316 0%, #F97316cc 55%, #F9731680 100%)` }}>
+      {/* ⚠ reads the tool's own colour (18 Sep 2026) — it hardcoded #F97316, so
+          when the palette deepened Team the tile and its page disagreed */}
+      <div aria-label={`${tenantName} — Team`} style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(DOS_TOOLS.team.c) }}>
         <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Team</div>
       </div>

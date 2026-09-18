@@ -48,6 +48,71 @@
 > The tell is free and worth keeping: `git diff --stat` said **270 insertions /
 > 250 deletions** for what should have been nine lines.
 
+> ### ⚠ THE CALENDAR KNEW NOTHING ABOUT EVENTS, ON ANY KIND OF PROFILE (18 Sep 2026, later still)
+> The user: *"fix problems with calendar for all kinds of profiles."* No symptom
+> named, so the calendar was read end to end against each of the four accounts.
+> **One root cause explained almost all of it: the calendar has drawn CLASSES
+> ONLY since Step 14, while Home's deck has carried event tickets, entries and
+> the events you run since Step 21.** The one screen whose entire job is "when is
+> my dancing" was the one screen that did not know about half of it.
+> * **A USER or an ARTIST** booked a ticket, saw it on Home for a single day, and
+>   never saw it again — not on the schedule, not on the month grid, nowhere.
+> * **An ORGANIZATION had a calendar that could only ever be empty**, and it was
+>   a dead end: `guard_person_only` refuses an organization a booking, a class
+>   seat and an assistant seat, so `findMyCalendar` returns nothing for one by
+>   construction — and the empty state then offered to go and *find a class*,
+>   which Discover would not have let it book. An organization runs EVENTS, so
+>   that is what its calendar is now (`mode="org"`, drafts included the way a
+>   studio's calendar includes draft classes, and its compose button says **Add
+>   event**). It keeps no Calendar TILE: the user's own grid list for an
+>   organization does not have one, and this fixes the route, not the grid.
+> * **A STUDIO's calendar was already right** and is untouched — a studio hosts
+>   no event (R15), and the artists' classes held in its rooms arrived this
+>   morning.
+>
+> `CalendarEventEntry` is its own type rather than a fourth `CalendarSide`, for
+> two reasons worth keeping: an event has **no session row and can run for days**,
+> so it is expanded to ONE ROW PER DAY it covers (a festival is on every day of
+> itself, and every view groups by day); and **Train · Teach · Assist are class
+> ideas** — nobody assists a battle. So the screen gained the prototype's own
+> **Classes · Events switch** above the sides (6836), which closes that backlog
+> row, and `Row` is a two-case union every view filters and counts through.
+> ⚠ The side counts still read CLASSES whichever tab is open, which is what keeps
+> the happy path's `Train: 1 · Teach: 0` true.
+
+> ### THE TILE COLOURS REPEATED, AND ON A STUDIO'S GRID SIX OF TEN WERE A SHADE OF SOMETHING ELSE (18 Sep 2026)
+> The user: *"fix colors for all tiles on home tab for all profiles, colours
+> should not be repeated."* They were right and it is measurable: the grid grew
+> from six tiles to thirteen without the palette growing with it, so it had
+> collapsed into families — **FOUR blues** (Studios `#3B82F6`, Rooms `#3498DB`,
+> Memberships `#0EA5E9`, Calendar `#5AC8FA`) and **THREE violets** (Students
+> `#8B5CF6`, Stats `#A855F7`, Assets `#7C3AED`).
+> * Six changed: Students → lime, Rooms → indigo, Memberships → bronze, Assets →
+>   **slate** (the one neutral, on purpose: at thirteen tiles the wheel is full,
+>   and a single unsaturated tile among twelve is the most unmistakable thing on
+>   the grid), Calendar → a deeper cyan, Classes → a deeper teal, Team → a deep
+>   rust. The last two are lightness separations, not hue ones: the warm band
+>   holds five tools and the cool band six, so where two had to share a hue they
+>   are pulled apart by depth instead.
+> * **Checked rather than eyeballed:** a script walked each kind's ACTUAL tile
+>   list — a user's 6, an artist's 13, an organization's 5, a studio's 10 — and
+>   flagged any pair within 20° of hue at the same lightness while both are
+>   saturated. It found five clashes on the first cut and none on the second.
+> * ⚠ **Three desk heroes hardcoded their colour instead of reading `DOS_TOOLS`**
+>   (Rooms, Students, Team), so the palette move would have left a tile and the
+>   page it opens in different colours — which is the one rule that file states
+>   about itself. All three read the tool now.
+> * Deviation row R20: four of the seven are the prototype's own paints.
+>
+> **Verified (both blocks):** typecheck 0 · lint 0 · `next build` green ·
+> **29/29 proofs** (no migration — regression cover) · the whole suite on one
+> worker, **41 passed / 2 failed in 7.9 min**, the happy path's 14 segments all
+> among the passes, its studio-calendar and personal-calendar segments included
+> (`Train: 1 · Teach: 0` still reads true, which is what the Classes/Events
+> switch was built to preserve). The two reds are the SAME proof-leftover pile
+> (#0w), read off the traces once more: `admin-moderation` times out waiting for
+> its own studio on Discover, `paid-webhook` finds no GROSS card.
+
 > ### THE HERO IS ONE LINE, AND THE BLUE BAR IS GONE FROM EVERY PAGE (18 Sep 2026, later)
 > The user, reading the change below on their own screen: *"account number below
 > user, artist, studio and organization. Profile pic should be placed properly on
@@ -2319,6 +2384,20 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE CALENDAR KNOWS ABOUT EVENTS, AND NO TWO TILES ON A GRID READ ALIKE —
+  18 Sep 2026, no step number — BUILT, no migration.** The user: *"fix problems
+  with calendar for all kinds of profiles"*, then *"fix colors for all tiles on
+  home tab for all profiles, colours should not be repeated."* The calendar had
+  drawn classes only since Step 14 while Home's deck had carried events since
+  Step 21, so a ticket showed on Home for one day and nowhere else, and an
+  organization — which hosts every event in the app and can hold no booking at
+  all (`guard_person_only`) — had a calendar that could only ever be empty and
+  an empty state that offered to find it a class it could not book. Events are
+  on the calendar now behind the prototype's own Classes · Events switch, one row
+  per day an event covers, and an organization's calendar IS its events. The tile
+  palette had collapsed into four blues and three violets as the grid grew from
+  six tiles to thirteen; seven tools were repainted and checked against each
+  kind's real tile list by script. Deviation rows R20 and R21. Detail at the top.
 - **THE HERO IS ONE LINE AND THE BLUE BAR IS GONE — 18 Sep 2026, no step
   number — BUILT, no migration.** The user, on the change below: *"account number
   below user, artist, studio and organization. Profile pic should be placed
@@ -5694,6 +5773,8 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R16 | Onboarding asks for a photo and links; nothing else is evidence | **An organization must attach 5–10 photos of its space at signup**, on a fifth onboarding screen, and `request_org_verification` refuses a request under five. They live in a PRIVATE bucket (`org-proof`) readable only by the organization and a platform admin, through short-lived signed URLs; the admin's queue draws them beside the links | The user's ask (9 Sep 2026): "at the time of signup along with the social media the org must attach min 5 to max 10 pics which will be visible to admin for the verification." The public `media` bucket would have made pictures of somebody's premises readable by anybody who guessed the URL — so this is the one thing in the app with a private bucket, and the screen tells the organization so |
 | R17 | A studio owner's Home IS the studio: Today's schedule is its rooms, Studio Tools are its desks (S_homebiz 7354-7660) | **An ORGANIZATION's Home carries no studio's desk and no classes option at all** (17 Sep 2026): the deck is the events it hosts today, the doors are Manage and Events, the grid is Studios · Events · Stats. Each studio's day and desks are on that studio's own home (`/business/{id}`, since 14 Sep). The database refuses a class on the hosting row, and on an artist page whose plan has lapsed (`why_no_class`, `20260917180000`) | The user: *"organization home tab should not have classes options. classes can only be created by users with artist subscription and studios."* The prototype's studio Home is ONE studio's; an organization runs several, so its Home was pointing at the first by accident, and a class is a studio's or an artist's to open |
 | R19 | The class form asks WHO from the studio's own team, offers its own rooms, carries the assistants block, and publishes straight from the form (S_classform 15309-15531) | **Two forms, and neither publishes a studio's class** (18 Sep 2026). A STUDIO's asks WHO from anyone on DanceOS through the people search and saves a DRAFT; an ARTIST's asks WHERE — a studio's room, requested, or a map pin that may publish. Assistants left the form for the class page, where the owner or the confirmed teacher asks. Only the OWNER creates or edits. Publishing waits for a yes, enforced by the database (`classes_publish_needs_a_yes`), and lives on the register | The user, in one message: *"All classes when submitting should only go in drafts and can only be published once the who is taking the class accepts … an artist should not create form on behalf of a studio."* The prototype has one studio and one team; this app has artists who teach at studios they do not belong to, and a room somebody else owns cannot be taken without being asked |
+| R20 | Every tool has the prototype's own paint (DOS_TOOLS 2931-2941) — Students violet, Team orange, Classes teal, Rooms the blue the parity audit gave it | **Seven tools repainted so no two tiles on ONE grid read alike**: Students → lime, Rooms → indigo, Memberships → bronze, Assets → slate, Calendar → deeper cyan, Classes → deeper teal, Team → deep rust | 18 Sep 2026, the user: *"fix colors for all tiles on home tab for all profiles, colours should not be repeated."* The prototype's palette was drawn for SIX tiles; this app's artist grid has thirteen, and at that size the set had collapsed into four blues and three violets. Four of the seven changed are the prototype's own (Students, Team, Classes, Rooms) — hence a row here. Verified by walking each kind's real tile list and flagging any saturated pair within 20° of hue at the same lightness. ⚠ Assets is deliberately the one NEUTRAL: the wheel is full at thirteen, and one slate among twelve saturated tiles is the most distinguishable thing on the grid |
+| R21 | The calendar is `S_profiletab calendarOnly` — class sessions, three sides, one Classes/Events switch it never wires up | **Events are on the calendar**, behind that switch: a person's tickets, entries and the events they run; an organization's own events, drafts included, as the whole of its calendar | 18 Sep 2026, the user: *"fix problems with calendar for all kinds of profiles."* The prototype draws the switch and has no events behind it; this app has had events since Step 21 and Home's deck has shown them since. An organization was the sharp end: it can hold no booking and no class seat (`guard_person_only`), so its calendar was empty by construction and its empty state offered to find it a class it could not book |
 | R18 | ONE tool grid, the prototype's (DOS_TOOLS 2931; BizSection 2497-2583 on a dancer's or artist's Home; S_homebiz 7590-7620 on a studio's) | **The Home grid is the user's list, kind by kind** (18 Sep 2026). USER — Classes (Booked, Assist) · Events (Participant, Spectator, Assisting) · Calendar · Crews · Stats · Studios (taken classes at). ARTIST (plan live) — the same six, then Team · Students · Routines · Earnings · Memberships · Assets · Media. ORGANIZATION — Events · Studios · Team · Earnings (combined) · Stats. STUDIO (its own home) — Classes · Calendar · Stats · Team · Students · Earnings · Memberships · Assets · Rooms · Media. Routines, Memberships, Assets and an organization's Team open the prototype's own "nothing here yet" until their desks exist | The user: *"this should fix all home tab option logics for all 4 types of users."* The prototype has one grid for three roles it no longer has; the app has four kinds of account, and each gets the doors that are its |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
@@ -5786,7 +5867,7 @@ nothing to lift.
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
 | Discover: the map view (studios still sit at their city centroid — it needs real addresses), the studio card's cover-strip photo (the business photo exists; the card does not draw it yet), long-press a style tile to open the style page (`S_styleinfo` unbuilt), `__DOSNAVHIDE` while searching (our chrome is per-route) — the search dropdown's People section landed with person pages | S_discover 4100+, 4611, 4551 | a map/media slice |
 | Crews: the desk's Battles won / Points tiles (results need scoring — no table holds a score), practice attendance and pay per performance on a member row, Follow a crew (follows target tenants), Enquiry a crew, a crew photo. **"See crew ranking" landed 30 Aug 2026** (parity slice 7 — `/stats?tab=charts&seg=crew`); the photo/name door to a person's page landed with person pages | S_crewmanage 16343-16348, 16368, 16460; publicEntity crew 10871 | scoring with a later event slice; a follows extension; media slice |
-| Calendar: the Classes/Events switch above the sides — events exist since Step 21, the calendar still draws classes only; the event compose door on the studio calendar's FAB | SideTiles 6836, 10541 | a calendar parity slice |
+| ~~Calendar: the Classes/Events switch~~ **CLOSED 18 Sep 2026** (row R21) — the switch is drawn and events are behind it, and an organization's calendar IS its events. **What it leaves:** an event row carries no room, so the room picker narrows classes only (right, but it means switching to Events on a studio-shaped calendar would ignore the picker — a studio has no events, so nothing hits it today); a multi-day event is expanded one row per day at the SAME start time, because the record holds one `startTime` and no per-day schedule; a person's Events tab has **no sides** and no filter of its own (Competing / Spectator / Running are printed on the card, not counted in a pill); an organization has **no Calendar TILE** — its grid list from 18 Sep does not include one, so `/calendar` works and nothing links to it | SideTiles 6836, 10541 | a per-day event schedule if a festival ever needs one; the org tile is the user's word |
 | Events: the manager's Line-up / Bracket / Rounds / Judges / Earnings / Refunds / Setup segments, the judging sheet and WHO CAN SEE THE SCORES, the rules textarea and the theme (no columns — ABOUT is printed), the poster upload from the manager | S_eventmanage 14119-14960, S_event 13096-13131 | later event slices (brackets / judges / scores need their own tables; earnings and refunds need paid tickets); poster with the media slice |
 | Events: ~~paid tickets and entries through `orders`~~ **landed 17 Sep 2026** (the sandbox rail; `orders.event_id`, `pending_payment`, the class refund rule). Still open: the payment step's saved-methods list (Cashfree's vault), the event waitlist and the sold-out Waitlist action, the completed page's CHECKED IN / REVENUE tiles (the money exists now — the tiles do not read it yet) | S_event 13452-13510, 13265, 12968-12995 | the REVENUE tile is a read away; the waitlist its own slice |
 | **Event money, what it left (17 Sep 2026):** **enquiry advances** still "recorded as received" by the business, not paid through Cashfree (the user's call: later); the **event manager has no Refunds / Earnings segment** — the organiser's queue is the hosting row's ledger at `/business/{host}/refunds`, reached from the desk's new **Refunds ›**; an **abandoned `pending_payment` row** (window closed, never paid) is closed only by that person's next attempt on the same tier — invisible to every count and harmless, but there is no sweeper; **`/business/stats` is all-time + this IST month**, no period chips, and its per-studio "fill" counts held sessions only; a Pro user opening it is sent to `/stats` (one artist page has one board) | — | a sweeper if pending rows ever matter; period chips when a pilot org asks; the enquiry rail is its own slice |

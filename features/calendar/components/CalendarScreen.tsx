@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
+import { EventCard } from "@/features/events/components/EventCard";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import {
@@ -16,7 +17,7 @@ import {
   monthShortOf,
 } from "@/lib/format/month";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import type { CalendarEntry, CalendarMonth, CalendarSide } from "@/types/calendar";
+import type { CalendarEntry, CalendarEventEntry, CalendarMonth, CalendarSide } from "@/types/calendar";
 import type { DanceClass } from "@/types/class";
 
 /** The calendar, lifted from prototype S_profiletab in its `calendarOnly` dress
@@ -39,8 +40,9 @@ import type { DanceClass } from "@/types/class";
  *  it opens /stats?tab=history — the library of what you have already danced. */
 
 /* the tile that opens this page is painted in the calendar's own colour, and
-   the page wears the same paint (DOS_TOOLS 2932) */
-const TOOL_COLOUR = "#5AC8FA";
+   the page wears the same paint (DOS_TOOLS 2932). Deepened from #5AC8FA with
+   the palette on 18 Sep 2026 — it must stay equal to DOS_TOOLS.calendar.c */
+const TOOL_COLOUR = "#06B6D4";
 const toolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}cc 55%, ${c}80 100%)`;
 
 /* TRAIN · TEACH · ASSIST — what the person is doing on the floor (DOS_SIDES 6666) */
@@ -50,6 +52,9 @@ const SIDES: Record<CalendarSide, { name: string; tint: string }> = {
   hosting: { name: "Teach", tint: PINK },
 };
 const SIDE_KEYS: CalendarSide[] = ["attending", "assisting", "hosting"];
+/* the events half wears the Events tool's own amber, so the switch says which
+   half you are in before you read the words (DOS_TOOLS.events) */
+const EVENTS_TINT = "#F59E0B";
 
 type View = "sched" | "day" | "week" | "month";
 const VIEWS: Array<[View, string]> = [
@@ -115,14 +120,52 @@ const emptyCard: React.CSSProperties = {
   border: `1.5px dashed ${LINE}`,
 };
 
+/** ONE ROW ON THE CALENDAR — a class session or a day of an event. Every view
+ *  groups, filters and counts through these five fields and nothing else, so
+ *  adding events did not have to touch the schedule, the day rail, the week or
+ *  the month grid. `side` is null on an event: Train · Teach · Assist are class
+ *  ideas, and nobody assists a battle. */
+type Row =
+  | { k: "class"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: string | null; side: CalendarSide; e: CalendarEntry }
+  | { k: "event"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: null; side: null; e: CalendarEventEntry };
+
+const classRow = (e: CalendarEntry): Row => ({
+  k: "class",
+  id: e.sessionId,
+  dayKey: e.dayKey,
+  hour: e.hour,
+  startsAt: e.startsAt,
+  style: e.style,
+  room: e.room,
+  side: e.side,
+  e,
+});
+const eventRow = (e: CalendarEventEntry): Row => ({
+  k: "event",
+  id: e.key,
+  dayKey: e.dayKey,
+  hour: e.hour,
+  startsAt: e.startsAt,
+  style: e.style,
+  room: null,
+  side: null,
+  e,
+});
+
 export interface CalendarScreenProps {
-  /** personal: a person's own; studio: the venue's, drafts included; public: the
-   *  prototype's `pubSchedule` — published classes still to come, one view */
-  mode: "personal" | "studio" | "public";
+  /** personal: a person's own, classes AND events; studio: the venue's classes,
+   *  drafts included; org: the events it hosts, drafts included — it teaches no
+   *  class, so there is nothing else to show; public: the prototype's
+   *  `pubSchedule` — published classes still to come, one view */
+  mode: "personal" | "studio" | "org" | "public";
   months: CalendarMonth[];
   /** "2026-08-28" in IST — the clock is the server's, handed in */
   todayKey: string;
   entries: CalendarEntry[];
+  /** the events on this calendar: a person's tickets and what they run, or an
+   *  organization's own. Absent on a studio's (a studio hosts no event, R15)
+   *  and on a public schedule */
+  events?: CalendarEventEntry[];
   /** where an empty day sends you: Discover for a person, the class form for a studio */
   emptyHref: string;
   /** studio only: the compose button's destination */
@@ -131,13 +174,22 @@ export interface CalendarScreenProps {
   title?: string;
 }
 
-export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, composeHref, title: pageTitle }: CalendarScreenProps) {
+export function CalendarScreen({ mode, months, todayKey, entries, events = [], emptyHref, composeHref, title: pageTitle }: CalendarScreenProps) {
   const isPublic = mode === "public";
+  const isOrg = mode === "org";
   const idx = (monthKey: string) => months.findIndex((m) => m.key === monthKey);
   const inWindow = (dayKey: string) => idx(monthOfDay(dayKey)) >= 0;
 
   const [view, setView] = useState<View>("sched");
   const [side, setSide] = useState<"all" | CalendarSide>("all");
+  /* THE PROTOTYPE'S CLASSES/EVENTS SWITCH, finally real (18 Sep 2026). An
+     organization has no classes, so it is never offered the choice — its
+     calendar IS its events. */
+  const [kind, setKind] = useState<"classes" | "events">(isOrg ? "events" : "classes");
+  const showEvents = isOrg || kind === "events";
+  /* a person is offered the switch whenever both halves can exist; a studio and
+     a public schedule have classes only */
+  const canSwitch = mode === "personal";
   const [sel, setSel] = useState(todayKey);
   const [mi, setMi] = useState(Math.max(0, idx(monthOfDay(todayKey))));
   const [panelOpen, setPanelOpen] = useState(false);
@@ -154,15 +206,19 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
   const jumped = useRef("");
 
   const isToday = (dayKey: string) => dayKey === todayKey;
-  const roomScoped = entries.filter((e) => room === null || e.room === room);
-  const passes = (e: CalendarEntry) => side === "all" || e.side === side;
-  const byDay = new Map<string, CalendarEntry[]>();
-  for (const e of roomScoped) {
-    if (!passes(e)) continue;
-    const list = byDay.get(e.dayKey);
-    if (list) list.push(e);
-    else byDay.set(e.dayKey, [e]);
+  /* the half this tab is showing: one axis at a time, never both mixed, because
+     a day with a class and a battle on it answers two different questions */
+  const half: Row[] = showEvents ? events.map(eventRow) : entries.map(classRow);
+  const roomScoped = half.filter((r) => room === null || r.room === room);
+  const passes = (r: Row) => r.k === "event" || side === "all" || r.side === side;
+  const byDay = new Map<string, Row[]>();
+  for (const r of roomScoped) {
+    if (!passes(r)) continue;
+    const list = byDay.get(r.dayKey);
+    if (list) list.push(r);
+    else byDay.set(r.dayKey, [r]);
   }
+  for (const list of byDay.values()) list.sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const agendaOf = (dayKey: string) => byDay.get(dayKey) ?? [];
   const agenda = agendaOf(sel);
 
@@ -170,19 +226,22 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
   const weekStart = addDays(sel, -mondayIndexOf(sel));
   const week = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  /* the sides' counts follow the view: today's, this week's, this month's, or everything */
-  const inScope = (e: CalendarEntry) =>
+  /* the sides' counts follow the view: today's, this week's, this month's, or
+     everything — and they count CLASSES, whichever tab is open, because that is
+     what the three sides are about */
+  const inScope = (dayKey: string) =>
     view === "day"
-      ? e.dayKey === sel
+      ? dayKey === sel
       : view === "week"
-        ? e.dayKey >= week[0] && e.dayKey <= week[6]
+        ? dayKey >= week[0] && dayKey <= week[6]
         : view === "month"
-          ? monthOfDay(e.dayKey) === months[mi].key
+          ? monthOfDay(dayKey) === months[mi].key
           : true;
-  const scoped = roomScoped.filter(inScope);
+  const classScoped = entries.filter((e) => (room === null || e.room === room) && inScope(e.dayKey));
   const sideCounts = Object.fromEntries(
-    SIDE_KEYS.map((k) => [k, scoped.filter((e) => e.side === k).length])
+    SIDE_KEYS.map((k) => [k, classScoped.filter((e) => e.side === k).length])
   ) as Record<CalendarSide, number>;
+  const eventsInScope = events.filter((e) => inScope(e.dayKey)).length;
   const scopeLabel =
     view === "day"
       ? `${dayNumberOf(sel)} ${monthShortOf(monthOfDay(sel))}`
@@ -242,7 +301,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
 
   /* the schedule holds history too, so it is scrolled to today once drawn — and
      re-finds today when the list itself changes (8686-8705) */
-  const jumpKey = `${view}|${side}|${room ?? ""}`;
+  const jumpKey = `${view}|${kind}|${side}|${room ?? ""}`;
   useEffect(() => {
     if (view !== "sched" || jumped.current === jumpKey) return;
     const rows = Array.from(document.querySelectorAll<HTMLElement>('[id^="doscal-"]'));
@@ -305,7 +364,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
         <div style={{ display: "flex", justifyContent: "center", gap: 2.5, height: 5, marginTop: 2 }}>
           {ev.slice(0, 4).map((e) => (
             <span
-              key={e.sessionId}
+              key={e.id}
               style={{
                 width: 4.5,
                 height: 4.5,
@@ -329,33 +388,57 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
     color: SIDES[s].tint,
   });
 
-  const card = (e: CalendarEntry) => (
-    <ClassTile
-      key={e.sessionId}
-      danceClass={toTileClass(e)}
-      filled={e.filled}
-      tenantName={mode === "personal" ? e.tenantName : undefined}
-      city={e.tenantCity}
-      href={`/c/${e.shareSlug}`}
-      actions={
-        mode === "personal" ? (
-          <>
-            <span style={sideChip(e.side)}>{SIDES[e.side].name}</span>
-            {e.side === "attending" && e.enrollment ? (
-              <EnrollButton
-                sessionId={e.sessionId}
-                isFull={e.filled >= e.capacity}
-                isSignedIn
-                mine={e.enrollment}
-                priceInr={e.priceInr}
-                shareSlug={e.shareSlug}
-              />
-            ) : null}
-          </>
-        ) : undefined
-      }
-    />
-  );
+  /* what an event is to you, in the deck's own words, under its card */
+  const roleChip: React.CSSProperties = {
+    display: "inline-block",
+    marginTop: 6,
+    fontSize: 10.5,
+    fontWeight: 900,
+    padding: "5px 10px",
+    borderRadius: 999,
+    background: `${EVENTS_TINT}1c`,
+    color: EVENTS_TINT,
+  };
+
+  const card = (r: Row) => {
+    if (r.k === "event") {
+      const e = r.e;
+      return (
+        <div key={r.id} style={{ marginBottom: 10 }}>
+          <EventCard event={e.event} href={e.href} compact />
+          <span style={roleChip}>{e.roleLabel}</span>
+        </div>
+      );
+    }
+    const e = r.e;
+    return (
+      <ClassTile
+        key={r.id}
+        danceClass={toTileClass(e)}
+        filled={e.filled}
+        tenantName={mode === "personal" ? e.tenantName : undefined}
+        city={e.tenantCity}
+        href={`/c/${e.shareSlug}`}
+        actions={
+          mode === "personal" ? (
+            <>
+              <span style={sideChip(e.side)}>{SIDES[e.side].name}</span>
+              {e.side === "attending" && e.enrollment ? (
+                <EnrollButton
+                  sessionId={e.sessionId}
+                  isFull={e.filled >= e.capacity}
+                  isSignedIn
+                  mine={e.enrollment}
+                  priceInr={e.priceInr}
+                  shareSlug={e.shareSlug}
+                />
+              ) : null}
+            </>
+          ) : undefined
+        }
+      />
+    );
+  };
 
   const nothing = isPublic ? (
     <div style={emptyCard}>
@@ -365,10 +448,13 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
       </Link>
     </div>
   ) : (
+    /* the empty state names the half you are looking at, and its door goes where
+       that half comes from — an organization is sent to its events desk, never
+       to Discover to book a class the database refuses it (guard_person_only) */
     <div style={emptyCard}>
-      {mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
+      {showEvents ? (isOrg ? "No events on " : "No events on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
       <Link href={emptyHref} style={{ color: PINK, fontWeight: 800, textDecoration: "none" }}>
-        {mode === "personal" ? "find a class →" : "add a class →"}
+        {isOrg ? "open the events desk →" : showEvents ? "find one →" : mode === "personal" ? "find a class →" : "add a class →"}
       </Link>
     </div>
   );
@@ -577,7 +663,46 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
             below; tapping it again clears (9121-9155, DosSidePill 6700). A
             studio is a venue, not a person on the floor, so its calendar has no
             sides. ── */}
-        {mode === "personal" ? (
+        {/* ── CLASSES · EVENTS (the prototype's own switch above the sides, 6836).
+            One axis at a time: the sides below belong to classes, and an event
+            is not something you train in, teach or assist on. ── */}
+        {canSwitch ? (
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            {([["classes", "Classes", entries.length], ["events", "Events", eventsInScope]] as const).map(([k, label, n]) => {
+              const on = kind === k;
+              const tint = k === "events" ? EVENTS_TINT : TOOL_COLOUR;
+              return (
+                <div
+                  key={k}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={on}
+                  aria-label={`${label}: ${n}`}
+                  onKeyDown={pressKey(() => setKind(k))}
+                  onClick={() => setKind(k)}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 7,
+                    padding: "9px 12px",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    userSelect: "none",
+                    background: on ? `${tint}1f` : CARD,
+                    border: `1.5px solid ${on ? tint : LINE}`,
+                  }}
+                >
+                  <span style={{ fontSize: 12.5, fontWeight: 900, letterSpacing: -0.15, color: on ? tint : SUB }}>{label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: on ? tint : MUTED, fontVariantNumeric: "tabular-nums" }}>{n}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {mode === "personal" && !showEvents ? (
           <>
             <div style={{ display: "flex", gap: 5, marginBottom: 5 }}>
               {SIDE_KEYS.map((k) => {
@@ -845,9 +970,11 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
         </div>
       ) : null}
 
-      {/* the compose button (10538-10560): an "Add class" for a studio. An
-          EVENT is Step 21's, so the second row is absent rather than refused. */}
-      {mode === "studio" && composeHref ? (
+      {/* the compose button (10538-10560): "Add class" on a studio's calendar,
+          "Add event" on an organization's — each calendar offers the one thing
+          its owner can actually create (a studio hosts no event, R15; an
+          organization runs no class, R17) */}
+      {(mode === "studio" || isOrg) && composeHref ? (
         <>
           {fabOpen ? (
             <div aria-hidden="true" onClick={() => setFabOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 315, background: "rgba(0,0,0,.25)" }} />
@@ -872,10 +999,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, emptyHref, com
                   textDecoration: "none",
                 }}
               >
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={PINK} strokeWidth="1.8" strokeLinecap="round">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={isOrg ? EVENTS_TINT : PINK} strokeWidth="1.8" strokeLinecap="round">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
-                Add class
+                {isOrg ? "Add event" : "Add class"}
               </Link>
             </div>
           ) : null}

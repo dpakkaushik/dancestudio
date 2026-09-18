@@ -7,6 +7,7 @@ import {
   deleteRoomAction,
   updateRoomAction,
 } from "@/features/rooms/server-actions/rooms";
+import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
 import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
@@ -101,7 +102,9 @@ export function RoomsManager({
       }}
     >
       {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
-      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg,#3498DB 0%, #3498DBcc 55%, #3498DB80 100%)` }}>
+      {/* ⚠ reads the tool's own colour (18 Sep 2026) — it hardcoded #3498DB, so
+          when the palette moved Rooms to indigo the tile and its page disagreed */}
+      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(DOS_TOOLS.rooms.c) }}>
         <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Rooms</div>
       </div>

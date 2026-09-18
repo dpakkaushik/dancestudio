@@ -6,33 +6,59 @@ import { DOS_DISPLAY } from "@/lib/design/tokens";
  *
  *  THE TOOLS, DECLARED ONCE (2931-2941): every tool is a tile on Home and a
  *  page it opens, and both ends read name and colour from here — "a page
- *  cannot be headed anything other than what the tile you pressed said". Rooms
- *  is not in the prototype's list (it lived inside Settings); it wears the blue
- *  the parity audit assigned it so its hero is painted like the rest. */
+ *  cannot be headed anything other than what the tile you pressed said".
+ *
+ *  ⚠ ONE COLOUR PER TOOL, AND NO TWO ALIKE ON ANY GRID (18 Sep 2026, the user:
+ *  "fix colors for all tiles on home tab for all profiles, colours should not be
+ *  repeated"). The grid grew from six tiles to thirteen without the palette
+ *  growing with it, and it had collapsed into families: FOUR blues — Studios
+ *  #3B82F6, Rooms #3498DB, Memberships #0EA5E9, Calendar #5AC8FA — and THREE
+ *  violets — Students #8B5CF6, Stats #A855F7, Assets #7C3AED. On a studio's home
+ *  that is three blue-ish tiles and three purple ones out of ten, which is what
+ *  the user was looking at.
+ *
+ *  The set is spread round the wheel now, and where two tools had to share a
+ *  band they are separated by LIGHTNESS instead (Events is bright amber,
+ *  Memberships a dark bronze). Assets is deliberately the one NEUTRAL: at
+ *  thirteen tiles the wheel is full, and a single slate among twelve saturated
+ *  tiles is the most unmistakable thing on the grid — which is the whole point.
+ *  Checked against every kind's actual list: a user's six, an artist's thirteen,
+ *  an organization's five, a studio's ten. Deviation row R20 — four of these are
+ *  the prototype's own paints, and the user overruled them. */
 export const DOS_TOOLS = {
   studios: { name: "Studios", c: "#3B82F6" },
-  classes: { name: "Classes", c: "#0D9488" },
+  /* deepened from #0D9488 so Calendar's cyan beside it reads as another tile
+     and not another shade — the two sit together on three of the four grids */
+  classes: { name: "Classes", c: "#0F766E" },
   events: { name: "Events", c: "#F59E0B" },
   earn: { name: "Earnings", c: "#22C55E" },
-  students: { name: "Students", c: "#8B5CF6" },
-  team: { name: "Team", c: "#F97316" },
-  rooms: { name: "Rooms", c: "#3498DB" },
+  /* was #8B5CF6 — a second violet beside Stats, and they sit together on both a
+     studio's grid and an artist's */
+  students: { name: "Students", c: "#84CC16" },
+  /* was #F97316, thirteen degrees off Events' amber and the same lightness —
+     the warm band holds five tools, so this one separates by depth */
+  team: { name: "Team", c: "#9A3412" },
+  /* was #3498DB — a blue eight degrees off Studios' */
+  rooms: { name: "Rooms", c: "#6366F1" },
   /* MEDIA (15 Sep 2026): a studio's two pictures — the disc and the header —
      as a desk of their own; a fuchsia nobody else on the grid wears */
   media: { name: "Media", c: "#D946EF" },
   /* STATS (15 Sep 2026, the user: "remove stats from the navigation menu, keep
      it as a tab on the home page along with calendar, classes") — the violet
-     the Charts hero opens on */
+     the Charts hero opens on, and now the ONLY violet */
   stats: { name: "Stats", c: "#A855F7" },
   /* THE HOME GRID FOR ALL FOUR KINDS (18 Sep 2026, the user's list): three
      tools the prototype has a screen for and this app does not yet —
-     S_choreos 17115, S_memberships 16846, S_assets 16791. Their tiles open the
-     prototype's own "nothing here yet"; their colours are the prototype's
-     hero paints for those screens */
+     S_choreos 17115, S_memberships 16846, S_assets 16791 */
   routines: { name: "Routines", c: "#EC4899" },
-  memberships: { name: "Memberships", c: "#0EA5E9" },
-  assets: { name: "Assets", c: "#7C3AED" },
-  calendar: { name: "Calendar", c: "#5AC8FA" },
+  /* was #0EA5E9 — a third blue. Bronze reads as a card or a tier, and its
+     darkness is what separates it from Events' amber */
+  memberships: { name: "Memberships", c: "#A16207" },
+  /* was #7C3AED — a third violet. The one neutral on the grid, on purpose */
+  assets: { name: "Assets", c: "#64748B" },
+  /* deepened from #5AC8FA, which was a pale fourth blue; CalendarScreen's own
+     paint follows it */
+  calendar: { name: "Calendar", c: "#06B6D4" },
   crews: { name: "Crews", c: "#DC2626" },
 } as const;
 export type DosToolKey = keyof typeof DOS_TOOLS;

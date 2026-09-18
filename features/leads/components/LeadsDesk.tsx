@@ -7,6 +7,7 @@ import {
   deleteLeadAction,
   updateLeadAction,
 } from "@/features/leads/server-actions/leads";
+import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { DanceClass } from "@/types/class";
@@ -123,7 +124,9 @@ export function LeadsDesk({
       }}
     >
       {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
-      <div aria-label={`${tenantName} — Students`} style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: `linear-gradient(135deg,#8B5CF6 0%, #8B5CF6cc 55%, #8B5CF680 100%)` }}>
+      {/* ⚠ reads the tool's own colour (18 Sep 2026) — it hardcoded #8B5CF6, so
+          when the palette moved Students to lime the tile and its page disagreed */}
+      <div aria-label={`${tenantName} — Students`} style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(DOS_TOOLS.students.c) }}>
         <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Students</div>
       </div>
