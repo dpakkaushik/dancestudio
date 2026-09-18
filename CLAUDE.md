@@ -51,9 +51,20 @@
 >   the number, the page draws no Call"); then **12 / 1 / 1 in 5.2 min** — my own
 >   re-cut racing `router.refresh()` (the Edit sheet re-opened on the OLD row;
 >   a reload before re-opening). No product change in any of the three. **The
->   push went on the user's second "push to live" of the hour with the fourth
->   happy-path run and `shoot-hero.js` still to come — their tallies are in the
->   docs-only commit that follows, the 19 Sep morning's precedent.**
+>   push went on the user's second "push to live" of the hour (`89a12d7`) with
+>   the fourth happy-path run still going — the 19 Sep morning's precedent — and
+>   it landed green minutes later: the happy path **14/14 in 6.3 min**, so every
+>   one of the 51 is green across the two runs and the ONLY files changed between
+>   them are the spec and this file.** Vercel built `89a12d7` READY at 04:58 and
+>   the live smoke (`stranger-smoke.ps1 -Site https://dancestudio-orcin.vercel.app`)
+>   reads exactly what `:3100` read: the four public pages **200** with their
+>   buttons, a plain user's page **404**, `/` **307** to login for a stranger,
+>   Discover **200**. `shoot-hero.js` against the same bundle **98/98** (96
+>   before — the two disc checks now also count exactly ONE "Public view" link
+>   on each home): the studio disc lands in `tenants/{id}/`, the organization's
+>   logo on its disc is its one door to `/org/{id}`, a user's disc theirs to
+>   `/person/{id}`, no eye in either corner, the header pictures by kind, the
+>   staged Edit sheet, the public view of yourself.
 > * **The `:3100` bundle, as a stranger** (`stranger-smoke.ps1`): `/studio/{id}`,
 >   `/org/{id}`, `/crew/{id}` and `/person/{artist}` all **200** with Follow,
 >   Enquiry, Location, Schedule, Owner, Studios and Crew leader where each belongs;
