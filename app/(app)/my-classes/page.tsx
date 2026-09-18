@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists, findMyConfirmedClaims } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant } from "@/repositories/classes";
@@ -126,18 +127,18 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         boxSizing: "border-box",
       }}
     >
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "8px 0 10px", gap: 10 }}>
-        {/* DosShelfHead "Your classes" · "N booked" (6120) */}
-        <h1 style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2, margin: 0 }}>Your classes</h1>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
-            {show === "booked" ? `${booked} booked` : show === "assist" ? `${jobs.length} on` : `${manage?.classes.length ?? 0} on your page`}
-          </div>
-          {/* the same classes as a calendar (Step 14) — day, week, month, schedule */}
-          <Link href="/calendar" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
-            Calendar ›
-          </Link>
+      {/* THE TOOL'S HERO (18 Sep 2026, the user: "all heading when inside the page
+          should have similar design as Crew, Calendar etc.") — the Classes tile's
+          own colour and word, where a 17px "Your classes" line stood (6120) */}
+      <DeskHero tool="classes" as="h1" margin="0 0 10px" />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2px 10px", gap: 10 }}>
+        <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
+          {show === "booked" ? `${booked} booked` : show === "assist" ? `${jobs.length} on` : `${manage?.classes.length ?? 0} on your page`}
         </div>
+        {/* the same classes as a calendar (Step 14) — day, week, month, schedule */}
+        <Link href="/calendar" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
+          Calendar ›
+        </Link>
       </div>
 
       <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>

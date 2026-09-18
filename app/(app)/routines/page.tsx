@@ -6,7 +6,7 @@ import { NotBuiltYet } from "@/features/shell/components/NotBuiltYet";
 export default function RoutinesPage() {
   return (
     <NotBuiltYet
-      tool="Routines"
+      tool="routines"
       what="The choreographies you teach — each with its style, its level and the classes it runs in."
     />
   );

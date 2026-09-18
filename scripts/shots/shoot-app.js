@@ -65,6 +65,8 @@ async function signUp(page, email) {
     await page.getByRole("button", { name: "Continue" }).click();
     /* the four screens (U2): the photo is required, then styles, then socials, then the bow */
     await page.getByLabel("Add a photo").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: PNG });
+    /* the cropper (18 Sep 2026): the picture is confirmed in "Crop & preview" before it goes up */
+    await page.getByRole("dialog", { name: "Crop & preview" }).getByRole("button", { name: "Use this photo" }).click();
     await page.getByLabel("Your logo", { exact: true }).waitFor({ timeout: 20000 });
     await shot("onboarding-photo");
     await page.getByRole("button", { name: "Continue", exact: true }).click();

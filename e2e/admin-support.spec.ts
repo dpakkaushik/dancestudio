@@ -61,6 +61,8 @@ async function onboardOrg(page: Page, name: string, city: string) {
   await page.locator('input[name="city"]').fill(city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+  // the cropper (18 Sep 2026): every picture is confirmed in "Crop & preview" before it goes up
+  await page.getByRole("dialog", { name: "Crop & preview" }).getByRole("button", { name: "Use this photo" }).click();
   await expect(page.getByLabel("Your logo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   /* 11 Sep 2026: an organization is asked for no links and no photos — the

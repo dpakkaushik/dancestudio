@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { LINE, MUTED, SUB } from "@/lib/design/tokens";
-import { PHOTO_TYPES } from "@/lib/media/photo";
+import { PHOTO_TYPES, whyNotAPhoto } from "@/lib/media/photo";
+import { PhotoCropper } from "./PhotoCropper";
 
 /** THE HEADER PICTURES AS A GALLERY (16 Sep 2026).
  *
@@ -62,8 +64,39 @@ export function HeaderGrid({
   /** the header is at its ceiling, so there is nothing to add */
   full?: boolean;
 }) {
+  /* EVERY HEADER PICTURE IS CROPPED BEFORE IT IS STAGED OR UPLOADED (18 Sep
+     2026). This grid owns the one file input every header goes through — the
+     Edit sheets' staged draft and the verification form's immediate upload both
+     hand it their `onFiles` — so the cropper sits here, once, and both callers
+     receive files already cut to the square they draw. A batch steps through
+     the cropper one picture at a time; a bad file is refused before it opens. */
+  const [cropping, setCropping] = useState<File[] | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
+  const take = (files: File[]) => {
+    const bad = files.map(whyNotAPhoto).find(Boolean) ?? null;
+    setRefused(bad);
+    if (bad) return;
+    setCropping(files);
+  };
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(72px, 1fr))", gap: 7 }}>
+      {cropping && onFiles ? (
+        <PhotoCropper
+          files={cropping}
+          frame="square"
+          label="Header picture"
+          onCancel={() => setCropping(null)}
+          onDone={(files) => {
+            setCropping(null);
+            onFiles(files);
+          }}
+        />
+      ) : null}
+      {refused ? (
+        <div role="alert" style={{ gridColumn: "1 / -1", fontSize: 10.5, color: "#F87171", lineHeight: 1.45 }}>
+          {refused}
+        </div>
+      ) : null}
       {tiles.map((t, i) => {
         const locked = t.removable === false;
         return (
@@ -175,7 +208,7 @@ export function HeaderGrid({
             onChange={(e) => {
               const files = Array.from(e.target.files ?? []);
               e.target.value = "";
-              if (files.length) onFiles(files);
+              if (files.length) take(files);
             }}
           />
         </label>

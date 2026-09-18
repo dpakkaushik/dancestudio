@@ -75,19 +75,19 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
   ]);
 
   /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, their list for all four
-     kinds of account — deviation row R18): Classes · Calendar · Stats · Team ·
-     Students · Earnings · Memberships · Assets · Rooms · Media. Earnings is the
-     owner's (the desk is server-checked owner-only). Memberships and Assets have
-     a prototype screen (S_memberships 16846, S_assets 16791) and no desk yet, so
-     they open the prototype's own "nothing here yet" rather than nothing — a
-     tile that opens nothing is a lie, and so is a grid missing what the user
-     asked to see on it. MEDIA (15 Sep 2026) is the studio's two pictures as a desk. */
+     kinds of account — deviation row R18): Classes · Calendar · Team · Students ·
+     Earnings · Memberships · Assets · Rooms · Media. Earnings is the owner's (the
+     desk is server-checked owner-only). Memberships and Assets have a prototype
+     screen (S_memberships 16846, S_assets 16791) and no desk yet, so they open
+     the prototype's own "nothing here yet" rather than nothing — a tile that
+     opens nothing is a lie, and so is a grid missing what the user asked to see
+     on it. MEDIA (15 Sep 2026) is the studio's two pictures as a desk. STATS left
+     the grid for the hero the same day — the chip beside the QR (`StudioHome`),
+     opening the studio board. */
   const desk = (path: string) => `/business/${tenantId}/${path}`;
   const tiles: Tile[] = [
     { name: DOS_TOOLS.classes.name, href: desk("classes"), k: "classesmod", c: DOS_TOOLS.classes.c },
     { name: DOS_TOOLS.calendar.name, href: desk("calendar"), k: "calendar", c: DOS_TOOLS.calendar.c },
-    /* Stats left the tab bar for the grid (15 Sep 2026) — a studio's is the studio board */
-    { name: DOS_TOOLS.stats.name, href: "/stats?tab=charts&seg=studio", k: "stats", c: DOS_TOOLS.stats.c },
     { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
     { name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c },
     ...(isOwner ? [{ name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c } as Tile] : []),

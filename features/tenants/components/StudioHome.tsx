@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { ToolGrid, type Tile } from "@/features/home/components/home-kit";
+import { ToolGrid, ToolsHead, type Tile } from "@/features/home/components/home-kit";
 import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
 import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ProofPhoto } from "@/lib/media/proof";
 import type { PlanCatalogRow } from "@/repositories/plans";
 import type { StudioSubscriptionState } from "@/repositories/subscriptions";
@@ -119,6 +120,8 @@ export function StudioHome({
           verified={Boolean(tenant.verifiedAt)}
           /* the studio's own code, to be held up at its door — the app's one share sheet (7381, 7424) */
           share={<ProfileShare path={`/studio/${tenant.id}`} name={tenant.name} />}
+          /* the studio board, as the chip beside the QR (18 Sep 2026) — it was a tile in the grid below */
+          stats={<StatsChip href="/stats?tab=charts&seg=studio" />}
           meta={
             <>
               {place ? <HeroPlace text={place} query={`${tenant.name} ${place}`} /> : null}
@@ -185,7 +188,7 @@ export function StudioHome({
         {/* ── STUDIO TOOLS (7590-7620): the same tile language as Home's grid, and
             every door is THIS studio's ── */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC, marginBottom: 12 }}>
-          <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_DISPLAY, margin: "4px 0 7px" }}>Studio Tools</div>
+          <ToolsHead kind="studio" />
           <ToolGrid tiles={tiles} />
         </div>
       </div>

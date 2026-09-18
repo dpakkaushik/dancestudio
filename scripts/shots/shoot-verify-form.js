@@ -106,6 +106,13 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
     /* 3. one link and five photos: Submit lights up */
     await strip.getByLabel("Instagram", { exact: true }).fill("instagram.com/shotverify");
     await strip.getByLabel("Add photos of your space").setInputFiles(Array.from({ length: 5 }, (_, i) => ({ name: `space-${i + 1}.png`, mimeType: "image/png", buffer: PNG })));
+    /* the cropper (18 Sep 2026): five pictures, five presses of "Use this photo" — it steps through the batch */
+    const cropper = page.getByRole("dialog", { name: "Crop & preview" });
+    for (let k = 1; k <= 5; k += 1) {
+      await cropper.getByText(`${k} of 5`).waitFor();
+      await cropper.getByRole("button", { name: "Use this photo" }).click();
+    }
+    await cropper.waitFor({ state: "detached" });
     await strip.getByRole("status", { name: "5 of 5 to 10 photos added" }).waitFor({ timeout: 60000 });
     await page.waitForTimeout(500);
     check(await submit.isEnabled(), "Submit is enabled with one link and five photos");

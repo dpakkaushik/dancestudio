@@ -45,7 +45,10 @@ export const DOS_TOOLS = {
   media: { name: "Media", c: "#D946EF" },
   /* STATS (15 Sep 2026, the user: "remove stats from the navigation menu, keep
      it as a tab on the home page along with calendar, classes") — the violet
-     the Charts hero opens on, and now the ONLY violet */
+     the Charts hero opens on, and now the ONLY violet. ⚠ Not a tile since 18 Sep
+     2026 ("remove stats from tools and place like a button similar to the qr
+     code"): it is the `StatsChip` beside the QR in every hero; the entry stays
+     because the word and the colour are still the tool's */
   stats: { name: "Stats", c: "#A855F7" },
   /* THE HOME GRID FOR ALL FOUR KINDS (18 Sep 2026, the user's list): three
      tools the prototype has a screen for and this app does not yet —
@@ -123,9 +126,24 @@ export const SheetHandle = () => (
  *  130px white circle bleeding off the top-right, and the tool's name — and
  *  nothing else. "A tool's page says what the tile said and nothing else: the
  *  counts and the sub-headings under these titles were restating the list that
- *  follows them." */
-export function DeskHero({ tool, margin = "12px 0 0" }: { tool: DosToolKey; margin?: string }) {
+ *  follows them."
+ *
+ *  SINCE 18 SEP 2026 EVERY TILE'S PAGE WEARS IT (the user: "all heading when
+ *  inside the page should have similar design as Crew, Calendar etc."): Your
+ *  classes, Your events and the not-built desks had a 17px text line where the
+ *  other desks had this card. `as="h1"` makes the title the page's heading on
+ *  the pages whose only heading it is. */
+export function DeskHero({ tool, margin = "12px 0 0", as = "div" }: { tool: DosToolKey; margin?: string; as?: "div" | "h1" }) {
   const T = DOS_TOOLS[tool];
+  const title: CSSProperties = {
+    margin: 0,
+    fontSize: 21,
+    fontWeight: 800,
+    letterSpacing: -0.5,
+    position: "relative",
+    fontFamily: DOS_DISPLAY,
+    lineHeight: 1.18,
+  };
   return (
     <div
       style={{
@@ -149,18 +167,7 @@ export function DeskHero({ tool, margin = "12px 0 0" }: { tool: DosToolKey; marg
           background: "rgba(255,255,255,.13)",
         }}
       />
-      <div
-        style={{
-          fontSize: 21,
-          fontWeight: 800,
-          letterSpacing: -0.5,
-          position: "relative",
-          fontFamily: DOS_DISPLAY,
-          lineHeight: 1.18,
-        }}
-      >
-        {T.name}
-      </div>
+      {as === "h1" ? <h1 style={title}>{T.name}</h1> : <div style={title}>{T.name}</div>}
     </div>
   );
 }

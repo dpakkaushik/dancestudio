@@ -8,7 +8,7 @@ export default async function StudioMembershipsPage({ params }: { params: Promis
   const { tenantId } = await params;
   return (
     <NotBuiltYet
-      tool="Memberships"
+      tool="memberships"
       what="Class packs and plans this studio sells — by sessions or by months, priced and valid for a period."
       back={`/business/${tenantId}`}
       backLabel="Back to the studio"

@@ -86,6 +86,19 @@ const FIVE_PNGS = Array.from({ length: 5 }, (_, i) => ({
   buffer: PNG_BYTES,
 }));
 
+/** THE CROPPER (18 Sep 2026): every picture stops in "Crop & preview" before it
+ *  goes up, so a test that puts a file in presses "Use this photo" once per file.
+ *  The button is a real `disabled` until the picture has decoded, so the press
+ *  waits for the decode instead of racing it; a batch says "k of n" per step. */
+async function confirmCrop(page: Page, times = 1) {
+  const dialog = page.getByRole("dialog", { name: "Crop & preview" });
+  for (let k = 0; k < times; k += 1) {
+    if (times > 1) await expect(dialog.getByText(`${k + 1} of ${times}`)).toBeVisible();
+    await dialog.getByRole("button", { name: "Use this photo" }).click();
+  }
+  await expect(dialog).toHaveCount(0);
+}
+
 /** Walk onboarding as it stands since 8 Sep 2026: WHO IS HERE first (User is
  *  the default, Organization is a tap), ONE name, the city, Continue (the row is
  *  made and the photo picker appears — the photo is REQUIRED, so Continue names
@@ -107,6 +120,7 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
   await expect(page.getByRole("button", { name: isOrg ? "Add a logo or photo" : "Add your profile photo" })).toBeVisible();
   await expect(page.getByLabel("Add a photo")).toBeAttached();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+  await confirmCrop(page);
   await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   if (isOrg) {
@@ -388,6 +402,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // a bare host is finished into a real address by the form
     await verifyStrip.getByLabel("Instagram").fill("instagram.com/e2estudio");
     await verifyStrip.getByLabel("Add photos of your space").setInputFiles(FIVE_PNGS);
+    // five pictures, five crops — the cropper steps through the batch
+    await confirmCrop(owner, 5);
     await expect(verifyStrip.getByRole("status", { name: "5 of 5 to 10 photos added" })).toBeVisible({ timeout: 40_000 });
     await verifyStrip.getByRole("button", { name: `Submit ${studioName} for verification` }).click();
     await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Under review", { timeout: 15_000 });
@@ -507,6 +523,7 @@ test.describe.serial("DanceOS, end to end", () => {
     expect(before).toBe(5);
     // stage one more, and stage a removal of one that exists
     await studioSheet.getByLabel("Add photos of your space").setInputFiles(ONE_PX_PNG);
+    await confirmCrop(owner);
     await expect(studioSheet.getByLabel(`Remove photo ${before + 1}`)).toBeAttached({ timeout: 20_000 });
     await studioSheet.getByLabel("Remove photo 1").click();
     await expect(studioSheet.getByLabel("Undo removing photo 1")).toBeAttached();
@@ -910,7 +927,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // Home grid's Events tile — participant · spectator · assisting — replaced the
     // Your tickets shelf that used to sit under the classes)
     await learner.goto("/my-events?show=spectator");
-    await expect(learner.getByRole("heading", { name: "Your events" })).toBeVisible();
+    // the page is headed the way the tile is (18 Sep 2026): the Events hero, in its colour
+    await expect(learner.getByRole("heading", { name: "Events", exact: true })).toBeVisible();
     await expect(learner.getByRole("link", { name: `Open ${eventTitle}` })).toBeVisible();
     // and not under participants, which is a different thing to be at an event
     await learner.goto("/my-events");
@@ -1235,6 +1253,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await profileSheet.getByRole("button", { name: "Remove the photo" }).click();
     await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(0);
     await profileSheet.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+    await confirmCrop(trainer);
     await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(1, { timeout: 20_000 });
     await expect(profileSheet.getByLabel("Change your photo")).toBeAttached();
     await profileSheet.getByRole("button", { name: "Cancel" }).click();
@@ -1494,6 +1513,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Students", exact: true })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Studios", exact: true })).toBeVisible();
+    // Stats is the chip beside the QR in the hero since 18 Sep 2026, not a tile — still one link called Stats
     await expect(owner.getByRole("link", { name: "Stats", exact: true })).toBeVisible();
     // the studio's question — what is running in its rooms — is asked on the STUDIO's own home
     await owner.goto(`/business/${tenantId}`);

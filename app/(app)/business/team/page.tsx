@@ -9,7 +9,7 @@ import { NotBuiltYet } from "@/features/shell/components/NotBuiltYet";
 export default function OrgTeamPage() {
   return (
     <NotBuiltYet
-      tool="Team"
+      tool="team"
       what="The people who run this organization with you. Today each studio has its own Team desk; people at the organization level are on the list."
     />
   );

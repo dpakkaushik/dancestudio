@@ -11,6 +11,7 @@ import { findSupportThreads } from "@/repositories/support";
 import { findMyPlace } from "@/repositories/stats";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { headerMaxFor, photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
@@ -201,6 +202,10 @@ export default async function HomePage() {
           /* the QR beside the name shares this person (7288); an organization
              has no public page to share (8 Sep 2026) — its studios have theirs */
           share={profile.role === "org" ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
+          /* STATS IS THE CHIP BESIDE THE QR (18 Sep 2026, the user: "remove stats
+             from tools and place like a button similar to the qr code in the
+             same area") — a person's record, an organization's combined board */
+          stats={<StatsChip href={isOrg ? "/business/stats" : "/stats"} />}
           meta={metaLine ? place ? <HeroPlace text={metaLine} query={place} /> : <span style={{ fontVariantNumeric: "tabular-nums" }}>{metaLine}</span> : null}
           /* the styles you dance, as the app's one style tile (7330, DosStyleRow) */
           styles={profile.styles}

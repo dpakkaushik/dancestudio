@@ -225,7 +225,7 @@ export function OnboardingForm({
           </div>
           <div style={{ flex: 1, minWidth: 0, paddingTop: 6 }}>
             {saved ? (
-              <PhotoPicker owner={{ kind: "avatar", id: userId }} hasPhoto={Boolean(avatarPath)} label={isOrg ? "Change the logo" : "Change your photo"} onSaved={setAvatarPath} />
+              <PhotoPicker owner={{ kind: "avatar", id: userId }} hasPhoto={Boolean(avatarPath)} label={isOrg ? "Change the logo" : "Change your photo"} cropLabel={isOrg ? "Logo" : "Profile photo"} onSaved={setAvatarPath} />
             ) : (
               <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>{isOrg ? "The name first — the logo comes right after, on this screen." : "Your name first — the photo comes right after, on this screen."}</div>
             )}

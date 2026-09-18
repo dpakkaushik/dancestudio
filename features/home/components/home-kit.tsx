@@ -24,6 +24,24 @@ export const DosShelfHead = ({ children, right, pad = "0 16px 10px" }: { childre
   </div>
 );
 
+/** THE HEADING OVER EVERY TOOL GRID (18 Sep 2026, the user: "all tools in the
+ *  home tab should have the heading in the same way"). One shape on all four
+ *  homes — the account's own word, then "Tools", at the prototype's 17px display
+ *  scale — with whatever the page hangs on its right (the plan badge). Until
+ *  today a user's Home was headed "Artist Tools" (the prototype's word for a grid
+ *  that carried artist tools, 2497), an organization's "Studio Tools" (a studio
+ *  owner's word, 7616), and a studio's own home drew its own copy of the line. */
+export type ToolsKind = HomeKind | "studio";
+export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", org: "Organization Tools", studio: "Studio Tools" };
+export function ToolsHead({ kind, right }: { kind: ToolsKind; right?: ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 7px" }}>
+      <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_DISPLAY }}>{TOOLS_HEADING[kind]}</span>
+      {right ? <span style={{ marginLeft: "auto", display: "inline-flex" }}>{right}</span> : null}
+    </div>
+  );
+}
+
 /* ── the tool glyphs (2510-2530) ── */
 const S = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 const I = (p: ReactNode) => (
@@ -74,15 +92,6 @@ const GLYPH: Record<string, ReactNode> = {
     <>
       <path d="M12 21s-6.5-5.7-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.3-6.5 10-6.5 10z" />
       <circle cx="12" cy="10.8" r="2.3" />
-    </>
-  ),
-  /* stats: the bars, as the tab bar drew them until 15 Sep 2026 */
-  stats: I(
-    <>
-      <path d="M4 19.5h16" />
-      <path d="M5 16.5V12M9.5 16.5V8.5M14 16.5v-6" />
-      <path d="m18.5 16.5-.01-9" />
-      <path d="m16.4 6.6 2.1-2.1 2.1 2.1" />
     </>
   ),
   /* media is a picture: the frame, the sun, the hill (15 Sep 2026) */
@@ -136,17 +145,23 @@ export type HomeKind = "user" | "artist" | "org";
  *  opened the Discover listing.
  *
  *  A. USER — Classes (booked, assist) · Events (participant, spectator, assisting)
- *     · Calendar · Crews · Stats · Studios (taken classes at).
- *  B. ARTIST (the plan is live) — the same six, then Team · Students · Routines ·
+ *     · Calendar · Crews · Studios (taken classes at).
+ *  B. ARTIST (the plan is live) — the same five, then Team · Students · Routines ·
  *     Earnings · Memberships · Assets · Media. The desks that are their PAGE's
  *     (Team, Students) open that page, or the hub where the page is made when
  *     there is none yet; Media is their pictures, which live in the Profile tab's
  *     Edit sheet (16 Sep 2026); Routines, Memberships and Assets open the
  *     prototype's own "nothing here yet" until their desks exist.
- *  C. ORGANIZATION — Events · Studios · Team · Earnings (combined) · Stats. Team
- *     is "nothing here yet": an organization is one login today.
- *  D. STUDIO — on its own home: Classes · Calendar · Stats · Team · Students ·
- *     Earnings · Memberships · Assets · Rooms · Media.
+ *  C. ORGANIZATION — Events · Studios · Team · Earnings (combined). Team is
+ *     "nothing here yet": an organization is one login today.
+ *  D. STUDIO — on its own home: Classes · Calendar · Team · Students · Earnings ·
+ *     Memberships · Assets · Rooms · Media.
+ *
+ *  ⚠ STATS IS NOT A TILE ANY MORE (18 Sep 2026, the user: "remove stats from
+ *  tools and place like a button similar to the qr code in the same area on
+ *  both home and profile"). It was on every one of the four lists; it is the
+ *  `StatsChip` beside the QR in the hero now, on Home, the Profile tab and a
+ *  studio's own home, pointing at the same board the tile did.
  *
  *  The prototype's list (DOS_TOOLS 2931) is the vocabulary — names, colours,
  *  glyphs; which tiles a kind gets is the user's decision. Events on an
@@ -158,7 +173,6 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
       { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
       { name: DOS_TOOLS.team.name, href: "/business/team", k: "team", c: DOS_TOOLS.team.c },
       { name: DOS_TOOLS.earn.name, href: "/business/earnings", k: "earn", c: DOS_TOOLS.earn.c },
-      { name: DOS_TOOLS.stats.name, href: "/business/stats", k: "stats", c: DOS_TOOLS.stats.c },
     ];
   }
   const person: Tile[] = [
@@ -166,7 +180,6 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
     { name: DOS_TOOLS.events.name, href: "/my-events", k: "events", c: DOS_TOOLS.events.c },
     { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
     { name: DOS_TOOLS.crews.name, href: "/crews", k: "crews", c: DOS_TOOLS.crews.c },
-    { name: DOS_TOOLS.stats.name, href: "/stats", k: "stats", c: DOS_TOOLS.stats.c },
     { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
   ];
   if (kind === "user") return person;
@@ -185,10 +198,9 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
 };
 
 /** BizSection (2497-2583) — the ONE "Run your business" section on Home. The
- *  heading is the prototype's own word for the grid: "Artist Tools" on a
- *  dancer's or artist's Home, "Studio Tools" on a studio owner's (7616).
- *  `children` sits between the heading and the grid — Home puts the pending
- *  team invites there. */
+ *  heading is `ToolsHead`, the same line every home's grid wears since 18 Sep
+ *  2026, worded for the account. `children` sits between the heading and the
+ *  grid — Home puts the pending team invites there. */
 export function BizSection({
   kind,
   pageId,
@@ -206,22 +218,20 @@ export function BizSection({
   children?: ReactNode;
 }) {
   const tiles = tilesFor(kind, pageId, eventsHostId);
+  /* the plan badge on the head (2500-2520); an organization has none */
+  const badge =
+    plan === "active" ? (
+      <Link href="/subscription" aria-label="Artist plan active" style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "rgba(236,72,153,.16)", color: "#EC4899", textDecoration: "none" }}>
+        ARTIST PLAN ACTIVE
+      </Link>
+    ) : plan === "locked" ? (
+      <Link href="/subscription" aria-label="Unlock the Artist plan" style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "var(--el)", color: "var(--sub)", textDecoration: "none" }}>
+        🔒 PRO · UNLOCK
+      </Link>
+    ) : null;
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
-        <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_DISPLAY }}>
-          {kind === "org" ? "Studio Tools" : "Artist Tools"}
-        </span>
-        {plan === "active" ? (
-          <Link href="/subscription" aria-label="Artist plan active" style={{ marginLeft: "auto", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "rgba(236,72,153,.16)", color: "#EC4899", textDecoration: "none" }}>
-            ARTIST PLAN ACTIVE
-          </Link>
-        ) : plan === "locked" ? (
-          <Link href="/subscription" aria-label="Unlock the Artist plan" style={{ marginLeft: "auto", fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "var(--el)", color: "var(--sub)", textDecoration: "none" }}>
-            🔒 PRO · UNLOCK
-          </Link>
-        ) : null}
-      </div>
+      <ToolsHead kind={kind} right={badge} />
       {children}
       <ToolGrid tiles={tiles} />
     </div>
@@ -275,25 +285,23 @@ export function ToolGrid({ tiles }: { tiles: Tile[] }) {
           >
             {GLYPH[t.k]}
           </span>
-          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-              <span
-                style={{
-                  minWidth: 0,
-                  fontSize: 14.5,
-                  fontWeight: 900,
-                  letterSpacing: -0.3,
-                  lineHeight: 1.1,
-                  color: "#fff",
-                  fontFamily: DOS_DISPLAY,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {t.name}
-              </span>
-            </span>
+          {/* the name WRAPS rather than ellipsizing (18 Sep 2026, the user: "make
+              sure nothing gets cut") — on a 360px phone a half-width tile has ~90px
+              of text room after its chip, and "Memberships" is longer than that */}
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 14.5,
+              fontWeight: 900,
+              letterSpacing: -0.3,
+              lineHeight: 1.1,
+              color: "#fff",
+              fontFamily: DOS_DISPLAY,
+              overflowWrap: "anywhere",
+            }}
+          >
+            {t.name}
           </span>
         </Link>
       ))}

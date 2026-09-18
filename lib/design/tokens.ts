@@ -75,6 +75,11 @@ export const HERO_HEAD_H = HERO_SQ;
 export const HERO_DISC = 96;
 export const HERO_DISC_RING = 3;
 export const HERO_DISC_DROP = 40;
+/** A PROFILE PICTURE IS A SQUIRCLE (18 Sep 2026, the user: "profile pic should be
+ *  squircle") — the corner is this share of the side, at every size it is drawn:
+ *  the 96px disc, the hub's 42px face, the crew's, and the cropper's frame, which
+ *  is masked to this so what you see while cropping is what lands. */
+export const DISC_RADIUS = 0.3;
 
 export const BTN_STYLE: React.CSSProperties = {
   padding: "15px",

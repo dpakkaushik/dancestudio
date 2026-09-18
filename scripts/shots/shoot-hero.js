@@ -51,6 +51,16 @@ const adminHeaders = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`
 const BASE = process.env.DANCEOS_BASE_URL || "http://localhost:3000";
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
 const FILE = { name: "face.png", mimeType: "image/png", buffer: PNG };
+/* THE CROPPER (18 Sep 2026): every picture stops in "Crop & preview" first, so a
+   file put in is followed by one press of "Use this photo" per picture */
+const useIt = async (page, n = 1) => {
+  const dialog = page.getByRole("dialog", { name: "Crop & preview" });
+  for (let k = 0; k < n; k += 1) {
+    if (n > 1) await dialog.getByText(`${k + 1} of ${n}`).waitFor();
+    await dialog.getByRole("button", { name: "Use this photo" }).click();
+  }
+  await dialog.waitFor({ state: "detached" });
+};
 
 let pass = 0;
 let fail = 0;
@@ -74,6 +84,7 @@ async function onboard(page, name, role, city) {
   await page.locator('input[name="city"]').fill(city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(FILE);
+  await useIt(page);
   await page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true }).waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   if (isOrg) {
@@ -186,7 +197,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await rail(org).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
     check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
-    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: a Stats tile among the tools (it left the tab bar)");
+    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
     check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
     check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
@@ -227,6 +238,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
 
     /* the disc's picture — businesses.profile_photo_path, through set_business_profile_photo */
     await sheet.getByLabel("Add a photo").setInputFiles(FILE);
+    await useIt(org);
     await disc(org).locator("img").first().waitFor({ timeout: 20000 });
     check((await discImgs(org)) === 1, "edit studio: the picture landed on the disc behind the sheet");
     check((await railImgs(org)) === 0, "edit studio: and not in the header");
@@ -244,6 +256,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       return Array.isArray(live) ? live.length : -1;
     };
     await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+    await useIt(org);
     const headerUp = await sheet
       .getByLabel(/is the only one/)
       .first()
@@ -263,6 +276,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await org.getByRole("button", { name: "Edit studio", exact: true }).click();
       await sheet.waitFor();
       await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+      await useIt(org);
       await sheet.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
       check((await sheet.getByLabel(/^Remove photo/).count()) === 2, "edit studio: two pictures, two live ✕");
       await sheet.getByLabel("Remove photo 1").click();
@@ -283,6 +297,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
 
       /* a second picture, saved — then a removal, saved */
       await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+      await useIt(org);
       await sheet.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
       await sheet.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(org, 2);
@@ -342,7 +357,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await bar.getByRole("link", { name: "Public view" }).getAttribute("href")) === `/studio/${studioId}`, "bar: the eye opens the organization's studio as a stranger sees it");
     check((await bar.getByRole("link").count()) === 4, "bar: Home · Discover · Inbox · the eye — four");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: Edit profile is a pencil on the hero");
-    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: Stats is a tile in the grid");
+    check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
     await org.getByRole("button", { name: "Edit profile", exact: true }).click();
     const orgSheet = org.getByRole("dialog", { name: "Edit profile" });
     await orgSheet.waitFor();
@@ -384,6 +399,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       return Array.isArray(live) ? live.length : -1;
     };
     await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+    await useIt(me);
     const userHeader = await mySheet
       .getByLabel("Remove photo 1")
       .first()
@@ -401,6 +417,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await me.getByRole("button", { name: "Edit profile", exact: true }).click();
       await mySheet.waitFor();
       await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+      await useIt(me);
       await mySheet.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
       await mySheet.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 1);
@@ -419,6 +436,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await mySheet.waitFor();
       check((await mySheet.getByLabel("Add picture").count()) === 1, "artist edit profile: the Add tile is back — an artist holds ten");
       await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+      await useIt(me);
       await mySheet.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
       await mySheet.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 2);

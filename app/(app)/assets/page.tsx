@@ -4,5 +4,5 @@ import { NotBuiltYet } from "@/features/shell/components/NotBuiltYet";
  *  S_assets (16791): your inventory and what it is worth — sound, floors,
  *  equipment. Not built; the tile says so honestly. */
 export default function AssetsPage() {
-  return <NotBuiltYet tool="Assets" what="Your inventory and what it is worth — sound, floors, equipment." />;
+  return <NotBuiltYet tool="assets" what="Your inventory and what it is worth — sound, floors, equipment." />;
 }

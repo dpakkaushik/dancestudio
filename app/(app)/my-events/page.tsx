@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EventCard } from "@/features/events/components/EventCard";
 import { EvIcon, bookingWords, eventCodeOf, eventTimeWords, eventWhen } from "@/features/events/components/event-kit";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findEventsByTenants, findMyEventBookings } from "@/repositories/events";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -78,16 +79,17 @@ export default async function MyEventsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "8px 0 10px", gap: 10 }}>
-        <h1 style={{ fontSize: 17, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, lineHeight: 1.2, margin: 0 }}>Your events</h1>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
-            {count} {show === "assisting" ? (count === 1 ? "event" : "events") : count === 1 ? "booking" : "bookings"}
-          </div>
-          <Link href="/discover?tab=events" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
-            Find events ›
-          </Link>
+      {/* THE TOOL'S HERO (18 Sep 2026, the user: "all heading when inside the page
+          should have similar design as Crew, Calendar etc.") — the Events tile's
+          own colour and word, where a 17px "Your events" line stood */}
+      <DeskHero tool="events" as="h1" margin="0 0 10px" />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2px 10px", gap: 10 }}>
+        <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
+          {count} {show === "assisting" ? (count === 1 ? "event" : "events") : count === 1 ? "booking" : "bookings"}
         </div>
+        <Link href="/discover?tab=events" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
+          Find events ›
+        </Link>
       </div>
 
       <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>

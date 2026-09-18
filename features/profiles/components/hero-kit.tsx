@@ -52,15 +52,15 @@ export function HeroPlace({ text, query }: { text: string; query?: string }) {
       target="_blank"
       rel="noreferrer"
       aria-label="Open this address in Maps"
+      /* it wraps rather than truncating (18 Sep 2026): a place cut to "Kothrud, P…"
+         is not a place, and the line under a name has room for two */
       style={{
         minWidth: 0,
         color: INK,
         textDecoration: "underline",
         textDecorationColor: LINE,
         textUnderlineOffset: 3,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
+        overflowWrap: "anywhere",
         fontVariantNumeric: "tabular-nums",
       }}
     >
@@ -79,6 +79,7 @@ export function IdentityHero({
   eyebrowSub = null,
   verified,
   share = null,
+  stats = null,
   meta = null,
   styles = [],
   styleAria = (s) => s,
@@ -103,8 +104,13 @@ export function IdentityHero({
   eyebrowSub?: ReactNode;
   /** the tick is DanceOS's to give — set when a verification actually clears */
   verified: boolean;
-  /** the QR beside the name, or null when there is no public page to share */
+  /** the QR — one of the two chips under the place line (18 Sep 2026); null when
+   *  there is no public page to share */
   share?: ReactNode;
+  /** the Stats chip beside the QR (18 Sep 2026, the user: "remove stats from tools
+   *  and place like a button similar to the qr code in the same area") — a
+   *  `StatsChip` pointing at this account's own board; null on a public page */
+  stats?: ReactNode;
   /** the line under the name — "24, New Delhi", or "Kothrud, Pune · 1 room" */
   meta?: ReactNode;
   /** the styles, as the app's one style tile */
@@ -134,7 +140,14 @@ export function IdentityHero({
      picture and a stack. The disc is in flow, so nothing overlaps the header any
      more and `HERO_DISC_DROP` has no reader left. The styles and whatever the
      page adds still run the FULL width underneath, which is why they sit outside
-     this row rather than inside the column. */
+     this row rather than inside the column.
+     ⚠ TOP-ALIGNED SINCE THE CHIPS MOVED IN (18 Sep 2026, the user: "everything
+     between the poster and the dance styles tiles can be placed better so
+     everything fits perfectly"). The column is taller than the disc now — five
+     lines when a name wraps — and a disc centred against five lines floats at
+     the height of nobody's name; top-aligned, the picture and the word USER /
+     ARTIST / STUDIO / ORGANIZATION share one baseline, which is how every
+     profile screen people already know lays this out. */
   return (
     <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: heroWash(tint) }}>
       {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", gap: 6 }}>{corner}</div> : null}
@@ -142,19 +155,34 @@ export function IdentityHero({
       <HeroRail name={name} grad={grad} shots={shots} />
 
       <div style={{ position: "relative", padding: "14px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>
           <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
 
           {/* what it is, its number, who it is, where — in that order, beside the picture */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={HERO_EYEBROW}>{eyebrow}</div>
             {eyebrowSub ? <div style={{ marginTop: 3 }}>{eyebrowSub}</div> : null}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>
-              {verified ? <VerifiedTick size={18} /> : null}
-              {share}
+            {/* ⚠ THE NAME IS NEVER CUT (18 Sep 2026, the user: "in some places full
+                name is getting hidden which should not happen"). It used to be one
+                line with an ellipsis, and it shared that line with the QR chip — so
+                a long name beside a 96px disc had about 200px to live in and lost
+                its end. The chips have their own row below now, and the name wraps
+                onto a second line rather than truncating. `overflowWrap: anywhere`
+                is for the one-word name longer than the column, which is the only
+                case a wrap alone cannot handle. */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6 }}>
+              <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, lineHeight: 1.05, overflowWrap: "anywhere" }}>{name}</h1>
+              {verified ? <span style={{ flexShrink: 0, marginTop: 6 }}><VerifiedTick size={18} /></span> : null}
             </div>
-            {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
+            {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
+            {/* the two things you can do with this profile from here, as one row of
+                chips in the page's ink: see its record, and share it (18 Sep 2026) */}
+            {share || stats ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
+                {stats}
+                {share}
+              </div>
+            ) : null}
           </div>
         </div>
         {styles.length ? (

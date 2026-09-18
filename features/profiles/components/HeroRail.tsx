@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, type CSSProperties } from "react";
 import { initialsOf } from "@/features/profiles/components/profile-kit";
-import { DOS_DISPLAY, HERO_DISC, HERO_DISC_RING, HERO_HEAD_H, HERO_HEAD_W, HERO_SQ_SHADOW, LILAC } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_DISPLAY, HERO_DISC, HERO_DISC_RING, HERO_HEAD_H, HERO_HEAD_W, HERO_SQ_SHADOW, LILAC } from "@/lib/design/tokens";
 
 /** One picture in the header rail. */
 export interface HeroShot {
@@ -137,11 +137,17 @@ export function HeroRail({
   );
 }
 
-/** THE PROFILE DISC (15 Sep 2026) — the round profile picture, overlapping the
- *  header's bottom-left edge where the user drew the circle. Initials on the
- *  entity's own gradient until there is a picture, and again if the picture
- *  would not load. The ring is the page's own colour, so the disc cuts out of
- *  the wash behind it.
+/** THE PROFILE DISC (15 Sep 2026) — the profile picture beside the name. Initials
+ *  on the entity's own gradient until there is a picture, and again if the
+ *  picture would not load. The ring is the page's own colour, so the disc cuts
+ *  out of the wash behind it.
+ *
+ *  ⚠ A SQUIRCLE, NOT A CIRCLE (18 Sep 2026, the user: "profile pic should be
+ *  squircle"). The corner is `DISC_RADIUS` of the side — 30%, the proportion the
+ *  crew face (`CrewFace`) and the hub's 42px studio face already draw — so the
+ *  same picture is the same shape at every size. The cropper's disc frame is
+ *  masked to this exact shape, which is how what you see while cropping is what
+ *  lands here.
  *
  *  It wore a ＋ on its rim until 16 Sep 2026; the picture is changed in the Edit
  *  sheet now, with the header pictures, so the disc is a picture again. */
@@ -155,7 +161,7 @@ export function ProfileDisc({ name, grad, photo, photoAlt, testId }: { name: str
         style={{
           width: size,
           height: size,
-          borderRadius: size / 2,
+          borderRadius: Math.round(size * DISC_RADIUS),
           overflow: "hidden",
           position: "relative",
           display: "flex",

@@ -7,7 +7,7 @@ export default async function StudioAssetsPage({ params }: { params: Promise<{ t
   const { tenantId } = await params;
   return (
     <NotBuiltYet
-      tool="Assets"
+      tool="assets"
       what="This studio’s inventory and what it is worth — sound, floors, mirrors, equipment."
       back={`/business/${tenantId}`}
       backLabel="Back to the studio"

@@ -16,6 +16,7 @@ import { CREW_ROLE_WORD } from "@/types/crew";
 import type { FollowedTenant } from "@/types/follow";
 import { KIND_BADGE, kindOf, memberNoWords, type Profile, type SocialLink } from "@/types/profile";
 import { ProfileShare } from "./ProfileShare";
+import { StatsChip } from "./StatsChip";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { NotificationPrefs } from "@/types/notification";
 import type { ArtistPlan } from "@/repositories/plans";
@@ -203,6 +204,10 @@ export function MyProfilePage({
           }
           verified={Boolean(profile.verifiedAt)}
           share={isOrg ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
+          /* STATS, AS THE CHIP BESIDE THE QR (18 Sep 2026, the user: "…in the same
+             area on both home and profile") — it was the big white button under
+             About (10905); a person's record, an organization's combined board */
+          stats={<StatsChip href={isOrg ? "/business/stats" : "/stats"} />}
           /* age and place read as one introduction — "24, New Delhi" (10664) */
           meta={
             profile.age || profile.city ? (
@@ -300,19 +305,18 @@ export function MyProfilePage({
             )}
           </div>
 
-          {/* THE TWO PLACES THIS PROFILE GOES (10905): Stats · Schedule, two big white buttons */}
-          <div style={{ display: "grid", gridTemplateColumns: scheduleHref ? "1fr 1fr" : "1fr", gap: 8 }}>
-            <Link href="/stats" aria-label="Stats" style={bigWhite}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 20h16" /><path d="M6.5 20v-6M12 20V8.5M17.5 20V4.5" /></svg>
-              Stats
-            </Link>
-            {scheduleHref ? (
+          {/* THE PLACE THIS PROFILE GOES (10905): the prototype drew Stats · Schedule
+              as two big white buttons; Stats is the chip beside the QR in the hero
+              since 18 Sep 2026 (the user's ask), so only Schedule is left here, and
+              only when there is a schedule to open */}
+          {scheduleHref ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
               <Link href={scheduleHref} aria-label="Schedule" style={bigWhite}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3" /><path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" /></svg>
                 Schedule
               </Link>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
 
         {/* ── THE PEOPLE, IN ONE LANGUAGE (10990): a row per person, each group headed with a count ── */}

@@ -7,7 +7,7 @@ import { NotBuiltYet } from "@/features/shell/components/NotBuiltYet";
 export default function MembershipsPage() {
   return (
     <NotBuiltYet
-      tool="Memberships"
+      tool="memberships"
       what="Class packs and plans your students buy — by sessions or by months, priced and valid for a period."
     />
   );

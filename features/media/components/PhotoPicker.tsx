@@ -8,6 +8,7 @@ import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } f
 import { PROOF_BUCKET } from "@/lib/media/proof";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { DOS_UI, INK, LINE, SUB } from "@/lib/design/tokens";
+import { PhotoCropper, frameForOwnerKind } from "./PhotoCropper";
 
 /** "📁 Browse device gallery" (prototype 3829) — the one control that changes a
  *  photo, wherever a photo is drawn.
@@ -17,10 +18,13 @@ import { DOS_UI, INK, LINE, SUB } from "@/lib/design/tokens";
  *  path-scoped storage policy is what decides. Only the resulting PATH is sent
  *  to the server, where the RPC checks the same authority again.
  *
- *  Not the prototype's cropper (PosterCropper 6604, the crop-and-frame flow): a
- *  square is drawn with `object-fit: cover`, which is what every one of these
- *  places wanted from a crop. The cropper is on the backlog with the poster
- *  uploads it belongs to.
+ *  EVERY PICTURE PASSES THROUGH THE CROPPER FIRST (18 Sep 2026, the user: "every
+ *  photo uploaded in the app should have a way to crop and preview it according
+ *  to the layout of the photo in the app"). The picked file opens `PhotoCropper`
+ *  in the frame this owner's picture is drawn in — the squircle for a person's
+ *  or a business's profile picture, a square for a crew's — and what goes up is
+ *  the cropped JPEG. Until today a square was drawn with `object-fit: cover`,
+ *  which chose the crop for you; now you choose it and see it before it lands.
  *
  *  Three shapes: the chip with its Remove (the Edit sheet), the ＋ on the rim of
  *  the profile disc (`overlay`), and the dashed square that ends a header rail
@@ -58,6 +62,7 @@ export function PhotoPicker({
   overlay = false,
   tile = false,
   compact = false,
+  cropLabel,
   onSaved,
 }: {
   owner: PhotoOwner;
@@ -74,6 +79,9 @@ export function PhotoPicker({
   /** a tile in a 72px grid rather than the 206 hero square — the ＋ and the
    *  word sized to fit it (the Edit-profile sheet's header grid) */
   compact?: boolean;
+  /** what the cropper's sheet is headed — "Logo" for an organization's picture;
+   *  the owner kind's own word when not given */
+  cropLabel?: string;
   /** ONBOARDING'S CASE (U2): the page it sits on redirects the moment a profile
    *  exists, so a refresh there would end the flow. A caller that passes this
    *  is told the path instead of the page being reloaded. */
@@ -83,13 +91,21 @@ export function PhotoPicker({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /* the picked file, waiting in the cropper for its crop — the upload starts only
+     on "Use this photo" */
+  const [cropping, setCropping] = useState<File | null>(null);
 
-  const pick = async (file: File) => {
+  const pick = (file: File) => {
     const bad = whyNotAPhoto(file);
     if (bad) {
       setError(bad);
       return;
     }
+    setError(null);
+    setCropping(file);
+  };
+
+  const upload = async (file: File) => {
     setBusy(true);
     setError(null);
     try {
@@ -145,12 +161,35 @@ export function PhotoPicker({
     />
   );
 
-  /* the hero's controls sit inside a clipped square, so their error is a toast */
-  const toast = error ? (
-    <span role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: "1.5px solid #F87171", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 390, textAlign: "center", zIndex: 650, fontFamily: DOS_UI }}>
-      {error}
-    </span>
+  /* THE CROPPER, IN EVERY SHAPE THIS CONTROL TAKES. It is rendered by all three
+     returns below — the first cut hung it on the hero shapes' toast alone, and
+     the chip (onboarding, the Edit sheets' disc) set `cropping` and drew nothing,
+     which the e2e found within the hour: every onboarding sat on "Add a photo"
+     waiting for a dialog that never mounted. */
+  const cropper = cropping ? (
+    <PhotoCropper
+      files={[cropping]}
+      frame={frameForOwnerKind(owner.kind)}
+      label={cropLabel ?? (owner.kind === "crew" ? "Crew photo" : owner.kind === "tenant" ? "Profile picture" : "Profile photo")}
+      onCancel={() => setCropping(null)}
+      onDone={([f]) => {
+        setCropping(null);
+        if (f) void upload(f);
+      }}
+    />
   ) : null;
+
+  /* the hero's controls sit inside a clipped square, so their error is a toast */
+  const toast = (
+    <>
+      {error ? (
+        <span role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: "1.5px solid #F87171", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 390, textAlign: "center", zIndex: 650, fontFamily: DOS_UI }}>
+          {error}
+        </span>
+      ) : null}
+      {cropper}
+    </>
+  );
 
   if (tile) {
     return (
@@ -233,6 +272,7 @@ export function PhotoPicker({
       </span>
       {error ? <span style={{ fontSize: 10, color: "#F87171", maxWidth: 260, lineHeight: 1.4 }}>{error}</span> : null}
       {!error && !hasPhoto ? <span style={{ fontSize: 9.5, color: onLight ? "rgba(255,255,255,.75)" : SUB }}>JPEG, PNG or WebP · up to 5 MB</span> : null}
+      {cropper}
     </span>
   );
 }
