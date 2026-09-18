@@ -1,3 +1,5 @@
+import type { PersonKind } from "@/types/profile";
+
 /** Photos (parity slice 2). One public bucket, four folders, and the rules the
  *  browser needs to know before it uploads anything.
  *
@@ -10,16 +12,19 @@
 
 export const MEDIA_BUCKET = "media";
 
-/** HOW MANY HEADER PICTURES A PERSON MAY HOLD (15 Sep 2026, the user): an
- *  artist ten — the prototype's own ceiling for a Photos rail (10979) — and a
- *  plain user ONE ("use plain user just a profile pic and one header"). The
- *  database refuses past either; said here so the screens stop offering the
- *  tile at the same count. `GALLERY_MAX` is the artist's number under the
- *  name the gallery slice gave it. */
-export const HEADER_MAX_ARTIST = 10;
+/** HOW MANY HEADER PICTURES A PROFILE MAY HOLD — BY KIND (19 Sep 2026, the user:
+ *  "Poster on all profiles should be swipeable with limits — Organization &
+ *  Studio 10, Artist and Crews 5, User 1"). An organization holds ten, an
+ *  artist FIVE (it was ten until today — nothing stored is deleted, the ceiling
+ *  is what the door refuses beyond), a plain user one, a crew five. A studio's
+ *  ten is its verification photos (`PROOF_MAX`). The database refuses past each
+ *  (`add_my_header_photo`, `add_crew_header_photo`); said here so the screens
+ *  stop offering the tile at the same count. */
+export const HEADER_MAX_ORG = 10;
+export const HEADER_MAX_ARTIST = 5;
 export const HEADER_MAX_USER = 1;
-export const GALLERY_MAX = HEADER_MAX_ARTIST;
-export const headerMaxFor = (isArtist: boolean): number => (isArtist ? HEADER_MAX_ARTIST : HEADER_MAX_USER);
+export const HEADER_MAX_CREW = 5;
+export const headerMaxFor = (kind: PersonKind): number => (kind === "org" ? HEADER_MAX_ORG : kind === "artist" ? HEADER_MAX_ARTIST : HEADER_MAX_USER);
 
 /** what the bucket itself accepts (mirrored from the migration, so the browser
  *  can refuse a file before spending somebody's data on the upload) */
@@ -45,7 +50,9 @@ export type PhotoOwner =
    turned `tenants` into `businesses` HERE while the migration deliberately kept
    the bucket's `tenants/` — so every studio disc upload was refused by the
    storage policy ("new row violates row-level security policy", a 400) from
-   16 to 19 Sep 2026, and nothing typed could see it. Found by shoot-hero.js. */
+   16 to 19 Sep 2026, and nothing typed could see it. Found by shoot-hero.js.
+   A CREW's header pictures (19 Sep 2026) share the crew's own `crews/{id}/`
+   folder with its disc: the leader is the one writer of both. */
 const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery" };
 
 const extOf = (file: { type: string }): string => (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");

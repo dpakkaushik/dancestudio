@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { gradientOf } from "@/features/profiles/components/PublicProfile";
+import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK } from "@/lib/design/tokens";

@@ -122,7 +122,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
        a plain user's page is still the sign-in door for a stranger. */
     const { data: pub, error: pubError } = await supabase.rpc("public_artist", { p_user_id: userId });
     const row = (Array.isArray(pub) ? pub[0] : pub) as
-      | { id: string; full_name: string; role: string; city: string | null; profile_photo_path: string | null; about: string | null; socials: unknown; styles: string[] | null; verified_at: string | null; phone: string | null }
+      | { id: string; full_name: string; role: string; city: string | null; profile_photo_path: string | null; about: string | null; socials: unknown; styles: string[] | null; verified_at: string | null; phone: string | null; contact_email?: string | null }
       | undefined
       | null;
     if (pubError || !row) {
@@ -141,6 +141,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
       member_no: null,
       verified_at: row.verified_at,
       phone: row.phone,
+      contact_email: row.contact_email ?? null,
     } as Parameters<typeof toProfile>[0]);
   }
 

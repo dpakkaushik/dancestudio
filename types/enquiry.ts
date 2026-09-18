@@ -24,12 +24,18 @@ export interface EnquiryType {
 }
 
 export const ENQ_TYPES: EnquiryType[] = [
+  /* AN ORGANIZATION CAN BE ASKED (19 Sep 2026, the user: "Send Enquiry for all
+     except users") — through its hosting row (`type = 'org'`), for the three
+     kinds a host of events can answer: a celebration, a corporate show, a
+     collaboration. Judging is a person's job and private sessions a teacher's;
+     `send_enquiry` refuses both for an organization, and this is the same list
+     so the sheet never offers what the database would refuse. */
   {
     k: "celebration",
     label: "Celebrations",
     sub: "weddings · birthdays · anniversaries",
     c: "#EC4899",
-    to: ["studio", "artist_page"],
+    to: ["studio", "artist_page", "org"],
     fields: [
       {
         k: "occasion",
@@ -45,7 +51,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Corporate",
     sub: "brand shoots · offsites · employee classes",
     c: "#0EA5E9",
-    to: ["studio", "artist_page"],
+    to: ["studio", "artist_page", "org"],
     fields: [
       {
         k: "kind",
@@ -91,7 +97,7 @@ export const ENQ_TYPES: EnquiryType[] = [
     label: "Collaboration",
     sub: "content · workshops · campaigns",
     c: "#8B5CF6",
-    to: ["studio", "artist_page"],
+    to: ["studio", "artist_page", "org"],
     fields: [
       {
         k: "kind",

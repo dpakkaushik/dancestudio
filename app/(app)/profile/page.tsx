@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { MyProfilePage } from "@/features/profiles/components/MyProfilePage";
 import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
+import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMyNotificationPrefs } from "@/repositories/notifications";
 import { findPublicPerson } from "@/repositories/publicPerson";
@@ -11,14 +11,15 @@ import { findMyPlace } from "@/repositories/stats";
 import { findMyTenants } from "@/repositories/tenants";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findMyGst } from "@/repositories/gst";
+import { kindOf } from "@/types/profile";
 
 /** The Profile tab — prototype S_profiletab's own render, lifted in
  *  `MyProfilePage`, with the Settings sheet behind the chrome's gear
  *  (`?settings=1`, prototype 19263). Everything on it is a row this app keeps:
- *  the profile with its fields, the person's followers and the people and
- *  businesses they follow, their place on the board their role belongs to, what
- *  reaches them, and the same crews / teaches-at / runs groups the person page
- *  draws. */
+ *  the profile with its fields, the person's followers and the people,
+ *  businesses, organizations and crews they follow, their place on the board
+ *  their role belongs to, what reaches them, and the same crews / teaches-at /
+ *  runs groups the person page draws. */
 export default async function ProfilePage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -32,10 +33,13 @@ export default async function ProfilePage() {
     redirect("/onboarding");
   }
   const role = person.profile.role;
-  const [followers, followingPeople, followingTenants, tenants, prefs, plan, isAdmin, gst] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, prefs, plan, isAdmin, gst] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
+    /* the two kinds that became followable on 19 Sep 2026 */
+    findMyFollowedOrganizations(supabase),
+    findMyFollowedCrews(supabase),
     findMyTenants(supabase),
     findMyNotificationPrefs(supabase),
     findMyArtistPlan(supabase),
@@ -44,10 +48,11 @@ export default async function ProfilePage() {
        organization has the row, so only an organization is asked about it */
     role === "org" ? findMyGst(supabase, person.profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
   ]);
-  /* THE HEADER (15 Sep 2026): one picture for a user, ten for an artist, none
-     for an organization — the same rule the database keeps on the way in */
-  const headerMax = role === "org" ? 0 : headerMaxFor(Boolean(plan?.active));
-  const header = headerMax > 0 ? await findPersonHeaderPhotos(supabase, user.id, headerMax) : [];
+  /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user, five
+     for an artist, ten for an organization (19 Sep 2026) — the same rule the
+     database keeps on the way in */
+  const headerMax = headerMaxFor(kindOf(role, Boolean(plan?.active)));
+  const header = await findPersonHeaderPhotos(supabase, user.id, headerMax);
   /* where you stand — an ORGANIZATION has no people board (the prototype hides the
      rank on a studio, 10719); a person stands on the artists' board while the plan is live */
   const place = role === "org" ? null : await findMyPlace(supabase, plan?.active ? "artist" : "dancer");
@@ -70,6 +75,8 @@ export default async function ProfilePage() {
       followers={followers}
       followingPeople={followingPeople}
       followingTenants={followingTenants}
+      followingOrgs={followingOrgs}
+      followingCrews={followingCrews}
       place={place ? { place: place.place, population: place.population } : null}
       scheduleHref={scheduleHref}
       prefs={prefs}

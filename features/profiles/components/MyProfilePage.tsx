@@ -11,7 +11,7 @@ import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
-import type { PersonFollowRow } from "@/repositories/follows";
+import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import type { FollowedTenant } from "@/types/follow";
 import { KIND_BADGE, kindOf, memberNoWords, type Profile, type SocialLink } from "@/types/profile";
@@ -60,6 +60,11 @@ const move = <T,>(arr: T[], i: number, dir: -1 | 1): T[] => {
   return next;
 };
 
+/* the Following sheet's segments (11336), in the words for the kinds we have —
+   Organizations and Crews joined on 19 Sep 2026, when both became followable */
+const FOLLOW_SEGS = ["All", "Users", "Artists", "Organizations", "Studios", "Crews"] as const;
+type FollowSeg = (typeof FOLLOW_SEGS)[number];
+
 /* the ▲▼ pair every reorderable sheet row carries (11170) */
 function Arrows({ i, n, onMove }: { i: number; n: number; onMove: (dir: -1 | 1) => void }) {
   return (
@@ -78,6 +83,8 @@ export function MyProfilePage({
   followers,
   followingPeople,
   followingTenants,
+  followingOrgs = [],
+  followingCrews = [],
   place,
   scheduleHref,
   prefs,
@@ -90,11 +97,14 @@ export function MyProfilePage({
   person: PublicPerson;
   /** THE HEADER PICTURES (15 Sep 2026): the person's own, in their order */
   header?: HeaderPhoto[];
-  /** how many the plan allows — one for a user, ten for an artist, none for an organization */
+  /** how many the kind allows — one for a user, five for an artist, ten for an organization (19 Sep 2026) */
   headerMax?: number;
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
   followingTenants: FollowedTenant[];
+  /** the organizations and the crews this person follows (19 Sep 2026) — two more segments of the Following sheet */
+  followingOrgs?: FollowedOrganization[];
+  followingCrews?: FollowedCrew[];
   place: { place: number; population: number } | null;
   scheduleHref: string | null;
   /** what reaches you — the settings sheet's Notifications row */
@@ -123,9 +133,10 @@ export function MyProfilePage({
   const shots: HeroShot[] = header
     .filter((h) => h.url)
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}` }));
-  const followingN = followingPeople.length + followingTenants.length;
-  /* an organization is not a public entity (8 Sep 2026): no page to share, nobody
-     follows it and it follows nobody, it dances nothing — its figure is its studios */
+  const followingN = followingPeople.length + followingTenants.length + followingOrgs.length + followingCrews.length;
+  /* an organization has a page of its own since 18 Sep 2026 (/org/{id}, R23) and
+     CAN be followed since 19 Sep 2026 — it still follows nobody and dances
+     nothing, so its figures are its studios and its followers */
   const isOrg = profile.role === "org";
 
   const [toast, setToast] = useState<string | null>(null);
@@ -140,7 +151,7 @@ export function MyProfilePage({
       the address is its open state — a state seeded at mount would never see the
       gear, because the gear links to the page it is already on. */
   const settingsOpen = useSearchParams().get("settings") === "1";
-  const [followSeg, setFollowSeg] = useState<"All" | "Users" | "Artists" | "Studios">("All");
+  const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
 
   const fire = (m: string) => {
     setToast(m);
@@ -181,9 +192,11 @@ export function MyProfilePage({
       : [
           ...followingPeople.map((f) => ({ key: f.followId, href: `/person/${f.userId}`, name: f.name, kind: kindOf(f.role, f.isArtist), glyph: kindOf(f.role, f.isArtist) as FollowGlyph, tint: followTint(kindOf(f.role, f.isArtist)), face: photoUrl(f.avatarPath), initials: initialsOf(f.name) })),
           ...followingTenants.map((t) => ({ key: t.followId, href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, name: t.tenantName, kind: t.tenantType === "studio" ? "studio" : "artist", glyph: (t.tenantType === "studio" ? "org" : "artist") as FollowGlyph, tint: followTint(t.tenantType === "studio" ? "studio-biz" : "artist-biz"), face: null, initials: initialsOf(t.tenantName) })),
+          /* the organizations and the crews (19 Sep 2026) — each row opens its own page */
+          ...followingOrgs.map((o) => ({ key: o.followId, href: `/org/${o.orgId}`, name: o.name, kind: "organization", glyph: "org" as FollowGlyph, tint: followTint("org"), face: photoUrl(o.photoPath), initials: initialsOf(o.name) })),
+          ...followingCrews.map((c) => ({ key: c.followId, href: `/crew/${c.crewId}`, name: c.name, kind: "crew", glyph: "crew" as FollowGlyph, tint: followTint("crew"), face: photoUrl(c.photo), initials: initialsOf(c.name) })),
         ];
-  /* the prototype's segments (11336) in the words for the kinds we have — a followed studio is a business, never an organization */
-  const segOf = (kind: string) => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : "Studios");
+  const segOf = (kind: string): FollowSeg => (kind === "user" ? "Users" : kind === "artist" ? "Artists" : kind === "organization" ? "Organizations" : kind === "crew" ? "Crews" : "Studios");
   const shownFollowRows = followRows.filter((r) => followSeg === "All" || segOf(r.kind) === followSeg);
 
   return (
@@ -203,7 +216,8 @@ export function MyProfilePage({
             <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3 }}>{memberNoWords(profile.memberNo)}</div>
           }
           verified={Boolean(profile.verifiedAt)}
-          share={isOrg ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
+          /* the QR shares the page a stranger reads: an organization's own since 18 Sep 2026 */
+          share={<ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />}
           /* STATS, AS THE CHIP BESIDE THE QR (18 Sep 2026, the user: "…in the same
              area on both home and profile") — it was the big white button under
              About (10905); a person's record, an organization's combined board */
@@ -229,8 +243,8 @@ export function MyProfilePage({
               <button type="button" aria-label="Edit profile" onClick={() => setEditOpen(true)} style={cornerChip}>
                 <PencilIcon />
               </button>
-              {/* "Public view" — the page as another signed-in person reads it, which is a real page of its own here */}
-              <Link href={`/person/${profile.id}`} aria-label="Public view" style={cornerChip}>
+              {/* "Public view" — the page as a stranger reads it: /org/{id} for an organization, /person/{id} for anybody else */}
+              <Link href={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} aria-label="Public view" style={cornerChip}>
                 <EyeIcon />
               </Link>
             </>
@@ -239,11 +253,18 @@ export function MyProfilePage({
           {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
               {isOrg ? (
-                /* an organization's one figure is its studios — it has no followers, follows nobody, and stands on no board */
-                <Link href="/business" aria-label={`${businesses.length} ${businesses.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
-                  <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{businesses.length}</span>
-                  <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>{businesses.length === 1 ? "Studio" : "Studios"}</span>
-                </Link>
+                /* an organization's figures are its studios and — since it can be
+                   followed (19 Sep 2026) — its followers; it follows nobody and stands on no board */
+                <>
+                  <Link href="/business" aria-label={`${businesses.length} ${businesses.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
+                    <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{businesses.length}</span>
+                    <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>{businesses.length === 1 ? "Studio" : "Studios"}</span>
+                  </Link>
+                  <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                    <span data-testid="my-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followers.length}</span>
+                    <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+                  </button>
+                </>
               ) : (
                 <>
               <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
@@ -493,7 +514,7 @@ export function MyProfilePage({
             <span style={{ fontSize: 13, color: SUB, fontWeight: 700 }}>{followRows.length}</span>
           </div>
           <div style={{ display: "flex", gap: 5, marginBottom: 14, overflowX: "auto", scrollbarWidth: "none" }}>
-            {(["All", "Users", "Artists", "Studios"] as const).map((s) => (
+            {FOLLOW_SEGS.map((s) => (
               <button type="button" key={s} onClick={() => setFollowSeg(s)} aria-pressed={followSeg === s} style={{ flex: "0 0 auto", textAlign: "center", padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, whiteSpace: "nowrap", background: followSeg === s ? PINK : CARD, color: followSeg === s ? "#fff" : SUB, border: "none", fontFamily: "inherit", boxShadow: followSeg === s ? "0 3px 10px rgba(90,200,250,.35)" : "none" }}>{s}</button>
             ))}
           </div>

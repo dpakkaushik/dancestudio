@@ -812,10 +812,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.waitForURL(/\/studio\/[0-9a-f-]+$/);
     studioUrl = learner.url();
     await expect(learner.getByText(studioName).first()).toBeVisible();
-    await expect(learner.getByTestId("followers-count")).toHaveText("0");
+    /* NO FIGURE ON THE PAGE (19 Sep 2026, the user: "remove all kinds of stats
+       from profile page"): the live count rides the Follow toggle as data, so
+       the suite can still watch it move without a number being printed */
+    const studioFollow = learner.getByTestId("follow-toggle");
+    await expect(studioFollow).toHaveAttribute("data-followers", "0");
     await learner.getByRole("button", { name: "Follow", exact: true }).click();
     await expect(learner.getByRole("button", { name: "Following" })).toBeVisible();
-    await expect(learner.getByTestId("followers-count")).toHaveText("1");
+    await expect(studioFollow).toHaveAttribute("data-followers", "1");
     // the schedule is the public calendar: published classes still to come
     await learner.getByRole("link", { name: "Schedule" }).click();
     await learner.waitForURL(/\/schedule$/);
@@ -1010,7 +1014,8 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // the public page prints the confirmed roster; the hub knows which list the trainer belongs on
     await trainer.goto(`/crew/${crewId}`);
-    await expect(trainer.getByTestId("crew-members-count")).toHaveText("2");
+    /* the Members figure left the page (19 Sep 2026) — the roster IS the count: two rows, each opening a person */
+    await expect(trainer.getByRole("link", { name: /'s profile$/ })).toHaveCount(2);
     await expect(trainer.getByText("You are in this crew")).toBeVisible();
     await expect(trainer.getByText("Crew leader", { exact: true })).toBeVisible();
     await trainer.goto("/crews");
@@ -1215,15 +1220,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toBeVisible();
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
-    // following a person is one bit, and the count moves
-    await expect(learner.getByTestId("person-followers")).toHaveText("0");
+    // following a person is one bit, and the count moves — as data on the toggle,
+    // never as a figure on the page (19 Sep 2026)
+    const personFollow = learner.getByTestId("follow-toggle");
+    await expect(personFollow).toHaveAttribute("data-followers", "0");
     await learner.getByRole("button", { name: "Follow" }).click();
     await expect(learner.getByRole("button", { name: /^Following/ })).toBeVisible();
-    await expect(learner.getByTestId("person-followers")).toHaveText("1");
+    await expect(personFollow).toHaveAttribute("data-followers", "1");
     // and it is really one bit: pressing again takes it back
     await learner.getByRole("button", { name: /^Following/ }).click();
     await expect(learner.getByRole("button", { name: "Follow" })).toBeVisible();
-    await expect(learner.getByTestId("person-followers")).toHaveText("0");
+    await expect(personFollow).toHaveAttribute("data-followers", "0");
 
     // the search box offers people now — and the row opens the person
     await learner.goto("/discover?city=Pune&tab=classes");
@@ -1268,7 +1275,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto(`/crew/${crewId}`);
     await trainer.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
     await trainer.waitForURL(/\/person\/[0-9a-f-]+$/);
-    await expect(trainer.getByRole("link", { name: /This is you/ })).toBeVisible();
+    /* "This is you · Your record ›" is GONE (19 Sep 2026, the user: "remove This is
+       your record … from profile page"): your own page offers no Follow, and the
+       Stats chip beside the QR opens your own record */
+    await expect(trainer.getByTestId("person-hero")).toBeVisible();
+    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", "/stats");
     await expect(trainer.getByRole("button", { name: "Follow" })).toHaveCount(0);
     // ⚠ and the public view of yourself offers NO photo control (16 Sep 2026):
     // this page is what the eye in the tab bar opens, so it is what a visitor
@@ -1300,7 +1311,7 @@ test.describe.serial("DanceOS, end to end", () => {
       await guest.goto(studioUrl);
       await expect(guest.getByText(studioName).first()).toBeVisible();
       await expect(guest.getByRole("link", { name: "Follow" })).toBeVisible();
-      await expect(guest.getByTestId("followers-count")).toHaveText("1");
+      await expect(guest.getByTestId("follow-toggle")).toHaveAttribute("data-followers", "1");
     } finally {
       await guestContext.close();
     }
@@ -1626,18 +1637,20 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();
 
-    // ── B6: the follower COUNT becomes a list, for the owner and nobody else.
+    // ── B6: who follows you is a list, for the owner and nobody else — a small
+    // button in the owner's row since 19 Sep 2026, no count on it (the number is
+    // inside the sheet, with the list)
     await owner.goto(studioUrl);
-    await owner.getByRole("button", { name: "1 follower — see who" }).click();
+    await owner.getByRole("button", { name: "Followers — see who" }).click();
     const followersSheet = owner.getByRole("dialog", { name: "Followers" });
     const learnerRow = followersSheet.getByRole("link", { name: /E2E Learner/ });
     await expect(learnerRow).toBeVisible();
     await expect(learnerRow).toHaveAttribute("href", `/person/${learnerId}`);
     await learnerRow.click();
     await owner.waitForURL(`**/person/${learnerId}`);
-    // a follower reading the same page gets the figure, not the door
+    // a follower reading the same page gets their own Following toggle, not the door
     await learner.goto(studioUrl);
-    await expect(learner.getByTestId("followers-count")).toHaveText("1");
+    await expect(learner.getByTestId("follow-toggle")).toHaveAttribute("data-followers", "1");
     await expect(learner.getByRole("button", { name: /see who/ })).toHaveCount(0);
 
     // ── the two buttons whose destinations already existed

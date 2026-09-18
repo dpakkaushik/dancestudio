@@ -1,6 +1,6 @@
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { DosFollowers } from "@/features/discovery/components/discover-kit";
-import { gradientOf } from "@/features/profiles/components/PublicProfile";
+import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { photoUrl } from "@/lib/media/photo";
 import type { CrewSummary } from "@/types/crew";
 

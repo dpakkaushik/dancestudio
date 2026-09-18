@@ -14,11 +14,12 @@ interface ProfileRow {
   member_no?: number | null;
   verified_at?: string | null;
   phone?: string | null;
+  contact_email?: string | null;
 }
 
 /** every column a profile is drawn from — one list, so no read can forget one
  *  (the photos slice found a read that had its own list and never got profile_photo_path) */
-export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, socials, styles, member_no, verified_at, phone";
+export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, socials, styles, member_no, verified_at, phone, contact_email";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -41,6 +42,7 @@ export const toProfile = (row: ProfileRow): Profile => ({
   memberNo: row.member_no == null ? null : Number(row.member_no),
   verifiedAt: row.verified_at ?? null,
   phone: row.phone ?? null,
+  contactEmail: row.contact_email ?? null,
 });
 
 export async function findProfileById(
@@ -90,6 +92,11 @@ export interface MyProfileInput {
   styles: string[];
   /** the number the person chooses to publish — Call on their page (N8) */
   phone: string | null;
+  /** THE CONTACT EMAIL (19 Sep 2026) — the Mail button's address. Three
+   *  meanings, kept apart on purpose: `undefined` leaves the column as it is
+   *  (the styles and links sheets never touch it), `null` CLEARS it, a string
+   *  sets it. The RPC reads the same three: null = unchanged, '' = cleared. */
+  contactEmail?: string | null;
 }
 
 /** The one door for what a person says about themselves (S_profiletab's Edit
@@ -105,6 +112,9 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
     p_socials: input.socials,
     p_styles: input.styles,
     p_phone: input.phone,
+    /* `p_contact_email` is LAST with a default on the RPC (`20260919122000`):
+       null there means "leave it", an empty string clears it */
+    p_contact_email: input.contactEmail === undefined ? null : (input.contactEmail ?? ""),
   });
   if (error) {
     throw new Error(error.message);

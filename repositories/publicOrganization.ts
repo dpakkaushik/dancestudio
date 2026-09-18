@@ -19,8 +19,13 @@ export interface PublicOrganization {
   socials: SocialLink[];
   verified: boolean;
   since: string;
-  /** the hosting row its events hang off (R15) — null if none was ever made */
+  /** the hosting row its events hang off (R15) — null if none was ever made; since
+   *  19 Sep 2026 also what an enquiry to the organization is sent to */
   hostBusinessId: string | null;
+  /** the Call button's number (19 Sep 2026) — the organization's, published from Edit profile */
+  phone: string | null;
+  /** the Mail button's address (19 Sep 2026) */
+  contactEmail: string | null;
 }
 
 export interface PublicOrganizationStudio {
@@ -54,7 +59,7 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     throw new Error(`publicOrganization.find failed: ${error.message}`);
   }
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { id: string; name: string; city: string | null; photo_path: string | null; about: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null }
+    | { id: string; name: string; city: string | null; photo_path: string | null; about: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null; phone?: string | null; contact_email?: string | null }
     | undefined;
   if (!row) return null;
   return {
@@ -67,6 +72,8 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     verified: Boolean(row.verified),
     since: row.since,
     hostBusinessId: row.host_business_id,
+    phone: row.phone ?? null,
+    contactEmail: row.contact_email ?? null,
   };
 }
 

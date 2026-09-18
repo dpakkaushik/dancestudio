@@ -121,7 +121,8 @@ export function IdentityHero({
   avatarAlt?: string;
   /** THE HEADER — what swipes across the top */
   shots?: HeroShot[];
-  /** controls pinned to the hero's top-right corner (the Profile tab's Edit and Public view, 10613) */
+  /** controls pinned to the hero's top-right corner (the Profile tab's Edit and
+   *  Public view, 10613) — stacked, the pencil above the eye (19 Sep 2026) */
   corner?: ReactNode;
   testId?: string;
   /** whatever the page adds under the styles — Home's role word, code and rank */
@@ -150,7 +151,10 @@ export function IdentityHero({
      profile screen people already know lays this out. */
   return (
     <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: heroWash(tint) }}>
-      {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", gap: 6 }}>{corner}</div> : null}
+      {/* THE CORNER IS A COLUMN (19 Sep 2026, the user: "give an eye to view
+          profile on the home tab below edit on top right") — the pencil, then
+          the eye under it, on every page that has both */}
+      {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>{corner}</div> : null}
 
       <HeroRail name={name} grad={grad} shots={shots} />
 

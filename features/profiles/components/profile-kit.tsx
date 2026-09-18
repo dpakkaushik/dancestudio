@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { DOS_DISPLAY, GOLD, PINK } from "@/lib/design/tokens";
 import { isPlatform, type Platform } from "@/lib/constants/socials";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import { CREW_TINT } from "@/types/crew";
 import type { PersonKind } from "@/types/profile";
 
 /** The Profile tab's small parts, lifted from the prototype so the own page and
@@ -338,13 +339,22 @@ export const StatsIcon = () => (
    a building — because the prototype's ChoreoI / ArtistI / StudioI are not lifted
    and a follow of a crew does not exist yet (CrewI in crew-kit is the fourth,
    when it does). ── */
-/** the three marks are the three KINDS: a user mid-step, an artist with an arm raised, an organization as a building */
-export type FollowGlyph = PersonKind;
+/** the four marks are the three KINDS and a CREW: a user mid-step, an artist
+ *  with an arm raised, an organization as a building, a crew as three heads
+ *  (CrewI, 3146) — the fourth since a crew can be followed (19 Sep 2026) */
+export type FollowGlyph = PersonKind | "crew";
 export function RoleGlyph({ kind, size = 11 }: { kind: FollowGlyph; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {kind === "org" ? (
         <path d="M4 20V9l8-5 8 5v11M4 20h16M10 20v-5h4v5" />
+      ) : kind === "crew" ? (
+        <>
+          <circle cx="8" cy="8.4" r="2.5" />
+          <circle cx="16" cy="8.4" r="2.5" />
+          <circle cx="12" cy="6.2" r="2.5" />
+          <path d="M3.5 19.5c.6-2.6 2.3-4 4.5-4M20.5 19.5c-.6-2.6-2.3-4-4.5-4M8 20c.7-3 2-4.4 4-4.4s3.3 1.4 4 4.4" />
+        </>
       ) : (
         <>
           <circle cx="12" cy="5" r="2.2" fill="currentColor" stroke="none" />
@@ -360,8 +370,8 @@ export function RoleGlyph({ kind, size = 11 }: { kind: FollowGlyph; size?: numbe
  *  Followers sheet and a person's are the same list of the same people and a
  *  dancer who is pink on one and blue on the other is two answers to one
  *  question. */
-export const followTint = (kind: PersonKind | "studio-biz" | "artist-biz") =>
-  kind === "user" ? PINK : kind === "artist" || kind === "artist-biz" ? GOLD : "#3498DB";
+export const followTint = (kind: PersonKind | "studio-biz" | "artist-biz" | "crew") =>
+  kind === "user" ? PINK : kind === "artist" || kind === "artist-biz" ? GOLD : kind === "crew" ? CREW_TINT : "#3498DB";
 
 export function RoleBadge({ kind, tint }: { kind: FollowGlyph; tint: string }) {
   return (

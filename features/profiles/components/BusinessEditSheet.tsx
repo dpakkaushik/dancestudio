@@ -73,6 +73,8 @@ export function BusinessEditSheet({
   const [about, setAbout] = useState(tenant.about ?? "");
   const [founded, setFounded] = useState(tenant.foundedYear ? String(tenant.foundedYear) : "");
   const [phone, setPhone] = useState(tenant.phone ?? "");
+  /* the Mail button's address (19 Sep 2026) — an empty box clears it */
+  const [email, setEmail] = useState(tenant.contactEmail ?? "");
   const [socials, setSocials] = useState<Array<{ platform: string; url: string }>>(tenant.socials);
   const [addPlatform, setAddPlatform] = useState<string>("");
   const [addUrl, setAddUrl] = useState("");
@@ -133,6 +135,7 @@ export function BusinessEditSheet({
         about: about.trim() || null,
         foundedYear: yr,
         phone: phone.trim() || null,
+        contactEmail: email.trim() || null,
         socials,
         enquiryTypes: tenant.enquiryTypes,
         accepts: tenant.accepts,
@@ -240,6 +243,11 @@ export function BusinessEditSheet({
           <input aria-label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={fieldInput} />
         </div>
       </div>
+      {/* THE MAIL BUTTON'S ADDRESS (19 Sep 2026, the user: "Mail for all except
+          users") — beside the number the Call button dials, saved through the
+          same door; an empty box clears it */}
+      <div style={fieldLabel}>Email</div>
+      <input aria-label="Email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@studio.example" style={fieldInput} />
 
       <div style={{ ...fieldLabel, marginTop: 6 }}>Links</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>

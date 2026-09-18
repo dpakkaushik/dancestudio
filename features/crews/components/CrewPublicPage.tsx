@@ -1,34 +1,37 @@
-import Image from "next/image";
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
+import { ActionRow, MailButton } from "@/features/profiles/components/ContactButtons";
+import { FollowToggle } from "@/features/profiles/components/FollowToggle";
+import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
-import { gradientOf } from "@/features/profiles/components/PublicProfile";
-import { dosStyleColor } from "@/lib/constants/styles";
+import { StatsChip } from "@/features/profiles/components/StatsChip";
+import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { EntityMark, Group, TYPE, smallBox } from "@/features/profiles/components/profile-kit";
+import { DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
-import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
-import type { Crew, CrewEntry, CrewMember } from "@/types/crew";
+import type { HeaderPhoto } from "@/repositories/headerPhotos";
+import { CREW_GRAD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
 import { EV_TINT } from "@/types/event";
-import { initialsOf } from "./crew-kit";
 
-/** A crew's public page — prototype S_profiletab with `publicEntity="crew"`
- *  (10565-11060, the crew branch at 11044): the same lit profile the studio
- *  and artist pages wear — CREW over the name, the QR beside it, where it is,
- *  the figures (Members, Events entered), the style as a coin — then the people
- *  in one language: Crew leader, headed with a count, then Crew members, or
- *  "Nobody else in the crew yet." Only CONFIRMED members are printed (RLS: an
- *  unanswered ask never puts a name on a public page). Under them, the battle
- *  record — each event a door to its page.
+/** A CREW'S PUBLIC PAGE — prototype S_profiletab with `publicEntity="crew"`
+ *  (10565-11060, the crew branch at 11044). SINCE 19 Sep 2026 IT STANDS ON THE
+ *  ONE HERO EVERY PROFILE PAGE WEARS — `IdentityHero`: the header swiping
+ *  through up to five pictures, the crew's photo on the disc, CREW over the
+ *  name, the QR and the crew board's Stats chip stacked on the right, Since ·
+ *  the city, the style as the app's one tile. It drew its own 206 square until
+ *  today, the last page that did.
  *
- *  ENQUIRY (18 Sep 2026, the user: "crews can also get enquiries"): the same
- *  button a business's page wears, aimed at the crew — a celebration, a corporate
- *  show or a collaboration — and answered by its leader from the crew's Inbox.
- *  Offered to a stranger only: the leader and the members are the crew.
+ *  Under the hero, in the order every public page now shares (the user's list):
+ *  **Follow · Following** — a crew can be followed now (`follows.crew_id`) —
+ *  the **buttons** a crew's page carries — Enquiry · Mail — then the
+ *  **associations**: Crew leader, Crew members, and the battle record. NO
+ *  FIGURES: the Members · Events pair under the name is gone. Only CONFIRMED
+ *  members are printed (an unanswered ask never puts a name on a public page).
  *
- *  Not lifted, tracked in the backlog: Follow (follows target businesses;
- *  following a crew needs its own row), About, photos, the rank. */
+ *  Who sees what: the LEADER gets the door to the crew's home; a MEMBER is told
+ *  they are in it; anybody else gets Follow and Enquiry (the leader and the
+ *  members ARE the crew, so neither is offered to them). */
 
-const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
-const shelf: React.CSSProperties = { fontSize: 15, fontWeight: 900, letterSpacing: -0.3, fontFamily: DOS_DISPLAY };
 const joinedYear = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", year: "numeric" }).format(new Date(iso));
 const monthDay = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -36,35 +39,19 @@ const monthDay = (iso: string) => {
 };
 
 function Person({ m, role }: { m: CrewMember; role: string }) {
-  const g = gradientOf(m.name);
-  const face = photoUrl(m.avatarPath);
   return (
-    /* the roster opens the people on it — the person page landed with the first
-       parity slice, and a name you can tap is the whole point of a roster */
+    /* the roster opens the people on it — a name you can tap is the whole point of a roster */
     <Link href={`/person/${m.userId}`} aria-label={`Open ${m.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", minWidth: 0, color: INK, textDecoration: "none" }}>
-      <span style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 13, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(150deg,${g[0]},${g[1]})`, color: "#fff", fontSize: 15, fontWeight: 900, letterSpacing: 0.4, fontFamily: DOS_DISPLAY }}>
-        {face ? <Image src={face} alt="" width={42} height={42} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
-      </span>
+      <EntityMark name={m.name} photo={photoUrl(m.avatarPath)} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-        <span style={{ display: "block", ...micro, color: role === "Crew leader" ? GOLD : MUTED, marginTop: 3 }}>
+        <span style={{ display: "block", ...TYPE.micro, color: role === "Crew leader" ? GOLD : MUTED, marginTop: 3 }}>
           {role}
           {m.city ? ` · ${m.city}` : ""}
         </span>
       </span>
+      <span aria-hidden="true" style={{ flexShrink: 0, color: LINE, fontSize: 15, fontWeight: 600 }}>›</span>
     </Link>
-  );
-}
-
-function Group({ title, n, children }: { title: string; n: number; children: React.ReactNode }) {
-  return (
-    <div style={{ marginTop: 18 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
-        <span style={shelf}>{title}</span>
-        <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{n}</span>
-      </div>
-      <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "2px 11px" }}>{children}</div>
-    </div>
   );
 }
 
@@ -72,44 +59,48 @@ export function CrewPublicPage({
   crew,
   members,
   entries,
+  header = [],
   viewer,
+  following = false,
+  canFollow = true,
   signedIn,
   todayKey,
 }: {
   crew: Crew;
   members: CrewMember[];
   entries: CrewEntry[];
+  /** THE HEADER PICTURES (19 Sep 2026): up to five, the leader's to add */
+  header?: HeaderPhoto[];
   viewer: "leader" | "member" | "other";
-  /** a stranger who is signed out is offered the Enquiry as a door to sign in */
+  following?: boolean;
+  /** false for an organization viewer — one follows nothing */
+  canFollow?: boolean;
+  /** a stranger who is signed out is offered Follow and Enquiry as doors to sign in */
   signedIn: boolean;
   todayKey: string;
 }) {
-  const RG = gradientOf(crew.name);
+  const RG = CREW_GRAD;
   const RC = RG[1];
-  const SQ = 206;
-  const sqShadow = "0 0 52px 20px rgba(0,0,0,.30), 0 26px 60px -4px rgba(0,0,0,.55), 0 8px 18px rgba(0,0,0,.4)";
   const lead = members.filter((m) => m.role === "leader");
   const rest = members.filter((m) => m.role !== "leader");
-  const styleCol = dosStyleColor(crew.style);
   const path = `/crew/${crew.id}`;
-  const face = photoUrl(crew.photo);
+  const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
       <div style={{ padding: "0 16px" }}>
-        <div style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: `linear-gradient(180deg, ${RC}b8 0%, ${RC}55 46%, ${RC}18 74%, ${LILAC} 100%)` }}>
-          <div style={{ display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
-            <div aria-label={crew.name} style={{ width: SQ, height: SQ, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", background: `linear-gradient(135deg,${RG[0]},${RG[1]})`, color: "#fff", fontSize: 64, fontWeight: 900, letterSpacing: 1, fontFamily: DOS_DISPLAY, boxShadow: sqShadow }}>
-              {face ? <Image src={face} alt="" width={SQ} height={SQ} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(crew.name)}
-            </div>
-          </div>
-          <div style={{ padding: "10px 16px 2px" }}>
-            <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>CREW</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-              <span style={{ fontSize: 24, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -0.8, lineHeight: 1.08, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{crew.name}</span>
-              <ProfileShare path={path} name={crew.name} />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 15, fontWeight: 700, color: SUB }}>
+        <IdentityHero
+          testId="crew-public-hero"
+          name={crew.name}
+          grad={RG}
+          tint={RC}
+          eyebrow="Crew"
+          verified={false}
+          share={<ProfileShare path={path} name={crew.name} />}
+          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): the crew board, where this crew is ranked */
+          stats={<StatsChip href="/stats?tab=charts&seg=crew" />}
+          meta={
+            <>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
                   <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
@@ -117,47 +108,39 @@ export function CrewPublicPage({
                 </svg>
                 Since {joinedYear(crew.createdAt)}
               </span>
-              <span style={{ color: LINE }}>·</span>
-              <span style={{ fontWeight: 800, color: INK }}>{crew.city}</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-              <span aria-label={`${members.length} members`}>
-                <span data-testid="crew-members-count" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>
-                  {members.length}
-                </span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Members</span>
-              </span>
-              <span aria-label={`${entries.length} events entered`}>
-                <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{entries.length}</span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Events</span>
-              </span>
-            </div>
-          </div>
-        </div>
+              <HeroDot />
+              <span>{crew.city}</span>
+            </>
+          }
+          styles={[crew.style]}
+          styleAria={(s) => `${s} — the crew's style`}
+          avatar={photoUrl(crew.photo)}
+          avatarAlt={crew.name}
+          shots={shots}
+        />
 
-        {/* the style, as a coin (DosStyleCoin 3400) */}
-        <div style={{ display: "flex", gap: 6, padding: "14px 0 6px", alignItems: "center" }}>
-          <span aria-label={crew.style} style={{ width: 34, height: 34, borderRadius: 17, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 12, fontFamily: DOS_DISPLAY, background: `linear-gradient(135deg,${styleCol} 0%, ${styleCol}cc 55%, ${styleCol}80 100%)`, boxShadow: "0 1px 4px rgba(0,0,0,.35)" }}>
-            {crew.style.replace(/[^A-Za-z0-9 -]/g, " ").trim().split(/[\s-]+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "•"}
-          </span>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: SUB, marginLeft: 4 }}>{crew.style}</span>
-        </div>
-
-        {/* what you can do here depends on who you are to the crew */}
+        {/* ── what you can do here depends on who you are to the crew ── */}
         <div style={{ marginTop: 12 }}>
           {viewer === "leader" ? (
-            <Link href={`/crews/${crew.id}/manage`} style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
+            <Link href={`/crews/${crew.id}/manage`} style={smallBox(false, RC)}>
               You lead this crew · Manage ›
             </Link>
           ) : viewer === "member" ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}` }}>You are in this crew</div>
-          ) : (
-            /* ask the crew — for a wedding, a corporate show, a collaboration; its leader answers */
-            <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} />
-          )}
+            <div style={{ ...smallBox(false, RC), cursor: "default" }}>You are in this crew</div>
+          ) : canFollow ? (
+            <FollowToggle target={{ kind: "crew", id: crew.id }} initialFollowing={following} accent={RC} signedIn={signedIn} />
+          ) : null}
         </div>
 
-        {/* the people, in one language: a row per person, the group headed with a count */}
+        {/* ── THE BUTTONS A CREW'S PAGE CARRIES (19 Sep 2026): Enquiry · Mail — the
+            enquiry a celebration, a corporate show or a collaboration, answered by
+            the leader from the crew's Inbox ── */}
+        <ActionRow>
+          {viewer === "other" ? <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
+          {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}
+        </ActionRow>
+
+        {/* ── THE ASSOCIATIONS, in one language: a row per person, the group headed with a count ── */}
         {lead.length ? (
           <Group title="Crew leader" n={lead.length}>
             {lead.map((m) => (

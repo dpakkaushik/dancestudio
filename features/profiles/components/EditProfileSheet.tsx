@@ -38,14 +38,14 @@ export function EditProfileSheet({
 }: {
   profile: Profile;
   header?: HeaderPhoto[];
-  /** one for a user, ten for an artist, none for an organization */
+  /** one for a user, five for an artist, ten for an organization (19 Sep 2026) */
   headerMax?: number;
   onClose: () => void;
   onSaved?: () => void;
 }) {
   const router = useRouter();
   const isOrg = profile.role === "org";
-  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, about: profile.about ?? "", phone: profile.phone ?? "" });
+  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, about: profile.about ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "" });
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   /* the header pictures as a DRAFT (16 Sep 2026) — the same bug lived here:
@@ -77,6 +77,8 @@ export function EditProfileSheet({
         socials: profile.socials,
         styles: profile.styles,
         phone: d.phone.trim() || null,
+        /* the Mail button's address (19 Sep 2026): an empty box clears it */
+        contactEmail: d.email.trim() || null,
       });
       if (out.error) {
         setErr(out.error);
@@ -108,19 +110,28 @@ export function EditProfileSheet({
           than making them guess (N8 — Call, S_profiletab 10879) */}
       <div style={fieldLabel}>Mobile</div>
       <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Shown on your public page as Call. Leave it empty and nobody sees a number.</div>
+      {/* CALL IS A STUDIO'S AND AN ORGANIZATION'S (19 Sep 2026, the user's list) —
+          a person's number stays on their record and is no longer dialled from
+          their page, so the line under the box says which is true here */}
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>{isOrg ? "Shown on your organization's page as Call. Leave it empty and nobody sees a number." : "Kept on your account. It is not shown on your public page."}</div>
+      {/* THE MAIL BUTTON'S ADDRESS (19 Sep 2026): an organization's and an
+          artist's page carry Mail; a user's page carries no buttons at all */}
+      <div style={fieldLabel}>Email</div>
+      <input aria-label="Email" type="email" inputMode="email" value={d.email} onChange={(e) => setD((x) => ({ ...x, email: e.target.value }))} placeholder="you@example.com" style={fieldInput} />
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>{isOrg ? "Shown on your organization's page as Mail." : "Shown on your page as Mail while you hold the Artist plan."} Leave it empty and nobody sees an address.</div>
       {/* one label style, every field — see BusinessEditSheet for why */}
       <div style={fieldLabel}>{isOrg ? "Update logo" : "Update profile"}</div>
       <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
       {/* THE HEADER PICTURES (15 Sep 2026): an artist has no verification
-          step, so this sheet is where theirs are added — up to ten; a user
-          has one. A DRAFT since 16 Sep 2026: adding and removing both wait
-          for Save, so Cancel means what it says. */}
+          step, so this sheet is where theirs are added — up to five; a user
+          has one; an organization ten (the caps since 19 Sep 2026). A DRAFT
+          since 16 Sep 2026: adding and removing both wait for Save, so Cancel
+          means what it says. */}
       {headerMax > 0 ? (
         <>
           <div style={fieldLabel}>Update header</div>
           {/* the one non-obvious fact, and only to the person it is news to */}
-          {headerMax === 1 ? <div style={{ fontSize: 10.5, color: SUB, marginBottom: 8 }}>The Artist plan makes it ten.</div> : null}
+          {headerMax === 1 ? <div style={{ fontSize: 10.5, color: SUB, marginBottom: 8 }}>The Artist plan makes it five.</div> : null}
           <HeaderPictures draft={draft} tiles={tiles} kind="person" canWrite addLabel="Add picture" onOpen={setLightbox} busy={pending} />
         </>
       ) : null}

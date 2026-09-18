@@ -1,8 +1,8 @@
 "use client";
 
-import { addMyGalleryPhotoAction, removeMyGalleryPhotoAction } from "@/features/media/server-actions/photos";
+import { addCrewHeaderPhotoAction, addMyGalleryPhotoAction, removeCrewHeaderPhotoAction, removeMyGalleryPhotoAction } from "@/features/media/server-actions/photos";
 import { addStudioProofPhotoAction, removeStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
-import { MEDIA_BUCKET, photoPath, photoUrl } from "@/lib/media/photo";
+import { HEADER_MAX_CREW, MEDIA_BUCKET, photoPath, photoUrl } from "@/lib/media/photo";
 import { PROOF_BUCKET, PROOF_MAX, proofPath } from "@/lib/media/proof";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { DraftItem, StoredPicture } from "./headerDraft";
@@ -186,7 +186,9 @@ export const studioPorts = (tenantId: string, ownerId: string): CommitPorts => (
 });
 
 /** A PERSON's are their own, in the public bucket. `remove_my_header_photo`
- *  has NO minimum — a person may hold none — so the floor is 0, not 1. */
+ *  has NO minimum — a person may hold none — so the floor is 0, not 1. `max` is
+ *  the kind's ceiling (`headerMaxFor`): ten for an organization, five for an
+ *  artist, one for a user (19 Sep 2026). */
 export const personPorts = (userId: string, max: number): CommitPorts => ({
   bucket: MEDIA_BUCKET,
   pathFor: (file) => photoPath({ kind: "gallery", id: userId }, file),
@@ -196,4 +198,18 @@ export const personPorts = (userId: string, max: number): CommitPorts => ({
   remove: (id) => removeMyGalleryPhotoAction({ id }),
   min: 0,
   max,
+});
+
+/** A CREW's (19 Sep 2026): the leader's to change, in the crew's own folder of
+ *  the public bucket — the same folder its disc lives in — five at most, and no
+ *  floor: a crew may hold none. */
+export const crewPorts = (crewId: string): CommitPorts => ({
+  bucket: MEDIA_BUCKET,
+  pathFor: (file) => photoPath({ kind: "crew", id: crewId }, file),
+  urlFor: (path) => photoUrl(path),
+  signed: false,
+  add: (path) => addCrewHeaderPhotoAction({ crewId, path }),
+  remove: (id) => removeCrewHeaderPhotoAction({ id, crewId }),
+  min: 0,
+  max: HEADER_MAX_CREW,
 });

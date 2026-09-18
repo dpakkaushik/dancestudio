@@ -366,20 +366,21 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       fail += 1;
     }
 
-    /* the organization's Home — the same hero, its logo on the disc, an empty header, no QR */
+    /* the organization's Home — the same hero, its logo on the disc, an empty header (none added yet — it may hold ten since 19 Sep 2026), and a QR to its own page */
     await org.goto(`${BASE}/`);
     await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
     check((await discImgs(org)) === 1, "org home: the logo is on the disc");
-    check((await railImgs(org)) === 0, "org home: no header — an organization is not a place");
-    check((await org.getByLabel("Share your profile — QR code").count()) === 0 && (await org.getByRole("button", { name: /QR/ }).count()) === 0, "org home: no QR — an organization has no public page");
+    check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (an organization holds up to ten since 19 Sep 2026)");
+    check((await org.getByLabel("Share this profile — QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
     check(await org.getByText("Organization", { exact: true }).isVisible(), "org home: the role word under the sleeve");
     check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed in Edit profile");
-    /* the chrome, re-cut 15 Sep 2026: four in the bar and an eye, Edit on the hero, Stats in the grid */
+    /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the eye under the pencil on the hero, Stats the chip */
     const bar = org.getByRole("navigation", { name: "Main" });
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
-    /* 18 Sep 2026: an organization has a page of its own now, and the eye opens THAT */
-    check((await bar.getByRole("link", { name: "Public view" }).getAttribute("href")) === `/org/${orgId}`, "bar: the eye opens the organization's own page as a stranger sees it");
-    check((await bar.getByRole("link").count()) === 4, "bar: Home · Discover · Inbox · the eye — four");
+    check((await bar.getByRole("link", { name: "Public view" }).count()) === 0, "bar: the eye left the bar (19 Sep 2026, the user: 'remove profile tab from navbar')");
+    check((await bar.getByRole("link").count()) === 3, "bar: Home · Discover · Inbox — three");
+    /* 18 Sep 2026: an organization has a page of its own, and the eye opens THAT — from the hero's corner, under the pencil */
+    check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: the eye under the pencil opens the organization's own page as a stranger sees it");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: Edit profile is a pencil on the hero");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
     await org.getByRole("button", { name: "Edit profile", exact: true }).click();
@@ -395,7 +396,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await shot("org-home");
     await org.close();
 
-    /* ── TWO: a person — one header picture; then an artist — up to ten ────── */
+    /* ── TWO: a person — one header picture; then an artist — up to five (19 Sep 2026; ten before) ── */
     const me = await browser.newPage({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 1 });
     const shotMe = shotOf(me);
     userId = await signUp(me, `hero-user-${stamp}@example.com`);
@@ -407,7 +408,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled from Edit profile");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText("User", { exact: true }).isVisible(), "user home: the role word");
-    check((await me.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Public view" }).getAttribute("href")) === `/person/${userId}`, "bar: a user's eye opens their person page");
+    check((await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the eye under the pencil opens their person page (off the bar since 19 Sep 2026)");
     check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "user home: Edit profile is a pencil on the hero");
 
     /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026) ── */
@@ -483,7 +484,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       check((await me.getByLabel("Change your photo").count()) === 0 && (await me.getByLabel(/^Remove photo/).count()) === 0, "profile tab: and the same bare hero — no ＋, no ✕");
       /* the person's own PUBLIC view is what a visitor sees, and nothing else */
       await me.goto(`${BASE}/person/${userId}`);
-      await me.getByRole("link", { name: /This is you/ }).waitFor();
+      await me.getByTestId("person-hero").waitFor();
+      /* "This is you · Your record" is gone (19 Sep 2026): no Follow on your own page, and Stats is the chip */
+      check((await me.getByRole("button", { name: "Follow" }).count()) === 0 && (await me.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === "/stats", "public view of yourself: no Follow, and the Stats chip opens your own record");
       check((await me.getByLabel("Change your photo").count()) === 0, "public view of yourself: no photo control — it is the view a visitor gets");
     } else {
       console.log("HEADER  the picture did not land in 25 s — is migration 20260915090000 on the database?");

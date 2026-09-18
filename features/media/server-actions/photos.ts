@@ -95,6 +95,39 @@ export async function removeMyGalleryPhotoAction(input: { id: string }): Promise
   return { error: null, path: (data as string | null) ?? null };
 }
 
+/** A CREW'S HEADER (19 Sep 2026): the same two doors a person's header has, for
+ *  the crew's leader — the file is already in `crews/{crew}/…`, the RPC checks
+ *  the folder, the leader and the ceiling of five, and records the row;
+ *  removing returns the path so the browser takes the object out too. */
+export async function addCrewHeaderPhotoAction(input: { crewId: string; path: string }): Promise<PhotoActionResult> {
+  const parsed = z.object({ crewId: z.string().uuid(), path: z.string().trim().min(1).max(300) }).safeParse(input);
+  if (!parsed.success) return { error: "Invalid photo" };
+  const supabase = await requireUser();
+  const { data, error } = await supabase.rpc("add_crew_header_photo", { p_crew_id: parsed.data.crewId, p_path: parsed.data.path });
+  if (error) {
+    return { error: error.message };
+  }
+  revalidatePath(`/crew/${parsed.data.crewId}`);
+  revalidatePath(`/crews/${parsed.data.crewId}/manage`);
+  return { error: null, path: parsed.data.path, id: (data as string | null) ?? null };
+}
+
+export async function removeCrewHeaderPhotoAction(input: { id: string; crewId?: string }): Promise<PhotoActionResult> {
+  const parsed = z.object({ id: z.string().uuid(), crewId: z.string().uuid().optional() }).safeParse(input);
+  if (!parsed.success) return { error: "Invalid photo" };
+  const supabase = await requireUser();
+  const { data, error } = await supabase.rpc("remove_crew_header_photo", { p_id: parsed.data.id });
+  if (error) {
+    return { error: error.message };
+  }
+  if (parsed.data.crewId) {
+    revalidatePath(`/crew/${parsed.data.crewId}`);
+    revalidatePath(`/crews/${parsed.data.crewId}/manage`);
+  }
+  revalidatePath("/crew/[crewId]", "page");
+  return { error: null, path: (data as string | null) ?? null };
+}
+
 export async function setCrewPhotoAction(input: { crewId: string; path: string | null }): Promise<PhotoActionResult> {
   const parsed = z.object({ crewId: z.string().uuid(), path }).safeParse(input);
   if (!parsed.success) return { error: "Invalid photo" };

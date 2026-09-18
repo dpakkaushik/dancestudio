@@ -1,8 +1,122 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (17–18 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### AN ARTIST IS THEIR PROFILE, AN ORGANIZATION HAS A PAGE, DISCOVER TURNS A PAGE, FIFTEEN STUDIOS, A RENAME, RATE LIMITS, AND A RECORD THAT COUNTS TO THE CLOSE (18 Sep 2026, latest) — SIX MIGRATIONS APPLIED ⚠ (Rule 9: RLS)
+> ### EVERY PUBLIC PROFILE PAGE ON ONE PLAN — FOLLOW, THE BIO, THE BUTTONS BY KIND, THE ASSOCIATIONS, NO FIGURES; THE EYE LEAVES THE BAR (19 Sep 2026, latest) — FIVE MIGRATIONS ⚠ (Rule 9: RLS) — WRITTEN, DRY-RUN **76/76** ROLLED BACK, **APPLIED ON THE USER'S WORD** (see the Verified line for where this stands)
+> The user, in one message: *"Profile page — A. Remove profile tab from navbar.
+> B. Give an eye to view profile on the home tab below edit on top right. C. Give
+> Stats button same as home page on profile. D. Give buttons above schedule for
+> Organization, Studio, Artist, Crew, User profile page — 1. Follow with Following
+> toggle for all, 2. Send Enquiry for all except users, 3. Call for studios and
+> organizations, 4. Mail for all except users, 5. Location for only Studio and
+> Organizations. E. Associations displayed below for each profile page — 1.
+> Organization: Owner (one of the users added from team in organizations), list
+> of studios they run 2. Studios: Owner, Faculty, Visiting Faculty 3. Artist:
+> Studios taught at, Crews 4. Crews: Crew leader, Crew members 5. User: Crew.
+> F. Remove all kinds of stats from profile page as have given a separate button
+> for it now. G. Bio above all buttons below follow / Following. H. Remove This is
+> your record and No sessions on record from profile page. I. Poster on all
+> profiles should be swipeable with limits — Organization & Studio 10, Artist and
+> Crews 5, User 1."* Then: *"start again and push to live."* "Profile page" is the
+> PUBLIC page the eye opens (`/person`, `/org`, `/studio`, `/crew`); the `/profile`
+> tab (the gear's, the account number's) keeps its own figures.
+> * **A / B — THE BAR IS THREE: Home · Discover · Inbox.** The eye that had the
+>   fourth slot since 15 Sep is the second control in Home's corner, under the
+>   pencil (`IdentityHero`'s corner is a COLUMN now, on every page that has both).
+>   `AppChrome` lost `publicViewHref`; the layout no longer computes it. A crew's
+>   home gained the same pair — a pencil (new `CrewEditSheet`) over its eye. Row C16.
+> * **C — STATS IS THE CHIP UNDER THE QR ON EVERY PUBLIC PAGE.** Your own page →
+>   `/stats` (an organization's own → `/business/stats`); somebody else's → the
+>   board they stand on: a person `seg=artist|dancer`, a studio and an
+>   organization `seg=studio`, a crew `seg=crew`.
+> * **D — THE BUTTONS, PAGE BY PAGE, in one order under the hero: Follow ·
+>   Following (one `FollowToggle` for the three things a follow can name, NO
+>   count printed — it rides as `data-followers`), the BIO (`BioBlock`: About,
+>   then the links), then the row:** organization — Enquiry · Call · Mail ·
+>   Location; studio — Enquiry · Call · Mail · Location (then Schedule); artist
+>   — Enquiry · Mail (then Schedule when they run something); crew — Enquiry ·
+>   Mail; user — nothing. `ContactButtons.tsx` (Call = `tel:`, Mail = `mailto:`
+>   the new `contact_email`, Location = Maps by name + place). ⚠ **Call is OFF an
+>   artist's page** — the user's list gives it to studios and organizations; a
+>   person's published number stays on the record and the Edit sheet says so.
+>   Row R25.
+> * **E — THE ASSOCIATIONS.** Organization: Studios, Events (⚠ **"Owner — one of
+>   the users added from team" is NOT built**: an organization is ONE LOGIN with
+>   no team table, so there is no user to name — backlog row, said to the user);
+>   studio: Owner · Faculty · Visiting faculty through the new `public_studio_team`
+>   (the owner's row opens `/org/{id}` when it is an organization); artist:
+>   Studios taught at · Crews; crew: Crew leader · Crew members · Battle record;
+>   user: Crews. Gone: Runs, and Teaches-at on a plain user.
+> * **F / H — NO FIGURES.** Followers · Following · Sessions · On the floor, the
+>   three-side record grid, "No sessions on the record yet", "This is you · Your
+>   record ›", the studio's Followers figure and the crew's Members · Events are
+>   all off the public pages. The owner's B6 "who follows you" is a small
+>   **Followers ›** button in the member row (`aria-label="Followers — see who"`).
+> * **I — HEADER PICTURES BY KIND: organization 10 (NEW — it had none), studio 10,
+>   artist 5 (was 10; nothing deleted, the page shows five and the Edit sheet lets
+>   the rest be taken down), crew 5 (NEW — `crew_header_photos`), user 1.**
+>   `headerMaxFor(kind)` takes the KIND now (⚠ its signature changed from a
+>   boolean; three callers moved). Row R26.
+> * **THE FIVE MIGRATIONS — the list that went in front of the user:**
+>   `20260919120000_follow_an_organization_or_a_crew` — `follows.crew_id` +
+>   `follows_one_object` (exactly one of business/person/crew), a live-unique
+>   index, the leader-reads-followers policy, `set_crew_follow`, anon-readable
+>   `crew_follower_counts`, `set_person_follow` admitting a PUBLIC organization
+>   target (an organization caller still refused), `person_follower_counts`
+>   answering anon for a public organization too, `my_followed_organizations`.
+>   `20260919121000_an_organization_takes_enquiries` — `send_enquiry` (same
+>   signature, ACL kept): an org host is asked through its hosting row while
+>   `event_host_is_public`, for celebration · corporate · collab only.
+>   `20260919122000_a_contact_email` — `contact_email` + a shape CHECK on
+>   `businesses`, `profiles`, `crews`; `update_business_profile`,
+>   `update_my_profile`, `update_crew` DROPPED and re-created with
+>   `p_contact_email` LAST (null = unchanged, '' = cleared, bad → "that is not
+>   an email address"), grants restated; `public_organization` gains `phone` +
+>   `contact_email`, `public_artist` gains `contact_email` (both RETURNS TABLE →
+>   drop + recreate). `20260919123000_a_studios_public_team` — one definer read:
+>   owner / trainer / visiting_faculty of a LISTED studio (or one you belong to),
+>   name + picture + `is_org`. `20260919124000_header_pictures_by_kind` —
+>   `add_my_header_photo` capped by kind; `crew_header_photos` (RLS, public
+>   SELECT, **table grants revoked to SELECT** — the dry run found the table
+>   arriving with Supabase's DEFAULT privileges, ALL to anon and authenticated:
+>   the "a policy is not a grant" lesson in reverse), `add_crew_header_photo`
+>   (leader, `crews/{id}/`, five) and `remove_crew_header_photo` (returns the
+>   path). Exactly six new functions; anon's executable set 38 → 40
+>   (`crew_follower_counts`, `public_studio_team`); every same-signature
+>   function's ACL unchanged and the five re-created ones keep the old set —
+>   ASSERTED by `dryrunD.js` (scratchpad), BEGIN … 76 checks as real roles …
+>   ROLLBACK.
+> * **⚠ WHAT WIDENS FOR A STRANGER:** a listed studio's owner, trainers and
+>   visiting faculty by name and picture; a public organization's and a crew's
+>   follower COUNT; a crew's header rows; a public organization's phone and
+>   contact email; an artist's contact email. Each is a field its owner chose to
+>   publish, or a team a listed studio already names on its published classes.
+> * **App side, in one push:** `FollowToggle` (replaces `FollowButton` +
+>   `PersonFollowButton`), `ContactButtons`, `BioBlock`, `CrewEditSheet` (name,
+>   photo, header, city, style, email), Email fields in `EditProfileSheet` and
+>   `BusinessEditSheet`, the Following sheet's Organizations and Crews segments
+>   (`findMyFollowedOrganizations`, `findMyFollowedCrews`), `setCrewFollowAction`,
+>   `crewPorts`, `findCrewHeaderPhotos`, `PublicTenantProfile` carries `team`
+>   (`faculty` and `upcomingSessions` gone), an organization's Home has a QR to
+>   `/org/{id}`. `gradientOf` is imported from `profile-kit` everywhere.
+> * **Tests re-cut:** `happy-path` reads the count off `data-followers`, counts
+>   the crew roster's rows, asks the Stats chip for `/stats` on your own page,
+>   presses "Followers — see who"; `shoot-hero.js` asserts three in the bar, the
+>   eye under the pencil on both homes, the organization's QR;
+>   `rls-proof-person-pages` 7b re-cut (a public organization CAN be followed; an
+>   organization caller still cannot); **new `rls-proof-profile-pages.ps1`**, 10
+>   checks mirroring the dry run (parse-checked, pure ASCII; runs only on the
+>   migrated schema).
+>
+> **Verified so far:** typecheck 0 · lint 0 · the rolled-back dry run **76/76**,
+> nothing persisted. ⚠ The app selects `contact_email` on every profile read, so
+> the e2e suite, `shoot-hero.js`, the new proof and the deploy can only run AFTER
+> the five are applied — the build, the apply, the proofs and the suite are
+> recorded on the line below when they have run.
+
+## LAST SESSION (17–18 Sep 2026) — history
+
+> ### AN ARTIST IS THEIR PROFILE, AN ORGANIZATION HAS A PAGE, DISCOVER TURNS A PAGE, FIFTEEN STUDIOS, A RENAME, RATE LIMITS, AND A RECORD THAT COUNTS TO THE CLOSE (18 Sep 2026) — SIX MIGRATIONS APPLIED ⚠ (Rule 9: RLS)
 > The second push off the user's fix list — everything that needed NEW schema.
 > Their answers, item by item: *"1. Should only come as their profile as artist,
 > no separate page required. 2. Fix this [a closed claim on the record]. 3. Fix
@@ -2622,6 +2736,21 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0s. **THE FIVE PROFILE-PAGE MIGRATIONS (19 Sep 2026) — the top block says whether
+   they are applied.** If not: the list is in the top block, the dry run is
+   `dryrunD.js` in the session scratchpad (76/76, rolled back), and the order is
+   the standing one — the user's word, then:
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # exactly the five pending
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 profile-pages person-pages follows crews enquiries search discovery tenants
+```
+   then `next build`, the whole suite on one worker against :3100, `shoot-hero.js`,
+   commit, push, the Vercel smoke. ⚠ The app cannot run against the OLD schema
+   (every profile read selects `contact_email`), so nothing deploys before the apply.
+   What the user still owns from this list: the organization "Owner" needs an
+   organization team (not built); whether Call should come back onto an artist's page.
+
 0t. **WHAT THE 18 Sep FIX LIST LEAVES FOR THE USER** (the six migrations of the
    second push are APPLIED — the top block):
    * ~~**An artist's age and account number are public now**~~ — **narrowed
@@ -3007,6 +3136,21 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **EVERY PUBLIC PROFILE PAGE ON ONE PLAN, AND THE EYE LEAVES THE BAR — 19 Sep
+  2026, no step number ⚠ (Rule 9: RLS) — FIVE MIGRATIONS, dry run 76/76; see
+  the top block for whether they are applied.** The user's nine-part re-cut of
+  the public pages: the bar is Home · Discover · Inbox and the eye sits under
+  the pencil on Home; every public page — organization, studio, artist, crew,
+  user — reads Follow · Following (no count), the Bio, the buttons its kind
+  carries (Enquiry · Call · Mail · Location for a studio and an organization;
+  Enquiry · Mail for an artist and a crew; none for a user), Schedule, then its
+  associations (Studios + Events; Owner · Faculty · Visiting faculty; Studios
+  taught at · Crews; Crew leader · members · battle record; Crews); no figures
+  anywhere on them and Stats the chip beside the QR; header pictures capped by
+  kind (10 · 10 · 5 · 5 · 1), an organization and a crew gaining a header. A
+  crew and a public organization can be followed; an organization takes
+  enquiries; a contact email on three tables. Deviation rows R25, R26, C16.
+  Detail at the top.
 - **AN ARTIST IS THEIR PROFILE, AN ORGANIZATION HAS A PAGE, DISCOVER TURNS A
   PAGE, FIFTEEN STUDIOS, A RENAME, RATE LIMITS, A RECORD THAT COUNTS TO THE
   CLOSE — 18 Sep 2026, no step number ⚠ (Rule 9: RLS) — SIX MIGRATIONS APPLIED,
@@ -6484,6 +6628,8 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R22 | Anyone opens an independent-trainer business from the hub's sheet (2660-2684); R3 narrowed that to "a Pro user opens ONE artist page" | **Nobody opens an artist page any more — Home PROVISIONS it** (`ensureArtistPage`, `repositories/tenants.ts`) the first time it renders for an account with a live plan, named after the person and in their city; the hub's person view is two lists — STUDIOS YOU HAVE TAUGHT AT and STUDIOS YOU HAVE LEARNT AT — headed Studios in the tile's colour like everyone's, with no artist-page card, button or sheet. A crew you lead opens a HOME (`CrewHome`) with Team and Events tiles; the old desk is those two pages | 18 Sep 2026, the user: *"there is no need for a separate artist page to be created — should be managed from the artist profile only, you just subscribe from a user to artist to get the additional tools … Studios in user should show where they have learnt from and for artist studios where they have taught and learned … crews managed by you should take to Crew home tab with Teams and events."* The row is still `businesses.type = 'artist_page'` — every class, ask and payout of an artist hangs off it, and `create_business_with_owner` still refuses one without the plan or a second one — the person just never meets it as a thing to set up |
 | R23 | R9 (8 Sep 2026): an organization is never a public entity — not in search, no page of its own, neither follows nor is followed; the eye on its bar opened its FIRST studio (C2) | **An organization has ONE public page, `/org/{id}`** (18 Sep 2026): name, logo, city, About, links, the GST tick, the listed studios it runs and the published events it hosts — readable signed out through three SECURITY DEFINER reads (`public_organization`, `public_organization_studios`, `event_host_cards`, `20260918173000`) that answer only for a PUBLIC organization (GST-verified or the legacy tick, or running a listed studio) and hand back exactly those columns. An event card and the event page name the host with its picture and open that page. The eye points there. Still not in search's People, still neither follows nor is followed, its `profiles` row still unreadable directly (R12) | 18 Sep 2026, the user: *"Should show organization Profile Page and same should reflect inside the event cards with photo."* An organization with two studios had no page that was its own, and an event named its host in words with nothing behind them |
 | R24 | R3 / R22: an artist's public face is the `artist_page` business at `/artist/{id}`, and search found them twice — the page under Artists, themselves under People | **An artist's public face is their PROFILE** (18 Sep 2026): a person with a live Artist plan is readable signed out — through `public_artist(uuid)`, the public columns only, since `20260919090000` (the row-level policy of `20260918175000` lived one day; a signed-in reader still gets the row, Step 1); `/artist/{id}` redirects to `/person/{owner}`; search lists them ONCE, under Artists, as the person, and People is the users without a plan; Discover's Artists tab lists people with a live plan (`discover_artists`, INVOKER); the Enquiry on their profile goes to the page behind them (`artist_page_of`); a stranger reads an artist's record, teaches-at and follower COUNT and an empty answer for anybody else. The `artist_page` row stays what it is underneath — the business their classes, team, students and money hang off — never a destination. Follows of the page became follows of the person | 18 Sep 2026, the user: *"Should only come as their profile as artist, no separate page required."* ⚠ Rule 9: what a stranger reads about an artist is name, city, styles, About, picture, links, the tick and the number they chose to publish — ~~and, for one day, their age and account number~~ (the 18 Sep policy admitted the whole row; said in the list, and on the user's *"fix all"* the next day `20260919090000` replaced the policy with `public_artist`, which carries neither). A plain user's profile stays signed-in only |
+| R25 | S_profiletab's action row is Follow · Call · Enquiry on every public entity (10875-10888), the figures under the name (10683), Stats · Schedule as two white bars (10905), and Faculty / Crews / Teaches at / Runs as the groups (11000-11060); R9 said an organization is neither followed nor asked | **Every public page reads the same way, and what each kind carries is the USER'S LIST** (19 Sep 2026): under the hero, **Follow · Following** for all five kinds — a crew (`follows.crew_id`) and a PUBLIC organization (`set_person_follow`) included, though an organization ACCOUNT still follows nobody (R11) — then the **Bio** (About, the links), then the **buttons**: an organization and a studio Enquiry · Call · Mail · Location; an artist and a crew Enquiry · Mail; a user none. **Call is off an artist's page.** Mail is a new `contact_email` the owner publishes from their Edit sheet. Location is Maps by name and place. **No figures on any public page**; Stats is the chip beside the QR (your record, or the board they stand on). The **associations**: organization → Studios, Events; studio → Owner · Faculty · Visiting faculty (`public_studio_team`); artist → Studios taught at · Crews; crew → Crew leader · Crew members · Battle record; user → Crews. Gone: Runs, a plain user's Teaches at, the record grid, "This is you · Your record ›" | 19 Sep 2026, the user's message A–I (the top block quotes it). ⚠ Rule 9: a listed studio's team is a stranger's to read by name and picture now; a public organization's and a crew's follower COUNT too. ⚠ "Owner — one of the users added from team in organizations" is NOT built: an organization is one login with no team (8 Sep 2026); backlog row |
+| R26 | One header rail per profile (15 Sep 2026): a user one picture, an artist ten, a studio its 5–10 verification photos, an organization none ("not a place"), a crew one photo and no header | **Header pictures by KIND** (19 Sep 2026): organization **10** (new), studio **10**, artist **5** (was 10 — nothing deleted; the page shows five), crew **5** (new — `crew_header_photos`, the leader's, in `crews/{id}/`), user **1**. `headerMaxFor(kind)`; the database keeps the same caps (`add_my_header_photo`, `add_crew_header_photo`) | The user: *"Poster on all profiles should be swipeable with limits — Organization & Studio 10, Artist and Crews 5, User 1."* |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -6515,6 +6661,7 @@ Home. **Do not "restore parity" on these.**
 | C13 | The QR sits on the name's line (10688); the prototype has no Stats chip at all | **The QR and Stats are a COLUMN at the identity row's right edge, QR above Stats** — a third flex child beside the disc and the text column, on every page that stands on `IdentityHero`; nothing shares the name's line, so a long name wraps under nothing | 18 Sep 2026, the user: *"place the stats and qr code buttons together on the right side of the home tab, QR above the Stats."* Earlier the same day they were a row under the place line (C9) |
 | C14 | A studio's own home (S_homebiz) and the crew desk (S_crewmanage) are drill pages under the account's one bar | **A studio's home and a crew's home wear the ENTITY's own bar — Home · Inbox** — with the mark top-left instead of a back chip. `/business/{id}/inbox` (every member: enquiries, room requests in, teacher asks and invites out) and `/crews/{id}/inbox` (the leader: roster asks; enquiries once #0u lands) are the two new tabs; the row-building moved to `features/inbox/requestItems.ts` so the person's Inbox and both entity inboxes draw one row | 18 Sep 2026, the user: *"both crew and studios should get a home and inbox tab below on their home pages as both have enquiries to deal with and studios have their request to deal with it as well."* |
 | C15 | The mark on the top bar is decoration (DosMark, 1614; the shell 19230) | **The mark is a button that drops the PROFILE SWITCHER**: this account's own home, every studio it is on the team of (its seat named), every crew it leads — the one you are on marked HERE; every row a route. Drawn wherever the mark is: the four tabs and the entity homes | 18 Sep 2026, the user: *"DanceOS icon on top left should give a drop down for profile switcher which takes to different profiles managed by that specific user."* |
+| C16 | Five tabs (19313); C2 (15 Sep 2026) made the fifth an EYE to the account's public page | **THREE in the bar — Home · Discover · Inbox — and the eye is the second control in Home's hero corner, UNDER the pencil** (the corner is a column now, on every page with both: Home, the Profile tab, a studio's home, a crew's home). `AppChrome` no longer takes `publicViewHref`; the layout no longer computes it. The eye's target is unchanged: `/org/{id}` for an organization, `/person/{id}` for anybody else | 19 Sep 2026, the user: *"A. Remove profile tab from navbar. B. Give an eye to view profile on the home tab below edit on top right."* |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -6534,6 +6681,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The profile-page re-cut, what it left (19 Sep 2026):** ⚠ **an organization's page has no "Owner" row** — the user asked for "one of the users added from team in organizations", and an organization is ONE LOGIN with no team table (8 Sep 2026), so there is no user to name; the Studios group stands where Owner would (an organization-members slice is the thing that closes it); **Call is off an artist's page** by the user's list (Call for studios and organizations) — a person's published number stays on the record, the Edit sheet says it is not shown, and one word puts it back if that reading was wrong; **an artist who held ten header pictures still holds them** — the page shows five, the cap refuses a sixth, the Edit sheet lets the rest come down; a **crew has no About** (no column), so its Bio is nothing and its page goes hero → Follow → buttons → roster; the **Following sheet's Organizations rows carry the logo but no city link** and a followed crew's row opens its page; the studio's **`upcomingSessions` and `faculty` left `PublicTenantProfile`** (the team is the roster now; the schedule is the Schedule bar); `person_teaches_at` still names an artist's OWN page among the places they teach and the page filters it to STUDIOS — a cleaner read would filter in SQL; the org's Location button is Maps by NAME + CITY (an organization has no address of its own); the guest Follow link on a public page also carries `data-followers`, so a stranger's page states the count in the DOM though it prints none | S_profiletab 10875-10940, 11000-11060 | an organization-members slice for Owner; the rest decisions (c) |
 | ~~**Crew enquiries — the migration is WRITTEN, DRY-RUN 28/28 and HELD**~~ **CLOSED 18 Sep 2026** — `20260918160000` applied on the user's word and wired: the sheet on a crew's page (three kinds), the crew's Inbox Enquiries side, the leader's `/inbox`, the detail page's sides. **What it leaves:** a crew has no phone, so the sender's Call on a crew's enquiry always reads "no number"; a crew keeps no enquiry-type preferences (the three kinds are fixed); the crew's inbox has no Sent side (a crew sends none) | ENQ_TYPES 4900-4923; publicEntity crew 10871 | decisions (c) |
 | **The four-part re-cut, what it left (18 Sep 2026):** the switcher lists crews you LEAD and studios you are ON THE TEAM OF — a crew you are merely IN has a page, not a home, so it is not a row (the Crews tile lists it); `/business/{id}/inbox` has no sent-enquiries side (a studio sends none) and a crew's inbox no venue requests (a crew holds no rooms); the crew's Team and Events desks say whose they are in one small line under the tool hero — the strip with the photo moved to the crew's home; a person's hub prints no card for their own artist page — the page is reached through the Team and Students tiles and the eye, which is what was asked; `ensureArtistPage` swallows a refusal, so an account whose plan reads active but whose page the database refuses sees the hub's lists and no error (the tiles then open the hub); the entity bar's Home is lit on the home and Inbox on the inbox, and a desk under `/business/{id}/…` is still a drill page with the back chip — only the home and the inbox wear the bar; ~~⚠ an artist is now found TWICE by the search box~~ — **ONCE, since later on 18 Sep 2026** (row R24: Artists are the people with a live plan, opening their profile; People are the users without one; the happy path asserts exactly one row) | S_crewmanage 16318; S_bizhub 2585; the shell 19308; search 4546 | decisions (c) |
 | **THE IDENTIFIERS PASS (owed since 16 Sep 2026, by the user's choice — "strings now, identifiers next").** The database and every string that reaches it say `business`, `class_people`, `class_bookings`, `studio_photos`, `category`…; the TypeScript still says `Tenant`, `tenantId`, `findMyTenants`, `Claim`, `enrollInSession`, `ev.cat`, `EventCat`, and the files and folders are still `repositories/tenants.ts`, `features/tenants/`, `features/enrollments/`, `app/…/[tenantId]`, `scripts/rls-proof-tenants.ps1`. ~2,200 occurrences in 207 files, camelCase and file names only — a pure identifier rename `tsc` verifies. Route FOLDER names are Next param names, not URLs, so `[tenantId]` → `[businessId]` changes no public path (Rule 14 is not triggered) | — | one mechanical pass, typecheck as the gate; nothing else in the same push |

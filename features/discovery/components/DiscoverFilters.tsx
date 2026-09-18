@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { searchEverythingAction } from "@/features/discovery/server-actions/search";
-import { gradientOf } from "@/features/profiles/components/PublicProfile";
+import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";

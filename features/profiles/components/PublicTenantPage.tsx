@@ -9,9 +9,6 @@ import { findMyMembershipRole } from "@/repositories/tenants";
 import type { TenantType } from "@/types/tenant";
 import { PublicProfile } from "./PublicProfile";
 
-/* the clock lives outside the component (react-hooks/purity) */
-const stampNowIso = (): string => new Date().toISOString();
-
 /** The public page of a business, for anybody — a stranger, a follower, or its
  *  own members. Not signed in is fine: RLS shows a listed business to everyone
  *  and an unlisted one to its members only, so "not found" is the honest answer
@@ -22,7 +19,8 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
     data: { user },
   } = await supabase.auth.getUser();
 
-  const profile = await findPublicTenantProfile(supabase, tenantId, stampNowIso());
+  /* the tenant, its styles, its TEAM (19 Sep 2026) and its follower count, in one read set */
+  const profile = await findPublicTenantProfile(supabase, tenantId);
   if (!profile) {
     notFound();
   }

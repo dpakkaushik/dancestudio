@@ -1,55 +1,48 @@
 import Link from "next/link";
-import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
-import { CREW_ROLE_WORD } from "@/types/crew";
-import { SIDE_TINT, SIDE_VERB, hoursWords } from "@/types/stats";
-import { photoUrl } from "@/lib/media/photo";
-import type { PublicPerson } from "@/repositories/publicPerson";
-import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import { PersonFollowButton } from "./PersonFollowButton";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
-import { ProfileShare } from "./ProfileShare";
-import { CallButton, fmtFollowers } from "./PublicProfile";
-import { handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
+import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
+import { photoUrl } from "@/lib/media/photo";
+import type { HeaderPhoto } from "@/repositories/headerPhotos";
+import type { PublicPerson } from "@/repositories/publicPerson";
+import { CREW_ROLE_WORD } from "@/types/crew";
 import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
-import { Group, PlaceLink, PlatformIcon, ROLE_RING, Row, SchedIcon, TYPE, bigWhite } from "./profile-kit";
+import { BioBlock } from "./BioBlock";
+import { ActionRow, MailButton } from "./ContactButtons";
+import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
+import { ProfileShare } from "./ProfileShare";
+import { StatsChip } from "./StatsChip";
 import { IdentityHero } from "./hero-kit";
+import { Group, PlaceLink, ROLE_RING, Row, SchedIcon, bigWhite } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
 
-/** A person's page — prototype S_profiletab with `publicEntity="trainer"`, which
- *  in the prototype IS a person (PUB 8643: a name, a badge, a place, followers and
- *  following). The same skeleton the studio and crew pages wear, because it is
- *  the same screen: the person's colour bleeding off the top and dying into the
- *  page, the role over the name, the QR beside it, the place under it, then the
- *  figures set like figures — and under them the people-and-places groups, each
- *  headed with a count (11000-11060).
+/** A PERSON'S PAGE — prototype S_profiletab with `publicEntity="trainer"`, which
+ *  in the prototype IS a person (PUB 8643). The same skeleton the studio, the
+ *  organization and the crew pages wear, because it is the same screen. Since
+ *  18 Sep 2026 this is also an ARTIST'S public face (R24): the artist page is
+ *  only the business behind it.
  *
- *  THE HERO IS THE ONE EVERY PROFILE PAGE WEARS (15 Sep 2026): the header —
- *  this person's own pictures, one for a user and up to ten for an artist —
- *  and the round disc with their face. The square this page drew for itself
- *  is gone.
+ *  RE-CUT 19 Sep 2026 TO THE USER'S LIST. Under the hero, in the order every
+ *  public page now shares: **Follow · Following**, the **Bio**, the **buttons**
+ *  — an artist's are Enquiry · Mail, a user's page carries none ("Send Enquiry
+ *  for all except users … Mail for all except users … Call for studios and
+ *  organizations") — then **Schedule** when they run a business, then the
+ *  **associations**: an artist's Studios taught at and Crews, a user's Crews.
+ *  GONE: the four figures (Followers · Following · Sessions · On the floor), the
+ *  three-side record grid and its "No sessions on the record yet" card, and the
+ *  owner's "This is you · Your record ›" — Stats is the chip beside the QR now,
+ *  opening your own record, or the board somebody else is ranked on.
  *
- *  What it is made of is only what this app can say truthfully: the person's
- *  record (Step 25's arithmetic, keyed on them), the crews they are CONFIRMED in
- *  (an unanswered ask never appears — Step 22), where they teach (confirmed
- *  claims on PUBLISHED classes of LISTED businesses — Step 11's public policy),
- *  and any business they own that is listed.
+ *  ⚠ CALL IS OFF THIS PAGE. The user's list gives Call to studios and
+ *  organizations; a person's published number is still theirs to hold on the
+ *  record and no longer drawn here. The Edit sheet says so.
  *
- *  Signed-in only, and deliberately: `profiles` is readable by signed-in users
- *  (Step 1) and every figure here is one Step 25's boards already print beside a
- *  name. Making a person page PUBLIC is a decision about somebody else's data,
- *  and it is not one to take in passing — it stays on the backlog.
- *
- *  CALL LANDED 30 Aug 2026 (N8): a person holds a number now — one they publish
- *  from their own Edit profile sheet and can clear the same way — so Follow
- *  shares its row with Call whenever there is one to ring, and the row is
- *  Follow alone when there is not. */
-
-const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
-const figure: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontWeight: 700, fontVariantNumeric: "tabular-nums" };
+ *  Who reads it: a signed-in person reads anybody's; a stranger reads an
+ *  ARTIST's public face (`public_artist`, the public columns only) and is sent
+ *  to sign in for a plain user's. */
 
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
@@ -62,26 +55,28 @@ export function PublicPersonPage({
   canFollow = true,
 }: {
   person: PublicPerson;
-  /** THE HEADER PICTURES — this person's own, as many as their plan shows */
+  /** THE HEADER PICTURES — this person's own, as many as their kind shows */
   header?: HeaderPhoto[];
   isMe: boolean;
   following: boolean;
   signedIn: boolean;
-  /** false when either side is an organization — one neither follows nor is followed (8 Sep 2026) */
+  /** false when either side is an organization viewer, or this is you */
   canFollow?: boolean;
 }) {
-  const { profile, stats } = person;
+  const { profile } = person;
   /* the word over the name is the KIND's: an organization, an artist while the plan is live, a user */
   const kind = kindOf(profile.role, person.isArtist);
   const ring = ROLE_RING[kind];
   const RC = ring[1];
   const path = `/person/${profile.id}`;
-  const totalSessions = stats.sessionsConducted + stats.sessionsAssisted + stats.sessionsAttended;
-  const totalHours = Math.round((stats.hoursConducted + stats.hoursAssisted + stats.hoursAttended) * 10) / 10;
   const face = photoUrl(profile.avatarPath);
   const shots: HeroShot[] = header
     .filter((h) => h.url)
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, signed: h.signed }));
+  /* an artist is asked through the page behind them; a user is not asked at all */
+  const canAsk = !isMe && kind === "artist" && Boolean(person.artistPageId);
+  /* "Studios taught at" — the studios, never the artist's own page listed as a place they teach */
+  const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio");
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -100,8 +95,11 @@ export function PublicPersonPage({
             ) : null
           }
           verified={Boolean(profile.verifiedAt)}
-          /* an organization has no page to share — this one is the admin's view of it (8 Sep 2026) */
+          /* an organization's page to share is /org/{id}; this one is the admin's view of it */
           share={kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
+          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): your own record, or the
+             board this person stands on — an artist's, or the dancers' */
+          stats={<StatsChip href={isMe ? "/stats" : `/stats?tab=charts&seg=${kind === "artist" ? "artist" : "dancer"}`} />}
           meta={
             profile.city || profile.age ? (
               /* "24, New Delhi" — one introduction, not two facts (10664), and the
@@ -120,88 +118,28 @@ export function PublicPersonPage({
           avatar={face}
           avatarAlt={profile.fullName}
           shots={shots}
-        >
-          {/* the figures, at the size of figures */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-            <span aria-label={`${person.followers} followers`}>
-              <span data-testid="person-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>
-                {fmtFollowers(person.followers)}
-              </span>
-              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
-            </span>
-            <span aria-label={`following ${person.following}`}>
-              <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{fmtFollowers(person.following)}</span>
-              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Following</span>
-            </span>
-            <span aria-label={`${totalSessions} sessions`}>
-              <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{totalSessions}</span>
-              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Sessions</span>
-            </span>
-            <span aria-label={`${totalHours} hours on the floor`}>
-              <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{hoursWords(totalHours)}</span>
-              <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>On the floor</span>
-            </span>
-          </div>
-        </IdentityHero>
+        />
 
-        {/* THE BAND UNDER THE NAME (10739): where else to find them — a number is
-            not a public handle, so WhatsApp stays off (10778) — and their own
-            sentence; the styles are in the hero now */}
-        {profile.socials.filter((l) => l.platform !== "WhatsApp").length ? (
-          <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "14px 0 4px", paddingBottom: 2 }}>
-            {profile.socials
-              .filter((l) => l.platform !== "WhatsApp")
-              .map((l) => {
-                /* an address that is not http(s) is not drawn at all (11 Sep 2026) */
-                const href = safeHref(l.url);
-                if (!href) {
-                  return null;
-                }
-                return (
-                  <a key={l.platform} href={href} target="_blank" rel="noopener noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, whiteSpace: "nowrap", background: CARD, border: `1px solid ${LINE}`, textDecoration: "none" }}>
-                    <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#5AC8FA" }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-                  </a>
-                );
-              })}
-          </div>
-        ) : null}
-        {profile.about ? (
-          <div style={{ margin: "16px 0 4px" }}>
-            <div style={{ ...TYPE.shelf, color: INK, marginBottom: 6 }}>About</div>
-            <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>{profile.about}</div>
+        {/* ── FOLLOW · FOLLOWING, first under the hero — never on your own page ── */}
+        {!isMe && canFollow ? (
+          <div style={{ marginTop: 12 }}>
+            <FollowToggle target={{ kind: "person", id: profile.id }} initialFollowing={following} initialFollowers={person.followers} accent={RC} signedIn={signedIn} />
           </div>
         ) : null}
 
-        {/* the one thing you can do to a person, or the door to your own page */}
-        <div style={{ marginTop: 12 }}>
-          {isMe ? (
-            /* ⚠ AND NOTHING ELSE (16 Sep 2026). This page is what the eye in the
-               tab bar opens — "the profile view is what a user will see when he
-               clicks over a studio or artist" — so a photo picker sitting on it
-               was the one thing on the screen no visitor would ever see. The
-               picture is changed in Edit profile, with the header pictures. */
-            <Link href="/stats" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" }}>
-              This is you · Your record ›
-            </Link>
-          ) : (
-            /* WHAT YOU CAN DO TO A PERSON, in one row (10875-10888): follow them;
-               ring them, when they published a number; and — since 18 Sep 2026,
-               an artist's public face being their profile — ASK them, the enquiry
-               going to the page behind them (celebration, corporate, judge,
-               private sessions, collaboration), the way it went from /artist. */
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${[canFollow, Boolean(profile.phone), Boolean(person.artistPageId)].filter(Boolean).length || 1}, 1fr)`, gap: 6 }}>
-              {canFollow ? <PersonFollowButton userId={profile.id} initialFollowing={following} accent={RC} signedIn={signedIn} /> : null}
-              {profile.phone ? <CallButton phone={profile.phone} /> : null}
-              {person.artistPageId ? <EnquiryButton tenantId={person.artistPageId} tenantName={profile.fullName} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
-            </div>
-          )}
-        </div>
+        {/* ── THE BIO (10739): their own sentence, then where else to find them — a
+            number is not a public handle, so WhatsApp stays off (10778) ── */}
+        <BioBlock about={profile.about} links={profile.socials} hideWhatsApp accent={RC} />
+
+        {/* ── THE BUTTONS AN ARTIST'S PAGE CARRIES (19 Sep 2026): Enquiry · Mail.
+            A user's carries none — the row is simply not drawn. ── */}
+        <ActionRow>
+          {canAsk ? <EnquiryButton tenantId={person.artistPageId as string} tenantName={profile.fullName} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
+          {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
+        </ActionRow>
 
         {/* THE PLACE THIS PROFILE GOES (10905-10940): a business's schedule is a
-            list of sessions you can still book — a person's record is not a
-            stranger's to read, so Stats is not offered here (dance_chart takes no
-            p_user_id by design). */}
+            list of sessions you can still book */}
         {person.runs.length ? (
           <div style={{ marginTop: 8 }}>
             <Link href={`/${person.runs[0].tenantType === "studio" ? "studio" : "artist"}/${person.runs[0].tenantId}/schedule`} aria-label="Schedule" style={bigWhite}>
@@ -211,29 +149,14 @@ export function PublicPersonPage({
           </div>
         ) : null}
 
-        {/* the record, three sides — the same numbers /stats prints for yourself */}
-        {totalSessions > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 16 }}>
-            {(
-              [
-                ["conducted", stats.sessionsConducted, stats.hoursConducted],
-                ["assisted", stats.sessionsAssisted, stats.hoursAssisted],
-                ["attended", stats.sessionsAttended, stats.hoursAttended],
-              ] as Array<["conducted" | "assisted" | "attended", number, number]>
-            ).map(([k, n, h]) => (
-              <div key={k} aria-label={`${SIDE_VERB[k]} — ${n} sessions, ${hoursWords(h)}`} style={{ background: CARD, border: `1px solid ${LINE}`, borderTop: `3px solid ${SIDE_TINT[k]}`, borderRadius: 14, padding: "11px 10px" }}>
-                <div style={{ ...figure, fontSize: 20 }}>{n}</div>
-                <div style={{ ...micro, color: SUB, marginTop: 3 }}>{SIDE_VERB[k]}</div>
-                <div style={{ ...figure, fontSize: 10, color: SIDE_TINT[k], marginTop: 3 }}>{hoursWords(h)}</div>
-              </div>
+        {/* ── THE ASSOCIATIONS (19 Sep 2026): an artist's studios, and everyone's crews ── */}
+        {kind === "artist" && studiosTaughtAt.length ? (
+          <Group title="Studios taught at" n={studiosTaughtAt.length}>
+            {studiosTaughtAt.map((t) => (
+              <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[t.kinds, `${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
             ))}
-          </div>
-        ) : (
-          <div style={{ background: CARD, border: `1.5px dashed ${LINE}`, borderRadius: 16, padding: "20px 16px", marginTop: 16, textAlign: "center" }}>
-            <div style={{ fontSize: 12.5, fontWeight: 800 }}>No sessions on the record yet</div>
-            <div style={{ fontSize: 10.5, color: SUB, marginTop: 3, lineHeight: 1.5 }}>A session lands here once it has ended and they were on the floor for it — taught, assisted, or checked in.</div>
-          </div>
-        )}
+          </Group>
+        ) : null}
 
         {/* the crews they are IN — confirmed only (Step 22) */}
         {person.crews.length ? (
@@ -243,40 +166,10 @@ export function PublicPersonPage({
                 key={c.crewId}
                 href={`/crew/${c.crewId}`}
                 markName={c.name}
+                photo={c.photo ? photoUrl(c.photo) : null}
                 title={c.name}
                 sub={`${c.style} · ${c.city} · since ${sinceWords(c.since)}`}
                 right={c.role === "leader" ? "Leads this crew" : CREW_ROLE_WORD[c.role]}
-              />
-            ))}
-          </Group>
-        ) : null}
-
-        {/* where they teach — public confirmed claims only (Step 11) */}
-        {person.teachesAt.length ? (
-          <Group title="Teaches at" n={person.teachesAt.length}>
-            {person.teachesAt.map((t) => (
-              <Row
-                key={t.tenantId}
-                href={`/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`}
-                markName={t.tenantName}
-                title={t.tenantName}
-                sub={[t.kinds, `${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")}
-              />
-            ))}
-          </Group>
-        ) : null}
-
-        {/* and what they run */}
-        {person.runs.length ? (
-          <Group title="Runs" n={person.runs.length}>
-            {person.runs.map((t) => (
-              <Row
-                key={t.tenantId}
-                href={`/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`}
-                markName={t.tenantName}
-                photo={t.photoPath ? photoUrl(t.photoPath) : null}
-                title={t.tenantName}
-                sub={[t.tenantType === "studio" ? "Studio" : "Artist business", t.city].filter(Boolean).join(" · ")}
               />
             ))}
           </Group>

@@ -20,7 +20,7 @@ import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/To
 import { EditProfileButton } from "@/features/profiles/components/EditProfileSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
-import { ROLE_RING, tierOf } from "@/features/profiles/components/profile-kit";
+import { EyeIcon, ROLE_RING, cornerChip, tierOf } from "@/features/profiles/components/profile-kit";
 import { KIND_WORD, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
@@ -101,12 +101,15 @@ export default async function HomePage() {
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
 
-  /* THE HEADER PICTURES (15 Sep 2026): what swipes across the top. A user has
-     one, an artist ten — the plan decides, here and in the database — and a
-     plan that lapsed with ten stored still draws one; the rest wait. An
-     organization's header is empty: it is not a place and has no body of work. */
-  const headerMax = isOrg ? 0 : headerMaxFor(isArtist);
-  const header = isOrg ? [] : await findPersonHeaderPhotos(supabase, user.id, headerMax);
+  /* THE HEADER PICTURES (15 Sep 2026): what swipes across the top. THE KIND
+     decides how many, here and in the database (19 Sep 2026, the user's limits):
+     a user one, an artist five, an organization ten — and a plan that lapsed
+     with five stored still draws one; the rest wait. */
+  const headerMax = headerMaxFor(kind);
+  const header = await findPersonHeaderPhotos(supabase, user.id, headerMax);
+  /* the page a stranger reads — an organization's own since 18 Sep 2026 (R23),
+     a person's whether or not they hold the plan (R24) */
+  const publicHref = isOrg ? `/org/${profile.id}` : `/person/${profile.id}`;
 
   /* WHERE YOU STAND, ON THE SLEEVE THAT SAYS WHO YOU ARE (7324-7333). The place
      is Step 25's own — the same RPC the Profile tab and the boards ask — and a
@@ -204,9 +207,9 @@ export default async function HomePage() {
              looks at an organization now, the badge moved to the studio. An
              organization verified under the old model keeps its tick. */
           verified={Boolean(profile.verifiedAt)}
-          /* the QR beside the name shares this person (7288); an organization
-             has no public page to share (8 Sep 2026) — its studios have theirs */
-          share={profile.role === "org" ? null : <ProfileShare path={`/person/${profile.id}`} name={profile.fullName} />}
+          /* the QR beside the name shares this account's page (7288) — a person's,
+             or the organization's own since it has one (18 Sep 2026, R23) */
+          share={<ProfileShare path={publicHref} name={profile.fullName} />}
           /* STATS IS THE CHIP BESIDE THE QR (18 Sep 2026, the user: "remove stats
              from tools and place like a button similar to the qr code in the
              same area") — a person's record, an organization's combined board */
@@ -223,8 +226,19 @@ export default async function HomePage() {
           shots={shots}
           /* EDIT PROFILE, FROM HOME (15 Sep 2026, the user: "where is the edit
              profile button?") — the pencil on the hero's corner (10613), opening
-             the Profile tab's own sheet: name, mobile, the pictures, the rest */
-          corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} />}
+             the Profile tab's own sheet: name, mobile, the pictures, the rest.
+             AND THE EYE UNDER IT (19 Sep 2026, the user: "remove profile tab from
+             navbar … give an eye to view profile on the home tab below edit on top
+             right") — this account's page as a stranger reads it, which was the
+             bar's fourth slot from 15 Sep */
+          corner={
+            <>
+              <EditProfileButton profile={profile} header={header} headerMax={headerMax} />
+              <Link href={publicHref} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
+              </Link>
+            </>
+          }
         >
           {/* ⚠ WHAT WAS HERE HAS GONE UP INTO THE HERO (18 Sep 2026). The role
               word moved to the eyebrow, and the account number under it — both

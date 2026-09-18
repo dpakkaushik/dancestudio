@@ -15,6 +15,7 @@ interface CrewRow {
   style: string;
   leader_id: string;
   photo: string | null;
+  contact_email?: string | null;
   created_at: string;
 }
 interface MemberRow {
@@ -55,7 +56,7 @@ interface PartnerRow {
   events: { title: string; share_slug: string; start_date: string } | null;
 }
 
-const CREW_COLUMNS = "id, name, city, style, leader_id, photo, created_at";
+const CREW_COLUMNS = "id, name, city, style, leader_id, photo, contact_email, created_at";
 const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city, profile_photo_path)";
 
 const toCrew = (r: CrewRow): Crew => ({
@@ -65,6 +66,7 @@ const toCrew = (r: CrewRow): Crew => ({
   style: r.style,
   leaderId: r.leader_id,
   photo: r.photo,
+  contactEmail: r.contact_email ?? null,
   createdAt: r.created_at,
 });
 const toMember = (r: MemberRow): CrewMember => ({
@@ -339,8 +341,18 @@ export async function createCrew(
   return toCrew(data as CrewRow);
 }
 
-export async function updateCrew(supabase: SupabaseClient, input: { crewId: string; name: string; city: string; style: string }): Promise<void> {
-  const { error } = await supabase.rpc("update_crew", { p_crew_id: input.crewId, p_name: input.name, p_city: input.city, p_style: input.style });
+/** THE LEADER'S EDIT (19 Sep 2026 — the crew's Edit sheet is the first caller).
+ *  `contactEmail` undefined leaves the address alone, null clears it, a string
+ *  sets it; the RPC's `p_contact_email` is last with a default, so an older
+ *  call without it resolves as before. */
+export async function updateCrew(supabase: SupabaseClient, input: { crewId: string; name: string; city: string; style: string; contactEmail?: string | null }): Promise<void> {
+  const { error } = await supabase.rpc("update_crew", {
+    p_crew_id: input.crewId,
+    p_name: input.name,
+    p_city: input.city,
+    p_style: input.style,
+    p_contact_email: input.contactEmail === undefined ? null : (input.contactEmail ?? ""),
+  });
   if (error) {
     throw new Error(error.message);
   }

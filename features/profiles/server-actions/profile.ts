@@ -31,6 +31,10 @@ const schema = z.object({
     .trim()
     .regex(/^\+?[0-9][0-9 ]{7,17}$/, "a phone number is 8 to 18 digits")
     .nullable(),
+  /* THE CONTACT EMAIL (19 Sep 2026) — the Mail button's address. Omitted, the
+     column is left alone (the styles and links sheets never carry it); null
+     clears it; the database keeps the same shape as a CHECK */
+  contactEmail: z.string().trim().email("that is not an email address").max(254).nullable().optional(),
 });
 
 export type MyProfileInput = z.infer<typeof schema>;
@@ -58,6 +62,8 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
     revalidatePath("/profile");
     revalidatePath("/");
     revalidatePath(`/person/${user.id}`);
+    /* an organization's page reads the same row (19 Sep 2026) */
+    revalidatePath(`/org/${user.id}`);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save your profile" };

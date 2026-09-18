@@ -22,9 +22,10 @@ export interface TenantRow {
   accepts_bank?: boolean;
   verified_at?: string | null;
   location_set_at?: string | null;
+  contact_email?: string | null;
 }
 
-export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at";
+export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -49,6 +50,7 @@ export const toTenant = (row: TenantRow): Tenant => ({
   accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false },
   verifiedAt: row.verified_at ?? null,
   locationSetAt: row.location_set_at ?? null,
+  contactEmail: row.contact_email ?? null,
 });
 
 export interface TenantProfileInput {
@@ -60,6 +62,10 @@ export interface TenantProfileInput {
   socials: SocialLink[];
   enquiryTypes: string[] | null;
   accepts: AcceptedMethods;
+  /** THE CONTACT EMAIL (19 Sep 2026): omitted → unchanged (the Payments desk's
+   *  switches and the enquiry-types sheet never touch it), null → cleared, a
+   *  string → set */
+  contactEmail?: string | null;
 }
 
 /** What a business says about itself and the switches it sets (S_payments 16612,
@@ -77,9 +83,12 @@ export async function updateTenantProfile(supabase: SupabaseClient, tenantId: st
     p_accepts_cards: input.accepts.cards,
     p_accepts_cash: input.accepts.cash,
     p_accepts_bank: input.accepts.bank,
-    /* `p_name` is LAST with a default on the RPC (`20260918172000`), so a null here
-       is "leave it" and the call resolves against the one signature there is */
+    /* `p_name` is LAST-but-one with a default on the RPC (`20260918172000`), so a
+       null here is "leave it" and the call resolves against the one signature
+       there is; `p_contact_email` follows it (`20260919122000`) with the same
+       rule, and an empty string is how the owner takes the address down */
     p_name: input.name ?? null,
+    p_contact_email: input.contactEmail === undefined ? null : (input.contactEmail ?? ""),
   });
   if (error) {
     throw new Error(error.message);

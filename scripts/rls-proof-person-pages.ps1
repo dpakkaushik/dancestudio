@@ -198,13 +198,17 @@ try {
   Check 7 "Following yourself refused ($self); somebody who is not on DanceOS refused ($ghost); the public cannot follow ($anonFollow)" (
     ($self -match "yourself") -and ($ghost -match "not on DanceOS") -and ($anonFollow -ne ""))
 
-  # 7b. AN ORGANIZATION IS ON NEITHER SIDE OF A FOLLOW (8 Sep 2026): the owner is one,
-  #     and search does not offer it as a person - its studios are what people find
-  $orgTarget = Fails { Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $owner.id; p_on = $true } }
+  # 7b. AN ORGANIZATION IS FOLLOWED, AND FOLLOWS NOBODY (re-cut 19 Sep 2026, the user:
+  #     "Follow with Following toggle for all"). A PUBLIC organization - this owner
+  #     is verified and runs a listed studio - can be followed since 20260919120000;
+  #     an organization ACCOUNT still follows nobody (R11), and search still does not
+  #     offer it as a person - its studios and its own page are what people find.
+  $orgFollow = Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $owner.id; p_on = $true }
   $orgCaller = Fails { Rpc (Api $owner.token) "set_person_follow" @{ p_user_id = $teacher.id; p_on = $true } }
   $orgFound = @((Rows (Api $fan.token) "search_dance_os" @{ p_q = "PP Owner"; p_limit = 3 }) | Where-Object { $_.kind -eq "person" }).Count
-  Check "7b" "Following an organization is refused ($orgTarget); an organization following a person is refused ($orgCaller); search offers $orgFound people for its name" (
-    ($orgTarget -match "organization") -and ($orgCaller -match "organization") -and ($orgFound -eq 0))
+  Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $owner.id; p_on = $false } | Out-Null
+  Check "7b" "Following a PUBLIC organization is allowed (following $($orgFollow.following), $($orgFollow.followers) follower); an organization following a person is refused ($orgCaller); search offers $orgFound people for its name" (
+    ($orgFollow.following -eq $true) -and ([int]$orgFollow.followers -eq 1) -and ($orgCaller -match "organization") -and ($orgFound -eq 0))
 
   # 8. A FOLLOW NAMES EXACTLY ONE OBJECT - the table cannot hold anything else
   $both = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/follows" -Headers $svcH -Body (@{

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ToolGrid, ToolsHead, type Tile } from "@/features/home/components/home-kit";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
+import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
@@ -8,7 +8,9 @@ import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit"
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
+import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { CREW_GRAD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
+import { CrewEditButton } from "./CrewEditSheet";
 
 /** A CREW'S OWN HOME (18 Sep 2026, the user: "crews managed by you should take to
  *  Crew home tab with Teams and events to manage the section"). What a crew you
@@ -21,10 +23,12 @@ import { CREW_GRAD, type Crew, type CrewEntry, type CrewMember } from "@/types/c
  *  battle record and the crew ranking). The bottom bar on this page is the
  *  crew's own — Home · Inbox — drawn by the chrome.
  *
- *  A crew has a photo and no header pictures, so the rail above the disc is the
- *  quiet gradient square; the leader changes the photo from here (the desk used
- *  to carry the picker — the identity belongs on the home). */
-export function CrewHome({ crew, members, entries, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; todayKey: string }) {
+ *  THE CORNER IS A PENCIL OVER AN EYE (19 Sep 2026), like every other home's:
+ *  the pencil opens Edit crew — the name, the photo, the header pictures (up to
+ *  five, new today), the city, the style, the email — and the eye opens the
+ *  crew's page as a stranger sees it. The picker that sat under the hero moved
+ *  into the sheet, where every other picture in the app is changed. */
+export function CrewHome({ crew, members, entries, header = [], todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; todayKey: string }) {
   const confirmed = members.filter((m) => m.status === "confirmed").length;
   const asked = members.filter((m) => m.status === "asked").length;
   const upcoming = entries.filter((e) => e.endDate >= todayKey && e.eventStatus !== "completed").length;
@@ -32,6 +36,7 @@ export function CrewHome({ crew, members, entries, todayKey }: { crew: Crew; mem
     { name: DOS_TOOLS.team.name, href: `/crews/${crew.id}/manage/team`, k: "team", c: DOS_TOOLS.team.c },
     { name: DOS_TOOLS.events.name, href: `/crews/${crew.id}/manage/events`, k: "events", c: DOS_TOOLS.events.c },
   ];
+  const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, boxSizing: "border-box", paddingBottom: "var(--dos-foot)" }}>
       <div style={{ padding: "0 16px" }}>
@@ -71,18 +76,16 @@ export function CrewHome({ crew, members, entries, todayKey }: { crew: Crew; mem
           styleAria={(s) => `${s} — the crew's style`}
           avatar={photoUrl(crew.photo)}
           avatarAlt={crew.name}
-          shots={[]}
+          shots={shots}
           corner={
-            <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
-              <EyeIcon />
-            </Link>
+            <>
+              <CrewEditButton crew={crew} header={header} />
+              <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
+              </Link>
+            </>
           }
-        >
-          {/* the leader is the only person who may change the crew, so the picker is theirs */}
-          <div style={{ marginTop: 12 }}>
-            <PhotoPicker owner={{ kind: "crew", id: crew.id }} hasPhoto={Boolean(crew.photo)} label="Change the crew photo" />
-          </div>
-        </IdentityHero>
+        />
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC, margin: "12px 0" }}>
           <ToolsHead kind="crew" />

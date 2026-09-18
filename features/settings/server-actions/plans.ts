@@ -85,6 +85,8 @@ const tenantProfileSchema = z.object({
   socials: z.array(z.object({ platform: z.string().trim().min(1).max(40), url: z.string().trim().url().max(300) })).max(12),
   enquiryTypes: z.array(z.string().trim().min(1).max(40)).nullable(),
   accepts: z.object({ upi: z.boolean(), cards: z.boolean(), cash: z.boolean(), bank: z.boolean() }),
+  /* the Mail button's address (19 Sep 2026): omitted → unchanged, null → cleared */
+  contactEmail: z.string().trim().email("that is not an email address").max(254).nullable().optional(),
 });
 export type TenantProfileActionInput = z.infer<typeof tenantProfileSchema>;
 

@@ -38,8 +38,12 @@ export interface Profile {
   /** set by DanceOS — the tick (10678). On an organization it is the admin's
    *  verification, and everything the organization runs is public only once it is set */
   verifiedAt: string | null;
-  /** the Call button's number (10879) — an artist's own */
+  /** the Call button's number (10879) — an organization's, since 19 Sep 2026 (Call
+   *  is a studio's and an organization's button, by the user's list) */
   phone: string | null;
+  /** the address the Mail button opens (19 Sep 2026) — an organization's or an
+   *  artist's own; a plain user's is never shown */
+  contactEmail: string | null;
 }
 
 /** the word over the name (10639) — by KIND, because the badge on an artist is

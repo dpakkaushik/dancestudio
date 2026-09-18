@@ -1,0 +1,70 @@
+import { Children, type CSSProperties, type ReactNode } from "react";
+import { CARD, INK, LINE, SUB } from "@/lib/design/tokens";
+import { mapsHref } from "./profile-kit";
+
+/** THE SMALL BUTTONS UNDER THE BIO (19 Sep 2026, the user's list, page by page:
+ *  "Send Enquiry for all except users, Call for studios and organizations, Mail
+ *  for all except users, Location for only Studio and Organizations"). The
+ *  prototype's small action row (10875-10888): 38px tall, 11px type, as many
+ *  equal cells as there are acts. Each one is a real hand-off — `tel:`,
+ *  `mailto:`, a Maps link — drawn only when there is a number, an address or a
+ *  place to hand off to. Enquiry keeps its own island (`EnquiryButton`) because
+ *  it opens a sheet. */
+
+const box: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", overflow: "hidden", whiteSpace: "nowrap", background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" };
+const glyph: CSSProperties = { flexShrink: 0, lineHeight: 0, color: SUB };
+
+/** Call — a real tel: hand-off to the number on record (10879); drawn only when
+ *  there is one. One Call for a studio and an organization alike. */
+export function CallButton({ phone }: { phone: string }) {
+  return (
+    <a href={`tel:${phone.replace(/\s+/g, "")}`} aria-label="Call" style={box}>
+      <span style={glyph}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6.6 3.6c.5-.5 1.4-.4 1.8.2l1.5 2.1c.4.5.3 1.2-.1 1.7l-.9 1c-.2.3-.3.8-.1 1.1a11 11 0 0 0 3 3c.3.2.8.2 1.1-.1l1-.9c.5-.4 1.2-.5 1.7-.1l2.1 1.5c.6.4.7 1.3.2 1.8l-1 1c-.6.6-1.4.8-2.2.6a15.6 15.6 0 0 1-6.8-4.1 15.6 15.6 0 0 1-4.1-6.8c-.2-.8 0-1.6.6-2.2z" />
+        </svg>
+      </span>
+      Call
+    </a>
+  );
+}
+
+/** Mail — a mailto: to the contact email the owner published (19 Sep 2026). */
+export function MailButton({ email }: { email: string }) {
+  return (
+    <a href={`mailto:${email.trim()}`} aria-label="Mail" style={box}>
+      <span style={glyph}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+          <path d="m3.5 7 8.5 6 8.5-6" />
+        </svg>
+      </span>
+      Mail
+    </a>
+  );
+}
+
+/** Location — opens the place in Maps (dosOpenMaps 206 builds the same URL). A
+ *  studio's is its name and address; an organization's its name and city. */
+export function LocationButton({ query }: { query: string }) {
+  return (
+    <a href={mapsHref(query)} target="_blank" rel="noreferrer" aria-label="Location" style={box}>
+      <span style={glyph}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 21s-6.5-5.7-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.3-6.5 10-6.5 10z" />
+          <circle cx="12" cy="10.8" r="2.3" />
+        </svg>
+      </span>
+      Location
+    </a>
+  );
+}
+
+/** As many equal cells as there are acts (10875) — nothing is drawn when there
+ *  are none, so a page never carries an empty row. */
+export function ActionRow({ children, gap = 6, marginTop = 12 }: { children: ReactNode; gap?: number; marginTop?: number }) {
+  /* `Children.toArray` drops the nulls a `cond ? <X/> : null` leaves behind */
+  const cells = Children.toArray(children);
+  if (cells.length === 0) return null;
+  return <div style={{ display: "grid", gridTemplateColumns: `repeat(${cells.length}, 1fr)`, gap, marginTop }}>{cells}</div>;
+}

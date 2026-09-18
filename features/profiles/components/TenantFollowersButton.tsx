@@ -3,31 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { DOS_DISPLAY, INK, MUTED, SUB } from "@/lib/design/tokens";
+import { INK, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { TenantFollower } from "@/types/follow";
-import { RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { RoleBadge, Sheet, followTint, initialsOf, smallBox, type FollowGlyph } from "./profile-kit";
 import { KIND_WORD, kindOf } from "@/types/profile";
-
-const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, textTransform: "uppercase" };
-const figure: React.CSSProperties = {
-  display: "block",
-  fontSize: 22,
-  fontWeight: 900,
-  lineHeight: 1,
-  letterSpacing: -0.6,
-  fontFamily: DOS_DISPLAY,
-  color: INK,
-  fontVariantNumeric: "tabular-nums",
-};
-
-const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n));
 
 /* the KIND is the badge, the glyph and the word at once (8 Sep 2026) */
 const kindOfFollower = (f: TenantFollower): FollowGlyph => kindOf(f.role, f.isArtist);
 const wordOf = (f: TenantFollower) => KIND_WORD[kindOf(f.role, f.isArtist)].toLowerCase();
 
-/** THE FIGURE BECOMES A DOOR, BUT ONLY FOR THE OWNER (parity audit B6 —
+/** WHO FOLLOWS YOU, FOR THE OWNER AND NOBODY ELSE (parity audit B6 —
  *  S_profiletab 11069, 11335). `findTenantFollowers` has existed since Step 15
  *  and nothing called it: the page printed how many and never who.
  *
@@ -37,25 +23,21 @@ const wordOf = (f: TenantFollower) => KIND_WORD[kindOf(f.role, f.isArtist)].toLo
  *  on the roster has no reason to hold it. RLS is the ceiling — this is the
  *  scope, said out loud.
  *
+ *  ⚠ A BUTTON, NOT A FIGURE (19 Sep 2026, the user: "remove all kinds of stats
+ *  from profile page"). It was the Followers count made pressable; the count is
+ *  off the page now, and this is a small button in the owner's row that opens
+ *  the list. The number is inside the sheet, where the list is.
+ *
  *  The rows are the person's Followers sheet's rows, drawn by the same kit with
  *  the same tint: the same people, so the same list. Each opens that person's
  *  page. A follower with no photo shows their initials on their own colour. */
-export function TenantFollowersButton({ count, followers }: { count: number; followers: TenantFollower[] }) {
+export function TenantFollowersButton({ followers, accent }: { followers: TenantFollower[]; accent: string }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={`${count} follower${count === 1 ? "" : "s"} — see who`}
-        aria-haspopup="dialog"
-        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
-      >
-        <span data-testid="followers-count" style={figure}>
-          {fmt(count)}
-        </span>
-        <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers ›</span>
+      <button type="button" onClick={() => setOpen(true)} aria-label="Followers — see who" aria-haspopup="dialog" style={smallBox(false, accent)}>
+        Followers ›
       </button>
 
       {open ? (

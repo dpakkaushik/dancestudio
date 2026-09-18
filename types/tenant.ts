@@ -28,6 +28,8 @@ export interface Tenant {
   foundedYear: number | null;
   /** the Call button's number (10879) */
   phone: string | null;
+  /** the Mail button's address (19 Sep 2026) — the owner's to publish */
+  contactEmail: string | null;
   /** the social chips (10760) */
   socials: SocialLink[];
   /** the enquiry types it accepts — null means every type its kind allows */

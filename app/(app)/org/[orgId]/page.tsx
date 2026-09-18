@@ -3,9 +3,13 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { OrganizationPublicPage } from "@/features/profiles/components/OrganizationPublicPage";
 import { dayKeyOf } from "@/lib/format/month";
+import { HEADER_MAX_ORG } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findEventsByTenants } from "@/repositories/events";
+import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
+import { findProfileById } from "@/repositories/profiles";
 import { findPublicOrganization, findPublicOrganizationStudios } from "@/repositories/publicOrganization";
+import { isFollowingPerson } from "@/repositories/publicPerson";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const stampNowIso = (): string => new Date().toISOString();
@@ -26,7 +30,9 @@ export async function generateMetadata({ params }: { params: Promise<{ orgId: st
  *  the three definer reads answer for a PUBLIC organization and for nobody else,
  *  so "not found" is the honest answer for a bad id, a private organization and
  *  a person's id alike. Its events come through the events policy the public
- *  already has (published, public host), scoped to its hosting row. */
+ *  already has (published, public host), scoped to its hosting row. SINCE 19 Sep
+ *  2026 it also reads the organization's header pictures (public rows in the
+ *  public bucket, up to ten) and whether the viewer follows it. */
 export default async function OrganizationPage({ params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
   if (!UUID_RE.test(orgId)) {
@@ -37,14 +43,22 @@ export default async function OrganizationPage({ params }: { params: Promise<{ o
     notFound();
   }
   const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isMe = Boolean(user) && user!.id === orgId;
   const today = dayKeyOf(stampNowIso());
-  const [studios, events] = await Promise.all([
+  const [studios, events, viewer, following, header] = await Promise.all([
     findPublicOrganizationStudios(supabase, orgId),
     org.hostBusinessId ? findEventsByTenants(supabase, [org.hostBusinessId]).catch(() => []) : Promise.resolve([]),
+    /* an organization viewer follows nothing — the toggle is not drawn for one */
+    user && !isMe ? findProfileById(supabase, user.id) : Promise.resolve(null),
+    user && !isMe ? isFollowingPerson(supabase, orgId) : Promise.resolve(false),
+    findPersonHeaderPhotos(supabase, orgId, HEADER_MAX_ORG),
   ]);
   /* what a visitor came for: the published events still to come, soonest first */
   const upcoming = events
     .filter((e) => e.status === "published" && e.endDate >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
-  return <OrganizationPublicPage org={org} studios={studios} events={upcoming} />;
+  return <OrganizationPublicPage org={org} studios={studios} events={upcoming} header={header} isMe={isMe} following={following} canFollow={viewer?.role !== "org"} signedIn={Boolean(user)} />;
 }

@@ -1,14 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PublicFacultyMember, PublicTenant, PublicTenantProfile } from "@/types/publicProfile";
+import type { PublicTeamMember, PublicTenant, PublicTenantProfile } from "@/types/publicProfile";
 import type { TenantType } from "@/types/tenant";
 import { findFollowerCounts } from "./follows";
 
 /** Step 15 — a business's public page, assembled from what the public may
  *  already read: the listed tenant (Step 3's "anyone reads listed businesses"),
- *  its published classes and their sessions, and the CONFIRMED claims on them
- *  (Step 11: an unanswered ask never puts a name on a public page). Nothing
- *  here is a new permission; a member of the business sees the same page plus
- *  their own drafts nowhere on it. */
+ *  its published classes, and — since 19 Sep 2026 — its TEAM through
+ *  `public_studio_team`, one SECURITY DEFINER read that hands a stranger the
+ *  owner, the faculty and the visiting faculty of a LISTED studio with a name
+ *  and a picture each, and nobody else's. The Faculty that used to be read off
+ *  confirmed claims on published classes is gone: since 18 Sep 2026 an outside
+ *  teacher who accepts a class is seated on the team as visiting faculty, so
+ *  the team IS the answer, and it is readable signed out where `profiles` is not. */
 
 const MAX_CLASSES = 500;
 
@@ -25,6 +28,7 @@ interface TenantRow {
   about?: string | null;
   founded_year?: number | null;
   phone?: string | null;
+  contact_email?: string | null;
   socials?: unknown;
   enquiry_types?: string[] | null;
   accepts_upi?: boolean | null;
@@ -37,31 +41,22 @@ interface TenantRow {
 interface StyleRow {
   id: string;
   style: string;
-  class_sessions: Array<{ starts_at: string; deleted_at: string | null }> | null;
 }
 
-interface FacultyRow {
+interface TeamRow {
   user_id: string;
-  kind: "artist" | "assistant";
-  profiles: { full_name: string; city: string | null; profile_photo_path: string | null } | null;
-  classes: { business_id: string; status: string } | null;
+  member_role: "owner" | "trainer" | "visiting_faculty";
+  full_name: string;
+  photo_path: string | null;
+  is_org: boolean;
 }
-
-/** A faculty member with their face: the read already carried `profile_photo_path`
- *  (profiles is signed-in readable) and the row now keeps it, so a Faculty row
- *  can wear the person's picture the way every other people-row does. Named
- *  here rather than in types/publicProfile.ts, which this slice does not own. */
-export interface PublicFacultyFace extends PublicFacultyMember {
-  avatarPath: string | null;
-}
-export type PublicTenantProfileWithFaces = Omit<PublicTenantProfile, "faculty"> & { faculty: PublicFacultyFace[] };
 
 /** The tenant as the caller may see it — null when it is unlisted and the
  *  caller is not a member (RLS decides, the query does not). */
 export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
   const { data, error } = await supabase
     .from("businesses")
-    .select("id, type, name, area, city, lat, lng, created_at, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at")
+    .select("id, type, name, area, city, lat, lng, created_at, profile_photo_path, about, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at")
     .eq("id", tenantId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -73,14 +68,39 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
   }
   const row = data as TenantRow;
   const socials = Array.isArray(row.socials) ? (row.socials as Array<{ platform?: unknown; url?: unknown }>).map((x) => ({ platform: String(x.platform ?? ""), url: String(x.url ?? "") })).filter((x) => x.platform && x.url) : [];
-  return { id: row.id, type: row.type, name: row.name, area: row.area, city: row.city, lat: row.lat ?? null, lng: row.lng ?? null, createdAt: row.created_at, photoPath: row.profile_photo_path ?? null, about: row.about ?? null, foundedYear: row.founded_year == null ? null : Number(row.founded_year), phone: row.phone ?? null, socials, enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null, accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false }, verifiedAt: row.verified_at ?? null };
+  return {
+    id: row.id,
+    type: row.type,
+    name: row.name,
+    area: row.area,
+    city: row.city,
+    lat: row.lat ?? null,
+    lng: row.lng ?? null,
+    createdAt: row.created_at,
+    photoPath: row.profile_photo_path ?? null,
+    about: row.about ?? null,
+    foundedYear: row.founded_year == null ? null : Number(row.founded_year),
+    phone: row.phone ?? null,
+    contactEmail: row.contact_email ?? null,
+    socials,
+    enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null,
+    accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false },
+    verifiedAt: row.verified_at ?? null,
+  };
 }
 
-export async function findPublicTenantProfile(
-  supabase: SupabaseClient,
-  tenantId: string,
-  nowIso: string
-): Promise<PublicTenantProfileWithFaces | null> {
+/** A listed studio's team as the page prints it — owner, faculty, visiting
+ *  faculty, in that order (the function orders them). Empty rather than an
+ *  error when the caller may not see it: the page draws no group. */
+export async function findPublicStudioTeam(supabase: SupabaseClient, tenantId: string): Promise<PublicTeamMember[]> {
+  const { data, error } = await supabase.rpc("public_studio_team", { p_business_id: tenantId });
+  if (error) {
+    return [];
+  }
+  return ((data ?? []) as TeamRow[]).map((r) => ({ userId: r.user_id, role: r.member_role, name: r.full_name, photoPath: r.photo_path, isOrg: Boolean(r.is_org) }));
+}
+
+export async function findPublicTenantProfile(supabase: SupabaseClient, tenantId: string): Promise<PublicTenantProfile | null> {
   const tenant = await findPublicTenant(supabase, tenantId);
   if (!tenant) {
     return null;
@@ -92,77 +112,28 @@ export async function findPublicTenantProfile(
     return null;
   }
 
-  const [classesRes, facultyRes, counts] = await Promise.all([
-    supabase
-      .from("classes")
-      .select("id, style, class_sessions (starts_at, deleted_at)")
-      .eq("business_id", tenantId)
-      .eq("status", "published")
-      .is("deleted_at", null)
-      .limit(MAX_CLASSES),
-    supabase
-      .from("class_people")
-      .select("user_id, kind, profiles (full_name, city, profile_photo_path), classes!inner (business_id, status)")
-      .eq("classes.business_id", tenantId)
-      .eq("classes.status", "published")
-      .eq("status", "confirmed")
-      .is("deleted_at", null)
-      .limit(MAX_CLASSES),
+  const [classesRes, team, counts] = await Promise.all([
+    supabase.from("classes").select("id, style").eq("business_id", tenantId).eq("status", "published").is("deleted_at", null).limit(MAX_CLASSES),
+    findPublicStudioTeam(supabase, tenantId),
     findFollowerCounts(supabase, [tenantId]),
   ]);
 
   if (classesRes.error) {
     throw new Error(`publicProfile.classes failed: ${classesRes.error.message}`);
   }
-  if (facultyRes.error) {
-    throw new Error(`publicProfile.faculty failed: ${facultyRes.error.message}`);
-  }
 
-  const classes = (classesRes.data ?? []) as unknown as StyleRow[];
   const styleCount = new Map<string, number>();
-  let upcoming = 0;
-  for (const c of classes) {
+  for (const c of (classesRes.data ?? []) as StyleRow[]) {
     styleCount.set(c.style, (styleCount.get(c.style) ?? 0) + 1);
-    for (const s of c.class_sessions ?? []) {
-      if (!s.deleted_at && s.starts_at >= nowIso) upcoming += 1;
-    }
   }
   const styles = [...styleCount.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([style]) => style);
 
-  /* one row per person: an artist anywhere outranks an assistant elsewhere.
-     Profiles are readable by signed-in users only (Step 1), so a stranger's
-     view names nobody — rows without a name are left out rather than printed
-     as "Someone". */
-  const people = new Map<string, PublicFacultyFace>();
-  for (const r of (facultyRes.data ?? []) as unknown as FacultyRow[]) {
-    if (!r.profiles?.full_name) continue;
-    const role: PublicFacultyMember["role"] = r.kind === "artist" ? "Artist" : "Assistant";
-    const existing = people.get(r.user_id);
-    if (existing) {
-      existing.classCount += 1;
-      if (role === "Artist") existing.role = "Artist";
-    } else {
-      people.set(r.user_id, {
-        userId: r.user_id,
-        name: r.profiles.full_name,
-        city: r.profiles.city,
-        role,
-        classCount: 1,
-        avatarPath: r.profiles.profile_photo_path ?? null,
-      });
-    }
-  }
-  const faculty = [...people.values()].sort(
-    (a, b) => (a.role === b.role ? b.classCount - a.classCount || a.name.localeCompare(b.name) : a.role === "Artist" ? -1 : 1)
-  );
-
   return {
     tenant,
     styles,
-    faculty,
+    team,
     followers: counts.get(tenantId) ?? 0,
-    upcomingSessions: upcoming,
   };
 }

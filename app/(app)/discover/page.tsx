@@ -12,7 +12,7 @@ import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, EventI, StudioI } from "@/features/discovery/components/discover-kit";
 import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
 import { EventCard } from "@/features/events/components/EventCard";
-import { gradientOf } from "@/features/profiles/components/PublicProfile";
+import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { INDIA_CENTRE, centreOf, findDiscoverCities } from "@/repositories/cities";
 import { DOS_DISPLAY, DOS_UI, INK, PINK, SUB } from "@/lib/design/tokens";

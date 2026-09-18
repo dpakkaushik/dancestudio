@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { PublicPersonPage } from "@/features/profiles/components/PublicPersonPage";
 import { headerMaxFor } from "@/lib/media/photo";
+import { kindOf } from "@/types/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
@@ -72,8 +73,9 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
   const canFollow = !isMe && !isOrg && viewer?.role !== "org";
   const [following, header] = await Promise.all([
     canFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
-    /* THE HEADER (15 Sep 2026): their own pictures, as many as their plan shows */
-    isOrg ? Promise.resolve([]) : findPersonHeaderPhotos(supabase, userId, headerMaxFor(person.isArtist)),
+    /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
+       one for a user, five for an artist, ten for an organization (19 Sep 2026) */
+    findPersonHeaderPhotos(supabase, userId, headerMaxFor(kindOf(person.profile.role, person.isArtist))),
   ]);
 
   return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} canFollow={canFollow} />;

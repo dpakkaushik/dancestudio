@@ -5,6 +5,9 @@ import { CrewPublicPage } from "@/features/crews/components/CrewPublicPage";
 import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findCrewById, findCrewEntries, findCrewMembers } from "@/repositories/crews";
+import { isFollowingCrew } from "@/repositories/follows";
+import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
+import { findProfileById } from "@/repositories/profiles";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const stampNowIso = (): string => new Date().toISOString();
@@ -22,7 +25,9 @@ export async function generateMetadata({ params }: { params: Promise<{ crewId: s
 }
 
 /** A crew's public page, for anybody — a stranger, a member, or its leader.
- *  Works signed out: RLS shows the crew and its CONFIRMED roster to everyone. */
+ *  Works signed out: RLS shows the crew, its CONFIRMED roster and its header
+ *  pictures to everyone. Since 19 Sep 2026 it also reads whether the viewer
+ *  follows the crew (and who the viewer is — an organization follows nothing). */
 export default async function CrewPage({ params }: { params: Promise<{ crewId: string }> }) {
   const { crewId } = await params;
   if (!UUID_RE.test(crewId)) {
@@ -36,9 +41,27 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [members, entries] = await Promise.all([findCrewMembers(supabase, crewId), findCrewEntries(supabase, crewId)]);
+  const [members, entries, header, viewerProfile, following] = await Promise.all([
+    findCrewMembers(supabase, crewId),
+    findCrewEntries(supabase, crewId),
+    findCrewHeaderPhotos(supabase, crewId),
+    user ? findProfileById(supabase, user.id) : Promise.resolve(null),
+    user ? isFollowingCrew(supabase, crewId) : Promise.resolve(false),
+  ]);
   /* the public page prints the confirmed; the leader's own asked rows are the desk's business */
   const confirmed = members.filter((m) => m.status === "confirmed");
   const viewer = user ? (crew.leaderId === user.id ? "leader" : confirmed.some((m) => m.userId === user.id) ? "member" : "other") : "other";
-  return <CrewPublicPage crew={crew} members={confirmed} entries={entries} viewer={viewer} signedIn={Boolean(user)} todayKey={dayKeyOf(stampNowIso())} />;
+  return (
+    <CrewPublicPage
+      crew={crew}
+      members={confirmed}
+      entries={entries}
+      header={header}
+      viewer={viewer}
+      following={following}
+      canFollow={viewerProfile?.role !== "org"}
+      signedIn={Boolean(user)}
+      todayKey={dayKeyOf(stampNowIso())}
+    />
+  );
 }

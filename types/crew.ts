@@ -21,6 +21,8 @@ export interface Crew {
   style: string;
   leaderId: string;
   photo: string | null;
+  /** the Mail button's address on the crew's page (19 Sep 2026) — the leader's to publish */
+  contactEmail: string | null;
   /** when the crew was created — the prototype's "since" */
   createdAt: string;
 }

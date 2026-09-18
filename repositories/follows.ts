@@ -203,3 +203,93 @@ export async function setFollow(supabase: SupabaseClient, tenantId: string, on: 
   const out = data as { following: boolean; followers: number };
   return { following: out.following, followers: Number(out.followers) };
 }
+
+/* ── A CREW IS THE THIRD THING A FOLLOW CAN NAME (19 Sep 2026, the user: "Follow
+   with Following toggle for all") — `follows.crew_id`, one door, one count. ── */
+
+/** Whether the signed-in person follows this crew right now. */
+export async function isFollowingCrew(supabase: SupabaseClient, crewId: string): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data, error } = await supabase.from("follows").select("id").eq("follower_id", user.id).eq("crew_id", crewId).is("deleted_at", null).limit(1);
+  if (error) return false;
+  return (data ?? []).length > 0;
+}
+
+/** Follow or unfollow a crew — idempotent; the RPC refuses an organization
+ *  account, the crew's leader and its confirmed members. */
+export async function setCrewFollow(supabase: SupabaseClient, crewId: string, on: boolean): Promise<FollowState> {
+  const { data, error } = await supabase.rpc("set_crew_follow", { p_crew_id: crewId, p_on: on });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const out = data as { following: boolean; followers: number };
+  return { following: out.following, followers: Number(out.followers) };
+}
+
+/** One organization the signed-in person follows (19 Sep 2026) — through
+ *  `my_followed_organizations`, because an organization's `profiles` row is
+ *  private (R12) and the sheet could not embed it. */
+export interface FollowedOrganization {
+  followId: string;
+  orgId: string;
+  name: string;
+  city: string | null;
+  photoPath: string | null;
+  followedAt: string;
+}
+
+export async function findMyFollowedOrganizations(supabase: SupabaseClient): Promise<FollowedOrganization[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase.rpc("my_followed_organizations");
+  if (error) {
+    return [];
+  }
+  return ((data ?? []) as Array<{ follow_id: string; org_id: string; name: string; city: string | null; photo_path: string | null; followed_at: string }>).map((r) => ({
+    followId: r.follow_id,
+    orgId: r.org_id,
+    name: r.name,
+    city: r.city,
+    photoPath: r.photo_path,
+    followedAt: r.followed_at,
+  }));
+}
+
+/** One crew the signed-in person follows (19 Sep 2026). A crew is public, so
+ *  the row embeds it; `follower_id = me` is said out loud as everywhere here. */
+export interface FollowedCrew {
+  followId: string;
+  crewId: string;
+  name: string;
+  city: string;
+  style: string;
+  photo: string | null;
+  followedAt: string;
+}
+
+export async function findMyFollowedCrews(supabase: SupabaseClient): Promise<FollowedCrew[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("follows")
+    .select("id, crew_id, created_at, crews (name, city, style, photo, deleted_at)")
+    .eq("follower_id", user.id)
+    .not("crew_id", "is", null)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(MAX_LIST);
+  if (error) {
+    /* the column arrives with 20260919120000 — before it, the sheet simply lists no crews */
+    return [];
+  }
+  return ((data ?? []) as unknown as Array<{ id: string; crew_id: string; created_at: string; crews: { name: string; city: string; style: string; photo: string | null; deleted_at: string | null } | null }>)
+    .filter((r) => r.crews && !r.crews.deleted_at)
+    .map((r) => ({ followId: r.id, crewId: r.crew_id, name: r.crews!.name, city: r.crews!.city, style: r.crews!.style, photo: r.crews!.photo, followedAt: r.created_at }));
+}

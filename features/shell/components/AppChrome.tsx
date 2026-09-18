@@ -13,14 +13,16 @@ import { DOS_UI, INK } from "@/lib/design/tokens";
  *  screens in a stack; here each tab and drill is a real route, so "which tab is
  *  lit" and "is the bar drawn at all" read off the pathname instead of the stack.
  *
- *  FOUR IN THE BAR, NOT FIVE (15 Sep 2026, the user): Stats left the bar for a
- *  tile among the tools on every Home ("keep it as a tab on the home page along
- *  with calendar, classes"), and Profile left it for an EYE — "the profile view,
- *  what a user will see when he clicks over a studio or artist" — whose target
- *  the layout works out per account. /profile and /stats are still routes (a
- *  route is a promise, Rule 14): the gear opens the first, the tile the second,
- *  and both read as drill pages now, with the back chip and a title. Recorded
- *  in CLAUDE.md's deviations table.
+ *  THREE IN THE BAR (19 Sep 2026, the user: "remove profile tab from navbar" —
+ *  their name for the eye that had the fourth slot since 15 Sep). Stats left
+ *  the bar on 15 Sep 2026 for a tile, then for the chip beside the QR; Profile
+ *  left it for an EYE the same day — "the profile view, what a user will see
+ *  when he clicks over a studio or artist" — and the eye has now left the bar
+ *  too, for the corner of Home's hero, under the pencil. The bar is Home ·
+ *  Discover · Inbox. /profile and /stats are still routes (a route is a
+ *  promise, Rule 14): the gear opens the first, the chip the second, and both
+ *  read as drill pages, with the back chip and a title. Recorded in CLAUDE.md's
+ *  deviations table.
  *
  *  THE MARK IS THE PROFILE SWITCHER (18 Sep 2026, the user: "DanceOS icon on top
  *  left should give a drop down for profile switcher which takes to different
@@ -104,23 +106,16 @@ const TAB_ICONS: Record<string, (c: string) => ReactNode> = {
       <path d="M3.5 13.5 6.2 5.2h11.6l2.7 8.3V18a1.8 1.8 0 0 1-1.8 1.8H5.3A1.8 1.8 0 0 1 3.5 18z" />
     </svg>
   ),
-  /* the eye: the page as a stranger sees it */
-  "Public view": (c) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" stroke={c} {...ICON_STROKE}>
-      <path d="M1.8 12S5.6 5.2 12 5.2 22.2 12 22.2 12 18.4 18.8 12 18.8 1.8 12 1.8 12z" />
-      <circle cx="12" cy="12" r="3.1" />
-    </svg>
-  ),
 };
 
 const TAB_TINT: Record<string, string> = {
   Home: "#5AC8FA",
   Discover: "#22C55E",
   Inbox: "#8B5CF6",
-  "Public view": "#EC4899",
 };
 
-/* the three that are places of their own; the eye is added per account below */
+/* the three that are places of their own — the eye to the account's public page
+   sits on Home's hero since 19 Sep 2026, not here */
 const TAB_SET: Array<{ label: string; href: string }> = [
   { label: "Home", href: "/" },
   { label: "Discover", href: "/discover" },
@@ -275,7 +270,6 @@ export function AppChrome({
   children,
   unread = 0,
   adminOnly = false,
-  publicViewHref = null,
   switcher = [],
 }: {
   children: ReactNode;
@@ -283,8 +277,6 @@ export function AppChrome({
   unread?: number;
   /** a platform admin with no profile (9 Sep 2026): no tab bar, no bell, no gear — a Sign out instead; the queue is its whole app */
   adminOnly?: boolean;
-  /** where the eye goes — this account's page as a stranger sees it; null draws no eye */
-  publicViewHref?: string | null;
   /** the homes this account can go to — its own, its studios, the crews it leads (18 Sep 2026) */
   switcher?: SwitcherItem[];
 }) {
@@ -296,14 +288,12 @@ export function AppChrome({
   const entity = entityOf(pathname);
   const showMark = isTab || entity !== null;
   const showBar = (isTab || entity !== null) && !adminOnly;
-  /* the eye is a door out of the bar, never a lit tab — the page it opens is a drill */
-  const mainBar = publicViewHref ? [...TAB_SET, { label: "Public view", href: publicViewHref }] : TAB_SET;
   const bar = entity
     ? [
         { label: "Home", href: entity.home },
         { label: "Inbox", href: entity.inbox },
       ]
-    : mainBar;
+    : TAB_SET;
   const lit = entity ? (pathname === entity.home ? "Home" : "Inbox") : activeTab;
   /* THE SWITCHER'S OPEN STATE IS KEYED ON THE PAGE IT WAS OPENED ON: a navigation
      changes the pathname, so the menu closes by itself without an effect writing

@@ -1,47 +1,74 @@
-import Image from "next/image";
-import Link from "next/link";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
-import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { BioBlock } from "@/features/profiles/components/BioBlock";
+import { ActionRow, CallButton, LocationButton, MailButton } from "@/features/profiles/components/ContactButtons";
+import { FollowToggle } from "@/features/profiles/components/FollowToggle";
+import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
-import { PlatformIcon, gradientOf } from "@/features/profiles/components/profile-kit";
-import { VerifiedTick } from "@/features/settings/components/settings-kit";
-import { safeHref } from "@/lib/constants/socials";
-import { CARD, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
+import { StatsChip } from "@/features/profiles/components/StatsChip";
+import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { Group, Row, TYPE, gradientOf } from "@/features/profiles/components/profile-kit";
+import { DOS_TINT, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
+import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { PublicOrganization, PublicOrganizationStudio } from "@/repositories/publicOrganization";
+import { enquiryTypesFor } from "@/types/enquiry";
 import type { DanceEvent } from "@/types/event";
 
 /** AN ORGANIZATION'S PUBLIC PAGE (18 Sep 2026, the user: "[the eye] should show
  *  organization profile page, and the same should reflect inside the event cards
- *  with photo"). It amends R9 this far and no further: the same identity hero
- *  every profile page wears — ORGANIZATION over the name, the logo on the disc,
- *  the city, the GST tick when it is verified — then About and its links, THE
- *  STUDIOS IT RUNS (the listed ones, each a door to its own page), and THE
- *  EVENTS IT HOSTS (published, each the app's one event card, wearing the
- *  organization's own name and picture). Nobody follows an organization and it
- *  is not in search's People (R9, R11 stand); this is a page you arrive at from
- *  an event, a studio, or the organization's own eye. Readable signed out. */
+ *  with photo"). It amends R9 this far: the same identity hero every profile
+ *  page wears — ORGANIZATION over the name, the logo on the disc, the city, the
+ *  GST tick when it is verified — and what a stranger came for.
+ *
+ *  RE-CUT 19 Sep 2026 TO THE USER'S LIST, and R9 amended a second time: an
+ *  organization CAN BE FOLLOWED now ("Follow with Following toggle for all") —
+ *  a public one, through `set_person_follow` — though it still follows nobody.
+ *  Under the hero, in the order every public page shares: **Follow ·
+ *  Following**, the **Bio** (About and the links), the **buttons** an
+ *  organization's page carries — Enquiry · Call · Mail · Location — then the
+ *  **associations**: THE STUDIOS IT RUNS (the listed ones, each a door to its
+ *  own page) and THE EVENTS IT HOSTS. The header swipes through up to ten
+ *  pictures, added from Edit profile like a person's.
+ *
+ *  ⚠ THE USER ASKED FOR "OWNER — one of the users added from team in
+ *  organizations" here, and it is NOT built: an organization is ONE LOGIN
+ *  (8 Sep 2026) with no team table behind it, so there is no user to name.
+ *  Backlog row; the Studios group stands where the Owner would.
+ *
+ *  Not in search's People (R9, R11 stand); its `profiles` row stays private
+ *  (R12). Readable signed out. */
 
 const monthYear = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
-const shelf: React.CSSProperties = { fontSize: 15, fontWeight: 900, letterSpacing: -0.3, fontFamily: DOS_DISPLAY };
 
-function Group({ title, n, children }: { title: string; n: number; children: React.ReactNode }) {
-  return (
-    <div style={{ marginTop: 18 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-        <span style={shelf}>{title}</span>
-        <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{n}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-export function OrganizationPublicPage({ org, studios, events }: { org: PublicOrganization; studios: PublicOrganizationStudio[]; events: DanceEvent[] }) {
+export function OrganizationPublicPage({
+  org,
+  studios,
+  events,
+  header = [],
+  isMe = false,
+  following = false,
+  canFollow = true,
+  signedIn = false,
+}: {
+  org: PublicOrganization;
+  studios: PublicOrganizationStudio[];
+  events: DanceEvent[];
+  /** THE HEADER PICTURES (19 Sep 2026): up to ten, the organization's own */
+  header?: HeaderPhoto[];
+  /** the organization looking at its own page: no Follow, no Enquiry */
+  isMe?: boolean;
+  following?: boolean;
+  /** false for an organization viewer — one follows nothing */
+  canFollow?: boolean;
+  signedIn?: boolean;
+}) {
   const grad = gradientOf(org.name);
   const tint = DOS_TINT.org;
   const host: EventCardHost = { name: org.name, photo: photoUrl(org.photoPath), href: null };
-  const links = org.socials.map((l) => ({ ...l, href: safeHref(l.url) })).filter((l) => l.href);
+  const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${org.name}`, signed: h.signed }));
+  /* an organization is asked through its hosting row (R15) — a celebration, a corporate show, a collaboration */
+  const canAsk = !isMe && Boolean(org.hostBusinessId) && enquiryTypesFor("org").length > 0;
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -54,6 +81,9 @@ export function OrganizationPublicPage({ org, studios, events }: { org: PublicOr
           eyebrow="Organization"
           verified={org.verified}
           share={<ProfileShare path={`/org/${org.id}`} name={org.name} />}
+          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): the organization's own
+             combined board, or — for a visitor — the studios' board its studios stand on */
+          stats={<StatsChip href={isMe ? "/business/stats" : "/stats?tab=charts&seg=studio"} />}
           meta={
             <>
               {org.city ? <span>{org.city}</span> : null}
@@ -69,58 +99,43 @@ export function OrganizationPublicPage({ org, studios, events }: { org: PublicOr
           styleAria={(s) => s}
           avatar={photoUrl(org.photoPath)}
           avatarAlt={`${org.name} — logo`}
-          shots={[]}
+          shots={shots}
         />
 
-        {org.about ? (
-          <div style={{ margin: "14px 0 4px" }}>
-            <div style={{ ...shelf, marginBottom: 6 }}>About</div>
-            <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>{org.about}</div>
+        {/* ── FOLLOW · FOLLOWING, first under the hero (19 Sep 2026) ── */}
+        {!isMe && canFollow ? (
+          <div style={{ marginTop: 12 }}>
+            <FollowToggle target={{ kind: "person", id: org.id }} initialFollowing={following} accent={tint} signedIn={signedIn} />
           </div>
         ) : null}
 
-        {links.length ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-            {links.map((l) => (
-              <a key={l.platform} href={l.href!} target="_blank" rel="noopener noreferrer" aria-label={`${org.name} on ${l.platform}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", borderRadius: 999, background: CARD, border: `1px solid ${LINE}`, color: INK, fontSize: 11.5, fontWeight: 800, textDecoration: "none" }}>
-                <PlatformIcon label={l.platform} size={14} />
-                {l.platform}
-              </a>
-            ))}
-          </div>
-        ) : null}
+        {/* ── THE BIO: About as prose, then the links ── */}
+        <BioBlock about={org.about} links={org.socials} accent={tint} />
 
+        {/* ── THE BUTTONS AN ORGANIZATION'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail · Location ── */}
+        <ActionRow>
+          {canAsk ? <EnquiryButton tenantId={org.hostBusinessId as string} tenantName={org.name} tenantType="org" signedIn={signedIn} accent={tint} /> : null}
+          {org.phone ? <CallButton phone={org.phone} /> : null}
+          {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}
+          {org.city ? <LocationButton query={`${org.name} ${org.city}`} /> : null}
+        </ActionRow>
+
+        {/* ── THE ASSOCIATIONS: the studios it runs, then the events it hosts ── */}
         <Group title="Studios" n={studios.length}>
           {studios.length ? (
-            <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "2px 11px" }}>
-              {studios.map((s) => {
-                const g = gradientOf(s.name);
-                const face = photoUrl(s.photoPath);
-                return (
-                  <Link key={s.id} href={`/studio/${s.id}`} aria-label={`Open ${s.name}`} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", color: INK, textDecoration: "none" }}>
-                    <span style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 13, overflow: "hidden", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(150deg,${g[0]},${g[1]})`, color: "#fff", fontSize: 15, fontWeight: 900, fontFamily: DOS_DISPLAY }}>
-                      {face ? <Image src={face} alt="" width={42} height={42} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : s.name.trim()[0]?.toUpperCase()}
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                        <span style={{ fontSize: 13.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                        {s.verifiedAt ? <VerifiedTick size={13} /> : null}
-                      </span>
-                      <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>{[s.area, s.city].filter(Boolean).join(", ") || "—"}</span>
-                    </span>
-                    <span style={{ color: MUTED }}>›</span>
-                  </Link>
-                );
-              })}
-            </div>
+            studios.map((s) => <Row key={s.id} href={`/studio/${s.id}`} title={s.name} sub={[s.area, s.city].filter(Boolean).join(", ") || "Studio"} photo={photoUrl(s.photoPath)} right={s.verifiedAt ? "Verified" : undefined} />)
           ) : (
-            <div style={{ fontSize: 11.5, color: MUTED, padding: "6px 2px" }}>No studio on Discover yet.</div>
+            <div style={{ fontSize: 11.5, color: MUTED, padding: "10px 0" }}>No studio on Discover yet.</div>
           )}
         </Group>
 
-        <Group title="Events" n={events.length}>
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+            <span style={{ ...TYPE.shelf, color: INK }}>Events</span>
+            <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{events.length}</span>
+          </div>
           {events.length ? events.map((e) => <EventCard key={e.id} event={e} href={`/e/${e.shareSlug}`} host={host} />) : <div style={{ fontSize: 11.5, color: MUTED, padding: "6px 2px" }}>Nothing coming up.</div>}
-        </Group>
+        </div>
       </div>
     </div>
   );

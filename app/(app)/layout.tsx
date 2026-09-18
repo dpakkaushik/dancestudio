@@ -16,20 +16,18 @@ import { MEMBER_ROLE_WORD } from "@/types/staff";
  *  count is zero, never an error page — the bell is decoration on somebody's
  *  actual work.
  *
- *  THE EYE (15 Sep 2026, the user: "remove the profile [tab] and make an eye
- *  icon which will show the profile view — what a user will see when he clicks
- *  over a studio or artist"). Where that page IS depends on who is signed in,
- *  so the layout works it out once per render and the chrome only draws it:
- *  an organization's is its first studio's public page (an organization has
- *  none of its own — R9), an artist's is their artist page, a user's is their
- *  person page.
+ *  THE EYE LEFT THE BAR (19 Sep 2026, the user: "remove profile tab from navbar
+ *  … give an eye to view profile on the home tab below edit on top right").
+ *  From 15 Sep it was the bar's fourth slot, computed here; it is Home's own
+ *  corner control now (`app/(app)/page.tsx`), so the layout no longer works
+ *  out where it goes.
  *
  *  THE SWITCHER (18 Sep 2026, the user: "DanceOS icon on top left should give a
  *  drop down for profile switcher which takes to different profiles managed by
- *  that specific user"). The same reads that place the eye also list the homes:
- *  the account's own, every studio it is on the team of (with its seat named),
- *  and every crew it leads. The chrome draws the list; nothing here is a
- *  session switch — each row is a route to a page the account already owns. */
+ *  that specific user"). One set of reads lists the homes: the account's own,
+ *  every studio it is on the team of (with its seat named), and every crew it
+ *  leads. The chrome draws the list; nothing here is a session switch — each
+ *  row is a route to a page the account already owns. */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createSupabaseServerClient();
   const {
@@ -48,16 +46,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     profile && profile.role !== "org" ? findMyLedCrews(supabase).catch(() => []) : Promise.resolve([]),
   ]);
 
-  let publicViewHref: string | null = null;
   const switcher: SwitcherItem[] = [];
   if (profile) {
-    /* THE EYE (re-cut 18 Sep 2026, the user): an organization's is its OWN page
-       now — /org/{id}, the profile a stranger reads, with its studios and events
-       under it (row R9 amended) — where it used to be its first studio; and an
-       artist's is their PROFILE, /person/{id}, because an artist's public face is
-       their profile and the artist page is only the business behind it. A plain
-       user's was always their person page. */
-    publicViewHref = profile.role === "org" ? `/org/${profile.id}` : `/person/${profile.id}`;
     switcher.push({ key: "me", href: "/", label: profile.fullName, sub: profile.role === "org" ? "Organization" : "Your profile", kind: "me" });
     for (const m of memberships) {
       if (m.tenant.type !== "studio") continue;
@@ -69,7 +59,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppChrome unread={unread} adminOnly={adminOnly} publicViewHref={publicViewHref} switcher={switcher}>
+    <AppChrome unread={unread} adminOnly={adminOnly} switcher={switcher}>
       {children}
     </AppChrome>
   );

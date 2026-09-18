@@ -74,11 +74,19 @@ export async function createCrewAction(input: z.input<typeof createSchema>): Pro
   }
 }
 
-const updateSchema = z.object({ crewId: uuid, name: z.string().trim().min(1).max(64), city, style });
+/* the crew's Edit sheet (19 Sep 2026) — name, city, style, and the Mail button's
+   address: omitted → unchanged, null → cleared */
+const updateSchema = z.object({
+  crewId: uuid,
+  name: z.string().trim().min(1, "Name your crew first").max(64),
+  city,
+  style,
+  contactEmail: z.string().trim().email("that is not an email address").max(254).nullable().optional(),
+});
 
 export async function updateCrewAction(input: z.input<typeof updateSchema>): Promise<CrewActionResult> {
   const parsed = updateSchema.safeParse(input);
-  if (!parsed.success) return { error: "Check the crew's details" };
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the crew's details" };
   const supabase = await requireUser();
   try {
     await updateCrew(supabase, parsed.data);
