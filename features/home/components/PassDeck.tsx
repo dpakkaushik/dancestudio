@@ -173,7 +173,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
       <ClassTile
         danceClass={c}
         filled={p.filled}
-        tenantName={p.tenantName}
+        artist={p.artist}
         city={p.tenantCity}
         href={p.href}
         /* every card in this rail is today, so the date block says so (8290-8293) */

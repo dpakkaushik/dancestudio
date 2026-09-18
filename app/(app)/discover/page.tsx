@@ -20,11 +20,13 @@ import { dayKeyOf } from "@/lib/format/month";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findClassArtists } from "@/repositories/claims";
 import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
 import { findNearbyTenants, findTenantCardFacts, type TenantCardFacts } from "@/repositories/discovery";
 import { findPublishedEvents } from "@/repositories/events";
 import { findFollowerCounts, findMyFollowing } from "@/repositories/follows";
+import type { ClassArtist } from "@/types/claim";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findProfileById } from "@/repositories/profiles";
 import type { EnrollmentStatus } from "@/types/enrollment";
@@ -156,6 +158,10 @@ export default async function DiscoverPage({
     filters
   );
   const counts = tab === "classes" ? await countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : new Map<string, number>();
+  /* the teacher each class card wears in its centre (18 Sep 2026) — one read for
+     the whole shelf. A signed-out visitor may not read `profiles`, so the map is
+     simply empty for them and the cards keep the style square. */
+  const classArtists = tab === "classes" ? await findClassArtists(supabase, classes.map((c) => c.id)) : new Map<string, ClassArtist>();
 
   /* every business card ends with its styles — the styles of its published
      classes — and a style filter narrows through the same map */
@@ -282,7 +288,7 @@ export default async function DiscoverPage({
               key={c.id}
               danceClass={c}
               filled={filled}
-              tenantName={c.tenantName}
+              artist={classArtists.get(c.id) ?? null}
               city={c.tenantCity}
               href={`/c/${c.shareSlug}`}
               actions={

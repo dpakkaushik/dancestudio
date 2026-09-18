@@ -1,3 +1,4 @@
+import type { ClassArtist } from "@/types/claim";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { DanceEvent } from "@/types/event";
@@ -34,6 +35,10 @@ export interface CalendarEntry {
   enrollment: { id: string; status: EnrollmentStatus } | null;
   /** seats taken, for the tile's "N spots left" */
   filled: number;
+  /** the confirmed teacher, whose face the card's centre column wears (18 Sep
+   *  2026); null on a class nobody has accepted yet, and the card falls back to
+   *  the style square */
+  artist: ClassArtist | null;
 }
 
 /** ⚠ AN EVENT ON THE CALENDAR (18 Sep 2026). The calendar has drawn CLASSES

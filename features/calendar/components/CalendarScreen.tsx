@@ -416,7 +416,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
         key={r.id}
         danceClass={toTileClass(e)}
         filled={e.filled}
-        tenantName={mode === "personal" ? e.tenantName : undefined}
+        artist={e.artist}
         city={e.tenantCity}
         href={`/c/${e.shareSlug}`}
         actions={

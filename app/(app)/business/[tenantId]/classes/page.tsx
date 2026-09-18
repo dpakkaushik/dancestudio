@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findClassArtists } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/enrollments";
 import { findMyTenants } from "@/repositories/tenants";
@@ -45,15 +46,19 @@ export default async function TenantClassesPage({
 
   const classes = await findClassesByTenant(supabase, tenantId);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
-  const [counts, state] = await Promise.all([
+  const [counts, state, artists] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     findClassPublishState(supabase, tenantId).catch(() => new Map()),
+    /* the teacher each row's card wears in its centre (18 Sep 2026) — a draft
+       whose ask is unanswered has none, and falls back to the style square */
+    findClassArtists(supabase, classes.map((c) => c.id)),
   ]);
   return (
     <ClassesManager
       tenantId={tenantId}
       classes={classes}
       filledBySession={Object.fromEntries(counts)}
+      artists={Object.fromEntries(artists)}
       publishState={Object.fromEntries(state)}
       nowIso={stampNowIso()}
     />

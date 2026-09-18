@@ -33,15 +33,20 @@ export interface ClassTileProps {
   danceClass: DanceClass;
   /** Enrollment count — 0 until Step 4 wires bookings. */
   filled?: number;
-  /** Who runs it — the studio/trainer business name. The card no longer prints a
-   *  venue line (prototype 8443-8449: the page carries the studio); the name only
-   *  captions the WHO column when the class has no artist (8300). */
+  /** ⚠ ACCEPTED AND NEVER PRINTED (18 Sep 2026, the user: "remove studio names
+   *  from class cards, should only be visible inside the booking page"). It used
+   *  to caption the WHO column whenever the class had no artist, which is how a
+   *  studio's name ended up on the card at all. The prop stays so seven callers
+   *  did not have to change in the same breath as the layout; `/c/{slug}` is
+   *  where the studio is named, under AT THE STUDIO with its address and rooms. */
   tenantName?: string | null;
   /** Accepted for the callers that already pass it; the card does not print it
    *  (8443-8449) — the class page carries the venue. */
   city?: string | null;
-  /** The confirmed artist taking it — the WHO column wears their face (8193-8200).
-   *  Without one the column draws the style square in the tool paint. */
+  /** THE TEACHER TAKING IT — the WHO column wears their face (8193-8200), which
+   *  is what the centre is FOR. Without one (a draft nobody has accepted yet, or
+   *  a signed-out reader who may not read `profiles`) the column falls back to
+   *  the style square. */
   artist?: ClassTileArtist | null;
   /** A card on your own day carries no date label — the block says "Today"
    *  rather than nothing (8322-8325). Only meaningful when the class has no session. */
@@ -68,7 +73,7 @@ export interface ClassTileProps {
  * width of the card, go the two facts that belong to none of them: how full, and
  * what it costs.
  */
-export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isToday = false, actions, href, roleLabel = null, live = false }: ClassTileProps) {
+export function ClassTile({ danceClass: c, filled = 0, artist, isToday = false, actions, href, roleLabel = null, live = false }: ClassTileProps) {
   const bc = dosStyleColor(c.style);
   const dark = useDosDark();
   const ink = dosStyleInk(bc, dark);
@@ -88,11 +93,13 @@ export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isTod
   const underLine = [styleWord, levelWord].filter(Boolean).join(" · ") || null;
   /* what a status says, as a note under the seats (8477-8480) — not a third column */
   const note = c.status === "draft" ? "Draft" : c.status === "completed" ? "Completed" : null;
-  /* who the centre column is about: the artist if there is one, otherwise whoever is
-     putting it on (8296-8300) */
+  /* THE CENTRE IS THE TEACHER (8296-8300). It falls back to the style square only
+     when there is nobody to draw: a draft whose ask is unanswered, or a reader who
+     may not see `profiles` at all. The caption is the teacher's name and nothing
+     else — a studio's name is the booking page's to print, not the card's. */
   const face = artist ? photoUrl(artist.avatarPath) : null;
   const grad = personGrad(false);
-  const centreLabel = artist?.name || tenantName || "Open format";
+  const centreLabel = artist?.name ?? "";
 
   const sleeve = (
     <div style={{ display: "flex", alignItems: "stretch", minWidth: 0, overflow: "hidden", borderBottom: `2px solid ${bc}` }}>
@@ -267,26 +274,31 @@ export function ClassTile({ danceClass: c, filled = 0, tenantName, artist, isTod
             {c.style || headText}
           </span>
         )}
-        {/* the name, under the picture — TWO LINES, ALWAYS: a fixed two-line box cuts
-            nothing and a short name reserves the same room as a long one (8395-8398) */}
-        <span
-          style={{
-            position: "relative",
-            width: "100%",
-            fontSize: 10,
-            fontWeight: 800,
-            letterSpacing: 0,
-            lineHeight: 1.2,
-            height: 24,
-            color: INK,
-            textAlign: "center",
-            display: "block",
-            overflow: "hidden",
-            overflowWrap: "anywhere",
-          }}
-        >
-          {centreLabel}
-        </span>
+        {/* the teacher's name, under their picture — TWO LINES, ALWAYS: a fixed
+            two-line box cuts nothing and a short name reserves the same room as a
+            long one (8395-8398). Drawn only when there IS a name: the style square
+            it falls back to already says what it is, and an empty box under it
+            would just push the square off centre. */}
+        {centreLabel ? (
+          <span
+            style={{
+              position: "relative",
+              width: "100%",
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: 0,
+              lineHeight: 1.2,
+              height: 24,
+              color: INK,
+              textAlign: "center",
+              display: "block",
+              overflow: "hidden",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {centreLabel}
+          </span>
+        ) : null}
       </div>
 
       {/* ── RIGHT · WHAT — stands on the card, so the style's name can be full size in

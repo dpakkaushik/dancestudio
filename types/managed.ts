@@ -1,3 +1,4 @@
+import type { ClassArtist } from "@/types/claim";
 import type { DanceClass } from "@/types/class";
 import type { DanceEvent } from "@/types/event";
 import type { Tenant } from "@/types/tenant";
@@ -26,6 +27,8 @@ export interface ManagedClass extends ManagedBase {
   danceClass: DanceClass;
   /** seats taken on the first session */
   filled: number;
+  /** the confirmed teacher, whose face the card's centre wears (18 Sep 2026) */
+  artist: ClassArtist | null;
 }
 
 export interface ManagedEvent extends ManagedBase {

@@ -5,7 +5,7 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyConfirmedClaims } from "@/repositories/claims";
+import { findClassArtists, findMyConfirmedClaims } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrollments } from "@/repositories/enrollments";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -94,6 +94,8 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     ...assistantOn.map((c) => ({ ...c, job: "Assisting" as const })),
   ].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
   const booked = class_bookings.filter((e) => e.status === "enrolled").length;
+  /* the teacher each booked card wears in its centre (18 Sep 2026) */
+  const bookedArtists = await findClassArtists(supabase, class_bookings.map((e) => e.classId));
 
   /* the register, when Manage is open: the page's classes, their seats, and what
      each one still waits for before it can be published */
@@ -102,8 +104,12 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
       ? await (async () => {
           const classes = await findClassesByTenant(supabase, myPage.id);
           const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
-          const [counts, state] = await Promise.all([countEnrolledBySession(supabase, sessionIds), findClassPublishState(supabase, myPage.id).catch(() => new Map())]);
-          return { classes, filled: Object.fromEntries(counts), state: Object.fromEntries(state) };
+          const [counts, state, artists] = await Promise.all([
+            countEnrolledBySession(supabase, sessionIds),
+            findClassPublishState(supabase, myPage.id).catch(() => new Map()),
+            findClassArtists(supabase, classes.map((c) => c.id)),
+          ]);
+          return { classes, filled: Object.fromEntries(counts), state: Object.fromEntries(state), artists: Object.fromEntries(artists) };
         })()
       : null;
 
@@ -148,14 +154,14 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
       {show === "manage" && myPage && manage ? (
         /* the artist's register, in place: Create, Draft · Published · Completed,
            each row wearing the request it waits on (ClassesManager, embedded) */
-        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} publishState={manage.state} nowIso={new Date().toISOString()} />
+        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} nowIso={new Date().toISOString()} />
       ) : show === "booked" ? (
         <>
           {class_bookings.map((e) => (
             <ClassTile
               key={e.id}
               danceClass={toTileClass(e)}
-              tenantName={e.tenantName}
+              artist={bookedArtists.get(e.classId) ?? null}
               city={e.tenantCity}
               href={`/c/${e.shareSlug}`}
               actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}

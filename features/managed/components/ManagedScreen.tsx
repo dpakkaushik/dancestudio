@@ -98,7 +98,7 @@ export function ManagedScreen({
           <div key={l.key} data-testid={`managed-${l.kind}`} style={{ marginBottom: 14 }}>
             <Meta listing={l} showBusiness={manyBusinesses} />
             {l.kind === "class" ? (
-              <ClassTile danceClass={l.danceClass} filled={l.filled} tenantName={manyBusinesses ? null : l.tenant.name} city={l.tenant.city} href={l.manageHref} />
+              <ClassTile danceClass={l.danceClass} filled={l.filled} artist={l.artist} city={l.tenant.city} href={l.manageHref} />
             ) : (
               <EventCard event={l.event} href={l.manageHref} />
             )}

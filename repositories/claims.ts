@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dosClassLabel } from "@/lib/constants/styles";
-import type { ClaimKind, ClassClaim, MyClaimAsk } from "@/types/claim";
+import type { ClaimKind, ClassArtist, ClassClaim, MyClaimAsk } from "@/types/claim";
 
 /** Claims move only through the RPCs: the studio asks, and only the person asked
  *  can answer. Reads are RLS-shaped — the public sees confirmed claims on
@@ -54,6 +54,55 @@ export async function findClaimsByClass(
     throw new Error(`claims.findByClass failed: ${error.message}`);
   }
   return (data as unknown as ClaimRow[]).map(toClaim);
+}
+
+/** THE TEACHER ON EACH OF THESE CLASSES (18 Sep 2026, the user: "class cards
+ *  should show teacher photo instead of dance style in centre"). One read for a
+ *  whole shelf, never one per card.
+ *
+ *  ⚠ WHAT A SIGNED-OUT VISITOR GETS, and why the card still has a fallback:
+ *  Step 11's policy makes a CONFIRMED claim on a PUBLISHED class of a LISTED
+ *  business readable by anybody, so the row itself arrives — but `profiles` has
+ *  been signed-in-only since Step 1, so the embedded name and photo come back
+ *  NULL for anon. A row with no readable name is dropped rather than drawn as
+ *  "Someone" (the rule `publicProfile`'s Faculty list already follows), so on a
+ *  signed-out Discover the card keeps the style square. Putting a teacher's face
+ *  in front of the logged-out world is a migration and a privacy decision, not a
+ *  card change — backlog row. */
+export async function findClassArtists(
+  supabase: SupabaseClient,
+  classIds: string[]
+): Promise<Map<string, ClassArtist>> {
+  const ids = [...new Set(classIds)].filter(Boolean);
+  const out = new Map<string, ClassArtist>();
+  if (!ids.length) return out;
+
+  const { data, error } = await supabase
+    .from("class_people")
+    .select("class_id, user_id, profiles (full_name, profile_photo_path)")
+    .in("class_id", ids)
+    .eq("kind", "artist")
+    .eq("status", "confirmed")
+    .is("deleted_at", null)
+    .limit(500);
+
+  if (error) {
+    throw new Error(`claims.findClassArtists failed: ${error.message}`);
+  }
+  for (const row of (data ?? []) as unknown as Array<{
+    class_id: string;
+    user_id: string;
+    profiles: { full_name: string; profile_photo_path: string | null } | null;
+  }>) {
+    if (!row.profiles?.full_name) continue;
+    if (out.has(row.class_id)) continue;
+    out.set(row.class_id, {
+      name: row.profiles.full_name,
+      avatarPath: row.profiles.profile_photo_path ?? null,
+      userId: row.user_id,
+    });
+  }
+  return out;
 }
 
 interface MyAskRow extends ClaimRow {

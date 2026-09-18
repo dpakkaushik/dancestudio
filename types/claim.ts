@@ -4,6 +4,15 @@
 export type ClaimKind = "artist" | "assistant";
 export type ClaimStatus = "asked" | "confirmed" | "rejected";
 
+/** The confirmed teacher on a class, as a card draws them: a face and a name
+ *  (18 Sep 2026). Kept minimal on purpose — a card needs who it is and what they
+ *  look like, never their pay, their jobs or their city. */
+export interface ClassArtist {
+  name: string;
+  avatarPath: string | null;
+  userId: string;
+}
+
 export interface ClassClaim {
   id: string;
   classId: string;

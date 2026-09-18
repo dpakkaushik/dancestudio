@@ -5,6 +5,7 @@ import type { CalendarEntry, CalendarEventEntry, CalendarSide } from "@/types/ca
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { DanceEvent, MyEventBooking } from "@/types/event";
+import { findClassArtists } from "./claims";
 import { countEnrolledBySession } from "./enrollments";
 import { findEventBySlug, findEventsByTenants, findMyEventBookings } from "./events";
 
@@ -94,6 +95,7 @@ const entryOf = (
   side,
   enrollment,
   filled: 0,
+  artist: null,
 });
 
 const inWindow = (iso: string, fromIso: string, toIso: string) => {
@@ -101,10 +103,17 @@ const inWindow = (iso: string, fromIso: string, toIso: string) => {
   return t >= new Date(fromIso).getTime() && t < new Date(toIso).getTime();
 };
 
+/** The two things every calendar entry needs and none of the queries above can
+ *  give it: how full the session is, and WHO IS TEACHING IT — the face the card's
+ *  centre column wears (18 Sep 2026). Two reads for a whole calendar, never one
+ *  per card, and this is also what feeds Home's deck, which composes these. */
 async function withSeatCounts(supabase: SupabaseClient, entries: CalendarEntry[]): Promise<CalendarEntry[]> {
-  const counts = await countEnrolledBySession(supabase, [...new Set(entries.map((e) => e.sessionId))]);
+  const [counts, artists] = await Promise.all([
+    countEnrolledBySession(supabase, [...new Set(entries.map((e) => e.sessionId))]),
+    findClassArtists(supabase, entries.map((e) => e.classId)),
+  ]);
   return entries
-    .map((e) => ({ ...e, filled: counts.get(e.sessionId) ?? 0 }))
+    .map((e) => ({ ...e, filled: counts.get(e.sessionId) ?? 0, artist: artists.get(e.classId) ?? null }))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 }
 

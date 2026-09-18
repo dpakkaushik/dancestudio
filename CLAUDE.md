@@ -48,6 +48,50 @@
 > The tell is free and worth keeping: `git diff --stat` said **270 insertions /
 > 250 deletions** for what should have been nine lines.
 
+> ### THE CLASS CARD SHOWS ITS TEACHER, AND STOPS NAMING THE STUDIO (18 Sep 2026, last)
+> The user: *"class cards should show teacher photo instead of dance style in
+> centre. Remove studio names from class cards — should only be visible inside
+> the booking page."*
+> * **The card already knew how to draw a teacher and nobody ever gave it one.**
+>   `ClassTile`'s `artist` prop, its 54px face, its initials fallback and its
+>   two-line name caption have existed since the parity audit — and **not one of
+>   the seven callers passed it**, so every card in the app fell through to the
+>   style square. This is the audit's own recurring shape: a field that exists and
+>   a screen that never reads it.
+> * **`findClassArtists(ids)`** is the one new read — the confirmed artist on each
+>   of a list of classes, ONE query for a whole shelf, never one per card. It is
+>   wired into all seven surfaces: Discover, the learner listing, Your classes,
+>   the managed list, a studio's register, an artist's embedded register, and —
+>   through `withSeatCounts`, which every calendar read already passes through —
+>   the calendar AND Home's deck at once.
+> * **The studio's name is off the card.** It used to caption the WHO column
+>   whenever there was no artist, which is how it got there at all. `tenantName`
+>   is still ACCEPTED by the card and simply never printed, so the callers that
+>   pass it did not all have to change in the same breath as the layout; the
+>   booking page keeps AT THE STUDIO with the name, the address and the rooms.
+>   The caption is drawn only when there IS a teacher — an empty box under the
+>   style square would just push it off centre.
+> * ⚠ **WHAT A SIGNED-OUT VISITOR SEES, and it is a real limit.** Step 11 makes a
+>   CONFIRMED claim on a PUBLISHED class of a LISTED business readable by anybody,
+>   so the row arrives — but `profiles` has been signed-in-only since Step 1, so
+>   the name and photo come back NULL for anon. A row with no readable name is
+>   DROPPED rather than drawn as "Someone" (the rule `publicProfile`'s Faculty
+>   list already follows), so **on a signed-out Discover the cards keep the style
+>   square**. Putting a teacher's face in front of the logged-out world is a
+>   migration and a privacy decision, not a card change, so it was not taken
+>   unilaterally — backlog row, and the user's call.
+>
+> **Verified:** typecheck 0 · lint 0 · `next build` green · **happy path 14/14**
+> and the other seven specs **27 passed / 2 failed** — the same proof-leftover
+> pile (#0w). ⚠ **And the machine's own lesson, for the fourth time:** the first
+> whole-suite run came back **10 failed in 1.1 hours**, including password-auth
+> tests nothing here touches. The traces said why — `getaddrinfo ENOTFOUND
+> wonhocebhckjokfssvja.supabase.co`: **the network dropped mid-run.** Re-run
+> after probing that Supabase answered again: 14/14 and 27/2, in 5.7 and 4.4
+> minutes. A red suite is not evidence until you know the machine was well;
+> `TypeError: fetch failed` in a trace is the tell, and probing the host before
+> believing the red is cheaper than reading the diff.
+
 > ### THE MAP IS OFF DISCOVER (18 Sep 2026, last)
 > The user: *"remove map from discover which is on the right side on near me."*
 > The 🗺 Map / ☰ List toggle sat beside the Near me chip and swapped the shelf
@@ -2402,6 +2446,21 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE CLASS CARD SHOWS ITS TEACHER, AND STOPS NAMING THE STUDIO — 18 Sep 2026,
+  no step number — BUILT, no migration.** The user: *"class cards should show
+  teacher photo instead of dance style in centre. Remove studio names from class
+  cards — should only be visible inside the booking page."* The card has been
+  able to draw a teacher since the parity audit and **not one of its seven
+  callers ever passed one**, so every card fell through to the style square —
+  the audit's own recurring shape, a field that exists and a screen that never
+  reads it. `findClassArtists(ids)` is the one new read, one query per shelf, and
+  it is wired into all seven surfaces (the calendar and Home's deck come free
+  through `withSeatCounts`, which every calendar read already passes through).
+  The studio's name is off the card and stays on the booking page under AT THE
+  STUDIO. ⚠ A signed-out visitor still sees style squares: `profiles` is
+  signed-in-only, so the teacher's name and photo are null for anon and the row
+  is dropped rather than drawn as "Someone" — a definer RPC and a privacy
+  decision, left to the user. Backlog row.
 - **THE MAP IS OFF DISCOVER — 18 Sep 2026, no step number — BUILT, no
   migration.** The user: *"remove map from discover which is on the right side
   on near me."* The Map / List toggle beside the Near me chip, the `view`
@@ -5889,6 +5948,7 @@ nothing to lift.
 | Pay sheet: pass + cash methods, POLICY Memberships row; invoice Download PDF | S_class 12471-12507 + 12401, InvoiceSheet 6249 | passes (Phase 2/3), PDF with Step 13 |
 | Register: walk-in add + the QR scanner (needs the student pool); the pass QR is drawn, not scannable yet | attend 12104-12116, PassSheet 6209 | Steps 11-12 (people); real scanning later |
 | Class form: DosDatePick calendar (the native date input ships), searchable style dropdown, refund-cutoff + memberships toggles | S_classform 15317, 15336-15360, 15520-15528 | Step 13 (money policy) |
+| **The class card's teacher is invisible to a signed-out reader** (18 Sep 2026). The card wears the confirmed teacher's face in its centre now, from `findClassArtists` — but `profiles` is signed-in-only (Step 1), so for anon the name and photo come back null, the row is dropped rather than drawn as "Someone", and the card falls back to the style square. Discover and `/classes` are public, so a logged-out visitor sees style squares where everyone else sees faces. Closing it means a definer RPC returning name + photo for the confirmed artist of a PUBLISHED class of a LISTED business — the same facts the class page already shows a signed-in stranger — which is a migration AND a decision about publishing someone's face. ⚠ The class PAGE has the same limit today for the same reason | Step 1 profiles policy; Step 11 claims policy | one definer RPC, once the user says teacher faces may be public |
 | Class card: poster art on the tile (the pass sheet draws one), the share action on a home-deck card (the deck's card opens the **pass**, which is where Share lives — 12001), undo toasts. The **live chip and the role chip landed 29 Aug 2026** (parity slice 6, set only by Home's deck) | BookingCard 7969, 8414-8440 | posters slice; the share action is decision (c) — the pass carries it |
 | Studio desk: the Studio Tools grid on a studio Home (S_homebiz 7133-7160) — today the register's chip rail (Calendar · Students · Rooms · Staff · Earnings) opens the same doors; Reports/Expenses/Assets have no slice | S_bizhub/BizShell, S_homebiz | Home parity slice (Reports with Step 25) |
 | Discover: the map view (studios still sit at their city centroid — it needs real addresses), the studio card's cover-strip photo (the business photo exists; the card does not draw it yet), long-press a style tile to open the style page (`S_styleinfo` unbuilt), `__DOSNAVHIDE` while searching (our chrome is per-route) — the search dropdown's People section landed with person pages | S_discover 4100+, 4611, 4551 | a map/media slice |

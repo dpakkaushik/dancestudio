@@ -1,3 +1,4 @@
+import type { ClassArtist } from "@/types/claim";
 import type { DanceClass } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { DanceEvent } from "@/types/event";
@@ -31,8 +32,12 @@ export interface DeckClassItem extends DeckBase {
   danceClass: DanceClass;
   /** seats taken, for the tile's "N spots left" */
   filled: number;
+  /** ⚠ carried, no longer PRINTED on the card (18 Sep 2026) — a studio's name is
+   *  the booking page's to say. Kept because the deck's own words read from it */
   tenantName: string;
   tenantCity: string | null;
+  /** the confirmed teacher, whose face the card's centre wears */
+  artist: ClassArtist | null;
   /** your own booking, when you hold one — its id is the entry code */
   enrollment: { id: string; status: EnrollmentStatus } | null;
   /** what you paid for the seat, when it was paid for — the invoice's figures */

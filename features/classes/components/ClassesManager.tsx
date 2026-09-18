@@ -15,6 +15,7 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassPublishState } from "@/repositories/classes";
+import type { ClassArtist } from "@/types/claim";
 import type { ClassStatus, DanceClass } from "@/types/class";
 
 /* the IST date and clock of a session, in the shape the clash check takes */
@@ -277,6 +278,7 @@ export function ClassesManager({
   tenantId,
   classes,
   filledBySession = {},
+  artists = {},
   nowIso,
   publishState = {},
   embedded = false,
@@ -285,6 +287,11 @@ export function ClassesManager({
   classes: DanceClass[];
   /** Enrolled count per session id — real numbers from Step 4. */
   filledBySession?: Record<string, number>;
+  /** the confirmed teacher per class id — the face each card's centre wears
+   *  (18 Sep 2026). A draft nobody has accepted yet has none, and the card falls
+   *  back to the style square, which is the honest picture of a class with no
+   *  teacher on it. */
+  artists?: Record<string, ClassArtist>;
   /** The server's clock at render — the LIVE filter is arithmetic over it. */
   nowIso: string;
   /** WHAT STANDS BETWEEN EACH CLASS AND PUBLISH (18 Sep 2026), keyed by class id:
@@ -466,6 +473,7 @@ export function ClassesManager({
               key={c.id}
               danceClass={c}
               filled={filledOf(c)}
+              artist={artists[c.id] ?? null}
               href={`/c/${c.shareSlug}`}
               actions={
                 c.status === "draft" ? (

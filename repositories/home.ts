@@ -73,6 +73,7 @@ const classItem = (e: CalendarEntry, roleLabel: DeckRole, host: boolean, receipt
   filled: e.filled,
   tenantName: e.tenantName,
   tenantCity: e.tenantCity,
+  artist: e.artist,
   enrollment: e.enrollment,
   receipt,
 });

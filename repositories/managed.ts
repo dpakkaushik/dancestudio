@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findClassArtists } from "@/repositories/claims";
 import { findClassesByTenants } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/enrollments";
 import { findEventsByTenants } from "@/repositories/events";
@@ -25,10 +26,14 @@ export async function findEverythingIManage(supabase: SupabaseClient): Promise<{
   const ids = businesses.map((t) => t.id);
   const byId = new Map(businesses.map((t) => [t.id, t]));
   const [classes, events] = await Promise.all([findClassesByTenants(supabase, ids), findEventsByTenants(supabase, ids)]);
-  const counts = await countEnrolledBySession(
-    supabase,
-    classes.map((c) => c.session?.id).filter((id): id is string => Boolean(id))
-  );
+  const [counts, artists] = await Promise.all([
+    countEnrolledBySession(
+      supabase,
+      classes.map((c) => c.session?.id).filter((id): id is string => Boolean(id))
+    ),
+    /* the teacher each class card wears in its centre (18 Sep 2026) */
+    findClassArtists(supabase, classes.map((c) => c.id)),
+  ]);
 
   const listings: ManagedListing[] = [];
   for (const c of classes) {
@@ -42,6 +47,7 @@ export async function findEverythingIManage(supabase: SupabaseClient): Promise<{
       manageHref: `/business/${c.tenantId}/classes/${c.id}/roster`,
       danceClass: c,
       filled: c.session ? counts.get(c.session.id) ?? 0 : 0,
+      artist: artists.get(c.id) ?? null,
     });
   }
   for (const e of events) {

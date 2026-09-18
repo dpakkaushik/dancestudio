@@ -2,6 +2,7 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findClassArtists } from "@/repositories/claims";
 import { findPublishedClasses } from "@/repositories/classes";
 import { findProfileById } from "@/repositories/profiles";
 import {
@@ -20,12 +21,14 @@ export default async function ClassesPage() {
 
   const classes = await findPublishedClasses(supabase);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
-  const [counts, mine, profile] = await Promise.all([
+  const [counts, mine, profile, artists] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     user
       ? findMyEnrolledSessionIds(supabase)
       : Promise.resolve(new Map<string, { id: string; status: EnrollmentStatus }>()),
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
+    /* the teacher each card wears in its centre — one read for the whole shelf */
+    findClassArtists(supabase, classes.map((c) => c.id)),
   ]);
   /* the shelf counts what is IN the viewer's city (4787) — everywhere else, plainly */
   const city = profile?.city ?? null;
@@ -65,7 +68,7 @@ export default async function ClassesPage() {
             key={c.id}
             danceClass={c}
             filled={filled}
-            tenantName={c.tenantName}
+            artist={artists.get(c.id) ?? null}
             city={c.tenantCity}
             href={`/c/${c.shareSlug}`}
             actions={
