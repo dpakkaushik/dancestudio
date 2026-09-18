@@ -214,6 +214,12 @@ test.describe.serial("DanceOS, end to end", () => {
      case-INSENSITIVE locator matched and the one `exact: true` assertion did
      not (10 Sep 2026). Typing what the app will store keeps them in step. */
   const trainerName: string = `E2E Trainer ${stamp.charAt(0).toUpperCase()}${stamp.slice(1)}`;
+  /* AND THE LEARNER, for the same reason and at the same cost (18 Sep 2026). It
+     stayed the constant "E2E Learner" until the class form began searching all of
+     DanceOS for whoever takes a class: four leftover learners answered that
+     search, `.first()` picked one of them, and the segment then waited for an ask
+     to reach an account that was not in this story. */
+  const learnerName: string = `E2E Learner ${stamp.charAt(0).toUpperCase()}${stamp.slice(1)}`;
 
   let ownerId: string | null = null;
   let learnerId: string | null = null;
@@ -731,7 +737,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- learner: signup → onboard → open the shared link → book ----------
     learnerId = await signUp(learner, `e2e-learner-${stamp}@example.com`);
-    await onboard(learner, "E2E Learner", "User", "Pune");
+    await onboard(learner, learnerName, "User", "Pune");
 
     // booking is two steps now (Step 9): the bar opens the confirm sheet, and a
     // free class confirms without payment
@@ -813,7 +819,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/inbox");
     await expect(owner.getByText("1 waiting on you")).toBeVisible();
     await pressPill(owner, /^Enquiries — 1 waiting/);
-    await owner.getByRole("link", { name: "Private Sessions enquiry from E2E Learner" }).click();
+    await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
     await owner.getByRole("button", { name: "Send a quote" }).click();
@@ -916,8 +922,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText("EVENT DETAILS")).toBeVisible();
     await owner.getByRole("button", { name: "Spectators" }).click();
     await expect(owner.getByText("GATE LIST · 0/1 arrived")).toBeVisible();
-    await owner.getByRole("button", { name: "Check in E2E Learner" }).click();
-    await expect(owner.getByRole("button", { name: "Check out E2E Learner" })).toBeVisible();
+    await owner.getByRole("button", { name: `Check in ${learnerName}` }).click();
+    await expect(owner.getByRole("button", { name: `Check out ${learnerName}` })).toBeVisible();
     await expect(owner.getByText("GATE LIST · 1/1 arrived")).toBeVisible();
   });
 
@@ -954,7 +960,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto("/inbox");
     // the desk counts everything waiting on them — an earlier class ask included — so the crew
     // ask is found by its own words rather than by the total
-    await expect(trainer.getByRole("button", { name: `Open the a crew member request from E2E Learner` })).toBeVisible();
+    await expect(trainer.getByRole("button", { name: `Open the a crew member request from ${learnerName}` })).toBeVisible();
     await pressPill(trainer, /^Requests — \d+ waiting/);
     await expect(trainer.getByText(`wants to add you to ${crewName}`)).toBeVisible();
     await trainer.getByRole("button", { name: `Confirm ${crewName}` }).click();
@@ -1086,7 +1092,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: /^Events — \d+ updates?$/ })).toBeVisible();
     // open the Bookings stack and read a real row: the learner booking the class
     await pressPill(owner, /^Bookings — \d+ updates?$/, "aria-expanded");
-    await expect(owner.getByText(`E2E Learner booked ${classTitle}`)).toBeVisible();
+    await expect(owner.getByText(`${learnerName} booked ${classTitle}`)).toBeVisible();
     // Mark read on the stack: the count drops and the badge follows
     await owner.getByRole("button", { name: "Mark Bookings read" }).click();
     await expect(owner.getByText("Bookings marked read")).toBeVisible();
@@ -1250,8 +1256,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // The Home deck offers the door only to somebody who runs something; behind it
     // is one list of every class and event of every business they belong to, the
     // row being the session's own card with its desk behind it.
+    /* ⚠ THE DOOR IS NOT ON THE SHELF HEAD ANY MORE (18 Sep 2026, the user:
+       "remove all blue buttons besides Todays schedule"). That cyan Manage link
+       was the only blue thing on either Home; it survives on the empty day's
+       pill, so this segment gets in by address. */
     await owner.goto("/");
-    await owner.getByRole("link", { name: "Everything you manage", exact: true }).click();
+    await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toHaveCount(0);
+    await owner.goto("/managed");
     await owner.waitForURL(/\/managed$/);
     // the class the story published and both events it created are here, whatever their status
     // (a class tile headlines its STYLE; the title lives in the row's Manage link)
@@ -1275,8 +1286,6 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes\/[0-9a-f-]+\/roster$/);
     // and the learner, who runs nothing, is not offered the door — the room is
     // still honest if they type the address
-    await learner.goto("/");
-    await expect(learner.getByRole("link", { name: "Everything you manage", exact: true })).toHaveCount(0);
     await learner.goto("/managed");
     await expect(learner.getByText("Nothing here yet")).toBeVisible();
     await expect(learner.getByRole("link", { name: "Set up a business" })).toBeVisible();
@@ -1450,7 +1459,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await invoice.getByRole("button", { name: "Close" }).click();
     await expect(invoice).toHaveCount(0);
     // the deck is the one list; the door to all bookings is still named beside it
-    await expect(learner.getByRole("link", { name: "All bookings", exact: true })).toBeVisible();
+    // (the head's own cyan "All bookings" link went on 18 Sep 2026 with every other
+    // blue button; the Classes tile in the grid beneath the shelf is that door now)
+    await expect(learner.getByRole("link", { name: "All bookings", exact: true })).toHaveCount(0);
+    await expect(learner.getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", "/my-classes");
 
     // the trainer accepted this class back in segment 1 — a class cannot be
     // published until they do (18 Sep 2026) — so the session is on their day from
@@ -1472,8 +1484,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // and Events, its grid is Studios · Events · Stats, and nothing on it opens a
     // register or a studio calendar — it used to open its FIRST studio's.
     await owner.goto("/");
-    await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toBeVisible();
-    await expect(owner.getByRole("link", { name: "Open the events desk" }).first()).toHaveAttribute("href", /\/business\/[0-9a-f-]+\/events$/);
+    await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveAttribute("href", /\/business\/[0-9a-f-]+\/events$/);
     await expect(owner.getByRole("link", { name: "Classes at this studio" })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Open the studio calendar" })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveCount(0);
@@ -1483,8 +1494,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // the studio's question — what is running in its rooms — is asked on the STUDIO's own home
     await owner.goto(`/business/${tenantId}`);
     await expect(owner.getByTestId("deck-card").first().getByText("At your studio", { exact: true })).toBeVisible();
-    await expect(owner.getByRole("link", { name: "Classes at this studio" })).toHaveAttribute("href", `/business/${tenantId}/classes`);
-    await expect(owner.getByRole("link", { name: "Open the studio calendar" }).first()).toHaveAttribute("href", `/business/${tenantId}/calendar`);
+    await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveAttribute("href", `/business/${tenantId}/classes`);
+    await expect(owner.getByRole("link", { name: "Calendar", exact: true })).toHaveAttribute("href", `/business/${tenantId}/calendar`);
   });
 
   test("the wiring slice: a tick, two numbers, a followers list and two buttons that had no door", async () => {
@@ -1545,7 +1556,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // says so rather than offering a dead button
     await owner.goto("/inbox");
     await owner.getByRole("button", { name: /^Enquiries/ }).click();
-    await owner.getByRole("link", { name: "Private Sessions enquiry from E2E Learner" }).click();
+    await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();
 
@@ -1640,18 +1651,30 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Salsa", exact: true }).click();
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
     await owner.getByRole("button", { name: "Continue" }).click();
-    await owner.getByLabel("Search DanceOS for who takes this class").fill(trainerName);
-    await owner.getByRole("button", { name: `${trainerName} takes this class` }).click();
+    /* ⚠ THIS ASK GOES TO SOMEBODY OFF THE TEAM, AND THAT IS THE POINT (18 Sep
+       2026). The user found the bug this covers: "when studio creating class
+       request not going to artist in inbox". A class is born a DRAFT, and until
+       `20260918140000` only the business's own members could read a draft — so
+       the bell rang for the person asked and their Inbox was empty, because the
+       repository drops an ask whose class it cannot read. Every earlier segment
+       asks the trainer, who accepted a team invite back in segment 1 and could
+       therefore read the draft as a MEMBER: the story tested the one case that
+       cannot fail. The learner is on nobody's team. */
+    await owner.getByLabel("Search DanceOS for who takes this class").fill(learnerName);
+    await owner.getByRole("button", { name: `${learnerName} takes this class` }).click();
     await owner.getByLabel("Price per session").fill("0");
     await owner.getByRole("button", { name: "Save & ask them" }).click();
     await owner.getByRole("dialog", { name: "Save as draft?" }).getByRole("button", { name: "Save & ask" }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);
 
-    // the teacher says yes, so the only thing left in the way is the room
-    await trainer.goto("/inbox");
-    await pressPill(trainer, /^Requests — \d+ waiting/);
-    await trainer.getByRole("button", { name: "Confirm Salsa · All levels" }).click();
-    await expect(trainer.getByText(/Confirmed · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
+    // the person asked reads the ask in their own Inbox, naming the studio that
+    // sent it — which is the whole of the bug, since the studio is a draft's away
+    await learner.goto("/inbox");
+    await pressPill(learner, /^Requests — \d+ waiting/);
+    await expect(learner.getByText(`wants to list you as the artist on Salsa · All levels`)).toBeVisible({ timeout: 15_000 });
+    // and they say yes, so the only thing left in the way is the room
+    await learner.getByRole("button", { name: "Confirm Salsa · All levels" }).click();
+    await expect(learner.getByText(/Confirmed · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
 
     await owner.goto(`/business/${tenantId}/classes`);
     await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();

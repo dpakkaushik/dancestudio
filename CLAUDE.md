@@ -2,6 +2,91 @@
 
 ## LAST SESSION (17–18 Sep 2026) — replaced on every push (Rule 13)
 
+> ### ⚠ THE ASK WAS INVISIBLE TO THE PERSON ASKED — A BELL WITH AN EMPTY INBOX BEHIND IT (18 Sep 2026) — MIGRATION APPLIED
+> The user, an hour after the slice below shipped: *"when studio creating class
+> request not going to artist in inbox rest all okay."* They were right, and the
+> hole was underneath the rule they had just asked for.
+>
+> A new class is a **draft**, and until today the only people who could read a
+> draft were the business's own members. The person being ASKED is, by the whole
+> point of the change, usually not one. So three things happened and only the
+> first was visible: the trigger raised their notification (SECURITY DEFINER, so
+> it fired), `class_people` handed them their own row (own-rows policy), and the
+> `classes (…)` embed on it came back **NULL** — whereupon
+> `findMyPendingClaims`'s `.filter((r) => r.classes)` dropped the ask on the
+> floor. A bell saying a studio wants you, an Inbox with nothing in it. The same
+> hole hid an unlisted studio's NAME and made `/c/{slug}` a 404 for the one
+> person who most needed to open it.
+>
+> **`20260918140000_being_asked_lets_you_read_the_ask.sql` (applied).** Being
+> asked is what grants the read, and it lasts exactly as long as the ask does —
+> withdraw it (a soft delete) and the read goes with it. Three SELECT policies
+> (on `classes`, `class_sessions` and `businesses`), none changed, no write path
+> anywhere gaining anything. ⚠ Both helpers — `is_asked_onto_class` and
+> `has_been_asked_by_business` — are **SECURITY DEFINER on purpose**: a policy on
+> `classes` that queried `class_people` directly would recurse, because
+> `class_people`'s own policies read `classes` (42P17, the Step 11 lesson one
+> table further out).
+>
+> ⚠ **WHY NOTHING CAUGHT IT, and it is the lesson of the day:** the happy path
+> asked a trainer who had accepted a team invite two segments earlier, so they
+> could read the draft **as a member**. The story tested the one case that cannot
+> fail. It asks somebody off the team now, and `rls-proof-rooms-people` checks
+> 7b/7c prove the rule and its withdrawal.
+>
+> ⚠⚠ **AND A SELF-INFLICTED ONE THAT COST A WHOLE E2E RUN — THE ANSI TRAP IS NOT
+> A `.ps1` TRAP.** This file has warned since 11 Sep that PowerShell 5.1 decodes
+> a BOM-less file as ANSI; it says it about `.ps1`, so I used
+> `Get-Content -Raw … | Set-Content -Encoding UTF8` to do a nine-site rename in
+> `e2e/happy-path.spec.ts` and **double-encoded all 169 em dashes in it**, plus
+> added a BOM. Everything still typechecked, linted and built — none of those
+> reads a string literal — and the suite then died in `onboard()` on a button
+> whose name had become `Open DanceOS Ã¢â€ â€™`. **Never round-trip a source file
+> through `Get-Content`/`Set-Content`.** Use the Edit tool, which preserves the
+> bytes it does not touch. The repair was `git checkout` on the file and
+> re-applying every edit by hand — cheap only because nothing was committed.
+> The tell is free and worth keeping: `git diff --stat` said **270 insertions /
+> 250 deletions** for what should have been nine lines.
+
+> ### HOME: THE PICTURE BESIDE THE NAME, THE WORD INSTEAD OF THE GREETING, AND NO BLUE BUTTONS (18 Sep 2026)
+> The user, looking at their own Home: *"1. Remove all blue buttons besides
+> Todays schedule 2. Good morning to be removed and replaced with User, Artist,
+> Studio, Organization and should not be repeated below. 3. Profile pic should be
+> besides Name and Location."* All three land on `IdentityHero` and `TodayShelf`,
+> so all four homes move together.
+> * **The eyebrow says what the account IS.** It read GOOD MORNING / AFTERNOON /
+>   EVENING off the IST clock — and then the word USER · ARTIST · ORGANIZATION was
+>   printed AGAIN in 20px display type under the styles. The greeting said nothing
+>   anybody needs and the word was said twice. The eyebrow is the word now, said
+>   once; the line that repeated it keeps only what it alone had, the account
+>   number. A studio's own home has said STUDIO there since 14 Sep, which is the
+>   fourth word on the user's list. `greeting()` is deleted.
+> * **The picture stands beside the name and the place.** The disc keeps the spot
+>   the user drew on 15 Sep — over the header's bottom-left edge — and what moved
+>   is the text: the identity column is indented past the disc, so the picture,
+>   the name and "24, Pune" read as one line instead of a stack down the left
+>   edge. Only that column is indented; the styles and whatever a page adds still
+>   run the full width beneath it, which is why the disc stays absolutely placed
+>   rather than becoming a flex row's first child.
+> * **`HEAD_LINK` is deleted, and the `right` prop with it.** It was the one cyan
+>   thing on either Home — Manage · All bookings · Classes · Calendar, sitting
+>   beside "Today's schedule" — and the tool grid under it already carries every
+>   one of those doors as a tile of its own. ⚠ **The single exception is
+>   `/managed`**, which no grid names: from Home it is now reachable only through
+>   the empty day's "See everything you manage" pill (the pills are not blue and
+>   stay). If that turns out to be the wrong reading of "besides", putting the
+>   head doors back is one prop.
+>
+> **Verified (both blocks):** typecheck 0 · lint 0 · `next build` green ·
+> **29/29 proofs** · **happy path 14/14 in 4.0 min**, its clash segment now asking
+> somebody OFF the team and reading the ask in their own Inbox · the other seven
+> specs **27 passed / 2 failed**, and both reds are the SAME proof-leftover pile
+> (#0w), read from the traces rather than assumed: `admin-moderation` cannot find
+> its own studio on Discover (Pune is over `nearby_businesses`' 50-row cap) and
+> `paid-webhook` gets no GROSS card because the test phone owner's 55 businesses
+> overflow `findMyTenants`' 50. Neither touches Home, the hero or the ask. **The
+> sweep is still the user's to approve.**
+
 > ### ⚠ A CLASS HAS A TEACHER WHO SAID YES, AND A PLACE THAT SAID YES (18 Sep 2026) — TWO MIGRATIONS APPLIED
 > The user re-cut the class form and the publish rule in one message, and answered
 > four questions when asked: *"Classes form artist — 1. Where: should either be a
@@ -2201,6 +2286,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE ASK REACHES THE PERSON ASKED, AND HOME SAYS WHO YOU ARE — 18 Sep 2026,
+  no step number ⚠ (Rule 9: RLS) — MIGRATION APPLIED.** The user, on the slice
+  below: *"when studio creating class request not going to artist in inbox rest
+  all okay."* A class is born a draft and only members could read a draft, so the
+  one person the ask was for could not: the bell rang and their Inbox was empty,
+  because the embed came back null and the repository dropped the row. Being
+  asked grants the read now, for exactly as long as the ask lives —
+  `20260918140000_being_asked_lets_you_read_the_ask.sql`, three SELECT policies,
+  two SECURITY DEFINER helpers so a policy on `classes` cannot recurse through
+  `class_people`. The happy path asked a trainer who was already on the team, so
+  it tested the one case that could not fail; it asks somebody off the team now.
+  In the same push, three things the user asked for on Home, all landing on
+  `IdentityHero` and `TodayShelf` so all four homes move together: the eyebrow
+  says what the account IS (USER · ARTIST · STUDIO · ORGANIZATION) instead of
+  "Good morning" and the word is no longer repeated below; the profile picture
+  stands beside the name and the place rather than above them; and every blue
+  button beside "Today's schedule" is gone, `HEAD_LINK` deleted with the `right`
+  prop it served. Deviation rows C6 and C7.
 - **A CLASS HAS A TEACHER WHO SAID YES, AND A PLACE THAT SAID YES — 18 Sep 2026,
   no step number ⚠ (Rule 9: RLS + consent) — TWO MIGRATIONS APPLIED, 29/29 proofs,
   happy path 14/14.** The user re-cut both class forms and the publish rule. A
@@ -5569,6 +5672,8 @@ Home. **Do not "restore parity" on these.**
 | C4b | The prototype's Edit profile sheet has NO pictures in it at all, and says why (11368-11374): *"It used to open with a profile-photo picker and close with a cover-photo picker … so the same picture could be changed in two places and the sheet was mostly about pictures rather than about you."* | **The pictures ARE in the Edit sheets**, and they are the only place a picture changes | 16 Sep 2026, the user: *"the update image option should be inside the edit profile."* Recorded because without this row a future run reads them as drift and takes them out again. Note what the prototype's objection was — the SAME picture changeable in TWO places — and that the app's answer is the opposite of what it feared: one place, not two. ⚠ It is also the deviation that CAUSED the destroy-on-cancel bug, by putting immediate-write controls inside a container with a Cancel button; the draft model is what makes it safe. |
 | C4c | `fieldLabel` — 11.5px uppercase `var(--muted)` — is the prototype's form-field eyebrow (11375), lifted verbatim | **Every label in both Edit sheets is that same eyebrow, in `var(--sub)` at weight 900** — one tier, no exceptions | 16 Sep 2026, in two steps. The colour is the deviation: `--muted` measures 4.0:1 on the dark sheet and 3.45:1 on the light one where 11.5px needs 4.5:1, so the prototype fails the same check, and the reason to overrule it is DENSITY rather than taste — four of these in its sheet against nine in a studio's. ⚠ The SECOND step was undoing my own: a larger block head briefly sat over two of the five blocks, and the user read it exactly as what it was (*"why so much randomness … everything should be standard"*). **A form gets one label tier.** Do not reintroduce a second one here. |
 | C5 | The shell's "Managing {studio}" strip draws on every `/business/*` route (19267-19294) | **Not on `/business/{id}` itself**, where the identity hero already carries the name, the place, the rooms and the picture; on the deeper desks it is the **name alone**, no address, and keeps `Exit studio ›` | 16 Sep 2026, the user: *"isn't it unnecessary — name, location etc already there below the profile image?"* On the studio's home, exactly right. On a desk the tool hero names the TOOL and nothing names the studio, and an organization runs several — so the name stays, and the address goes, because an address is not what tells you which register this is |
+| C6 | Home's sleeve opens with a TIME-OF-DAY GREETING — "Good morning / afternoon / evening" (7212-7213) | **The eyebrow is what the account IS**: USER · ARTIST · STUDIO · ORGANIZATION, said once | 18 Sep 2026, the user: *"Good morning to be removed and replaced with User, Artist, Studio, Organization and should not be repeated below."* The greeting carried no information, and the role word was then printed a second time in display type under the styles — so one of the two had to go and the user chose which. `greeting()` is deleted; the line that repeated the word keeps only the account number, which was its own |
+| C7 | Home's shelf head carries the page's doors on its right, in the accent (7143-7150: Manage · All bookings; a studio's Classes · Calendar ›) | **The head has a count and nothing else.** `HEAD_LINK` and `TodayShelf`'s `right` prop are deleted; the tool grid under the shelf is where every door lives | 18 Sep 2026, the user: *"Remove all blue buttons besides Todays schedule."* Those four links were the only cyan thing on either Home. ⚠ Every destination but one is a tile in the grid below; `/managed` is not, so from Home it is reachable only through the empty day's pill. Read as "beside", not "except", because under "except" there was nothing on the page to remove — the only other blue things are the Studios / Calendar / Memberships TILES, which the user had specified by name two messages earlier |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -5590,6 +5695,7 @@ nothing to lift.
 |-----|--------------|-------------|
 | **THE IDENTIFIERS PASS (owed since 16 Sep 2026, by the user's choice — "strings now, identifiers next").** The database and every string that reaches it say `business`, `class_people`, `class_bookings`, `studio_photos`, `category`…; the TypeScript still says `Tenant`, `tenantId`, `findMyTenants`, `Claim`, `enrollInSession`, `ev.cat`, `EventCat`, and the files and folders are still `repositories/tenants.ts`, `features/tenants/`, `features/enrollments/`, `app/…/[tenantId]`, `scripts/rls-proof-tenants.ps1`. ~2,200 occurrences in 207 files, camelCase and file names only — a pure identifier rename `tsc` verifies. Route FOLDER names are Next param names, not URLs, so `[tenantId]` → `[businessId]` changes no public path (Rule 14 is not triggered) | — | one mechanical pass, typecheck as the gate; nothing else in the same push |
 | **What the rename deliberately left (16 Sep 2026):** `admin_audit.subject_kind` holds `tenant` on its 161 pre-rename rows for ever — the table is immutable by design, so its CHECK admits both words and `AuditLog` reads the old one as the new; three policy-pinned helpers keep `p_tenant_id` as their PARAMETER name (`is_business_member`, `is_business_owner`, `event_host_is_public` — called positionally, invisible to callers; freeing them means dropping and re-creating the policies that pin them); two `storage.objects` policy NAMES still say "…their tenant folder" (Supabase owns that table and refused the rename — cosmetic); the storage folders `tenants/`, `proof/`, `avatars/`, `gallery/` keep their names because objects live there; `class_bookings.status = 'enrolled'`, `businesses.type = 'org'`, `business_members.member_role`, `profiles.role`, `leads`, `classes.room` are unrenamed by decision (each has a COMMENT); `artist_plans_legacy` is dead history that could simply be dropped | — | the parameter names when a policy is next rewritten anyway; `drop table artist_plans_legacy` when somebody is sure |
+| **The Home re-cut, what it left (18 Sep 2026):** ⚠ **`/managed` has no tile on any grid**, so with `HEAD_LINK` deleted it is reachable from Home only through the empty day's "See everything you manage" pill — a door that is drawn only when there is nothing on today, which is backwards; either it earns a tile or the Manage link comes back. The identity column is **indented past the disc**, so a long name ellipsizes ~125px sooner on every one of the seven pages `IdentityHero` carries (the header rail, the styles and the page's own block are unchanged and still full width). The prototype's **time-of-day greeting is gone** for good (row C6) — if a greeting is ever wanted again it is a second line, not the eyebrow, because the eyebrow is now load-bearing | 7212-7213, 7143-7150 | a Manage tile, or the user's word that the pill is enough |
 | **The Home grid for all four kinds, what it left (18 Sep 2026):** **Routines**, **Memberships** and **Assets** are tiles onto `NotBuiltYet` — S_choreos (17115), S_memberships (16846) and S_assets (16791) are the screens to lift, the two money ones after the live Cashfree account; an **organization's Team** is the same door with no table behind it (organization members and their powers are a decision — an organization is one login); a studio's **Team** offers trainer \| staff where the user said "Faculty, Assistants and other members" — `member_role` is a CHECK, so new words are a migration and a decision; an artist's **Media** tile opens the Profile tab (their pictures live in its Edit sheet) rather than a desk of its own; **for Assisting** events are those of a business you are on the team of but do not own — there is no per-event helper role (E7); an artist's own page's events have no tile of their own (the register's Events › chip is the door); the org's grid heading is still the prototype's **Studio Tools** | S_choreos 17115, S_memberships 16846, S_assets 16791, S_bizhub 2585 | three lifts; a vocabulary decision; an organization-members slice |
 | **The organization's Home re-cut, what it left (17 Sep 2026):** the register's **Create class** button does not read `why_no_class` before the form — an artist whose plan has lapsed fills the form and meets the database's sentence on Publish (the hosting row never reaches the form: it redirects to the events desk); the organization's grid heading still says **Studio Tools** over Studios · Events · Stats (the prototype's word for a studio owner's grid, 7616 — an organization has no prototype screen of its own); `/managed` still lists the organization's studios' classes as things it manages (a view with Manage › doors, not a door to creating one) | S_homebiz 7590-7620 | one `why_no_class` read on the register page; the heading is the user's word to pick |
 | **The chrome re-cut, what it left (15 Sep 2026):** a **studio cannot be renamed** from its home — `update_tenant_profile` takes no `p_name`, so the pencil edits About, Since, phone, links and the pin but not the name (a person's name IS editable); an **organization with several studios** gets the eye pointing at its FIRST studio (a chooser is a decision); the eye on the bar is a door, so the **Profile and Stats pages have no lit tab** while open — they read as drill pages with the back chip | 19313-19396; S_profiletab 10613 | a `p_name` on `update_tenant_profile` (drop + recreate — the overload lesson); a studio chooser if an organization asks |

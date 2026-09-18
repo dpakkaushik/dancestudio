@@ -152,6 +152,25 @@ try {
   }
   Check 7 "Somebody outside the team can be asked ($($offTeamAsk.status)), an organization cannot" (($offTeamAsk.status -eq "asked") -and $orgRefused)
 
+  # 7b. AND THEY CAN SEE WHAT THEY ARE BEING ASKED ABOUT (18 Sep 2026). The user:
+  #     "when studio creating class request not going to artist in inbox". A new
+  #     class is a DRAFT and only the studio's own people may read a draft, so the
+  #     ask reached the person's notifications and then vanished from their Inbox -
+  #     findMyPendingClaims drops a row whose class it cannot read. Being asked is
+  #     what grants the read now (20260918140000), and this asks B - who is still
+  #     not on this team - onto the DRAFT, then reads it exactly as the Inbox does.
+  $draftAsk = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $draft.id; p_user_id = $b.user.id; p_kind = "artist" }
+  $bReadsDraft = Get-Rows (Api $b.access_token) "classes?id=eq.$($draft.id)&select=id,status"
+  $bInbox = Get-Rows (Api $b.access_token) "class_people?id=eq.$($draftAsk.id)&select=id,status,classes(style,level,share_slug,businesses!classes_business_id_fkey(name),class_sessions(starts_at))"
+  $inboxOk = ($bInbox.Count -eq 1) -and ($null -ne $bInbox[0].classes) -and ([string]$bInbox[0].classes.businesses.name -eq [string]$ta.name)
+  # and a bystander who was never asked still reads nothing of that draft
+  $strangerReads = Get-Rows $anonH "classes?id=eq.$($draft.id)&select=id"
+  Check "7b" "The person asked reads the DRAFT they are asked about ($($bReadsDraft.Count) row, status $($bReadsDraft[0].status)) and their Inbox row carries it ('$($bInbox[0].classes.businesses.name)'); the public still reads $($strangerReads.Count)" (
+    ($bReadsDraft.Count -eq 1) -and $inboxOk -and ($strangerReads.Count -eq 0))
+  Rpc (Api $a.access_token) "withdraw_class_ask" @{ p_class_person_id = $draftAsk.id } | Out-Null
+  $afterWithdraw = Get-Rows (Api $b.access_token) "classes?id=eq.$($draft.id)&select=id"
+  Check "7c" "Withdrawing the ask takes the read back with it ($($afterWithdraw.Count) rows)" ($afterWithdraw.Count -eq 0)
+
   # B joins A's studio as STAFF (staff invites arrive with Step 12 - service role
   # stands in). Staff on purpose: a trainer could run the register anyway, so only
   # a staff member proves the attendance JOB is what opens it.

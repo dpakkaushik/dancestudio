@@ -15,7 +15,7 @@ import { amIPlatformAdmin } from "@/repositories/admin";
 import { headerMaxFor, photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { BizSection, HOME_TYPE } from "@/features/home/components/home-kit";
-import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
+import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { EditProfileButton } from "@/features/profiles/components/EditProfileSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
@@ -23,16 +23,8 @@ import { ROLE_RING, tierOf } from "@/features/profiles/components/profile-kit";
 import { KIND_WORD, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
-const IST = "Asia/Kolkata";
-
-/** Time-of-day greeting — prototype Home (DanceOSApp.jsx:7212-7213), on the IST clock. */
-const greeting = (now: Date): string => {
-  const hr = Number(new Intl.DateTimeFormat("en-IN", { hour: "numeric", hour12: false, timeZone: IST }).format(now));
-  return hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
-};
-
 /** Home — the dancer dashboard lifted from prototype S_homedancer (DanceOSApp.jsx:7206-7352):
- *  the identity sleeve with the time-of-day greeting, the PassDeck of today under
+ *  the identity sleeve, the PassDeck of today under
  *  "Today's schedule" (6863-7204 — one swiped rail of the app's own cards, the role chip,
  *  one Live badge, the QR and the invoice on a booked card), and the Artist Tools grid
  *  (BizSection). A studio's Home asks the deck the studio's question — what is running
@@ -45,10 +37,17 @@ const greeting = (now: Date): string => {
  *  stands on. SINCE 15 SEP 2026 THAT IS TWO PICTURES: the HEADER across the
  *  top (a user's one picture, an artist's up to ten with the Add tile at the
  *  end, nothing for an organization) and the round PROFILE DISC over its
- *  bottom-left edge — the face, or the logo — with the ＋ that changes it on
- *  its rim. Under it, what the prototype's sleeve said: the greeting, the
- *  name, "24, New Delhi", the styles, the role word over the account number,
- *  and the rank in the metal it earned. */
+ *  bottom-left edge — the face, or the logo.
+ *
+ *  ⚠ THE EYEBROW SAYS WHAT THIS ACCOUNT IS, NOT WHAT TIME IT IS (18 Sep 2026,
+ *  the user: "Good morning to be removed and replaced with User, Artist, Studio,
+ *  Organization and should not be repeated below"). It read GOOD MORNING /
+ *  AFTERNOON / EVENING off the IST clock, and the word USER · ARTIST ·
+ *  ORGANIZATION was then printed AGAIN in display type under the styles — the
+ *  greeting said nothing a person needs and the word was said twice. Now the
+ *  eyebrow is the word, said once, and the line that repeated it carries only
+ *  what it alone had: the account number. (A studio's own home has always said
+ *  STUDIO there, which is the fourth word on the user's list.) */
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -182,7 +181,7 @@ export default async function HomePage() {
           name={profile.fullName}
           grad={ring}
           tint={ring[1]}
-          eyebrow={greeting(now)}
+          eyebrow={KIND_WORD[kind]}
           /* the tick is DanceOS's to give (7292) — set when a verification actually clears.
              ⚠ NO CHIP ON AN ORGANIZATION'S NAME ANY MORE (11 Sep 2026): nobody
              looks at an organization now, the badge moved to the studio. An
@@ -206,19 +205,17 @@ export default async function HomePage() {
              the Profile tab's own sheet: name, mobile, the pictures, the rest */
           corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} />}
         >
-          {/* what you are, not what your number is (7308-7323): the role is the word,
-              the account number the small line under it */}
+          {/* the account number (7308-7323) — the ROLE WORD that used to head this
+              line moved to the eyebrow on 18 Sep 2026, because saying it twice on
+              one hero is saying it once and then again */}
           <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-            <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none", color: INK }}>
-              <span style={{ display: "block", fontSize: 20, fontWeight: 900, lineHeight: 1, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, color: INK }}>
-                {KIND_WORD[kind]}
-              </span>
-              {profile.memberNo != null ? (
-                <span style={{ display: "block", ...HOME_TYPE.micro, color: MUTED, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
+            {profile.memberNo != null ? (
+              <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none", color: INK }}>
+                <span style={{ display: "block", ...HOME_TYPE.micro, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
                   {memberNoWords(profile.memberNo)}
                 </span>
-              ) : null}
-            </Link>
+              </Link>
+            ) : null}
             {/* the rank, in the metal it earned — drawn only once there IS a place
                 to stand, because Step 25's rule is that "#0" is not a rank (7324-7333) */}
             {rank && tier ? (
@@ -276,36 +273,6 @@ export default async function HomePage() {
         {orgAwaitingApproval ? null : (
           <TodayShelf
             deck={deck}
-            right={
-              isOrg ? (
-                /* an organization's doors are an organization's (17 Sep 2026): the one list
-                   of everything its studios run, and its events desk — no register, no
-                   studio calendar; those are on each studio's own home */
-                <>
-                  {canManage ? (
-                    <Link href="/managed" aria-label="Everything you manage" style={HEAD_LINK}>
-                      Manage
-                    </Link>
-                  ) : null}
-                  {eventsHostId ? (
-                    <Link href={`/business/${eventsHostId}/events`} aria-label="Open the events desk" style={HEAD_LINK}>
-                      Events ›
-                    </Link>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  {canManage ? (
-                    <Link href="/managed" aria-label="Everything you manage" style={HEAD_LINK}>
-                      Manage
-                    </Link>
-                  ) : null}
-                  <Link href="/my-classes" aria-label="All bookings" style={HEAD_LINK}>
-                    All bookings ›
-                  </Link>
-                </>
-              )
-            }
             emptyTitle="Nothing on today"
             emptyBody={
               isOrg

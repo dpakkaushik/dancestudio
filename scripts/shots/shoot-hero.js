@@ -355,8 +355,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.getByRole("button", { name: "Edit profile", exact: true }).click();
     const orgSheet = org.getByRole("dialog", { name: "Edit profile" });
     await orgSheet.waitFor();
-    /* exact: getByLabel is a case-insensitive SUBSTRING match, and Home's
-       "Everything you manage" link behind the sheet contains "age" */
+    /* exact: getByLabel is a case-insensitive SUBSTRING match, so a bare "Age"
+       finds any label on the page that merely contains those three letters */
     check(await org.getByText("Update logo", { exact: true }).isVisible() && (await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: Update logo, not Update profile; no age for an organization");
     check((await orgSheet.getByLabel("Change your photo").count()) === 1, "org edit profile: and the logo is changed HERE — the one place a picture changes");
     await shot("org-edit");

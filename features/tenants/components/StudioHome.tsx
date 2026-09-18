@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ToolGrid, type Tile } from "@/features/home/components/home-kit";
-import { HEAD_LINK, PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
+import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
@@ -152,16 +152,6 @@ export function StudioHome({
             order the day happens; a studio's doors are its own (7143-7150) ── */}
         <TodayShelf
           deck={deck}
-          right={
-            <>
-              <Link href={`/business/${tenant.id}/classes`} aria-label="Classes at this studio" style={HEAD_LINK}>
-                Classes
-              </Link>
-              <Link href={`/business/${tenant.id}/calendar`} aria-label="Open the studio calendar" style={HEAD_LINK}>
-                Calendar ›
-              </Link>
-            </>
-          }
           emptyTitle="Nothing in your rooms today"
           emptyBody="Every class and event running in this studio’s rooms shows up here on the day."
           emptyActions={

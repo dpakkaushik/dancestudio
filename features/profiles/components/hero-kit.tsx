@@ -33,10 +33,11 @@ import { HERO_DISC, HERO_DISC_DROP, INK, LILAC, LINE } from "@/lib/design/tokens
  *  place to look, and the set visible as a grid rather than one square at a
  *  time. The pencil in `corner` is what opens it.
  *
- *  What differs between the pages is passed in, never redrawn: the eyebrow
- *  (GOOD EVENING on your own Home, STUDIO on a studio's), what the header
- *  swipes through (one picture for a user, ten for an artist, the photos of
- *  its space for a studio, nothing for an organization), and the meta line. */
+ *  What differs between the pages is passed in, never redrawn: the eyebrow —
+ *  WHAT THIS ACCOUNT IS since 18 Sep 2026 (USER · ARTIST · STUDIO ·
+ *  ORGANIZATION), where Home used to say GOOD MORNING; what the header swipes
+ *  through (one picture for a user, ten for an artist, the photos of its space
+ *  for a studio, nothing for an organization); and the meta line. */
 
 export const heroWash = (tint: string) => `linear-gradient(180deg, ${tint}b8 0%, ${tint}55 46%, ${tint}18 74%, ${LILAC} 100%)`;
 
@@ -113,10 +114,18 @@ export function IdentityHero({
   /** whatever the page adds under the styles — Home's role word, code and rank */
   children?: ReactNode;
 }) {
-  /* the text block starts under the disc, which drops HERO_DISC_DROP px below
-     the header's edge — so the block's top padding is the part of the disc
-     that hangs into it, plus a breath */
-  const blockTop = HERO_DISC - HERO_DISC_DROP + 10;
+  /* ⚠ THE PICTURE STANDS BESIDE THE NAME (18 Sep 2026, the user: "Profile Pic
+     should be besides Name and Location"). The disc keeps the place they drew it
+     on 15 Sep — over the header's bottom-left edge — and what moved is the text:
+     until today the block began BELOW the disc, so the picture, the name and the
+     place read as a stack down the left edge. The identity column is indented
+     past the disc now and the three sit on one line. Only that column is
+     indented: the styles and whatever the page adds run the full width beneath,
+     under the disc, which is why the disc stays absolutely placed rather than
+     becoming a flex row's first child. */
+  const blockTop = 12;
+  /* the disc's width plus a breath — where the name starts */
+  const asideLeft = HERO_DISC + 13;
   return (
     <div data-testid={testId} style={{ margin: "0 -16px", position: "relative", overflow: "hidden", background: heroWash(tint) }}>
       {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", gap: 6 }}>{corner}</div> : null}
@@ -129,13 +138,16 @@ export function IdentityHero({
           <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
         </div>
 
-        <div style={HERO_EYEBROW}>{eyebrow}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-          <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>
-          {verified ? <VerifiedTick size={18} /> : null}
-          {share}
+        {/* who it is, beside the picture: the word, the name, the place */}
+        <div style={{ paddingLeft: asideLeft, minHeight: HERO_DISC - HERO_DISC_DROP - blockTop }}>
+          <div style={HERO_EYEBROW}>{eyebrow}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+            <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</h1>
+            {verified ? <VerifiedTick size={18} /> : null}
+            {share}
+          </div>
+          {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
         </div>
-        {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 7, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
         {styles.length ? (
           <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>
             {styles.map((s) => (
