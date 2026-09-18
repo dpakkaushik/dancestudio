@@ -48,6 +48,24 @@
 > The tell is free and worth keeping: `git diff --stat` said **270 insertions /
 > 250 deletions** for what should have been nine lines.
 
+> ### THE MAP IS OFF DISCOVER (18 Sep 2026, last)
+> The user: *"remove map from discover which is on the right side on near me."*
+> The 🗺 Map / ☰ List toggle sat beside the Near me chip and swapped the shelf
+> for `DiscoverMap`'s pins. Gone, and not merely hidden: the toggle, the
+> `view` parameter, the `markers` list and `DiscoverMap.tsx` itself are deleted,
+> and the two lines that hydrated each card's `lat`/`lng` went with them — they
+> existed only to feed the pins. **`?view=map` in an old bookmark degrades to the
+> list** rather than breaking, which `shoot-org.js` now asserts (it used to open
+> that URL and check the toggle's two words; it checks their absence).
+> ⚠ **What it takes with it, honestly:** Discover has no spatial view at all now,
+> so "which of these is actually near me" is answered by the distance chip on
+> each card and nothing else — and the backlog row that wanted EVENTS on a map
+> has nothing left to hang off. It also removes a Maps JavaScript API load per
+> view, which is real money once the demo key is retired (#7).
+> `GoogleMapPicker` keeps its `markers` prop with no caller left; it is a general
+> map component and the location picker is load-bearing, so it was not pruned in
+> the same breath. Backlog row.
+
 > ### ⚠ THE CALENDAR KNEW NOTHING ABOUT EVENTS, ON ANY KIND OF PROFILE (18 Sep 2026, later still)
 > The user: *"fix problems with calendar for all kinds of profiles."* No symptom
 > named, so the calendar was read end to end against each of the four accounts.
@@ -2384,6 +2402,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE MAP IS OFF DISCOVER — 18 Sep 2026, no step number — BUILT, no
+  migration.** The user: *"remove map from discover which is on the right side
+  on near me."* The Map / List toggle beside the Near me chip, the `view`
+  parameter, the marker list and `DiscoverMap.tsx` are deleted; `?view=map` in an
+  old bookmark degrades to the list. Near me stands alone now. ⚠ Discover has no
+  spatial view at all as a result, and the backlog row that wanted events as pins
+  keeps only its radius-search half.
 - **THE CALENDAR KNOWS ABOUT EVENTS, AND NO TWO TILES ON A GRID READ ALIKE —
   18 Sep 2026, no step number — BUILT, no migration.** The user: *"fix problems
   with calendar for all kinds of profiles"*, then *"fix colors for all tiles on
@@ -5830,7 +5855,8 @@ nothing to lift.
 | **The staged draft (16 Sep 2026), what it left:** a **signed proof URL is minted at PAGE render and lives 30 minutes** (`PROOF_URL_SECONDS`), so a sheet left open past that shows the "added" placeholder rather than the picture — it does not re-sign; there is **no `beforeunload` guard** on a dirty draft (this repo has none anywhere, and a phone would ignore it), so a refresh mid-edit silently drops staged work — which is strictly better than the bug it replaces, where a refresh mid-edit left the deletions already applied; the **profile DISC still commits immediately** while the header stages, because changing it REPLACES rather than destroys and the result is visible at once; the **object delete still runs from the browser** (Rule 5), which is pre-existing and is the one step that makes a loss unrecoverable | — | re-signing when a draft outlives its URLs; a server-side delete if the object delete is ever worth hardening |
 | **The lightbox (16 Sep 2026) is an ADDITION, not a lift.** The prototype's photo tiles have no `onClick` at all and its album grid draws plain divs (11119-11121); what it DOES have is a full-screen viewer for an AVATAR (11440-11447) and a `photoView` state declared `null \| "avatar" \| "cover"` (8705) whose `"cover"` branch is never rendered. So this completes a stub rather than inventing a pattern — but the grid-tile-opens-it half has no counterpart. Also: the prototype's studio Photos is a 104×78 horizontal RAIL (10965-10968), not a square grid | 8705, 11440-11447, 11119-11121 | nothing owed unless the user wants the rail |
 | **The workspace strip is GONE (18 Sep 2026)** — the user said so again, which is what that row said would settle it, so `WorkspaceStrip` and `getWorkspaceAction` are deleted (row C5). It also took a server action per desk visit with it. ⚠ What it leaves: **nothing on a desk names which studio you are in**, and an organization runs several — if that ever bites, the name belongs in the tool hero or the layout, not in a bar of its own; and a notification deep link onto a desk is now two presses from the studio list rather than one | 19267-19294 | the studio's name in the tool hero, if an organization with several studios asks |
-| **An event cannot be found by distance.** Its pin is saved and read back now, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only and an event is not drawn on the map view. (The studio side of this is closed: the picker is in the New-studio sheet AND the Edit sheet, and the hub asks any studio still on its city centroid for its pin) | — (no prototype: the prototype has no backend and no map) | an event radius search in the shape of `nearby_tenants`, and events as pins on the Discover map |
+| **An event cannot be found by distance.** Its pin is saved and read back, and the GiST index on `events (lat, lng)` exists — but nothing uses it: Discover's Events tab is city-only. ⚠ **And since 18 Sep 2026 there is no map on Discover at all** (the user: "remove map from discover"), so the "events as pins" half of this row has nowhere to land: what is left is an event RADIUS SEARCH feeding the list, in the shape of `nearby_businesses` | — (no prototype: the prototype has no backend and no map) | an event radius search; a map only if the user asks for one back |
+| **`GoogleMapPicker` keeps a `markers` prop with no caller** (18 Sep 2026) — `DiscoverMap` was its only one and it is deleted. Left in place on purpose rather than pruned in the same push: it is a general map component, the location picker that stands on it is load-bearing, and that picker is where the 16 Sep data-loss bug lived | — | prune when `GoogleMap` is next opened for its own reasons |
 | **A withdrawn or re-asked claim still counts on somebody's record** (found 18 Sep 2026 by the proof harness). `my_dance_stats` and `my_session_history` count `class_people` rows with `status = 'confirmed'` and do NOT filter `deleted_at`, so a claim that was closed — withdrawn, or replaced by a re-ask — keeps adding sessions, hours and POINTS to that person's record and to the boards. It never showed because nothing used to close a confirmed claim; `ask_class_person` does it on every re-ask. The fix is not simply "filter deleted_at": somebody removed from a team should keep credit for sessions they actually taught (the payouts ledger draws that line with `accrualCutoff`), so stats needs the same test — count a claim's sessions up to the moment it closed | — | one migration over the two stats functions, in the shape of payouts' accrual cutoff |
 | **The class form, what the 18 Sep re-cut left:** an artist's class at a studio shows the venue as "the studio you asked" when the form is REOPENED (the name is not read back, only the id); a declined venue is said in the Inbox and on the register but the artist must reopen Edit to choose again (no one-press "pick another"); there is no rent, invoice or payout between an artist and the studio whose room they used (the prototype's unbuilt S_rentals); the venue request has no withdrawal of its own (moving the class is the withdrawal); a studio cannot see, on its own calendar, which of ITS rooms an artist has asked for until it accepts (the request is in the Inbox, the room is held only once accepted); and `why_no_publish` is not read by the form before Save — the register is where the sentence is printed | S_rentals 16489 | a rentals slice; the rest are decisions |
 | **An owner cannot reach a 51st business.** `findMyTenants` and `findMyMemberships` read the oldest 50 memberships (`order created_at asc, limit 50`), and every desk page finds its business in that list — so the 51st studio an account opens has a hub card that opens nothing but the hub. Found 17 Sep 2026 on the test phone owner (55 proof-leftover studios); no real organization is near it, but a cap that silently hides the newest is the wrong shape | — (the prototype's hub is localStorage-sized) | order newest-first, or read the one membership the page needs by id instead of searching a capped list |

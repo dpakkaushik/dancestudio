@@ -6,10 +6,8 @@ import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { CityChip } from "@/features/discovery/components/CityChip";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
-import { DiscoverMap } from "@/features/discovery/components/DiscoverMap";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
 import { NearMeChip } from "@/features/discovery/components/NearMeChip";
-import type { MapMarker } from "@/features/geo/components/GoogleMap";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, EventI, kmLabel, StudioI } from "@/features/discovery/components/discover-kit";
 import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
@@ -108,11 +106,6 @@ export default async function DiscoverPage({
   /* the city's own centre from the registry; a city nobody has been to yet has
      none, and then the country is the honest place to measure from */
   const centre = near ?? centreOf(cities, city) ?? INDIA_CENTRE;
-  /* LIST OR MAP (11 Sep 2026): the same shelf, drawn as pins. A toggle rather
-     than always-on, because every map view is a Maps JavaScript API load that
-     Google bills per view once the demo key is retired — and because a list is
-     still the faster way to read twenty names. */
-  const view: "list" | "map" = params.view === "map" ? "map" : "list";
   const filters = parseFilters(params, DOS_STYLE_NAMES);
   const wantsBusinesses = tab === "studios" || tab === "artists";
   /* the follow shelf heads Studios and Artists for a signed-in person; a crew has no follow yet */
@@ -175,26 +168,12 @@ export default async function DiscoverPage({
     wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
     wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.tenantId)]) : Promise.resolve(new Map<string, TenantCardFacts>()),
   ]);
-  /* the face and the tick reach the cards together — one read, two facts (D7);
-     the point rides along for the map view (11 Sep 2026) */
+  /* the face and the tick reach the cards together — one read, two facts (D7).
+     The pin used to ride along for the map view; the map went on 18 Sep 2026. */
   businesses.forEach((t) => {
     t.photoPath = facts.get(t.id)?.photoPath ?? null;
     t.verifiedAt = facts.get(t.id)?.verifiedAt ?? null;
-    t.lat = facts.get(t.id)?.lat ?? null;
-    t.lng = facts.get(t.id)?.lng ?? null;
   });
-  /* THE PINS: only businesses that have placed themselves. The rest sit on the
-     city's centroid, and twenty pins on one point is not a map of anything. */
-  const markers: MapMarker[] = businesses
-    .filter((t) => t.located && t.lat != null && t.lng != null)
-    .map((t) => ({
-      id: t.id,
-      lat: t.lat as number,
-      lng: t.lng as number,
-      label: `${t.name}${t.area ? ` · ${t.area}` : ""}`,
-      href: publicProfilePath(t),
-      tint: t.type === "artist_page" ? "#EC4899" : "#3B82F6",
-    }));
   const followedTiles: FollowedTile[] = followed.map((f) => ({
     id: f.tenantId,
     name: f.tenantName,
@@ -271,18 +250,14 @@ export default async function DiscoverPage({
       {/* "near you" can now mean YOU (11 Sep 2026) — the chip swaps the city's
           centre for the browser's own point, and the distance on every card
           becomes a distance to the person reading it */}
+      {/* ⚠ THE MAP TOGGLE THAT SAT BESIDE THIS CHIP IS GONE (18 Sep 2026, the
+          user: "remove map from discover which is on the right side on near
+          me"). Near me now stands alone: it is the one control that changes
+          what the shelf means, by measuring every distance from the person
+          rather than from the city's centre. */}
       {wantsBusinesses ? (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, minWidth: 0, flexWrap: "wrap" }}>
-          <NearMeChip on={near !== null} params={{ city, tab, ...filtersToParams(filters), ...(view === "map" ? { view: "map" } : {}) }} />
-          {/* the same shelf as pins on a map, or back to names (11 Sep 2026) */}
-          <Link
-            href={`/discover?${new URLSearchParams({ city, tab, ...filtersToParams(filters), ...(near ? { near: `${near.lat},${near.lng}` } : {}), ...(view === "map" ? {} : { view: "map" }) }).toString()}`}
-            aria-pressed={view === "map"}
-            aria-label={view === "map" ? "Show as a list" : "Show on a map"}
-            style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 4, height: 30, padding: "0 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", background: view === "map" ? "var(--text)" : "var(--card)", color: view === "map" ? "var(--solid)" : SUB, border: `1px solid ${view === "map" ? "var(--text)" : EL}` }}
-          >
-            {view === "map" ? "☰ List" : "🗺 Map"}
-          </Link>
+          <NearMeChip on={near !== null} params={{ city, tab, ...filtersToParams(filters) }} />
         </div>
       ) : null}
 
@@ -325,11 +300,6 @@ export default async function DiscoverPage({
             />
           );
         })}
-
-      {/* THE MAP, above the list it draws (11 Sep 2026) */}
-      {wantsBusinesses && view === "map" ? (
-        <DiscoverMap centre={centre} markers={markers} unplaced={businesses.length - markers.length} what={tab === "studios" ? "Studios" : "Artists"} />
-      ) : null}
 
       {tab === "studios" && businesses.map((t) => <StudioCard key={t.id} tenant={t} followers={followerCounts.get(t.id) ?? 0} styles={stylesByTenant.get(t.id) ?? []} />)}
 

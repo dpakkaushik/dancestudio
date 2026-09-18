@@ -110,14 +110,19 @@ const rest = async (method, url, body) => {
      until 11 Sep 2026, which after the Google move could only ever fail.) */
   check((await sheetMap.locator(".gm-style").count()) > 0, "Add studio: Google Maps rendered in the picker");
 
-  /* 4. Discover as a map */
+  /* 4. Discover — ⚠ THE MAP VIEW IS GONE (18 Sep 2026, the user: "remove map
+     from discover which is on the right side on near me"). This used to open
+     ?view=map and assert the toggle's two words; it asserts the absence now,
+     and that `view=map` in a bookmarked URL degrades to the list rather than
+     breaking. Near me is the one control left beside the city. */
   await page.goto(`${BASE}/discover?city=Pune&tab=studios&view=map`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(3000);
-  await page.screenshot({ path: path.join(OUT, "org-3-discover-map.png"), fullPage: true });
-  check((await page.getByRole("application", { name: /on the map/i }).count()) === 1, "Discover: the map view draws");
-  check((await page.getByRole("link", { name: "Show as a list" }).count()) === 1, "Discover: the toggle reads List while on the map");
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(OUT, "org-3-discover.png"), fullPage: true });
+  check((await page.getByRole("application", { name: /on the map/i }).count()) === 0, "Discover: no map, even when the old view=map is in the URL");
+  check((await page.getByRole("link", { name: "Show as a list" }).count()) === 0, "Discover: and no List toggle");
   await page.goto(`${BASE}/discover?city=Pune&tab=studios`, { waitUntil: "networkidle" });
-  check((await page.getByRole("link", { name: "Show on a map" }).count()) === 1, "Discover: the toggle reads Map while on the list");
+  check((await page.getByRole("link", { name: "Show on a map" }).count()) === 0, "Discover: no Map toggle beside Near me");
+  check((await page.getByRole("button", { name: /Near me/ }).count()) === 1, "Discover: Near me is still there, on its own");
 
   await browser.close();
 
