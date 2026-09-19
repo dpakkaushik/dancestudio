@@ -111,7 +111,7 @@ $member = New-EmailUser "prof-member-$stamp@example.com" "Prof Member $stamp" "u
 $fan = New-EmailUser "prof-fan-$stamp@example.com" "Prof Fan $stamp" "user"
 $artist = New-EmailUser "prof-artist-$stamp@example.com" "Prof Artist $stamp" "user"
 Grant-ArtistPlan $artist.id
-$studio = Rpc (Api $org.token) "create_business_with_owner" @{ p_name = "Prof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$studio = Rpc (Api $org.token) "create_business_with_owner" @{ p_name = "Prof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$studio.id)
 # the organization's hosting row (R15) - what an enquiry to it is sent to
 # ($host is PowerShell's READ-ONLY automatic variable, like $pid - never a name here)

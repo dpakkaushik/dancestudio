@@ -101,7 +101,7 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Media Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Media Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$ta.id)
 $crew = Rpc (Api $me.token) "create_crew" @{ p_name = "Media Crew $stamp"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }
 $uploaded = @()

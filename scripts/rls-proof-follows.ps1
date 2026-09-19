@@ -99,9 +99,9 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Follow Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Follow Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$tb.id)
 # B goes private - the one state a listed/unlisted line can be tested against
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null

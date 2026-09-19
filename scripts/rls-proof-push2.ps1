@@ -124,7 +124,7 @@ $lead = New-EmailUser "p2-lead-$stamp@example.com" "P2 Leader $stamp" "user"
 $artist = New-EmailUser "p2-artist-$stamp@example.com" "P2 Artist $stamp" "user"
 $fan = New-EmailUser "p2-fan-$stamp@example.com" "P2 Fan $stamp" "user"
 Grant-ArtistPlan $artist.id
-$studio = Rpc (Api $org.token) "create_business_with_owner" @{ p_name = "P2 Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$studio = Rpc (Api $org.token) "create_business_with_owner" @{ p_name = "P2 Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$studio.id)
 $studioId = [string]$studio.id
 $crew = $null

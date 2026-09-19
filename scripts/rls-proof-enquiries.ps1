@@ -113,13 +113,13 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Enquiry Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Enquiry Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$ta.id)
 # 8 Sep 2026: an artist page is a Pro USER's - the plan comes first. 10 Sep 2026: the plan is PAID
 # (Rs 700 a month), so the free RPC refuses it; the service role grants one as an admin would
 Grant-ArtistPlan $ownerB.id
 $tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Artist Business $stamp"; p_type = "artist_page"; p_area = "Baner"; p_city = "Pune" }
-$tc = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tc = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Private Studio $stamp"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$tc.id)
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tc.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 Add-Member $ta.id $staffA.id "staff" $ownerA.id

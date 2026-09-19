@@ -99,6 +99,7 @@ async function signUp(page, email) {
        with the typed name as the fallback a test can rely on */
     await page.getByLabel("Choose a city").first().selectOption("Pune");
     await page.getByLabel("Room 1 name").fill("Studio A");
+    await page.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await shot("new-studio-sheet");
     await page.getByRole("button", { name: "Create studio" }).click();
     await page.getByText("EEE Dance Studio").first().waitFor();

@@ -116,10 +116,10 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Managed A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Managed A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$ta.id)
 # 8 Sep 2026: an organization opens STUDIOS (an artist page is a Pro user's) - B is its second studio
-$tb = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Managed B $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
+$tb = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Managed B $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $trainer.id "trainer" $owner.id
 # (a new tenant is listed by default, so a stranger CAN read its published class - the point of check 3)

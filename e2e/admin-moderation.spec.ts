@@ -225,6 +225,7 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.locator('input[name="area"]').fill("Baner");
     await pickCity(owner, "Pune");
     await owner.getByLabel("Room 1 name").fill("Studio A");
+    await owner.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await owner.getByRole("button", { name: "Create studio" }).click();
     await expect(owner.getByText(studioName, { exact: true })).toBeVisible();
     // under the row: the STUDIO's own review (11 Sep 2026) — a public link,

@@ -230,7 +230,7 @@ async function seed() {
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nBusinesses");
   const mkStudio = async (o, name, area, dLat, dLng) => {
-    const t = await rpc(o.h, "create_business_with_owner", { p_name: name, p_type: "studio", p_area: area, p_city: o.city });
+    const t = await rpc(o.h, "create_business_with_owner", { p_name: name, p_type: "studio", p_area: area, p_city: o.city, p_styles: ["Hip-Hop"] });
     await grantPlan("studio", o.id, t.id, "Granted by the demo seeder — nothing charged");
     /* the BADGE first (an admin's approval, which the seeder stands in for), then listed */
     await patch(H_SERVICE, `businesses?id=eq.${t.id}`, { verified_at: nowIso(), visibility: "listed" });

@@ -100,7 +100,7 @@ function Move-Session($sessionId, $hoursAgo, $lenH) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$city = "Chandigarh"   # a city the demo world does not use, so the boards are ours
+$city = "Chennai"   # one of the eight the registry allows (19 Sep 2026), and one the demo world does not use, so the boards are ours
 $owner = New-EmailUser "st-owner-$stamp@example.com" "Stat Owner $stamp" "org" $city
 $teacher = New-EmailUser "st-teach-$stamp@example.com" "Stat Teacher $stamp" "user" $city
 $dancer = New-EmailUser "st-dancer-$stamp@example.com" "Stat Dancer $stamp" "user" $city
@@ -117,7 +117,7 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Stat Proof Studio $stamp"; p_type = "studio"; p_area = "Sector 17"; p_city = $city }
+$ta = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Stat Proof Studio $stamp"; p_type = "studio"; p_area = "T Nagar"; p_city = $city; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$ta.id)
 
 try {

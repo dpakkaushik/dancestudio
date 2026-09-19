@@ -2,7 +2,7 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE 28-POINT LIST — THE TOOLS' TOGGLES, A TEAM THAT IS ASKED BY NAME AND PAID, EDIT PROFILE INTO SETTINGS, THE BAND ON HOME, AND A STUDIO THAT SAYS WHAT IT DANCES (19 Sep 2026, latest) — ⚠ ONE MIGRATION WRITTEN, DRY-RUN **33/33** ROLLED BACK, **NOT APPLIED, NOT PUSHED**
+> ### THE 28-POINT LIST — THE TOOLS' TOGGLES, A TEAM THAT IS ASKED BY NAME AND PAID, EDIT PROFILE INTO SETTINGS, THE BAND ON HOME, AND A STUDIO THAT SAYS WHAT IT DANCES (19 Sep 2026, latest) — ✅ TWO MIGRATIONS APPLIED (dry runs **33/33** and **10/10**, both rolled back first), 31/31 PROOFS, THE SUITE GREEN, PUSHED
 > The user, in one message, then one more: *"Classes in Tools — remove Calendar
 > button on top right and give counts inside the toggles with total inside the
 > columns, Manage should be first section for Artist. Events in Tools — remove
@@ -112,7 +112,12 @@
 >   `guard_business_visibility` is untouched, because taking a live studio off
 >   Discover over a field it never had is a punishment for our own omission.
 > * **THE MIGRATION — `20260919190000_a_studio_says_what_it_dances_and_a_team_has_an_order.sql`,
->   WRITTEN AND DRY-RUN, NOT APPLIED.** Four columns (`businesses.styles`,
+>   ✅ APPLIED 19 Sep 2026** on the user's *"apply it and push on live"*, after the
+>   list below had been in front of them. `db-push -DryRun` listed exactly the
+>   one file; the apply printed it on the FIRST try (the `Select-String` shape).
+>   Read back live: the four columns present, the three RPCs present, and the
+>   backfill filled **6 studios of 26** — exactly the six with a published class,
+>   which is the point-28 count from the other side. Four columns (`businesses.styles`,
 >   `business_members.sort`, `leads.user_id`, `business_invites.user_id` with
 >   `email` nullable and a one-handle CHECK), three new RPCs
 >   (`reorder_business_members`, `invite_person_to_business`,
@@ -126,22 +131,82 @@
 >   persisted**, including that anon's executable set gains nothing (the only
 >   anon-executable name among the ten touched is still `public_studio_team`).
 >   ⚠ **The app selects `businesses.styles`, `leads.user_id` and
->   `business_invites.user_id` on ordinary reads, so NOTHING deploys before the
->   apply** — the push-2 situation of the same day, exactly.
-> * **Verified so far:** typecheck 0 · lint 0 · `next build` green · the dry run
->   33/33 rolled back. ⚠ **The suite has NOT been run**: every re-cut assertion
->   below reads a screen that needs the migration (the Team desk's picker, the
->   Students desk's figures, a studio's styles), so it can only run after the
->   apply. Re-cut and waiting: the happy path's `openEditProfile` helper (the
->   pencil is gone, so every site that pressed one opens Settings), the pictures
->   segment (the disc, "Your pictures", and Edit profile carrying neither), the
->   band on Home (styles and links moved, the two figures, no rank), the calendar's
->   absent History chip, the memberships payment step and its two segments, the
->   invite sheet's two ways in — and a **new sixteenth segment** driving the whole
->   team-and-students slice end to end (asked by name, only they may accept, the
->   labels and the permissions, paid ₹2,500 by UPI with the history on their row
->   and the expense on the ledger, the order, a picked student with a door to their
->   profile, a walk-in with none). `shoot-hero.js` re-cut the same way.
+>   `business_invites.user_id` on ordinary reads, so nothing could deploy before
+>   the apply** — the push-2 situation of the same day, exactly. **PostgREST's
+>   schema cache was reloaded straight after** (`notify pgrst, 'reload schema'`,
+>   the 19 Sep lesson) and the app read back as anon on the new bundle:
+>   `businesses.styles` selectable, a listed studio's page **200**, and
+>   `business_invites` / `leads` answering anon an EMPTY set — nothing widened.
+> * ⚠⚠ **AND WHAT THE APPLY BROKE, WHICH IS THE HARNESS AND NOT THE PRODUCT:
+>   every proof and two e2e specs created a studio with no style, and the
+>   database now refuses one.** 31 scripts + `paid-webhook.spec.ts` gained
+>   `p_styles`, and the five places that drive the New-studio SHEET gained
+>   `selectOption("Hip-Hop")` — the same price the 18 Sep publish rule charged,
+>   and the migration being right is why it was charged. ⚠ **A mechanical regex
+>   is a blunt instrument:** `p_type = "studio"` also matched a `nearby_businesses`
+>   call, which has no such argument, and PostgREST answered **404** (PGRST202) on
+>   a function it could no longer resolve — found by the discovery proof, fixed by
+>   hand, and the reason the whole 31-proof suite was re-run rather than the six.
+> * ⚠ **AND TWO PROOFS THAT HAD BEEN RED SINCE THIS MORNING AND NOBODY RE-RAN
+>   THEM.** `rls-proof-person-pages` builds its world in **Ahmedabad** and
+>   `rls-proof-stats` in **Chandigarh** — "a city the demo world does not use",
+>   which was a good reason until `20260919150000` made the registry exactly eight
+>   and hung a BEFORE trigger on `profiles` that refuses anything else. Both died
+>   on the profile INSERT with a 400, before check 1. They are Hyderabad and
+>   Chennai now (two of the eight, and still ones the demo world does not use),
+>   with areas to match. **This file's own lesson in a new coat: a proof is only
+>   true the last time it ran** — and a migration that narrows a VOCABULARY
+>   reaches every script that ever typed a word.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the dry run 33/33
+>   rolled back · **the 31 proofs green** on the migrated schema (the six the
+>   migration touches, then the whole set as regression cover for the mechanical
+>   `p_styles` edit) · the app read back as anon on the new bundle. The re-cut
+>   assertions all drive real screens now: the happy path's `openEditProfile`
+>   helper (the pencil is gone, so every site that pressed one opens Settings),
+>   the pictures segment (the disc, "Your pictures", and Edit profile carrying
+>   neither), the band on Home (styles and links moved, the two figures, no rank),
+>   the calendar's absent History chip, the memberships payment step and its two
+>   segments, the invite sheet's two ways in — and a **new sixteenth segment**
+>   driving the whole team-and-students slice end to end (asked by name, only they
+>   may accept, the labels and the permissions, paid ₹2,500 by UPI with the history
+>   on their row and the expense on the ledger, the order, a picked student with a
+>   door to their profile, a walk-in with none). `shoot-hero.js` re-cut the same way.
+> * ⚠⚠ **AND THE SUITE FOUND A REAL BUG IN MY OWN MIGRATION — THE FEATURE ITSELF,
+>   AND ONLY A CALL COULD HAVE FOUND IT: `20260919200000_a_studio_can_invite_visiting_faculty`,
+>   APPLIED.** The Team desk offers a studio three labels (`rolesFor`) and picking
+>   the MIDDLE one answered `23514 … violates check constraint
+>   "business_invites_member_role_check"`. `visiting_faculty` became a fourth
+>   `member_role` on 18 Sep, and that migration widened **`business_members`** —
+>   where the seat LANDS — but not **`business_invites`**, which is what asks for
+>   it, because until this slice nothing could: the invite form offered
+>   trainer | staff only. So `20260919190000` taught both doors and the RPC's own
+>   guard to offer it, and the CHECK underneath them both stayed as Step 12b wrote
+>   it: **the label was offered, accepted by the RPC, and refused by the table** —
+>   through the picker AND the email form. **The lesson: a value added to one
+>   table's vocabulary does not reach the tables that FEED it.** Two tables hold
+>   the same word and are constrained separately; the dry run passed because it
+>   exercised the RPC with `trainer`, and `tsc`, lint and the build cannot see a
+>   CHECK at all. Proven by probing the live RPC as a real owner
+>   (`probeinvite.js`, scratchpad) — `trainer` 200, `visiting_faculty` 400 — then
+>   dry-run **10/10 rolled back** and applied; read back live, and a studio now
+>   asks somebody onto it as visiting faculty with `email: null` and the person's
+>   id, which is the whole of points 8–13 in one row. ⚠ One check of my own was
+>   wrong on the first dry run and is worth keeping as a habit: it asserted a
+>   policy COUNT I had guessed (2; it is 1). **Compare before with after — never
+>   assert a number you did not read.**
+> * ⚠ **AND THE SUITE FOUND TWO STALE ASSERTIONS, BOTH MINE, NEITHER THE PRODUCT.**
+>   (1) The happy path still CLICKED the Calendar chip that point 1 removed — it
+>   asserts the chip's absence now and reaches `/calendar` directly. (2) **The new
+>   sixteenth segment was written last and therefore ran last, and by then the
+>   learner was already on the team** — accepting the clash segment's class ask
+>   seats an outside teacher as VISITING FACULTY (R19), and the invite picker
+>   rightly excludes anybody already seated (`exclude={[meUserId, ...onTeam]}`), so
+>   the search answered "Nobody on DanceOS by that name or number" and the ask could
+>   never be made. The segment MOVED to before the clash, exactly where the
+>   memberships segment had to go on the same day and for the same reason. **In a
+>   serial story, where a segment sits is part of its set-up** — twice in one day is
+>   the tell that a new segment's default home (the end) is the one place the world
+>   is least like the one it needs.
 > * ⚠ **AND WHAT WRITING IT TAUGHT, worth keeping:** a dry run that expects a
 >   refusal must put **every expected refusal on its own SAVEPOINT** — a `raise`
 >   aborts the whole transaction, so the first refused check kills the other
@@ -3582,12 +3647,12 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0. **⚠ APPLY `20260919190000_a_studio_says_what_it_dances_and_a_team_has_an_order` —
-   WRITTEN, DRY-RUN 33/33 ROLLED BACK, HELD FOR THE USER'S WORD, AND NOTHING
-   DEPLOYS UNTIL IT LANDS.** The app selects `businesses.styles`, `leads.user_id`
-   and `business_invites.user_id` on ordinary reads and calls three new RPCs, so
-   the commit sits on local `main` and is NOT pushed. The list, as it goes to the
-   user:
+0. **~~APPLY `20260919190000_a_studio_says_what_it_dances_and_a_team_has_an_order`~~
+   — ✅ APPLIED AND PUSHED 19 Sep 2026** on the user's *"apply it and push on
+   live"*, after the list below had been in front of them. The dry run listed
+   exactly the one file, the apply printed it first try, PostgREST's schema cache
+   was reloaded, the proofs and the suite are in the top block. Kept for the
+   record — the list as it went to them, and the sequence, for the next time:
    * **`businesses.styles text[]`** — a studio's own dance styles, backfilled
      from its published classes (most-taught first, at most eight).
      ⚠ 18 listed studios on production, 6 with a published class: twelve public
@@ -3614,7 +3679,14 @@ summary; the report has the evidence.
    * **No policy changes, no row deleted, every ACL restated** — anon's executable
      set is unchanged (the only anon-executable name among the ten touched is
      still `public_studio_team`), asserted by the dry run rather than assumed.
-   On their word, the go-live sequence:
+   ⚠ **And the standing lesson it added, which the NEXT migration will meet too:
+   a rule the database starts keeping is a rule every SCRIPT has to keep.** 31
+   proofs, two e2e specs and five browser sites created a studio with no style;
+   all of them had to learn `p_styles` before a single check could run. Budget
+   for the harness in the same breath as the migration — and when the edit is a
+   regex, re-run the WHOLE proof suite, because `p_type = "studio"` also matched
+   a `nearby_businesses` call and turned it into a PGRST202.
+   The go-live sequence, which is the one to copy:
 ```
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly this one file
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
@@ -3625,6 +3697,17 @@ summary; the report has the evidence.
    $env:DANCEOS_BASE_URL="http://localhost:3100"; $env:NODE_PATH="$pwd\node_modules"; node scripts/shots/shoot-hero.js
 ```
    then push `main` and the live smoke.
+
+0a3. **⚠ THE MAPS DEMO KEY IS HITTING ITS DAILY QUOTA DURING A RUN, AND IT IS NOT
+   THEORETICAL ANY MORE** (#7). `shoot-hero.js` logged *"Maps Demo Key limit
+   reached: Your daily quota for Maps JavaScript 2D has been met"* followed by a
+   `PAGEERROR … reading 'getRootNode'` inside the studio's Edit sheet — the
+   second time this has happened during a shoot (18 Sep was the first). The map
+   degrades to "not available" as designed, so nothing is broken; but a page
+   error inside a sheet is a bad neighbour, and once a pilot user is on the app
+   the quota is a real outage rather than a console line. The fix is #7 and is
+   a deploy, not a rewrite: a billed Google Cloud project with the three APIs
+   enabled and a referrer-restricted browser key.
 
 0a0. **⚠ `scripts/stranger-smoke.ps1` DOES NOT EXIST**, and the go-live sequence
    in #0s and #0r names it. It was described on 19 Sep 2026 and never written —
@@ -4143,7 +4226,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 - **THE 28-POINT LIST — THE TOOLS' TOGGLES, A TEAM ASKED BY NAME AND PAID, EDIT
   PROFILE INTO SETTINGS, THE BAND ON HOME, AND A STUDIO THAT SAYS WHAT IT DANCES
   — 19 Sep 2026, no step number ⚠ (Rule 9: money + consent + RLS) — ONE MIGRATION
-  WRITTEN, DRY-RUN 33/33 ROLLED BACK, **NOT APPLIED, NOT PUSHED** (NEXT TO DO #0).**
+  **APPLIED AND PUSHED** (dry run 33/33 rolled back first).**
   The user's twenty-seven points plus one, listed back in order first and then
   built: counts inside the Classes and Events toggles with the total over the
   list and Manage first for an artist; no Calendar chip, no Find events, no

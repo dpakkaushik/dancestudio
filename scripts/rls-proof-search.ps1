@@ -85,9 +85,9 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Kothrud"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Kothrud"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "$tag Private Hall"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai" }
+$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "$tag Private Hall"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$tb.id)
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 
@@ -147,9 +147,9 @@ try {
     ($personHit.Count -eq 1) -and ($personHit[0].href -like "/person/*") -and ($personHit[0].sub -like "User*") -and ($anonPersonHit.Count -eq 0))
 
   # 6. THE CAP PER KIND, AND THE HREF EACH ROW OPENS
-  $t2 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Two"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
+  $t2 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Two"; p_type = "studio"; p_area = "Baner"; p_city = "Pune"; p_styles = @("Hip-Hop") }
   Subscribe-Studio ([string]$t2.id)
-  $t3 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Three"; p_type = "studio"; p_area = "Aundh"; p_city = "Pune" }
+  $t3 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Three"; p_type = "studio"; p_area = "Aundh"; p_city = "Pune"; p_styles = @("Hip-Hop") }
   Subscribe-Studio ([string]$t3.id)
   $capped = @((Search $anonH $tag 2) | Where-Object { $_.kind -eq "studio" })
   $all = @((Search $anonH $tag 10) | Where-Object { $_.kind -eq "studio" })

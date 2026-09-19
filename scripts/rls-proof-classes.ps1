@@ -45,7 +45,7 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Class Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Class Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") } | ConvertTo-Json)
 Subscribe-Studio ([string]$ta.id)
 $clsBody = @{ p_business_id = $ta.id; p_title = "Hip-Hop - Beginner $stamp"; p_style = "Hip-Hop"; p_level = "beginner"; p_room = "Studio A"; p_price_inr = 300; p_capacity = 20; p_status = "draft"; p_starts_at = "2026-09-01T19:00:00+05:30"; p_ends_at = "2026-09-01T20:00:00+05:30" }
 $cls = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body ($clsBody | ConvertTo-Json)

@@ -61,9 +61,9 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Studio A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" } | ConvertTo-Json)
+$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Studio A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") } | ConvertTo-Json)
 Subscribe-Studio ([string]$ta.id)
-$tb = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $b.access_token) -Body (@{ p_name = "Studio B $stamp"; p_type = "studio"; p_area = "Saket"; p_city = "New Delhi" } | ConvertTo-Json)
+$tb = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $b.access_token) -Body (@{ p_name = "Studio B $stamp"; p_type = "studio"; p_area = "Saket"; p_city = "New Delhi"; p_styles = @("Hip-Hop") } | ConvertTo-Json)
 # A's studio is subscribed and listed (Subscribe-Studio above); B's is neither, so it stays the
 # private row this proof's isolation claims are about
 "1. A created '$($ta.name)' (subscribed, public); B created '$($tb.name)' (unsubscribed, private)"

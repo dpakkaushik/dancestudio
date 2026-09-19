@@ -121,6 +121,8 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
     p_type: "studio",
     p_area: "Kothrud",
     p_city: "Pune",
+    // a studio says what it dances (19 Sep 2026) — the RPC refuses one without
+    p_styles: ["Hip-Hop"],
   });
 
   try {
@@ -324,6 +326,7 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
     p_type: "studio",
     p_area: "Kothrud",
     p_city: "Pune",
+    p_styles: ["Hip-Hop"],
   });
 
   const post = (body: string) => {

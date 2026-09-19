@@ -406,6 +406,9 @@ test.describe.serial("DanceOS, end to end", () => {
     // the sheet carries the studio's rooms — "a studio is created WITH its
     // floors" (prototype 2675-2683), and Create is refused until one is named
     await owner.getByLabel("Room 1 name").fill("Studio A");
+    // a studio says what it dances, at birth (19 Sep 2026) — the database
+    // refuses one without a style, so Create is disabled until there is one
+    await owner.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await owner.getByRole("button", { name: "Create studio" }).click();
 
     // the action refreshes the hub in place — the new studio is a row now
@@ -822,9 +825,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto("/my-classes");
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
 
+    // ⚠ THE CALENDAR CHIP IS OFF THIS PAGE (19 Sep 2026, the user: "Classes in
+    // Tools — remove Calender button on top right"). Calendar is a tile of its
+    // own on Home, so the chip was a second door to it; the route is untouched.
+    await expect(learner.getByRole("link", { name: "Calendar ›" })).toHaveCount(0);
+
     // ---- and on their calendar (Step 14): a booking is what they TRAIN in ----
-    await learner.getByRole("link", { name: "Calendar ›" }).click();
-    await learner.waitForURL(/\/calendar$/);
+    await learner.goto("/calendar");
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     await expect(learner.getByRole("button", { name: "Train: 1" })).toBeVisible();
     await expect(learner.getByRole("button", { name: "Teach: 0" })).toBeVisible();
@@ -1875,6 +1882,101 @@ test.describe.serial("DanceOS, end to end", () => {
     // would be a bigger change to the story than the thing it proves.
   });
 
+  test("the team is asked by name, labelled, ordered and paid — and a student is a person", async () => {
+    /* ---- 19 Sep 2026, the user: "Team should only be able to add team member
+       by typing name, number, email or scan … Should be able to Label them
+       according to what profile I am in. and labels available for that with
+       permissions section. and able to pay them, track payment history and
+       should be part of expenses in the earnings. should be able to place them
+       in order as well. Students — adding same way as for Team and track
+       student performance, photo stats, name and profile on clicking."
+
+       ⚠ THIS SEGMENT SITS BEFORE THE CLASH SEGMENT ON PURPOSE, and the
+       memberships one above it does for the same reason: accepting that
+       segment's class ask seats the learner as VISITING FACULTY (R19), and the
+       picker rightly refuses to offer somebody already on the team — so the
+       search came back "Nobody on DanceOS by that name or number" and the ask
+       could never be made. In a serial story, where a segment sits is part of
+       its set-up. ---- */
+    await owner.goto(`/business/${tenantId}/staff`);
+
+    // ── ASKED BY NAME. The learner is on DanceOS and not on this team, so the
+    // picker finds them — a name, and the row wears their picture.
+    await owner.getByRole("button", { name: "Invite staff or team member" }).click();
+    const sheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
+    await sheet.getByRole("button", { name: "Visiting faculty" }).click();
+    await sheet.getByLabel("Search for somebody to add").fill(learnerName);
+    await sheet.getByRole("button", { name: `Ask ${learnerName}` }).click({ timeout: 20_000 });
+    await expect(owner.getByText(/Waiting on them to confirm/).first()).toBeVisible({ timeout: 15_000 });
+    /* no address was typed and none is shown: this invite names a PERSON */
+    await expect(owner.getByText("Visiting faculty · asked on DanceOS")).toBeVisible();
+
+    // and only they can answer it — the code is in the link the desk shows
+    await owner.getByRole("button", { name: `Show the invite for ${learnerName}` }).click();
+    const code = (await owner.getByRole("dialog", { name: `Invite for ${learnerName}` }).getByText(/\/join\/[0-9a-f]+/).innerText()).split("/join/")[1].trim();
+    await owner.getByRole("dialog", { name: `Invite for ${learnerName}` }).getByRole("button", { name: "Done" }).click();
+    await trainer.goto(`/join/${code}`);
+    await expect(trainer.getByText(/sent to somebody else|not for you|different/i).first()).toBeVisible({ timeout: 15_000 }).catch(async () => {
+      /* the screen's own words differ by state — what must be true is that the
+         trainer is NOT offered the seat */
+      await expect(trainer.getByRole("button", { name: /^Join/ })).toHaveCount(0);
+    });
+    await learner.goto(`/join/${code}`);
+    await learner.getByRole("button", { name: /^Join/ }).click();
+    await learner.waitForURL((u) => !u.pathname.startsWith("/join"), { timeout: 20_000 });
+
+    // ── THE LABELS ARE THE STUDIO'S OWN, AND THE PERMISSIONS SAY WHAT THEY CARRY
+    await owner.goto(`/business/${tenantId}/staff`);
+    const memberRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
+    await expect(memberRow).toBeVisible({ timeout: 15_000 });
+    await memberRow.click();
+    const memberSheet = owner.getByRole("dialog", { name: learnerName });
+    await expect(memberSheet.getByText("PERMISSIONS")).toBeVisible();
+    await expect(memberSheet.getByRole("button", { name: `Make ${learnerName} Visiting faculty` })).toBeVisible();
+    await memberSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
+    await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
+
+    // ── AND PAID, WITH A METHOD — the payment lands in the ledger the Earnings
+    // desk reads as MONEY OUT, so it is an expense the moment it is written
+    await memberSheet.getByRole("button", { name: `Pay ${learnerName}` }).click();
+    const paySheet = owner.getByRole("dialog", { name: `Pay ${learnerName}` });
+    await paySheet.getByLabel("Amount in rupees").fill("2500");
+    await paySheet.getByRole("button", { name: "UPI", exact: true }).click();
+    await paySheet.getByLabel("Note").fill("September");
+    await paySheet.getByRole("button", { name: "Record this payment" }).click();
+    await expect(owner.getByRole("status")).toContainText("2,500", { timeout: 20_000 });
+    // the history is on their own row, and the expense is on the studio's ledger
+    await owner.reload();
+    await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
+    await expect(memberSheet.getByText(/₹2,500 paid · 1 payment/)).toBeVisible({ timeout: 15_000 });
+    await expect(memberSheet.getByText("September")).toBeVisible();
+    await owner.goto(`/business/${tenantId}/earnings`);
+    await expect(owner.getByText("₹2,500").first()).toBeVisible({ timeout: 15_000 });
+
+    // ── AND ORDERED. The owner arranges the team; a trainer cannot.
+    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.getByRole("button", { name: `Move ${learnerName} up` }).click();
+    await expect(owner.getByRole("button", { name: `Move ${learnerName} up` })).toBeDisabled({ timeout: 20_000 });
+    await trainer.goto(`/business/${tenantId}/staff`);
+    await expect(trainer.getByRole("button", { name: /^Move / })).toHaveCount(0);
+
+    // ── A STUDENT IS A PERSON: picked, so the row carries their picture, opens
+    // their profile, and counts what they have actually done here.
+    await owner.goto(`/business/${tenantId}/students`);
+    await owner.getByRole("button", { name: "Add a lead" }).click();
+    const addStudent = owner.getByRole("dialog", { name: "Add a lead" });
+    await addStudent.getByLabel("Search for a student").fill(trainerName);
+    await addStudent.getByRole("button", { name: `Add ${trainerName}` }).click({ timeout: 20_000 });
+    await expect(owner.getByRole("link", { name: `Open ${trainerName}'s profile` })).toHaveAttribute("href", `/person/${trainerId}`, { timeout: 15_000 });
+    /* the walk-in is still a real student, and has neither a door nor a record */
+    await owner.getByRole("button", { name: "Add a lead" }).click();
+    await addStudent.getByRole("button", { name: "Walk-in" }).click();
+    await addStudent.getByLabel("Lead name").fill("E2E Walk-in");
+    await addStudent.getByRole("button", { name: "Save lead" }).click();
+    await expect(owner.getByRole("button", { name: "Open E2E Walk-in" })).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByRole("link", { name: "Open E2E Walk-in's profile" })).toHaveCount(0);
+  });
+
   test("the class form asks the room first: ROOM ALREADY BUSY, and what can honestly happen next", async () => {
     // ---- parity slice 8: F3 (15628-15632) ----
     // The story's class runs in Studio A. A second class in the same room at the
@@ -2168,93 +2270,6 @@ test.describe.serial("DanceOS, end to end", () => {
     expect(seen?.status()).toBe(404);
     await learner.goto("/routines");
     await expect(learner.getByRole("link", { name: `Open ${routineName}` })).toHaveCount(0);
-  });
-
-  test("the team is asked by name, labelled, ordered and paid — and a student is a person", async () => {
-    /* ---- 19 Sep 2026, the user: "Team should only be able to add team member
-       by typing name, number, email or scan … Should be able to Label them
-       according to what profile I am in. and labels available for that with
-       permissions section. and able to pay them, track payment history and
-       should be part of expenses in the earnings. should be able to place them
-       in order as well. Students — adding same way as for Team and track
-       student performance, photo stats, name and profile on clicking." ---- */
-    await owner.goto(`/business/${tenantId}/staff`);
-
-    // ── ASKED BY NAME. The learner is on DanceOS and not on this team, so the
-    // picker finds them — a name, and the row wears their picture.
-    await owner.getByRole("button", { name: "Invite staff or team member" }).click();
-    const sheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
-    await sheet.getByRole("button", { name: "Visiting faculty" }).click();
-    await sheet.getByLabel("Search for somebody to add").fill(learnerName);
-    await sheet.getByRole("button", { name: `Ask ${learnerName}` }).click({ timeout: 20_000 });
-    await expect(owner.getByText(/Waiting on them to confirm/).first()).toBeVisible({ timeout: 15_000 });
-    /* no address was typed and none is shown: this invite names a PERSON */
-    await expect(owner.getByText("Visiting faculty · asked on DanceOS")).toBeVisible();
-
-    // and only they can answer it — the code is in the link the desk shows
-    await owner.getByRole("button", { name: `Show the invite for ${learnerName}` }).click();
-    const code = (await owner.getByRole("dialog", { name: `Invite for ${learnerName}` }).getByText(/\/join\/[0-9a-f]+/).innerText()).split("/join/")[1].trim();
-    await owner.getByRole("dialog", { name: `Invite for ${learnerName}` }).getByRole("button", { name: "Done" }).click();
-    await trainer.goto(`/join/${code}`);
-    await expect(trainer.getByText(/sent to somebody else|not for you|different/i).first()).toBeVisible({ timeout: 15_000 }).catch(async () => {
-      /* the screen's own words differ by state — what must be true is that the
-         trainer is NOT offered the seat */
-      await expect(trainer.getByRole("button", { name: /^Join/ })).toHaveCount(0);
-    });
-    await learner.goto(`/join/${code}`);
-    await learner.getByRole("button", { name: /^Join/ }).click();
-    await learner.waitForURL((u) => !u.pathname.startsWith("/join"), { timeout: 20_000 });
-
-    // ── THE LABELS ARE THE STUDIO'S OWN, AND THE PERMISSIONS SAY WHAT THEY CARRY
-    await owner.goto(`/business/${tenantId}/staff`);
-    const memberRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
-    await expect(memberRow).toBeVisible({ timeout: 15_000 });
-    await memberRow.click();
-    const memberSheet = owner.getByRole("dialog", { name: learnerName });
-    await expect(memberSheet.getByText("PERMISSIONS")).toBeVisible();
-    await expect(memberSheet.getByRole("button", { name: `Make ${learnerName} Visiting faculty` })).toBeVisible();
-    await memberSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
-    await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
-
-    // ── AND PAID, WITH A METHOD — the payment lands in the ledger the Earnings
-    // desk reads as MONEY OUT, so it is an expense the moment it is written
-    await memberSheet.getByRole("button", { name: `Pay ${learnerName}` }).click();
-    const paySheet = owner.getByRole("dialog", { name: `Pay ${learnerName}` });
-    await paySheet.getByLabel("Amount in rupees").fill("2500");
-    await paySheet.getByRole("button", { name: "UPI", exact: true }).click();
-    await paySheet.getByLabel("Note").fill("September");
-    await paySheet.getByRole("button", { name: "Record this payment" }).click();
-    await expect(owner.getByRole("status")).toContainText("2,500", { timeout: 20_000 });
-    // the history is on their own row, and the expense is on the studio's ledger
-    await owner.reload();
-    await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
-    await expect(memberSheet.getByText(/₹2,500 paid · 1 payment/)).toBeVisible({ timeout: 15_000 });
-    await expect(memberSheet.getByText("September")).toBeVisible();
-    await owner.goto(`/business/${tenantId}/earnings`);
-    await expect(owner.getByText("₹2,500").first()).toBeVisible({ timeout: 15_000 });
-
-    // ── AND ORDERED. The owner arranges the team; a trainer cannot.
-    await owner.goto(`/business/${tenantId}/staff`);
-    await owner.getByRole("button", { name: `Move ${learnerName} up` }).click();
-    await expect(owner.getByRole("button", { name: `Move ${learnerName} up` })).toBeDisabled({ timeout: 20_000 });
-    await trainer.goto(`/business/${tenantId}/staff`);
-    await expect(trainer.getByRole("button", { name: /^Move / })).toHaveCount(0);
-
-    // ── A STUDENT IS A PERSON: picked, so the row carries their picture, opens
-    // their profile, and counts what they have actually done here.
-    await owner.goto(`/business/${tenantId}/students`);
-    await owner.getByRole("button", { name: "Add a lead" }).click();
-    const addStudent = owner.getByRole("dialog", { name: "Add a lead" });
-    await addStudent.getByLabel("Search for a student").fill(trainerName);
-    await addStudent.getByRole("button", { name: `Add ${trainerName}` }).click({ timeout: 20_000 });
-    await expect(owner.getByRole("link", { name: `Open ${trainerName}'s profile` })).toHaveAttribute("href", `/person/${trainerId}`, { timeout: 15_000 });
-    /* the walk-in is still a real student, and has neither a door nor a record */
-    await owner.getByRole("button", { name: "Add a lead" }).click();
-    await addStudent.getByRole("button", { name: "Walk-in" }).click();
-    await addStudent.getByLabel("Lead name").fill("E2E Walk-in");
-    await addStudent.getByRole("button", { name: "Save lead" }).click();
-    await expect(owner.getByRole("button", { name: "Open E2E Walk-in" })).toBeVisible({ timeout: 15_000 });
-    await expect(owner.getByRole("link", { name: "Open E2E Walk-in's profile" })).toHaveCount(0);
   });
 
 });

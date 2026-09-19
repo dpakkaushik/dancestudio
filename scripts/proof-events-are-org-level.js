@@ -93,7 +93,7 @@ async function rpc(headers, fn, args) {
     });
 
     /* a studio of its own, and its events host */
-    const studio = await rpc(me, "create_business_with_owner", { p_name: `Proof Studio ${stamp}`, p_type: "studio", p_area: "Kothrud", p_city: "Pune" });
+    const studio = await rpc(me, "create_business_with_owner", { p_name: `Proof Studio ${stamp}`, p_type: "studio", p_area: "Kothrud", p_city: "Pune", p_styles: ["Hip-Hop"] });
     studioId = studio.body && studio.body.id;
     if (!studioId) throw new Error(`could not create the studio: ${studio.message.slice(0, 200)}`);
     const host = await rpc(me, "my_org_business", {});

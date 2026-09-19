@@ -203,6 +203,7 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await org.locator('input[name="area"]').fill("Baner");
     await pickCity(org, "Pune");
     await org.getByLabel("Room 1 name").fill("Floor 1");
+    await org.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await org.getByRole("button", { name: "Create studio" }).click();
     await expect(org.getByText(studioName, { exact: true })).toBeVisible();
     await expect(org.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");

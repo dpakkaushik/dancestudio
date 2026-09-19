@@ -154,7 +154,7 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-  $t = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Settings Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+  $t = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Settings Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
   Subscribe-Studio ([string]$t.id)
   $tenantId = [string]$t.id
   if (-not $tenantId) { $tenantId = [string]$t }

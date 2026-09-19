@@ -119,9 +119,9 @@ function Subscribe-Studio($tenantId) {
     note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
 }
-$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Event Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune" }
+$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Event Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune" }
+$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune"; p_styles = @("Hip-Hop") }
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $staffA.id "staff" $ownerA.id
 # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own

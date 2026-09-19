@@ -159,6 +159,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.locator('input[name="area"]').fill("Kothrud");
     await pickCity(org, "Pune");
     await org.getByLabel("Room 1 name").fill("Studio A");
+    await org.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await org.getByRole("button", { name: "Create studio" }).click();
     await org.getByText("EEE Dance Studio").first().waitFor();
     const rows = await rest(`business_members?user_id=eq.${orgId}&member_role=eq.owner&deleted_at=is.null&select=business_id,businesses(type)`);
