@@ -4,6 +4,7 @@ import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/To
 import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
@@ -65,6 +66,10 @@ export function StudioHome({
   roomCount,
   /** what it teaches, off its PUBLISHED classes — a studio with none says nothing (7419-7421) */
   styles,
+  /** how many people follow this studio — the figure every profile leads with
+   *  (20 Sep 2026). `follower_counts` is aggregate-only and anon-readable, so
+   *  it costs one row and names nobody. */
+  followers = 0,
   tiles,
 }: {
   tenant: Tenant;
@@ -78,6 +83,7 @@ export function StudioHome({
   deck: DeckItem[];
   roomCount: number;
   styles: string[];
+  followers?: number;
   tiles: Tile[];
 }) {
   const RG = gradientOf(tenant.name);
@@ -132,8 +138,10 @@ export function StudioHome({
               </Link>
             </>
           }
-          styles={styles}
-          styleAria={(s) => `${s} — a style this studio teaches`}
+          /* ⚠ EMPTY ON PURPOSE — the band below draws them, so they land AFTER
+             the figures and before the links, which is the order Home and the
+             Profile tab use. The hero's own row comes before its children. */
+          styles={[]}
           avatar={photo}
           avatarAlt={tenant.name}
           /* the disc opens the studio's own public page (19 Sep 2026) — the same
@@ -154,7 +162,30 @@ export function StudioHome({
               </Link>
             </>
           }
-        />
+        >
+          {/* ── THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026, the user:
+              "check all profile pages look similar according to their Profile
+              Type in terms of placement of things"). A studio's home had the
+              hero and then went straight to the deck: no figures, no links,
+              while Home and the Profile tab both run figures → styles → links
+              down the wash. The styles were already there (the hero's own row,
+              just above this); these are the two that were missing.
+
+              ⚠ FOLLOWERS IS THE FIGURE EVERY KIND LEADS WITH, and what is
+              kind-specific stays in `meta` where it already was — a studio's
+              rooms, a crew's members. So this row does not repeat the line above
+              it, and the same figure means the same thing on all five screens.
+              It is a plain number rather than a door: the list behind it already
+              has its own control on the studio's public page ("Followers — see
+              who"), and a second door to one list is the duplication this slice
+              exists to remove. ── */}
+          <EntityBand
+            figures={<Figure n={followers} label="Followers" testId="studio-followers" />}
+            styles={styles}
+            styleAria={(s) => `${s} — a style this studio teaches`}
+            socials={tenant.socials}
+          />
+        </IdentityHero>
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and
             event running in THIS studio's rooms today, one card each, in the

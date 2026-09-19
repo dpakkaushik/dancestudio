@@ -7,7 +7,7 @@ import { useState } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
-import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
+import { CARD, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
@@ -22,6 +22,7 @@ import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
+import { FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
 import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
@@ -43,7 +44,6 @@ import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, c
  *  the albums grid and its tab strip (an albums slice), Call (a person holds no
  *  number), and the long-press-for-QR gesture (the QR is a button). */
 
-const micro = TYPE.micro;
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
 /* the Following sheet's segments (11336), in the words for the kinds we have —
@@ -133,7 +133,8 @@ export function MyProfilePage({
      less than it implied. `my_chart_place` is no longer read for this page. */
 
   const bigWhite: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 42, borderRadius: 12, fontWeight: 900, fontSize: 12.5, boxSizing: "border-box", padding: "0 6px", whiteSpace: "nowrap", overflow: "hidden", background: "var(--text)", color: "var(--solid)", border: "1.5px solid var(--text)", textDecoration: "none" };
-  const chip: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, cursor: "pointer", whiteSpace: "nowrap", background: "var(--card)", border: "1px solid var(--el)", fontFamily: "inherit", color: INK };
+  /* one declaration, in profile-band.tsx (20 Sep 2026) */
+  const chip = linkChip;
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
     followList === "followers"
@@ -204,29 +205,29 @@ export function MyProfilePage({
           }
         >
           {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
+          <div style={FIGURE_ROW}>
               {isOrg ? (
                 /* an organization's figures are its studios and — since it can be
                    followed (19 Sep 2026) — its followers; it follows nobody and stands on no board */
                 <>
                   <Link href="/business" aria-label={`${businesses.length} ${businesses.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
-                    <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{businesses.length}</span>
-                    <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>{businesses.length === 1 ? "Studio" : "Studios"}</span>
+                    <span style={figureNum}>{businesses.length}</span>
+                    <span style={figureLabel}>{businesses.length === 1 ? "Studio" : "Studios"}</span>
                   </Link>
                   <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                    <span data-testid="my-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followers.length}</span>
-                    <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+                    <span data-testid="my-followers" style={figureNum}>{followers.length}</span>
+                    <span style={figureLabel}>Followers</span>
                   </button>
                 </>
               ) : (
                 <>
               <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                <span data-testid="my-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followers.length}</span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+                <span data-testid="my-followers" style={figureNum}>{followers.length}</span>
+                <span style={figureLabel}>Followers</span>
               </button>
               <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followingN}</span>
-                <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Following</span>
+                <span style={figureNum}>{followingN}</span>
+                <span style={figureLabel}>Following</span>
               </button>
                 </>
               )}
@@ -245,7 +246,7 @@ export function MyProfilePage({
               rule), so these two rows carry no ＋ — a style edited in two places
               is a style that disagrees with itself. */}
           {isOrg ? null : styleList.length ? (
-            <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>
+            <div style={STYLES_ROW}>
               {styleList.map((s) => (
                 <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} small />
               ))}
@@ -256,7 +257,7 @@ export function MyProfilePage({
 
           {/* THE LINKS, DIRECTLY UNDER THE STYLES (10760) — the user's own order */}
           {isOrg && !socials.length ? null : socials.length ? (
-            <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", marginTop: 8, paddingBottom: 2 }}>
+            <div style={LINKS_ROW}>
               {socials.map((l) => (
                 <a key={l.platform} href={safeHref(l.url) ?? undefined} target="_blank" rel="noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ ...chip, textDecoration: "none" }}>
                   <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>

@@ -219,6 +219,20 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByLabel("Remove this picture").count()) === 0, "studio home: NO ✕ on a header square");
     check((await rail(org).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
     check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
+    /* ⚠ THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026). A studio's home
+       had the hero and then went straight to the deck — no figures at all — while
+       Home and the Profile tab both lead with Followers. It is a plain number
+       here, not a door: the list already has its own control on the public page. */
+    check((await hero.getByTestId("studio-followers").count()) === 1, "studio home: the Followers figure, like every other profile (20 Sep 2026)");
+    /* ⚠ AND IN THE RIGHT ORDER — figures, THEN the styles (20 Sep 2026). The
+       first cut of the band left a studio using `IdentityHero`'s own `styles`
+       prop, which renders BEFORE children, so it read styles → figures → links
+       where Home reads figures → styles → links: the same three rows at the same
+       sizes, in the wrong order. Positions, not presence, is the whole ask. */
+    const followersTop = await hero.getByTestId("studio-followers").evaluate((el) => el.getBoundingClientRect().top);
+    const styleTile = hero.locator('[aria-label$="a style this studio teaches"]').first();
+    const styleTop = (await styleTile.count()) ? await styleTile.evaluate((el) => el.getBoundingClientRect().top) : Infinity;
+    check(followersTop < styleTop, "studio home: the figures come BEFORE the styles, as on Home and the Profile tab");
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
@@ -461,6 +475,32 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 1, "user home: the styles are edited HERE and nowhere else");
     check((await me.getByRole("button", { name: "Add a link" }).count()) === 1, "user home: and the links, right below them");
     check((await me.getByRole("link", { name: /rank/i }).count()) === 0, "user home: no rank (19 Sep 2026, the user: 'Remove rank from home')");
+
+    /* ⚠ THE BAND IS ONE SIZE ON EVERY PROFILE (20 Sep 2026, the user: "check all
+       profile pages look similar according to their Profile Type in terms of
+       placement of things for both home and profile tab").
+       This is the check that would have caught the drift it was asked about:
+       Home drew FULL-SIZE style tiles (12.5px) while the Profile tab, a studio's
+       home and a crew's home all drew the same styles `small` (11.5px). Nothing
+       about a NAME or a test id differs between the two — only the rendered
+       size — so only a measurement finds it. Both screens are measured and
+       compared; the number itself is deliberately not asserted, because the day
+       the design changes it should change for all of them at once. */
+    const tileFontOf = async (pg) => {
+      const tile = pg.locator('[aria-label$="one of your styles"]').first();
+      if ((await tile.count()) === 0) return null;
+      return tile.evaluate((el) => getComputedStyle(el.querySelector("span") ?? el).fontSize);
+    };
+    const homeTileFont = await tileFontOf(me);
+    await me.goto(`${BASE}/profile`);
+    await me.getByTestId("my-hero").waitFor();
+    const profileTileFont = await tileFontOf(me);
+    check(
+      homeTileFont !== null && homeTileFont === profileTileFont,
+      `the style tiles are the SAME SIZE on Home and the Profile tab (home ${homeTileFont}, profile ${profileTileFont})`
+    );
+    await me.goto(BASE);
+    await me.getByTestId("home-followers").waitFor();
 
     /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026; behind the disc since 19 Sep) ── */
     await me.getByRole("button", { name: "Your pictures", exact: true }).click();

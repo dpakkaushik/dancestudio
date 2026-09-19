@@ -5,6 +5,7 @@ import { StudioHome } from "@/features/tenants/components/StudioHome";
 import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
+import { findFollowerCounts } from "@/repositories/follows";
 import { findStudioDeck } from "@/repositories/home";
 import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findPublicTenant } from "@/repositories/publicProfile";
@@ -53,7 +54,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      policy and set_business_profile_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, editable, subs, catalog] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByTenant, editable, subs, catalog, followerCounts] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
@@ -75,6 +76,10 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       ? findMyStudioSubscriptions(supabase, [tenantId]).catch(() => ({}) as Record<string, StudioSubscriptionState>)
       : Promise.resolve({} as Record<string, StudioSubscriptionState>),
     isOwner ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
+    /* HOW MANY FOLLOW THIS STUDIO (20 Sep 2026) — the figure every profile in
+       the app now leads with. `follower_counts` is aggregate-only, so it names
+       nobody; a failed read is a 0 on a figure, never a home that will not open. */
+    findFollowerCounts(supabase, [tenantId]).catch(() => new Map<string, number>()),
   ]);
 
   /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, their list for all four
@@ -115,6 +120,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       /* WHAT IT SAYS IT DANCES, then what it teaches (19 Sep 2026) — the field
          first, the derived list only for a row that predates it */
       styles={tenant.styles.length ? tenant.styles : (stylesByTenant.get(tenantId) ?? [])}
+      followers={followerCounts.get(tenantId) ?? 0}
       tiles={tiles}
     />
   );

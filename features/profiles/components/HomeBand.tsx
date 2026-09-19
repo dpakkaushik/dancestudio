@@ -8,12 +8,13 @@ import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
-import { CARD, DOS_DISPLAY, INK, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
+import { CARD, INK, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedTenant } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
-import { PlatformIcon, RoleBadge, Sheet, TYPE, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
+import { FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
+import { PlatformIcon, RoleBadge, Sheet, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
 
 /** THE BAND UNDER THE NAME ON HOME — and the ONE place these three are edited
  *  (19 Sep 2026, the user: "Dance style for the page should also be editable
@@ -34,7 +35,6 @@ import { PlatformIcon, RoleBadge, Sheet, TYPE, dangerBtn, fieldInput, fieldLabel
  *  which prints the place WITH its population — the Profile tab lost the same
  *  figure earlier the same day (row C20). */
 
-const micro = TYPE.micro;
 
 const move = <T,>(arr: T[], i: number, dir: -1 | 1): T[] => {
   const j = i + dir;
@@ -117,7 +117,9 @@ export function HomeBand({
     });
   };
 
-  const chip: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, cursor: "pointer", whiteSpace: "nowrap", background: "var(--card)", border: "1px solid var(--el)", fontFamily: "inherit", color: INK };
+  /* the chip is `linkChip` in profile-band.tsx now — it was declared here AND in
+     MyProfilePage, which is how two screens drew the same row differently */
+  const chip = linkChip;
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
     followList === "followers"
@@ -134,33 +136,42 @@ export function HomeBand({
   return (
     <>
       {/* ── THE TWO FIGURES, AND BOTH OPEN THEIR LIST (19 Sep 2026) ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
+      <div style={FIGURE_ROW}>
         <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-          <span data-testid="home-followers" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followers.length}</span>
-          <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Followers</span>
+          <span data-testid="home-followers" style={figureNum}>{followers.length}</span>
+          <span style={figureLabel}>Followers</span>
         </button>
         {/* an organization follows nobody (R11), so it is offered no figure for it */}
         {isOrg ? null : (
           <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-            <span data-testid="home-following" style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followingN}</span>
-            <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Following</span>
+            <span data-testid="home-following" style={figureNum}>{followingN}</span>
+            <span style={figureLabel}>Following</span>
           </button>
         )}
       </div>
 
-      {/* ── THE STYLES, AND THE ONE ＋ THAT CHANGES THEM (DosStyleRow 1767) ── */}
+      {/* ── THE STYLES, AND THE ONE ＋ THAT CHANGES THEM (DosStyleRow 1767) ──
+          ⚠ `small` AND `STYLES_ROW` SINCE 20 Sep 2026, and this row is why the
+          user asked again. Home drew FULL-SIZE tiles here (12.5px on 7×13
+          padding, gap 6, 14px above) while the Profile tab, a studio's home and
+          a crew's home all drew the same styles `small` (11.5px on 6×11, gap 5,
+          12px above) — so the one screen that was supposed to match the Profile
+          tab was the only one that did not. Home moved rather than the other
+          three: it is one screen against three, and the size the three share is
+          `IdentityHero`'s own. The ＋ shrinks to 30px to sit on the shorter
+          tile's line; its name is unchanged, so every locator still finds it. */}
       {isOrg ? null : (
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 0", alignItems: "center" }}>
+        <div style={STYLES_ROW}>
           {styleList.map((s) => (
-            <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} />
+            <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} small />
           ))}
-          <button type="button" aria-label="Add a dance style" onClick={() => setStylesOpen(true)} style={{ width: 34, height: 34, borderRadius: 10, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, fontWeight: 800, color: SUB, flexShrink: 0, border: "none", fontFamily: "inherit" }}>＋</button>
+          <button type="button" aria-label="Add a dance style" onClick={() => setStylesOpen(true)} style={{ width: 30, height: 30, borderRadius: 10, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, fontWeight: 800, color: SUB, flexShrink: 0, border: "none", fontFamily: "inherit" }}>＋</button>
           {styleList.length === 0 ? <span style={{ fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance go here.</span> : null}
         </div>
       )}
 
       {/* ── THE LINKS, RIGHT BELOW THE STYLES (10760, and the user's own order) ── */}
-      <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", padding: "10px 0 0" }}>
+      <div style={LINKS_ROW}>
         {socials.map((l) => (
           <button type="button" key={l.platform} aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={chip}>
             <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>

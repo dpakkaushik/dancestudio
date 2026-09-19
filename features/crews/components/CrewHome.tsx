@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ToolGrid, ToolsHead, type Tile } from "@/features/home/components/home-kit";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
@@ -28,7 +29,7 @@ import { CrewEditButton } from "./CrewEditSheet";
  *  five, new today), the city, the style, the email — and the eye opens the
  *  crew's page as a stranger sees it. The picker that sat under the hero moved
  *  into the sheet, where every other picture in the app is changed. */
-export function CrewHome({ crew, members, entries, header = [], todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; todayKey: string }) {
+export function CrewHome({ crew, members, entries, header = [], followers = 0, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; todayKey: string }) {
   const confirmed = members.filter((m) => m.status === "confirmed").length;
   const asked = members.filter((m) => m.status === "asked").length;
   const upcoming = entries.filter((e) => e.endDate >= todayKey && e.eventStatus !== "completed").length;
@@ -72,8 +73,10 @@ export function CrewHome({ crew, members, entries, header = [], todayKey }: { cr
               ) : null}
             </>
           }
-          styles={[crew.style]}
-          styleAria={(s) => `${s} — the crew's style`}
+          /* ⚠ EMPTY ON PURPOSE — the band draws them, so the order matches every
+             other profile: figures → styles → links (the hero's own styles row
+             renders BEFORE its children) */
+          styles={[]}
           avatar={photoUrl(crew.photo)}
           avatarAlt={crew.name}
           /* the disc opens the crew's own public page (19 Sep 2026) */
@@ -88,7 +91,16 @@ export function CrewHome({ crew, members, entries, header = [], todayKey }: { cr
               </Link>
             </>
           }
-        />
+        >
+          {/* ── THE SAME BAND AS EVERY OTHER PROFILE (20 Sep 2026) — figures under
+              the styles, in the one spec `profile-band.tsx` holds. A crew leads
+              with Followers like every other kind; its members, its open asks and
+              its coming events stay in `meta` above, where they already were, so
+              nothing is said twice. NO LINKS ROW: `crews` has no `socials`
+              column — a crew publishes an email and a number, not handles — so
+              the row is not drawn rather than drawn empty. ── */}
+          <EntityBand figures={<Figure n={followers} label="Followers" testId="crew-followers" />} styles={[crew.style]} styleAria={(s) => `${s} — the crew's style`} />
+        </IdentityHero>
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC, margin: "12px 0" }}>
           <ToolsHead kind="crew" />

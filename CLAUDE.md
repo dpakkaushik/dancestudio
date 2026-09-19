@@ -2,6 +2,69 @@
 
 ## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
 
+> ### ONE BAND ON EVERY PROFILE — THE FIGURES, THE STYLES AND THE LINKS AT ONE SIZE, ON ALL FIVE KINDS (20 Sep 2026, latest) — BUILT, no migration
+> The user: *"just check all profile pages look similar according to their Profile
+> Type in terms of placement of things for both home and profile tab."* Read side
+> by side rather than guessed at, the five identity screens had drifted into
+> **three different bands under one hero**:
+> * **Home** drew FULL-SIZE style tiles (12.5px on 7×13 padding, gap 6, 14px
+>   above) and its links at 10px — while **the Profile tab** drew the same two
+>   rows `small` (11.5px on 6×11, gap 5, 12px / 8px). So the one screen that
+>   19 Sep had explicitly been told to match ("Hometab from Top to Social media
+>   links should look same on profile") was the only one that did not, and the
+>   difference was pure CSS — no name, no test id, nothing a locator reads.
+> * **A studio's home and a crew's home had no band at all**: hero, then straight
+>   to the deck. No figures, no links. Their styles were right only because they
+>   came from `IdentityHero`'s own row, which is the `small` one.
+> * ⚠ **THREE COPIES OF ONE DESIGN IS HOW THAT HAPPENS.** `linkChip` was declared
+>   in `HomeBand` AND in `MyProfilePage`; the figure number and label were written
+>   out twice; the rows' spacing three times. **`features/profiles/components/profile-band.tsx`
+>   holds the spec now** — `FIGURE_ROW` · `figureNum` · `figureLabel` ·
+>   `STYLES_ROW` · `LINKS_ROW` · `linkChip` · `Figure` · `EntityBand` — and the
+>   five screens read it. Home moved onto the Profile tab's sizes rather than the
+>   reverse: one screen against three, and the three already shared
+>   `IdentityHero`'s own.
+> * **THE ORDER IS NOW ONE ORDER, EVERYWHERE:** the header rail → the disc with
+>   [type · ID] · name · meta and the QR/Stats column → **the FIGURES, led by
+>   Followers** → **the STYLES** → **the LINKS**.
+> * **A studio and a crew lead with Followers like everybody else.**
+>   `follower_counts` and `crew_follower_counts` are aggregate-only and already
+>   existed, so each page gained ONE read inside the batch it already had, with a
+>   `.catch` — a failed count is a 0 on a figure, never a home that will not open.
+>   ⚠ **What is kind-specific stays in `meta` where it already was** — a studio's
+>   rooms, a crew's members, its open asks, its coming events — so the band never
+>   repeats the line above it and the same figure means the same thing on all
+>   five. The figure is a plain number on those two, not a door: the list behind
+>   it already has its own control on the studio's public page ("Followers — see
+>   who"), and a second door to one list is the duplication this slice removes.
+> * **A crew gets no links row**, and that is the honest answer rather than an
+>   empty rail: `crews` has no `socials` column at all — a crew publishes an
+>   email and a number, not handles.
+> * ⚠ **THE ONE THING THAT NEEDS SCHEMA, AND IS THEREFORE NOT BUILT: a studio and
+>   a crew have no ID to put beside their type word.** `profiles.member_no` is an
+>   identity column (000482); `businesses` and `crews` have nothing but a uuid,
+>   and printing a uuid, or inventing a short code from one, is a product decision
+>   about a public identifier rather than a placement fix. Said to the user, not
+>   guessed at.
+> * **THE CHECK THAT WOULD HAVE CAUGHT IT, added to `shoot-hero.js`:** it MEASURES
+>   the rendered `font-size` of a style tile on Home and on the Profile tab and
+>   asserts the two are EQUAL — deliberately not asserting the number, so the day
+>   the design changes it changes for both at once. Nothing else could have found
+>   this: no name and no test id differed, only the pixels.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
+>   117/117** (115 before — the two new ones are the measured tile size and the
+>   studio home's Followers figure).
+> * ⚠ **AND A HARNESS TRAP THAT READ EXACTLY LIKE A PRODUCT BUG, worth keeping:**
+>   the first shoot came back 73/2 with `ChunkLoadError: Failed to load chunk …`
+>   and a 500 on a `/_next/` asset. **A `next start` from earlier in the session
+>   was still bound to :3100**, serving a build whose chunk hashes had been
+>   replaced on disk by the rebuild — and my second `Start-Process` failed
+>   silently on the busy port while the health probe answered 200 from the OLD
+>   server. The tell is free: compare the serving process's `StartTime` with
+>   `.next/build-manifest.json`'s mtime (00:53 against 02:36). **Kill the port
+>   before believing a chunk error**, and never trust a 200 from a port you did
+>   not just start.
+>
 > ### THE HARNESS PAYS FOR ITSELF — STUDIO CREATION IN ONE PLACE, A CITY CHECKED BY NAME, AND THE TRAP THAT EATS A SERIAL SUITE WRITTEN DOWN (20 Sep 2026, latest) — HARNESS ONLY, no migration, no product change
 > The third of the user's three fixes was "fix these 3 properly", and the first two
 > were done the day before by hand. This is the part that stops them recurring:
@@ -3815,8 +3878,49 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0ab. **⚠⚠ A STUDIO THAT EVER TOOK A SUBSCRIPTION PAYMENT CANNOT BE DELETED —
+   MIGRATION WRITTEN, NOT APPLIED, AND IT IS THE ROOT CAUSE OF #0aa (20 Sep 2026).**
+   ⚠ Rule 9 (money). Found by probing ONE delete and reading the status instead
+   of assuming, after the paid-webhook spec's own self-sweep failed to clear
+   anything: `DELETE /businesses?id=eq.…` answers **400 `23514`** —
+   *"new row for relation "payments" violates check constraint
+   "payments_subject_check""*.
+   **The contradiction is inside ONE migration** (`20260912140000`, lines 263-268):
+   the FK is `subscription_id … on delete set null` — "keep the payment, forget
+   which subscription it was", and the file's own words are *"a ledger does not
+   forget money"* — while the CHECK demands `kind <> 'order' … and
+   subscription_id is not null`. So the SET NULL can never succeed: deleting a
+   subscription (or the studio that cascades to it) is refused the moment one
+   subscription payment exists.
+   ⚠ **AND IT RE-DATES #0aa's DIAGNOSIS, WHICH WAS WRONG.** The nine
+   `Mandate Proof Studio …` leftovers were NOT "runs killed before the `finally`":
+   the `finally` ran every time and was REFUSED every time, silently, because
+   `e2e/paid-webhook.spec.ts` never reads the DELETE's status. It has been
+   leaking one studio per completed run since 10 Sep.
+   **`20260920090000_a_studio_that_took_money_can_still_be_deleted.sql`** is one
+   `drop constraint` + one `add constraint` + a comment, and nothing else: a
+   SUBSCRIPTION payment may exist without a live subscription (the state the SET
+   NULL always wanted); an ORDER payment must still name its order and still no
+   subscription. No column, no policy, no grant, no function, no row moved — and
+   **the app reads nothing this touches, so it deploys safely unapplied.**
+   Still owed before applying: a rolled-back dry run (there is no `pg` module in
+   this tree — earlier sessions installed one in the scratchpad) asserting the
+   400 reproduced, the delete clean after, an order payment still unable to lose
+   its order, and a subscription payment still unable to name one.
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly this one file
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 payments refunds studio-income event-money
+```
+
 0aa. **⚠ NINE PROOFS CANNOT RUN: THE TEST-PHONE ACCOUNT IS AT THE 15-STUDIO CAP,
-   AND THE SWEEP IS THE USER'S TO APPROVE (20 Sep 2026).** Every phone-based proof
+   AND THE SWEEP IS THE USER'S TO APPROVE (20 Sep 2026).** ⚠ **The root cause is
+   #0ab above, not killed runs** — and the sweep is still the fastest unblock,
+   because it SOFT-deletes (`deleted_at`), which fires no cascade and therefore
+   never meets the CHECK that refuses a hard delete. ⚠ **The agent's `--apply`
+   was REFUSED by the permission classifier ("Cloud Storage Mass Delete")**, in
+   the plain documented shape; it was not routed around, so the command is the
+   user's to run. Every phone-based proof
    dies at its FIRST studio with a bare 400, and the refusal is the product being
    right: *"An organization runs at most 15 studios on DanceOS — this one already
    has 15."* (`why_no_studio`, `20260918171000`). Counted, not guessed — the
@@ -4435,6 +4539,22 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **ONE BAND ON EVERY PROFILE — 20 Sep 2026, no step number — BUILT, no
+  migration.** The user asked for all five identity screens to place things the
+  same way by kind. They had drifted into three bands: Home's styles and links
+  were FULL-SIZE where the Profile tab's were `small`, and a studio's and a
+  crew's home had no figures or links at all. `profile-band.tsx` is the one spec
+  now (the figure row, the styles row, the links row, the chip — `linkChip` alone
+  had been declared twice), Home moved onto the size the other three already
+  shared, and both entity homes gained the Followers figure every profile leads
+  with (one aggregate read each, inside the batch they already had; a studio also
+  gained its links row, a crew has no `socials` column so it draws none). The
+  order is one order everywhere: header → disc + [type · ID] · name · meta →
+  figures → styles → links. ⚠ The ID beside the type is the one part NOT built —
+  `businesses` and `crews` have no `member_no`, so it needs schema and a decision
+  about what a studio's public number IS. `shoot-hero.js` **117/117**, including
+  a new check that MEASURES the tile size on both screens — the only kind of
+  check that could have caught a difference with no name and no test id.
 - **THE HARNESS PAYS FOR ITSELF — 20 Sep 2026, no step number — HARNESS ONLY, no
   migration, no product change.** The recurrence half of the user's third fix:
   studio creation (44 call sites, 28 scripts, two shapes) and `Subscribe-Studio`

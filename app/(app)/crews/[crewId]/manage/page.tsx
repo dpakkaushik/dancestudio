@@ -2,6 +2,7 @@ import { CrewHome } from "@/features/crews/components/CrewHome";
 import { requireLedCrew } from "@/features/crews/server/requireLedCrew";
 import { dayKeyOf } from "@/lib/format/month";
 import { findCrewEntries, findCrewMembers } from "@/repositories/crews";
+import { findCrewFollowerCount } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -15,6 +16,13 @@ const stampNowIso = (): string => new Date().toISOString();
 export default async function CrewManagePage({ params }: { params: Promise<{ crewId: string }> }) {
   const { crewId } = await params;
   const { supabase, crew } = await requireLedCrew(crewId);
-  const [members, entries, header] = await Promise.all([findCrewMembers(supabase, crewId), findCrewEntries(supabase, crewId), findCrewHeaderPhotos(supabase, crewId)]);
-  return <CrewHome crew={crew} members={members} entries={entries} header={header} todayKey={dayKeyOf(stampNowIso())} />;
+  /* the follower count joins the batch rather than adding a round trip — and a
+     failed read is a 0 on a figure, never a crew's home that will not open */
+  const [members, entries, header, followers] = await Promise.all([
+    findCrewMembers(supabase, crewId),
+    findCrewEntries(supabase, crewId),
+    findCrewHeaderPhotos(supabase, crewId),
+    findCrewFollowerCount(supabase, crewId).catch(() => 0),
+  ]);
+  return <CrewHome crew={crew} members={members} entries={entries} header={header} followers={followers ?? 0} todayKey={dayKeyOf(stampNowIso())} />;
 }
