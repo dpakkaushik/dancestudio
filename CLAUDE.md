@@ -23,9 +23,15 @@
 > board counts sessions HELD — it has held none; the page says "not on this board
 > yet".) **The push went with the whole suite still running on one worker
 > against `:3100`** — no failed-test folder at the time — the 19 Sep morning's
-> precedent, on the user's word; the tally is recorded in the docs-only commit
-> that follows, with `shoot-hero.js` and the Vercel smoke. Below is the block as
-> it stood before the apply.
+> precedent, on the user's word — and it landed green minutes later: **the
+> whole suite 52 passed in 9.4 min, first run, no red at all**, the fifteenth
+> happy-path segment ("push 2: …") included; **`shoot-hero.js` 98/98** against
+> the same bundle. Vercel built `748ad21` READY at 08:04 and the same smoke
+> against `https://dancestudio-orcin.vercel.app` reads exactly what `:3100`
+> read: the four stats pages **200** to a stranger, a plain user's **307** to
+> login, no `tel:` on the artist's page. The only files changed between the
+> push and this tally are this file. Below is the block as it stood before the
+> apply.
 >
 > The user: *"start push 2"* — the four of their answers that needed schema (the
 > second block below quotes them; NEXT TO DO #0r is the list as it went to them
