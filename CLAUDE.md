@@ -2,7 +2,74 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A DEMO WORLD IN FOUR CITIES, THE ASKS THAT STAY, EIGHT CITIES AND A DATE OF BIRTH (19 Sep 2026, latest) — TWO MIGRATIONS APPLIED, dry run 24/24 rolled back
+> ### A ROUTINE IS A SONG AND A VIDEO (19 Sep 2026, latest) — MIGRATION APPLIED, dry run 19/19 rolled back
+> The user: *"Routines are just a combination of Music — link or MP3 — and
+> Video — link. Artist should be able to add Routines from the class detail page
+> and should be visible. There should be a way to see the usage for that
+> particular routine as well — like how many sessions taken with this and details
+> of people who have taken classes for this routine and how many, all from within
+> the routines section."* The Routines tile had opened the prototype's "nothing
+> here yet" since 18 Sep; this is the desk behind it, lifted from S_choreos
+> (17115) and S_routinedetail (17215).
+> * **THE SHAPE.** `routines` belongs to the PERSON, not to a business — an
+>   artist carries a routine from studio to studio, which is why the tile is on a
+>   person's Home. A row is a name, a style, a level, a SONG (a link, or an MP3 in
+>   the media bucket) and a VIDEO (a link). `class_routines` is the link table, so
+>   a class may be taught from more than one.
+> * **ADDED FROM THE CLASS PAGE, AND VISIBLE THERE.** A ROUTINES section sits
+>   between the team and the poster — the prototype's own order (12322: "who is
+>   teaching, then what you will dance") — and it is CHOSEN, never typed (12334:
+>   "a routine is a thing you already made, in Routines"). `add_class_routine`
+>   admits the class's CONFIRMED ARTIST or the business's owner, and only a
+>   routine of their own; everybody who can read the class reads the song and the
+>   video, and sees no way to change them.
+> * **THE USAGE IS COUNTED, NEVER STORED.** `my_routines()` gives the desk a row
+>   per routine with its classes, the sessions that have actually ENDED and the
+>   people who turned up; `routine_classes` and `routine_students` give the
+>   routine's own page the classes by name and the dancers with how many sessions
+>   each. All three are the OWNER's alone — who attended a class is not a fact the
+>   platform hands to whoever guesses a routine id — and all three count
+>   ATTENDANCE, not bookings, which is Step 25's rule and is said on the screen.
+> * **THE MP3.** The `media` bucket takes audio now (15 MB; a cropped picture is a
+>   few hundred KB and a four-minute MP3 is five to ten) and `routines/{person}/`
+>   is its folder, with the same pair of checks every other folder here has: the
+>   storage policy tests the prefix, and `save_routine` refuses a path outside the
+>   caller's own. A link is checked to be http(s) — the 11 Sep `javascript:`
+>   lesson, on a field that is rendered on a page somebody else reads.
+> * ⚠ **What a stranger gains:** a routine's NAME, SONG and VIDEO on a published
+>   class of a listed business — the class page already names its teacher, its
+>   room and its price, and a routine is what the class teaches. The usage is
+>   never public, not even to the studio.
+> * ⚠ **The dry run caught one of my own, the standing lesson in a new coat:**
+>   `can_set_class_routines` was granted to `authenticated` and never REVOKED
+>   from anon, so a new function kept Supabase's default execute — anon's
+>   executable set grew by two where the migration claimed one.
+> * **Verified:** dry run **19/19** rolled back (a routine saved; a `javascript:`
+>   song link and an MP3 path in somebody else's folder both refused; somebody
+>   else cannot edit it or attach it; the counts read 1 class · 1 session · 2
+>   dancers off the seeded world; a stranger reads NO usage; anon reads the
+>   routine on a published class and nothing on a private one; delete takes the
+>   links and leaves the classes; both tables SELECT-only; the bucket at 15 MB
+>   with audio) · applied · typecheck 0 · lint 0 · `next build` green · the whole
+>   suite **53 passed / 1 failed in 10.0 min**, the one red being the NEW segment
+>   asserting a session held on a class that is still AHEAD — the product being
+>   right, so the segment was re-cut to prove BOTH states (one class and nothing
+>   else while it is on the calendar, then 1 · 1 · 1 once the session is
+>   back-dated and a register written with the service role, the seeder's own
+>   pair) — then **the happy path alone 16/16 in 6.3 min**, so all 54 are green
+>   across the two runs and the only file changed between them is the spec.
+>   **The demo world carries seven routines** across Meera, Aditya, Karan and
+>   Rhea, on fourteen classes — the past ones give real sessions and real dancers.
+> * ⚠⚠ **AND A SELF-INFLICTED ONE, THE 18 Sep TRAP EXACTLY:** a one-line
+>   `(Get-Content spec) -replace … | Set-Content -NoNewline` to rename a variable
+>   **collapsed `e2e/happy-path.spec.ts` to a single 1,939-line-long line.**
+>   `git checkout` restored it (everything but the new segment was already
+>   committed) and the segment was re-applied with the Edit tool. **NEVER
+>   round-trip a source file through Get-Content/Set-Content** — this file has
+>   said so since 18 Sep and it still happened; the tell was `git diff --stat`
+>   reading 1 insertion / 1,939 deletions.
+>
+> ### A DEMO WORLD IN FOUR CITIES, THE ASKS THAT STAY, EIGHT CITIES AND A DATE OF BIRTH (19 Sep 2026, earlier) — TWO MIGRATIONS APPLIED, dry run 24/24 rolled back
 > The user, in four messages: *"create 15 dummy accounts for all kinds of user
 > in gurgaon … make classes, events, enquiries, stats, attendance records, all
 > kinds of dummy data for each section … mostly in Gurugram, Pune, Delhi,
@@ -3694,6 +3761,17 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A ROUTINE IS A SONG AND A VIDEO — 19 Sep 2026, no step number ⚠ (Rule 9:
+  RLS) — MIGRATION APPLIED, dry run 19/19 rolled back.** The user: *"Routines are
+  just a combination of Music — link or MP3 — and Video — link."* `routines`
+  belongs to the person; `class_routines` puts one on a class, added from the
+  class page by its confirmed artist or the business's owner and read by
+  everybody who can read the class. The usage — classes, sessions HELD, and the
+  dancers who checked in with how many sessions each — is counted from the link
+  rows and the registers, never stored, and is the owner's alone. An MP3 goes in
+  `routines/{person}/` in the media bucket, which takes audio at 15 MB now.
+  `/routines` and `/routines/{id}` replace the tile's "nothing here yet"
+  (S_choreos 17115, S_routinedetail 17215). Detail at the top.
 - **A DEMO WORLD IN FOUR CITIES, THE ASKS THAT STAY, EIGHT CITIES AND A DATE OF
   BIRTH — 19 Sep 2026, no step number ⚠ (Rule 9: a trigger on four tables, a
   re-created profile door) — TWO MIGRATIONS APPLIED, dry run 24/24 rolled back.**
@@ -7294,6 +7372,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **Routines, what the slice left (19 Sep 2026):** a routine's VIDEO is a link only — the user's own list says so, and a video file would be a second bucket with its own size and its own player; there is no EDIT sheet on a routine's page yet (make a new one, or delete — `save_routine` already takes an id, so the sheet is a form away); a routine carries no PARTS, no notes and no price (the prototype's `choreography:"broken into 4 parts"` and its ₹499 routine sale are a marketplace this app does not have); the desk has no Live/Draft filter (a draft wears its badge in the list); a routine is never shown on a PUBLIC page — only on the class page, to people who can read the class — so "the routines this artist teaches" is not a thing a stranger browses; and the usage counts a person ONCE PER CLASS through attendance rows, so somebody who danced the same routine at two studios is two rows in TAUGHT IN and one row in DANCERS, which is the honest reading of "how many people" | S_choreos 17115, S_routinedetail 17215, 7546 | an edit sheet is a form; parts/notes/price need fields and a decision; a public routines list is a privacy decision |
 | **The profile-page re-cut, what it left (19 Sep 2026):** ⚠ **an organization's page has no "Owner" row** — the user asked for "one of the users added from team in organizations", and an organization is ONE LOGIN with no team table (8 Sep 2026), so there is no user to name; the Studios group stands where Owner would (an organization-members slice is the thing that closes it); **Call is off an artist's page** by the user's list (Call for studios and organizations) — a person's published number stays on the record, the Edit sheet says it is not shown, and one word puts it back if that reading was wrong; **an artist who held ten header pictures still holds them** — the page shows five, the cap refuses a sixth, the Edit sheet lets the rest come down; a **crew has no About** (no column), so its Bio is nothing and its page goes hero → Follow → buttons → roster; the **Following sheet's Organizations rows carry the logo but no city link** and a followed crew's row opens its page; the studio's **`upcomingSessions` and `faculty` left `PublicTenantProfile`** (the team is the roster now; the schedule is the Schedule bar); `person_teaches_at` still names an artist's OWN page among the places they teach and the page filters it to STUDIOS — a cleaner read would filter in SQL; the org's Location button is Maps by NAME + CITY (an organization has no address of its own — **a studio's opens its PIN since later on 19 Sep 2026** when `location_set_at` is stamped); the guest Follow link on a public page also carries `data-followers`, so a stranger's page states the count in the DOM though it prints none. **The user's answers (19 Sep 2026) turned four of these into PUSH 2 — BUILT the same day, dry-run 22/22, WAITING ON THE APPLY (NEXT TO DO #0r):** an organization team so Owner names a person (R28); a Call TOGGLE on an artist's and a crew's page, off by default; an organization's own pin behind its Location button; and **a stats-and-rankings page for somebody ELSE's profile** (R29). **What push 2 itself leaves:** an organization's team members hold no powers (labels only — a decision if one is ever wanted); a crew has a number now but still no About; a SIGNED-IN direct API reader can still read `profiles.phone` off the row whatever the switch says (Step 1's policy — the switch governs every page and every stranger); the org's pin is set from Edit profile only (no "use my location" on Home); `/org/{id}/stats` ranks its studios and has no combined figure of its own (that is the owner's `/business/stats`); the person stats page has no History library behind the figures (the record's three sides and the two rows, by design). **And the picker's Scan reads a code the app does not yet draw:** `QRBlock` is decorative, so a real QR on every profile is a small encoder dependency, the user's call. ⚠ **And one the proof found on the applied schema (19 Sep 2026):** a crew leader whose crew has header pictures **cannot be deleted** — `crew_header_photos`' audit-column FKs to `auth.users` break the cascade with a 500; `20260919130000_a_crew_leader_can_be_deleted` (two `drop constraint`s) is written, dry-run 6/6 and HELD for the user's word (NEXT TO DO #0q); reachable today only from the admin API, which is where the proof met it | S_profiletab 10875-10940, 11000-11060 | push 2 (#0r); the QR encoder a decision (c); #0q one apply |
 | ~~**Crew enquiries — the migration is WRITTEN, DRY-RUN 28/28 and HELD**~~ **CLOSED 18 Sep 2026** — `20260918160000` applied on the user's word and wired: the sheet on a crew's page (three kinds), the crew's Inbox Enquiries side, the leader's `/inbox`, the detail page's sides. **What it leaves:** a crew has no phone, so the sender's Call on a crew's enquiry always reads "no number"; a crew keeps no enquiry-type preferences (the three kinds are fixed); the crew's inbox has no Sent side (a crew sends none) | ENQ_TYPES 4900-4923; publicEntity crew 10871 | decisions (c) |
 | **The four-part re-cut, what it left (18 Sep 2026):** the switcher lists crews you LEAD and studios you are ON THE TEAM OF — a crew you are merely IN has a page, not a home, so it is not a row (the Crews tile lists it); `/business/{id}/inbox` has no sent-enquiries side (a studio sends none) and a crew's inbox no venue requests (a crew holds no rooms); the crew's Team and Events desks say whose they are in one small line under the tool hero — the strip with the photo moved to the crew's home; a person's hub prints no card for their own artist page — the page is reached through the Team and Students tiles and the eye, which is what was asked; `ensureArtistPage` swallows a refusal, so an account whose plan reads active but whose page the database refuses sees the hub's lists and no error (the tiles then open the hub); the entity bar's Home is lit on the home and Inbox on the inbox, and a desk under `/business/{id}/…` is still a drill page with the back chip — only the home and the inbox wear the bar; ~~⚠ an artist is now found TWICE by the search box~~ — **ONCE, since later on 18 Sep 2026** (row R24: Artists are the people with a live plan, opening their profile; People are the users without one; the happy path asserts exactly one row) | S_crewmanage 16318; S_bizhub 2585; the shell 19308; search 4546 | decisions (c) |

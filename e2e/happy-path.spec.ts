@@ -1936,4 +1936,85 @@ test.describe.serial("DanceOS, end to end", () => {
     }
   });
 
+  test("routines: a song and a video, added from the class page, with its usage counted", async () => {
+    // ---- routines (19 Sep 2026) ----
+    // The user: "Routines are just a combination of Music — link or MP3 — and
+    // Video — link. Artist should be able to add Routines from the class detail
+    // page and should be visible. There should be a way to see the usage for
+    // that particular routine — how many sessions taken with this and details of
+    // people who have taken classes for this routine and how many."
+    const routineName = `E2E Routine ${stamp}`;
+
+    // ── the desk: a routine is made in Routines, never typed on a class (12334)
+    await trainer.goto("/routines");
+    await expect(trainer.getByRole("heading", { name: "Routines" })).toBeVisible();
+    await trainer.getByRole("button", { name: "＋ New routine" }).click();
+    await trainer.getByLabel("Routine name").fill(routineName);
+    await trainer.getByLabel("Song name").fill("Ilahi (instrumental)");
+    await trainer.getByLabel("Song link").fill("https://youtu.be/ilahi-instrumental");
+    await trainer.getByLabel("Video link").fill("https://youtu.be/breath-release");
+    await trainer.getByRole("button", { name: "Save routine" }).click();
+    const row = trainer.getByRole("link", { name: `Open ${routineName}` });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    // it is on no class yet, and both media are real links on the row
+    await expect(row.getByTestId("routine-classes")).toHaveText("0");
+    await expect(row.getByRole("link", { name: `Open the song for ${routineName}` })).toHaveAttribute("href", "https://youtu.be/ilahi-instrumental");
+    await expect(row.getByRole("link", { name: `Open the video for ${routineName}` })).toHaveAttribute("href", "https://youtu.be/breath-release");
+
+    // ── the class page: the class's CONFIRMED ARTIST puts it on, and it shows
+    await trainer.goto(`/c/${shareSlug}`);
+    await trainer.getByRole("button", { name: "Add a routine to this class" }).click();
+    await trainer.getByRole("button", { name: `Put ${routineName} on this class` }).click();
+    await expect(trainer.getByRole("link", { name: `Open the song for ${routineName}` })).toBeVisible({ timeout: 15_000 });
+
+    // ⚠ AND IT IS VISIBLE TO THE CLASS, NOT ONLY TO ITS ARTIST: the learner who
+    // booked it reads the song and the video, and is offered no way to change them
+    await learner.goto(`/c/${shareSlug}`);
+    await expect(learner.getByRole("link", { name: `Open the video for ${routineName}` })).toHaveAttribute("href", "https://youtu.be/breath-release");
+    await expect(learner.getByRole("button", { name: "Add a routine to this class" })).toHaveCount(0);
+    await expect(learner.getByRole("button", { name: `Take ${routineName} off this class` })).toHaveCount(0);
+
+    // ── THE USAGE, from within the routines section. ⚠ THE CLASS IS STILL AHEAD,
+    // so the honest answer is one class and NOTHING ELSE: a class on the calendar
+    // has taught nobody, and the page says so in the words the feature is built
+    // on — dancers are people who were CHECKED IN, never people who booked.
+    await trainer.goto("/routines");
+    await expect(row.getByTestId("routine-classes")).toHaveText("1");
+    await row.click();
+    await trainer.waitForURL(/\/routines\/[0-9a-f-]+$/);
+    await expect(trainer.getByRole("heading", { name: routineName })).toBeVisible();
+    await expect(trainer.getByTestId("routine-classes")).toHaveText("1");
+    await expect(trainer.getByTestId("routine-sessions")).toHaveText("0");
+    await expect(trainer.getByTestId("routine-dancers")).toHaveText("0");
+    await expect(trainer.getByText(/counts people who were CHECKED IN/)).toBeVisible();
+
+    // ── and now the same routine after a session has actually RUN. The session is
+    // back-dated and the register written with the service role — the two things
+    // no user may do, and the same pair `scripts/demo-data.js` uses to make a past
+    // class exist. This is the last segment, so nothing downstream reads the date.
+    const cls = (await (await fetch(`${supabaseUrl}/rest/v1/classes?share_slug=eq.${shareSlug}&select=id,business_id`, { headers: adminHeaders })).json()) as Array<{ id: string; business_id: string }>;
+    const ses = (await (await fetch(`${supabaseUrl}/rest/v1/class_sessions?class_id=eq.${cls[0].id}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+    const bk = (await (await fetch(`${supabaseUrl}/rest/v1/class_bookings?session_id=eq.${ses[0].id}&user_id=eq.${learnerId}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+    const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+    await fetch(`${supabaseUrl}/rest/v1/class_sessions?id=eq.${ses[0].id}`, { method: "PATCH", headers: adminHeaders, body: JSON.stringify({ starts_at: ago(3), ends_at: ago(2) }) });
+    await fetch(`${supabaseUrl}/rest/v1/attendance`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ class_booking_id: bk[0].id, session_id: ses[0].id, class_id: cls[0].id, business_id: cls[0].business_id, user_id: learnerId, created_by: ownerId, updated_by: ownerId }),
+    });
+    await trainer.reload();
+    await expect(trainer.getByTestId("routine-sessions")).toHaveText("1");
+    await expect(trainer.getByTestId("routine-dancers")).toHaveText("1");
+    // and the people are named, with how many of its sessions each turned up to
+    await expect(trainer.getByRole("link", { name: `Open ${learnerName}'s profile` })).toBeVisible();
+    await expect(trainer.getByText("DANCERS WHO LEARNED IT · 1")).toBeVisible();
+
+    // ── somebody else's routine is not theirs to see, and not on their desk
+    const routineUrl = trainer.url();
+    const seen = await learner.goto(routineUrl);
+    expect(seen?.status()).toBe(404);
+    await learner.goto("/routines");
+    await expect(learner.getByRole("link", { name: `Open ${routineName}` })).toHaveCount(0);
+  });
+
 });

@@ -4,6 +4,7 @@ import { cache } from "react";
 import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findArtistPageOwner } from "@/repositories/publicOrganization";
+import { canSetClassRoutines, findClassRoutines, findMyRoutines } from "@/repositories/routines";
 import { findClassRegister } from "@/repositories/attendance";
 import { findClaimsByClass } from "@/repositories/claims";
 import { findClassBySlug } from "@/repositories/classes";
@@ -95,13 +96,19 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
      published classes only); and, for an artist's class, WHOSE profile the
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
-  const [receipt, register, paidUserIds, claims, room, ownerId] = await Promise.all([
+  const [receipt, register, paidUserIds, claims, room, ownerId, routines, myRoutines, canSetRoutines] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByEnrollment(supabase, myBooking.id) : Promise.resolve(null),
     canManage ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     canManage && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
     findClaimsByClass(supabase, danceClass.id),
     danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null),
     danceClass.tenantType === "artist_page" ? findArtistPageOwner(supabase, danceClass.tenantId).catch(() => null) : Promise.resolve(null),
+    /* WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026): the routines on it — RLS
+       hands them to anybody who may read the class — the viewer's OWN routines
+       for the picker, and whether they may change what is on it at all */
+    findClassRoutines(supabase, danceClass.id).catch(() => []),
+    user ? findMyRoutines(supabase).catch(() => []) : Promise.resolve([]),
+    user ? canSetClassRoutines(supabase, danceClass.id).catch(() => false) : Promise.resolve(false),
   ]);
   const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
 
@@ -147,6 +154,9 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       canAddAssistant={role === "owner" || (myClaim?.kind === "artist" && myClaim.status === "confirmed")}
       /* an artist's class at their own place opens the ARTIST'S profile from the place row (19 Sep 2026) */
       ownerHref={ownerId ? `/person/${ownerId}` : null}
+      routines={routines}
+      myRoutines={myRoutines}
+      canSetRoutines={canSetRoutines}
     />
   );
 }

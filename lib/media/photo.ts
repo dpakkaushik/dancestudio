@@ -79,6 +79,27 @@ export const photoUrl = (path: string | null | undefined): string | null => {
   return `${base}/storage/v1/object/public/${MEDIA_BUCKET}/${path}`;
 };
 
+/** AN MP3 FOR A ROUTINE (19 Sep 2026, the user: "Music — link or MP3"). Its own
+ *  folder in the same public bucket, `routines/{person}/…`, with the same rule
+ *  as every other folder here: the storage policy tests the prefix and
+ *  `save_routine` re-checks it before it records the path. The bucket takes
+ *  audio and 15 MB since `20260919160000`. ⚠ `routines` is a STORAGE FOLDER
+ *  and is never renamed (Rule 16). */
+export const AUDIO_TYPES = ["audio/mpeg", "audio/mp3", "audio/mp4", "audio/x-m4a"] as const;
+export const AUDIO_MAX_BYTES = 15 * 1024 * 1024;
+export const AUDIO_MAX_WORDS = "15 MB";
+export const routineAudioPath = (userId: string, file: { name: string; type: string }): string =>
+  `routines/${userId}/${randomName()}.${file.type === "audio/mp4" || file.type === "audio/x-m4a" ? "m4a" : "mp3"}`;
+export const whyNotATrack = (file: { type: string; size: number }): string | null => {
+  if (!(AUDIO_TYPES as readonly string[]).includes(file.type)) {
+    return "That has to be an MP3 or M4A file.";
+  }
+  if (file.size > AUDIO_MAX_BYTES) {
+    return `That track is over ${AUDIO_MAX_WORDS} — pick a smaller file, or paste a link instead.`;
+  }
+  return null;
+};
+
 /** Why a file was refused, in words a person can act on — or null when it is fine. */
 export const whyNotAPhoto = (file: { type: string; size: number }): string | null => {
   if (!(PHOTO_TYPES as readonly string[]).includes(file.type)) {

@@ -28,6 +28,8 @@ import { dateParts, durText, timeRangeOf } from "@/lib/format/session";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { ClassRegister } from "@/repositories/attendance";
+import { ClassRoutines } from "@/features/routines/components/ClassRoutines";
+import type { Routine } from "@/repositories/routines";
 import type { ClassClaim } from "@/types/claim";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
@@ -168,6 +170,13 @@ export interface ClassDetailProps {
   /** an artist's class: the ARTIST'S profile, which the place row opens when the
    *  class is at their own place (19 Sep 2026 — never the /artist redirect) */
   ownerHref?: string | null;
+  /** THE ROUTINES ON THIS CLASS (19 Sep 2026): what it is taught from — a song
+   *  and a video each. Everybody who can read the class reads them; the picker
+   *  below offers the viewer's OWN routines, and only its artist or the
+   *  business's owner may change what is on it. */
+  routines?: Routine[];
+  myRoutines?: Routine[];
+  canSetRoutines?: boolean;
 }
 
 export function ClassDetail({
@@ -191,6 +200,9 @@ export function ClassDetail({
   isOwner = false,
   canAddAssistant = false,
   ownerHref = null,
+  routines = [],
+  myRoutines = [],
+  canSetRoutines = false,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -1107,6 +1119,28 @@ export function ClassDetail({
             )}
           </div>
         </Sec>
+
+        {/* ── WHAT THIS CLASS IS TAUGHT FROM (19 Sep 2026, the user: "Artist
+            should be able to add Routines from the class detail page and should
+            be visible"). The prototype puts the routine below the team and
+            above the poster (12322-12330: "who is teaching, then what you will
+            dance — that is the order somebody reads a class in"), and a routine
+            is CHOSEN here, never typed: it is a thing you already made, in
+            Routines. Drawn whenever there is one, or for whoever may add one. ── */}
+        {(routines.length > 0 || canSetRoutines) && (
+          <Sec
+            col={col}
+            label="ROUTINES"
+            icon={
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="6" width="13" height="12" rx="2.5" />
+                <path d="m16 11 5-3v8l-5-3z" />
+              </svg>
+            }
+          >
+            <ClassRoutines classId={c.id} shareSlug={c.shareSlug} col={col} routines={routines} mine={myRoutines} canEdit={canSetRoutines} />
+          </Sec>
+        )}
 
         {/* ── THE CLASS TEAM (12356-12391) — an assistant is a person with a job
             (81-91). Who is on the floor with the artist; the right-hand word is the

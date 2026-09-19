@@ -707,6 +707,45 @@ async function seed() {
   log("Pune: Cypher Sundays Vol. 9 (solo × 2, crews × 2, a free seat) · New Delhi: Delhi Dance Night (a paid and a free seat) · Bengaluru: Breaking Open (solo × 2, a crew)");
 
   /* ────────────────────────────────────────────────────────────────────────
+     ROUTINES — a song and a video, put on the classes they were taught from
+     (19 Sep 2026). The usage on the desk is COUNTED from these links and the
+     registers above, so a routine on a past class shows real sessions and real
+     dancers the moment the seed finishes.
+     ──────────────────────────────────────────────────────────────────────── */
+  console.log("\nRoutines");
+  const mkRoutine = (u, r) =>
+    rpc(u.h, "save_routine", {
+      p_routine_id: null, p_title: r.title, p_style: r.style, p_level: r.level ?? "all",
+      p_song_title: r.song, p_song_url: r.songUrl, p_song_is_file: false,
+      p_video_url: r.video, p_status: r.status ?? "live",
+    });
+  const onClass = (u, classId, routineId) => rpc(u.h, "add_class_routine", { p_class_id: classId, p_routine_id: routineId });
+  const breath = await mkRoutine(meera, { title: "Breath & Release", style: "Contemporary", level: "intermediate", song: "Ilahi (instrumental)", songUrl: "https://youtu.be/ilahi-instrumental", video: "https://youtu.be/breath-release" });
+  const kathakTarana = await mkRoutine(meera, { title: "Tarana in Bhairavi", style: "Kathak", level: "beginner", song: "Raag Bhairavi tarana", songUrl: "https://open.spotify.com/track/bhairavi", video: "https://youtu.be/tarana-bhairavi" });
+  const wip = await mkRoutine(meera, { title: "Winter Piece (WIP)", style: "Contemporary", level: "professional", song: "Nocturne", songUrl: "https://open.spotify.com/track/nocturne", video: "https://youtu.be/nocturne-wip", status: "draft" });
+  const cypher = await mkRoutine(aditya, { title: "Cypher Basics 101", style: "Hip-Hop", level: "beginner", song: "The World Is Yours", songUrl: "https://open.spotify.com/track/world-is-yours", video: "https://youtu.be/cypher-basics" });
+  const kala = await mkRoutine(aditya, { title: "Kala Chashma Remix", style: "Bollywood", song: "Kala Chashma", songUrl: "https://open.spotify.com/track/kala-chashma", video: "https://youtu.be/kala-chashma-routine" });
+  const firePower = await mkRoutine(karan, { title: "Power Moves 1", style: "Breaking", level: "intermediate", song: "Apache", songUrl: "https://youtu.be/apache-break", video: "https://youtu.be/power-moves-1" });
+  const eeeSet = await mkRoutine(rhea, { title: "Monsoon Set", style: "Hip-Hop", song: "Barsaat", songUrl: "https://open.spotify.com/track/barsaat", video: "https://youtu.be/monsoon-set" });
+  /* on the classes they were really taught from — the past ones give real usage */
+  await onClass(meera, pastContemp.id, breath.id);
+  await onClass(meera, dlfContemp.id, breath.id);
+  await onClass(meera, pastKathak.id, kathakTarana.id);
+  await onClass(meera, pastBounce.id, breath.id);
+  await onClass(aditya, pastPopping.id, cypher.id);
+  await onClass(aditya, hiphop.id, cypher.id);
+  await onClass(aditya, pastDlfHiphop.id, cypher.id);
+  await onClass(aditya, bolly.id, kala.id);
+  await onClass(aditya, bounceBolly.id, kala.id);
+  await onClass(aditya, adityaAtS29.id, cypher.id);
+  await onClass(karan, pastNamma.id, firePower.id);
+  await onClass(karan, nammaBreaking.id, firePower.id);
+  await onClass(rhea, pastEee.id, eeeSet.id);
+  await onClass(rhea, rheaOwn.id, eeeSet.id);
+  log("Meera: Breath & Release (3 classes, two of them past), Tarana in Bhairavi, Winter Piece (draft) · Aditya: Cypher Basics 101 (4), Kala Chashma Remix (2) · Karan: Power Moves 1 (2) · Rhea: Monsoon Set (2)");
+  log("their usage is counted from the registers above — sessions held and the dancers who checked in");
+
+  /* ────────────────────────────────────────────────────────────────────────
      THE PLATFORM — a support thread, a report
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nPlatform");
