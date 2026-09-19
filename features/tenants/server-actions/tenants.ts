@@ -39,6 +39,12 @@ const createTenantSchema = z
     area: z.string().trim().max(140).optional(),
     city: z.string().trim().max(120).optional(),
     rooms: roomsSchema,
+    /* THE STYLES IT DANCES (19 Sep 2026, the user: "some studios dont show dance
+       styles on profile it is mandatory to have one at least"). A studio names
+       at least one at birth — the check below, and the database's own inside
+       `create_business_with_owner`. An artist page names none: it is provisioned
+       by Home, and the PERSON's styles are what their page shows. */
+    styles: z.array(z.string().trim().min(1).max(40)).max(12),
     /* WHERE IT IS (11 Sep 2026): the pin from the sheet's map, when one was
        placed. Optional, because an artist page has no floor and a studio whose
        owner skipped the map still gets made — on its city's centroid, the way
@@ -54,8 +60,8 @@ const createTenantSchema = z
     message: "The map pin is incomplete — move the map again",
   });
 
-/** The rooms field is JSON typed by the sheet; anything unparseable is "no rooms"
- *  and the schema says what is missing. */
+/** The rooms and the styles ride in as JSON, because the sheet is a plain form;
+ *  anything unparseable is an empty list and the schema says what is missing. */
 const readRooms = (raw: FormDataEntryValue | null): unknown => {
   if (typeof raw !== "string" || raw.trim() === "") {
     return [];
@@ -76,6 +82,7 @@ export async function createTenantAction(
     area: (formData.get("area") as string) || undefined,
     city: (formData.get("city") as string) || undefined,
     rooms: readRooms(formData.get("rooms")),
+    styles: readRooms(formData.get("styles")),
     lat: (formData.get("lat") as string) || undefined,
     lng: (formData.get("lng") as string) || undefined,
   });
@@ -101,6 +108,7 @@ export async function createTenantAction(
     if (!parsed.data.city) return { error: "A studio needs a city" };
     if (!parsed.data.area) return { error: "A studio needs its area" };
     if (parsed.data.rooms.length === 0) return { error: "A studio needs at least one room" };
+    if (parsed.data.styles.length === 0) return { error: "A studio says at least one dance style" };
   }
 
   let tenantId: string;
@@ -110,6 +118,7 @@ export async function createTenantAction(
       type,
       area: parsed.data.area ?? null,
       city: parsed.data.city ?? null,
+      styles: parsed.data.styles,
     });
     tenantId = tenant.id;
   } catch (error: unknown) {

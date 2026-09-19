@@ -88,6 +88,7 @@ export function IdentityHero({
   avatarAlt,
   avatarHref,
   avatarLabel = "Public view",
+  avatarSlot = null,
   shots = [],
   corner,
   testId,
@@ -131,6 +132,12 @@ export function IdentityHero({
    *  screen answer to "Public view" and neither a screen reader nor a strict
    *  locator can tell them apart (19 Sep 2026). */
   avatarLabel?: string;
+  /** the disc as the PAGE draws it, in place of the plain one and of the link
+   *  (19 Sep 2026, the user: "should be able to click and view both pictures
+   *  sections when clicking on that photo"). Home hands it the client island
+   *  that opens BOTH picture sections; everywhere else leaves it out. Given
+   *  together with `avatarHref`, this wins — a disc has one job. */
+  avatarSlot?: ReactNode;
   /** THE HEADER — what swipes across the top */
   shots?: HeroShot[];
   /** controls pinned to the hero's top-right corner (the Profile tab's Edit and
@@ -172,7 +179,9 @@ export function IdentityHero({
 
       <div style={{ position: "relative", padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>
-          {avatarHref ? (
+          {avatarSlot ? (
+            avatarSlot
+          ) : avatarHref ? (
             <Link href={avatarHref} aria-label={avatarLabel} style={{ display: "block", flexShrink: 0, textDecoration: "none" }}>
               <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
             </Link>

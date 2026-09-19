@@ -37,6 +37,7 @@ interface TenantRow {
   accepts_cash?: boolean | null;
   accepts_bank?: boolean | null;
   verified_at?: string | null;
+  styles?: string[] | null;
 }
 
 interface StyleRow {
@@ -57,7 +58,7 @@ interface TeamRow {
 export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
   const { data, error } = await supabase
     .from("businesses")
-    .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, about, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at")
+    .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, about, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, styles")
     .eq("id", tenantId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -88,6 +89,9 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
     enquiryTypes: Array.isArray(row.enquiry_types) ? row.enquiry_types : null,
     accepts: { upi: row.accepts_upi ?? true, cards: row.accepts_cards ?? true, cash: row.accepts_cash ?? true, bank: row.accepts_bank ?? false },
     verifiedAt: row.verified_at ?? null,
+    /* what it SAYS it dances (19 Sep 2026) — its own field, not the styles of
+       whatever it happens to have published */
+    styles: Array.isArray(row.styles) ? row.styles : [],
   };
 }
 
@@ -128,9 +132,15 @@ export async function findPublicTenantProfile(supabase: SupabaseClient, tenantId
   for (const c of (classesRes.data ?? []) as StyleRow[]) {
     styleCount.set(c.style, (styleCount.get(c.style) ?? 0) + 1);
   }
-  const styles = [...styleCount.entries()]
+  const taught = [...styleCount.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([style]) => style);
+  /* ⚠ WHAT IT SAYS FIRST, WHAT IT TEACHES AS THE FALLBACK (19 Sep 2026, the
+     user: "some studios dont show dance styles on profile it is mandatory to
+     have one at least"). The derived list is kept for the rows that predate the
+     field and have not been edited since — the migration backfills what it can,
+     and a studio with no published class had nothing to backfill FROM. */
+  const styles = tenant.styles.length ? tenant.styles : taught;
 
   return {
     tenant,

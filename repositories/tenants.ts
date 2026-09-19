@@ -23,9 +23,10 @@ export interface TenantRow {
   verified_at?: string | null;
   location_set_at?: string | null;
   contact_email?: string | null;
+  styles?: string[] | null;
 }
 
-export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email";
+export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -51,6 +52,11 @@ export const toTenant = (row: TenantRow): Tenant => ({
   verifiedAt: row.verified_at ?? null,
   locationSetAt: row.location_set_at ?? null,
   contactEmail: row.contact_email ?? null,
+  /* THE STYLES A BUSINESS SAYS IT DANCES (19 Sep 2026, the user: "some studios
+     dont show dance styles on profile it is mandatory to have one at least").
+     They were DERIVED from its published classes until today, so a studio with
+     no class yet showed none — twelve of production's eighteen listed studios. */
+  styles: Array.isArray(row.styles) ? row.styles : [],
 });
 
 export interface TenantProfileInput {
@@ -66,6 +72,9 @@ export interface TenantProfileInput {
    *  switches and the enquiry-types sheet never touch it), null → cleared, a
    *  string → set */
   contactEmail?: string | null;
+  /** THE DANCE STYLES (19 Sep 2026): omitted → unchanged; a list → set (trimmed,
+   *  de-duplicated, at most twelve, and a STUDIO may not end up with none) */
+  styles?: string[];
 }
 
 /** What a business says about itself and the switches it sets (S_payments 16612,
@@ -89,6 +98,9 @@ export async function updateTenantProfile(supabase: SupabaseClient, tenantId: st
        rule, and an empty string is how the owner takes the address down */
     p_name: input.name ?? null,
     p_contact_email: input.contactEmail === undefined ? null : (input.contactEmail ?? ""),
+    /* `p_styles` is LAST with a default (`20260919190000`): null leaves them as
+       they are, so every caller that does not edit styles behaves as before */
+    p_styles: input.styles ?? null,
   });
   if (error) {
     throw new Error(error.message);
@@ -98,13 +110,16 @@ export async function updateTenantProfile(supabase: SupabaseClient, tenantId: st
 /** Atomic create: tenant + owner membership via the create_business_with_owner RPC. */
 export async function createTenantWithOwner(
   supabase: SupabaseClient,
-  input: { name: string; type: TenantType; area?: string | null; city?: string | null }
+  input: { name: string; type: TenantType; area?: string | null; city?: string | null; styles?: string[] }
 ): Promise<Tenant> {
   const { data, error } = await supabase.rpc("create_business_with_owner", {
     p_name: input.name,
     p_type: input.type,
     p_area: input.area ?? null,
     p_city: input.city ?? null,
+    /* A STUDIO NAMES AT LEAST ONE STYLE (19 Sep 2026) — `p_styles` is LAST with
+       a default, so the artist page Home provisions still calls this unchanged */
+    p_styles: input.styles ?? null,
   });
 
   if (error) {
@@ -300,6 +315,9 @@ export async function findTenantTeam(
     .select("user_id, member_role")
     .eq("business_id", tenantId)
     .is("deleted_at", null)
+    /* THE ORDER THE OWNER ARRANGED (19 Sep 2026, the user: "should be able to
+       place them in order as well") — `sort` first, joined-first as the tie */
+    .order("sort", { ascending: true })
     .order("created_at", { ascending: true })
     .limit(100);
 
@@ -345,6 +363,23 @@ export async function findTenantTeam(
       avatarPath: p?.profile_photo_path ?? null,
     };
   });
+}
+
+/** THE ORDER THE TEAM IS SHOWN IN (19 Sep 2026) — the owner's alone, and the
+ *  crew desk's `reorder_crew_members` in a different coat. Whoever is left out
+ *  of the list keeps their place after it, so a partial list is safe. */
+export async function reorderTenantMembers(
+  supabase: SupabaseClient,
+  tenantId: string,
+  userIds: string[]
+): Promise<void> {
+  const { error } = await supabase.rpc("reorder_business_members", {
+    p_business_id: tenantId,
+    p_user_ids: userIds,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 /** WHERE A BUSINESS IS (11 Sep 2026) — the write behind the location picker.

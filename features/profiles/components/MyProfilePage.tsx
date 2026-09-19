@@ -3,28 +3,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
-import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
-import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
-import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
+import { dosStyleColor } from "@/lib/constants/styles";
+import { handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
+import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import type { FollowedTenant } from "@/types/follow";
-import { KIND_BADGE, kindOf, memberNoWords, type Profile, type SocialLink } from "@/types/profile";
+import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import { EditProfileSheet } from "./EditProfileSheet";
 import type { HeroShot } from "./HeroRail";
 import { IdentityHero } from "./hero-kit";
-import { EyeIcon, Group, PencilIcon, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
+import { EyeIcon, Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -48,37 +46,15 @@ import { EyeIcon, Group, PencilIcon, PlaceLink, PlatformIcon, ROLE_RING, RoleBad
 const micro = TYPE.micro;
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
-type Draft = { fullName: string; city: string; age: number | null; about: string; socials: SocialLink[]; styles: string[]; phone: string };
-const draftOf = (p: Profile): Draft => ({ fullName: p.fullName, city: p.city ?? "", age: p.age, about: p.about ?? "", socials: p.socials, styles: p.styles, phone: p.phone ?? "" });
-
-const move = <T,>(arr: T[], i: number, dir: -1 | 1): T[] => {
-  const j = i + dir;
-  if (j < 0 || j >= arr.length) return arr;
-  const next = [...arr];
-  [next[i], next[j]] = [next[j], next[i]];
-  return next;
-};
-
 /* the Following sheet's segments (11336), in the words for the kinds we have —
    Organizations and Crews joined on 19 Sep 2026, when both became followable */
 const FOLLOW_SEGS = ["All", "Users", "Artists", "Organizations", "Studios", "Crews"] as const;
 type FollowSeg = (typeof FOLLOW_SEGS)[number];
 
-/* the ▲▼ pair every reorderable sheet row carries (11170) */
-function Arrows({ i, n, onMove }: { i: number; n: number; onMove: (dir: -1 | 1) => void }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
-      <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => onMove(-1)} style={{ fontSize: 10, cursor: i === 0 ? "default" : "pointer", color: i === 0 ? "var(--el)" : "var(--sub)", lineHeight: 1, background: "none", border: "none", padding: 0 }}>▲</button>
-      <button type="button" aria-label="Move down" disabled={i === n - 1} onClick={() => onMove(1)} style={{ fontSize: 10, cursor: i === n - 1 ? "default" : "pointer", color: i === n - 1 ? "var(--el)" : "var(--sub)", lineHeight: 1, background: "none", border: "none", padding: 0 }}>▼</button>
-    </div>
-  );
-}
-
 
 export function MyProfilePage({
   person,
   header = [],
-  headerMax = 0,
   followers,
   followingPeople,
   followingTenants,
@@ -94,7 +70,9 @@ export function MyProfilePage({
   person: PublicPerson;
   /** THE HEADER PICTURES (15 Sep 2026): the person's own, in their order */
   header?: HeaderPhoto[];
-  /** how many the kind allows — one for a user, five for an artist, ten for an organization (19 Sep 2026) */
+  /** how many the kind allows. ⚠ NOT READ HERE since 19 Sep 2026 — the pictures
+   *  are added and removed behind the disc on HOME, and this page only shows
+   *  them; the prop stays so the route can keep handing one number to both. */
   headerMax?: number;
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
@@ -133,43 +111,14 @@ export function MyProfilePage({
      nothing, so its figures are its studios and its followers */
   const isOrg = profile.role === "org";
 
-  const [toast, setToast] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const [editOpen, setEditOpen] = useState(false);
-  const [stylesOpen, setStylesOpen] = useState(false);
-  const [linksOpen, setLinksOpen] = useState(false);
-  const [linkEditor, setLinkEditor] = useState<{ platform: string; url: string; isNew: boolean } | null>(null);
-  const [customDraft, setCustomDraft] = useState({ label: "", url: "" });
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   /* the gear arrives as ?settings=1 (prototype 19263). The sheet is a PLACE, so
       the address is its open state — a state seeded at mount would never see the
       gear, because the gear links to the page it is already on. */
   const settingsOpen = useSearchParams().get("settings") === "1";
   const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
-
-  const fire = (m: string) => {
-    setToast(m);
-    setTimeout(() => setToast(null), 2500);
-  };
-  /* every sheet lands on the one record; the page re-reads after */
-  const save = (next: Partial<Draft>, said: string, after?: () => void) => {
-    const d = { ...draftOf(profile), ...next };
-    /* the database refuses a profile without a city (9 Sep 2026) — say so before asking it */
-    if (!d.city.trim()) {
-      fire("Add your city first — Edit profile › Location");
-      return;
-    }
-    start(async () => {
-      const out = await updateMyProfileAction({ fullName: d.fullName, city: d.city.trim(), age: d.age, about: d.about.trim() || null, socials: d.socials, styles: d.styles, phone: d.phone.trim() || null });
-      if (out.error) {
-        fire(out.error);
-        return;
-      }
-      after?.();
-      fire(said);
-      router.refresh();
-    });
-  };
+  /* ⚠ NO TOAST ON THIS PAGE ANY MORE (19 Sep 2026): every sheet that had
+     something to say moved to Home, and the Settings sheet carries its own */
 
   const styleList = profile.styles;
   const socials = profile.socials;
@@ -243,16 +192,16 @@ export function MyProfilePage({
              pencil below, not a ＋ on the disc and a ✕ on each header square */
           shots={shots}
           /* ── THE THREE CONTROLS, TOP RIGHT (10613) — Share is the QR beside the name ── */
+          /* ⚠ NO PENCIL HERE ANY MORE (19 Sep 2026, the user: "all edit profile
+             options to be removed from home and profile pages") — Edit profile
+             is Settings' first option, behind the gear in the top bar. What is
+             left in the corner is the eye: "Public view" — the page as a
+             stranger reads it (/org/{id} for an organization, /person/{id} for
+             anybody else). */
           corner={
-            <>
-              <button type="button" aria-label="Edit profile" onClick={() => setEditOpen(true)} style={cornerChip}>
-                <PencilIcon />
-              </button>
-              {/* "Public view" — the page as a stranger reads it: /org/{id} for an organization, /person/{id} for anybody else */}
-              <Link href={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} aria-label="Public view" style={cornerChip}>
-                <EyeIcon />
-              </Link>
-            </>
+            <Link href={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} aria-label="Public view" style={cornerChip}>
+              <EyeIcon />
+            </Link>
           }
         >
           {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
@@ -287,27 +236,36 @@ export function MyProfilePage({
 
         {/* ── THE BAND UNDER THE NAME — ONE STRUCTURE, THREE PARTS (10739) ── */}
         <div style={{ textAlign: "left" }}>
-          {/* the styles you dance, and the ＋ that edits them (DosStyleRow 1767) — an organization dances nothing */}
-          {isOrg ? <div style={{ height: 14 }} /> : (
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 6px", alignItems: "center" }}>
-            {styleList.map((s) => (
-              <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} />
-            ))}
-            <button type="button" aria-label="Add a dance style" onClick={() => setStylesOpen(true)} style={{ width: 34, height: 34, borderRadius: 10, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, fontWeight: 800, color: SUB, flexShrink: 0, border: "none", fontFamily: "inherit" }}>＋</button>
-            {styleList.length === 0 ? <span style={{ fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance go here.</span> : null}
-          </div>
+          {/* ⚠ THE STYLES AND THE LINKS ARE SHOWN HERE AND CHANGED ON HOME
+              (19 Sep 2026, the user: "Dance style for the page should also be
+              editable only from the home tab … social media tiles also on home
+              and should be editable only from here"). Both rows kept their
+              anatomy (DosStyleRow 1767; the links rail 10760) and lost their ＋:
+              a style edited in two places is a style that disagrees with
+              itself. */}
+          {isOrg ? <div style={{ height: 14 }} /> : styleList.length ? (
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 6px", alignItems: "center" }}>
+              {styleList.map((s) => (
+                <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: "14px 0 6px", fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance are added on Home.</div>
           )}
 
           {/* THE LINKS, UNDER THE STYLES (10760): one line, swiped sideways */}
-          <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "0 0 14px", paddingBottom: 2 }}>
-            {socials.map((l) => (
-              <button type="button" key={l.platform} aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={chip}>
-                <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-              </button>
-            ))}
-            <button type="button" aria-label="Add a link" onClick={() => setLinksOpen(true)} style={{ ...chip, background: "transparent", border: "1px dashed var(--el)", fontSize: 12, fontWeight: 800, color: SUB }}>＋ Add link</button>
-          </div>
+          {socials.length ? (
+            <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "0 0 14px", paddingBottom: 2 }}>
+              {socials.map((l) => (
+                <a key={l.platform} href={safeHref(l.url) ?? undefined} target="_blank" rel="noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ ...chip, textDecoration: "none" }}>
+                  <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div style={{ margin: "0 0 14px", fontSize: 11.5, color: SUB, fontWeight: 700 }}>Your links are added on Home.</div>
+          )}
 
           {/* ABOUT, WHERE IT BELONGS (10811) — prose, not a boxed card */}
           <div style={{ margin: "20px 0 14px" }}>
@@ -315,9 +273,9 @@ export function MyProfilePage({
             {profile.about ? (
               <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>{profile.about}</div>
             ) : (
-              <button type="button" onClick={() => setEditOpen(true)} style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                A sentence in your own words — <b style={{ color: PINK }}>Edit profile ›</b>
-              </button>
+              <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>
+                A sentence in your own words — <b style={{ color: PINK }}>Settings › Edit profile</b>
+              </div>
             )}
           </div>
 
@@ -379,134 +337,10 @@ export function MyProfilePage({
             the gear in the top bar opens it from anywhere. */}
       </div>
 
-      {/* ── Edit profile (11364) — the one sheet, shared with Home since 15 Sep 2026 ── */}
-      {editOpen ? <EditProfileSheet profile={profile} header={header} headerMax={headerMax} isArtist={kind === "artist"} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} /> : null}
-
-      {/* ── ＋ Add a dance style (11217): reorder, remove, add from the registry ── */}
-      {stylesOpen ? (
-        <Sheet label="Add a dance style" onClose={() => setStylesOpen(false)} maxHeight="78vh">
-          <b style={{ fontSize: 16 }}>＋ Add a dance style</b>
-          <div style={{ fontSize: 12, color: SUB, margin: "4px 0 6px" }}>Reorder with ↑↓ — this is the order shown on your profile.</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {styleList.map((s, i, arr) => (
-              <div key={s} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 14, background: CARD, border: `1px solid ${LINE}` }}>
-                <Arrows i={i} n={arr.length} onMove={(dir) => save({ styles: move(arr, i, dir) }, "Order saved")} />
-                <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 6, background: dosStyleColor(s), flexShrink: 0 }} />
-                <b style={{ flex: 1, fontSize: 13.5, color: INK }}>{s}</b>
-                <button type="button" aria-label={arr.length === 1 ? `${s} is your last style — add another first` : `Remove ${s}`} disabled={arr.length === 1} title={arr.length === 1 ? "A user names at least one style" : undefined} onClick={() => save({ styles: arr.filter((x) => x !== s) }, `${s} removed from your styles`)} style={{ opacity: arr.length === 1 ? 0.35 : 1, fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
-              </div>
-            ))}
-          </div>
-          {DOS_STYLE_NAMES.some((s) => !styleList.includes(s)) ? (
-            <>
-              <div style={fieldLabel}>Add more styles</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {DOS_STYLE_NAMES.filter((s) => !styleList.includes(s)).map((s) => (
-                  <button type="button" key={s} disabled={pending || styleList.length >= 12} aria-label={`Add ${s}`} onClick={() => save({ styles: [...styleList, s] }, `✓ ${s} added to your styles`)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "6px 13px 6px 6px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
-                    <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 5, background: dosStyleColor(s) }} />
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
-          <button type="button" onClick={() => setStylesOpen(false)} style={{ ...sheetBtn(true), width: "100%", marginTop: 14 }}>Done</button>
-        </Sheet>
-      ) : null}
-
-      {/* ── Add a social link (11161): the list with ▲▼ · Edit · Remove, the platforms, "Something else?" ── */}
-      {linksOpen ? (
-        <Sheet label="Add a social link" onClose={() => setLinksOpen(false)}>
-          <b style={{ fontSize: 16 }}>Add a social link</b>
-          <div style={{ fontSize: 12, color: SUB, margin: "4px 0 12px" }}>Drag order with ↑↓ · tap a platform below to add it.</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {socials.map((l, i, arr) => (
-              <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 14, background: CARD, border: `1px solid ${LINE}` }}>
-                <Arrows i={i} n={arr.length} onMove={(dir) => save({ socials: move(arr, i, dir) }, "Order saved")} />
-                <PlatformIcon label={l.platform} size={24} />
-                <button type="button" onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
-                  <b style={{ fontSize: 13.5, color: INK, display: "block" }}>{l.platform}</b>
-                  <span style={{ fontSize: 11, color: SUB, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.url}</span>
-                </button>
-                <span style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-                  <button type="button" aria-label={`Edit ${l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={{ fontSize: 12, fontWeight: 700, color: SUB, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Edit</button>
-                  {/* an organization's last link is removable now (11 Sep 2026):
-                      its links stopped being the evidence behind its tick when
-                      verification moved to the studio, so `update_my_profile`
-                      dropped the rule and this guard went with it */}
-                  <button type="button" aria-label={`Remove ${l.platform}`} onClick={() => save({ socials: arr.filter((x) => x.platform !== l.platform) }, `${l.platform} removed`)} style={{ fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
-                </span>
-              </div>
-            ))}
-          </div>
-          {PLATFORMS.some((p) => !socials.find((l) => l.platform === p)) ? (
-            <>
-              <div style={fieldLabel}>Add a platform</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {PLATFORMS.filter((p) => !socials.find((l) => l.platform === p)).map((p) => (
-                  <button type="button" key={p} aria-label={`Add ${p}`} onClick={() => setLinkEditor({ platform: p, url: "", isNew: true })} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "7px 13px 7px 7px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
-                    <PlatformIcon label={p} size={20} />
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
-          <div style={{ ...fieldLabel, margin: "18px 0 6px" }}>Something else?</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input aria-label="Link label" value={customDraft.label} onChange={(e) => setCustomDraft((d) => ({ ...d, label: e.target.value }))} placeholder="Label, e.g. Linktree" style={{ ...fieldInput, flex: 1, minWidth: 0, padding: "10px 12px", fontSize: 13 }} />
-            <input aria-label="Link URL" value={customDraft.url} onChange={(e) => setCustomDraft((d) => ({ ...d, url: e.target.value }))} placeholder="https://…" style={{ ...fieldInput, flex: 1, minWidth: 0, padding: "10px 12px", fontSize: 13 }} />
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-            <button type="button" onClick={() => setLinksOpen(false)} style={sheetBtn(false)}>Done</button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                if (!customDraft.label.trim() || !customDraft.url.trim()) return fire("Add a label and URL first");
-                save({ socials: [...socials, { platform: customDraft.label.trim(), url: customDraft.url.trim() }] }, "✓ Link added", () => setCustomDraft({ label: "", url: "" }));
-              }}
-              style={sheetBtn(true)}
-            >
-              Add this link
-            </button>
-          </div>
-        </Sheet>
-      ) : null}
-
-      {/* ── one platform's URL (11140) ── */}
-      {linkEditor ? (
-        <Sheet label={linkEditor.isNew ? `Add your ${linkEditor.platform}` : `Edit ${linkEditor.platform}`} onClose={() => setLinkEditor(null)}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <PlatformIcon label={linkEditor.platform} size={24} />
-            <b style={{ fontSize: 16 }}>{linkEditor.isNew ? `Add your ${linkEditor.platform}` : `Edit ${linkEditor.platform}`}</b>
-          </div>
-          <div style={{ ...fieldLabel, margin: "16px 0 6px" }}>URL</div>
-          <input aria-label="URL" value={linkEditor.url} onChange={(e) => setLinkEditor((d) => (d ? { ...d, url: e.target.value } : d))} placeholder="https://…" autoFocus style={fieldInput} />
-          <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-            {!linkEditor.isNew ? (
-              <button type="button" onClick={() => save({ socials: socials.filter((l) => l.platform !== linkEditor.platform) }, `${linkEditor.platform} removed`, () => setLinkEditor(null))} style={dangerBtn}>Remove</button>
-            ) : null}
-            <button type="button" onClick={() => setLinkEditor(null)} style={sheetBtn(false)}>Cancel</button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                const url = linkEditor.url.trim();
-                if (!url) return fire("Add a URL first");
-                const rest = socials.filter((l) => l.platform !== linkEditor.platform);
-                const at = socials.findIndex((l) => l.platform === linkEditor.platform);
-                const next = at >= 0 ? [...rest.slice(0, at), { platform: linkEditor.platform, url }, ...rest.slice(at)] : [...rest, { platform: linkEditor.platform, url }];
-                save({ socials: next }, linkEditor.isNew ? `✓ ${linkEditor.platform} added` : `✓ ${linkEditor.platform} updated`, () => setLinkEditor(null));
-              }}
-              style={sheetBtn(true)}
-            >
-              Save
-            </button>
-          </div>
-        </Sheet>
-      ) : null}
-
+      {/* ⚠ FOUR SHEETS LEFT THIS PAGE ON 19 Sep 2026 — Edit profile (11364) is
+          Settings' first option now, and the styles (11217), the links (11161)
+          and one platform's own editor (11140) are Home's band (`HomeBand`).
+          Nothing was redrawn: they moved. */}
       {/* ── Followers / Following list — segregated by account type (11335) ── */}
       {followList ? (
         <Sheet label={followList === "followers" ? "Followers" : "Following"} onClose={() => setFollowList(null)} maxHeight="78vh">
@@ -554,13 +388,14 @@ export function MyProfilePage({
           else router.replace("/profile");
         }}
         role={profile.role}
+        /* EDIT PROFILE IS ITS FIRST OPTION (19 Sep 2026) */
+        profile={profile}
         isAdmin={isAdmin}
         gstVerified={gstVerified}
         business={business}
         plan={plan}
       />
 
-      {toast ? <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: `1.5px solid ${PINK}`, color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 390, textAlign: "center", zIndex: 650 }}>{toast}</div> : null}
     </div>
   );
 }

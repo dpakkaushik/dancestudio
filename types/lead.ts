@@ -17,6 +17,22 @@ export interface Lead {
   trialOn: string | null;
   note: string | null;
   createdAt: string;
+  /** WHO THIS ROW IS (19 Sep 2026, the user: "Students — adding same way as for
+   *  Team … name and profile on clicking"). Set when the student was picked from
+   *  the people search; null for a walk-in typed at the desk, who has no page to
+   *  open and no record to count. */
+  userId: string | null;
+  /** their picture, when the row names somebody on DanceOS */
+  avatarPath: string | null;
+}
+
+/** WHAT A STUDENT HAS ACTUALLY DONE HERE (19 Sep 2026, the user: "track student
+ *  performance, photo stats"). Counted, never stored — the same rule Step 25's
+ *  boards follow — and only for a student who IS somebody on DanceOS. `attended`
+ *  is check-ins, not bookings: a seat nobody marked is not a class danced. */
+export interface StudentStats {
+  booked: number;
+  attended: number;
 }
 
 /** The prototype's chip row, in its order and its words (5978). */

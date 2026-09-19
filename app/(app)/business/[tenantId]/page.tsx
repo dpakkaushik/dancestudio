@@ -112,7 +112,9 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       studioPrice={pickPlan(catalog, "studio")}
       deck={deck}
       roomCount={roomCounts[tenantId] ?? 0}
-      styles={stylesByTenant.get(tenantId) ?? []}
+      /* WHAT IT SAYS IT DANCES, then what it teaches (19 Sep 2026) — the field
+         first, the derived list only for a row that predates it */
+      styles={tenant.styles.length ? tenant.styles : (stylesByTenant.get(tenantId) ?? [])}
       tiles={tiles}
     />
   );

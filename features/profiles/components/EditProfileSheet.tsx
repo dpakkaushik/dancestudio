@@ -11,16 +11,10 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
    the places search — was in Home's first-load JavaScript for the one
    organization in a hundred loads that opens the sheet to place a pin */
 const LocationPicker = dynamic(() => import("@/features/geo/components/LocationPicker").then((m) => m.LocationPicker), { ssr: false });
-import { commitHeaderDraft, commitWords, personPorts } from "@/features/media/commitHeaderDraft";
-import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderPictures";
-import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
-import { useHeaderDraft } from "@/features/media/headerDraft";
 import { setMyPlaceAction, updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import { MUTED, SUB } from "@/lib/design/tokens";
-import type { HeaderPhoto } from "@/repositories/headerPhotos";
+import { MUTED } from "@/lib/design/tokens";
 import type { Profile } from "@/types/profile";
-import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
 /** EDIT PROFILE (prototype 11364 — "one editor, and it is Edit profile"), in
  *  the order the user asked for on 15 Sep 2026: Name · Mobile · Profile
@@ -31,8 +25,18 @@ import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from 
  *  record through `update_my_profile`; the pictures land the moment they
  *  upload and the page re-reads.
  *
- *  Styles and links are not here — they have their own sheets on the Profile
- *  tab (11217, 11161) — so this save sends them back exactly as they are.
+ *  ⚠ IT IS SETTINGS' FIRST OPTION NOW, AND IT CARRIES NO PICTURES (19 Sep 2026,
+ *  the user: "Editing profile should be shifted to settings and should be the
+ *  top option, all edit profile options to be removed from home and profile
+ *  pages … Profile Pic and Top bar Photo column only editable from home tab and
+ *  should be removed from edit profile"). So the pencil is gone from Home's
+ *  corner and the Profile tab's, the two picture blocks are gone from this
+ *  sheet, and both live behind the DISC on Home (`PicturesSheet`). What is left
+ *  here is the words: who you are, how to reach you, where you are, and the bio.
+ *
+ *  Styles and links are not here either — they are edited on Home's own band
+ *  (`HomeBand`, the prototype's sheets 11217 · 11161) — so this save sends them
+ *  back exactly as they are.
  *
  *  PUSH 2 (19 Sep 2026), two of the user's answers: an ARTIST gets a switch
  *  under Mobile — "Show Call on my profile" (`phone_public`, off by default:
@@ -63,16 +67,11 @@ const ageFromDob = (iso: string): number => {
 
 export function EditProfileSheet({
   profile,
-  header = [],
-  headerMax = 0,
   isArtist = false,
   onClose,
   onSaved,
 }: {
   profile: Profile;
-  header?: HeaderPhoto[];
-  /** one for a user, five for an artist, ten for an organization (19 Sep 2026) */
-  headerMax?: number;
   /** the plan's word — an artist's page can dial their number, so an artist gets the switch */
   isArtist?: boolean;
   onClose: () => void;
@@ -84,17 +83,6 @@ export function EditProfileSheet({
   const [err, setErr] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  /* the header pictures as a DRAFT (16 Sep 2026) — the same bug lived here:
-     `HeaderRemove`'s ✕ deleted a picture on the press, inside a sheet with a
-     Cancel button. A person's floor is 0, not 1: `remove_my_header_photo` has
-     no minimum guard, and inventing one here would be a rule nobody wrote. */
-  const draft = useHeaderDraft({
-    initial: header.map((h) => ({ id: h.id, path: h.path, url: h.url, signed: h.signed })),
-    min: 0,
-    max: headerMax,
-  });
-  const tiles = headerTiles(draft, profile.fullName);
-  const [lightbox, setLightbox] = useState<number | null>(null);
 
   const save = () => {
     /* the database refuses a profile without a city (9 Sep 2026) — say so before asking it */
@@ -123,15 +111,6 @@ export function EditProfileSheet({
       if (out.error) {
         setErr(out.error);
         return;
-      }
-      if (headerMax > 0 && draft.dirty) {
-        const result = await commitHeaderDraft(draft.items, personPorts(profile.id, headerMax));
-        draft.applyCommit(result);
-        if (result.failures.length > 0) {
-          setErr(commitWords(result, draft.changeCount));
-          router.refresh();
-          return;
-        }
       }
       onSaved?.();
       onClose();
@@ -177,22 +156,8 @@ export function EditProfileSheet({
       <div style={fieldLabel}>Email</div>
       <input aria-label="Email" type="email" inputMode="email" value={d.email} onChange={(e) => setD((x) => ({ ...x, email: e.target.value }))} placeholder="you@example.com" style={fieldInput} />
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>{isOrg ? "Shown on your organization's page as Mail." : "Shown on your page as Mail while you hold the Artist plan."} Leave it empty and nobody sees an address.</div>
-      {/* one label style, every field — see BusinessEditSheet for why */}
-      <div style={fieldLabel}>{isOrg ? "Update logo" : "Update profile"}</div>
-      <PhotoPicker owner={{ kind: "avatar", id: profile.id }} hasPhoto={Boolean(profile.avatarPath)} label="Change your photo" />
-      {/* THE HEADER PICTURES (15 Sep 2026): an artist has no verification
-          step, so this sheet is where theirs are added — up to five; a user
-          has one; an organization ten (the caps since 19 Sep 2026). A DRAFT
-          since 16 Sep 2026: adding and removing both wait for Save, so Cancel
-          means what it says. */}
-      {headerMax > 0 ? (
-        <>
-          <div style={fieldLabel}>Update header</div>
-          {/* the one non-obvious fact, and only to the person it is news to */}
-          {headerMax === 1 ? <div style={{ fontSize: 10.5, color: SUB, marginBottom: 8 }}>The Artist plan makes it five.</div> : null}
-          <HeaderPictures draft={draft} tiles={tiles} kind="person" canWrite addLabel="Add picture" onOpen={setLightbox} busy={pending} />
-        </>
-      ) : null}
+      {/* ⚠ NO PICTURES IN THIS SHEET (19 Sep 2026) — both sections live behind
+          the disc on Home, which is the one place they are changed */}
       <div style={fieldLabel}>Location</div>
       {/* THE ONE CITY DROPDOWN (19 Sep 2026) — the same control as everywhere else */}
       <CityPicker value={d.city.trim() || null} onChange={(c) => setD((x) => ({ ...x, city: c ?? "" }))} label="" />
@@ -251,34 +216,10 @@ export function EditProfileSheet({
       <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
         <button type="button" onClick={onClose} style={sheetBtn(false)}>Cancel</button>
         <button type="button" disabled={pending || !d.city.trim()} onClick={save} style={sheetBtn(true)}>
-          {pending ? "Saving…" : draft.dirty ? `Save · ${draft.changeCount} ${draft.changeCount === 1 ? "picture change" : "picture changes"}` : "Save"}
+          {pending ? "Saving…" : "Save"}
         </button>
       </div>
     </Sheet>
-    {/* a SIBLING of the sheet — see PhotoLightbox's header for why */}
-    {lightbox !== null ? (
-      <PhotoLightbox
-        shots={tiles.map((t) => ({ key: t.key, src: t.url, alt: t.alt, signed: t.signed }))}
-        index={lightbox}
-        onIndex={setLightbox}
-        onClose={() => setLightbox(null)}
-        label={profile.fullName}
-      />
-    ) : null}
     </Portal>
-  );
-}
-
-/** The pencil on a hero's corner (10613) and the sheet behind it, in one
- *  client island — so a server page like Home can offer Edit profile. */
-export function EditProfileButton({ profile, header = [], headerMax = 0, isArtist = false }: { profile: Profile; header?: HeaderPhoto[]; headerMax?: number; isArtist?: boolean }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" aria-label="Edit profile" onClick={() => setOpen(true)} style={cornerChip}>
-        <PencilIcon />
-      </button>
-      {open ? <EditProfileSheet profile={profile} header={header} headerMax={headerMax} isArtist={isArtist} onClose={() => setOpen(false)} /> : null}
-    </>
   );
 }

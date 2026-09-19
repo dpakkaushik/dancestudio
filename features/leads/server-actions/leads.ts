@@ -23,6 +23,10 @@ const createSchema = z.object({
   interest: z.string().trim().max(160).optional().nullable(),
   source: z.enum(["walk_in", "enquiry", "referral", "social"]),
   note: z.string().trim().max(1000).optional().nullable(),
+  /* WHO THIS ROW IS (19 Sep 2026) — set when the student was picked from the
+     people search. A walk-in typed at the desk carries none, and is still a
+     real student: the column is nullable on purpose. */
+  userId: z.string().uuid().optional().nullable(),
 });
 
 const updateSchema = z.object({
@@ -56,6 +60,7 @@ export async function createLeadAction(input: {
   interest?: string | null;
   source: string;
   note?: string | null;
+  userId?: string | null;
 }): Promise<LeadActionResult> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
@@ -70,6 +75,7 @@ export async function createLeadAction(input: {
       interest: parsed.data.interest?.trim() || null,
       source: parsed.data.source,
       note: parsed.data.note?.trim() || null,
+      userId: parsed.data.userId ?? null,
     });
     revalidateDesk(parsed.data.tenantId);
     return { error: null };

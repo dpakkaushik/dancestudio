@@ -13,6 +13,7 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { centreOf } from "@/repositories/cities";
+import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -157,6 +158,8 @@ export function BusinessHub({
   const [area, setArea] = useState("");
   const [city, setCity] = useState("");
   const [rooms, setRooms] = useState<RoomDraft[]>(seedRooms);
+  /* a studio names at least one dance style at birth (19 Sep 2026) */
+  const [styles, setStyles] = useState<string[]>([]);
   /* the pin from the sheet's map, if the owner placed one (11 Sep 2026) */
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
   /* THE ADDRESS FILLS THE FORM (11 Sep 2026). Area and City are written by the
@@ -200,7 +203,7 @@ export function BusinessHub({
      18 Sep 2026 only an organization opens anything here */
   const isStudio = isOrg;
   const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity > 0);
-  const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk));
+  const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk && styles.length > 0));
   /* R14: an organization may open the sheet only when the gate is open. A button
      that would be refused is not offered; the reason is printed in its place. */
   const gateShut = isOrg ? whyNoStudio : null;
@@ -622,6 +625,48 @@ export function BusinessHub({
                   }}
                 />
               </div>
+
+              {/* ── THE DANCE STYLES (19 Sep 2026, the user: "some studios dont
+                  show dance styles on profile it is mandatory to have one at
+                  least"). Asked HERE, at birth, because a studio's styles used
+                  to be derived from its published classes — so a studio was
+                  guaranteed to show none on the day it was made. ── */}
+              {isStudio && (
+                <>
+                  <input type="hidden" name="styles" value={JSON.stringify(styles)} />
+                  <div style={{ fontSize: 12, color: SUB, margin: "14px 0 6px" }}>Dance styles — at least one</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                    {styles.map((s) => (
+                      <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 8px 6px 11px", borderRadius: 999, background: CARD, border: `1px solid ${EL}` }}>
+                        <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 5, background: dosStyleColor(s) }} />
+                        <span style={{ fontSize: 12, fontWeight: 800 }}>{s}</span>
+                        <span role="button" tabIndex={0} onKeyDown={dosKey} aria-label={`Remove ${s}`} onClick={() => setStyles((x) => x.filter((y) => y !== s))} style={{ fontSize: 13, color: "#F87171", cursor: "pointer" }}>
+                          ✕
+                        </span>
+                      </span>
+                    ))}
+                    {styles.length === 0 ? <span style={{ fontSize: 12, color: SUB }}>Pick what this studio teaches.</span> : null}
+                  </div>
+                  {styles.length < 12 ? (
+                    <select
+                      aria-label="Add a dance style"
+                      value=""
+                      onChange={(e) => {
+                        const s = e.target.value;
+                        if (s) setStyles((x) => (x.includes(s) ? x : [...x, s]));
+                      }}
+                      style={inp}
+                    >
+                      <option value="">＋ Add a dance style…</option>
+                      {DOS_STYLE_NAMES.filter((s) => !styles.includes(s)).map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
+                </>
+              )}
 
               {/* the rooms, right here (2675-2683): a studio is created WITH its floors */}
               {isStudio && (

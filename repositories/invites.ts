@@ -16,20 +16,22 @@ interface InviteRow {
   id: string;
   business_id: string;
   name: string;
-  email: string;
+  email: string | null;
+  user_id: string | null;
   member_role: InvitableRole;
   code: string;
   status: InviteStatus;
   created_at: string;
 }
 
-const INVITE_COLUMNS = "id, business_id, name, email, member_role, code, status, created_at";
+const INVITE_COLUMNS = "id, business_id, name, email, user_id, member_role, code, status, created_at";
 
 const toInvite = (row: InviteRow): TenantInvite => ({
   id: row.id,
   tenantId: row.business_id,
   name: row.name,
-  email: row.email,
+  email: row.email ?? null,
+  userId: row.user_id ?? null,
   memberRole: row.member_role,
   code: row.code,
   status: row.status,
@@ -65,6 +67,25 @@ export async function inviteToTenant(
     p_business_id: input.tenantId,
     p_name: input.name,
     p_email: input.email,
+    p_role: input.role,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return toInvite(data as InviteRow);
+}
+
+/** ASKED BY NAME (19 Sep 2026, the user: "Team should only be able to add team
+ *  member by typing name, number, email or scan"). The people picker hands back
+ *  a USER ID — a profile carries no address, so an invite has to be able to name
+ *  a person. Consent is unchanged: they still accept it themselves. */
+export async function invitePersonToTenant(
+  supabase: SupabaseClient,
+  input: { tenantId: string; userId: string; role: InvitableRole }
+): Promise<TenantInvite> {
+  const { data, error } = await supabase.rpc("invite_person_to_business", {
+    p_business_id: input.tenantId,
+    p_user_id: input.userId,
     p_role: input.role,
   });
   if (error) {

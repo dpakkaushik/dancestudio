@@ -389,7 +389,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (an organization holds up to ten since 19 Sep 2026)");
     check((await org.getByLabel("Share this profile — QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
     check(await org.getByText("Organization", { exact: true }).isVisible(), "org home: the role word under the sleeve");
-    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed in Edit profile");
+    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed behind it, in Your pictures");
     /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the DISC is the door to the public page (the eye left Home
        later the same day — the user: "clicking on the profile photo on home tab takes to profile so can remove
        the eye from top right on home"), Stats the chip */
@@ -397,20 +397,37 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
     check((await bar.getByRole("link", { name: "Public view" }).count()) === 0, "bar: the eye left the bar (19 Sep 2026, the user: 'remove profile tab from navbar')");
     check((await bar.getByRole("link").count()) === 3, "bar: Home · Discover · Inbox — three");
-    /* 18 Sep 2026: an organization has a page of its own, and the disc opens THAT (the one "Public view" link on Home) */
-    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: the logo on the disc is the one door to the organization's own page as a stranger sees it — no eye in the corner");
-    check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: Edit profile is a pencil on the hero");
+    /* 19 Sep 2026: the corner is the EYE alone — the pencil went into Settings
+       ("all edit profile options to be removed from home and profile pages") and
+       the DISC became the door to both picture sections ("should be able to click
+       and view both pictures sections when clicking on that photo") */
+    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: one eye in the corner, opening the organization's own page as a stranger sees it");
+    check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "org home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
+    check((await org.getByRole("button", { name: "Your pictures", exact: true }).count()) === 1, "org home: the disc opens Your pictures");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
-    await org.getByRole("button", { name: "Edit profile", exact: true }).click();
+    await org.getByRole("button", { name: "Your pictures", exact: true }).click();
+    const orgPics = org.getByRole("dialog", { name: "Your pictures" });
+    await orgPics.waitFor();
+    check(await org.getByText("Logo", { exact: true }).isVisible(), "org pictures: an organization's disc is its Logo");
+    check((await orgPics.getByLabel("Change your photo").count()) === 1, "org pictures: and the logo is changed HERE — the one place a picture changes");
+    await shot("org-pictures");
+    await orgPics.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+    /* and the words are behind the gear */
+    await org.goto(`${BASE}/profile?settings=1`);
+    const orgSettings = org.getByRole("dialog", { name: "Settings" });
+    await orgSettings.waitFor();
+    check((await orgSettings.getByRole("button", { name: "Edit profile" }).count()) === 1, "settings: Edit profile is the first option (19 Sep 2026)");
+    await orgSettings.getByRole("button", { name: "Edit profile" }).click();
     const orgSheet = org.getByRole("dialog", { name: "Edit profile" });
     await orgSheet.waitFor();
     /* exact: getByLabel is a case-insensitive SUBSTRING match, so a bare "Age"
        finds any label on the page that merely contains those three letters */
-    check(await org.getByText("Update logo", { exact: true }).isVisible() && (await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: Update logo, not Update profile; no age for an organization");
-    check((await orgSheet.getByLabel("Change your photo").count()) === 1, "org edit profile: and the logo is changed HERE — the one place a picture changes");
+    check((await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: no age for an organization");
+    check((await orgSheet.getByLabel("Change your photo").count()) === 0 && (await orgSheet.getByLabel("Add picture").count()) === 0, "org edit profile: and NO pictures in it — they are behind the disc on Home");
     await shot("org-edit");
     await org.keyboard.press("Escape").catch(() => {});
-    await org.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+    await orgSheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+    await org.goto(`${BASE}/`);
     await shot("org-home");
     await org.close();
 
@@ -423,20 +440,25 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await me.getByRole("heading", { name: "Rhea Kapoor", exact: true }).waitFor();
     check((await discImgs(me)) === 1, "user home: the profile photo is on the disc");
     check((await rail(me).getAttribute("role")) === null, "user home: an empty header, so no swipe");
-    check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled from Edit profile");
+    check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled behind the disc");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText("User", { exact: true }).isVisible(), "user home: the role word");
-    check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the disc is the one door to their person page (the eye left the bar and then the corner, 19 Sep 2026)");
-    check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "user home: Edit profile is a pencil on the hero");
+    check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: one eye in the corner, opening their person page");
+    check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "user home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
+    /* THE BAND ON HOME (19 Sep 2026): the two figures, the styles with their ＋,
+       the links right under them with theirs — and NO rank */
+    check((await me.getByTestId("home-followers").count()) === 1 && (await me.getByTestId("home-following").count()) === 1, "user home: Followers and Following, both clickable (19 Sep 2026)");
+    check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 1, "user home: the styles are edited HERE and nowhere else");
+    check((await me.getByRole("button", { name: "Add a link" }).count()) === 1, "user home: and the links, right below them");
+    check((await me.getByRole("link", { name: /rank/i }).count()) === 0, "user home: no rank (19 Sep 2026, the user: 'Remove rank from home')");
 
-    /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026) ── */
-    await me.getByRole("button", { name: "Edit profile", exact: true }).click();
-    const mySheet = me.getByRole("dialog", { name: "Edit profile" });
+    /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026; behind the disc since 19 Sep) ── */
+    await me.getByRole("button", { name: "Your pictures", exact: true }).click();
+    const mySheet = me.getByRole("dialog", { name: "Your pictures" });
     await mySheet.waitFor();
-    check(await me.getByText("Update profile", { exact: true }).isVisible(), "edit profile: an Update profile block");
-    check(await me.getByText("Update header", { exact: true }).isVisible(), "edit profile: an Update header block");
-    check(await me.getByText("Mobile", { exact: true }).isVisible(), "edit profile: Name · Mobile · Update profile · Update header, in that order");
-    check((await mySheet.getByLabel("Add picture").count()) === 1, "edit profile: a user is offered ONE header picture");
+    check(await me.getByText("Profile picture", { exact: true }).isVisible(), "your pictures: a Profile picture block");
+    check(await me.getByText("Header pictures", { exact: true }).isVisible(), "your pictures: and a Header pictures block — BOTH sections, which is the ask");
+    check((await mySheet.getByLabel("Add picture").count()) === 1, "your pictures: a user is offered ONE header picture");
     const personRows = async () => {
       const live = await rest(`profile_header_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
       return Array.isArray(live) ? live.length : -1;
@@ -457,7 +479,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       /* Cancel discards a staged ADD as completely as a staged removal */
       await mySheet.getByRole("button", { name: "Cancel" }).click();
       check((await personRows()) === 0, "edit profile: Cancel threw the staged picture away — nothing was uploaded");
-      await me.getByRole("button", { name: "Edit profile", exact: true }).click();
+      await me.getByRole("button", { name: "Your pictures", exact: true }).click();
       await mySheet.waitFor();
       await mySheet.getByLabel("Add picture").setInputFiles(FILE);
       await useIt(me);
@@ -475,7 +497,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await me.goto(`${BASE}/`);
       await me.getByText("Artist", { exact: true }).first().waitFor();
       check((await railImgs(me)) === 1, "artist home: the header picture is still there");
-      await me.getByRole("button", { name: "Edit profile", exact: true }).click();
+      await me.getByRole("button", { name: "Your pictures", exact: true }).click();
       await mySheet.waitFor();
       check((await mySheet.getByLabel("Add picture").count()) === 1, "artist edit profile: the Add tile is back — an artist holds ten");
       await mySheet.getByLabel("Add picture").setInputFiles(FILE);
@@ -487,7 +509,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       check((await personRows()) === 2, "profile_header_photos holds the two rows, in the person's folder");
       await shotMe("artist-home");
       /* a person's floor is 0 — `remove_my_header_photo` has no minimum */
-      await me.getByRole("button", { name: "Edit profile", exact: true }).click();
+      await me.getByRole("button", { name: "Your pictures", exact: true }).click();
       await mySheet.waitFor();
       await mySheet.getByLabel("Remove photo 1").click();
       check((await personRows()) === 2, "artist edit profile: a pressed ✕ has not touched the database");
@@ -503,6 +525,10 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       /* 19 Sep 2026: the disc is a door here too, and there is no rank beside the figures */
       check((await me.getByRole("link", { name: "Open your public page", exact: true }).getAttribute("href")) === `/person/${userId}`, "profile tab: the disc opens your own public page");
       check((await me.getByText(/rank$/).count()) === 0, "profile tab: no rank (19 Sep 2026, the user: 'remove rank from profile tab')");
+      /* and no editing at all: the pencil went into Settings and the styles and
+         links kept their rows and lost their ＋ (19 Sep 2026) */
+      check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "profile tab: NO pencil — Edit profile is Settings' first option");
+      check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 0 && (await me.getByRole("button", { name: "Add a link" }).count()) === 0, "profile tab: the styles and the links are SHOWN here and changed on Home");
       /* the person's own PUBLIC view is what a visitor sees, and nothing else */
       await me.goto(`${BASE}/person/${userId}`);
       await me.getByTestId("person-hero").waitFor();

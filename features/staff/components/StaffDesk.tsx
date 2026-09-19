@@ -6,9 +6,14 @@ import { KIND_WORD, kindOf } from "@/types/profile";
 import { useState, useSyncExternalStore } from "react";
 import { QRBlock } from "@/components/ui/QRBlock";
 import { dosKey } from "@/features/classes/components/ShareSheet";
+import { PeoplePicker } from "@/features/people/components/PeoplePicker";
+import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import {
+  invitePersonAction,
   inviteToTenantAction,
+  payTeamMemberAction,
   removeMemberAction,
+  reorderMembersAction,
   revokeInviteAction,
   setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
@@ -17,11 +22,15 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tokens"
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { MemberRole, TeamMember } from "@/repositories/tenants";
+import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
+import type { TenantType } from "@/types/tenant";
 import {
-  INVITABLE_ROLES,
   MEMBER_GRANTS,
   MEMBER_LEVEL,
+  MEMBER_POWERS,
+  MEMBER_POWER_NOTE,
   MEMBER_ROLE_WORD,
+  rolesFor,
   type InvitableRole,
   type TenantInvite,
 } from "@/types/staff";
@@ -31,10 +40,27 @@ import {
  *  right and "role · what they may do" underneath, the footnote that says what
  *  cannot be granted, and the dashed "＋ Invite staff or team member" button.
  *
- *  The prototype's invite offers "QR / mobile / search". The QR is kept exactly
- *  — it is what you hold up for somebody to join — and the handle underneath it
- *  is an EMAIL, because email is what DanceOS signs people in with today. The
- *  waiting rows wear the prototype's own "⏳ Invited" treatment (18578). */
+ *  The prototype's invite offers "QR / mobile / search", and since 19 Sep 2026
+ *  so does this — the user: "Team should only be able to add team member by
+ *  typing name, number, email or scan … similar suggestion as we get for other
+ *  person dropdowns with photo and name". So SEARCH is the app's one
+ *  `PeoplePicker` (a name, a mobile number, or a scanned profile link, with a
+ *  picture on every row), and the email form is the second way in — for
+ *  somebody who is not on DanceOS yet, which the picker cannot find by
+ *  definition. The QR is kept exactly: it is what you hold up in the room.
+ *
+ *  THREE MORE THINGS THE SAME DAY, all the user's:
+ *   · LABELS COME FROM THE PROFILE YOU ARE IN (`rolesFor`) — a studio hands out
+ *     Faculty, Visiting faculty and Staff; an artist page hands out Faculty and
+ *     Assistant. Beside them, a PERMISSIONS section that says what each one
+ *     actually carries, one line per power, ticked or not.
+ *   · THE ORDER IS THE OWNER'S (`reorder_business_members`) — ▲▼ on every row,
+ *     the crew desk's own control.
+ *   · PAY THEM, WITH A METHOD, AND SEE WHAT HAS BEEN PAID. The payment lands in
+ *     `payouts`, which IS the Earnings desk's MONEY OUT — so it is an expense
+ *     the moment it is written, not a second ledger.
+ *
+ *  The waiting rows wear the prototype's own "⏳ Invited" treatment (18578). */
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
@@ -94,18 +120,55 @@ const gradOf = (name: string): [string, string] => {
 };
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 
+/** THE PERMISSIONS SECTION (19 Sep 2026) — what a label actually carries, one
+ *  line per power. Every one of these is a rule the database keeps. */
+function Powers({ role }: { role: InvitableRole | "owner" }) {
+  return (
+    <>
+      <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "12px 0 7px" }}>PERMISSIONS</div>
+      <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "8px 12px" }}>
+        {MEMBER_POWERS[role].map(([what, on]) => (
+          <div key={what} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 12 }}>
+            <span aria-hidden="true" style={{ width: 16, flexShrink: 0, textAlign: "center", color: on ? "#22C55E" : "var(--muted)", fontWeight: 900 }}>{on ? "✓" : "—"}</span>
+            <span style={{ flex: 1, minWidth: 0, color: on ? INK : SUB }}>{what}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 7, lineHeight: 1.5 }}>{MEMBER_POWER_NOTE[role]}</div>
+    </>
+  );
+}
+
+const PAY_METHODS: ReadonlyArray<readonly [PayoutMethod, string]> = [
+  ["upi", "UPI"],
+  ["bank_transfer", "Bank transfer"],
+  ["cash", "Cash"],
+  ["other", "Other"],
+];
+const PAY_STATES: ReadonlyArray<readonly [PayoutStatus, string]> = [
+  ["done", "Paid"],
+  ["in_transit", "In transit"],
+  ["on_hold", "On hold"],
+];
+
 export function StaffDesk({
   tenantId,
   tenantName,
+  tenantType,
   team,
   invites,
+  payments = [],
   isOwner,
   meUserId,
 }: {
   tenantId: string;
   tenantName: string;
+  /** which labels this profile has to give (19 Sep 2026) */
+  tenantType: TenantType;
   team: TeamMember[];
   invites: TenantInvite[];
+  /** everything this business has paid its people — the history, filtered per row */
+  payments?: PayoutRecord[];
   isOwner: boolean;
   meUserId: string;
 }) {
@@ -114,11 +177,15 @@ export function StaffDesk({
   const [addOpen, setAddOpen] = useState(false);
   const [openMember, setOpenMember] = useState<TeamMember | null>(null);
   const [shareInvite, setShareInvite] = useState<TenantInvite | null>(null);
+  /* the add sheet's two ways in: pick somebody on DanceOS, or ask an address */
+  const [addBy, setAddBy] = useState<"person" | "email">("person");
   const [form, setForm] = useState<{ name: string; email: string; role: InvitableRole }>({
     name: "",
     email: "",
     role: "trainer",
   });
+  const [payOpen, setPayOpen] = useState(false);
+  const [pay, setPay] = useState<{ amount: string; method: PayoutMethod; status: PayoutStatus; note: string }>({ amount: "", method: "upi", status: "done", note: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -127,6 +194,12 @@ export function StaffDesk({
   useCloseOnBack(() => setAddOpen(false), addOpen);
   useCloseOnBack(() => setShareInvite(null), Boolean(shareInvite));
   useCloseOnBack(() => setOpenMember(null), Boolean(openMember));
+  useCloseOnBack(() => setPayOpen(false), payOpen);
+
+  /** the labels this profile has to give, and the seats already on the team */
+  const roles = rolesFor(tenantType);
+  const onTeam = team.map((m) => m.userId);
+  const paidTo = (userId: string) => payments.filter((p) => p.userId === userId);
 
   const fire = (m: string) => {
     setToast(m);
@@ -209,6 +282,35 @@ export function StaffDesk({
                 </div>
                 <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>{MEMBER_GRANTS[m.role]}</div>
               </div>
+              {/* ── THE ORDER (19 Sep 2026) — the crew desk's own ▲▼, and the
+                  owner's alone. It sits OUTSIDE the row's click target, so
+                  arranging never opens the sheet by accident. ── */}
+              {isOwner && team.length > 1 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                  {([-1, 1] as const).map((dir) => {
+                    const at = team.findIndex((x) => x.userId === m.userId);
+                    const to = at + dir;
+                    const off = to < 0 || to >= team.length;
+                    return (
+                      <button
+                        key={dir}
+                        type="button"
+                        disabled={off || busy}
+                        aria-label={dir === -1 ? `Move ${m.name} up` : `Move ${m.name} down`}
+                        onClick={() => {
+                          if (off) return;
+                          const next = team.map((x) => x.userId);
+                          [next[at], next[to]] = [next[to], next[at]];
+                          void run(() => reorderMembersAction({ tenantId, userIds: next }), null);
+                        }}
+                        style={{ fontSize: 10, lineHeight: 1, padding: 0, background: "none", border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit" }}
+                      >
+                        {dir === -1 ? "▲" : "▼"}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </div>
         );
@@ -236,7 +338,7 @@ export function StaffDesk({
             </span>
           </div>
           <div style={{ fontSize: 12, color: SUB, marginTop: 3 }}>
-            {MEMBER_ROLE_WORD[inv.memberRole]} · {inv.email}
+            {MEMBER_ROLE_WORD[inv.memberRole]} · {inv.email ?? "asked on DanceOS"}
           </div>
           <div style={{ fontSize: 9.5, fontWeight: 800, marginTop: 3, color: inv.status === "declined" ? "#F87171" : "#F59E0B" }}>
             {inv.status === "declined" ? "✕ They said no to being on your team" : "⏳ Waiting on them to confirm"}
@@ -344,27 +446,12 @@ export function StaffDesk({
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
               They accept before anything is theirs to run — nobody is added to a business without saying yes.
             </div>
-            <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>Name</div>
-            <input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. Vikram Bhatt"
-              aria-label="Their name"
-              style={inputStyle}
-            />
-            <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>Email they sign in with</div>
-            <input
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="name@example.com"
-              inputMode="email"
-              autoCapitalize="none"
-              aria-label="Their email"
-              style={inputStyle}
-            />
-            <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>What they may do</div>
+
+            {/* THE LABEL IS CHOSEN FIRST, because it is what they are being
+                asked to be — and the picker below asks them in one press */}
+            <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>What they may do</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {INVITABLE_ROLES.map(([k, word]) => {
+              {roles.map(([k, word]) => {
                 const on = form.role === k;
                 return (
                   <span
@@ -390,42 +477,103 @@ export function StaffDesk({
                 );
               })}
             </div>
-            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 7, lineHeight: 1.5 }}>
-              {MEMBER_GRANTS[form.role]}
+            {/* what that label carries, said where it is chosen */}
+            <Powers role={form.role} />
+
+            {/* ── THE TWO WAYS IN (19 Sep 2026) ── */}
+            <div style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, margin: "14px 0 10px" }}>
+              {([["person", "On DanceOS"], ["email", "By email"]] as const).map(([k, word]) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={addBy === k}
+                  onClick={() => setAddBy(k)}
+                  style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: addBy === k ? "var(--solid)" : "transparent", color: addBy === k ? INK : SUB }}
+                >
+                  {word}
+                </button>
+              ))}
             </div>
-            <div
-              role="button"
-              tabIndex={0}
-              onKeyDown={dosKey}
-              aria-label="Send invite"
-              onClick={async () => {
-                if (!canInvite) return;
-                const done = await run(
-                  () =>
-                    inviteToTenantAction({
-                      tenantId,
-                      name: form.name,
-                      email: form.email,
-                      role: form.role,
-                    }),
-                  `📨 ${form.name.trim()} invited — they accept to join`
-                );
-                if (done) setAddOpen(false);
-              }}
-              style={{
-                marginTop: 14,
-                textAlign: "center",
-                padding: "13px",
-                borderRadius: 999,
-                background: canInvite ? "var(--text)" : EL,
-                color: canInvite ? "var(--solid)" : "var(--muted)",
-                fontWeight: 800,
-                fontSize: 13.5,
-                cursor: canInvite ? "pointer" : "default",
-              }}
-            >
-              {busy ? "Sending…" : "Send invite"}
-            </div>
+
+            {addBy === "person" ? (
+              /* the app's one people search — a name, a mobile number, or a
+                 scanned profile link, every row with its picture (R27) */
+              <PeoplePicker
+                title="Search DanceOS, then ask them"
+                placeholder="Name or mobile number"
+                ariaLabel="Search for somebody to add"
+                actionWord="Ask"
+                actionColor={PINK}
+                exclude={[meUserId, ...onTeam]}
+                pickLabel={(p) => `Ask ${p.fullName}`}
+                onPick={async (p) => {
+                  const done = await run(
+                    () => invitePersonAction({ tenantId, userId: p.id, role: form.role }),
+                    `📨 ${p.fullName} asked — they accept to join`
+                  );
+                  if (done) setAddOpen(false);
+                }}
+              />
+            ) : (
+              <>
+                {/* the address is for somebody who is NOT on DanceOS yet — which
+                    is exactly what the picker above cannot find */}
+                <div style={{ fontSize: 10.5, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5 }}>
+                  For somebody who has no DanceOS account yet. They sign in with this address to accept.
+                </div>
+                <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>Name</div>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g. Vikram Bhatt"
+                  aria-label="Their name"
+                  style={inputStyle}
+                />
+                <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>Email they sign in with</div>
+                <input
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="name@example.com"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  aria-label="Their email"
+                  style={inputStyle}
+                />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={dosKey}
+                  aria-label="Send invite"
+                  onClick={async () => {
+                    if (!canInvite) return;
+                    const done = await run(
+                      () =>
+                        inviteToTenantAction({
+                          tenantId,
+                          name: form.name,
+                          email: form.email,
+                          role: form.role,
+                        }),
+                      `📨 ${form.name.trim()} invited — they accept to join`
+                    );
+                    if (done) setAddOpen(false);
+                  }}
+                  style={{
+                    marginTop: 14,
+                    textAlign: "center",
+                    padding: "13px",
+                    borderRadius: 999,
+                    background: canInvite ? "var(--text)" : EL,
+                    color: canInvite ? "var(--solid)" : "var(--muted)",
+                    fontWeight: 800,
+                    fontSize: 13.5,
+                    cursor: canInvite ? "pointer" : "default",
+                  }}
+                >
+                  {busy ? "Sending…" : "Send invite"}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -542,7 +690,7 @@ export function StaffDesk({
               WHAT THEY MAY DO
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-              {INVITABLE_ROLES.map(([k, word]) => {
+              {roles.map(([k, word]) => {
                 const on = openMember.role === k;
                 return (
                   <span
@@ -576,11 +724,51 @@ export function StaffDesk({
                 );
               })}
             </div>
-            <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.55, marginBottom: 14 }}>
-              {MEMBER_GRANTS[openMember.role]}
-            </div>
+            {openMember.role === "owner" ? null : <Powers role={openMember.role as InvitableRole} />}
 
-            <div style={{ display: "flex", gap: 8 }}>
+            {/* ── PAY THEM (19 Sep 2026) ─────────────────────────────────────
+                A payment the studio has already made, recorded — Step 13's own
+                limit, and the same ledger the Earnings desk reads as MONEY OUT.
+                Nothing moves through code. ── */}
+            {isOwner ? (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 7, margin: "14px 0 7px" }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)" }}>PAYMENTS</span>
+                  <span style={{ fontSize: 10.5, color: SUB }}>
+                    {(() => {
+                      const rows = paidTo(openMember.userId);
+                      const total = rows.filter((r) => r.status === "done").reduce((n, r) => n + r.amountInr, 0);
+                      return rows.length === 0 ? "nothing yet" : `${rupees(total)} paid · ${rows.length} ${rows.length === 1 ? "payment" : "payments"}`;
+                    })()}
+                  </span>
+                </div>
+                {paidTo(openMember.userId).slice(0, 6).map((p) => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1px solid ${EL}` }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 12, fontWeight: 800 }}>{rupees(p.amountInr)}</span>
+                      <span style={{ display: "block", fontSize: 10, color: SUB, marginTop: 1 }}>
+                        {p.paidOn} · {p.method.replace("_", " ")}
+                        {p.sessionCount > 0 ? ` · ${p.sessionCount} ${p.sessionCount === 1 ? "session" : "sessions"}` : ""}
+                        {p.note ? ` · ${p.note}` : ""}
+                      </span>
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, padding: "3px 8px", borderRadius: 999, background: p.status === "done" ? "rgba(34,197,94,.16)" : EL, color: p.status === "done" ? "#22C55E" : SUB }}>
+                      {p.status === "done" ? "PAID" : p.status === "in_transit" ? "IN TRANSIT" : "ON HOLD"}
+                    </span>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  aria-label={`Pay ${openMember.name}`}
+                  onClick={() => { setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
+                  style={{ width: "100%", marginTop: 10, textAlign: "center", padding: "11px", borderRadius: 999, border: `1.5px dashed ${PINK}`, background: "none", color: PINK, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  ＋ Record a payment
+                </button>
+              </>
+            ) : null}
+
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <span
                 role="button"
                 tabIndex={0}
@@ -630,6 +818,94 @@ export function StaffDesk({
             </div>
             <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.5 }}>
               Taking somebody off also ends any class they were holding attendance or refunds on.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── RECORD A PAYMENT — with the method, which is the user's own ask
+          ("payment for team members should also give option for payment
+          methods"). The four are the ones the ledger already knows. ── */}
+      {payOpen && openMember && (
+        <div onClick={() => setPayOpen(false)} style={{ ...sheetWrap, zIndex: 620 }}>
+          <div role="dialog" aria-modal="true" aria-label={`Pay ${openMember.name}`} onClick={(e) => e.stopPropagation()} style={sheet}>
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
+            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Pay {openMember.name}</b>
+            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
+              DanceOS records what you have paid — it does not move the money. This lands in your Earnings as an expense.
+            </div>
+
+            <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>Amount</div>
+            <input
+              value={pay.amount}
+              onChange={(e) => setPay({ ...pay, amount: e.target.value.replace(/[^0-9]/g, "") })}
+              placeholder="e.g. 9000"
+              inputMode="numeric"
+              aria-label="Amount in rupees"
+              style={inputStyle}
+            />
+
+            <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>How you paid</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {PAY_METHODS.map(([k, word]) => {
+                const on = pay.method === k;
+                return (
+                  <button key={k} type="button" aria-pressed={on} aria-label={word} onClick={() => setPay({ ...pay, method: k })} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, cursor: "pointer", background: on ? "var(--text)" : CARD, color: on ? "var(--solid)" : SUB, border: `1px solid ${on ? "var(--text)" : EL}`, fontFamily: "inherit" }}>
+                    {word}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>Where it stands</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {PAY_STATES.map(([k, word]) => {
+                const on = pay.status === k;
+                return (
+                  <button key={k} type="button" aria-pressed={on} aria-label={word} onClick={() => setPay({ ...pay, status: k })} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, cursor: "pointer", background: on ? "var(--text)" : CARD, color: on ? "var(--solid)" : SUB, border: `1px solid ${on ? "var(--text)" : EL}`, fontFamily: "inherit" }}>
+                    {word}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ fontSize: 12, color: SUB, margin: "12px 0 4px" }}>Note (optional)</div>
+            <input
+              value={pay.note}
+              onChange={(e) => setPay({ ...pay, note: e.target.value })}
+              placeholder="e.g. September"
+              aria-label="Note"
+              maxLength={200}
+              style={inputStyle}
+            />
+
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button type="button" onClick={() => setPayOpen(false)} style={{ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, background: CARD, border: `1px solid ${EL}`, fontWeight: 800, fontSize: 12.5, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy || Number(pay.amount) < 1}
+                aria-label="Record this payment"
+                onClick={async () => {
+                  const done = await run(
+                    () =>
+                      payTeamMemberAction({
+                        tenantId,
+                        userId: openMember.userId,
+                        amountInr: Number(pay.amount),
+                        method: pay.method,
+                        status: pay.status,
+                        note: pay.note.trim() || null,
+                      }),
+                    `${rupees(Number(pay.amount))} recorded for ${openMember.name}`
+                  );
+                  if (done) { setPayOpen(false); setOpenMember(null); }
+                }}
+                style={{ flex: 1.4, textAlign: "center", padding: "12px", borderRadius: 999, background: Number(pay.amount) >= 1 ? "var(--text)" : EL, color: Number(pay.amount) >= 1 ? "var(--solid)" : "var(--muted)", fontWeight: 900, fontSize: 12.5, cursor: Number(pay.amount) >= 1 ? "pointer" : "default", border: "none", fontFamily: "inherit" }}
+              >
+                {busy ? "Recording…" : "Record payment"}
+              </button>
             </div>
           </div>
         </div>

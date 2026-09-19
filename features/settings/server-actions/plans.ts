@@ -87,6 +87,9 @@ const tenantProfileSchema = z.object({
   accepts: z.object({ upi: z.boolean(), cards: z.boolean(), cash: z.boolean(), bank: z.boolean() }),
   /* the Mail button's address (19 Sep 2026): omitted → unchanged, null → cleared */
   contactEmail: z.string().trim().email("that is not an email address").max(254).nullable().optional(),
+  /* THE DANCE STYLES (19 Sep 2026): omitted → unchanged. The database decides
+     whether an empty list is allowed — a studio's is not (`20260919190000`) */
+  styles: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
 });
 export type TenantProfileActionInput = z.infer<typeof tenantProfileSchema>;
 

@@ -535,19 +535,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
                 Calendar
               </div>
             </div>
-            {/* the calendar looks forward; the chip is the way back (9071-9075) */}
-            <Link
-              href="/stats?tab=history"
-              aria-label="History"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 999, background: "rgba(0,0,0,.32)", border: "1px solid rgba(255,255,255,.3)", flexShrink: 0, position: "relative", textDecoration: "none" }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 8v4l3 2" />
-                <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
-                <path d="M3.5 5v3.5H7" />
-              </svg>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>History</span>
-            </Link>
+            {/* ⚠ NO HISTORY CHIP (19 Sep 2026, the user's list). It opened
+                `/stats?tab=history`, which the Stats chip on every hero already
+                opens — the calendar looks forward, and the way back was a second
+                door to one screen. The route is untouched (Rule 14). */}
           </div>
         )}
 

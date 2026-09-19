@@ -8,19 +8,20 @@ import { ensureArtistPage, findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findSupportThreads } from "@/repositories/support";
-import { findMyPlace } from "@/repositories/stats";
+import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { headerMaxFor, photoUrl } from "@/lib/media/photo";
-import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
+import { CARD, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 import { BizSection, HOME_TYPE } from "@/features/home/components/home-kit";
 import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
-import { EditProfileButton } from "@/features/profiles/components/EditProfileSheet";
+import { HomeBand } from "@/features/profiles/components/HomeBand";
+import { PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
+import { EyeIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
 import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
-import { ROLE_RING, tierOf } from "@/features/profiles/components/profile-kit";
 import { KIND_WORD, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
@@ -110,10 +111,10 @@ export default async function HomePage() {
      a person's whether or not they hold the plan (R24) */
   const publicHref = isOrg ? `/org/${profile.id}` : `/person/${profile.id}`;
 
-  /* WHERE YOU STAND, ON THE SLEEVE THAT SAYS WHO YOU ARE (7324-7333). The place
-     is Step 25's own — the same RPC the Profile tab and the boards ask — and a
-     studio is not on a dancer's ladder, so it is not asked for one. */
-  const chartSeg = isArtist ? "artist" : "dancer";
+  /* ⚠ NO RANK ON HOME (19 Sep 2026, the user: "Remove rank from home"). Where
+     you stand is the Stats chip's own screen, which prints the place WITH its
+     population — the Profile tab lost the same figure earlier the same day
+     (row C20), and `findMyPlace` is no longer read for either. */
 
   /* AN ORGANIZATION'S HOME ASKS NO STUDIO'S QUESTION (17 Sep 2026, the user:
      "organization home tab should not have classes options. classes can only be
@@ -140,16 +141,23 @@ export default async function HomePage() {
      its photos, ask for the badge. It stays a constant so the two folds below
      keep reading as a decision rather than as dead code. */
   const orgAwaitingApproval = false;
-  /* FOUR INDEPENDENT READS IN ONE ROUND TRIP (19 Sep 2026, "make app snappier"):
-     the header pictures, where you stand, today's deck, and — for an artist — the
-     page provisioned on first render (see below). They used to run in sequence. */
-  const [header, rank, deck, pageId] = await Promise.all([
+  /* EVERY INDEPENDENT READ IN ONE ROUND TRIP (19 Sep 2026, "make app snappier"):
+     the header pictures, today's deck, the page provisioned on first render for
+     an artist (see below), and — since the figures came to Home the same day —
+     the five follow lists behind them. They used to run in sequence, and the
+     rank that was here is gone.
+     ⚠ AN ORGANIZATION FOLLOWS NOBODY (R11), so it asks for none of the four
+     following reads; its own followers it does have. */
+  const [header, deck, pageId, followers, followingPeople, followingTenants, followingOrgs, followingCrews] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
-    profile.role === "org" ? Promise.resolve(null) : findMyPlace(supabase, chartSeg),
     findMyDeck(supabase, user.id, nowIso, businesses),
     isOrg || !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
+    findMyPersonFollowers(supabase).catch(() => []),
+    isOrg ? Promise.resolve([]) : findMyFollowedPeople(supabase).catch(() => []),
+    isOrg ? Promise.resolve([]) : findMyFollowing(supabase).catch(() => []),
+    isOrg ? Promise.resolve([]) : findMyFollowedOrganizations(supabase).catch(() => []),
+    isOrg ? Promise.resolve([]) : findMyFollowedCrews(supabase).catch(() => []),
   ]);
-  const tier = rank ? tierOf(rank.place) : null;
 
   /* the metal the KIND wears (DOS_RINGS 1462): gold for an organization, silver
      for an artist, bronze for a user — the same pair the Profile tab paints with */
@@ -219,49 +227,44 @@ export default async function HomePage() {
              same area") — a person's record, an organization's combined board */
           stats={<StatsChip href={isOrg ? "/business/stats" : "/stats"} />}
           meta={metaLine ? place ? <HeroPlace text={metaLine} query={place} /> : <span style={{ fontVariantNumeric: "tabular-nums" }}>{metaLine}</span> : null}
-          /* the styles you dance, as the app's one style tile (7330, DosStyleRow) */
-          styles={profile.styles}
-          styleAria={(s) => `${s} — a style you dance`}
-          /* the disc is the face — or the logo. Its ＋ went into the Edit sheet
-             on 16 Sep 2026 with the header's ✕, so both pictures are changed in
-             one place rather than two controls on a hero */
+          /* ⚠ THE STYLES ARE IN THE BAND BELOW, NOT HERE (19 Sep 2026, the user:
+             "Dance style for the page should also be editable only from the home
+             tab"): drawing them read-only here AND editable below would be the
+             same row twice, so the hero's own styles row is left empty on Home */
           avatar={face}
           avatarAlt={profile.fullName}
-          /* THE PICTURE IS THE DOOR TO YOUR PUBLIC PAGE (19 Sep 2026, the user:
-             "clicking on the profile photo on home tab takes to profile so can
-             remove the eye from top right on home") — the eye that sat under the
-             pencil for a few hours the same day, and in the bar before that, is
-             gone from Home; the disc opens the page a stranger reads */
-          avatarHref={publicHref}
+          /* THE PICTURE OPENS BOTH PICTURE SECTIONS (19 Sep 2026, the user:
+             "should be able to click and view both pictures sections when
+             clicking on that photo"). Home is where the profile picture and the
+             header are changed, so the disc is that door; the eye in the corner
+             is the public page, which is what the disc opened for a few hours
+             the same day. */
+          avatarSlot={<PicturesButton profile={profile} header={header} headerMax={headerMax} grad={ring} avatar={face} />}
           shots={shots}
-          /* EDIT PROFILE, FROM HOME (15 Sep 2026, the user: "where is the edit
-             profile button?") — the pencil on the hero's corner (10613), opening
-             the Profile tab's own sheet: name, mobile, the pictures, the rest */
-          corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} isArtist={isArtist} />}
+          /* ⚠ NO PENCIL (19 Sep 2026, the user: "Editing profile should be
+             shifted to settings and should be the top option, all edit profile
+             options to be removed from home and profile pages") — the corner is
+             the eye alone, and Edit profile is Settings' first tile */
+          corner={
+            <Link href={publicHref} aria-label="Public view" style={cornerChip}>
+              <EyeIcon />
+            </Link>
+          }
         >
-          {/* ⚠ WHAT WAS HERE HAS GONE UP INTO THE HERO (18 Sep 2026). The role
-              word moved to the eyebrow, and the account number under it — both
-              now read as one line beside the picture. The rank is what is left,
-              because it is a figure rather than a label. */}
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" }}>
-            {/* the rank, in the metal it earned — drawn only once there IS a place
-                to stand, because Step 25's rule is that "#0" is not a rank (7324-7333) */}
-            {rank && tier ? (
-              <Link
-                href={`/stats?tab=charts&seg=${chartSeg}`}
-                aria-label={`Rank ${rank.place} of ${rank.population} — open global rankings`}
-                style={{ textDecoration: "none" }}
-              >
-                <span style={{ display: "flex", alignItems: "baseline", gap: 1, lineHeight: 1, filter: `drop-shadow(0 2px 10px ${tier.text}44)` }}>
-                  <span style={{ fontSize: 13, fontWeight: 900, fontFamily: DOS_DISPLAY, color: tier.text, opacity: 0.8 }}>#</span>
-                  <span style={{ fontSize: 20, fontWeight: 900, letterSpacing: -0.8, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums", background: `linear-gradient(135deg,${tier.ring[0]},${tier.ring[1]})`, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
-                    {rank.place}
-                  </span>
-                </span>
-                <span style={{ display: "block", ...HOME_TYPE.micro, color: tier.text, marginTop: 4 }}>{tier.label} rank</span>
-              </Link>
-            ) : null}
-          </div>
+          {/* ⚠ WHAT WAS HERE HAS GONE UP INTO THE HERO (18 Sep 2026): the role
+              word moved to the eyebrow and the account number under it. What
+              stands here now is THE BAND (19 Sep 2026) — the two follow figures
+              with their list, the styles with their ＋, and the links right under
+              them with theirs. The RANK that lived here is gone with the same
+              message; it is the Stats chip's own screen. */}
+          <HomeBand
+            profile={profile}
+            followers={followers}
+            followingPeople={followingPeople}
+            followingTenants={followingTenants}
+            followingOrgs={followingOrgs}
+            followingCrews={followingCrews}
+          />
         </IdentityHero>
 
         {/* ── WHERE YOU STAND WITH DANCEOS (R13, 9 Sep 2026) — an organization only,

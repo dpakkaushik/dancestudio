@@ -390,6 +390,43 @@ export async function recordPayout(
   }
 }
 
+/** PAYING SOMEBODY ON THE TEAM (19 Sep 2026, the user: "should be able to pay
+ *  them, track payment history and should be part of expenses in the earnings").
+ *  `recordPayout` bills for SESSIONS TAUGHT and refuses anything else, so a
+ *  studio could not pay its front-desk staff at all. This is a payout with an
+ *  amount the owner states and no session lines — the same ledger, so the
+ *  Earnings desk counts it as money out the moment it is written. */
+export async function recordTeamPayment(
+  supabase: SupabaseClient,
+  input: {
+    tenantId: string;
+    userId: string;
+    amountInr: number;
+    method: PayoutMethod;
+    status: PayoutStatus;
+    paidOn?: string | null;
+    note?: string | null;
+  }
+): Promise<void> {
+  const { error } = await supabase.rpc("record_team_payment", {
+    p_business_id: input.tenantId,
+    p_user_id: input.userId,
+    p_amount_inr: input.amountInr,
+    p_method: input.method,
+    p_status: input.status,
+    p_paid_on: input.paidOn ?? null,
+    p_note: input.note ?? null,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/* ⚠ NO SEPARATE PER-MEMBER READ (19 Sep 2026). "Track payment history" is
+   `findTenantPayLedger`'s `payouts`, which the Team desk already has to hand and
+   which carries `userId` on every row — one query for the whole desk rather than
+   one per person opened. The history is that list, filtered. */
+
 export async function setPayoutStatus(
   supabase: SupabaseClient,
   payoutId: string,

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import {
@@ -7,11 +9,13 @@ import {
   deleteLeadAction,
   updateLeadAction,
 } from "@/features/leads/server-actions/leads";
+import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import { photoUrl } from "@/lib/media/photo";
 import type { DanceClass } from "@/types/class";
-import { LEAD_SOURCES, LEAD_STAGES, LEAD_TINT, type Lead, type LeadStatus } from "@/types/lead";
+import { LEAD_SOURCES, LEAD_STAGES, LEAD_TINT, type Lead, type LeadStatus, type StudentStats } from "@/types/lead";
 
 /** The students desk — the studio's leads, lifted from the prototype's enquiry
  *  desk shape (DanceOSApp.jsx:5894-6000): the funnel summary, the stage chip row
@@ -51,6 +55,7 @@ export function LeadsDesk({
   tenantId,
   tenantName,
   leads,
+  stats = {},
   classes,
   /** Stamped on the server so the row ages never recompute mid-render. */
   now,
@@ -58,11 +63,16 @@ export function LeadsDesk({
   tenantId: string;
   tenantName: string;
   leads: Lead[];
+  /** what each student who is on DanceOS has booked and turned up to here */
+  stats?: Record<string, StudentStats>;
   classes: DanceClass[];
   now: number;
 }) {
   const [stage, setStage] = useState<LeadStatus | "all">("all");
   const [addOpen, setAddOpen] = useState(false);
+  /* the two ways a student gets on the list (19 Sep 2026, the user: "Students —
+     adding same way as for Team"): pick somebody on DanceOS, or type a walk-in */
+  const [addBy, setAddBy] = useState<"person" | "typed">("person");
   const [openLead, setOpenLead] = useState<Lead | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,23 +265,42 @@ export function LeadsDesk({
             borderLeft: `3px solid ${LEAD_TINT[lead.status]}`,
           }}
         >
-          <span
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 17,
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 11.5,
-              fontWeight: 900,
-              color: "#fff",
-              background: `linear-gradient(135deg,${LEAD_TINT[lead.status]},#7C3AED)`,
-            }}
-          >
-            {lead.name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
-          </span>
+          {/* ⚠ THE FACE IS THE DOOR TO THEIR PROFILE (19 Sep 2026, the user:
+              "photo stats, name and profile on clicking") — for a student who
+              IS somebody on DanceOS. A walk-in typed at the desk has no page,
+              so their square is the initials it always was. The link stops the
+              press from also opening the lead sheet, which is what the rest of
+              the row does. */}
+          {(() => {
+            const face = photoUrl(lead.avatarPath);
+            const square = (
+              <span
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  flexShrink: 0,
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11.5,
+                  fontWeight: 900,
+                  color: "#fff",
+                  background: `linear-gradient(135deg,${LEAD_TINT[lead.status]},#7C3AED)`,
+                }}
+              >
+                {face ? <Image src={face} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : lead.name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+              </span>
+            );
+            return lead.userId ? (
+              <Link href={`/person/${lead.userId}`} aria-label={`Open ${lead.name}'s profile`} onClick={(e) => e.stopPropagation()} style={{ display: "block", flexShrink: 0, textDecoration: "none" }}>
+                {square}
+              </Link>
+            ) : (
+              square
+            );
+          })()}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {lead.name}
@@ -289,6 +318,13 @@ export function LeadsDesk({
               {[lead.interest, stageWord(lead.status).toLowerCase()].filter(Boolean).join(" · ")}
               {lead.status === "trial_booked" && lead.trialClassTitle ? ` · ${lead.trialClassTitle}` : ""}
             </div>
+            {/* WHAT THEY HAVE ACTUALLY DONE HERE — counted, and only when there
+                is a record to count. Attended is CHECK-INS, not bookings. */}
+            {lead.userId && stats[lead.userId] ? (
+              <div style={{ fontSize: 9.5, fontWeight: 800, color: "var(--muted)", marginTop: 3, fontVariantNumeric: "tabular-nums" }}>
+                {stats[lead.userId].booked} booked · {stats[lead.userId].attended} attended
+              </div>
+            ) : null}
           </div>
           <span style={{ flexShrink: 0, fontSize: 9.5, color: "var(--muted)", fontFamily: DOS_MONO }}>
             {agoText(lead.createdAt, now)}
@@ -370,6 +406,56 @@ export function LeadsDesk({
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px" }}>
               Someone who asked about classes. You can move them along as things happen.
             </div>
+
+            {/* ── THE TWO WAYS ONTO THE LIST (19 Sep 2026, the user: "Students —
+                adding same way as for Team"). Somebody on DanceOS is PICKED, so
+                the row carries their picture, opens their profile and counts
+                what they have actually done here; a walk-in is typed, and is
+                still a real student with none of those. ── */}
+            <div style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, marginBottom: 12 }}>
+              {([["person", "On DanceOS"], ["typed", "Walk-in"]] as const).map(([k, word]) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={addBy === k}
+                  onClick={() => setAddBy(k)}
+                  style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: addBy === k ? "var(--solid)" : "transparent", color: addBy === k ? INK : SUB }}
+                >
+                  {word}
+                </button>
+              ))}
+            </div>
+
+            {addBy === "person" ? (
+              <PeoplePicker
+                title="Search DanceOS, then add them"
+                placeholder="Name or mobile number"
+                ariaLabel="Search for a student"
+                actionWord="Add"
+                actionColor={LEAD_TINT.new}
+                exclude={leads.map((l) => l.userId).filter((x): x is string => Boolean(x))}
+                pickLabel={(p) => `Add ${p.fullName}`}
+                onPick={async (p) => {
+                  const done = await run(
+                    () =>
+                      createLeadAction({
+                        tenantId,
+                        name: p.fullName,
+                        /* their number is theirs to publish — the desk keeps
+                           what is already public and asks for nothing more */
+                        mobile: p.phone ?? null,
+                        interest: null,
+                        source: "walk_in",
+                        note: null,
+                        userId: p.id,
+                      }),
+                    `${p.fullName} added`
+                  );
+                  if (done) setAddOpen(false);
+                }}
+              />
+            ) : (
+            <>
             <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>Name</div>
             <input
               value={form.name}
@@ -467,6 +553,8 @@ export function LeadsDesk({
             >
               {busy ? "Saving…" : "Save lead"}
             </div>
+            </>
+            )}
           </div>
         </div>
       )}

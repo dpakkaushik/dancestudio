@@ -12,6 +12,7 @@ import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
+import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
 import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
@@ -76,6 +77,12 @@ export function BusinessEditSheet({
   /* the Mail button's address (19 Sep 2026) — an empty box clears it */
   const [email, setEmail] = useState(tenant.contactEmail ?? "");
   const [socials, setSocials] = useState<Array<{ platform: string; url: string }>>(tenant.socials);
+  /* THE STYLES IT DANCES (19 Sep 2026, the user: "some studios dont show dance
+     styles on profile it is mandatory to have one at least"). They were derived
+     from the studio's PUBLISHED classes, so a studio with none showed none —
+     and a brand-new studio always has none. Its own field now, and the database
+     refuses a studio that ends up with an empty list. */
+  const [styles, setStyles] = useState<string[]>(tenant.styles);
   const [addPlatform, setAddPlatform] = useState<string>("");
   const [addUrl, setAddUrl] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -128,9 +135,15 @@ export function BusinessEditSheet({
   const save = () =>
     start(async () => {
       setErr(null);
+      /* say the rule before asking the database to refuse it */
+      if (isStudio && styles.length === 0) {
+        setErr("A studio says at least one dance style — it is what Discover files it under.");
+        return;
+      }
       const yr = founded ? Number(founded) : null;
       const out = await updateTenantProfileAction({
         tenantId: tenant.id,
+        styles,
         name: name.trim() !== tenant.name ? name.trim() : undefined,
         about: about.trim() || null,
         foundedYear: yr,
@@ -248,6 +261,52 @@ export function BusinessEditSheet({
           same door; an empty box clears it */}
       <div style={fieldLabel}>Email</div>
       <input aria-label="Email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@studio.example" style={fieldInput} />
+
+      {/* ── THE DANCE STYLES (19 Sep 2026) — the app's one style registry, as the
+          tiles every other style row draws. A studio may not end up with none:
+          the last one's Remove is disabled and says why, the way the last header
+          picture's ✕ does. ── */}
+      <div style={{ ...fieldLabel, marginTop: 6 }}>Dance styles</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        {styles.map((s) => {
+          const last = isStudio && styles.length === 1;
+          return (
+            <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 8px 6px 11px", borderRadius: 999, background: CARD, border: `1px solid ${LINE}` }}>
+              <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 5, background: dosStyleColor(s) }} />
+              <span style={{ fontSize: 12, fontWeight: 800, color: INK }}>{s}</span>
+              <button
+                type="button"
+                disabled={last}
+                title={last ? "A studio says at least one dance style" : undefined}
+                aria-label={last ? `${s} is the studio's last style — add another first` : `Remove ${s}`}
+                onClick={() => setStyles((x) => x.filter((y) => y !== s))}
+                style={{ background: "none", border: "none", color: last ? MUTED : "#F87171", fontSize: 14, cursor: last ? "default" : "pointer", fontFamily: "inherit", opacity: last ? 0.5 : 1, padding: 0 }}
+              >
+                ×
+              </button>
+            </span>
+          );
+        })}
+        {styles.length === 0 ? <span style={{ fontSize: 12, color: isStudio ? "#F87171" : SUB }}>{isStudio ? "Name at least one — it is what Discover files this studio under." : "None yet."}</span> : null}
+      </div>
+      {styles.length < 12 ? (
+        <select
+          aria-label="Add a dance style"
+          value=""
+          onChange={(e) => {
+            const s = e.target.value;
+            if (s) setStyles((x) => (x.includes(s) ? x : [...x, s]));
+          }}
+          style={fieldInput}
+        >
+          <option value="">＋ Add a dance style…</option>
+          {DOS_STYLE_NAMES.filter((s) => !styles.includes(s)).map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      ) : null}
 
       <div style={{ ...fieldLabel, marginTop: 6 }}>Links</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>

@@ -326,9 +326,21 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
   const pass = held
     ? { code: eventCodeOf(mine[0].id), label: "Entry code", note: "Show this at the door." }
     : { code: `${host || ""}/e/${ev.shareSlug}`, label: "Booking link", note: isMember ? "Anyone who scans this can book your event." : "Anyone who scans this can book this event." };
-  const canEnter = !isMember && takesEntries(cat) && open.length > 0;
-  /* a ticket you hold does not need a bar offering to sell you one (13236) */
-  const showBar = !isDraft && !held;
+  /* ⚠ AN EVENT HAS TWO SIDES, AND HOLDING ONE IS NOT HOLDING THE OTHER
+     (19 Sep 2026, the user: "some events in Discover don't show both book as
+     participant and spectator options even when it's there").
+     `showBar` was `!held`, and `held` was ANY booking — so buying a ticket took
+     the "Book as participant" button away with it, and entering a battle took
+     the ticket button away. The two sides are counted apart now: the bar stands
+     while either side is still open to this person, and each button is drawn
+     only for the side they do not already hold. The prototype's rule at 13236 —
+     "a ticket you hold does not need a bar offering to sell you one" — is kept
+     exactly, per side. */
+  const heldEntry = mine.some((b) => b.kind === "participant");
+  const heldSeat = mine.some((b) => b.kind === "spectator");
+  const canEnter = !isMember && takesEntries(cat) && open.length > 0 && !heldEntry;
+  const canSeat = tick && !allGone && !heldSeat;
+  const showBar = !isDraft && (canEnter || canSeat || !held);
   const mapsHref = /^https?:\/\//i.test(ev.mapsUrl) ? ev.mapsUrl : `https://maps.google.com/?q=${encodeURIComponent([ev.venue, ev.address ?? ev.city].filter(Boolean).join(", "))}`;
   const prizePool = ev.prizes.reduce((a, x) => a + (x || 0), 0);
   const PL = ["1st", "2nd", "3rd"];
@@ -694,7 +706,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                   Book as participant
                 </div>
               ) : null}
-              {tick && !allGone ? (
+              {canSeat ? (
                 <div
                   role="button"
                   tabIndex={0}
@@ -711,11 +723,24 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                   Book as a spectator
                 </div>
               ) : null}
-              {!canEnter && (!tick || allGone) ? (
+              {!canEnter && !canSeat ? (
                 <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 16, background: "var(--card)", border: "1px dashed var(--el)" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800 }}>{cat === "showcase" ? "Invite-only line-up" : "Nothing to book here"}</div>
-                    <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>{cat === "showcase" ? "The host builds the line-up — no tickets are on sale." : "No tickets and no open entries."}</div>
+                    {/* what is left to say depends on WHY nothing is offered: you
+                        already hold both sides, a showcase has no entry, or there
+                        is simply nothing on sale (19 Sep 2026) */}
+                    <div style={{ fontSize: 12.5, fontWeight: 800 }}>{heldEntry || heldSeat ? "You are in" : cat === "showcase" ? "Invite-only line-up" : "Nothing to book here"}</div>
+                    <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
+                      {heldEntry && heldSeat
+                        ? "You hold an entry and a seat — both are below."
+                        : heldEntry
+                          ? "Your entry is below."
+                          : heldSeat
+                            ? "Your ticket is below."
+                            : cat === "showcase"
+                              ? "The host builds the line-up — no tickets are on sale."
+                              : "No tickets and no open entries."}
+                    </div>
                   </div>
                 </div>
               ) : null}

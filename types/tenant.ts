@@ -32,6 +32,11 @@ export interface Tenant {
   contactEmail: string | null;
   /** the social chips (10760) */
   socials: SocialLink[];
+  /** THE STYLES IT SAYS IT DANCES (19 Sep 2026, the user: "some studios dont
+   *  show dance styles on profile it is mandatory to have one at least"). Its
+   *  own field now — they used to be derived from its PUBLISHED classes, so a
+   *  studio with none yet showed none. A studio may not be saved without one. */
+  styles: string[];
   /** the enquiry types it accepts — null means every type its kind allows */
   enquiryTypes: string[] | null;
   accepts: AcceptedMethods;

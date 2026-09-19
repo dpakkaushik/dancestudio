@@ -123,7 +123,10 @@ export function MembershipsScreen({
 
       {canSell ? (
         <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
-          {([["mine", `Yours · ${passes.length}`], ["selling", `On sale · ${selling.length}`]] as const).map(([k, label]) => (
+          {/* BOOKED · MANAGE (19 Sep 2026, the user: "membership columns should be
+              Booked and Manage") — the same two sides, in the words the Classes
+              desk already uses: what you hold, and what you sell */}
+          {([["mine", `Booked · ${passes.length}`], ["selling", `Manage · ${selling.length}`]] as const).map(([k, label]) => (
             <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: seg === k ? "var(--solid)" : "transparent", color: seg === k ? INK : SUB }}>
               {label}
             </button>

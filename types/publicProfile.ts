@@ -35,6 +35,9 @@ export interface PublicTenant {
   /** what the business takes from students (S_payments 16612) — printed on the page, edited on the desk */
   accepts: AcceptedMethods;
   verifiedAt: string | null;
+  /** THE STYLES IT SAYS IT DANCES (19 Sep 2026) — a studio names at least one,
+   *  and the Edit sheet is where they are named */
+  styles: string[];
 }
 
 /** THE TEAM A STUDIO'S PAGE PRINTS (19 Sep 2026, the user: "Studios — Owner,
@@ -53,7 +56,9 @@ export interface PublicTeamMember {
 
 export interface PublicTenantProfile {
   tenant: PublicTenant;
-  /** distinct styles of the business's published classes, most-taught first */
+  /** what it SAYS it dances (19 Sep 2026, `businesses.styles`), falling back to
+   *  the distinct styles of its published classes for a row that has neither
+   *  been edited nor had anything to backfill from */
   styles: string[];
   team: PublicTeamMember[];
   followers: number;

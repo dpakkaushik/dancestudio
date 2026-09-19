@@ -80,14 +80,21 @@ const askToTileClass = (c: MyClaimAsk): DanceClass => ({
  *  Events left this page for /my-events the same day; `?kind=event` links that
  *  are out in the world land there (Rule 14). */
 type Show = "booked" | "assist" | "manage";
-const SHOWS: Array<{ k: Show; label: string; aria: string }> = [
-  { k: "booked", label: "Booked", aria: "Show the classes you booked" },
-  { k: "assist", label: "Assist", aria: "Show the classes you teach or assist on" },
+const SHOWS: Record<Show, { label: string; aria: string }> = {
+  booked: { label: "Booked", aria: "Show the classes you booked" },
+  assist: { label: "Assist", aria: "Show the classes you teach or assist on" },
   /* MANAGE, IN PLACE (18 Sep 2026, the user: "Manage class should not take to a
      separate page for artist — should be handled from within the same page"):
      the artist's own register, drawn here as a third segment */
-  { k: "manage", label: "Manage", aria: "Manage the classes on your artist page" },
-];
+  manage: { label: "Manage", aria: "Manage the classes on your artist page" },
+};
+
+/** ⚠ THE ORDER IS THE ACCOUNT'S (19 Sep 2026, the user: "Manage should be first
+ *  section for Artist"). An artist opens this page to run their own classes;
+ *  somebody without a page opens it to see what they booked, and never sees
+ *  Manage at all. `?show=` is unchanged either way, so every link out in the
+ *  world still lands where it always did (Rule 14). */
+const showsFor = (hasPage: boolean): Show[] => (hasPage ? ["manage", "booked", "assist"] : ["booked", "assist"]);
 
 const when = (iso: string | null): string =>
   iso
@@ -128,12 +135,18 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
   /* the teacher each card wears in its centre (18 Sep 2026) — one read for both segments */
   const bookedArtists = await findClassArtists(supabase, [...class_bookings.map((e) => e.classId), ...jobs.map((c) => c.classId)]);
 
+  /* ⚠ THE PAGE'S CLASSES ARE READ ONCE, WHICHEVER SEGMENT IS OPEN (19 Sep 2026):
+     the Manage pill carries a COUNT now, so the number has to be true from the
+     Booked segment too. It replaces the read the register used to make for
+     itself, so Manage costs one query fewer than it did. */
+  const myPageClasses = myPage ? await findClassesByTenant(supabase, myPage.id).catch(() => []) : [];
+
   /* the register, when Manage is open: the page's classes, their seats, and what
      each one still waits for before it can be published */
   const manage =
     show === "manage" && myPage
       ? await (async () => {
-          const classes = await findClassesByTenant(supabase, myPage.id);
+          const classes = myPageClasses;
           const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
           const [counts, state, artists, whyNoClass] = await Promise.all([
             countEnrolledBySession(supabase, sessionIds),
@@ -163,26 +176,32 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
       {/* THE TOOL'S HERO (18 Sep 2026, the user: "all heading when inside the page
           should have similar design as Crew, Calendar etc.") — the Classes tile's
           own colour and word, where a 17px "Your classes" line stood (6120) */}
-      <DeskHero tool="classes" as="h1" margin="0 0 10px" />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2px 10px", gap: 10 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
-          {show === "booked" ? `${booked} booked` : show === "assist" ? `${jobs.length} on` : `${manage?.classes.length ?? 0} on your page`}
-        </div>
-        {/* the same classes as a calendar (Step 14) — day, week, month, schedule */}
-        <Link href="/calendar" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
-          Calendar ›
-        </Link>
-      </div>
+      {/* ⚠ NO CALENDAR CHIP (19 Sep 2026, the user: "remove Calendar button on top
+          right"). The hero's own bottom margin is the whole gap now — the row that
+          held the chip also held the total, and the total moved INSIDE the list
+          ("counts inside the toggles with total inside the columns"), so nothing
+          is left between the heading and the segments but air. The Calendar tile
+          on Home is still its door. */}
+      <DeskHero tool="classes" as="h1" margin="0 0 14px" />
 
-      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
-        {SHOWS.filter((s) => s.k !== "manage" || myPage).map(({ k, label, aria }) => {
+      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 }}>
+        {showsFor(Boolean(myPage)).map((k) => {
+          const { label, aria } = SHOWS[k];
           const on = show === k;
+          const n = k === "booked" ? booked : k === "assist" ? jobs.length : myPageClasses.length;
           return (
-            <Link key={k} href={k === "booked" ? "/my-classes" : `/my-classes?show=${k}`} replace aria-label={aria} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
-              {label}
+            <Link key={k} href={k === "booked" ? "/my-classes" : `/my-classes?show=${k}`} replace aria-label={`${aria} (${n})`} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+              {label} <span style={{ fontVariantNumeric: "tabular-nums", opacity: on ? 0.75 : 0.6 }}>{n}</span>
             </Link>
           );
         })}
+      </div>
+
+      {/* THE TOTAL SITS OVER THE LIST IT COUNTS (19 Sep 2026) — it used to head the
+          page beside the Calendar chip, a line about one segment above a control
+          for all three */}
+      <div data-testid="classes-total" style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", padding: "0 2px 8px" }}>
+        {show === "booked" ? `${booked} booked` : show === "assist" ? `${jobs.length} on` : `${myPageClasses.length} on your page`}
       </div>
 
       {show === "manage" && myPage && manage ? (

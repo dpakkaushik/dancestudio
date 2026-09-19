@@ -173,6 +173,21 @@ async function pressPill(page: Page, name: RegExp | string, attr: "aria-pressed"
   throw new Error(`the control ${name} never reported itself ${attr === "aria-pressed" ? "pressed" : "open"}`);
 }
 
+/** EDIT PROFILE IS SETTINGS' FIRST OPTION (19 Sep 2026, the user: "Editing
+ *  profile should be shifted to settings and should be the top option, all edit
+ *  profile options to be removed from home and profile pages"). The pencil is
+ *  gone from Home's hero and the Profile tab's corner, so every place that used
+ *  to press one opens the gear's own screen instead and presses the tile. */
+async function openEditProfile(page: Page) {
+  await page.goto("/profile?settings=1");
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(settings).toBeVisible({ timeout: 20_000 });
+  await settings.getByRole("button", { name: "Edit profile" }).click();
+  const sheet = page.getByRole("dialog", { name: "Edit profile" });
+  await expect(sheet).toBeVisible({ timeout: 15_000 });
+  return sheet;
+}
+
 /** "July" when the clock (read in IST, like the app) is in August — the period
  *  chip the earnings desk offers for last month. */
 function lastMonthName(): string {
@@ -568,6 +583,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/business/${tenantId}/staff`);
     await owner.getByRole("button", { name: "Invite staff or team member" }).click();
     const inviteSheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
+    /* ── THE TWO WAYS IN (19 Sep 2026, the user: "Team should only be able to
+       add team member by typing name, number, email or scan"). The picker is
+       the default and cannot find somebody with no account — which is exactly
+       this person — so the story takes the second way, By email. The labels a
+       studio has to give are its own (`rolesFor`), and the PERMISSIONS section
+       says what each one carries. ── */
+    await expect(inviteSheet.getByRole("button", { name: "Visiting faculty" })).toBeVisible();
+    await expect(inviteSheet.getByText("PERMISSIONS")).toBeVisible();
+    await expect(inviteSheet.getByLabel("Search for somebody to add")).toBeVisible();
+    await expect(inviteSheet.getByRole("button", { name: "Scan a profile code" })).toBeVisible();
+    await inviteSheet.getByRole("button", { name: "By email" }).click();
     await inviteSheet.getByLabel("Their name").fill("E2E Trainer");
     await inviteSheet.getByLabel("Their email").fill(trainerEmail);
     await inviteSheet.getByRole("button", { name: "Send invite" }).click();
@@ -1292,25 +1318,32 @@ test.describe.serial("DanceOS, end to end", () => {
     // this page is what the eye in the tab bar opens, so it is what a visitor
     // sees and nothing else
     await expect(trainer.getByLabel("Change your photo")).toHaveCount(0);
-    // the photo itself is changed in Edit profile, the one place pictures live
-    // now. The file goes from THIS browser straight to Storage with the
-    // trainer's own session (the proof covers the rules; only a browser can
-    // cover the upload), the row records the path, and the disc stops being
-    // initials. Onboarding required a photo (U2), so it is a face already —
-    // taking it down puts the initials back and the control says "Add a photo".
-    await trainer.goto("/profile");
-    await trainer.getByTestId("my-hero").waitFor();
-    await trainer.getByRole("button", { name: "Edit profile", exact: true }).click();
-    const profileSheet = trainer.getByRole("dialog", { name: "Edit profile" });
+    /* ⚠ THE PICTURES ARE BEHIND THE DISC ON HOME NOW (19 Sep 2026, the user:
+       "Profile Pic and Top bar Photo column only editable from home tab and
+       should be removed from edit profile … should be able to click and view
+       both pictures sections when clicking on that photo"). The Edit sheet has
+       no pictures in it at all; the disc on Home opens the one screen that has
+       both, and it is where a picture is changed. The file still goes from THIS
+       browser straight to Storage with the trainer's own session (the proof
+       covers the rules; only a browser can cover the upload). */
+    await trainer.goto("/");
+    await trainer.getByTestId("hero-disc").waitFor();
+    await trainer.getByRole("button", { name: "Your pictures" }).click();
+    const profileSheet = trainer.getByRole("dialog", { name: "Your pictures" });
     await expect(profileSheet.getByLabel("Change your photo")).toBeAttached();
-    await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(1);
+    await expect(trainer.getByTestId("hero-disc").locator("img").first()).toBeVisible();
     await profileSheet.getByRole("button", { name: "Remove the photo" }).click();
-    await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(0);
+    await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(0, { timeout: 20_000 });
     await profileSheet.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
     await confirmCrop(trainer);
-    await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(1, { timeout: 20_000 });
+    await expect(trainer.getByTestId("hero-disc").locator("img").first()).toBeVisible({ timeout: 20_000 });
     await expect(profileSheet.getByLabel("Change your photo")).toBeAttached();
     await profileSheet.getByRole("button", { name: "Cancel" }).click();
+    /* and Edit profile carries neither picture any more */
+    const wordsOnly = await openEditProfile(trainer);
+    await expect(wordsOnly.getByLabel("Change your photo")).toHaveCount(0);
+    await expect(wordsOnly.getByLabel("Add picture")).toHaveCount(0);
+    await wordsOnly.getByRole("button", { name: "Cancel" }).click();
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browserRef.newContext();
     try {
@@ -1377,8 +1410,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible();
     await expect(trainer.getByText(/^\d{6}$/)).toBeVisible();
     await expect(trainer.getByTestId("my-followers")).toHaveText("0");
-    // Edit profile: age and a bio
-    await trainer.getByRole("button", { name: "Edit profile", exact: true }).click();
+    /* ⚠ AND NO PENCIL ON THIS PAGE (19 Sep 2026, the user: "all edit profile
+       options to be removed from home and profile pages") — the corner is the
+       eye alone, and Edit profile is Settings' first tile */
+    await expect(trainer.getByRole("button", { name: "Edit profile", exact: true })).toHaveCount(0);
+    await expect(trainer.getByRole("link", { name: "Public view" })).toBeVisible();
+    // Edit profile: age and a bio, from Settings
+    await openEditProfile(trainer);
     /* A DATE OF BIRTH, NOT AN AGE (19 Sep 2026, the user: "age should always be
        DOB instead when selecting anywhere in the app"): a date 24 years and a
        day ago, so the page prints "24" whatever today is */
@@ -1393,8 +1431,19 @@ test.describe.serial("DanceOS, end to end", () => {
        the close first: while the sheet is open its textarea carries the typed
        bio as text content, and a text match there is not the page showing it. */
     await expect(trainer.getByRole("dialog", { name: "Edit profile" })).toHaveCount(0, { timeout: 20_000 });
+    await trainer.goto("/profile");
     await expect(trainer.getByText("Movement is a language.")).toBeVisible({ timeout: 15_000 });
     await expect(trainer.getByText("24, Pune")).toBeVisible({ timeout: 15_000 });
+
+    /* ---- THE BAND IS EDITED ON HOME (19 Sep 2026, the user: "Dance style for
+       the page should also be editable only from the home tab … social media
+       tiles also on home and should be editable only from here … Social media
+       Links right below Dance styles"). The Profile tab SHOWS all three and
+       offers a control on none of them; Home is where they change. ---- */
+    await expect(trainer.getByRole("button", { name: "Add a dance style" })).toHaveCount(0);
+    await expect(trainer.getByRole("button", { name: "Add a link" })).toHaveCount(0);
+    await trainer.goto("/");
+    await trainer.getByTestId("hero-disc").waitFor();
     // a style, from the registry
     await trainer.getByRole("button", { name: "Add a dance style" }).click();
     await trainer.getByRole("button", { name: "Add Kathak", exact: true }).click();
@@ -1411,7 +1460,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByLabel("URL", { exact: true }).fill("https://instagram.com/rheamoves");
     await trainer.getByRole("dialog", { name: "Add your Instagram" }).getByRole("button", { name: "Save" }).click();
     await trainer.getByRole("dialog", { name: "Add a social link" }).getByRole("button", { name: "Done" }).click();
-    await expect(trainer.getByRole("button", { name: "Instagram — @rheamoves" })).toBeVisible();
+    await expect(trainer.getByRole("button", { name: "Instagram — @rheamoves" })).toBeVisible({ timeout: 15_000 });
     // and a bad address is refused with the database's own sentence, not saved
     await trainer.getByRole("button", { name: "Add a link" }).click();
     await trainer.getByRole("button", { name: "Add YouTube" }).click();
@@ -1421,6 +1470,20 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("dialog", { name: "Add your YouTube" }).getByRole("button", { name: "Cancel" }).click();
     await trainer.getByRole("dialog", { name: "Add a social link" }).getByRole("button", { name: "Done" }).click();
     await expect(trainer.getByRole("button", { name: /^YouTube/ })).toHaveCount(0);
+
+    /* ---- AND THE TWO FIGURES ON HOME, EACH OPENING ITS LIST (19 Sep 2026, the
+       user: "show follower following also on home it should be clickable with
+       list to see follower following list with profile type name and photo") ---- */
+    await expect(trainer.getByTestId("home-followers")).toBeVisible();
+    await trainer.getByTestId("home-following").click();
+    const following = trainer.getByRole("dialog", { name: "Following" });
+    await expect(following).toBeVisible();
+    await expect(following.getByRole("button", { name: "Studios" })).toBeVisible();
+    await following.getByRole("button", { name: "All" }).click();
+    /* ⚠ AND NO RANK (19 Sep 2026, the user: "Remove rank from home") — where you
+       stand is the Stats chip's own screen, which prints its population too */
+    await expect(trainer.getByRole("link", { name: /rank/i })).toHaveCount(0);
+    await trainer.goto("/profile");
 
     // ---- the gear, and what is behind it (S_profiletab 11402-11440) ----
     // The top bar carries the settings gear on every screen; on the Profile tab
@@ -1626,17 +1689,15 @@ test.describe.serial("DanceOS, end to end", () => {
     // list gives Call to studios and organizations only (R25 — "user: nothing";
     // an artist's Call is a toggle in push 2, NEXT TO DO #0r). So the record holds
     // it, the sheet reads it back, and a stranger's page shows no Call either way.
-    await learner.goto("/profile");
-    await learner.getByLabel("Edit profile").click();
     const editSheet = learner.getByRole("dialog", { name: "Edit profile" });
+    await openEditProfile(learner);
     await editSheet.getByLabel("Phone").fill("+91 98765 43210");
     await editSheet.getByRole("button", { name: "Save" }).click();
     await expect(editSheet).toHaveCount(0);
-    // the record kept it: the sheet re-opens holding the number. RELOAD first — the
-    // sheet's draft is read off the page's props when it mounts, and re-opening it
-    // in the same breath as the save races router.refresh() and reads the OLD row
-    await learner.reload();
-    await learner.getByLabel("Edit profile").click();
+    // the record kept it: the sheet re-opens holding the number. `openEditProfile`
+    // navigates, so it re-reads the row — re-opening in the same breath as the
+    // save would race router.refresh() and read the OLD one
+    await openEditProfile(learner);
     await expect(editSheet.getByLabel("Phone")).toHaveValue("+91 98765 43210", { timeout: 15_000 });
     // somebody else's read of it: the trainer opens the learner's page — no Call on a user's page
     await trainer.goto(`/person/${learnerId}`);
@@ -1646,8 +1707,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await editSheet.getByLabel("Phone").fill("");
     await editSheet.getByRole("button", { name: "Save" }).click();
     await expect(editSheet).toHaveCount(0);
-    await learner.reload();
-    await learner.getByLabel("Edit profile").click();
+    await openEditProfile(learner);
     await expect(editSheet.getByLabel("Phone")).toHaveValue("", { timeout: 15_000 });
     await editSheet.getByRole("button", { name: "Cancel" }).click();
     await expect(editSheet).toHaveCount(0);
@@ -1690,11 +1750,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByTestId("follow-toggle")).toHaveAttribute("data-followers", "1");
     await expect(learner.getByRole("button", { name: /see who/ })).toHaveCount(0);
 
-    // ── the two buttons whose destinations already existed
+    /* ⚠ THE HISTORY CHIP IS OFF THE CALENDAR (19 Sep 2026, the user: "Calendar —
+       remove History button"). The destination is untouched (Rule 14): the Stats
+       chip in the calendar's own hero opens the record, and History is a segment
+       of it — which is the one place a library of past sessions belongs. */
     await learner.goto("/calendar");
-    await expect(learner.getByRole("link", { name: "History" })).toHaveAttribute("href", "/stats?tab=history");
-    await learner.getByRole("link", { name: "History" }).click();
-    await learner.waitForURL(/tab=history/);
+    await expect(learner.getByRole("link", { name: "History" })).toHaveCount(0);
+    await learner.goto("/stats?tab=history");
     await expect(learner.getByTestId("history-count")).toBeVisible();
 
     // the battle record is the crew's Events desk since 18 Sep 2026
@@ -1705,25 +1767,19 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.waitForURL(/seg=crew/);
     await expect(learner.getByRole("link", { name: new RegExp(`^${crewName} — place \\d+ of \\d+$`) })).toBeVisible();
 
-    // ── the rank row on Home's sleeve. It says exactly what the Profile tab says
-    // about where you stand — and where there is no place, BOTH say nothing:
-    // Step 25's rule is that "#0" is not a rank, and a second screen printing one
-    // would be the first place that rule broke.
+    /* ⚠ THE RANK IS OFF BOTH SCREENS (19 Sep 2026 — "remove rank from profile
+       tab", then "Remove rank from home"). Where you stand is the Stats chip's
+       own page, which prints the place WITH its population; a bare "#4" beside
+       two follower counts said less than it implied. Both are asserted here
+       because a rank row reappearing on either is the regression. */
     const rankLink = /^Rank \d+ of \d+ — open global rankings$/;
-    await learner.goto("/profile");
-    await expect(learner.getByRole("link", { name: rankLink })).toHaveCount(0);
-    await learner.goto("/");
-    await expect(learner.getByRole("link", { name: rankLink })).toHaveCount(0);
-    // the trainer took a class in the PassDeck segment, so whatever the boards make
-    // of that, the sleeve and the Profile tab give the same answer
-    await trainer.goto("/profile");
-    const onProfile = trainer.getByRole("link", { name: rankLink });
-    const said = (await onProfile.count()) > 0 ? await onProfile.getAttribute("aria-label") : null;
-    await trainer.goto("/");
-    if (said) {
-      await expect(trainer.getByRole("link", { name: said, exact: true })).toBeVisible();
-    } else {
-      await expect(trainer.getByRole("link", { name: rankLink })).toHaveCount(0);
+    for (const page of [learner, trainer]) {
+      await page.goto("/profile");
+      await expect(page.getByRole("link", { name: rankLink })).toHaveCount(0);
+      await page.goto("/");
+      await expect(page.getByRole("link", { name: rankLink })).toHaveCount(0);
+      /* and the chip that DOES answer it is still exactly one, on both */
+      await expect(page.getByRole("link", { name: "Stats", exact: true })).toHaveCount(1);
     }
   });
 
@@ -1758,8 +1814,16 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(onSale.getByText(passName)).toBeVisible();
     await expect(onSale.getByText("2 classes · 5 left")).toBeVisible();
 
-    // ── AND A PERSON TAKES IT FROM THERE
+    /* ── AND A PERSON TAKES IT FROM THERE, through the PAYMENT STEP (19 Sep
+       2026, the user: "Membership on profiles to have a better pay button and
+       should take to payment option"). A free one says "no payment" in the same
+       sheet rather than pretending there is a step to take. ── */
     await learner.getByRole("button", { name: `Take ${passName}` }).click();
+    const payStep = learner.getByRole("dialog", { name: "Confirm — no payment" });
+    await expect(payStep).toBeVisible();
+    await expect(payStep.getByText("2 classes")).toBeVisible();
+    await expect(payStep.getByText("Free")).toBeVisible();
+    await payStep.getByRole("button", { name: "Take it" }).click();
     await expect(learner.getByText("find it under Memberships")).toBeVisible({ timeout: 20_000 });
 
     // ── which is exactly where it is: the tools' own Memberships section, with
@@ -1767,18 +1831,25 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.goto("/memberships");
     const held = learner.getByTestId("my-pass").filter({ hasText: passName });
     await expect(held).toBeVisible({ timeout: 15_000 });
+    /* BOOKED · MANAGE (19 Sep 2026, the user: "membership columns should be
+       Booked and Manage") — the learner sells nothing, so they see no segments
+       at all; the seller below sees both */
     // the bar is drawn from two real numbers, never a stored percentage
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("data-pct", "0");
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("aria-label", "0 of 2 used");
     // and they may not take a second one while one is live — the database's rule
     await learner.goto(`/studio/${tenantId}`);
     await learner.getByRole("button", { name: `Take ${passName}` }).click();
+    await learner.getByRole("dialog", { name: "Confirm — no payment" }).getByRole("button", { name: "Take it" }).click();
     await expect(learner.getByText("use it up first")).toBeVisible({ timeout: 20_000 });
 
     // ── THE SELLER TRACKS IT, per class and per student (the user's own words).
     // Nothing has been spent yet, so the honest answer is one holder at nothing
     // used — a figure and the list behind it being the same number (Step 25).
     await owner.goto("/memberships");
+    /* the seller's two segments, in the user's own words */
+    await expect(owner.getByRole("button", { name: /^Booked/ })).toBeVisible();
+    await expect(owner.getByRole("button", { name: /^Manage/ })).toBeVisible();
     await card.click();
     await owner.waitForURL(/\/memberships\/[0-9a-f-]+$/);
     await expect(owner.getByRole("heading", { name: passName })).toBeVisible();
@@ -1932,9 +2003,8 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ── 2a. CALL IS A SWITCH ON AN ARTIST'S PAGE — off by default. The trainer holds the
     // plan (ending, still active), so their sheet carries the switch and their page may dial.
-    await trainer.goto("/profile");
-    await trainer.getByLabel("Edit profile").click();
     const sheet = trainer.getByRole("dialog", { name: "Edit profile" });
+    await openEditProfile(trainer);
     const callSwitch = sheet.getByRole("switch", { name: "Show Call on my profile" });
     await expect(callSwitch).toHaveAttribute("aria-checked", "false");
     await sheet.getByLabel("Phone").fill("+91 90000 22222");
@@ -1946,8 +2016,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // the Stats chip on somebody else's page opens THEIR record, not the board they stand on
     await expect(learner.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/person/${trainerId}/stats`);
     // off again: the number stays on the record, the page stops dialling it
-    await trainer.reload();
-    await trainer.getByLabel("Edit profile").click();
+    await openEditProfile(trainer);
     await expect(sheet.getByLabel("Phone")).toHaveValue("+91 90000 22222", { timeout: 15_000 });
     await expect(callSwitch).toHaveAttribute("aria-checked", "true");
     await callSwitch.click();
@@ -1956,9 +2025,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.reload();
     await expect(learner.getByRole("link", { name: "Call" })).toHaveCount(0);
     // a plain user's sheet has no such switch: their page carries no buttons at all
-    await learner.goto("/profile");
-    await learner.getByLabel("Edit profile").click();
     const userSheet = learner.getByRole("dialog", { name: "Edit profile" });
+    await openEditProfile(learner);
     await expect(userSheet.getByRole("switch", { name: "Show Call on my profile" })).toHaveCount(0);
     await userSheet.getByRole("button", { name: "Cancel" }).click();
     await expect(userSheet).toHaveCount(0);
@@ -1981,9 +2049,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── 3. AN ORGANIZATION'S PIN lives in its Edit profile sheet, under Location — the
     // map itself is Google's and is driven by scripts/shots/shoot-location.js, not here;
     // what this asserts is that the block is the ORGANIZATION's alone
-    await owner.goto("/");
-    await owner.getByLabel("Edit profile").click();
     const orgSheet = owner.getByRole("dialog", { name: "Edit profile" });
+    await openEditProfile(owner);
     await expect(orgSheet.getByText("On the map")).toBeVisible();
     await expect(orgSheet.getByRole("switch", { name: "Show Call on my profile" })).toHaveCount(0);
     await orgSheet.getByRole("button", { name: "Cancel" }).click();
@@ -2101,6 +2168,93 @@ test.describe.serial("DanceOS, end to end", () => {
     expect(seen?.status()).toBe(404);
     await learner.goto("/routines");
     await expect(learner.getByRole("link", { name: `Open ${routineName}` })).toHaveCount(0);
+  });
+
+  test("the team is asked by name, labelled, ordered and paid — and a student is a person", async () => {
+    /* ---- 19 Sep 2026, the user: "Team should only be able to add team member
+       by typing name, number, email or scan … Should be able to Label them
+       according to what profile I am in. and labels available for that with
+       permissions section. and able to pay them, track payment history and
+       should be part of expenses in the earnings. should be able to place them
+       in order as well. Students — adding same way as for Team and track
+       student performance, photo stats, name and profile on clicking." ---- */
+    await owner.goto(`/business/${tenantId}/staff`);
+
+    // ── ASKED BY NAME. The learner is on DanceOS and not on this team, so the
+    // picker finds them — a name, and the row wears their picture.
+    await owner.getByRole("button", { name: "Invite staff or team member" }).click();
+    const sheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
+    await sheet.getByRole("button", { name: "Visiting faculty" }).click();
+    await sheet.getByLabel("Search for somebody to add").fill(learnerName);
+    await sheet.getByRole("button", { name: `Ask ${learnerName}` }).click({ timeout: 20_000 });
+    await expect(owner.getByText(/Waiting on them to confirm/).first()).toBeVisible({ timeout: 15_000 });
+    /* no address was typed and none is shown: this invite names a PERSON */
+    await expect(owner.getByText("Visiting faculty · asked on DanceOS")).toBeVisible();
+
+    // and only they can answer it — the code is in the link the desk shows
+    await owner.getByRole("button", { name: `Show the invite for ${learnerName}` }).click();
+    const code = (await owner.getByRole("dialog", { name: `Invite for ${learnerName}` }).getByText(/\/join\/[0-9a-f]+/).innerText()).split("/join/")[1].trim();
+    await owner.getByRole("dialog", { name: `Invite for ${learnerName}` }).getByRole("button", { name: "Done" }).click();
+    await trainer.goto(`/join/${code}`);
+    await expect(trainer.getByText(/sent to somebody else|not for you|different/i).first()).toBeVisible({ timeout: 15_000 }).catch(async () => {
+      /* the screen's own words differ by state — what must be true is that the
+         trainer is NOT offered the seat */
+      await expect(trainer.getByRole("button", { name: /^Join/ })).toHaveCount(0);
+    });
+    await learner.goto(`/join/${code}`);
+    await learner.getByRole("button", { name: /^Join/ }).click();
+    await learner.waitForURL((u) => !u.pathname.startsWith("/join"), { timeout: 20_000 });
+
+    // ── THE LABELS ARE THE STUDIO'S OWN, AND THE PERMISSIONS SAY WHAT THEY CARRY
+    await owner.goto(`/business/${tenantId}/staff`);
+    const memberRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
+    await expect(memberRow).toBeVisible({ timeout: 15_000 });
+    await memberRow.click();
+    const memberSheet = owner.getByRole("dialog", { name: learnerName });
+    await expect(memberSheet.getByText("PERMISSIONS")).toBeVisible();
+    await expect(memberSheet.getByRole("button", { name: `Make ${learnerName} Visiting faculty` })).toBeVisible();
+    await memberSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
+    await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
+
+    // ── AND PAID, WITH A METHOD — the payment lands in the ledger the Earnings
+    // desk reads as MONEY OUT, so it is an expense the moment it is written
+    await memberSheet.getByRole("button", { name: `Pay ${learnerName}` }).click();
+    const paySheet = owner.getByRole("dialog", { name: `Pay ${learnerName}` });
+    await paySheet.getByLabel("Amount in rupees").fill("2500");
+    await paySheet.getByRole("button", { name: "UPI", exact: true }).click();
+    await paySheet.getByLabel("Note").fill("September");
+    await paySheet.getByRole("button", { name: "Record this payment" }).click();
+    await expect(owner.getByRole("status")).toContainText("2,500", { timeout: 20_000 });
+    // the history is on their own row, and the expense is on the studio's ledger
+    await owner.reload();
+    await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
+    await expect(memberSheet.getByText(/₹2,500 paid · 1 payment/)).toBeVisible({ timeout: 15_000 });
+    await expect(memberSheet.getByText("September")).toBeVisible();
+    await owner.goto(`/business/${tenantId}/earnings`);
+    await expect(owner.getByText("₹2,500").first()).toBeVisible({ timeout: 15_000 });
+
+    // ── AND ORDERED. The owner arranges the team; a trainer cannot.
+    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.getByRole("button", { name: `Move ${learnerName} up` }).click();
+    await expect(owner.getByRole("button", { name: `Move ${learnerName} up` })).toBeDisabled({ timeout: 20_000 });
+    await trainer.goto(`/business/${tenantId}/staff`);
+    await expect(trainer.getByRole("button", { name: /^Move / })).toHaveCount(0);
+
+    // ── A STUDENT IS A PERSON: picked, so the row carries their picture, opens
+    // their profile, and counts what they have actually done here.
+    await owner.goto(`/business/${tenantId}/students`);
+    await owner.getByRole("button", { name: "Add a lead" }).click();
+    const addStudent = owner.getByRole("dialog", { name: "Add a lead" });
+    await addStudent.getByLabel("Search for a student").fill(trainerName);
+    await addStudent.getByRole("button", { name: `Add ${trainerName}` }).click({ timeout: 20_000 });
+    await expect(owner.getByRole("link", { name: `Open ${trainerName}'s profile` })).toHaveAttribute("href", `/person/${trainerId}`, { timeout: 15_000 });
+    /* the walk-in is still a real student, and has neither a door nor a record */
+    await owner.getByRole("button", { name: "Add a lead" }).click();
+    await addStudent.getByRole("button", { name: "Walk-in" }).click();
+    await addStudent.getByLabel("Lead name").fill("E2E Walk-in");
+    await addStudent.getByRole("button", { name: "Save lead" }).click();
+    await expect(owner.getByRole("button", { name: "Open E2E Walk-in" })).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByRole("link", { name: "Open E2E Walk-in's profile" })).toHaveCount(0);
   });
 
 });

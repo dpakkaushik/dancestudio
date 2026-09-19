@@ -24,6 +24,7 @@ const SHOWS: Array<{ k: Show; label: string; aria: string }> = [
   { k: "spectator", label: "Spectator", aria: "Show the events you have a seat at" },
   { k: "assisting", label: "Assisting", aria: "Show the events you help run" },
 ];
+const countWord = (show: Show, n: number) => (show === "assisting" ? (n === 1 ? "event" : "events") : n === 1 ? "booking" : "bookings");
 
 function TicketRow({ t }: { t: MyEventBooking }) {
   const tint = EV_TINT[t.eventCat];
@@ -72,35 +73,39 @@ export default async function MyEventsPage({ searchParams }: { searchParams: Pro
   const [tickets, memberships] = await Promise.all([findMyEventBookings(supabase, user.id), findMyMemberships(supabase)]);
   /* the businesses you help run — a member who is not the owner */
   const helpingIds = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant.id);
-  const assisting: DanceEvent[] = show === "assisting" && helpingIds.length ? (await findEventsByTenants(supabase, helpingIds)).filter((ev) => ev.status !== "draft") : [];
+  /* ⚠ READ WHATEVER SEGMENT IS OPEN (19 Sep 2026): the Assisting pill carries a
+     COUNT now, so the number has to be true from the Participant segment too */
+  const assisting: DanceEvent[] = helpingIds.length ? (await findEventsByTenants(supabase, helpingIds).catch(() => [])).filter((ev) => ev.status !== "draft") : [];
   const entries = tickets.filter((t) => t.kind === "participant");
   const seats = tickets.filter((t) => t.kind === "spectator");
-  const count = show === "participant" ? entries.length : show === "spectator" ? seats.length : assisting.length;
+  const nOf = (k: Show) => (k === "participant" ? entries.length : k === "spectator" ? seats.length : assisting.length);
+  const count = nOf(show);
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
       {/* THE TOOL'S HERO (18 Sep 2026, the user: "all heading when inside the page
           should have similar design as Crew, Calendar etc.") — the Events tile's
           own colour and word, where a 17px "Your events" line stood */}
-      <DeskHero tool="events" as="h1" margin="0 0 10px" />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2px 10px", gap: 10 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", whiteSpace: "nowrap" }}>
-          {count} {show === "assisting" ? (count === 1 ? "event" : "events") : count === 1 ? "booking" : "bookings"}
-        </div>
-        <Link href="/discover?tab=events" style={{ fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", border: "1px solid var(--el)", borderRadius: 999, padding: "6px 12px", whiteSpace: "nowrap" }}>
-          Find events ›
-        </Link>
-      </div>
+      {/* ⚠ NO "FIND EVENTS" CHIP (19 Sep 2026, the user's list) — Discover is a tab
+          in the bar, and the row that held the chip also held the total, which
+          moved down onto the list it counts. The hero's own margin is the gap. */}
+      <DeskHero tool="events" as="h1" margin="0 0 14px" />
 
-      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
+      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 }}>
         {SHOWS.map(({ k, label, aria }) => {
           const on = show === k;
+          const n = nOf(k);
           return (
-            <Link key={k} href={k === "participant" ? "/my-events" : `/my-events?show=${k}`} aria-label={aria} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
-              {label}
+            <Link key={k} href={k === "participant" ? "/my-events" : `/my-events?show=${k}`} aria-label={`${aria} (${n})`} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+              {label} <span style={{ fontVariantNumeric: "tabular-nums", opacity: on ? 0.75 : 0.6 }}>{n}</span>
             </Link>
           );
         })}
+      </div>
+
+      {/* the total, over the list it counts (19 Sep 2026) */}
+      <div data-testid="events-total" style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", padding: "0 2px 8px" }}>
+        {count} {countWord(show, count)}
       </div>
 
       {show === "participant" ? (

@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { signOutAction } from "@/features/auth/server-actions/auth";
+import { EditProfileSheet } from "@/features/profiles/components/EditProfileSheet";
 import { endArtistPlanAction, updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ArtistPlan } from "@/repositories/plans";
 import { enquiryTypesFor } from "@/types/enquiry";
-import type { ProfileRole } from "@/types/profile";
+import type { Profile, ProfileRole } from "@/types/profile";
 import type { Tenant } from "@/types/tenant";
 import { dateWords } from "./settings-kit";
 
@@ -70,6 +71,9 @@ const ICONS = {
   help: (c: string) => <Glyph c={c}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.2" /><path d="m6 6 3.7 3.7M18 6l-3.7 3.7M18 18l-3.7-3.7M6 18l3.7-3.7" /></Glyph>,
   admin: (c: string) => <Glyph c={c}><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9.5 4.1-1.9 7-5.3 7-9.5V6z" /><path d="M12 8v4M12 15.5v.5" /></Glyph>,
   logout: (c: string) => <Glyph c={c}><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" /><path d="m15 8 5 4-5 4M20 12H9" /></Glyph>,
+  /* EDIT PROFILE IS SETTINGS' FIRST OPTION (19 Sep 2026) — the pencil's glyph,
+     where the pencil used to be on two heroes */
+  edit: (c: string) => <Glyph c={c}><path d="M4 20h4L20 8l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></Glyph>,
 };
 
 function Tile({ icon, children, href, onClick, badge, ariaLabel, pressed, disabled, onNavigate, danger = false }: { icon: ReactNode; children: ReactNode; href?: string; onClick?: () => void; badge?: ReactNode; ariaLabel?: string; pressed?: boolean; disabled?: boolean; onNavigate?: (href: string) => void; danger?: boolean }) {
@@ -116,6 +120,7 @@ export function SettingsSheet({
   open,
   onClose,
   role,
+  profile = null,
   isAdmin = false,
   gstVerified = false,
   business,
@@ -124,6 +129,11 @@ export function SettingsSheet({
   open: boolean;
   onClose: () => void;
   role: ProfileRole;
+  /** THE ACCOUNT ITSELF, so Edit profile can be Settings' first option (19 Sep
+   *  2026, the user: "Editing profile should be shifted to settings and should be
+   *  the top option"). A screen that has no profile row to hand simply does not
+   *  draw the tile rather than opening an empty form. */
+  profile?: Profile | null;
   /** a platform admin gets the panel as a tile; nobody else sees it exists */
   isAdmin?: boolean;
   /** whether the organization's GST number is verified — the GST tile's badge
@@ -142,6 +152,7 @@ export function SettingsSheet({
      close is `router.back()`, and the push was cancelled by it.) */
   const go = (href: string) => router.replace(href);
   const [enqOpen, setEnqOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
   /* NO sentinel of its own (19 Sep 2026): this sheet's open state IS the URL
@@ -201,6 +212,21 @@ export function SettingsSheet({
         <div style={{ borderRadius: 18, padding: "14px 16px 13px", background: "linear-gradient(135deg,#64748B,#0EA5E9)", color: "#fff", marginBottom: 4 }}>
           <div style={{ fontSize: 19, fontWeight: 900 }}>Settings</div>
         </div>
+
+        {/* ── YOU: Edit profile, first (19 Sep 2026). The pencil left Home's
+            hero and the Profile tab's corner for this tile, so there is one
+            door to the form rather than three. The PICTURES are not behind it
+            — they are behind the disc on Home. ── */}
+        {profile ? (
+          <>
+            <div style={head}>YOU</div>
+            <div style={grid}>
+              <Tile icon={ICONS.edit("#5AC8FA")} onClick={() => setEditOpen(true)} ariaLabel="Edit profile">
+                Edit profile
+              </Tile>
+            </div>
+          </>
+        ) : null}
 
         {/* ── YOUR PLAN: the Artist tools switch (a person), the plan's page (whoever holds one) ── */}
         <div style={head}>YOUR PLAN</div>
@@ -273,6 +299,12 @@ export function SettingsSheet({
             ↪ Log out
           </Tile>
         </form>
+
+        {/* EDIT PROFILE — portalled to the document root, so it opens OVER this
+            sheet rather than inside its scroll (the 16 Sep stacking lesson) */}
+        {editOpen && profile ? (
+          <EditProfileSheet profile={profile} isArtist={artistOn} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} />
+        ) : null}
 
         {/* ── ENQUIRIES YOU ACCEPT (9000-9030) ── */}
         {enqOpen && business ? (
