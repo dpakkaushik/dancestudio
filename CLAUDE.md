@@ -2,7 +2,31 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### ⚠ PUSH 2 IS WRITTEN, DRY-RUN **22/22** ROLLED BACK, BUILT AND COMMITTED LOCALLY — AND **NOT APPLIED, NOT PUSHED**: THE LIST IS IN FRONT OF THE USER (19 Sep 2026, latest)
+> ### ✅ PUSH 2 IS APPLIED AND PUSHED (19 Sep 2026, latest) — ON THE USER'S "run push 2 to live", THEN "push to live"
+> `db-push -DryRun` listed exactly the five; the apply printed all five on the
+> FIRST try (the `Select-String` shape, accepted); the dry run after listed none.
+> **Proofs 8/8 first time** (push2 · profile-pages · person-pages · crews · stats
+> · follows · enquiries · search) — the new `rls-proof-push2` green on its first
+> real run. `next build` green; the `:3100` bundle read as anon over PostgREST
+> and as a stranger over HTTP (`smoke-push2.js`, scratchpad, **18/18 real
+> checks**): `public_organization` answers with `lat`/`lng` (null until placed);
+> `public_organization_team` executable by anon, 0 rows; `organization_members`
+> reads empty for anon and an anon INSERT is refused; `crew_contacts` reads only
+> public rows and an anon INSERT answers 401 (the grants revoke, in place);
+> `public_artist` hands anon `phone: null` while the switch is off;
+> `entity_chart_row` answers anon for a listed studio, a public artist and a live
+> crew and EMPTY for a plain user; `dance_chart_all` 401 to anon; a stranger's
+> `/studio|org|crew|person/{id}/stats` all **200**, `/person/{plain user}/stats`
+> **307** to login; `/person/{artist}` carries no `tel:` link. (One check of my
+> own was wrong, not the product: `/org/{id}` prints Owner/Team only when there
+> is a confirmed row, and "Dance Hall" has no board row because Step 25's studio
+> board counts sessions HELD — it has held none; the page says "not on this board
+> yet".) **The push went with the whole suite still running on one worker
+> against `:3100`** — no failed-test folder at the time — the 19 Sep morning's
+> precedent, on the user's word; the tally is recorded in the docs-only commit
+> that follows, with `shoot-hero.js` and the Vercel smoke. Below is the block as
+> it stood before the apply.
+>
 > The user: *"start push 2"* — the four of their answers that needed schema (the
 > second block below quotes them; NEXT TO DO #0r is the list as it went to them
 > and the apply sequence). **Five files pending:** the held `20260919130000` (#0q,
@@ -2990,10 +3014,11 @@ summary; the report has the evidence.
    then push `main` and the Vercel smoke. What this round still owes the user is
    #0q (one held migration) and #0r (push 2).
 
-0q. **⚠ ONE MIGRATION WRITTEN, DRY-RUN 6/6 AND HELD FOR THE USER'S WORD —
-   `20260919130000_a_crew_leader_can_be_deleted` (19 Sep 2026); IT RIDES WITH
-   PUSH 2 (#0r): `db-push` applies every pending file, and `dryrunF.js` applied
-   it first and asserted its two constraints gone (E5).** Found by the
+0q. **~~ONE MIGRATION WRITTEN, DRY-RUN 6/6 AND HELD~~ — APPLIED 19 Sep 2026 with
+   push 2 (#0r), on the user's "run push 2 to live".** `20260919130000_a_crew_leader_can_be_deleted`
+   rode with the four push-2 files; `db-push` applies every pending file, and
+   `dryrunF.js` had applied it first and asserted its two constraints gone (E5).
+   Kept for the record — found by the
    new proof's own cleanup the hour `20260919124000` landed: **deleting the
    account of a crew leader whose crew has header pictures answers 500** at
    the auth layer — `crew_header_photos` was the ONE table whose audit columns
@@ -3018,10 +3043,12 @@ summary; the report has the evidence.
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 profile-pages crews
 ```
 
-0r. **⚠ PUSH 2 — WRITTEN, DRY-RUN 22/22 ROLLED BACK, BUILT, COMMITTED LOCALLY, NOT
-   APPLIED, NOT PUSHED (19 Sep 2026). THE LIST IS IN FRONT OF THE USER; THE APPLY
-   WAITS FOR THEIR WORD.** The top block has the detail; this is the list as it went
-   to them, in their numbering, and the sequence that follows their word.
+0r. **~~PUSH 2 — NOT APPLIED, NOT PUSHED~~ — APPLIED AND PUSHED 19 Sep 2026** on
+   the user's "run push 2 to live" then "push to live": the five applied first
+   try, proofs 8/8, the anon read-back and the stranger smoke green (the top
+   block). What this leaves for the user: the real-QR encoder for Scan (a
+   dependency) and hiding `profiles.phone` from SIGNED-IN direct API readers.
+   Kept for the record — the list as it went to them, in their numbering:
    * **1. An organization's Owner** — `20260919140000_an_organization_has_a_team`:
      `organization_members` (labels `owner | member`, asked → confirmed, RLS for
      the organization and the person, SELECT-only grants), five RPCs, the definer
@@ -3453,9 +3480,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 - **PUSH 2 — AN ORGANIZATION NAMES ITS OWNER, CALL IS A SWITCH, AN ORGANIZATION
   HAS A PIN, AND EVERY PROFILE HAS A STATS PAGE OF ITS OWN — 19 Sep 2026, no step
   number ⚠ (Rule 9: RLS) — FIVE MIGRATIONS (the held #0q plus four), dry run
-  22/22 rolled back, typecheck 0 · lint 0 · build green; WRITTEN AND COMMITTED
-  LOCALLY, NOT APPLIED, NOT PUSHED — the list is in front of the user (NEXT TO DO
-  #0r).** The user's four schema-needing answers on the profile-page re-cut:
+  22/22 rolled back, typecheck 0 · lint 0 · build green; **APPLIED AND PUSHED
+  19 Sep 2026** on the user's word — proofs 8/8, the anon read-back and the
+  stranger smoke green (the top block).** The user's four schema-needing answers on the profile-page re-cut:
   `organization_members` and the Team desk at `/business/team` (labels, asked and
   confirmed, Owner · Team on `/org/{id}`); `profiles.phone_public` and the new
   `crew_contacts` whose policy is the switch, with "Show Call" switches in Edit
