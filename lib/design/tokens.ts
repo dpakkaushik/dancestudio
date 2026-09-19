@@ -72,7 +72,11 @@ export const HERO_HEAD_W = HERO_SQ;
 export const HERO_HEAD_H = HERO_SQ;
 /** the disc's diameter, the ring the page draws round it, and how far it drops
  *  below the header's bottom edge */
-export const HERO_DISC = 96;
+/** ⚠ 96 → 112 on 19 Sep 2026, the user: "Align profile pic and make a bit
+ *  bigger while adjusting text." The text column beside it was re-balanced in
+ *  the same change — the eyebrow and the account number share ONE line now, so
+ *  the column is a line shorter and the disc has the room to grow into. */
+export const HERO_DISC = 112;
 export const HERO_DISC_RING = 3;
 export const HERO_DISC_DROP = 40;
 /** A PROFILE PICTURE IS A SQUIRCLE (18 Sep 2026, the user: "profile pic should be

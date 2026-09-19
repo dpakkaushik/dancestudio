@@ -410,9 +410,18 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     const orgPics = org.getByRole("dialog", { name: "Your pictures" });
     await orgPics.waitFor();
     check(await org.getByText("Logo", { exact: true }).isVisible(), "org pictures: an organization's disc is its Logo");
-    check((await orgPics.getByLabel("Change your photo").count()) === 1, "org pictures: and the logo is changed HERE — the one place a picture changes");
+    /* TWO EDITORS, NOT ONE SHEET (19 Sep 2026, the user: "edit seprate for
+       profile pic and seprate for poster"): the disc here OPENS the picture, and
+       changing it is its own step behind its own button */
+    check((await orgPics.getByRole("button", { name: "Open logo" }).count()) === 1, "org pictures: the logo opens itself when pressed");
+    check((await orgPics.getByRole("button", { name: "Change logo" }).count()) === 1, "org pictures: and it is changed behind its OWN button");
+    await orgPics.getByRole("button", { name: "Change logo" }).click();
+    const orgLogo = org.getByRole("dialog", { name: "Logo" });
+    await orgLogo.waitFor();
+    check((await orgLogo.getByLabel("Change your photo").count()) === 1, "org logo: the picker is in the logo's own editor");
+    await orgLogo.getByRole("button", { name: "Done" }).click().catch(() => {});
     await shot("org-pictures");
-    await orgPics.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+    await orgPics.getByRole("button", { name: "Done" }).click().catch(() => {});
     /* and the words are behind the gear */
     await org.goto(`${BASE}/profile?settings=1`);
     const orgSettings = org.getByRole("dialog", { name: "Settings" });
@@ -456,17 +465,37 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026; behind the disc since 19 Sep) ── */
     await me.getByRole("button", { name: "Your pictures", exact: true }).click();
     const mySheet = me.getByRole("dialog", { name: "Your pictures" });
+    /* THE POSTERS HAVE THEIR OWN EDITOR (19 Sep 2026) — "Your pictures" shows
+       the two pictures; this is the draft grid behind "Edit posters" */
+    const myPosters = me.getByRole("dialog", { name: "Posters", exact: true });
+    const openPosters = async () => {
+      /* ⚠ Save and Cancel in the posters editor return TO "Your pictures"
+         rather than closing it, while a reload closes both — so this opens
+         whatever is not open yet instead of assuming either state, and WAITS
+         for the button rather than racing the page. */
+      if (!(await mySheet.isVisible().catch(() => false))) {
+        await me.getByRole("button", { name: "Your pictures", exact: true }).click();
+        await mySheet.waitFor();
+      }
+      const edit = mySheet.getByRole("button", { name: "Edit posters" });
+      await edit.waitFor({ timeout: 20000 });
+      await edit.click();
+      await myPosters.waitFor();
+    };
     await mySheet.waitFor();
     check(await me.getByText("Profile picture", { exact: true }).isVisible(), "your pictures: a Profile picture block");
-    check(await me.getByText("Header pictures", { exact: true }).isVisible(), "your pictures: and a Header pictures block — BOTH sections, which is the ask");
-    check((await mySheet.getByLabel("Add picture").count()) === 1, "your pictures: a user is offered ONE header picture");
+    check((await mySheet.getByRole("button", { name: "Open profile picture" }).count()) === 1, "your pictures: pressing the profile picture opens the profile picture (19 Sep 2026)");
+    check(await me.getByText("Posters", { exact: true }).isVisible(), "your pictures: and a Posters block — both pictures, each with its own editor");
+    check((await mySheet.getByRole("button", { name: "Edit posters" }).count()) === 1, "your pictures: the posters are edited behind their OWN button");
+    check(await mySheet.getByText("0 / 1", { exact: true }).isVisible(), "your pictures: a user is offered ONE poster");
     const personRows = async () => {
       const live = await rest(`profile_header_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
       return Array.isArray(live) ? live.length : -1;
     };
-    await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+    await openPosters();
+    await myPosters.getByLabel("Add picture").setInputFiles(FILE);
     await useIt(me);
-    const userHeader = await mySheet
+    const userHeader = await myPosters
       .getByLabel("Remove photo 1")
       .first()
       .waitFor({ timeout: 25000 })
@@ -474,18 +503,17 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       .catch(() => false);
     if (userHeader) {
       check(true, "edit profile: a staged picture appears in the sheet");
-      check((await mySheet.getByLabel("Add picture").count()) === 0, "edit profile: and the tile is gone — one is the ceiling for a user");
+      check((await myPosters.getByLabel("Add picture").count()) === 0, "edit profile: and the tile is gone — one is the ceiling for a user");
       check((await railImgs(me)) === 0 && (await personRows()) === 0, "edit profile: nothing on the page or in the database until Save");
       await shotMe("profile-edit");
       /* Cancel discards a staged ADD as completely as a staged removal */
-      await mySheet.getByRole("button", { name: "Cancel" }).click();
+      await myPosters.getByRole("button", { name: "Cancel" }).click();
       check((await personRows()) === 0, "edit profile: Cancel threw the staged picture away — nothing was uploaded");
-      await me.getByRole("button", { name: "Your pictures", exact: true }).click();
-      await mySheet.waitFor();
-      await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+      await openPosters();
+      await myPosters.getByLabel("Add picture").setInputFiles(FILE);
       await useIt(me);
-      await mySheet.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
-      await mySheet.getByRole("button", { name: "Save" }).click();
+      await myPosters.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
+      await myPosters.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 1);
       check((await personRows()) === 1, "edit profile: and Save is what puts one on the record");
       await shotMe("user-home");
@@ -498,23 +526,21 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await me.goto(`${BASE}/`);
       await me.getByText("Artist", { exact: true }).first().waitFor();
       check((await railImgs(me)) === 1, "artist home: the header picture is still there");
-      await me.getByRole("button", { name: "Your pictures", exact: true }).click();
-      await mySheet.waitFor();
-      check((await mySheet.getByLabel("Add picture").count()) === 1, "artist edit profile: the Add tile is back — an artist holds ten");
-      await mySheet.getByLabel("Add picture").setInputFiles(FILE);
+      await openPosters();
+      check((await myPosters.getByLabel("Add picture").count()) === 1, "artist edit profile: the Add tile is back — an artist holds five");
+      await myPosters.getByLabel("Add picture").setInputFiles(FILE);
       await useIt(me);
-      await mySheet.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
-      await mySheet.getByRole("button", { name: "Save" }).click();
+      await myPosters.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
+      await myPosters.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 2);
       check((await rail(me).getAttribute("role")) === "region", "artist home: two pictures, so the header swipes");
       check((await personRows()) === 2, "profile_header_photos holds the two rows, in the person's folder");
       await shotMe("artist-home");
       /* a person's floor is 0 — `remove_my_header_photo` has no minimum */
-      await me.getByRole("button", { name: "Your pictures", exact: true }).click();
-      await mySheet.waitFor();
-      await mySheet.getByLabel("Remove photo 1").click();
+      await openPosters();
+      await myPosters.getByLabel("Remove photo 1").click();
       check((await personRows()) === 2, "artist edit profile: a pressed ✕ has not touched the database");
-      await mySheet.getByRole("button", { name: "Save" }).click();
+      await myPosters.getByRole("button", { name: "Save" }).click();
       await waitRailImgs(me, 1);
       check((await personRows()) === 1, "artist edit profile: Save is what takes one out");
 

@@ -72,6 +72,30 @@ export function HeroPlace({ text, query }: { text: string; query?: string }) {
 
 export const HeroDot = () => <span style={{ color: LINE }}>·</span>;
 
+/** THE ACCOUNT NUMBER, AT THE RIGHT END OF THE TYPE'S LINE (19 Sep 2026, the
+ *  user: "Profile Type with ID on right … In one line besides profile pic").
+ *
+ *  ⚠ It is a component rather than two style objects because Home and the
+ *  Profile tab each had their own — 10.5px/700/letter-spacing .3 on one,
+ *  `HOME_TYPE.micro` on the other — so the same number was set two ways on two
+ *  screens that are supposed to look identical. Tabular figures so a six-digit
+ *  number does not jitter between accounts. */
+export function HeroId({ children }: { children: ReactNode }) {
+  return (
+    <span
+      style={{
+        fontSize: 10.5,
+        fontWeight: 800,
+        letterSpacing: 1.1,
+        color: "rgba(255,255,255,.72)",
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function IdentityHero({
   name,
   grad,
@@ -191,8 +215,18 @@ export function IdentityHero({
 
           {/* what it is, its number, who it is, where — in that order, beside the picture */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={HERO_EYEBROW}>{eyebrow}</div>
-            {eyebrowSub ? <div style={{ marginTop: 3 }}>{eyebrowSub}</div> : null}
+            {/* ⚠ THE TYPE AND THE ID SHARE ONE LINE (19 Sep 2026, the user:
+                "All profiles should have Profile Type with ID on right" — and,
+                asked whether they meant the whole block right-aligned: "In one
+                line besides profile pic"). So it is one row beside the picture:
+                what this account IS on the left, its account number pushed to
+                the right edge of the column. They were stacked until today,
+                which cost the column a line and left the number looking like a
+                second, quieter eyebrow rather than the account's own number. */}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+              <span style={HERO_EYEBROW}>{eyebrow}</span>
+              {eyebrowSub ? <span style={{ flexShrink: 0 }}>{eyebrowSub}</span> : null}
+            </div>
             {/* ⚠ THE NAME IS NEVER CUT (18 Sep 2026, the user: "in some places full
                 name is getting hidden which should not happen"). It used to be one
                 line with an ellipsis, and it shared that line with the QR chip — so
@@ -202,7 +236,27 @@ export function IdentityHero({
                 is for the one-word name longer than the column, which is the only
                 case a wrap alone cannot handle. */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6 }}>
-              <h1 style={{ ...TYPE.display, margin: 0, color: INK, minWidth: 0, lineHeight: 1.05, overflowWrap: "anywhere" }}>{name}</h1>
+              {/* ⚠ TWO LINES, THEN IT STOPS (19 Sep 2026, the user: "Name below
+                  in 2 lines"). It wrapped without a limit before, so a long name
+                  could push the place line and the band down the screen; two is
+                  what a name gets, and the full one is still its own `title`. */}
+              <h1
+                title={name}
+                style={{
+                  ...TYPE.display,
+                  margin: 0,
+                  color: INK,
+                  minWidth: 0,
+                  lineHeight: 1.05,
+                  overflowWrap: "anywhere",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {name}
+              </h1>
               {verified ? <span style={{ flexShrink: 0, marginTop: 6 }}><VerifiedTick size={18} /></span> : null}
             </div>
             {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}

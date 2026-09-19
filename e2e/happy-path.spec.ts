@@ -1337,15 +1337,28 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByTestId("hero-disc").waitFor();
     await trainer.getByRole("button", { name: "Your pictures" }).click();
     const profileSheet = trainer.getByRole("dialog", { name: "Your pictures" });
-    await expect(profileSheet.getByLabel("Change your photo")).toBeAttached();
+    /* ⚠ TWO PICTURES, TWO EDITORS, AND EACH ONE OPENS ITSELF (19 Sep 2026, the
+       user: "edit seprate for profile pic and seprate for poster … when clicking
+       on profile pic should open the profile pic"). So this screen SHOWS both
+       and changes neither: the profile picture is pressed to view it and
+       changed behind "Change profile picture"; the posters behind "Edit
+       posters". */
+    await expect(profileSheet.getByRole("button", { name: "Open profile picture" })).toBeVisible();
+    await expect(profileSheet.getByRole("button", { name: "Edit posters" })).toBeVisible();
+    await expect(profileSheet.getByLabel("Change your photo")).toHaveCount(0);
     await expect(trainer.getByTestId("hero-disc").locator("img").first()).toBeVisible();
-    await profileSheet.getByRole("button", { name: "Remove the photo" }).click();
+    /* the picture's own editor — it commits on upload, so there is no Save */
+    await profileSheet.getByRole("button", { name: "Change profile picture" }).click();
+    const picSheet = trainer.getByRole("dialog", { name: "Profile picture" });
+    await expect(picSheet.getByLabel("Change your photo")).toBeAttached();
+    await picSheet.getByRole("button", { name: "Remove the photo" }).click();
     await expect(trainer.getByTestId("hero-disc").locator("img")).toHaveCount(0, { timeout: 20_000 });
-    await profileSheet.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
+    await picSheet.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
     await confirmCrop(trainer);
     await expect(trainer.getByTestId("hero-disc").locator("img").first()).toBeVisible({ timeout: 20_000 });
-    await expect(profileSheet.getByLabel("Change your photo")).toBeAttached();
-    await profileSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(picSheet.getByLabel("Change your photo")).toBeAttached();
+    await picSheet.getByRole("button", { name: "Done" }).click();
+    await profileSheet.getByRole("button", { name: "Done" }).click();
     /* and Edit profile carries neither picture any more */
     const wordsOnly = await openEditProfile(trainer);
     await expect(wordsOnly.getByLabel("Change your photo")).toHaveCount(0);
@@ -1414,7 +1427,10 @@ test.describe.serial("DanceOS, end to end", () => {
     // sentence — every one edited from a sheet on this page and landing on one
     // record; and the same three read back on the person page by somebody else.
     await trainer.goto("/profile");
-    await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible();
+    /* ⚠ "Artist", not "ARTIST" (19 Sep 2026): the Profile tab and Home read ONE
+       kind map now, and it is the title-cased one — `HERO_EYEBROW` does the
+       shouting in CSS, so the DOM keeps the word a screen reader should say. */
+    await expect(trainer.getByText("Artist", { exact: true }).first()).toBeVisible();
     await expect(trainer.getByText(/^\d{6}$/)).toBeVisible();
     await expect(trainer.getByTestId("my-followers")).toHaveText("0");
     /* ⚠ AND NO PENCIL ON THIS PAGE (19 Sep 2026, the user: "all edit profile
@@ -1440,7 +1456,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("dialog", { name: "Edit profile" })).toHaveCount(0, { timeout: 20_000 });
     await trainer.goto("/profile");
     await expect(trainer.getByText("Movement is a language.")).toBeVisible({ timeout: 15_000 });
-    await expect(trainer.getByText("24, Pune")).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByText("24 Yrs · Pune")).toBeVisible({ timeout: 15_000 });
 
     /* ---- THE BAND IS EDITED ON HOME (19 Sep 2026, the user: "Dance style for
        the page should also be editable only from the home tab … social media
@@ -1552,7 +1568,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByText("This period does not renew. Once it ends you can subscribe again from here.")).toBeVisible();
     // what was paid for stands: the same profile is still an artist
     await trainer.goto("/profile");
-    await expect(trainer.getByText("ARTIST", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByText("Artist", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 
     // ---- the business's own words on its public page (About 10826, Since 10691, Call 10879) ----
     await owner.goto(studioUrl);
@@ -1576,7 +1592,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // somebody else reads the same three things on the person page — and can open the link
     await learner.goto(`/person/${trainerId}`);
     await expect(learner.getByText("Movement is a language.")).toBeVisible();
-    await expect(learner.getByText("24, Pune")).toBeVisible();
+    await expect(learner.getByText("24 Yrs · Pune")).toBeVisible();
     /* the tile names whose style it is (15 Sep 2026, when this page moved onto
        `IdentityHero`, which takes a `styleAria`) — a bare "Kathak" is the label
        nothing has carried since */

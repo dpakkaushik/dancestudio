@@ -2,6 +2,68 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
+> ### STAGE 1 — ONE PROFILE SURFACE: THE TYPE AND THE ID ON ONE LINE, A BIGGER DISC, TWO PICTURE EDITORS, AND HOME ↔ PROFILE MADE THE SAME SCREEN (19 Sep 2026, latest) — BUILT, no migration
+> The user asked for the order first and then ran it in two stages. This is
+> stage 1, their words: *"Home Tab - profile pic: edit seprate for profile pic
+> and seprate for poster with multiple photos for all, when clicking on profile
+> pic should open the profile pic. and same should be for individual poster picks
+> when clicking on them. All profiles should have Profile Type with ID on right,
+> Name below in 2 lines, age with Yrs and City Name without comma in between.
+> Align profile pic and make a bit bigger while adjusting text. Hometab from Top
+> to Social media links should look same on profile. all profiles not similar
+> something wrong with Artist-Deepak Kaushik and the layout there from other
+> profiles."* Then, on the three questions: *"1. give seprator, 2 In one line
+> besides profile pic 3. remove by email from teams"* (the third is stage 2).
+> * **THE TYPE AND THE ID SHARE ONE LINE**, beside the picture — what the account
+>   IS on the left, its number pushed to the right edge of the column. They were
+>   stacked, which cost the column a line and made the number read as a second,
+>   quieter eyebrow. `HeroId` is one component now, because Home and the Profile
+>   tab each had their own style for it (10.5/700/.3 against `HOME_TYPE.micro`).
+> * **THE NAME STOPS AT TWO LINES** (`WebkitLineClamp`), with the full one on
+>   `title` — it wrapped without a limit before, so a long name pushed the place
+>   line and the whole band down the screen.
+> * **"20 Yrs · Gurugram"** — `heroMetaWords`, and ⚠ it lives in `types/profile.ts`
+>   rather than in either screen BECAUSE that is how the two came to disagree:
+>   Home joined its own string with a comma, the Profile tab handed `PlaceLink` a
+>   `prefix`. One function, one sentence, both callers.
+> * **THE DISC IS 96 → 112.**
+> * **TWO PICTURES, TWO EDITORS, AND EACH OPENS ITSELF.** "Your pictures" SHOWS
+>   both now: pressing the profile picture opens the picture, pressing a poster
+>   opens that poster, and changing either is a deliberate second step behind its
+>   own button (`ProfilePictureSheet` · `HeaderPicturesSheet`). ⚠ The two halves
+>   keep DIFFERENT rules and always have: the profile picture commits on upload
+>   (replacing is not destroying), the posters are a draft committed by Save (the
+>   16 Sep destroy-on-cancel lesson).
+> * **HOME AND THE PROFILE TAB ARE ONE SCREEN FROM THE TOP TO THE LINKS.** ⚠ This
+>   was the real find behind "all profiles not similar": Home drew the figures,
+>   styles and links INSIDE the hero (as `HomeBand`) while the Profile tab drew
+>   the figures inside and the styles and links OUTSIDE it, on the plain page
+>   background under the wash. Same content, a different surface under it — and
+>   the eye reads the surface first. The Profile tab's two rows moved inside.
+>   Both screens also read ONE kind map now (`KIND_WORD`).
+> * ⚠ **AND THE ARTIST ACCOUNT IS NOT BROKEN — it was diagnosed before anything
+>   was touched, which is the only reason nothing was "fixed" that was already
+>   right.** "Artist – Deepak Kaushik" holds an artist subscription with
+>   `status = canceled` and `current_period_end = 10 Oct 2026`: they stopped
+>   renewing and the period is PAID FOR, so `subscription_has_access` still
+>   grants it (`status in ('active','past_due','canceled')` AND the end date has
+>   not passed) — which is exactly the 10 Sep model, "cancel = stop renewing,
+>   keep what was paid for". `artist_plan_active` reads **true**, the artist page
+>   exists, five posters are theirs to hold. ⚠ **My own first probe filtered
+>   `status=in.(active,past_due)` and reported NONE**, which would have read as a
+>   money bug that was not there. The lesson: when a status machine has a "paid
+>   until" date, the STATUS alone is never the question.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
+>   115/115** against the `:3100` bundle (104 before — the new ones are the two
+>   picture editors on both an organization and a person). ⚠ Three runs to get
+>   there and all three reds were MINE, in the harness rather than the product:
+>   unifying on `KIND_BADGE` changed the DOM text from "Organization" to
+>   "ORGANIZATION" (`HERO_EYEBROW` uppercases in CSS, so it LOOKED identical and
+>   read differently to a screen reader — the unification went the other way);
+>   and a `String.replace` that does not match **fails silently**, so a patch I
+>   reported as applied had not been, and the helper it was meant to fix opened
+>   nothing after a reload. **A mechanical patch must assert its own anchor.**
+
 > ### THE 28-POINT LIST — THE TOOLS' TOGGLES, A TEAM THAT IS ASKED BY NAME AND PAID, EDIT PROFILE INTO SETTINGS, THE BAND ON HOME, AND A STUDIO THAT SAYS WHAT IT DANCES (19 Sep 2026, latest) — ✅ TWO MIGRATIONS APPLIED (dry runs **33/33** and **10/10**, both rolled back first), 31/31 PROOFS, THE SUITE GREEN, PUSHED
 > The user, in one message, then one more: *"Classes in Tools — remove Calendar
 > button on top right and give counts inside the toggles with total inside the

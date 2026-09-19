@@ -6,7 +6,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import { CREW_ROLE_WORD } from "@/types/crew";
-import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
+import { KIND_BADGE, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { BioBlock } from "./BioBlock";
 import { ActionRow, CallButton, MailButton } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
@@ -16,8 +16,8 @@ import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
-import { IdentityHero } from "./hero-kit";
-import { Group, PlaceLink, ROLE_RING, Row, SchedIcon, bigWhite } from "./profile-kit";
+import { HeroPlace, IdentityHero } from "./hero-kit";
+import { Group, ROLE_RING, Row, SchedIcon, bigWhite } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
@@ -76,6 +76,8 @@ export function PublicPersonPage({
   /* the word over the name is the KIND's: an organization, an artist while the plan is live, a user */
   const kind = kindOf(profile.role, person.isArtist);
   const ring = ROLE_RING[kind];
+  /* the one sentence every profile prints under the name (19 Sep 2026) */
+  const metaLine = heroMetaWords(profile.age, profile.city);
   const RC = ring[1];
   const path = `/person/${profile.id}`;
   const face = photoUrl(profile.avatarPath);
@@ -111,14 +113,18 @@ export function PublicPersonPage({
              profile should show all stats for that particular profile and rankings") */
           stats={<StatsChip href={isMe ? "/stats" : `${path}/stats`} />}
           meta={
-            profile.city || profile.age ? (
-              /* "24, New Delhi" — one introduction, not two facts (10664), and the
+            metaLine ? (
+              /* "24 Yrs · Pune" — ONE introduction, not two facts (10664), and the
                   place opens Maps (10694-10698). A person has an age where a business
-                  has a founding year — never both (10594). */
+                  has a founding year — never both (10594).
+                  ⚠ `heroMetaWords` since 19 Sep 2026 (the user: "age with Yrs and
+                  City Name without comma in between", for ALL profiles) — this page
+                  built the same sentence its own way, with a `prefix` of "24, ",
+                  which is the third screen to have done so. */
               profile.city ? (
-                <PlaceLink prefix={profile.age ? `${profile.age}, ` : ""} place={profile.city} />
+                <HeroPlace text={metaLine} query={profile.city} />
               ) : (
-                <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{profile.age}</span>
+                <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{metaLine}</span>
               )
             ) : null
           }

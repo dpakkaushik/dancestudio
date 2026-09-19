@@ -13,7 +13,7 @@ import type { PublicPerson } from "@/repositories/publicPerson";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import type { FollowedTenant } from "@/types/follow";
-import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
+import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
@@ -21,8 +21,8 @@ import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
-import { IdentityHero } from "./hero-kit";
-import { EyeIcon, Group, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
+import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -99,6 +99,8 @@ export function MyProfilePage({
   const kind = kindOf(profile.role, Boolean(plan?.active));
   const ring = ROLE_RING[kind];
   const RC = ring[1];
+  /* the one sentence both screens print under the name (19 Sep 2026) */
+  const metaLine = heroMetaWords(profile.age, profile.city);
   const face = photoUrl(profile.avatarPath);
   /* the header, shown and nothing else: adding and removing moved into the
      Edit-profile sheet on 16 Sep 2026, at the user's instruction */
@@ -156,12 +158,10 @@ export function MyProfilePage({
           name={profile.fullName}
           grad={ring}
           tint={RC}
-          eyebrow={KIND_BADGE[kind]}
+          eyebrow={KIND_WORD[kind]}
           /* the account number reads under the word that names the account
              (18 Sep 2026) — it sat under the styles until today */
-          eyebrowSub={
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3 }}>{memberNoWords(profile.memberNo)}</div>
-          }
+          eyebrowSub={<HeroId>{memberNoWords(profile.memberNo)}</HeroId>}
           verified={Boolean(profile.verifiedAt)}
           /* the QR shares the page a stranger reads: an organization's own since 18 Sep 2026 */
           share={<ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />}
@@ -169,14 +169,13 @@ export function MyProfilePage({
              area on both home and profile") — it was the big white button under
              About (10905); a person's record, an organization's combined board */
           stats={<StatsChip href={isOrg ? "/business/stats" : "/stats"} />}
-          /* age and place read as one introduction — "24, New Delhi" (10664) */
+          /* ⚠ THE SAME SENTENCE HOME PRINTS — "20 Yrs · Gurugram", built by
+             `heroMetaWords` (19 Sep 2026). This screen used to hand `PlaceLink`
+             a `prefix` of "20, " while Home joined its own string with a comma,
+             so the two wrote the same fact two ways. */
           meta={
-            profile.age || profile.city ? (
-              profile.city ? (
-                <PlaceLink prefix={profile.age ? `${profile.age}, ` : ""} place={profile.city} />
-              ) : (
-                <span style={{ fontWeight: 800, color: INK, fontVariantNumeric: "tabular-nums" }}>{profile.age}</span>
-              )
+            metaLine ? (
+              profile.city ? <HeroPlace text={metaLine} query={profile.city} /> : <span style={{ fontVariantNumeric: "tabular-nums" }}>{metaLine}</span>
             ) : null
           }
           avatar={face}
@@ -232,30 +231,32 @@ export function MyProfilePage({
                 </>
               )}
           </div>
-        </IdentityHero>
 
-        {/* ── THE BAND UNDER THE NAME — ONE STRUCTURE, THREE PARTS (10739) ── */}
-        <div style={{ textAlign: "left" }}>
-          {/* ⚠ THE STYLES AND THE LINKS ARE SHOWN HERE AND CHANGED ON HOME
-              (19 Sep 2026, the user: "Dance style for the page should also be
-              editable only from the home tab … social media tiles also on home
-              and should be editable only from here"). Both rows kept their
-              anatomy (DosStyleRow 1767; the links rail 10760) and lost their ＋:
-              a style edited in two places is a style that disagrees with
-              itself. */}
-          {isOrg ? <div style={{ height: 14 }} /> : styleList.length ? (
-            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", padding: "14px 0 6px", alignItems: "center" }}>
+          {/* ⚠ THE STYLES AND THE LINKS ARE INSIDE THE HERO, EXACTLY AS THEY ARE
+              ON HOME (19 Sep 2026, the user: "Hometab from Top to Social media
+              links should look same on profile").
+              They sat OUTSIDE it until today — on the plain page background,
+              below the hero's wash — while Home draws the same two rows inside
+              it as part of `HomeBand`. That one difference is what made the two
+              screens read as different profiles: same content, a different
+              surface under it, and the eye reads the surface first. Now both
+              run from the top of the wash down to the last link.
+              They are still SHOWN here and CHANGED on Home (the user's earlier
+              rule), so these two rows carry no ＋ — a style edited in two places
+              is a style that disagrees with itself. */}
+          {isOrg ? null : styleList.length ? (
+            <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>
               {styleList.map((s) => (
-                <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} />
+                <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} small />
               ))}
             </div>
           ) : (
-            <div style={{ padding: "14px 0 6px", fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance are added on Home.</div>
+            <div style={{ marginTop: 12, fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance are added on Home.</div>
           )}
 
-          {/* THE LINKS, UNDER THE STYLES (10760): one line, swiped sideways */}
-          {socials.length ? (
-            <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", margin: "0 0 14px", paddingBottom: 2 }}>
+          {/* THE LINKS, DIRECTLY UNDER THE STYLES (10760) — the user's own order */}
+          {isOrg && !socials.length ? null : socials.length ? (
+            <div style={{ display: "flex", gap: 7, alignItems: "center", overflowX: "auto", scrollbarWidth: "none", marginTop: 8, paddingBottom: 2 }}>
               {socials.map((l) => (
                 <a key={l.platform} href={safeHref(l.url) ?? undefined} target="_blank" rel="noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ ...chip, textDecoration: "none" }}>
                   <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
@@ -264,9 +265,11 @@ export function MyProfilePage({
               ))}
             </div>
           ) : (
-            <div style={{ margin: "0 0 14px", fontSize: 11.5, color: SUB, fontWeight: 700 }}>Your links are added on Home.</div>
+            <div style={{ marginTop: 8, fontSize: 11.5, color: SUB, fontWeight: 700 }}>Your links are added on Home.</div>
           )}
+        </IdentityHero>
 
+        <div style={{ textAlign: "left" }}>
           {/* ABOUT, WHERE IT BELONGS (10811) — prose, not a boxed card */}
           <div style={{ margin: "20px 0 14px" }}>
             <div style={{ ...TYPE.shelf, color: INK, marginBottom: 6 }}>About</div>

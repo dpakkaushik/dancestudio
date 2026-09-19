@@ -86,3 +86,16 @@ export const KIND_WORD: Record<PersonKind, string> = { user: "User", artist: "Ar
 
 /** the account number as the prototype prints it: six digits, zero-padded */
 export const memberNoWords = (n: number | null | undefined): string => (n == null ? "" : String(n).padStart(6, "0"));
+
+/** THE LINE UNDER THE NAME — "20 Yrs · Gurugram" (19 Sep 2026, the user: "age
+ *  with Yrs and City Name without comma in between", and when asked which
+ *  separator: "give seprator").
+ *
+ *  It read "20, Gurugram" from the prototype's own introduction line (10664)
+ *  until today. ⚠ It lives HERE rather than in either screen because Home and
+ *  the Profile tab both print it and had each built it their own way — Home by
+ *  joining with a comma, the Profile tab by handing a `prefix` to `PlaceLink` —
+ *  which is exactly how the two screens came to disagree. One function, one
+ *  sentence, both callers. */
+export const heroMetaWords = (age: number | null | undefined, city: string | null | undefined): string =>
+  [age != null ? `${age} Yrs` : "", (city ?? "").trim()].filter(Boolean).join(" · ");

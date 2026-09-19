@@ -14,15 +14,15 @@ import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { headerMaxFor, photoUrl } from "@/lib/media/photo";
-import { CARD, DOS_UI, GOLD, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
-import { BizSection, HOME_TYPE } from "@/features/home/components/home-kit";
+import { CARD, DOS_UI, GOLD, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { BizSection } from "@/features/home/components/home-kit";
 import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { EyeIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
-import { HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
-import { KIND_WORD, kindOf, memberNoWords } from "@/types/profile";
+import { HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 
 /** Home — the dancer dashboard lifted from prototype S_homedancer (DanceOSApp.jsx:7206-7352):
@@ -163,9 +163,10 @@ export default async function HomePage() {
      for an artist, bronze for a user — the same pair the Profile tab paints with */
   const ring = ROLE_RING[kind];
   const face = photoUrl(profile.avatarPath);
-  /* "24, New Delhi" — one string with a comma, the way you'd introduce somebody (7295-7306) */
+  /* "20 Yrs · Gurugram" — `heroMetaWords`, the ONE place this sentence is built,
+     so Home and the Profile tab cannot word it differently (19 Sep 2026) */
   const place = profile.city ?? "";
-  const metaLine = [profile.age != null ? String(profile.age) : "", place].filter(Boolean).join(", ");
+  const metaLine = heroMetaWords(profile.age, place);
   /* Manage only appears if you actually run something (7135): the door to what you
      manage, and offering it to somebody who manages nothing is a door onto an empty room */
   const canManage = businesses.length > 0;
@@ -202,15 +203,20 @@ export default async function HomePage() {
           name={profile.fullName}
           grad={ring}
           tint={ring[1]}
+          /* ⚠ ONE MAP FOR BOTH SCREENS, AND IT IS THE TITLE-CASED ONE (19 Sep
+             2026). Home read `KIND_WORD` ("Artist") and the Profile tab
+             `KIND_BADGE` ("ARTIST"); `HERO_EYEBROW` uppercases either, so the
+             two LOOKED alike and were not. The Profile tab moved onto this one
+             rather than the reverse, because the shouting was only ever CSS:
+             "ORGANIZATION" in the DOM is what a screen reader reads out, and
+             the capitals belong to the style sheet, not to the text. */
           eyebrow={KIND_WORD[kind]}
           /* the account number belongs under the word that names the account
              (18 Sep 2026) — it used to sit under the styles, a block away */
           eyebrowSub={
             profile.memberNo != null ? (
-              <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none", color: MUTED }}>
-                <span style={{ display: "block", ...HOME_TYPE.micro, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
-                  {memberNoWords(profile.memberNo)}
-                </span>
+              <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none" }}>
+                <HeroId>{memberNoWords(profile.memberNo)}</HeroId>
               </Link>
             ) : null
           }
