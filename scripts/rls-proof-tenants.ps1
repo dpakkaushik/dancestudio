@@ -21,6 +21,8 @@ function Sign-In($phone) {
   Invoke-RestMethod -Method Post -Uri "$base/auth/v1/otp" -Headers $h -Body ("{`"phone`":`"$phone`"}") | Out-Null
   return Invoke-RestMethod -Method Post -Uri "$base/auth/v1/verify" -Headers $h -Body ("{`"type`":`"sms`",`"phone`":`"$phone`",`"token`":`"123456`"}")
 }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
+
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 
 $a = Sign-In "+919999999999"
@@ -49,21 +51,9 @@ function New-OrgOwner($email, $name) {
 $b = New-OrgOwner "st-ownerb-$stamp@example.com" "Owner B $stamp"
 
 # each owner creates a studio via the RPC (tenant + owner membership, atomic)
-# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
-# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
-# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
-function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
-  $ownerId = [string]$ownerRows[0].user_id
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
-    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
-    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
-}
-$ta = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $a.access_token) -Body (@{ p_name = "Studio A $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") } | ConvertTo-Json)
+$ta = New-Studio $a.access_token "Studio A $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
-$tb = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers (Api $b.access_token) -Body (@{ p_name = "Studio B $stamp"; p_type = "studio"; p_area = "Saket"; p_city = "New Delhi"; p_styles = @("Hip-Hop") } | ConvertTo-Json)
+$tb = New-Studio $b.access_token "Studio B $stamp" "Saket" "New Delhi"
 # A's studio is subscribed and listed (Subscribe-Studio above); B's is neither, so it stays the
 # private row this proof's isolation claims are about
 "1. A created '$($ta.name)' (subscribed, public); B created '$($tb.name)' (unsubscribed, private)"

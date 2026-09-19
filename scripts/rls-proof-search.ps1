@@ -29,7 +29,7 @@ $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing from .env.local" }
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
-. (Join-Path $PSScriptRoot "proof-lib.ps1")   # Seat-Teacher / Publish-Class / New-Published-Class (18 Sep 2026)
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
@@ -73,21 +73,9 @@ $tag = "Zq$stamp"   # a token no real row carries, so every match is ours
 $ownerA = New-EmailUser "srch-a-$stamp@example.com" "$tag Organization Kothrud" "org"
 $ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "org"
 $dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
-# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
-# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
-# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
-function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
-  $ownerId = [string]$ownerRows[0].user_id
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
-    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
-    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
-}
-$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Kothrud"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+$ta = New-Studio $ownerA.token "$tag Studio Kothrud" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "$tag Private Hall"; p_type = "studio"; p_area = "Andheri"; p_city = "Mumbai"; p_styles = @("Hip-Hop") }
+$tb = New-Studio $ownerB.token "$tag Private Hall" "Andheri" "Mumbai"
 Subscribe-Studio ([string]$tb.id)
 Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($tb.id)" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
 
@@ -147,9 +135,9 @@ try {
     ($personHit.Count -eq 1) -and ($personHit[0].href -like "/person/*") -and ($personHit[0].sub -like "User*") -and ($anonPersonHit.Count -eq 0))
 
   # 6. THE CAP PER KIND, AND THE HREF EACH ROW OPENS
-  $t2 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Two"; p_type = "studio"; p_area = "Baner"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+  $t2 = New-Studio $ownerA.token "$tag Studio Two" "Baner" "Pune"
   Subscribe-Studio ([string]$t2.id)
-  $t3 = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "$tag Studio Three"; p_type = "studio"; p_area = "Aundh"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+  $t3 = New-Studio $ownerA.token "$tag Studio Three" "Aundh" "Pune"
   Subscribe-Studio ([string]$t3.id)
   $capped = @((Search $anonH $tag 2) | Where-Object { $_.kind -eq "studio" })
   $all = @((Search $anonH $tag 10) | Where-Object { $_.kind -eq "studio" })

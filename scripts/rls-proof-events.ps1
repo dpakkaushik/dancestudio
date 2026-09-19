@@ -31,6 +31,8 @@ $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" 
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
+
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 function Rpc($headers, $fn, $body) {
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/$fn" -Headers $headers -Body ($body | ConvertTo-Json -Depth 8)
@@ -107,21 +109,9 @@ $ownerB = New-EmailUser "ev-ownerb-$stamp@example.com" "Owner B $stamp" "org"
 $l1 = New-EmailUser "ev-l1-$stamp@example.com" "Dancer One $stamp" "user"
 $l2 = New-EmailUser "ev-l2-$stamp@example.com" "Dancer Two $stamp" "user"
 
-# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
-# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
-# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
-function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
-  $ownerId = [string]$ownerRows[0].user_id
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
-    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
-    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
-}
-$ta = Rpc (Api $ownerA.token) "create_business_with_owner" @{ p_name = "Event Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+$ta = New-Studio $ownerA.token "Event Proof Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
-$tb = Rpc (Api $ownerB.token) "create_business_with_owner" @{ p_name = "Rival Studio $stamp"; p_type = "studio"; p_area = "Baner"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+$tb = New-Studio $ownerB.token "Rival Studio $stamp" "Baner" "Pune"
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $staffA.id "staff" $ownerA.id
 # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own

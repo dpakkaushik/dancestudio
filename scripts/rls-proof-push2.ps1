@@ -36,6 +36,8 @@ $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" 
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
+
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 function Rpc($headers, $fn, $body) {
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/$fn" -Headers $headers -Body ($body | ConvertTo-Json -Depth 8)
@@ -124,7 +126,7 @@ $lead = New-EmailUser "p2-lead-$stamp@example.com" "P2 Leader $stamp" "user"
 $artist = New-EmailUser "p2-artist-$stamp@example.com" "P2 Artist $stamp" "user"
 $fan = New-EmailUser "p2-fan-$stamp@example.com" "P2 Fan $stamp" "user"
 Grant-ArtistPlan $artist.id
-$studio = Rpc (Api $org.token) "create_business_with_owner" @{ p_name = "P2 Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+$studio = New-Studio $org.token "P2 Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$studio.id)
 $studioId = [string]$studio.id
 $crew = $null

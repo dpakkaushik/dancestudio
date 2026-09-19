@@ -1,10 +1,96 @@
-# Shared helpers for the rls-proof-*.ps1 scripts. Dot-source AFTER $base and $svcH exist:
+# Shared helpers for the rls-proof-*.ps1 scripts. Dot-source AFTER $base, $anon and
+# $svcH exist (New-Studio signs as a real owner, so it needs the anon key):
 #
 #   . (Join-Path $PSScriptRoot "proof-lib.ps1")
 #
 # ASCII ONLY. Windows PowerShell 5.1 decodes a BOM-less .ps1 as ANSI, and a UTF-8
 # dash becomes a smart quote it accepts as a string delimiter (the 11 Sep 2026
 # lesson that had rls-proof.ps1 dead for weeks).
+
+# ---------------------------------------------------------------------------
+# A STUDIO, MADE THE WAY THE APP MAKES ONE - and made in ONE PLACE.
+#
+# 19 Sep 2026 cost this harness two whole days of its own making, and both bills
+# were the same shape: A RULE THE DATABASE STARTS KEEPING IS A RULE EVERY SCRIPT
+# HAS TO KEEP.
+#   * `businesses.styles` became mandatory, so all 31 proofs, two e2e specs and
+#     five browser scripts had to learn `p_styles` before a single check could run.
+#   * The edit was a regex, and `p_type = "studio"` also matched a
+#     `nearby_businesses` call that has no such argument - PostgREST answered 404
+#     (PGRST202) on a function it could no longer resolve. Found by the discovery
+#     proof, fixed by hand, and the reason the whole suite was re-run.
+#
+# So studio creation lives HERE now. The next argument the RPC grows is one edit
+# in one file, and nobody has to point a regex at 31 scripts to find the callers.
+#
+# Self-contained on purpose: it calls Invoke-RestMethod directly rather than the
+# proof's own Rpc/Api helpers, because not every proof defines them (rls-proof-tenants
+# has no Rpc at all). All it needs is $base and $anon, which every proof has before
+# it dot-sources this file.
+function New-Studio($token, $name, $area, $city, $styles = @("Hip-Hop")) {
+  Assert-City $city
+  $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
+    p_name = $name; p_type = "studio"; p_area = $area; p_city = $city; p_styles = $styles } | ConvertTo-Json)
+}
+
+# An artist page - the other thing create_business_with_owner makes. It takes NO
+# styles: update_business_profile refuses to empty a STUDIO's styles and
+# create_business_with_owner refuses a studio without them, but an artist page
+# carries the person's own.
+function New-Artist-Page($token, $name, $area, $city) {
+  Assert-City $city
+  $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
+    p_name = $name; p_type = "artist_page"; p_area = $area; p_city = $city } | ConvertTo-Json)
+}
+
+# THE CITY VOCABULARY IS THE DATABASE'S, AND A PROOF MAY NOT INVENT ONE.
+#
+# 19 Sep 2026: migration 20260919150000 made `cities` exactly eight and hung a
+# BEFORE trigger on profiles, businesses, crews and events that REFUSES anything
+# else. rls-proof-person-pages built its world in Ahmedabad and rls-proof-stats in
+# Chandigarh - "a city the demo world does not use", which was a good reason right
+# up until it was an invalid one. Both died on the PROFILE INSERT with a bare 400,
+# before check 1, and stayed red for a day because the failure named nothing.
+#
+# This turns that into a sentence that says what is wrong and what is allowed. The
+# registry is read once per run and cached, so it costs one request, not one per
+# studio.
+$script:DosCities = $null
+function Proof-Cities {
+  if ($null -eq $script:DosCities) {
+    # the column is `city`, not `name` - the table was `city_centroids` before the
+    # 16 Sep rename and kept its column names
+    $res = Invoke-WebRequest -Method Get -Uri "$base/rest/v1/cities?deleted_at=is.null&select=city" -Headers @{ apikey = $anon } -UseBasicParsing
+    $script:DosCities = @(($res.Content | ConvertFrom-Json) | ForEach-Object { [string]$_.city })
+  }
+  return ,$script:DosCities
+}
+function Assert-City($city) {
+  $all = Proof-Cities
+  if ($all.Count -and ($all -notcontains [string]$city)) {
+    throw "PROOF SET-UP: '$city' is not one of the cities this database allows. The registry is: $($all -join ', '). (A BEFORE trigger refuses anything else - see migration 20260919150000.)"
+  }
+}
+
+# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
+# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
+# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
+#
+# Lifted into this file 20 Sep 2026 from the 26 proofs that each carried a
+# byte-identical copy of it, for the reason above: the next change to how a studio
+# goes public should be one edit, not twenty-six. (rls-proof-push2 keeps its own,
+# which also stamps the studio's badge - it proves a wider slice.)
+function Subscribe-Studio($tenantId) {
+  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+  $ownerId = [string]$ownerRows[0].user_id
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
+    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
+    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
+}
 
 # 18 Sep 2026: A STUDIO CLASS PUBLISHES ONLY ONCE ITS TEACHER HAS ACCEPTED, and an
 # ARTIST'S CLASS ONLY ONCE IT HAS A PLACE (trigger classes_publish_needs_a_yes,

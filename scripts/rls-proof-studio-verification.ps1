@@ -36,6 +36,8 @@ if (-not $base -or -not $anon -or -not $service) { throw "NEXT_PUBLIC_SUPABASE_U
 
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
+
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 function Rpc($headers, $fn, $body) {
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/$fn" -Headers $headers -Body ($body | ConvertTo-Json -Depth 8)
@@ -87,7 +89,7 @@ try {
 
   # ── 1. an unverified organization opens a studio ──
   $gate = Rpc (Api $a.token) "why_no_studio" @{}
-  $ta = Rpc (Api $a.token) "create_business_with_owner" @{ p_name = "SV Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+  $ta = New-Studio $a.token "SV Studio $stamp" "Kothrud" "Pune"
   Check 1 "An organization nobody has verified opens a studio (gate: '$gate'; studio: $($ta.id))" ((NoSentence $gate) -and $ta.id)
 
   # ── 2. the GST number is not written by hand ──

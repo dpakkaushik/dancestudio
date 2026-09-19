@@ -151,8 +151,8 @@ try {
     ($r11a -like "*city is required*") -and ($r11b -like "*at least one dance style*") -and
     $mine[0].city -eq "New Delhi" -and $null -eq $mine[0].age -and $null -eq $mine[0].about -and @($mine[0].socials).Count -eq 0 -and @($mine[0].styles).Count -eq 1)
 
-  # 12. an ORGANIZATION carries no styles and — since 20260914110000 (14 Sep 2026,
-  #     "an organization keeps no link") — needs no link of its own: what DanceOS
+  # 12. an ORGANIZATION carries no styles and - since 20260914110000 (14 Sep 2026,
+  #     "an organization keeps no link") - needs no link of its own: what DanceOS
   #     checks is each STUDIO's links and photos, and the organization's own
   #     paperwork is its GST number. This check asserted the OLD rule ("at least
   #     one link") and had been red since that migration; re-cut 16 Sep 2026.

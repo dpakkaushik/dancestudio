@@ -2,7 +2,70 @@
 
 ## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
 
-> ### STAGE 2, PART ONE — PAY IS ON THE ROW, THE EMAIL DOOR IS SHUT, AND THE PERMISSIONS TABLE IS GONE (20 Sep 2026, latest) — BUILT, no migration
+> ### THE HARNESS PAYS FOR ITSELF — STUDIO CREATION IN ONE PLACE, A CITY CHECKED BY NAME, AND THE TRAP THAT EATS A SERIAL SUITE WRITTEN DOWN (20 Sep 2026, latest) — HARNESS ONLY, no migration, no product change
+> The third of the user's three fixes was "fix these 3 properly", and the first two
+> were done the day before by hand. This is the part that stops them recurring:
+> **31 scripts learned `p_styles` one at a time, and the regex that taught them
+> broke a `nearby_businesses` call.** Both bills were the same shape — *a rule the
+> database starts keeping is a rule every script has to keep* — so the thing every
+> script was repeating moved into one file.
+> * **`New-Studio` / `New-Artist-Page` in `scripts/proof-lib.ps1`.** 44 call sites
+>   across 28 scripts, in two different shapes (`Rpc (Api …) "create_business_with_owner"`
+>   and a raw `Invoke-RestMethod` to the same RPC), are one helper now. It is
+>   SELF-CONTAINED on purpose — it calls `Invoke-RestMethod` rather than the
+>   proof's own `Rpc`/`Api`, because `rls-proof-tenants` has no `Rpc` at all.
+> * **`Subscribe-Studio` hoisted**: **26 proofs carried a byte-identical copy**,
+>   proven identical before it moved. `rls-proof-push2` keeps its own, which also
+>   stamps the studio's badge — a wider slice, and a later local definition wins.
+> * **`Assert-City`, and the reason it exists.** The eight-cities trigger
+>   (`20260919150000`) killed `person-pages` and `stats` on the PROFILE INSERT
+>   with a bare 400, before check 1, and they stayed red for a day because the
+>   failure named nothing. The registry is read once per run and a bad city now
+>   says *"'Chandigarh' is not one of the cities this database allows. The registry
+>   is: …"*. ⚠ Its first cut asked for `cities.name`; the column is `city` (the
+>   table was `city_centroids` and kept its column names) — found by running it.
+> * **Net: 223 lines OUT of the harness**, and the next argument
+>   `create_business_with_owner` grows is one edit in one file.
+> * **THE SERIAL-SUITE TRAP, WRITTEN INTO THE SPEC** where the next person will
+>   meet it: *where a segment sits is part of its set-up*. Two segments were bitten
+>   by it on 19 Sep — memberships (the clash segment had made the learner visiting
+>   faculty, so `why_no_membership` refused) and the team desk (the picker excludes
+>   somebody already on the team) — and both were fixed by MOVING the segment above
+>   the clash segment, not by working around the rule. Beside it, the other half:
+>   *a serial suite only reports its first failure*, which is how two live
+>   admin-panel bugs hid for two days.
+> * **THE PAID-WEBHOOK SPEC SWEEPS ITS OWN PAST SELVES.** Its `finally` deletes its
+>   studio, so a completed run leaves nothing — but a KILLED run leaves one, and on
+>   19 Sep that happened nine times.
+> * **THREE SCRIPTS WERE ONE EDIT FROM THE 11 Sep BUG**: `rls-proof-profile-fields`,
+>   `rls-proof-settings-screens` and `run-proofs` carried em dashes and a ⚠ with **no
+>   BOM**, which PowerShell 5.1 decodes as ANSI — the exact shape that had
+>   `rls-proof.ps1` dead for weeks. Now ASCII, and all 37 scripts are checked for
+>   it: 0 parse errors, 0 non-ASCII without a BOM.
+> * **Verified:** typecheck 0 · lint 0 · **22/22 proofs green** — every proof that
+>   can currently run, including `person-pages` and `stats`, the two that were red
+>   the day before. ⚠ **The other 9 are PHONE-BASED and blocked by data, not by
+>   this change** (below).
+> * ⚠⚠ **AND TWO SELF-INFLICTED ONES THIS SLICE, BOTH THE SAME LESSON IN A NEW COAT
+>   — A MECHANICAL EDIT MUST ASSERT WHAT IT TOUCHED.**
+>   1. **The first `Subscribe-Studio` regex ate live code.** It ran from
+>      `# 10 Sep 2026: a studio is born UNLISTED` to the function, lazily — and
+>      `rls-proof-tenants` has TWO comments starting that way, so it swallowed
+>      `$svcH`, `New-OrgOwner` and the `$b = New-OrgOwner …` line in between.
+>      **Caught by READING THE DIFF, not by the script.** The anchor now requires
+>      the comment run to be immediately followed by the function, the script
+>      asserts the block holds exactly one `function` and no assignments, and a
+>      pass over every removed line in all 28 files reported **0 unexpected
+>      removals**.
+>   2. **A PowerShell one-liner BLANKED THREE SCRIPTS TO 0 BYTES.**
+>      `$t.Replace([char]0x2014,'-').Replace([char]0x26A0,'!!')` — `String.Replace`'s
+>      CHAR overload will not take a two-character string, the statement threw,
+>      `$t2` was `$null`, and `if ($t2 -ne $t) { WriteAllText }` wrote nothing over
+>      each file. `git checkout` restored them. **Never write a file from an
+>      expression you have not checked is non-empty** — the rewrite is guarded on
+>      both emptiness and a suspicious shrink now.
+>
+> ### STAGE 2, PART ONE — PAY IS ON THE ROW, THE EMAIL DOOR IS SHUT, AND THE PERMISSIONS TABLE IS GONE (20 Sep 2026) — BUILT, no migration
 > The user: *"Team- Remove option to add by email and remove permission section
 > just for labelling and. Payment for team wasnt implemented? fix all in order."*
 > Taken in the order that made sense: the diagnosis first, because it decided
@@ -3752,6 +3815,41 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0aa. **⚠ NINE PROOFS CANNOT RUN: THE TEST-PHONE ACCOUNT IS AT THE 15-STUDIO CAP,
+   AND THE SWEEP IS THE USER'S TO APPROVE (20 Sep 2026).** Every phone-based proof
+   dies at its FIRST studio with a bare 400, and the refusal is the product being
+   right: *"An organization runs at most 15 studios on DanceOS — this one already
+   has 15."* (`why_no_studio`, `20260918171000`). Counted, not guessed — the
+   test-phone owner `+919999999999` owns exactly 15 live studios, **all created on
+   19 Sep 2026 by our own runs**: nine `Mandate Proof Studio …` (the paid-webhook
+   spec, from runs killed before its `finally`) and six from proof scripts that
+   died mid-run (`Class Studio 200152/195603`, `Studio A 195746/201430`,
+   `Near Studio 195900/195613`). Nothing real is among them.
+   **Blocked until it is swept:** `attendance · classes · discovery · enrollments ·
+   leads · payments · rooms-people · slugs · tenants` — and `paid-webhook`'s own
+   mandate test. The other 22 proofs are email-based, make a fresh organization per
+   run, and are green (top block).
+   The repo's own sweep is ready and was DRY-RUN; the kept set was read first (the
+   standing rule):
+```
+   node scripts/cleanup-proof-leftovers.js --show-kept   # dry run: 17 profiles, 113 businesses would go; 40 profiles, 33 businesses stay
+   node scripts/cleanup-proof-leftovers.js --apply       # soft delete only - deleted_at, one UPDATE back
+```
+   **What STAYS (read before approving):** the user's own accounts
+   (`deepakkaushik8919@gmail.com`, `deepak@eeetaxi.com`,
+   `deepakkaushikdevtest@gmail.com`, `palliatrans2025@gmail.com`), the two real
+   outside accounts (`alisha.maini@gmail.com`, `jishnu.nanda@gmail.com`), the 15
+   demo accounts and their nine businesses, and both test-phone accounts — 40
+   profiles and 33 businesses, 11 of them listed studios.
+   ⚠ **Do not run it while a proof suite or the e2e is running**: the kept set
+   includes the `earnproof-*` / `staffproof-*` rows of whatever is in flight, and
+   the sweep would delete a running test's world underneath it.
+   ⚠ **It regrows about one row per interrupted run.** The paid-webhook spec now
+   deletes its OWN older `Mandate Proof Studio …` rows before it starts (top
+   block), which covers nine of these fifteen; the proof scripts still leak one
+   studio each when a run is killed, and the honest fix there is the same trick in
+   `New-Studio`, which is one edit now that studio creation lives in one file.
+
 0. **~~APPLY `20260919190000_a_studio_says_what_it_dances_and_a_team_has_an_order`~~
    — ✅ APPLIED AND PUSHED 19 Sep 2026** on the user's *"apply it and push on
    live"*, after the list below had been in front of them. The dry run listed
@@ -4337,6 +4435,20 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE HARNESS PAYS FOR ITSELF — 20 Sep 2026, no step number — HARNESS ONLY, no
+  migration, no product change.** The recurrence half of the user's third fix:
+  studio creation (44 call sites, 28 scripts, two shapes) and `Subscribe-Studio`
+  (26 byte-identical copies) moved into `scripts/proof-lib.ps1` as `New-Studio` /
+  `New-Artist-Page` / `Subscribe-Studio`, with `Assert-City` turning the
+  eight-cities trigger's bare 400 into a sentence naming the registry; 223 net
+  lines out. The paid-webhook spec deletes its own older leftovers before it
+  starts; three scripts stopped being one edit from the 11 Sep ANSI bug; and the
+  two traps that eat a serial suite — *where a segment sits is part of its
+  set-up*, and *a serial suite only reports its first failure* — are written into
+  `happy-path.spec.ts` where the next person meets them. typecheck 0 · lint 0 ·
+  **22/22 proofs green**, the two that were red the day before among them. ⚠ The
+  other 9 are phone-based and blocked by the leftover pile, not by this change
+  (NEXT TO DO #0aa — the sweep is the user's to approve).
 - **THE 28-POINT LIST — THE TOOLS' TOGGLES, A TEAM ASKED BY NAME AND PAID, EDIT
   PROFILE INTO SETTINGS, THE BAND ON HOME, AND A STUDIO THAT SAYS WHAT IT DANCES
   — 19 Sep 2026, no step number ⚠ (Rule 9: money + consent + RLS) — ONE MIGRATION

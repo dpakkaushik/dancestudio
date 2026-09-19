@@ -35,6 +35,8 @@ $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" 
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
+
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 function Rpc($headers, $fn, $body) {
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/$fn" -Headers $headers -Body ($body | ConvertTo-Json -Depth 8)
@@ -80,17 +82,6 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
 }
-# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live. The
-# service role stands in for an admin's grant here - a granted, active row at Rs 0 - and lists it.
-function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
-  $ownerId = [string]$ownerRows[0].user_id
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
-    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
-    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
-}
 # the Artist plan as an admin's grant (the enquiries proof's helper): granted, active, Rs 0
 function Grant-ArtistPlan($userId) {
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
@@ -111,7 +102,7 @@ $member = New-EmailUser "prof-member-$stamp@example.com" "Prof Member $stamp" "u
 $fan = New-EmailUser "prof-fan-$stamp@example.com" "Prof Fan $stamp" "user"
 $artist = New-EmailUser "prof-artist-$stamp@example.com" "Prof Artist $stamp" "user"
 Grant-ArtistPlan $artist.id
-$studio = Rpc (Api $org.token) "create_business_with_owner" @{ p_name = "Prof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+$studio = New-Studio $org.token "Prof Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$studio.id)
 # the organization's hosting row (R15) - what an enquiry to it is sent to
 # ($host is PowerShell's READ-ONLY automatic variable, like $pid - never a name here)

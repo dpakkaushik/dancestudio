@@ -4,10 +4,10 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 tenants events  # by name fragment
 #
 # Sequential on purpose: several proofs sign the two test PHONE numbers in, and
-# Supabase rate-limits a second OTP for the same number within seconds — running
+# Supabase rate-limits a second OTP for the same number within seconds - running
 # them side by side reads as a broken proof (429) when nothing is broken.
-# `powershell -File` hands every argument over as a plain string — a comma is
-# not an array there, and only the first bare word binds positionally — so the
+# `powershell -File` hands every argument over as a plain string - a comma is
+# not an array there, and only the first bare word binds positionally - so the
 # fragments are gathered from everything left on the line and split on commas.
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Only)
 

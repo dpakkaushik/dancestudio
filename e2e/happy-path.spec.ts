@@ -221,7 +221,31 @@ async function deleteUser(userId: string) {
  *  Sign-up uses the admin generate_link API (the technique
  *  scripts/auth-proof-email.ps1 uses): no inbox needed, and the link still
  *  exercises the real /auth/confirm route. Everything created carries a unique
- *  stamp and is deleted in afterAll, so runs do not pile up demo rows. */
+ *  stamp and is deleted in afterAll, so runs do not pile up demo rows.
+ *
+ *  ⚠⚠ TWO THINGS ABOUT A SERIAL STORY THAT HAVE EACH COST A WHOLE RUN. Read both
+ *  before adding or moving a segment.
+ *
+ *  1. WHERE A SEGMENT SITS IS PART OF ITS SET-UP. Each segment inherits the world
+ *     every earlier one left behind, so adding one AT THE END is not neutral — it
+ *     is the most-mutated world this story ever has. Two segments have already
+ *     been bitten by exactly that, both on 19 Sep 2026:
+ *       * MEMBERSHIPS was written last and the learner could not take one. The
+ *         database was right: accepting the clash segment's room ask seats an
+ *         outside teacher as VISITING FACULTY (R19), so by then the learner was on
+ *         the studio's team, and `why_no_membership` says "you are on this team".
+ *       * THE TEAM segment then hit the same wall from the other side — the people
+ *         picker excludes somebody already on the team, so the person it meant to
+ *         ask was not offered.
+ *     Both were fixed by MOVING the segment ABOVE the clash segment, not by
+ *     working around the rule. So: if a new segment needs a learner who is not on
+ *     the studio's team, it belongs before "the class form asks the room first".
+ *
+ *  2. A SERIAL SUITE ONLY REPORTS ITS FIRST FAILURE. Everything after a red is
+ *     "did not run", so one stale assertion hides every segment behind it — that
+ *     is how two live admin-panel bugs stayed invisible for two days (16 Sep
+ *     2026). When a segment goes red, fix it and re-run the WHOLE file; the pass
+ *     count is only meaningful when nothing was skipped. */
 test.describe.serial("DanceOS, end to end", () => {
   test.skip(!supabaseUrl || !serviceKey, "Supabase keys missing (.env.local or env)");
 

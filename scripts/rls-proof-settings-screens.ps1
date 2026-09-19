@@ -35,6 +35,8 @@ $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" 
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
+
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 function Rpc($headers, $fn, $body) {
   try { return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/$fn" -Headers $headers -Body ($body | ConvertTo-Json -Depth 8) }
@@ -142,19 +144,7 @@ try {
     $p3.Count -eq 1 -and $p3[0].active -eq $true -and $sub3.Count -eq 1 -and $sub3[0].cancel_at_period_end -eq $true -and $sub3[0].status -eq "canceled" -and $prof[0].role -eq "user")
 
   # -- the business's own words ------------------------------------
-# 10 Sep 2026: a studio is born UNLISTED and goes public when ITS OWN subscription is live (one
-# per studio, Rs 1,200 a month, renewing on its own through Cashfree). The service role stands in
-# for an admin's grant here - a granted, active row at Rs 0 - and lists the studio as the grant would.
-function Subscribe-Studio($tenantId) {
-  $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$tenantId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
-  $ownerId = [string]$ownerRows[0].user_id
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
-    kind = "studio"; user_id = $ownerId; business_id = $tenantId; plan_key = "studio_monthly"; price_inr = 0; period = "monthly"; status = "active"
-    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
-    note = "Granted by a proof script - nothing charged"; created_by = $ownerId; updated_by = $ownerId } | ConvertTo-Json) | Out-Null
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
-}
-  $t = Rpc (Api $owner.token) "create_business_with_owner" @{ p_name = "Settings Proof Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") }
+  $t = New-Studio $owner.token "Settings Proof Studio $stamp" "Kothrud" "Pune"
   Subscribe-Studio ([string]$t.id)
   $tenantId = [string]$t.id
   if (-not $tenantId) { $tenantId = [string]$t }
@@ -197,8 +187,8 @@ function Subscribe-Studio($tenantId) {
   $r11b = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($owner.id)" -Headers (Plain $owner.token) -Body (@{ verified_at = "2026-08-29T00:00:00Z" } | ConvertTo-Json) }
   $row11 = Rows $anonH "businesses?$TSEL&id=eq.$tenantId"
   $prof11 = Rows (Api $owner.token) "profiles?select=verified_at&id=eq.$($owner.id)"
-  # ⚠ HOW THE REFUSAL ARRIVES CHANGED, AND THE CLAIM DID NOT (11 Sep 2026).
-  # `profiles` still REFUSES with an exception — guard_verified_at raises — but
+  # !! HOW THE REFUSAL ARRIVES CHANGED, AND THE CLAIM DID NOT (11 Sep 2026).
+  # `profiles` still REFUSES with an exception - guard_verified_at raises - but
   # `businesses` now matches NO ROWS, because
   # `20260913100000_doors_that_were_not_doors` dropped the column-less update
   # policy an owner used to PATCH through. Both are refusals; only one throws.
@@ -209,10 +199,10 @@ function Subscribe-Studio($tenantId) {
   # 12. ... while the owner still changes the row THROUGH ITS OWN DOOR, and the
   #     service role sets the tick.
   #
-  # ⚠ This used to PATCH `businesses` directly as the owner, and that is exactly
+  # !! This used to PATCH `businesses` directly as the owner, and that is exactly
   # what migration 20260913100000 closed: the policy naming no columns was the
   # same one that let an owner flip `type` and put a business on Discover having
-  # bought no plan. `set_business_location` is the door for `area` now — it checks
+  # bought no plan. `set_business_location` is the door for `area` now - it checks
   # ownership, bounds the point, and will only write a city on the closed list.
   $r12 = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/set_business_location" -Headers (Plain $owner.token) -Body (@{
     p_business_id = $tenantId; p_lat = 18.5204; p_lng = 73.8567; p_area = "Baner"; p_city = "Pune" } | ConvertTo-Json)

@@ -321,6 +321,29 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
 
   const stamp = Date.now().toString(36);
   const owner = await signInTestNumber("+919999999999");
+
+  /* ⚠ SWEEP THIS TEST'S OWN LEFTOVERS FIRST (20 Sep 2026).
+   *
+   *  The `finally` below deletes this studio, so a run that COMPLETES leaves
+   *  nothing — but a run that is killed part-way leaves one behind, on the one
+   *  account every phone-based check shares. On 19 Sep that happened nine times,
+   *  and the next morning the test number owned fifteen studios and
+   *  `why_no_studio` refused the sixteenth: "An organization runs at most 15
+   *  studios on DanceOS". That is the cap doing its job, and it took out this
+   *  spec AND nine proof scripts at their first line, with a bare 400.
+   *
+   *  So the test cleans up after its own past selves before it starts. It is
+   *  narrow on purpose — only studios named "Mandate Proof Studio …", only ones
+   *  this very test could have made, and a hard DELETE exactly as the `finally`
+   *  does. Nothing else on the account is touched. */
+  const mine = (await rows<{ id: string }>(
+    serviceHeaders,
+    `businesses?name=like.Mandate%20Proof%20Studio%20*&deleted_at=is.null&select=id`
+  )) ?? [];
+  for (const old of mine) {
+    await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${old.id}`, { method: "DELETE", headers: serviceHeaders });
+  }
+
   const tenant = await rpc<{ id: string; visibility: string }>(userHeaders(owner.token), "create_business_with_owner", {
     p_name: `Mandate Proof Studio ${stamp}`,
     p_type: "studio",

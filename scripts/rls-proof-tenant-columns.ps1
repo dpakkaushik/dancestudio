@@ -36,6 +36,7 @@ if (-not $base -or -not $anon -or -not $service) { throw "Supabase keys missing 
 
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Studio / Subscribe-Studio / Assert-City / Publish-Class (see that file)
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
@@ -48,7 +49,7 @@ Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -He
 $owner = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
 $H = Api $owner.access_token
 
-$t = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $H -Body (@{ p_name = "Col Studio $stamp"; p_type = "studio"; p_area = "Kothrud"; p_city = "Pune"; p_styles = @("Hip-Hop") } | ConvertTo-Json)
+$t = New-Studio $owner.access_token "Col Studio $stamp" "Kothrud" "Pune"
 "0. Owner created '$($t.name)' (type=$($t.type)) - it is theirs, and they are its only owner"
 
 # A PATCH that changes nothing about who may see the row, only what it IS.
