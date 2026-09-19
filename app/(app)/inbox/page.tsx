@@ -8,6 +8,7 @@ import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/cla
 import { findAskedForMyCrews, findMyLedCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
 import { findReceivedEnquiries, findReceivedEnquiriesForCrews, findSentEnquiries } from "@/repositories/enquiries";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
+import { findAskedByMyOrganization, findMyPendingOrganizationAsks } from "@/repositories/organizationTeam";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
@@ -43,7 +44,7 @@ export default async function InboxPage() {
   const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id);
   const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "artist_page").map((m) => m.tenant.id);
 
-  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesToBusinesses, enquiriesToCrews, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut, venueIn, venueOut] = await Promise.all([
+  const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesToBusinesses, enquiriesToCrews, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut, venueIn, venueOut, orgIn, orgAsked] = await Promise.all([
     findMyPendingClaims(supabase),
     findMyPendingInvites(supabase),
     findAskedClaimsForTenants(supabase, tenantIds),
@@ -60,6 +61,11 @@ export default async function InboxPage() {
     findMyUnansweredPartners(supabase),
     findVenueRequestsForTenants(supabase, ownedStudioIds).catch(() => []),
     findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
+    /* push 2: an organization naming you on its page (a person's in), and the
+       people the organization is still waiting on (an organization's out) —
+       each read says whose rows it wants, so the other side is simply empty */
+    findMyPendingOrganizationAsks(supabase).catch(() => []),
+    findAskedByMyOrganization(supabase).catch(() => []),
   ]);
 
   const { requestsIn, requestsOut } = buildRequests({
@@ -68,11 +74,13 @@ export default async function InboxPage() {
     invitesIn,
     crewIn,
     partnerIn,
+    orgIn,
     venueOut,
     claimsOut,
     invitesOut: invitesOutByTenant.flat(),
     crewOut,
     partnerOut,
+    orgOut: orgAsked.map((m) => ({ ...m, orgName: profile?.fullName ?? "Your organization" })),
   });
 
   /* one desk: what your businesses were asked, and what your crews were asked, newest first */

@@ -17,7 +17,16 @@ interface CrewRow {
   photo: string | null;
   contact_email?: string | null;
   created_at: string;
+  /** CALL IS A TOGGLE (push 2): the number's own row, or null for a reader the
+   *  policy keeps it from. PostgREST hands a one-to-one embed back as an OBJECT;
+   *  the client's own inference calls it an array — both shapes are read */
+  crew_contacts?: CrewContact | CrewContact[] | null;
 }
+interface CrewContact {
+  phone: string | null;
+  phone_public: boolean;
+}
+const contactOf = (c: CrewRow["crew_contacts"]): CrewContact | null => (Array.isArray(c) ? (c[0] ?? null) : (c ?? null));
 interface MemberRow {
   id: string;
   crew_id: string;
@@ -56,7 +65,10 @@ interface PartnerRow {
   events: { title: string; share_slug: string; start_date: string } | null;
 }
 
-const CREW_COLUMNS = "id, name, city, style, leader_id, photo, contact_email, created_at";
+/* `crew_contacts` is one-to-one (its crew_id is the primary key), so the embed is an
+   object or null — null for a reader its policy keeps the number from, which is how
+   a switched-off number never reaches a page (push 2, 19 Sep 2026) */
+const CREW_COLUMNS = "id, name, city, style, leader_id, photo, contact_email, created_at, crew_contacts (phone, phone_public)";
 const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city, profile_photo_path)";
 
 const toCrew = (r: CrewRow): Crew => ({
@@ -67,6 +79,8 @@ const toCrew = (r: CrewRow): Crew => ({
   leaderId: r.leader_id,
   photo: r.photo,
   contactEmail: r.contact_email ?? null,
+  phone: contactOf(r.crew_contacts)?.phone ?? null,
+  phonePublic: Boolean(contactOf(r.crew_contacts)?.phone_public),
   createdAt: r.created_at,
 });
 const toMember = (r: MemberRow): CrewMember => ({
@@ -115,7 +129,7 @@ export async function findCrewById(supabase: SupabaseClient, crewId: string): Pr
   if (error) {
     throw new Error(`crews.findById failed: ${error.message}`);
   }
-  return data ? toCrew(data as CrewRow) : null;
+  return data ? toCrew(data as unknown as CrewRow) : null;
 }
 
 /** The crews the signed-in person LEADS — the hub's first list, the event
@@ -133,7 +147,7 @@ export async function findMyLedCrews(supabase: SupabaseClient): Promise<CrewSumm
   if (error) {
     throw new Error(`crews.findMyLed failed: ${error.message}`);
   }
-  return withCounts(supabase, (data ?? []) as CrewRow[]);
+  return withCounts(supabase, (data ?? []) as unknown as CrewRow[]);
 }
 
 /** The crews the signed-in person is merely IN (confirmed, not leading) —
@@ -175,7 +189,7 @@ export async function findCrewsByCity(supabase: SupabaseClient, city: string): P
   if (error) {
     throw new Error(`crews.findByCity failed: ${error.message}`);
   }
-  return withCounts(supabase, (data ?? []) as CrewRow[]);
+  return withCounts(supabase, (data ?? []) as unknown as CrewRow[]);
 }
 
 /** The roster as the viewer may see it: a stranger gets the confirmed rows, the
@@ -345,13 +359,19 @@ export async function createCrew(
  *  `contactEmail` undefined leaves the address alone, null clears it, a string
  *  sets it; the RPC's `p_contact_email` is last with a default, so an older
  *  call without it resolves as before. */
-export async function updateCrew(supabase: SupabaseClient, input: { crewId: string; name: string; city: string; style: string; contactEmail?: string | null }): Promise<void> {
+export async function updateCrew(
+  supabase: SupabaseClient,
+  input: { crewId: string; name: string; city: string; style: string; contactEmail?: string | null; phone?: string | null; phonePublic?: boolean }
+): Promise<void> {
   const { error } = await supabase.rpc("update_crew", {
     p_crew_id: input.crewId,
     p_name: input.name,
     p_city: input.city,
     p_style: input.style,
     p_contact_email: input.contactEmail === undefined ? null : (input.contactEmail ?? ""),
+    /* the number and the Call switch (push 2), last with defaults: null = unchanged, '' clears the number */
+    p_phone: input.phone === undefined ? null : (input.phone ?? ""),
+    p_phone_public: input.phonePublic === undefined ? null : input.phonePublic,
   });
   if (error) {
     throw new Error(error.message);

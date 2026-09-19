@@ -1,7 +1,7 @@
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
 import { BioBlock } from "@/features/profiles/components/BioBlock";
-import { ActionRow, CallButton, LocationButton, MailButton } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -11,7 +11,7 @@ import { Group, Row, TYPE, gradientOf } from "@/features/profiles/components/pro
 import { DOS_TINT, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import type { PublicOrganization, PublicOrganizationStudio } from "@/repositories/publicOrganization";
+import type { PublicOrganization, PublicOrganizationStudio, PublicOrganizationTeamMember } from "@/repositories/publicOrganization";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { DanceEvent } from "@/types/event";
 
@@ -31,10 +31,13 @@ import type { DanceEvent } from "@/types/event";
  *  own page) and THE EVENTS IT HOSTS. The header swipes through up to ten
  *  pictures, added from Edit profile like a person's.
  *
- *  ⚠ THE USER ASKED FOR "OWNER — one of the users added from team in
- *  organizations" here, and it is NOT built: an organization is ONE LOGIN
- *  (8 Sep 2026) with no team table behind it, so there is no user to name.
- *  Backlog row; the Studios group stands where the Owner would.
+ *  PUSH 2 (19 Sep 2026), three of the user's answers land here: **OWNER and
+ *  TEAM** — the people the organization named from its Team desk and who said
+ *  yes (`organization_members`, through the definer read `public_organization_team`);
+ *  an organization is still ONE LOGIN, these are LABELS on its page, not powers.
+ *  **Location opens the organization's own PIN** once it has placed itself from
+ *  Edit profile (`set_my_place`), Maps by name and city until then. **Stats**
+ *  opens THIS organization's standing — its studios' rows — for a visitor.
  *
  *  Not in search's People (R9, R11 stand); its `profiles` row stays private
  *  (R12). Readable signed out. */
@@ -45,6 +48,7 @@ export function OrganizationPublicPage({
   org,
   studios,
   events,
+  team = [],
   header = [],
   isMe = false,
   following = false,
@@ -54,6 +58,8 @@ export function OrganizationPublicPage({
   org: PublicOrganization;
   studios: PublicOrganizationStudio[];
   events: DanceEvent[];
+  /** THE TEAM (push 2): the confirmed people it named — owners first */
+  team?: PublicOrganizationTeamMember[];
   /** THE HEADER PICTURES (19 Sep 2026): up to ten, the organization's own */
   header?: HeaderPhoto[];
   /** the organization looking at its own page: no Follow, no Enquiry */
@@ -69,6 +75,10 @@ export function OrganizationPublicPage({
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${org.name}`, signed: h.signed }));
   /* an organization is asked through its hosting row (R15) — a celebration, a corporate show, a collaboration */
   const canAsk = !isMe && Boolean(org.hostBusinessId) && enquiryTypesFor("org").length > 0;
+  const owners = team.filter((m) => m.role === "owner");
+  const others = team.filter((m) => m.role !== "owner");
+  /* the Location button opens the organization's own pin once it has placed itself (push 2) */
+  const pinHref = org.lat != null && org.lng != null ? mapsPinHref(org.lat, org.lng) : null;
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -82,8 +92,9 @@ export function OrganizationPublicPage({
           verified={org.verified}
           share={<ProfileShare path={`/org/${org.id}`} name={org.name} />}
           /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): the organization's own
-             combined board, or — for a visitor — the studios' board its studios stand on */
-          stats={<StatsChip href={isMe ? "/business/stats" : "/stats?tab=charts&seg=studio"} />}
+             combined board, or — for a visitor, since push 2 — THIS organization's
+             standing: where each of its studios ranks */
+          stats={<StatsChip href={isMe ? "/business/stats" : `/org/${org.id}/stats`} />}
           meta={
             <>
               {org.city ? <span>{org.city}</span> : null}
@@ -117,10 +128,25 @@ export function OrganizationPublicPage({
           {canAsk ? <EnquiryButton tenantId={org.hostBusinessId as string} tenantName={org.name} tenantType="org" signedIn={signedIn} accent={tint} /> : null}
           {org.phone ? <CallButton phone={org.phone} /> : null}
           {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}
-          {org.city ? <LocationButton query={`${org.name} ${org.city}`} /> : null}
+          {pinHref ? <LocationButton href={pinHref} /> : org.city ? <LocationButton query={`${org.name} ${org.city}`} /> : null}
         </ActionRow>
 
-        {/* ── THE ASSOCIATIONS: the studios it runs, then the events it hosts ── */}
+        {/* ── THE ASSOCIATIONS (push 2: "Organization: Owner (one of the users added
+            from team), list of studios they run"): Owner · Team · Studios · Events ── */}
+        {owners.length ? (
+          <Group title="Owner" n={owners.length}>
+            {owners.map((m) => (
+              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} right="Owner" />
+            ))}
+          </Group>
+        ) : null}
+        {others.length ? (
+          <Group title="Team" n={others.length}>
+            {others.map((m) => (
+              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} />
+            ))}
+          </Group>
+        ) : null}
         <Group title="Studios" n={studios.length}>
           {studios.length ? (
             studios.map((s) => <Row key={s.id} href={`/studio/${s.id}`} title={s.name} sub={[s.area, s.city].filter(Boolean).join(", ") || "Studio"} photo={photoUrl(s.photoPath)} right={s.verifiedAt ? "Verified" : undefined} />)

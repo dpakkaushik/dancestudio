@@ -82,6 +82,9 @@ const updateSchema = z.object({
   city,
   style,
   contactEmail: z.string().trim().email("that is not an email address").max(254).nullable().optional(),
+  /* CALL IS A TOGGLE (push 2): the crew's number, and whether its page dials it */
+  phone: z.string().trim().regex(/^\+?[0-9][0-9 ]{7,17}$/, "a phone number is 8 to 18 digits").nullable().optional(),
+  phonePublic: z.boolean().optional(),
 });
 
 export async function updateCrewAction(input: z.input<typeof updateSchema>): Promise<CrewActionResult> {

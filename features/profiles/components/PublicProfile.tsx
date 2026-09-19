@@ -120,7 +120,8 @@ export function PublicProfile({
           /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026, the user: "give Stats
              button same as home page on profile") — a studio's is the studios'
              board, where this one is ranked */
-          stats={<StatsChip href="/stats?tab=charts&seg=studio" />}
+          /* since push 2 (19 Sep 2026): THIS studio's figures and its place on the studio board */
+          stats={<StatsChip href={`/studio/${tenant.id}/stats`} />}
           meta={
             <>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK }}>

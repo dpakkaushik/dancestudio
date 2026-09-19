@@ -2,6 +2,7 @@ import type { RequestItem } from "@/features/inbox/components/InboxScreen";
 import { sessionDayLabel } from "@/lib/format/session";
 import type { VenueRequest } from "@/repositories/classes";
 import type { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
+import type { MyOrgTeamAsk, OrgTeamMember } from "@/repositories/organizationTeam";
 import type { MyClaimAsk } from "@/types/claim";
 import type { CrewMember, MyCrewAsk, PartnerAsk } from "@/types/crew";
 
@@ -24,6 +25,11 @@ export const CREW_WORDS = { what: "a crew member", verb: "add you to" } as const
 export const PARTNER_WORDS = { what: "your entry partner", verb: "enter with you into" } as const;
 /* 18 Sep 2026: an artist asks a studio for one of its rooms — the class waits for the answer */
 export const VENUE_WORDS = { what: "the room for a class", verb: "hold a class in" } as const;
+/* push 2 (19 Sep 2026): an organization names a person on its public page — as its owner, or on its team */
+export const ORG_TEAM_WORDS = {
+  owner: { what: "an owner", verb: "name you as an owner of" },
+  member: { what: "a team member", verb: "add you to the team of" },
+} as const;
 
 const dayWords = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -44,6 +50,9 @@ export interface RequestSources {
   invitesOut?: SentInvite[];
   crewOut?: Array<CrewMember & { crewName: string }>;
   partnerOut?: PartnerAsk[];
+  /** push 2: an organization's asks — to the person (in), and the ones the organization is waiting on (out) */
+  orgIn?: MyOrgTeamAsk[];
+  orgOut?: Array<OrgTeamMember & { orgName: string }>;
 }
 
 const newestFirst = (a: RequestItem, b: RequestItem) => b.at.localeCompare(a.at);
@@ -129,6 +138,22 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: "Their entry is in either way — this decides whether the organiser sees you as confirmed.",
       bookingId: p.bookingId,
     })),
+    /* an organization's page is public, so being named on it is a claim about you */
+    ...(s.orgIn ?? []).map((o): RequestItem => ({
+      kind: "orgteam",
+      id: o.id,
+      dir: "in",
+      who: o.orgName,
+      what: ORG_TEAM_WORDS[o.role].what,
+      verb: ORG_TEAM_WORDS[o.role].verb,
+      subjectKind: "ORGANIZATION",
+      subjectTitle: o.orgName,
+      when: null,
+      href: `/org/${o.orgId}`,
+      at: o.createdAt,
+      note: o.role === "owner" ? "You would be shown as this organization's OWNER on its public page — a label, not a login." : "You would be shown on this organization's public page under TEAM.",
+      memberId: o.id,
+    })),
   ].sort(newestFirst);
 
   const requestsOut: RequestItem[] = [
@@ -209,6 +234,21 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: p.createdAt,
       note: "Your entry holds whether or not they answer.",
       bookingId: p.bookingId,
+    })),
+    ...(s.orgOut ?? []).map((o): RequestItem => ({
+      kind: "orgteam",
+      id: o.id,
+      dir: "out",
+      who: o.name,
+      what: ORG_TEAM_WORDS[o.role].what,
+      verb: ORG_TEAM_WORDS[o.role].verb,
+      subjectKind: "ORGANIZATION",
+      subjectTitle: o.orgName,
+      when: null,
+      href: "/business/team",
+      at: o.createdAt,
+      note: null,
+      memberId: o.id,
     })),
   ].sort(newestFirst);
 

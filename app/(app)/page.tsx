@@ -233,7 +233,7 @@ export default async function HomePage() {
           /* EDIT PROFILE, FROM HOME (15 Sep 2026, the user: "where is the edit
              profile button?") — the pencil on the hero's corner (10613), opening
              the Profile tab's own sheet: name, mobile, the pictures, the rest */
-          corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} />}
+          corner={<EditProfileButton profile={profile} header={header} headerMax={headerMax} isArtist={isArtist} />}
         >
           {/* ⚠ WHAT WAS HERE HAS GONE UP INTO THE HERO (18 Sep 2026). The role
               word moved to the eyebrow, and the account number under it — both

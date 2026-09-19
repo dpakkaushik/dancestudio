@@ -140,8 +140,14 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
       styles: row.styles ?? [],
       member_no: null,
       verified_at: row.verified_at,
+      /* `public_artist` hands a stranger the number only while the Call switch is on
+         (push 2) — so a number here IS the switch being on */
       phone: row.phone,
+      phone_public: row.phone != null,
       contact_email: row.contact_email ?? null,
+      lat: null,
+      lng: null,
+      location_set_at: null,
     } as Parameters<typeof toProfile>[0]);
   }
 

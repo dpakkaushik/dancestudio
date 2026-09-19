@@ -193,6 +193,8 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/business\/[^/]+\/assets$/, "Assets"],
   [/^\/e\/[^/]+$/, "Event"],
   [/^\/calendar$/, "Calendar"],
+  /* somebody else's record and rank (push 2, 19 Sep 2026) — four profiles, one page shape */
+  [/^\/(person|studio|org|crew)\/[^/]+\/stats$/, "Stats"],
   [/^\/studio\/[^/]+$/, "Studio"],
   [/^\/artist\/[^/]+$/, "Artist"],
   /* an organization's own public page (18 Sep 2026) */

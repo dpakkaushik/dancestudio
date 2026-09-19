@@ -15,11 +15,17 @@ interface ProfileRow {
   verified_at?: string | null;
   phone?: string | null;
   contact_email?: string | null;
+  phone_public?: boolean | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
+  location_set_at?: string | null;
 }
 
 /** every column a profile is drawn from — one list, so no read can forget one
- *  (the photos slice found a read that had its own list and never got profile_photo_path) */
-export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, socials, styles, member_no, verified_at, phone, contact_email";
+ *  (the photos slice found a read that had its own list and never got profile_photo_path).
+ *  ⚠ `phone_public`, `lat`, `lng`, `location_set_at` arrive with push 2's
+ *  migrations (19 Sep 2026): the app cannot run against the schema before them. */
+export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, socials, styles, member_no, verified_at, phone, contact_email, phone_public, lat, lng, location_set_at";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -43,6 +49,10 @@ export const toProfile = (row: ProfileRow): Profile => ({
   verifiedAt: row.verified_at ?? null,
   phone: row.phone ?? null,
   contactEmail: row.contact_email ?? null,
+  phonePublic: Boolean(row.phone_public),
+  lat: row.lat == null ? null : Number(row.lat),
+  lng: row.lng == null ? null : Number(row.lng),
+  locationSetAt: row.location_set_at ?? null,
 });
 
 export async function findProfileById(
@@ -97,6 +107,8 @@ export interface MyProfileInput {
    *  (the styles and links sheets never touch it), `null` CLEARS it, a string
    *  sets it. The RPC reads the same three: null = unchanged, '' = cleared. */
   contactEmail?: string | null;
+  /** THE CALL SWITCH (push 2): `undefined` leaves it as it is; a boolean sets it */
+  phonePublic?: boolean;
 }
 
 /** The one door for what a person says about themselves (S_profiletab's Edit
@@ -115,7 +127,19 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
     /* `p_contact_email` is LAST with a default on the RPC (`20260919122000`):
        null there means "leave it", an empty string clears it */
     p_contact_email: input.contactEmail === undefined ? null : (input.contactEmail ?? ""),
+    /* `p_phone_public` is LAST with a default too (push 2): null = unchanged */
+    p_phone_public: input.phonePublic === undefined ? null : input.phonePublic,
   });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** AN ORGANIZATION'S PIN (19 Sep 2026, push 2): `set_my_place` refuses a person
+ *  and a point outside India; both null clears it. The page's Location button
+ *  opens the pin once it is set. */
+export async function setMyPlace(supabase: SupabaseClient, input: { lat: number | null; lng: number | null }): Promise<void> {
+  const { error } = await supabase.rpc("set_my_place", { p_lat: input.lat, p_lng: input.lng });
   if (error) {
     throw new Error(error.message);
   }

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
 import { respondToVenueRequestAction } from "@/features/classes/server-actions/classes";
 import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
+import { respondToOrganizationAskAction, withdrawOrganizationAskAction } from "@/features/organization/server-actions/team";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
 import {
@@ -39,8 +40,9 @@ import { DOS_MONO, EnqIcon, agoWords, initialsOf, moneyShort, pressKey } from ".
 
 export interface RequestItem {
   /** Step 22 added crew asks and duet-partner asks to the two Step 18 kinds;
-   *  18 Sep 2026 added the VENUE ask — an artist asking a studio for a room */
-  kind: "claim" | "invite" | "crew" | "partner" | "venue";
+   *  18 Sep 2026 added the VENUE ask — an artist asking a studio for a room;
+   *  push 2 (19 Sep 2026) the ORGANIZATION TEAM ask — a label on its public page */
+  kind: "claim" | "invite" | "crew" | "partner" | "venue" | "orgteam";
   id: string;
   dir: "in" | "out";
   /** in: who is asking; out: who is being asked */
@@ -49,7 +51,7 @@ export interface RequestItem {
   what: string;
   /** DOS_LINK_WHAT verb: "list you as the artist on" */
   verb: string;
-  subjectKind: "CLASS" | "STUDIO" | "CREW" | "EVENT";
+  subjectKind: "CLASS" | "STUDIO" | "CREW" | "EVENT" | "ORGANIZATION";
   subjectTitle: string;
   when: string | null;
   href: string | null;
@@ -67,7 +69,7 @@ export interface RequestItem {
   classId?: string;
 }
 
-const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room" };
+const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room", orgteam: "organization" };
 
 const REQ_TINT = "#8B5CF6";
 
@@ -182,7 +184,9 @@ export function InboxScreen({
           ? respondToCrewAskAction({ memberId: r.memberId!, accept })
           : r.kind === "venue"
             ? respondToVenueRequestAction({ classId: r.classId!, accept })
-            : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
+            : r.kind === "orgteam"
+              ? respondToOrganizationAskAction({ memberId: r.memberId!, accept })
+              : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
   const withdraw = (r: RequestItem) =>
     r.kind === "claim"
       ? withdrawClaimAction({ claimId: r.claimId! })
@@ -192,7 +196,9 @@ export function InboxScreen({
           ? withdrawCrewAskAction({ memberId: r.memberId!, crewId: r.crewId })
           : r.kind === "venue"
             ? Promise.resolve({ error: "Pick another studio or room from the class's Edit form — that is the withdrawal" })
-            : Promise.resolve({ error: "A duet entry is withdrawn from the event page" });
+            : r.kind === "orgteam"
+              ? withdrawOrganizationAskAction({ memberId: r.memberId! })
+              : Promise.resolve({ error: "A duet entry is withdrawn from the event page" });
 
   const requestCard = (r: RequestItem) => {
     const c = REQ_TINT;

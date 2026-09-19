@@ -139,6 +139,40 @@ export async function findChart(
   }));
 }
 
+/** ONE BOARD ROW FOR ONE ENTITY (push 2, 19 Sep 2026, the user: "stats page on
+ *  any profile should show all stats for that particular profile and rankings
+ *  as well"): its figures, its place and the population it is ranked out of —
+ *  nationally when `city` is null, in that city otherwise. Signed in, anybody's;
+ *  signed out, a public artist's, a listed studio's or a live crew's, and null
+ *  for a plain user — `entity_chart_row`'s own gate. Null also when the entity
+ *  has nothing on that board yet, which is the honest answer rather than "#0". */
+export async function findEntityChartRow(
+  supabase: SupabaseClient,
+  input: { segment: ChartSegment; id: string; city?: string | null }
+): Promise<ChartRow | null> {
+  const { data, error } = await supabase.rpc("entity_chart_row", { p_segment: input.segment, p_id: input.id, p_city: input.city ?? null });
+  if (error) {
+    return null;
+  }
+  const r = (Array.isArray(data) ? data[0] : data) as ChartRawRow | undefined;
+  if (!r) return null;
+  return {
+    place: Number(r.place),
+    kind: r.kind,
+    id: r.id,
+    name: r.name,
+    city: r.city,
+    style: r.style,
+    conducted: Number(r.conducted ?? 0),
+    assisted: Number(r.assisted ?? 0),
+    attended: Number(r.attended ?? 0),
+    hours: Number(r.hours ?? 0),
+    extra: Number(r.extra ?? 0),
+    points: Number(r.points ?? 0),
+    population: Number(r.population ?? 0),
+  };
+}
+
 /** Where the caller stands on a people board — null when they are not on it yet,
  *  which is the honest answer rather than "#0". */
 export async function findMyPlace(

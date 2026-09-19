@@ -8,7 +8,7 @@ import type { PublicPerson } from "@/repositories/publicPerson";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
 import { BioBlock } from "./BioBlock";
-import { ActionRow, MailButton } from "./ContactButtons";
+import { ActionRow, CallButton, MailButton } from "./ContactButtons";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
@@ -36,9 +36,12 @@ export { Group, Row };
  *  owner's "This is you · Your record ›" — Stats is the chip beside the QR now,
  *  opening your own record, or the board somebody else is ranked on.
  *
- *  ⚠ CALL IS OFF THIS PAGE. The user's list gives Call to studios and
- *  organizations; a person's published number is still theirs to hold on the
- *  record and no longer drawn here. The Edit sheet says so.
+ *  CALL IS A SWITCH HERE (push 2, 19 Sep 2026). The user's list gave Call to
+ *  studios and organizations, then: "Call is off for artist page by default but
+ *  should have option to make it available on profile" — so an artist's page
+ *  dials their number only while `phone_public` is on (the Edit sheet's switch);
+ *  a stranger's read (`public_artist`) hands the number only then. A plain
+ *  user's page still carries no buttons.
  *
  *  Who reads it: a signed-in person reads anybody's; a stranger reads an
  *  ARTIST's public face (`public_artist`, the public columns only) and is sent
@@ -97,9 +100,10 @@ export function PublicPersonPage({
           verified={Boolean(profile.verifiedAt)}
           /* an organization's page to share is /org/{id}; this one is the admin's view of it */
           share={kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
-          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): your own record, or the
-             board this person stands on — an artist's, or the dancers' */
-          stats={<StatsChip href={isMe ? "/stats" : `/stats?tab=charts&seg=${kind === "artist" ? "artist" : "dancer"}`} />}
+          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): your own record, or — since
+             push 2 — THIS person's record and rank (the user: "stats page on any
+             profile should show all stats for that particular profile and rankings") */
+          stats={<StatsChip href={isMe ? "/stats" : `${path}/stats`} />}
           meta={
             profile.city || profile.age ? (
               /* "24, New Delhi" — one introduction, not two facts (10664), and the
@@ -131,10 +135,13 @@ export function PublicPersonPage({
             number is not a public handle, so WhatsApp stays off (10778) ── */}
         <BioBlock about={profile.about} links={profile.socials} hideWhatsApp accent={RC} />
 
-        {/* ── THE BUTTONS AN ARTIST'S PAGE CARRIES (19 Sep 2026): Enquiry · Mail.
-            A user's carries none — the row is simply not drawn. ── */}
+        {/* ── THE BUTTONS AN ARTIST'S PAGE CARRIES (19 Sep 2026): Enquiry · Call ·
+            Mail — Call only while the artist's own switch is on (push 2: "Call is
+            off for artist page by default but should have option to make it
+            available"). A user's page carries none — the row is simply not drawn. ── */}
         <ActionRow>
           {canAsk ? <EnquiryButton tenantId={person.artistPageId as string} tenantName={profile.fullName} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
+          {kind === "artist" && profile.phone && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
         </ActionRow>
 

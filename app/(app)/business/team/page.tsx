@@ -1,16 +1,28 @@
-import { NotBuiltYet } from "@/features/shell/components/NotBuiltYet";
+import { redirect } from "next/navigation";
+import { OrgTeamDesk } from "@/features/organization/components/OrgTeamDesk";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findMyOrganizationTeam } from "@/repositories/organizationTeam";
+import { findProfileById } from "@/repositories/profiles";
 
 /** /business/team — the Team tile on an ORGANIZATION's Home (18 Sep 2026, the
  *  user's list: "Organization Users — Events, Studios, Team, Earnings, Stats").
- *  An organization is ONE LOGIN today (the accounts slice, 8 Sep 2026): the
- *  people who run its studios sit on each studio's own Team desk, and nobody
- *  sits at the organization level. Adding them there needs a table nobody has
- *  designed (org members, their powers), so this is the honest door until then. */
-export default function OrgTeamPage() {
-  return (
-    <NotBuiltYet
-      tool="team"
-      what="The people who run this organization with you. Today each studio has its own Team desk; people at the organization level are on the list."
-    />
-  );
+ *  Until push 2 (19 Sep 2026) it opened the prototype's own "nothing here yet",
+ *  because an organization is ONE LOGIN and nothing sat at its level. It still
+ *  is one login: what this desk keeps is the people the organization NAMES on
+ *  its public page — its Owner, its Team — asked and confirmed. A person who
+ *  reaches this address is sent Home; the desk is an organization's. */
+export default async function OrgTeamPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+  const profile = await findProfileById(supabase, user.id);
+  if (!profile || profile.role !== "org") {
+    redirect("/");
+  }
+  const members = await findMyOrganizationTeam(supabase);
+  return <OrgTeamDesk orgId={user.id} orgName={profile.fullName} members={members} />;
 }

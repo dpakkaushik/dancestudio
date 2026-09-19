@@ -35,6 +35,9 @@ export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; head
   const [city, setCity] = useState<string | null>(crew.city);
   const [style, setStyle] = useState(crew.style);
   const [email, setEmail] = useState(crew.contactEmail ?? "");
+  /* CALL IS A TOGGLE (push 2): the number, and whether the crew's page dials it */
+  const [phone, setPhone] = useState(crew.phone ?? "");
+  const [phonePublic, setPhonePublic] = useState(crew.phonePublic);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const draft = useHeaderDraft({
@@ -52,7 +55,7 @@ export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; head
     if (!city) return setErr("Which city is the crew in?");
     start(async () => {
       setErr(null);
-      const out = await updateCrewAction({ crewId: crew.id, name: name.trim(), city, style, contactEmail: email.trim() || null });
+      const out = await updateCrewAction({ crewId: crew.id, name: name.trim(), city, style, contactEmail: email.trim() || null, phone: phone.trim() || null, phonePublic });
       if (out.error) {
         setErr(out.error);
         return;
@@ -85,6 +88,22 @@ export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; head
         <CityPicker value={city} onChange={(c) => setCity(c)} label="" />
         <div style={fieldLabel}>Style</div>
         <DosStylePicker value={style} onChange={setStyle} ariaLabel="Style" />
+        <div style={fieldLabel}>Mobile</div>
+        <input aria-label="Phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={fieldInput} />
+        {/* the switch IS the rule (push 2): off, nobody reads the number — not the page, not the API */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={phonePublic}
+          aria-label="Show Call on the crew's page"
+          onClick={() => setPhonePublic((v) => !v)}
+          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}
+        >
+          <span style={{ flex: 1, fontSize: 12, fontWeight: 800 }}>Show Call on the crew&apos;s page</span>
+          <span aria-hidden="true" style={{ width: 42, height: 24, borderRadius: 12, flexShrink: 0, background: phonePublic ? "#22C55E" : "var(--el)", position: "relative", display: "inline-block" }}>
+            <span style={{ position: "absolute", top: 3, left: phonePublic ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .15s" }} />
+          </span>
+        </button>
         <div style={fieldLabel}>Email</div>
         <input aria-label="Email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="crew@example.com" style={fieldInput} />
         <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Shown on the crew&apos;s page as Mail. Leave it empty and nobody sees an address.</div>

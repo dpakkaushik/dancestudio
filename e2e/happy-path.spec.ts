@@ -1796,4 +1796,133 @@ test.describe.serial("DanceOS, end to end", () => {
     expect(rows.map((r) => r.status)).toEqual(["draft"]);
   });
 
+  test("push 2: an organization names its owner, Call is a switch, an organization's pin, and a profile's own stats page", async () => {
+    // ---- push 2 (19 Sep 2026): the user's answers on the profile-page re-cut that needed schema ----
+    // "1. You add a user or artist in Team section for organization to label them as
+    // owner. 2. Call is off for artist page by default but should have option to make
+    // it available on profile and same for crew. 3. … locations should be the google
+    // map link for the particular organization … 4. stats page on any profile should
+    // show all stats for that particular profile and rankings as well."
+
+    // ── 1. THE ORGANIZATION NAMES ITS OWNER, from the Team desk — asked, then confirmed.
+    // An organization is still ONE LOGIN; Owner and Team are labels on its public page.
+    await owner.goto("/business/team");
+    await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
+    await owner.getByRole("button", { name: "Add to the team" }).click();
+    await owner.getByRole("radio", { name: "Ask as owner" }).click();
+    await owner.getByLabel("Search DanceOS for a dancer").fill(learnerName);
+    await owner.getByRole("button", { name: `Ask ${learnerName} to be named an owner` }).click();
+    // ASKED IS NOT JOINED: the desk says so, and counts one waiting
+    await expect(owner.getByText("⏳ Waiting on them to confirm · as owner")).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByTestId("org-team-tile-waiting")).toHaveText("1");
+    // an unanswered ask never puts a name on a public page: a visitor reads no Owner yet
+    await trainer.goto(`/org/${ownerId}`);
+    await expect(trainer.getByRole("link", { name: `Open ${learnerName}` })).toHaveCount(0);
+    // the learner reads the ask in their own Inbox — a label on a public page is a claim about them — and says yes
+    await learner.goto("/inbox");
+    await pressPill(learner, /^Requests — \d+ waiting/);
+    await expect(learner.getByText("wants to name you as an owner of E2E Owner")).toBeVisible({ timeout: 15_000 });
+    await learner.getByRole("button", { name: "Confirm E2E Owner" }).click();
+    await expect(learner.getByText("wants to name you as an owner of E2E Owner")).toHaveCount(0);
+    // the desk counts one owner; the public page prints them under OWNER, with a door to their profile
+    await owner.reload();
+    await expect(owner.getByTestId("org-team-tile-owners")).toHaveText("1");
+    await trainer.reload();
+    const ownerRow = trainer.getByRole("link", { name: `Open ${learnerName}` });
+    await expect(ownerRow).toBeVisible();
+    await expect(ownerRow).toHaveAttribute("href", `/person/${learnerId}`);
+    await expect(ownerRow).toContainText("Owner");
+    // and the Stats chip on somebody else's organization page opens THAT organization's standing
+    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/org/${ownerId}/stats`);
+
+    // ── 2a. CALL IS A SWITCH ON AN ARTIST'S PAGE — off by default. The trainer holds the
+    // plan (ending, still active), so their sheet carries the switch and their page may dial.
+    await trainer.goto("/profile");
+    await trainer.getByLabel("Edit profile").click();
+    const sheet = trainer.getByRole("dialog", { name: "Edit profile" });
+    const callSwitch = sheet.getByRole("switch", { name: "Show Call on my profile" });
+    await expect(callSwitch).toHaveAttribute("aria-checked", "false");
+    await sheet.getByLabel("Phone").fill("+91 90000 22222");
+    await callSwitch.click();
+    await sheet.getByRole("button", { name: "Save" }).click();
+    await expect(sheet).toHaveCount(0);
+    await learner.goto(`/person/${trainerId}`);
+    await expect(learner.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+919000022222", { timeout: 15_000 });
+    // the Stats chip on somebody else's page opens THEIR record, not the board they stand on
+    await expect(learner.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/person/${trainerId}/stats`);
+    // off again: the number stays on the record, the page stops dialling it
+    await trainer.reload();
+    await trainer.getByLabel("Edit profile").click();
+    await expect(sheet.getByLabel("Phone")).toHaveValue("+91 90000 22222", { timeout: 15_000 });
+    await expect(callSwitch).toHaveAttribute("aria-checked", "true");
+    await callSwitch.click();
+    await sheet.getByRole("button", { name: "Save" }).click();
+    await expect(sheet).toHaveCount(0);
+    await learner.reload();
+    await expect(learner.getByRole("link", { name: "Call" })).toHaveCount(0);
+    // a plain user's sheet has no such switch: their page carries no buttons at all
+    await learner.goto("/profile");
+    await learner.getByLabel("Edit profile").click();
+    const userSheet = learner.getByRole("dialog", { name: "Edit profile" });
+    await expect(userSheet.getByRole("switch", { name: "Show Call on my profile" })).toHaveCount(0);
+    await userSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(userSheet).toHaveCount(0);
+
+    // ── 2b. AND ON A CREW'S PAGE — the leader's switch, in Edit crew. The policy on
+    // crew_contacts IS the switch: off, no reader gets the number through any door.
+    await learner.goto(`/crews/${crewId}/manage`);
+    await learner.getByRole("button", { name: "Edit crew" }).click();
+    const crewSheet = learner.getByRole("dialog", { name: "Edit crew" });
+    const crewSwitch = crewSheet.getByRole("switch", { name: "Show Call on the crew's page" });
+    await expect(crewSwitch).toHaveAttribute("aria-checked", "false");
+    await crewSheet.getByLabel("Phone").fill("+91 90000 33333");
+    await crewSwitch.click();
+    await crewSheet.getByRole("button", { name: "Save" }).click();
+    await expect(crewSheet).toHaveCount(0);
+    await trainer.goto(`/crew/${crewId}`);
+    await expect(trainer.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+919000033333", { timeout: 15_000 });
+    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/crew/${crewId}/stats`);
+
+    // ── 3. AN ORGANIZATION'S PIN lives in its Edit profile sheet, under Location — the
+    // map itself is Google's and is driven by scripts/shots/shoot-location.js, not here;
+    // what this asserts is that the block is the ORGANIZATION's alone
+    await owner.goto("/");
+    await owner.getByLabel("Edit profile").click();
+    const orgSheet = owner.getByRole("dialog", { name: "Edit profile" });
+    await expect(orgSheet.getByText("On the map")).toBeVisible();
+    await expect(orgSheet.getByRole("switch", { name: "Show Call on my profile" })).toHaveCount(0);
+    await orgSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(orgSheet).toHaveCount(0);
+
+    // ── 4. SOMEBODY ELSE'S RECORD AND RANK — one page shape for four kinds of profile.
+    // A place is never printed without its denominator, and an empty board is said,
+    // not drawn as "#0" (Step 25's rule): the assertions accept either honest answer.
+    const standing = /of \d+ (dancers?|artists?|studios?|crews?)|Not on this board yet/;
+    await learner.goto(`/person/${trainerId}/stats`);
+    await expect(learner.getByRole("heading", { name: trainerName })).toBeVisible();
+    await expect(learner.getByText("The record")).toBeVisible();
+    await expect(learner.getByTestId("standing-card")).toHaveCount(2);
+    await expect(learner.getByTestId("standing-card").first()).toContainText(standing);
+    await learner.goto(`/crew/${crewId}/stats`);
+    await expect(learner.getByRole("heading", { name: crewName })).toBeVisible();
+    await expect(learner.getByTestId("standing-card")).toHaveCount(2);
+    await expect(learner.getByTestId("standing-card").first()).toContainText(standing);
+    // a STRANGER reads a listed studio's, and an organization's — which is its studios' — but a plain user's is still a signed-in page
+    const guestContext = await browserRef.newContext();
+    try {
+      const guest = await guestContext.newPage();
+      await guest.goto(`/studio/${tenantId}/stats`);
+      await expect(guest.getByRole("heading", { name: studioName })).toBeVisible();
+      await expect(guest.getByTestId("standing-card")).toHaveCount(2);
+      await expect(guest.getByTestId("standing-card").first()).toContainText(standing);
+      await guest.goto(`/org/${ownerId}/stats`);
+      await expect(guest.getByRole("heading", { name: "E2E Owner" })).toBeVisible();
+      await expect(guest.getByRole("link", { name: `${studioName} — its record and rank` })).toHaveAttribute("href", `/studio/${tenantId}/stats`);
+      await guest.goto(`/person/${learnerId}/stats`);
+      await guest.waitForURL(/\/login/);
+    } finally {
+      await guestContext.close();
+    }
+  });
+
 });

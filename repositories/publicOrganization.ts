@@ -26,6 +26,9 @@ export interface PublicOrganization {
   phone: string | null;
   /** the Mail button's address (19 Sep 2026) */
   contactEmail: string | null;
+  /** its PIN (push 2, 19 Sep 2026) — the Location button opens it; null until the organization places itself */
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface PublicOrganizationStudio {
@@ -59,7 +62,7 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     throw new Error(`publicOrganization.find failed: ${error.message}`);
   }
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { id: string; name: string; city: string | null; photo_path: string | null; about: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null; phone?: string | null; contact_email?: string | null }
+    | { id: string; name: string; city: string | null; photo_path: string | null; about: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null; phone?: string | null; contact_email?: string | null; lat?: number | string | null; lng?: number | string | null }
     | undefined;
   if (!row) return null;
   return {
@@ -74,7 +77,38 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     hostBusinessId: row.host_business_id,
     phone: row.phone ?? null,
     contactEmail: row.contact_email ?? null,
+    lat: row.lat == null ? null : Number(row.lat),
+    lng: row.lng == null ? null : Number(row.lng),
   };
+}
+
+/** A PUBLIC ORGANIZATION'S TEAM (push 2, 19 Sep 2026): the confirmed people it
+ *  named, owners first — what its page prints under OWNER and TEAM. Empty for a
+ *  private organization, by the definer read's own rule. */
+export interface PublicOrganizationTeamMember {
+  memberId: string;
+  userId: string;
+  role: "owner" | "member";
+  name: string;
+  photoPath: string | null;
+  city: string | null;
+  isArtist: boolean;
+}
+
+export async function findPublicOrganizationTeam(supabase: SupabaseClient, orgId: string): Promise<PublicOrganizationTeamMember[]> {
+  const { data, error } = await supabase.rpc("public_organization_team", { p_org_id: orgId });
+  if (error) {
+    throw new Error(`publicOrganization.team failed: ${error.message}`);
+  }
+  return ((data ?? []) as Array<{ member_id: string; user_id: string; role: "owner" | "member"; full_name: string; photo_path: string | null; city: string | null; is_artist: boolean }>).map((r) => ({
+    memberId: r.member_id,
+    userId: r.user_id,
+    role: r.role,
+    name: r.full_name,
+    photoPath: r.photo_path,
+    city: r.city,
+    isArtist: Boolean(r.is_artist),
+  }));
 }
 
 export async function findPublicOrganizationStudios(supabase: SupabaseClient, orgId: string): Promise<PublicOrganizationStudio[]> {

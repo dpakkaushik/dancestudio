@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Portal } from "@/components/ui/Portal";
+import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { commitHeaderDraft, commitWords, personPorts } from "@/features/media/commitHeaderDraft";
 import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderPictures";
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
-import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
+import { setMyPlaceAction, updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Profile } from "@/types/profile";
@@ -24,7 +25,17 @@ import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from 
  *  upload and the page re-reads.
  *
  *  Styles and links are not here — they have their own sheets on the Profile
- *  tab (11217, 11161) — so this save sends them back exactly as they are. */
+ *  tab (11217, 11161) — so this save sends them back exactly as they are.
+ *
+ *  PUSH 2 (19 Sep 2026), two of the user's answers: an ARTIST gets a switch
+ *  under Mobile — "Show Call on my profile" (`phone_public`, off by default:
+ *  "Call is off for artist page by default but should have option to make it
+ *  available on profile"); an ORGANIZATION gets the map under Location — its
+ *  PIN (`set_my_place`), which is what its page's Location button opens
+ *  ("locations should be the google map link for the particular organization").
+ *  The pin is written the moment it is placed, like a studio's: a pin somebody
+ *  has visibly put should not need a second press, and the LOCKED picker
+ *  (16 Sep 2026) is what keeps a scroll from moving it. */
 
 /* the prototype offers 65 ages, 13 to 77 (11384) */
 const AGES = Array.from({ length: 65 }, (_, i) => 13 + i);
@@ -33,6 +44,7 @@ export function EditProfileSheet({
   profile,
   header = [],
   headerMax = 0,
+  isArtist = false,
   onClose,
   onSaved,
 }: {
@@ -40,13 +52,16 @@ export function EditProfileSheet({
   header?: HeaderPhoto[];
   /** one for a user, five for an artist, ten for an organization (19 Sep 2026) */
   headerMax?: number;
+  /** the plan's word — an artist's page can dial their number, so an artist gets the switch */
+  isArtist?: boolean;
   onClose: () => void;
   onSaved?: () => void;
 }) {
   const router = useRouter();
   const isOrg = profile.role === "org";
-  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, about: profile.about ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "" });
+  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, about: profile.about ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "", phonePublic: profile.phonePublic });
   const [err, setErr] = useState<string | null>(null);
+  const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
   /* the header pictures as a DRAFT (16 Sep 2026) — the same bug lived here:
      `HeaderRemove`'s ✕ deleted a picture on the press, inside a sheet with a
@@ -79,6 +94,8 @@ export function EditProfileSheet({
         phone: d.phone.trim() || null,
         /* the Mail button's address (19 Sep 2026): an empty box clears it */
         contactEmail: d.email.trim() || null,
+        /* CALL IS A TOGGLE (push 2): an organization's number is always its Call; a person's dials only while this is on */
+        phonePublic: isOrg ? undefined : d.phonePublic,
       });
       if (out.error) {
         setErr(out.error);
@@ -111,9 +128,27 @@ export function EditProfileSheet({
       <div style={fieldLabel}>Mobile</div>
       <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
       {/* CALL IS A STUDIO'S AND AN ORGANIZATION'S (19 Sep 2026, the user's list) —
-          a person's number stays on their record and is no longer dialled from
-          their page, so the line under the box says which is true here */}
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>{isOrg ? "Shown on your organization's page as Call. Leave it empty and nobody sees a number." : "Kept on your account. It is not shown on your public page."}</div>
+          and, since push 2, an ARTIST'S BY CHOICE: the switch under the box is
+          off until they turn it on. A plain user's number stays on the record
+          and is dialled from nowhere; the line under the box says which is true */}
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>
+        {isOrg ? "Shown on your organization's page as Call. Leave it empty and nobody sees a number." : isArtist ? "Shown on your page as Call only while the switch below is on." : "Kept on your account. It is not shown on your public page."}
+      </div>
+      {!isOrg && isArtist ? (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={d.phonePublic}
+          aria-label="Show Call on my profile"
+          onClick={() => setD((x) => ({ ...x, phonePublic: !x.phonePublic }))}
+          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0 2px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}
+        >
+          <span style={{ flex: 1, fontSize: 12, fontWeight: 800 }}>Show Call on my profile</span>
+          <span aria-hidden="true" style={{ width: 42, height: 24, borderRadius: 12, flexShrink: 0, background: d.phonePublic ? "#22C55E" : "var(--el)", position: "relative", display: "inline-block" }}>
+            <span style={{ position: "absolute", top: 3, left: d.phonePublic ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .15s" }} />
+          </span>
+        </button>
+      ) : null}
       {/* THE MAIL BUTTON'S ADDRESS (19 Sep 2026): an organization's and an
           artist's page carry Mail; a user's page carries no buttons at all */}
       <div style={fieldLabel}>Email</div>
@@ -138,6 +173,30 @@ export function EditProfileSheet({
       <div style={fieldLabel}>Location</div>
       <input aria-label="Location" value={d.city} onChange={(e) => setD((x) => ({ ...x, city: e.target.value }))} style={fieldInput} />
       {!d.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
+      {/* AN ORGANIZATION'S PIN (push 2): what its page's Location button opens.
+          Written the moment it is placed — see the header — and the picker opens
+          LOCKED once there is a pin, so scrolling past the map moves nothing */}
+      {isOrg ? (
+        <>
+          <div style={fieldLabel}>On the map</div>
+          <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 6 }}>Where the Location button on your page points. Saved as soon as you place it.</div>
+          <LocationPicker
+            value={{ lat: profile.lat, lng: profile.lng, area: profile.city }}
+            onChange={(p) => {
+              start(async () => {
+                const out = await setMyPlaceAction({ lat: p.lat, lng: p.lng });
+                setPlaceNote(out.error ? out.error : "Pin saved — your Location button opens it now.");
+                if (!out.error) router.refresh();
+              });
+            }}
+          />
+          {placeNote ? (
+            <div role="status" style={{ fontSize: 10.5, color: placeNote.startsWith("Pin saved") ? "#22C55E" : "#F87171", marginTop: 6 }}>
+              {placeNote}
+            </div>
+          ) : null}
+        </>
+      ) : null}
       {/* an organization has no age (10594) */}
       {isOrg ? null : (
         <>
@@ -177,14 +236,14 @@ export function EditProfileSheet({
 
 /** The pencil on a hero's corner (10613) and the sheet behind it, in one
  *  client island — so a server page like Home can offer Edit profile. */
-export function EditProfileButton({ profile, header = [], headerMax = 0 }: { profile: Profile; header?: HeaderPhoto[]; headerMax?: number }) {
+export function EditProfileButton({ profile, header = [], headerMax = 0, isArtist = false }: { profile: Profile; header?: HeaderPhoto[]; headerMax?: number; isArtist?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" aria-label="Edit profile" onClick={() => setOpen(true)} style={cornerChip}>
         <PencilIcon />
       </button>
-      {open ? <EditProfileSheet profile={profile} header={header} headerMax={headerMax} onClose={() => setOpen(false)} /> : null}
+      {open ? <EditProfileSheet profile={profile} header={header} headerMax={headerMax} isArtist={isArtist} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }

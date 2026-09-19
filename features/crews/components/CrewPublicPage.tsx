@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
-import { ActionRow, MailButton } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -97,8 +97,9 @@ export function CrewPublicPage({
           eyebrow="Crew"
           verified={false}
           share={<ProfileShare path={path} name={crew.name} />}
-          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): the crew board, where this crew is ranked */
-          stats={<StatsChip href="/stats?tab=charts&seg=crew" />}
+          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): since push 2 THIS crew's
+             figures and its place on the crew board, on a page of its own */
+          stats={<StatsChip href={`${path}/stats`} />}
           meta={
             <>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK }}>
@@ -137,6 +138,8 @@ export function CrewPublicPage({
             the leader from the crew's Inbox ── */}
         <ActionRow>
           {viewer === "other" ? <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
+          {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
+          {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}
         </ActionRow>
 

@@ -375,7 +375,7 @@ export function MyProfilePage({
       </div>
 
       {/* ── Edit profile (11364) — the one sheet, shared with Home since 15 Sep 2026 ── */}
-      {editOpen ? <EditProfileSheet profile={profile} header={header} headerMax={headerMax} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} /> : null}
+      {editOpen ? <EditProfileSheet profile={profile} header={header} headerMax={headerMax} isArtist={kind === "artist"} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} /> : null}
 
       {/* ── ＋ Add a dance style (11217): reorder, remove, add from the registry ── */}
       {stylesOpen ? (

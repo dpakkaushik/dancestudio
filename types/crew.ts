@@ -23,6 +23,10 @@ export interface Crew {
   photo: string | null;
   /** the Mail button's address on the crew's page (19 Sep 2026) — the leader's to publish */
   contactEmail: string | null;
+  /** CALL IS A TOGGLE (push 2): the number lives on `crew_contacts`, whose policy
+   *  IS the switch — a reader who may not see it gets null here and false below */
+  phone: string | null;
+  phonePublic: boolean;
   /** when the crew was created — the prototype's "since" */
   createdAt: string;
 }

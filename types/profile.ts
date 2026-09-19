@@ -44,6 +44,14 @@ export interface Profile {
   /** the address the Mail button opens (19 Sep 2026) — an organization's or an
    *  artist's own; a plain user's is never shown */
   contactEmail: string | null;
+  /** CALL IS A TOGGLE (19 Sep 2026, push 2): whether an ARTIST's page dials the
+   *  number. Off by default; an organization's Call is always drawn */
+  phonePublic: boolean;
+  /** AN ORGANIZATION'S PIN (19 Sep 2026, push 2) — set from Edit profile through
+   *  `set_my_place`; a person's row never carries one */
+  lat: number | null;
+  lng: number | null;
+  locationSetAt: string | null;
 }
 
 /** the word over the name (10639) — by KIND, because the badge on an artist is
