@@ -192,6 +192,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.waitForURL(new RegExp(`/business/${studioId}$`));
     check(true, "hub: pressing the card opened the studio's home");
     /* and the cancel door survived the collapse */
+    /* WAIT, not a one-shot look (19 Sep 2026): the studio home streams behind a
+       loading boundary now, so the URL changes before the page arrives */
+    await org.getByText("SUBSCRIPTION", { exact: true }).waitFor({ timeout: 15000 }).catch(() => {});
     check(await org.getByText("SUBSCRIPTION", { exact: true }).isVisible(), "studio home: the subscription strip came here with it");
     /* this studio's plan is a GRANT (₹0, set up above) and a grant does not
        renew — so the strip says so and offers no Stop renewing, which is the

@@ -2,7 +2,20 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE SEVEN-ITEM FIX LIST — ONE CITY DROPDOWN, BACK THAT STOPS LOOPING, THE SWITCHER'S KINDS, THE VENUE ON A CLASS, THE COUNT ON FOLLOW, AND A SNAPPIER APP (19 Sep 2026, latest) — BUILT, no migration; verification tallies in the docs-only commit that follows
+> ### THE SEVEN-ITEM FIX LIST — ONE CITY DROPDOWN, BACK THAT STOPS LOOPING, THE SWITCHER'S KINDS, THE VENUE ON A CLASS, THE COUNT ON FOLLOW, AND A SNAPPIER APP (19 Sep 2026, latest) — BUILT, no migration; PUSHED as `966f53c` on the user's "push to live", Vercel READY 13:29
+> **Verified:** typecheck 0 · lint 0 · `next build` green · **the whole suite
+> 53 passed in 7.6 min on one worker** against the `:3100` bundle (the fourth
+> run — the first found the root loading boundary turning 404s into 200s, the
+> second the Settings tiles racing the router and the orphan being the entry you
+> stand on, the third died at 4.0 h on `getaddrinfo ENOTFOUND` for the Supabase
+> host: the network dropped mid-run, re-run clean once it answered again) ·
+> **`shoot-hero.js` 98/98** (two one-shot `isVisible()` checks after
+> `waitForURL` on the studio home became waits: the page streams behind its
+> loading boundary now, so the URL changes before the strip arrives — the
+> skeleton doing its job) · the stranger smoke on the live site 18/18 real
+> checks, a plain user's stats page still **307** (no boundary under a public
+> page). The push went with the suite still running, on the user's word; the
+> tally landed green after.
 > The user, in one message: *"1. city picker should always be the same drop
 > down everywhere. 2. fix back button / swipe issues, page keeps on looping at
 > times while navigating in the app fix it properly. 3. right profile user type
