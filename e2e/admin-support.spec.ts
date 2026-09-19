@@ -119,10 +119,8 @@ async function deleteUser(id: string) {
  *  option, so a test never depends on Google answering. */
 /** the one city dropdown (19 Sep 2026): always through "Search another city…" */
 async function pickCity(page: Page | Locator, city: string) {
-  await page.getByLabel("Choose a city").first().selectOption("__search__");
-  const box = page.getByRole("searchbox", { name: /Search your city/i });
-  await box.first().fill(city);
-  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+  /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
+  await page.getByLabel("Choose a city").first().selectOption(city);
 }
 
 async function studioIdOf(name: string): Promise<string> {

@@ -31,6 +31,7 @@ export interface MyOrgTeamAsk {
   orgId: string;
   orgName: string;
   role: OrgTeamRole;
+  status: OrgTeamStatus;
   createdAt: string;
 }
 
@@ -88,38 +89,40 @@ export async function findMyOrganizationTeam(supabase: SupabaseClient): Promise<
 }
 
 /** The asks waiting on the signed-in PERSON. */
-export async function findMyPendingOrganizationAsks(supabase: SupabaseClient): Promise<MyOrgTeamAsk[]> {
+export async function findMyPendingOrganizationAsks(supabase: SupabaseClient, statuses: OrgTeamStatus[] = ["asked"]): Promise<MyOrgTeamAsk[]> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("organization_members")
-    .select("id, org_id, role, created_at, org:profiles!organization_members_org_id_fkey (full_name)")
+    .select("id, org_id, role, status, created_at, org:profiles!organization_members_org_id_fkey (full_name)")
     .eq("user_id", me)
-    .eq("status", "asked")
+    /* answered asks too, when the Inbox wants them (19 Sep 2026) */
+    .in("status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) {
     throw new Error(`organizationTeam.myAsks failed: ${error.message}`);
   }
-  return ((data ?? []) as unknown as Array<{ id: string; org_id: string; role: OrgTeamRole; created_at: string; org: { full_name: string } | null }>).map((r) => ({
+  return ((data ?? []) as unknown as Array<{ id: string; org_id: string; role: OrgTeamRole; status: OrgTeamStatus; created_at: string; org: { full_name: string } | null }>).map((r) => ({
     id: r.id,
     orgId: r.org_id,
     orgName: r.org?.full_name ?? "An organization",
     role: r.role,
+    status: r.status,
     createdAt: r.created_at,
   }));
 }
 
 /** The asks the signed-in ORGANIZATION is still waiting on (the desk's SENT side). */
-export async function findAskedByMyOrganization(supabase: SupabaseClient): Promise<OrgTeamMember[]> {
+export async function findAskedByMyOrganization(supabase: SupabaseClient, statuses: OrgTeamStatus[] = ["asked"]): Promise<OrgTeamMember[]> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("organization_members")
     .select(COLUMNS)
     .eq("org_id", me)
-    .eq("status", "asked")
+    .in("status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);

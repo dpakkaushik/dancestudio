@@ -34,10 +34,8 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  *  "Search another city…" behind it. The helper always goes through the search,
  *  so it does not depend on which cities the registry holds today. */
 async function pickCity(page: Page | Locator, city: string) {
-  await page.getByLabel("Choose a city").first().selectOption("__search__");
-  const box = page.getByRole("searchbox", { name: /Search your city/i });
-  await box.first().fill(city);
-  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+  /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
+  await page.getByLabel("Choose a city").first().selectOption(city);
 }
 const adminHeaders = {
   apikey: serviceKey,
@@ -1009,7 +1007,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await pressPill(trainer, /^Requests — \d+ waiting/);
     await expect(trainer.getByText(`wants to add you to ${crewName}`)).toBeVisible();
     await trainer.getByRole("button", { name: `Confirm ${crewName}` }).click();
-    await expect(trainer.getByText(`wants to add you to ${crewName}`)).toHaveCount(0);
+    /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
+       requests don't get removed after accepting") — the row wears its answer
+       and its buttons are gone; it used to vanish */
+    await expect(trainer.getByText("✅ Confirmed — you said yes")).toBeVisible();
+    await expect(trainer.getByRole("button", { name: `Confirm ${crewName}` })).toHaveCount(0);
     await learner.reload();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("2");
     await expect(learner.getByText("Member", { exact: true })).toBeVisible();
@@ -1374,7 +1376,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByTestId("my-followers")).toHaveText("0");
     // Edit profile: age and a bio
     await trainer.getByRole("button", { name: "Edit profile", exact: true }).click();
-    await trainer.getByLabel("Age").selectOption("24");
+    /* A DATE OF BIRTH, NOT AN AGE (19 Sep 2026, the user: "age should always be
+       DOB instead when selecting anywhere in the app"): a date 24 years and a
+       day ago, so the page prints "24" whatever today is */
+    const dob = new Date();
+    dob.setFullYear(dob.getFullYear() - 24);
+    dob.setDate(dob.getDate() - 1);
+    await trainer.getByLabel("Date of birth").fill(dob.toISOString().slice(0, 10));
     await trainer.getByLabel("Bio").fill("Movement is a language.");
     await trainer.getByRole("dialog", { name: "Edit profile" }).getByRole("button", { name: "Save" }).click();
     /* the sheet closes when the action returns, and the page refreshes after
@@ -1824,7 +1832,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await pressPill(learner, /^Requests — \d+ waiting/);
     await expect(learner.getByText("wants to name you as an owner of E2E Owner")).toBeVisible({ timeout: 15_000 });
     await learner.getByRole("button", { name: "Confirm E2E Owner" }).click();
-    await expect(learner.getByText("wants to name you as an owner of E2E Owner")).toHaveCount(0);
+    /* the answered ask stays on the desk, wearing its answer (19 Sep 2026) */
+    await expect(learner.getByText("✅ Confirmed — you said yes").first()).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Confirm E2E Owner" })).toHaveCount(0);
     // the desk counts one owner; the public page prints them under OWNER, with a door to their profile
     await owner.reload();
     await expect(owner.getByTestId("org-team-tile-owners")).toHaveText("1");

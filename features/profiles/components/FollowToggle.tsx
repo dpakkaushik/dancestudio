@@ -54,13 +54,13 @@ export function FollowToggle({
     </svg>
   );
 
-  /* the figure beside the word — only once the page has read one */
-  const count = (n: number | null) => (n == null ? null : <span style={{ color: SUB, fontWeight: 800 }}>&nbsp;· {n}</span>);
-
+  /* the figures moved to their own line under the hero (`FollowFigures`, later
+     on 19 Sep 2026: "follow following counts visible on every profile") — the
+     button is the word alone again, and `followers` rides as data */
   if (!signedIn) {
     return (
       <Link href="/login" aria-label="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={smallBox(false, accent)}>
-        <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>{star}</span>Follow{count(initialFollowers)}
+        <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>{star}</span>Follow
       </Link>
     );
   }
@@ -93,7 +93,6 @@ export function FollowToggle({
       >
         <span style={{ flexShrink: 0, lineHeight: 0, color: following ? accent : SUB }}>{star}</span>
         {following ? "Following" : "Follow"}
-        {count(followers)}
       </button>
       {error ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 5 }}>{error}</div> : null}
     </>

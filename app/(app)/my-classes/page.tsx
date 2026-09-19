@@ -37,6 +37,28 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   mapsUrl: null,
 });
 
+/* the class behind a confirmed ask, as the tile draws it (19 Sep 2026) */
+const askToTileClass = (c: MyClaimAsk): DanceClass => ({
+  id: c.classId,
+  tenantId: "",
+  title: c.classTitle,
+  shareSlug: c.classShareSlug,
+  style: c.classStyle,
+  level: c.classLevel as DanceClass["level"],
+  room: c.classRoom,
+  roomId: null,
+  poster: null,
+  priceInr: c.classPriceInr,
+  capacity: c.classCapacity,
+  status: c.classStatus,
+  session: c.sessionId && c.startsAt && c.endsAt ? { id: c.sessionId, startsAt: c.startsAt, endsAt: c.endsAt } : null,
+  venueBusinessId: null,
+  venueStatus: null,
+  lat: null,
+  lng: null,
+  mapsUrl: null,
+});
+
 /** YOUR CLASSES — the Home grid's Classes tile (18 Sep 2026, the user's list for
  *  every kind of account: "Classes — Booked, Assist", and for an artist
  *  "Manage — Create, Draft, Published, Completed"). Two segments and, for an
@@ -95,8 +117,8 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     ...assistantOn.map((c) => ({ ...c, job: "Assisting" as const })),
   ].sort((a, b) => (a.startsAt ?? "9").localeCompare(b.startsAt ?? "9"));
   const booked = class_bookings.filter((e) => e.status === "enrolled").length;
-  /* the teacher each booked card wears in its centre (18 Sep 2026) */
-  const bookedArtists = await findClassArtists(supabase, class_bookings.map((e) => e.classId));
+  /* the teacher each card wears in its centre (18 Sep 2026) — one read for both segments */
+  const bookedArtists = await findClassArtists(supabase, [...class_bookings.map((e) => e.classId), ...jobs.map((c) => c.classId)]);
 
   /* the register, when Manage is open: the page's classes, their seats, and what
      each one still waits for before it can be published */
@@ -183,21 +205,25 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         </>
       ) : (
         <>
+          {/* THE SAME CARD AS BOOKED (19 Sep 2026, the user: "assisting should also
+              show class cards in same way") — the app's one class tile, with the
+              job you hold on it where a booked card carries its booking action */}
           {jobs.map((c) => (
-            <Link
+            <ClassTile
               key={c.id}
+              danceClass={askToTileClass(c)}
+              artist={bookedArtists.get(c.classId) ?? null}
+              city={c.tenantCity}
               href={`/c/${c.classShareSlug}`}
-              aria-label={`Open ${c.classTitle}`}
-              style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${c.job === "Teaching" ? "#F59E0B" : "#8B5CF6"}`, borderRadius: 16, padding: "11px 13px", marginBottom: 8, textDecoration: "none", color: INK }}
-            >
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.classTitle}</span>
-                <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>
-                  {c.tenantName} · {when(c.startsAt)}
-                </span>
-              </span>
-              <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: c.job === "Teaching" ? "#F59E0B" : "#8B5CF6" }}>{c.job}</span>
-            </Link>
+              actions={
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 10.5, color: SUB }}>
+                    {c.tenantName} · {when(c.startsAt)}
+                  </span>
+                  <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: c.job === "Teaching" ? "#F59E0B" : "#8B5CF6" }}>{c.job}</span>
+                </div>
+              }
+            />
           ))}
           {jobs.length === 0 && (
             <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>

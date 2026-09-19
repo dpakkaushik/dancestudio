@@ -2,6 +2,7 @@ import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
 import { BioBlock } from "@/features/profiles/components/BioBlock";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
+import { FollowFigures } from "@/features/profiles/components/FollowFigures";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -116,7 +117,11 @@ export function OrganizationPublicPage({
           shots={shots}
         />
 
-        {/* ── FOLLOW · FOLLOWING, first under the hero (19 Sep 2026) ── */}
+        {/* ── THE FIGURES, THEN THE BIO (19 Sep 2026): one order on every public page ── */}
+        <FollowFigures followers={followers} />
+        <BioBlock about={org.about} links={org.socials} accent={tint} />
+
+        {/* ── FOLLOW · FOLLOWING (19 Sep 2026) ── */}
         {!isMe && canFollow ? (
           <div style={{ marginTop: 12 }}>
             <FollowToggle target={{ kind: "person", id: org.id }} initialFollowing={following} initialFollowers={followers} accent={tint} signedIn={signedIn} />
@@ -131,9 +136,6 @@ export function OrganizationPublicPage({
           {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : org.city ? <LocationButton query={`${org.name} ${org.city}`} /> : null}
         </ActionRow>
-
-        {/* ── THE BIO: About as prose, then the links ── */}
-        <BioBlock about={org.about} links={org.socials} accent={tint} />
 
         {/* ── THE ASSOCIATIONS (push 2: "Organization: Owner (one of the users added
             from team), list of studios they run"): Owner · Team · Studios · Events ── */}

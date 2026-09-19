@@ -57,6 +57,11 @@ export interface RequestSources {
 
 const newestFirst = (a: RequestItem, b: RequestItem) => b.at.localeCompare(a.at);
 
+/* the three tables say yes and no in three vocabularies — one word each here
+   (19 Sep 2026: an answered ask stays on the desk with its answer on it) */
+const askStatus = (s: string | null | undefined): RequestItem["status"] =>
+  s === "confirmed" || s === "accepted" ? "confirmed" : s === "rejected" || s === "declined" ? "rejected" : "asked";
+
 export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; requestsOut: RequestItem[] } {
   const requestsIn: RequestItem[] = [
     /* an artist wants one of your rooms (18 Sep 2026): accepting holds the room
@@ -75,6 +80,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: v.createdAt,
       note: "Accepting holds the room for them; the class is theirs to publish, and its bookings are theirs.",
       classId: v.classId,
+      status: askStatus(v.venueStatus),
     })),
     ...(s.claimsIn ?? []).map((c): RequestItem => ({
       kind: "claim",
@@ -90,6 +96,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: c.createdAt,
       note: c.payPerSessionInr > 0 ? `₹${c.payPerSessionInr.toLocaleString("en-IN")} a session` : null,
       claimId: c.id,
+      status: askStatus(c.status),
     })),
     ...(s.invitesIn ?? []).map((i): RequestItem => ({
       kind: "invite",
@@ -121,6 +128,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: c.createdAt,
       note: "Adding you to the crew roster — this shows on their public page.",
       memberId: c.id,
+      status: askStatus(c.status),
     })),
     /* a duet partner is asked; the entry stands either way (1815) */
     ...(s.partnerIn ?? []).map((p): RequestItem => ({
@@ -137,6 +145,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: p.createdAt,
       note: "Their entry is in either way — this decides whether the organiser sees you as confirmed.",
       bookingId: p.bookingId,
+      status: askStatus(p.status),
     })),
     /* an organization's page is public, so being named on it is a claim about you */
     ...(s.orgIn ?? []).map((o): RequestItem => ({
@@ -153,6 +162,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: o.createdAt,
       note: o.role === "owner" ? "You would be shown as this organization's OWNER on its public page — a label, not a login." : "You would be shown on this organization's public page under TEAM.",
       memberId: o.id,
+      status: askStatus(o.status),
     })),
   ].sort(newestFirst);
 
@@ -170,8 +180,9 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       when: v.startsAt ? sessionDayLabel(v.startsAt) : null,
       href: `/c/${v.shareSlug}`,
       at: v.createdAt,
-      note: v.venueStatus === "declined" ? `${v.venueName} declined — pick another studio, or a place of your own, from the class's Edit form.` : "The class stays a draft until the studio accepts.",
+      note: v.venueStatus === "declined" ? `${v.venueName} declined — pick another studio, or a place of your own, from the class's Edit form.` : v.venueStatus === "accepted" ? `${v.venueName} said yes — the room is held for the class.` : "The class stays a draft until the studio accepts.",
       classId: v.classId,
+      status: askStatus(v.venueStatus),
     })),
     ...(s.claimsOut ?? []).map((c): RequestItem => ({
       kind: "claim",
@@ -187,6 +198,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: c.createdAt,
       note: null,
       claimId: c.id,
+      status: askStatus(c.status),
     })),
     ...(s.invitesOut ?? []).map((i): RequestItem => ({
       kind: "invite",
@@ -219,6 +231,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: null,
       memberId: c.id,
       crewId: c.crewId,
+      status: askStatus(c.status),
     })),
     ...(s.partnerOut ?? []).map((p): RequestItem => ({
       kind: "partner",
@@ -234,6 +247,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: p.createdAt,
       note: "Your entry holds whether or not they answer.",
       bookingId: p.bookingId,
+      status: askStatus(p.status),
     })),
     ...(s.orgOut ?? []).map((o): RequestItem => ({
       kind: "orgteam",
@@ -249,6 +263,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       at: o.createdAt,
       note: null,
       memberId: o.id,
+      status: askStatus(o.status),
     })),
   ].sort(newestFirst);
 

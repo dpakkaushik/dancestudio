@@ -67,6 +67,10 @@ export interface RequestItem {
   bookingId?: string;
   /** a venue ask is keyed on the CLASS that wants the room */
   classId?: string;
+  /** THE ASK'S OWN STATE (19 Sep 2026, the user: "enquiries and requests don't
+   *  get removed after accepting"): an answered ask stays on the desk with its
+   *  answer on it; only an `asked` row carries the buttons. Absent = asked. */
+  status?: "asked" | "confirmed" | "rejected";
 }
 
 const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room", orgteam: "organization" };
@@ -238,7 +242,12 @@ export function InboxScreen({
         </div>
         {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", margin: "7px 0 0", lineHeight: 1.45 }}>{r.note}</div> : null}
 
-        {r.dir === "in" ? (
+        {/* AN ANSWERED ASK STAYS (19 Sep 2026): its answer on it, no buttons */}
+        {r.status && r.status !== "asked" ? (
+          <div style={{ marginTop: 10, fontSize: 11, fontWeight: 900, color: r.status === "confirmed" ? "#22C55E" : "#F87171" }}>
+            {r.status === "confirmed" ? (r.dir === "in" ? "✅ Confirmed — you said yes" : `✅ Confirmed by ${r.who}`) : r.dir === "in" ? "✕ Declined — you said no" : `✕ Declined by ${r.who}`}
+          </div>
+        ) : r.dir === "in" ? (
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button
               type="button"

@@ -62,9 +62,7 @@ async function signUp(page, email) {
     await page.getByText("Organization", { exact: true }).click();
     await page.locator('input[name="name"]').fill("EEE Dance Company");
     /* the one city dropdown (19 Sep 2026): through "Search another city…" */
-    await page.getByLabel("Choose a city").first().selectOption("__search__");
-    await page.getByRole("searchbox", { name: /Search your city/i }).first().fill("New Delhi");
-    await page.getByRole("listbox").getByRole("option", { name: 'Use "New Delhi"' }).click();
+    await page.getByLabel("Choose a city").first().selectOption("New Delhi");
     await page.getByRole("button", { name: "Continue" }).click();
     /* the four screens (U2): the photo is required, then styles, then socials, then the bow */
     await page.getByLabel("Add a photo").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: PNG });
@@ -99,9 +97,7 @@ async function signUp(page, email) {
     await page.locator('input[name="area"]').fill("Kothrud");
     /* the city picker replaced the select (11 Sep 2026) — a Google city search,
        with the typed name as the fallback a test can rely on */
-    await page.getByLabel("Choose a city").first().selectOption("__search__");
-    await page.getByRole("searchbox", { name: /Search your city/i }).first().fill("Pune");
-    await page.getByRole("listbox").getByRole("option", { name: 'Use "Pune"' }).click();
+    await page.getByLabel("Choose a city").first().selectOption("Pune");
     await page.getByLabel("Room 1 name").fill("Studio A");
     await shot("new-studio-sheet");
     await page.getByRole("button", { name: "Create studio" }).click();

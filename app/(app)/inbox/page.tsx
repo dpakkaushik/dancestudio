@@ -44,10 +44,17 @@ export default async function InboxPage() {
   const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id);
   const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "artist_page").map((m) => m.tenant.id);
 
+  /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
+     requests don't get removed after accepting"): every ask read takes the
+     answered rows too, newest first, and the row wears its answer. Team invites
+     are the one kind the invitee cannot read back once answered (the table has
+     no policy for them — `my_pending_invites` is the only door), so those go. */
+  const ALL = ["asked", "confirmed", "rejected"] as const;
+  const PARTNER_ALL = ["asked", "accepted", "declined"] as const;
   const [claimsIn, invitesIn, claimsOut, invitesOutByTenant, enquiriesToBusinesses, enquiriesToCrews, enquiriesOut, crewIn, crewOut, partnerIn, partnerOut, venueIn, venueOut, orgIn, orgAsked] = await Promise.all([
-    findMyPendingClaims(supabase),
+    findMyPendingClaims(supabase, [...ALL]),
     findMyPendingInvites(supabase),
-    findAskedClaimsForTenants(supabase, tenantIds),
+    findAskedClaimsForTenants(supabase, tenantIds, [...ALL]),
     Promise.all(businesses.map(async (t) => (await findPendingInvites(supabase, t.id)).map((i) => ({ ...i, tenantName: t.name })))),
     findReceivedEnquiries(supabase, tenantIds),
     findReceivedEnquiriesForCrews(
@@ -55,17 +62,17 @@ export default async function InboxPage() {
       ledCrews.map((c) => c.id)
     ),
     findSentEnquiries(supabase, user.id),
-    findMyPendingCrewAsks(supabase),
-    findAskedForMyCrews(supabase),
-    findMyPendingPartnerAsks(supabase),
-    findMyUnansweredPartners(supabase),
+    findMyPendingCrewAsks(supabase, [...ALL]),
+    findAskedForMyCrews(supabase, [...ALL]),
+    findMyPendingPartnerAsks(supabase, [...PARTNER_ALL]),
+    findMyUnansweredPartners(supabase, [...PARTNER_ALL]),
     findVenueRequestsForTenants(supabase, ownedStudioIds).catch(() => []),
     findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
     /* push 2: an organization naming you on its page (a person's in), and the
        people the organization is still waiting on (an organization's out) —
        each read says whose rows it wants, so the other side is simply empty */
-    findMyPendingOrganizationAsks(supabase).catch(() => []),
-    findAskedByMyOrganization(supabase).catch(() => []),
+    findMyPendingOrganizationAsks(supabase, [...ALL]).catch(() => []),
+    findAskedByMyOrganization(supabase, [...ALL]).catch(() => []),
   ]);
 
   const { requestsIn, requestsOut } = buildRequests({

@@ -13,6 +13,7 @@ interface ProfileRow {
   styles?: string[] | null;
   member_no?: number | null;
   verified_at?: string | null;
+  dob?: string | null;
   phone?: string | null;
   contact_email?: string | null;
   phone_public?: boolean | null;
@@ -25,7 +26,8 @@ interface ProfileRow {
  *  (the photos slice found a read that had its own list and never got profile_photo_path).
  *  ⚠ `phone_public`, `lat`, `lng`, `location_set_at` arrive with push 2's
  *  migrations (19 Sep 2026): the app cannot run against the schema before them. */
-export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, socials, styles, member_no, verified_at, phone, contact_email, phone_public, lat, lng, location_set_at";
+/* ⚠ `dob` arrives with `20260919151000_age_is_a_date_of_birth` — the app cannot run against the schema before it. */
+export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, dob, socials, styles, member_no, verified_at, phone, contact_email, phone_public, lat, lng, location_set_at";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -43,6 +45,7 @@ export const toProfile = (row: ProfileRow): Profile => ({
   avatarPath: row.profile_photo_path ?? null,
   about: row.about ?? null,
   age: row.age == null ? null : Number(row.age),
+  dob: row.dob ?? null,
   socials: toSocials(row.socials),
   styles: Array.isArray(row.styles) ? row.styles : [],
   memberNo: row.member_no == null ? null : Number(row.member_no),
@@ -109,6 +112,9 @@ export interface MyProfileInput {
   contactEmail?: string | null;
   /** THE CALL SWITCH (push 2): `undefined` leaves it as it is; a boolean sets it */
   phonePublic?: boolean;
+  /** THE DATE OF BIRTH (19 Sep 2026), ISO: `undefined` or null leaves it as it is;
+   *  a date sets it and the database works the age out from it */
+  dob?: string | null;
 }
 
 /** The one door for what a person says about themselves (S_profiletab's Edit
@@ -129,6 +135,8 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
     p_contact_email: input.contactEmail === undefined ? null : (input.contactEmail ?? ""),
     /* `p_phone_public` is LAST with a default too (push 2): null = unchanged */
     p_phone_public: input.phonePublic === undefined ? null : input.phonePublic,
+    /* `p_dob` is LAST with a default too (`20260919151000`): null = unchanged */
+    p_dob: input.dob ?? null,
   });
   if (error) {
     throw new Error(error.message);

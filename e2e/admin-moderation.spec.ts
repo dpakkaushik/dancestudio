@@ -53,10 +53,8 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  *  a sheet's own field is not confused with the page's behind it. */
 /** the one city dropdown (19 Sep 2026): always through "Search another city…" */
 async function pickCity(page: Page | Locator, city: string) {
-  await page.getByLabel("Choose a city").first().selectOption("__search__");
-  const box = page.getByRole("searchbox", { name: /Search your city/i });
-  await box.first().fill(city);
-  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+  /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
+  await page.getByLabel("Choose a city").first().selectOption(city);
 }
 const adminHeaders = {
   apikey: serviceKey,

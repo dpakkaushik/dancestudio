@@ -2,7 +2,103 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE SEVEN-ITEM FIX LIST — ONE CITY DROPDOWN, BACK THAT STOPS LOOPING, THE SWITCHER'S KINDS, THE VENUE ON A CLASS, THE COUNT ON FOLLOW, AND A SNAPPIER APP (19 Sep 2026, latest) — BUILT, no migration; PUSHED as `966f53c` on the user's "push to live", Vercel READY 13:29
+> ### A DEMO WORLD IN FOUR CITIES, THE ASKS THAT STAY, EIGHT CITIES AND A DATE OF BIRTH (19 Sep 2026, latest) — TWO MIGRATIONS APPLIED, dry run 24/24 rolled back
+> The user, in four messages: *"create 15 dummy accounts for all kinds of user
+> in gurgaon … make classes, events, enquiries, stats, attendance records, all
+> kinds of dummy data for each section … mostly in Gurugram, Pune, Delhi,
+> Bangalore … show all types of events and participation and spectators etc so
+> I can view all kinds of records"*; *"make sure enquiries and requests don't
+> get removed after accepting, classes booked section is only for bookings made
+> for attending the class and nothing else, and assisting should also show class
+> cards in same way"*; *"follow following counts visible on every profile and bio
+> also should be visible below that for all kinds of users. keep only these
+> cities in database — Gurugram, New Delhi, Bangalore, Hyderabad, Pune, Mumbai,
+> Kolkata, Chennai and nothing else. Gurgaon and Gurugram are same so merge data
+> for them. nothing should be without a city. age should always be DOB instead
+> when selecting anywhere in the app"*; and *"dob in picker and age on profile
+> according to that"*.
+> * **THE DEMO WORLD — `scripts/demo-data.js` rewritten, seeded on production.**
+>   15 accounts (4 organizations, 4 artists, 7 users) across Gurugram, Pune, New
+>   Delhi and Bengaluru; 5 studios (two in Gurugram) and 4 artist pages, each
+>   placed on the map, badged and subscribed; rooms, teams (invites accepted, one
+>   waiting), an organization's named Owner and Team. Classes in every state —
+>   free, ₹300, full with two waitlisted, a draft, an artist's class at their own
+>   pin, an artist's class in a studio's room ACCEPTED, one still asked, one
+>   DECLINED — and seven PAST classes with registers that ran (the sessions
+>   back-dated by the service role, the attendance rows written the same way), so
+>   Stats and the boards have something real to count. Money: ₹300 by UPI, card
+>   and netbanking, a refund approved and settled at the desk, another still on
+>   the queue, three payouts (done, in transit). Enquiries of all five kinds at
+>   every stage, to a studio, an organization, an artist and a crew. Three crews.
+>   Events of all three kinds in all four cities: free and paid spectators, a
+>   cancelled seat, a walk-in, solo, duet (accepted and awaiting), crew entries,
+>   a paid entry and an unpaid one, two PAST events checked in and completed, a
+>   draft. Follows of a studio, a person, an organization and a crew; leads at
+>   five stages; a support thread; a report. **Seeded through the app's own
+>   doors** — seven refusals along the way were the database being right (a
+>   venue's room by id, a payout method's word, a member cannot follow or ask
+>   their own business, a crew's own people cannot follow it, an enquiry names a
+>   business OR a crew), each fixed in the seeder rather than around it.
+> * **THE ASKS THAT STAY.** Every ask read takes the answered rows too
+>   (`findMyPendingClaims`, `findAskedClaimsForTenants`, the crew, partner and
+>   organization-team readers all take a status list), and the Inbox row wears
+>   its answer — "✅ Confirmed — you said yes" — with its buttons gone. A team
+>   invite is the one kind that still vanishes: the invitee has no policy to read
+>   it back once answered.
+> * **BOOKED IS BOOKINGS.** ⚠ `findMyEnrollments` leaned on RLS for "mine", and a
+>   studio's members read their studio's whole roster — so an owner's Booked
+>   segment listed every seat in their studio. It says `user_id` out loud now.
+>   **RLS is a ceiling, not a scope — the seventh time this file has written it.**
+> * **ASSISTING IS THE SAME CARD.** The ask reads carry enough of the class
+>   (`ASK_SELECT`) for the app's one `ClassTile`, with the job on it.
+> * **THE FIGURES AND THE BIO, ONE ORDER ON EVERY PUBLIC PAGE** — `FollowFigures`
+>   (followers, and Following for a person) then the Bio, above Follow and the
+>   buttons, on a studio, an organization, an artist, a user and a crew. The
+>   count came OFF the Follow button again (it went on it hours earlier).
+> * **EIGHT CITIES** (`20260919150000`): `cities` is exactly the eight, every
+>   other row soft-deleted; `city_aliases` folds Gurgaon → Gurugram, Delhi and
+>   Faridabad and Noida → New Delhi, Bangalore → Bengaluru, Bombay → Mumbai,
+>   Calcutta → Kolkata, Madras → Chennai, Thane and Navi Mumbai → Mumbai;
+>   `canonical_city` answers one of the eight or NULL (it used to hand back any
+>   name); a BEFORE trigger on profiles, businesses, crews and events folds on
+>   the way in and REFUSES anything else in words. Rows outside the eight were
+>   folded, and what could not be folded moved to New Delhi and was counted.
+>   **Read back live: profiles 11 Gurugram · 8 Pune · 4 New Delhi · 3 Bengaluru;
+>   businesses 101 · 16 · 12 · 3; crews 3 · 2 · 1; events 6 · 4 · 1 · 1 — nothing
+>   outside the eight, and Gurgaon is gone.** The city dropdown is the registry,
+>   so it is the eight everywhere, and "Search another city…" is gone with it.
+> * **AGE IS A DATE OF BIRTH** (`20260919151000`): `profiles.dob`, `age_from_dob`,
+>   `update_my_profile` DROPPED and re-created with `p_dob` LAST (the ACL
+>   restated) — a date is checked 13 to 99 years ago and the age is kept in step
+>   from it, so every existing reader of `age` prints the right number; a legacy
+>   call carrying `p_age` is ignored while a date is on record. A nightly
+>   `roll_ages_forward` (pg_cron, guarded) rolls a birthday over. The Edit
+>   profile sheet asks for the date and says the age back.
+> * **THE PROOF-LEFTOVER SWEEP RAN** (the kept set listed first, the 18 Sep
+>   rule): 108 businesses and 4 accounts soft-deleted — every "Mod Studio",
+>   "Panel Studio", "Mandate Proof Studio". What stays is the 15 demo accounts,
+>   the user's own three, and 25 real businesses. It was not housekeeping: the
+>   test-phone owner held 15 studios and `why_no_studio`'s 15-studio cap was
+>   failing the paid-webhook spec on every run.
+> * ⚠ **AND THE TRAP THAT COST A WHOLE SUITE RUN, WORTH KEEPING: POSTGREST'S
+>   SCHEMA CACHE IS NOT RELOADED BY AN APPLY.** With `dob` added and the app
+>   selecting it, every profile READ answered an error while every WRITE (the
+>   RPCs) worked — so onboarding completed and then `/business` bounced back to
+>   `/onboarding` with a fresh form, which reads exactly like "the account was
+>   never made". The suite came back 44/1/8 on that one cascade. `notify pgrst,
+>   'reload schema'` over the pooler fixes it in seconds. **After any migration
+>   that adds a COLUMN the app selects, reload the cache before believing a red.**
+>   (The 11 Sep lesson's cousin: `PGRST202` for a function, a column error here.)
+> * **Verified:** dry run **24/24** rolled back (the eight cities, the folds, the
+>   four triggers, a refusal in words, the date kept and the age worked out, a
+>   legacy `p_age` ignored, one `update_my_profile` with `p_dob` last, anon's set
+>   +1 for the pure arithmetic, `roll_ages_forward` executable by nobody) ·
+>   applied · read back live · typecheck 0 · lint 0 · `next build` green · **the
+>   whole suite 53 passed in 9.5 min on one worker** against the `:3100` bundle
+>   (the run before it was the stale schema cache above) · the proof-leftover
+>   sweep applied after the kept set was listed.
+>
+> ### THE SEVEN-ITEM FIX LIST — ONE CITY DROPDOWN, BACK THAT STOPS LOOPING, THE SWITCHER'S KINDS, THE VENUE ON A CLASS, THE COUNT ON FOLLOW, AND A SNAPPIER APP (19 Sep 2026, earlier) — BUILT, no migration; PUSHED as `966f53c` on the user's "push to live", Vercel READY 13:29
 > **Verified:** typecheck 0 · lint 0 · `next build` green · **the whole suite
 > 53 passed in 7.6 min on one worker** against the `:3100` bundle (the fourth
 > run — the first found the root loading boundary turning 404s into 200s, the
@@ -3598,6 +3694,21 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A DEMO WORLD IN FOUR CITIES, THE ASKS THAT STAY, EIGHT CITIES AND A DATE OF
+  BIRTH — 19 Sep 2026, no step number ⚠ (Rule 9: a trigger on four tables, a
+  re-created profile door) — TWO MIGRATIONS APPLIED, dry run 24/24 rolled back.**
+  `scripts/demo-data.js` rewritten and seeded: 15 accounts across Gurugram,
+  Pune, New Delhi and Bengaluru, nine businesses, classes in every state with
+  seven past registers, money in and out, enquiries of all five kinds at every
+  stage, three crews, events of all three kinds with spectators, solo, duet and
+  crew entries, walk-ins, check-ins and two past ones. An answered ask stays on
+  the Inbox desk wearing its answer; Booked is the person's own bookings (RLS is
+  a ceiling, the seventh time); Assisting draws the same class card. The
+  followers/following figures and the Bio sit above the buttons on every public
+  page. `cities` is exactly the eight the user named, Gurgaon merged into
+  Gurugram, and a trigger refuses anything else; `age` is worked out from a new
+  `profiles.dob`. The proof-leftover sweep ran (108 businesses, 4 accounts —
+  the kept set listed first). Detail at the top.
 - **THE SEVEN-ITEM FIX LIST — ONE CITY DROPDOWN, BACK THAT STOPS LOOPING, THE
   SWITCHER'S KINDS, THE VENUE ON A CLASS, FOLLOW · N, A SNAPPIER APP — 19 Sep
   2026, no step number — BUILT, no migration.** `CitySelect` is every city

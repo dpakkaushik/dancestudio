@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
+import { FollowFigures } from "@/features/profiles/components/FollowFigures";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -122,6 +123,9 @@ export function CrewPublicPage({
           avatarAlt={crew.name}
           shots={shots}
         />
+
+        {/* ── THE FIGURES (19 Sep 2026): a crew follows nobody, so followers alone; a crew has no About ── */}
+        <FollowFigures followers={followers} />
 
         {/* ── what you can do here depends on who you are to the crew ── */}
         <div style={{ marginTop: 12 }}>

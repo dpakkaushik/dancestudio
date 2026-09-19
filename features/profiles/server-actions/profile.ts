@@ -14,6 +14,13 @@ const schema = z.object({
   fullName: z.string().trim().min(1).max(120),
   city: z.string().trim().min(1, "Add your city").max(120),
   age: z.number().int().min(13).max(99).nullable(),
+  /* THE DATE OF BIRTH (19 Sep 2026): an ISO date; undefined leaves it as it is.
+     The RPC checks it is 13 to 99 years ago and works the age out from it. */
+  dob: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "a date of birth is a date")
+    .nullable()
+    .optional(),
   about: z.string().trim().max(220).nullable(),
   socials: z
     .array(

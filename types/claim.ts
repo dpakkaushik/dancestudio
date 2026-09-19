@@ -43,4 +43,14 @@ export interface MyClaimAsk extends ClassClaim {
   classShareSlug: string;
   tenantName: string;
   startsAt: string | null;
+  /** ENOUGH OF THE CLASS TO DRAW ITS CARD (19 Sep 2026, the user: "assisting
+   *  should also show class cards in same way") */
+  classLevel: string;
+  classRoom: string | null;
+  classPriceInr: number;
+  classCapacity: number;
+  classStatus: "draft" | "published" | "completed";
+  sessionId: string | null;
+  endsAt: string | null;
+  tenantCity: string | null;
 }

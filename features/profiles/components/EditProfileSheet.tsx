@@ -44,8 +44,22 @@ import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from 
  *  has visibly put should not need a second press, and the LOCKED picker
  *  (16 Sep 2026) is what keeps a scroll from moving it. */
 
-/* the prototype offers 65 ages, 13 to 77 (11384) */
-const AGES = Array.from({ length: 65 }, (_, i) => 13 + i);
+/* THE DATE OF BIRTH'S BOUNDS AND ITS ARITHMETIC (19 Sep 2026). The prototype
+   offered 65 ages, 13 to 77 (11384); the app asks for the date instead and the
+   database works the age out from it, so these are the same 13-to-99 window the
+   RPC checks — said here too, so the picker cannot offer a date it would refuse. */
+const isoYearsAgo = (years: number): string => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years);
+  return d.toISOString().slice(0, 10);
+};
+const ageFromDob = (iso: string): number => {
+  const [y, m, day] = iso.split("-").map(Number);
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < day)) age -= 1;
+  return age;
+};
 
 export function EditProfileSheet({
   profile,
@@ -66,7 +80,7 @@ export function EditProfileSheet({
 }) {
   const router = useRouter();
   const isOrg = profile.role === "org";
-  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, about: profile.about ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "", phonePublic: profile.phonePublic });
+  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, dob: profile.dob ?? "", about: profile.about ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "", phonePublic: profile.phonePublic });
   const [err, setErr] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -95,6 +109,8 @@ export function EditProfileSheet({
         fullName: d.fullName,
         city: d.city.trim(),
         age: isOrg ? null : d.age,
+        /* THE DATE OF BIRTH (19 Sep 2026): the database works the age out from it; an empty box leaves it as it is */
+        dob: isOrg || !d.dob ? undefined : d.dob,
         about: d.about.trim() || null,
         socials: profile.socials,
         styles: profile.styles,
@@ -208,13 +224,24 @@ export function EditProfileSheet({
       {/* an organization has no age (10594) */}
       {isOrg ? null : (
         <>
-          <div style={fieldLabel}>Age</div>
-          <select aria-label="Age" value={d.age ?? ""} onChange={(e) => setD((x) => ({ ...x, age: e.target.value ? Number(e.target.value) : null }))} style={fieldInput}>
-            <option value="">—</option>
-            {AGES.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
+          {/* A DATE OF BIRTH, NOT AN AGE (19 Sep 2026, the user: "age should
+              always be DOB instead when selecting anywhere in the app" — "dob in
+              picker and age on profile according to that"). A typed age is wrong
+              a year later; the date is asked once and the age is worked out from
+              it. The page still prints the number alone ("24, Gurugram"). */}
+          <div style={fieldLabel}>Date of birth</div>
+          <input
+            type="date"
+            aria-label="Date of birth"
+            value={d.dob}
+            min={isoYearsAgo(99)}
+            max={isoYearsAgo(13)}
+            onChange={(e) => setD((x) => ({ ...x, dob: e.target.value }))}
+            style={fieldInput}
+          />
+          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>
+            {d.dob ? `Your profile says ${ageFromDob(d.dob)}.` : "Your age is worked out from this — it is never shown as a date."}
+          </div>
         </>
       )}
       <div style={fieldLabel}>{isOrg ? "About" : "Bio"}</div>

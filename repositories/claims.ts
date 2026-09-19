@@ -142,13 +142,45 @@ export async function findClassesWithArtist(
 
 interface MyAskRow extends ClaimRow {
   classes: {
+    id: string;
     style: string;
     level: string;
     share_slug: string;
-    businesses: { name: string } | null;
-    class_sessions: Array<{ starts_at: string }> | null;
+    room: string | null;
+    price_inr: number;
+    capacity: number;
+    status: "draft" | "published" | "completed";
+    businesses: { name: string; city: string | null } | null;
+    class_sessions: Array<{ id: string; starts_at: string; ends_at: string }> | null;
   } | null;
 }
+
+/** ONE SHAPE FOR EVERY "ask" READ (19 Sep 2026): enough of the class to draw
+ *  the app's own class card from it — the user: "assisting should also show
+ *  class cards in same way" — and the ask's own STATUS, so an answered ask can
+ *  still be listed in the Inbox ("enquiries and requests don't get removed
+ *  after accepting"). */
+const ASK_SELECT = `${CLAIM_COLUMNS}, classes (id, style, level, share_slug, room, price_inr, capacity, status, businesses!classes_business_id_fkey (name, city), class_sessions (id, starts_at, ends_at))`;
+const toAsk = (r: MyAskRow): MyClaimAsk => {
+  const first = [...(r.classes!.class_sessions ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0] ?? null;
+  return {
+    ...toClaim(r),
+    classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
+    classStyle: r.classes!.style,
+    classShareSlug: r.classes!.share_slug,
+    tenantName: r.classes!.businesses?.name ?? "",
+    startsAt: first?.starts_at ?? null,
+    classLevel: r.classes!.level,
+    classRoom: r.classes!.room,
+    classPriceInr: r.classes!.price_inr,
+    classCapacity: r.classes!.capacity,
+    classStatus: r.classes!.status,
+    sessionId: first?.id ?? null,
+    endsAt: first?.ends_at ?? null,
+    tenantCity: r.classes!.businesses?.city ?? null,
+  };
+};
+export type AskStatus = "asked" | "confirmed" | "rejected";
 
 /** The asks waiting for the signed-in person, newest first.
  *
@@ -158,7 +190,7 @@ interface MyAskRow extends ClaimRow {
  *  asks waiting for the owner. The fourth time this lesson has surfaced: RLS is
  *  a ceiling, not a scoping mechanism. (No caller hit it yet; fixed at Step 14
  *  while the calendar was reading the same table.) */
-export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyClaimAsk[]> {
+export async function findMyPendingClaims(supabase: SupabaseClient, statuses: AskStatus[] = ["asked"]): Promise<MyClaimAsk[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -167,11 +199,9 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
   }
   const { data, error } = await supabase
     .from("class_people")
-    .select(
-      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses!classes_business_id_fkey (name), class_sessions (starts_at))`
-    )
+    .select(ASK_SELECT)
     .eq("user_id", user.id)
-    .eq("status", "asked")
+    .in("status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -179,19 +209,7 @@ export async function findMyPendingClaims(supabase: SupabaseClient): Promise<MyC
   if (error) {
     throw new Error(`claims.findMinePending failed: ${error.message}`);
   }
-  return (data as unknown as MyAskRow[])
-    .filter((r) => r.classes)
-    .map((r) => ({
-      ...toClaim(r),
-      classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
-      classStyle: r.classes!.style,
-      classShareSlug: r.classes!.share_slug,
-      tenantName: r.classes!.businesses?.name ?? "",
-      startsAt:
-        [...(r.classes!.class_sessions ?? [])]
-          .map((s) => s.starts_at)
-          .sort((a, b) => a.localeCompare(b))[0] ?? null,
-    }));
+  return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
 }
 
 /** THE CLASSES YOU ASSIST ON, OR TEACH (18 Sep 2026, the user's Home grid: a
@@ -208,9 +226,7 @@ export async function findMyConfirmedClaims(supabase: SupabaseClient, kind: Clai
   }
   const { data, error } = await supabase
     .from("class_people")
-    .select(
-      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses!classes_business_id_fkey (name), class_sessions (starts_at))`
-    )
+    .select(ASK_SELECT)
     .eq("user_id", user.id)
     .eq("kind", kind)
     .eq("status", "confirmed")
@@ -221,19 +237,7 @@ export async function findMyConfirmedClaims(supabase: SupabaseClient, kind: Clai
   if (error) {
     throw new Error(`claims.findMineConfirmed failed: ${error.message}`);
   }
-  return (data as unknown as MyAskRow[])
-    .filter((r) => r.classes)
-    .map((r) => ({
-      ...toClaim(r),
-      classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
-      classStyle: r.classes!.style,
-      classShareSlug: r.classes!.share_slug,
-      tenantName: r.classes!.businesses?.name ?? "",
-      startsAt:
-        [...(r.classes!.class_sessions ?? [])]
-          .map((s) => s.starts_at)
-          .sort((a, b) => a.localeCompare(b))[0] ?? null,
-    }));
+  return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
 }
 
 export async function claimPerson(
@@ -318,17 +322,15 @@ export async function setClaimPowers(
  *  the reason a class of yours is still a draft, so it says so"). Says which
  *  businesses out loud: members read their tenant's claims under RLS, and a person
  *  on two teams would otherwise see both as one list. */
-export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenantIds: string[]): Promise<MyClaimAsk[]> {
+export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenantIds: string[], statuses: AskStatus[] = ["asked"]): Promise<MyClaimAsk[]> {
   if (tenantIds.length === 0) {
     return [];
   }
   const { data, error } = await supabase
     .from("class_people")
-    .select(
-      `${CLAIM_COLUMNS}, classes (style, level, share_slug, businesses!classes_business_id_fkey (name), class_sessions (starts_at))`
-    )
+    .select(ASK_SELECT)
     .in("business_id", tenantIds)
-    .eq("status", "asked")
+    .in("status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -336,17 +338,5 @@ export async function findAskedClaimsForTenants(supabase: SupabaseClient, tenant
   if (error) {
     throw new Error(`claims.findAskedForTenants failed: ${error.message}`);
   }
-  return (data as unknown as MyAskRow[])
-    .filter((r) => r.classes)
-    .map((r) => ({
-      ...toClaim(r),
-      classTitle: dosClassLabel(r.classes!.style, r.classes!.level),
-      classStyle: r.classes!.style,
-      classShareSlug: r.classes!.share_slug,
-      tenantName: r.classes!.businesses?.name ?? "",
-      startsAt:
-        [...(r.classes!.class_sessions ?? [])]
-          .map((s) => s.starts_at)
-          .sort((a, b) => a.localeCompare(b))[0] ?? null,
-    }));
+  return (data as unknown as MyAskRow[]).filter((r) => r.classes).map(toAsk);
 }

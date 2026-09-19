@@ -77,9 +77,8 @@ async function signUp(page, email) {
 
 /* the one city dropdown (19 Sep 2026): always through "Search another city…" */
 async function pickCity(page, city) {
-  await page.getByLabel("Choose a city").first().selectOption("__search__");
-  await page.getByRole("searchbox", { name: /Search your city/i }).first().fill(city);
-  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+  /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
+  await page.getByLabel("Choose a city").first().selectOption(city);
 }
 
 /* the onboarding, as e2e/happy-path.spec.ts walks it */

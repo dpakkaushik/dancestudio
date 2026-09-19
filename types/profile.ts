@@ -28,8 +28,13 @@ export interface Profile {
   city: string | null;
   /** the person's own sentence, ≤ 220 chars; null prints nothing */
   about: string | null;
-  /** the age they state; printed as the number alone ("24, New Delhi") */
+  /** the age, printed as the number alone ("24, New Delhi") — worked out from
+   *  `dob` by the database on the day (19 Sep 2026), a bare number only for a
+   *  profile that never gave a date */
   age: number | null;
+  /** the date of birth, ISO — what the Edit sheet asks for since 19 Sep 2026
+   *  (the user: "age should always be DOB instead when selecting anywhere") */
+  dob: string | null;
   socials: SocialLink[];
   /** the styles they dance, in their order (dosMyStyles 1719) */
   styles: string[];

@@ -9,6 +9,7 @@ import { CREW_ROLE_WORD } from "@/types/crew";
 import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
 import { BioBlock } from "./BioBlock";
 import { ActionRow, CallButton, MailButton } from "./ContactButtons";
+import { FollowFigures } from "./FollowFigures";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
@@ -124,7 +125,12 @@ export function PublicPersonPage({
           shots={shots}
         />
 
-        {/* ── FOLLOW · FOLLOWING, first under the hero — never on your own page ── */}
+        {/* ── THE FIGURES, THEN THE BIO (19 Sep 2026): one order on every public page.
+            A number is not a public handle, so WhatsApp stays off the links (10778) ── */}
+        <FollowFigures followers={person.followers} following={person.following} />
+        <BioBlock about={profile.about} links={profile.socials} hideWhatsApp accent={RC} />
+
+        {/* ── FOLLOW · FOLLOWING — never on your own page ── */}
         {!isMe && canFollow ? (
           <div style={{ marginTop: 12 }}>
             <FollowToggle target={{ kind: "person", id: profile.id }} initialFollowing={following} initialFollowers={person.followers} accent={RC} signedIn={signedIn} />
@@ -153,10 +159,6 @@ export function PublicPersonPage({
             </Link>
           </div>
         ) : null}
-
-        {/* ── THE BIO (10739): their own sentence, then where else to find them — a
-            number is not a public handle, so WhatsApp stays off (10778) ── */}
-        <BioBlock about={profile.about} links={profile.socials} hideWhatsApp accent={RC} />
 
         {/* ── THE ASSOCIATIONS (19 Sep 2026): an artist's studios, and everyone's crews ── */}
         {kind === "artist" && studiosTaughtAt.length ? (

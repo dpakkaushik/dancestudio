@@ -59,11 +59,21 @@ export async function cancelEnrollment(
 
 /** The signed-in learner's live bookings, soonest session first. */
 export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnrollment[]> {
+  /* ⚠ MINE MEANS MINE (19 Sep 2026, the user: "classes booked section is only
+     for bookings made for attending the class and nothing else"). This read
+     leaned on RLS for "my bookings" — and a studio's members read their
+     studio's whole roster, so an owner's Booked segment listed every seat in
+     their studio. RLS is a ceiling, not a scope: the spine says `user_id`. */
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
   const { data, error } = await supabase
     .from("class_bookings")
     .select(
       "id, status, session_id, class_id, class_sessions (starts_at, ends_at), classes (share_slug, style, level, room, price_inr, capacity, status), businesses (name, city)"
     )
+    .eq("user_id", user.id)
     .in("status", ["enrolled", "waitlisted"])
     .is("deleted_at", null)
     .order("created_at", { ascending: false })

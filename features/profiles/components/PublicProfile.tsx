@@ -10,6 +10,7 @@ import type { PublicTeamMember, PublicTenantProfile } from "@/types/publicProfil
 import { BioBlock } from "./BioBlock";
 import { BusinessEditButton } from "./BusinessEditSheet";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
+import { FollowFigures } from "./FollowFigures";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
@@ -150,6 +151,12 @@ export function PublicProfile({
         {/* ── a business with nothing published yet says so where the styles would be ── */}
         {profile.styles.length === 0 ? <div style={{ fontSize: 12, color: MUTED, padding: "12px 0 0" }}>No published classes yet.</div> : null}
 
+        {/* ── THE FIGURES, THEN THE BIO (19 Sep 2026, the user: "follow following counts
+            visible on every profile and bio also should be visible below that for all
+            kinds of users") — one order on every public page ── */}
+        <FollowFigures followers={profile.followers} />
+        <BioBlock about={tenant.about} links={tenant.socials} editHint={canEdit ? "A sentence in the studio's own words — Edit ›" : null} accent={RC} />
+
         {/* ── FOLLOW · FOLLOWING, first under the hero (19 Sep 2026) — or, for the
             team, the door to the desk; the owner's Followers and Edit beside it ── */}
         <div style={{ marginTop: 12 }}>
@@ -183,9 +190,6 @@ export function PublicProfile({
             Schedule
           </Link>
         </div>
-
-        {/* ── THE BIO: About as prose, then the links — WhatsApp included, a business's number is a public one ── */}
-        <BioBlock about={tenant.about} links={tenant.socials} editHint={canEdit ? "A sentence in the studio's own words — Edit ›" : null} accent={RC} />
 
         {/* ── THE ASSOCIATIONS, in one language (11000-11060): a row per person,
             each group headed with a count — Owner · Faculty · Visiting faculty ── */}

@@ -136,6 +136,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
       profile_photo_path: row.profile_photo_path,
       about: row.about,
       age: null,
+      dob: null,
       socials: row.socials,
       styles: row.styles ?? [],
       member_no: null,

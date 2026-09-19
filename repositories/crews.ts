@@ -211,14 +211,15 @@ export async function findCrewMembers(supabase: SupabaseClient, crewId: string):
 }
 
 /** The asks waiting for the signed-in person — says `user_id = me` out loud. */
-export async function findMyPendingCrewAsks(supabase: SupabaseClient): Promise<MyCrewAsk[]> {
+export async function findMyPendingCrewAsks(supabase: SupabaseClient, statuses: Array<"asked" | "confirmed" | "rejected"> = ["asked"]): Promise<MyCrewAsk[]> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("crew_members")
     .select(`${MEMBER_COLUMNS}, crews (name, city, leader_id, deleted_at, profiles!crews_leader_id_fkey (full_name))`)
     .eq("user_id", me)
-    .eq("status", "asked")
+    /* answered asks too, when the Inbox wants them (19 Sep 2026) */
+    .in("status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -236,14 +237,14 @@ export async function findMyPendingCrewAsks(supabase: SupabaseClient): Promise<M
 }
 
 /** The asks the crews you lead are still waiting on (the desk's SENT side). */
-export async function findAskedForMyCrews(supabase: SupabaseClient): Promise<Array<CrewMember & { crewName: string }>> {
+export async function findAskedForMyCrews(supabase: SupabaseClient, statuses: Array<"asked" | "confirmed" | "rejected"> = ["asked"]): Promise<Array<CrewMember & { crewName: string }>> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("crew_members")
     .select(`${MEMBER_COLUMNS}, crews!inner (name, leader_id, deleted_at)`)
     .eq("crews.leader_id", me)
-    .eq("status", "asked")
+    .in("status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -300,14 +301,14 @@ const toPartnerAsk = (r: PartnerRow): PartnerAsk => ({
 });
 
 /** Duet entries naming the signed-in person as the partner, still unanswered. */
-export async function findMyPendingPartnerAsks(supabase: SupabaseClient): Promise<PartnerAsk[]> {
+export async function findMyPendingPartnerAsks(supabase: SupabaseClient, statuses: Array<"asked" | "accepted" | "declined"> = ["asked"]): Promise<PartnerAsk[]> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("event_bookings")
     .select(PARTNER_COLUMNS)
     .eq("partner_id", me)
-    .eq("partner_status", "asked")
+    .in("partner_status", statuses)
     .eq("status", "booked")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -319,14 +320,14 @@ export async function findMyPendingPartnerAsks(supabase: SupabaseClient): Promis
 }
 
 /** The duet entries the signed-in person made whose partner has not answered. */
-export async function findMyUnansweredPartners(supabase: SupabaseClient): Promise<PartnerAsk[]> {
+export async function findMyUnansweredPartners(supabase: SupabaseClient, statuses: Array<"asked" | "accepted" | "declined"> = ["asked"]): Promise<PartnerAsk[]> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("event_bookings")
     .select(PARTNER_COLUMNS)
     .eq("user_id", me)
-    .eq("partner_status", "asked")
+    .in("partner_status", statuses)
     .eq("status", "booked")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
