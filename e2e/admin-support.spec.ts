@@ -58,7 +58,7 @@ async function onboardOrg(page: Page, name: string, city: string) {
   await expect(page).toHaveURL(/\/onboarding/);
   await page.getByText("Organization", { exact: true }).click();
   await page.locator('input[name="name"]').fill(name);
-  await page.locator('input[name="city"]').fill(city);
+  await pickCity(page, city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   // the cropper (18 Sep 2026): every picture is confirmed in "Crop & preview" before it goes up
@@ -117,11 +117,10 @@ async function deleteUser(id: string) {
 /** NAME A CITY IN THE PICKER (11 Sep 2026) — the same helper happy-path carries:
  *  the City field is a Google city search; the typed name is always the last
  *  option, so a test never depends on Google answering. */
+/** the one city dropdown (19 Sep 2026): always through "Search another city…" */
 async function pickCity(page: Page | Locator, city: string) {
+  await page.getByLabel("Choose a city").first().selectOption("__search__");
   const box = page.getByRole("searchbox", { name: /Search your city/i });
-  if ((await box.count()) === 0) {
-    await page.getByRole("button", { name: "Change city" }).first().click();
-  }
   await box.first().fill(city);
   await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
 }

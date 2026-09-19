@@ -42,7 +42,10 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     redirect(`/business/${tenantId}/events`);
   }
   if (tenant.type !== "studio") {
-    redirect(`/business/${tenantId}/classes`);
+    /* an artist page's register is the Manage segment of Your classes — ONE hop
+       (19 Sep 2026): the old two-hop chain through /classes left a URL in the
+       history that could only ever redirect, and back onto it looped forward */
+    redirect("/my-classes?show=manage");
   }
 
   const isOwner = memberRole === "owner";

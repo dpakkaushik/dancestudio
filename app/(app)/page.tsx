@@ -106,7 +106,6 @@ export default async function HomePage() {
      a user one, an artist five, an organization ten — and a plan that lapsed
      with five stored still draws one; the rest wait. */
   const headerMax = headerMaxFor(kind);
-  const header = await findPersonHeaderPhotos(supabase, user.id, headerMax);
   /* the page a stranger reads — an organization's own since 18 Sep 2026 (R23),
      a person's whether or not they hold the plan (R24) */
   const publicHref = isOrg ? `/org/${profile.id}` : `/person/${profile.id}`;
@@ -115,8 +114,6 @@ export default async function HomePage() {
      is Step 25's own — the same RPC the Profile tab and the boards ask — and a
      studio is not on a dancer's ladder, so it is not asked for one. */
   const chartSeg = isArtist ? "artist" : "dancer";
-  const rank = profile.role === "org" ? null : await findMyPlace(supabase, chartSeg);
-  const tier = rank ? tierOf(rank.place) : null;
 
   /* AN ORGANIZATION'S HOME ASKS NO STUDIO'S QUESTION (17 Sep 2026, the user:
      "organization home tab should not have classes options. classes can only be
@@ -143,7 +140,16 @@ export default async function HomePage() {
      its photos, ask for the badge. It stays a constant so the two folds below
      keep reading as a decision rather than as dead code. */
   const orgAwaitingApproval = false;
-  const deck = await findMyDeck(supabase, user.id, nowIso, businesses);
+  /* FOUR INDEPENDENT READS IN ONE ROUND TRIP (19 Sep 2026, "make app snappier"):
+     the header pictures, where you stand, today's deck, and — for an artist — the
+     page provisioned on first render (see below). They used to run in sequence. */
+  const [header, rank, deck, pageId] = await Promise.all([
+    findPersonHeaderPhotos(supabase, user.id, headerMax),
+    profile.role === "org" ? Promise.resolve(null) : findMyPlace(supabase, chartSeg),
+    findMyDeck(supabase, user.id, nowIso, businesses),
+    isOrg || !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
+  ]);
+  const tier = rank ? tierOf(rank.place) : null;
 
   /* the metal the KIND wears (DOS_RINGS 1462): gold for an organization, silver
      for an artist, bronze for a user — the same pair the Profile tab paints with */
@@ -165,8 +171,6 @@ export default async function HomePage() {
      from a user to artist to get the additional tools"). A live plan and no page
      yet → the page is made now, named after the person; the Team and Students
      tiles below open it from the first render. */
-  const pageId = isOrg || !isArtist ? null : await ensureArtistPage(supabase, profile, memberships);
-
   /* the header, shown and nothing else: adding and removing moved into the
      Edit-profile sheet on 16 Sep 2026, at the user's instruction */
   const shots: HeroShot[] = header

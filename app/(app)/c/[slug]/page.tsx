@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findArtistPageOwner } from "@/repositories/publicOrganization";
 import { findClassRegister } from "@/repositories/attendance";
 import { findClaimsByClass } from "@/repositories/claims";
 import { findClassBySlug } from "@/repositories/classes";
@@ -84,23 +85,23 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
   const myBooking = sessionId ? mine.get(sessionId) ?? null : null;
   const canManage = role === "owner" || role === "trainer";
 
-  // the paid side of the viewer's booking — feeds the invoice + refund sheets
-  const receipt =
-    myBooking && danceClass.priceInr > 0
-      ? await findPaidReceiptByEnrollment(supabase, myBooking.id)
-      : null;
-
-  // the live register + waitlist queue — only people who can run it get it —
-  // and, on a priced class, who has paid for their seat (the row's meta line)
-  const register = canManage ? await findClassRegister(supabase, danceClass.id) : null;
-  const paidUserIds =
-    canManage && sessionId && danceClass.priceInr > 0 ? await findPaidUserIdsBySession(supabase, sessionId) : new Set<string>();
-
-  // who is on the class, and what the room has in it. RLS decides what the
-  // viewer may see: the public gets confirmed claims on published classes only.
-  const [claims, room] = await Promise.all([
+  /* ONE ROUND TRIP FOR THE FIVE INDEPENDENT READS (19 Sep 2026, the user: "make
+     app snappier") — they used to run one after another, four serial waits on
+     the most-linked page in the app. The receipt (the paid side of the viewer's
+     booking — the invoice and refund sheets); the live register and waitlist
+     queue, only for people who can run it, and on a priced class who has paid
+     for their seat; who is on the class and what the room has in it (RLS
+     decides what the viewer may see: the public gets confirmed claims on
+     published classes only); and, for an artist's class, WHOSE profile the
+     place row opens — the person behind the artist page, so the link never
+     goes through the /artist redirect. */
+  const [receipt, register, paidUserIds, claims, room, ownerId] = await Promise.all([
+    myBooking && danceClass.priceInr > 0 ? findPaidReceiptByEnrollment(supabase, myBooking.id) : Promise.resolve(null),
+    canManage ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
+    canManage && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
     findClaimsByClass(supabase, danceClass.id),
     danceClass.roomId ? findRoomById(supabase, danceClass.roomId) : Promise.resolve(null),
+    danceClass.tenantType === "artist_page" ? findArtistPageOwner(supabase, danceClass.tenantId).catch(() => null) : Promise.resolve(null),
   ]);
   const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
 
@@ -112,14 +113,15 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
   const canSettleRefunds =
     role === "owner" ||
     (myClaim?.status === "confirmed" && myClaim.canRefunds && danceClass.priceInr > 0);
-  const refunds = canSettleRefunds ? await findRefundsByClass(supabase, danceClass.id) : [];
-
   /* What the class made is the OWNER's figure alone — the prototype puts the
      Earnings segment behind `isMine` (SEGS 11757) while Attendance and Refunds
      ride the grantable jobs beside it. A trainer running the register has no
      business reading the studio's take, which is the same line /business/{id}/earnings
-     already draws. */
-  const classMoney = role === "owner" ? await findClassMoney(supabase, danceClass.id) : null;
+     already draws. Both reads in one round trip. */
+  const [refunds, classMoney] = await Promise.all([
+    canSettleRefunds ? findRefundsByClass(supabase, danceClass.id) : Promise.resolve([]),
+    role === "owner" ? findClassMoney(supabase, danceClass.id) : Promise.resolve(null),
+  ]);
 
   return (
     <ClassDetail
@@ -143,6 +145,8 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       /* 18 Sep 2026: the owner hands out jobs; the owner or the confirmed teacher adds assistants */
       isOwner={role === "owner"}
       canAddAssistant={role === "owner" || (myClaim?.kind === "artist" && myClaim.status === "confirmed")}
+      /* an artist's class at their own place opens the ARTIST'S profile from the place row (19 Sep 2026) */
+      ownerHref={ownerId ? `/person/${ownerId}` : null}
     />
   );
 }

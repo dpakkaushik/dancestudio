@@ -54,7 +54,9 @@ export function TenantFollowersButton({ followers, accent }: { followers: Tenant
                 <Link
                   key={f.followId}
                   href={`/person/${f.userId}`}
-                  onClick={() => setOpen(false)}
+                  /* no close on click (19 Sep 2026): the route change takes the
+                     sheet down — closing first spent its history entry in the
+                     same tick as the navigation and cancelled it */
                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, background: `${tint}12`, border: `1px solid ${tint}30`, color: INK, textDecoration: "none" }}
                 >
                   <span style={{ position: "relative", flexShrink: 0 }}>

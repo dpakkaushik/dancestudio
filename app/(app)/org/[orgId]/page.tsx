@@ -9,7 +9,7 @@ import { findEventsByTenants } from "@/repositories/events";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findProfileById } from "@/repositories/profiles";
 import { findPublicOrganization, findPublicOrganizationStudios, findPublicOrganizationTeam } from "@/repositories/publicOrganization";
-import { isFollowingPerson } from "@/repositories/publicPerson";
+import { findPersonFollowerCounts, isFollowingPerson } from "@/repositories/publicPerson";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const stampNowIso = (): string => new Date().toISOString();
@@ -48,7 +48,7 @@ export default async function OrganizationPage({ params }: { params: Promise<{ o
   } = await supabase.auth.getUser();
   const isMe = Boolean(user) && user!.id === orgId;
   const today = dayKeyOf(stampNowIso());
-  const [studios, events, viewer, following, header, team] = await Promise.all([
+  const [studios, events, viewer, following, header, team, counts] = await Promise.all([
     findPublicOrganizationStudios(supabase, orgId),
     org.hostBusinessId ? findEventsByTenants(supabase, [org.hostBusinessId]).catch(() => []) : Promise.resolve([]),
     /* an organization viewer follows nothing — the toggle is not drawn for one */
@@ -57,10 +57,13 @@ export default async function OrganizationPage({ params }: { params: Promise<{ o
     findPersonHeaderPhotos(supabase, orgId, HEADER_MAX_ORG),
     /* OWNER and TEAM (push 2): the confirmed people it named, through the definer read */
     findPublicOrganizationTeam(supabase, orgId).catch(() => []),
+    /* the count on the Follow button (19 Sep 2026, later) — `person_follower_counts` answers for a public organization */
+    findPersonFollowerCounts(supabase, [orgId]),
   ]);
+  const followers = counts.get(orgId)?.followers ?? null;
   /* what a visitor came for: the published events still to come, soonest first */
   const upcoming = events
     .filter((e) => e.status === "published" && e.endDate >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
-  return <OrganizationPublicPage org={org} studios={studios} events={upcoming} team={team} header={header} isMe={isMe} following={following} canFollow={viewer?.role !== "org"} signedIn={Boolean(user)} />;
+  return <OrganizationPublicPage org={org} studios={studios} events={upcoming} team={team} header={header} isMe={isMe} following={following} followers={followers} canFollow={viewer?.role !== "org"} signedIn={Boolean(user)} />;
 }

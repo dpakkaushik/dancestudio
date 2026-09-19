@@ -5,7 +5,7 @@ import { CrewPublicPage } from "@/features/crews/components/CrewPublicPage";
 import { dayKeyOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findCrewById, findCrewEntries, findCrewMembers } from "@/repositories/crews";
-import { isFollowingCrew } from "@/repositories/follows";
+import { findCrewFollowerCount, isFollowingCrew } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
 import { findProfileById } from "@/repositories/profiles";
 
@@ -41,12 +41,14 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [members, entries, header, viewerProfile, following] = await Promise.all([
+  const [members, entries, header, viewerProfile, following, followers] = await Promise.all([
     findCrewMembers(supabase, crewId),
     findCrewEntries(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     user ? isFollowingCrew(supabase, crewId) : Promise.resolve(false),
+    /* the count on the Follow button (19 Sep 2026, later) */
+    findCrewFollowerCount(supabase, crewId),
   ]);
   /* the public page prints the confirmed; the leader's own asked rows are the desk's business */
   const confirmed = members.filter((m) => m.status === "confirmed");
@@ -59,6 +61,7 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
       header={header}
       viewer={viewer}
       following={following}
+      followers={followers}
       canFollow={viewerProfile?.role !== "org"}
       signedIn={Boolean(user)}
       todayKey={dayKeyOf(stampNowIso())}

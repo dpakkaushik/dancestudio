@@ -586,7 +586,7 @@ export function ClassesManager({
           form={(go) =>
             ask.clash ? (
               /* a clashing publish is not offered: the database would refuse it */
-              <Link href={`/business/${tenantId}/classes/${ask.c.id}/edit`} onClick={() => setAsk(null)} style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13, textDecoration: "none" }}>
+              <Link href={`/business/${tenantId}/classes/${ask.c.id}/edit`} style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13, textDecoration: "none" }}>
                 Change the slot
               </Link>
             ) : (

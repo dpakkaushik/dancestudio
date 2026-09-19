@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { CitySelect } from "@/features/geo/components/CitySelect";
 import { useState } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -139,6 +141,7 @@ export function StatsScreen({
   const isStudio = segment === "studio";
   const peopleBoard = segment === "dancer" || segment === "artist";
 
+  const router = useRouter();
   const chartHref = (over: { seg?: ChartSegment; city?: string | null; metric?: ChartMetric; style?: string | null }) => {
     const seg = over.seg ?? segment;
     const c = over.city === undefined ? city : over.city;
@@ -613,23 +616,21 @@ export function StatsScreen({
                 );
               })}
             </div>
-            {/* the metric and the city (9654): two selects side by side — as links, because the address is the state */}
+            {/* the metric and the city (9654): two selects side by side — the address is
+                the state, and a change REPLACES it in place (19 Sep 2026: these were
+                full-page loads through window.location, one history entry each, and the
+                city is the one dropdown every city field in the app is now) */}
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <select aria-label="Metric" value={metric} onChange={(e) => (window.location.href = chartHref({ metric: e.target.value as ChartMetric }))} style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "10px 10px", color: INK, fontSize: 11.5, fontWeight: 700, outline: "none", appearance: "none", fontFamily: "inherit" }}>
+              <select aria-label="Metric" value={metric} onChange={(e) => router.replace(chartHref({ metric: e.target.value as ChartMetric }), { scroll: false })} style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "10px 10px", color: INK, fontSize: 11.5, fontWeight: 700, outline: "none", appearance: "none", fontFamily: "inherit" }}>
                 {CHART_METRICS.map((m) => (
                   <option key={m.k} value={m.k}>
                     🏅 {m.label}
                   </option>
                 ))}
               </select>
-              <select aria-label="City" value={city ?? ""} onChange={(e) => (window.location.href = chartHref({ city: e.target.value || null }))} style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "10px 10px", color: INK, fontSize: 11.5, fontWeight: 700, outline: "none", appearance: "none", fontFamily: "inherit" }}>
-                <option value="">📍 Everywhere</option>
-                {cities.map((c) => (
-                  <option key={c} value={c}>
-                    📍 {c}
-                  </option>
-                ))}
-              </select>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <CitySelect value={city} cities={cities} ariaLabel="City" allowNone noneLabel="Everywhere" placeholder="Everywhere" onChange={(c) => router.replace(chartHref({ city: c }), { scroll: false })} />
+              </div>
             </div>
             {chartStyles.length > 0 ? (
               <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 6, marginBottom: 8 }}>

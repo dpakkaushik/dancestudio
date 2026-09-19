@@ -212,7 +212,11 @@ export function ClassForm({
   /* the confirm sheet before a save (15586-15625) — the button sets which
      status the form will carry, and the sheet's own button submits it */
   const [confirm, setConfirm] = useState<"draft" | "publish" | null>(null);
-  useCloseOnBack(() => setConfirm(null), Boolean(confirm));
+  /* `spend: false` — this sheet's button closes it AND submits in one tick, and
+     spending the history entry then would race the server action's redirect
+     (the hook's header tells the story); the orphaned entry is skipped on the
+     next back press instead (19 Sep 2026) */
+  useCloseOnBack(() => setConfirm(null), Boolean(confirm), { spend: false });
   /* WHAT THIS FORM IS ABOUT TO SUBMIT, IN THE DOM RATHER THAN IN STATE. React
      batches state updates inside a click handler, so setting a status and calling
      requestSubmit() in the same tick submits the value from the PREVIOUS render.
@@ -330,6 +334,8 @@ export function ClassForm({
         {/* every field lives in state and submits as a hidden input, so stepping
             between the two halves never drops what you already answered */}
         <input type="hidden" name="tenantId" value={tenantId} />
+        {/* where a save lands — an artist's register is Your classes' Manage segment, in one hop (19 Sep 2026) */}
+        <input type="hidden" name="after" value={isArtist ? "/my-classes?show=manage" : `/business/${tenantId}/classes`} />
         {isEdit && existing && <input type="hidden" name="classId" value={existing.id} />}
         <input type="hidden" name="style" value={style} />
         <input type="hidden" name="level" value={level} />

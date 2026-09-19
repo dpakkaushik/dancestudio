@@ -516,7 +516,7 @@ export function MyProfilePage({
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {shownFollowRows.map((r) => (
-              <Link key={r.key} href={r.href} onClick={() => setFollowList(null)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, background: `${r.tint}12`, border: `1px solid ${r.tint}30`, color: INK, textDecoration: "none" }}>
+              <Link key={r.key} href={r.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, background: `${r.tint}12`, border: `1px solid ${r.tint}30`, color: INK, textDecoration: "none" }}>
                 <span style={{ position: "relative", flexShrink: 0 }}>
                   <span style={{ width: 46, height: 46, borderRadius: 23, display: "flex", overflow: "hidden", background: `linear-gradient(135deg,${r.tint},${r.tint}88)`, alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17 }}>
                     {r.face ? <Image src={r.face} alt="" width={46} height={46} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : r.initials}
@@ -537,8 +537,17 @@ export function MyProfilePage({
 
       <SettingsSheet
         open={settingsOpen}
-        /* leaving takes the parameter back off */
-        onClose={() => router.replace("/profile")}
+        /* THE SHEET'S HISTORY ENTRY IS THE GEAR'S OWN (19 Sep 2026): the gear
+           PUSHES `/profile?settings=1`, so closing is one step BACK — the same
+           step the system gesture takes — and never a replace over it. The
+           replace left `?settings=1` standing one entry back, so back re-opened
+           Settings and closing it again landed on a second, identical /profile:
+           the "page keeps looping" the user reported. A deep link with nothing
+           behind it is the one case that has to replace instead. */
+        onClose={() => {
+          if (window.history.length > 1) router.back();
+          else router.replace("/profile");
+        }}
         role={profile.role}
         isAdmin={isAdmin}
         gstVerified={gstVerified}

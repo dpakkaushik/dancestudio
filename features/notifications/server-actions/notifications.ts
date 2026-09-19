@@ -32,8 +32,11 @@ async function requireUser() {
 
 const revalidate = () => {
   revalidatePath("/notifications");
-  /* the bell sits in the chrome, so every route draws it */
-  revalidatePath("/", "layout");
+  /* the bell sits in the chrome, and the chrome is re-read on every navigation
+     (every route under it is dynamic) — the screen's own `router.refresh()`
+     redraws it at once. This used to revalidate the WHOLE app segment cache
+     (`revalidatePath("/", "layout")`) on every mark-as-read, which made every
+     navigation that followed a cold render (19 Sep 2026, "make app snappier"). */
 };
 
 export async function markNotificationsReadAction(input: { ids?: string[]; kind?: NotificationKind }): Promise<NotificationActionResult> {

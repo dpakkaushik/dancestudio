@@ -75,13 +75,20 @@ async function signUp(page, email) {
   return link.id;
 }
 
+/* the one city dropdown (19 Sep 2026): always through "Search another city…" */
+async function pickCity(page, city) {
+  await page.getByLabel("Choose a city").first().selectOption("__search__");
+  await page.getByRole("searchbox", { name: /Search your city/i }).first().fill(city);
+  await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
+}
+
 /* the onboarding, as e2e/happy-path.spec.ts walks it */
 async function onboard(page, name, role, city) {
   await page.waitForURL(/\/onboarding/);
   const isOrg = role === "Organization";
   if (isOrg) await page.getByText("Organization", { exact: true }).click();
   await page.locator('input[name="name"]').fill(name);
-  await page.locator('input[name="city"]').fill(city);
+  await pickCity(page, city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(FILE);
   await useIt(page);
@@ -151,8 +158,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.getByText("＋ Add studio").click();
     await org.locator('input[name="name"]').fill("EEE Dance Studio");
     await org.locator('input[name="area"]').fill("Kothrud");
-    await org.getByRole("searchbox", { name: /Search your city/i }).fill("Pune");
-    await org.getByRole("listbox").getByRole("option", { name: 'Use "Pune"' }).click();
+    await pickCity(org, "Pune");
     await org.getByLabel("Room 1 name").fill("Studio A");
     await org.getByRole("button", { name: "Create studio" }).click();
     await org.getByText("EEE Dance Studio").first().waitFor();

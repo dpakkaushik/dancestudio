@@ -51,11 +51,10 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  *
  *  `page` is wherever the picker lives — the page, or the dialog it is in, so
  *  a sheet's own field is not confused with the page's behind it. */
+/** the one city dropdown (19 Sep 2026): always through "Search another city…" */
 async function pickCity(page: Page | Locator, city: string) {
+  await page.getByLabel("Choose a city").first().selectOption("__search__");
   const box = page.getByRole("searchbox", { name: /Search your city/i });
-  if ((await box.count()) === 0) {
-    await page.getByRole("button", { name: "Change city" }).first().click();
-  }
   await box.first().fill(city);
   await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
 }
@@ -93,7 +92,7 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
   const isOrg = role === "Organization";
   if (isOrg) await page.getByText("Organization", { exact: true }).click();
   await page.locator('input[name="name"]').fill(name);
-  await page.locator('input[name="city"]').fill(city);
+  await pickCity(page, city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   // the cropper (18 Sep 2026): every picture is confirmed in "Crop & preview" before it goes up

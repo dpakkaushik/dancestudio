@@ -65,6 +65,7 @@ export function ManagedScreen({
               <Link
                 key={k}
                 href={k === "all" ? "/managed" : `/managed?kind=${k}`}
+                replace
                 aria-label={aria}
                 aria-current={on ? "page" : undefined}
                 style={{

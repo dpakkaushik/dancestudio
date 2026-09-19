@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Portal } from "@/components/ui/Portal";
-import { LocationPicker } from "@/features/geo/components/LocationPicker";
+import dynamic from "next/dynamic";
+import { CityPicker } from "@/features/geo/components/CityPicker";
+
+/* THE MAP LOADS WHEN THE SHEET NEEDS IT (19 Sep 2026, "make app snappier"): this
+   sheet is on Home, and the Google Maps picker — the map component, its loader,
+   the places search — was in Home's first-load JavaScript for the one
+   organization in a hundred loads that opens the sheet to place a pin */
+const LocationPicker = dynamic(() => import("@/features/geo/components/LocationPicker").then((m) => m.LocationPicker), { ssr: false });
 import { commitHeaderDraft, commitWords, personPorts } from "@/features/media/commitHeaderDraft";
 import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderPictures";
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
@@ -171,7 +178,8 @@ export function EditProfileSheet({
         </>
       ) : null}
       <div style={fieldLabel}>Location</div>
-      <input aria-label="Location" value={d.city} onChange={(e) => setD((x) => ({ ...x, city: e.target.value }))} style={fieldInput} />
+      {/* THE ONE CITY DROPDOWN (19 Sep 2026) — the same control as everywhere else */}
+      <CityPicker value={d.city.trim() || null} onChange={(c) => setD((x) => ({ ...x, city: c ?? "" }))} label="" />
       {!d.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
       {/* AN ORGANIZATION'S PIN (push 2): what its page's Location button opens.
           Written the moment it is placed — see the header — and the picker opens

@@ -52,6 +52,7 @@ export function OrganizationPublicPage({
   header = [],
   isMe = false,
   following = false,
+  followers = null,
   canFollow = true,
   signedIn = false,
 }: {
@@ -65,6 +66,8 @@ export function OrganizationPublicPage({
   /** the organization looking at its own page: no Follow, no Enquiry */
   isMe?: boolean;
   following?: boolean;
+  /** the live follower count, printed on the Follow button (19 Sep 2026, later) */
+  followers?: number | null;
   /** false for an organization viewer — one follows nothing */
   canFollow?: boolean;
   signedIn?: boolean;
@@ -116,20 +119,21 @@ export function OrganizationPublicPage({
         {/* ── FOLLOW · FOLLOWING, first under the hero (19 Sep 2026) ── */}
         {!isMe && canFollow ? (
           <div style={{ marginTop: 12 }}>
-            <FollowToggle target={{ kind: "person", id: org.id }} initialFollowing={following} accent={tint} signedIn={signedIn} />
+            <FollowToggle target={{ kind: "person", id: org.id }} initialFollowing={following} initialFollowers={followers} accent={tint} signedIn={signedIn} />
           </div>
         ) : null}
 
-        {/* ── THE BIO: About as prose, then the links ── */}
-        <BioBlock about={org.about} links={org.socials} accent={tint} />
-
-        {/* ── THE BUTTONS AN ORGANIZATION'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail · Location ── */}
-        <ActionRow>
+        {/* ── THE BUTTONS AN ORGANIZATION'S PAGE CARRIES (19 Sep 2026): Enquiry · Call ·
+            Mail · Location — one block under Follow; the Bio follows ── */}
+        <ActionRow marginTop={6}>
           {canAsk ? <EnquiryButton tenantId={org.hostBusinessId as string} tenantName={org.name} tenantType="org" signedIn={signedIn} accent={tint} /> : null}
           {org.phone ? <CallButton phone={org.phone} /> : null}
           {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : org.city ? <LocationButton query={`${org.name} ${org.city}`} /> : null}
         </ActionRow>
+
+        {/* ── THE BIO: About as prose, then the links ── */}
+        <BioBlock about={org.about} links={org.socials} accent={tint} />
 
         {/* ── THE ASSOCIATIONS (push 2: "Organization: Owner (one of the users added
             from team), list of studios they run"): Owner · Team · Studios · Events ── */}

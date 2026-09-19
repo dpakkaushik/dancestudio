@@ -51,10 +51,13 @@ export default async function ProfilePage() {
      for an artist, ten for an organization (19 Sep 2026) — the same rule the
      database keeps on the way in */
   const headerMax = headerMaxFor(kindOf(role, Boolean(plan?.active)));
-  const header = await findPersonHeaderPhotos(supabase, user.id, headerMax);
-  /* where you stand — an ORGANIZATION has no people board (the prototype hides the
-     rank on a studio, 10719); a person stands on the artists' board while the plan is live */
-  const place = role === "org" ? null : await findMyPlace(supabase, plan?.active ? "artist" : "dancer");
+  /* the header and where you stand, in one round trip (19 Sep 2026) — an
+     ORGANIZATION has no people board (the prototype hides the rank on a studio,
+     10719); a person stands on the artists' board while the plan is live */
+  const [header, place] = await Promise.all([
+    findPersonHeaderPhotos(supabase, user.id, headerMax),
+    role === "org" ? Promise.resolve(null) : findMyPlace(supabase, plan?.active ? "artist" : "dancer"),
+  ]);
   /* Schedule goes to the public schedule of the business this person runs —
      a trainer's own (prototype `hasSchedule` = mode === "trainer", 10868); with
      none, the button is not drawn rather than pointing nowhere */

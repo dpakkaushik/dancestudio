@@ -204,15 +204,17 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
     setError(null);
     const out = await saveEventAction({ tenantId, eventId: E?.id ?? null, event: payload(), publish });
     setBusy(false);
-    setConfirm(null);
     if (out.error) {
+      setConfirm(null);
       setError(out.error);
       fire(out.error);
       return;
     }
+    /* the confirm sheet stays up until the route changes: closing it here would
+       spend its history entry in the same tick as the push and race the router
+       (19 Sep 2026) — the desk's render takes it down */
     fire(publish ? "🎟 Published — it is on Discover" : "Saved as a draft");
     router.push(`/business/${tenantId}/events`);
-    router.refresh();
   };
 
   const setEntryHeadline = (k: EntryFormat | "all") => {

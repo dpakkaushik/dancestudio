@@ -62,4 +62,12 @@ export interface PublicClassListing extends DanceClass {
   tenantType: "studio" | "artist_page";
   tenantArea: string | null;
   tenantCity: string | null;
+  /** THE VENUE (19 Sep 2026, the user: "right Studio inside the class section"):
+   *  an artist's class held in a studio's room names THAT studio under AT THE
+   *  STUDIO, not the artist page that owns the class. Null when the class is at
+   *  the owner's own place or the venue is not readable (an unlisted studio, to
+   *  a stranger). */
+  venueName: string | null;
+  venueArea: string | null;
+  venueCity: string | null;
 }

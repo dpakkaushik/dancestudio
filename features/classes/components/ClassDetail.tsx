@@ -165,6 +165,9 @@ export interface ClassDetailProps {
   isOwner?: boolean;
   /** the owner, or the class's confirmed teacher: the two who may add an assistant (18 Sep 2026) */
   canAddAssistant?: boolean;
+  /** an artist's class: the ARTIST'S profile, which the place row opens when the
+   *  class is at their own place (19 Sep 2026 — never the /artist redirect) */
+  ownerHref?: string | null;
 }
 
 export function ClassDetail({
@@ -187,6 +190,7 @@ export function ClassDetail({
   paidUserIds = [],
   isOwner = false,
   canAddAssistant = false,
+  ownerHref = null,
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -261,8 +265,21 @@ export function ClassDetail({
 
   const ground = `linear-gradient(150deg, ${col}47 0%, ${col}24 55%, ${col}17 100%)`;
   const weave = `repeating-linear-gradient(45deg, ${col}1a 0 6px, transparent 6px 12px)`;
-  const whereBits = [c.room, c.tenantCity].filter(Boolean).join(" · ");
-  const mapsQuery = [c.room, c.tenantName, c.tenantArea, c.tenantCity].filter(Boolean).join(", ");
+  /* THE PLACE IS THE VENUE (19 Sep 2026, the user: "right Studio inside the class
+     section"): an artist's class held in a studio's room names THE STUDIO THAT
+     SAID YES, not the artist page that owns the class — the room is theirs. A
+     studio's own class names the studio; an artist's class at a place of their
+     own names the artist and opens their profile (`ownerHref`), and its Maps
+     link is the pin they placed. */
+  const atVenue = Boolean(c.venueName && c.venueBusinessId && c.venueStatus === "accepted");
+  const placeName = atVenue ? (c.venueName as string) : c.tenantName;
+  const placeArea = atVenue ? c.venueArea : c.tenantArea;
+  const placeCity = atVenue ? c.venueCity : c.tenantCity;
+  const placeIsStudio = atVenue || c.tenantType === "studio";
+  const placeHref = atVenue ? `/studio/${c.venueBusinessId}` : c.tenantType === "studio" ? `/studio/${c.tenantId}` : (ownerHref ?? `/artist/${c.tenantId}`);
+  const whereBits = [c.room, placeCity].filter(Boolean).join(" · ");
+  const mapsQuery = [c.room, placeName, placeArea, placeCity].filter(Boolean).join(", ");
+  const mapsLink = !placeIsStudio && c.mapsUrl ? c.mapsUrl : `https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`;
 
   /* one grammar for the money sheets — the same date/time the card prints */
   const whenText = when
@@ -982,7 +999,7 @@ export function ClassDetail({
         {/* ── AT THE STUDIO — one place says where, and says it properly (12273-12320) ── */}
         <Sec
           col={col}
-          label={c.tenantName ? "AT THE STUDIO" : `THE ROOM · ${(c.room ?? "").toUpperCase()}`}
+          label={placeName ? (placeIsStudio ? "AT THE STUDIO" : "WHERE") : `THE ROOM · ${(c.room ?? "").toUpperCase()}`}
           icon={
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 3.5h9a1.5 1.5 0 0 1 1.5 1.5v15H6z" />
@@ -1001,7 +1018,7 @@ export function ClassDetail({
               borderBottom: "1px solid var(--el)",
             }}
           >
-            <Link href={`/${c.tenantType === "studio" ? "studio" : "artist"}/${c.tenantId}`} aria-label={`Open ${c.tenantName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
+            <Link href={placeHref} aria-label={`Open ${placeName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
               <div
                 style={{
                   width: 34,
@@ -1017,11 +1034,11 @@ export function ClassDetail({
                   fontWeight: 900,
                 }}
               >
-                {c.tenantName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
+                {placeName.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {c.tenantName}
+                  {placeName}
                 </div>
                 <div
                   style={{
@@ -1040,7 +1057,7 @@ export function ClassDetail({
               </div>
             </Link>
             <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(mapsQuery)}`}
+              href={mapsLink}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open this venue in Maps"

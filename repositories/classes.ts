@@ -37,7 +37,21 @@ interface ClassRow {
 
 interface PublicClassRow extends ClassRow {
   businesses: { name: string; area: string | null; city: string | null; type?: "studio" | "artist_page" } | null;
+  /** the VENUE studio, through the second key (19 Sep 2026) — null at the owner's
+   *  own place, and null to a reader the venue's row is not readable by */
+  venue?: { name: string; area: string | null; city: string | null } | null;
 }
+
+/** the two embeds a public class read carries: the OWNER through the first key,
+ *  the VENUE through the second — both named, because two keys make an
+ *  unqualified embed a 300 (the 18 Sep lesson) */
+const OWNER_AND_VENUE = (inner: boolean) => `businesses!classes_business_id_fkey${inner ? "!inner" : ""} (name, area, city, type), venue:businesses!classes_venue_business_id_fkey (name, area, city)`;
+
+const venueOf = (row: PublicClassRow) => ({
+  venueName: row.venue?.name ?? null,
+  venueArea: row.venue?.area ?? null,
+  venueCity: row.venue?.city ?? null,
+});
 
 /* no `title` in the read: the label is derived from style and level (types/class.ts) */
 const CLASS_COLUMNS =
@@ -215,7 +229,7 @@ export async function findPublishedClasses(
        answers 300 Multiple Choices to an unqualified embed through an ambiguous
        relationship (the 28 Aug lesson, `follows` → `profiles`). Every embed
        from classes to businesses says which key it means. */
-    .select(`${CLASS_COLUMNS}, businesses!classes_business_id_fkey${city ? "!inner" : ""} (name, area, city, type)`)
+    .select(`${CLASS_COLUMNS}, ${OWNER_AND_VENUE(Boolean(city))}`)
     .eq("status", "published")
     .is("deleted_at", null);
 
@@ -236,6 +250,7 @@ export async function findPublishedClasses(
     tenantType: row.businesses?.type ?? "studio",
     tenantArea: row.businesses?.area ?? null,
     tenantCity: row.businesses?.city ?? null,
+    ...venueOf(row),
   }));
 }
 
@@ -248,7 +263,7 @@ export async function findClassBySlug(
 ): Promise<PublicClassListing | null> {
   const { data, error } = await supabase
     .from("classes")
-    .select(`${CLASS_COLUMNS}, businesses!classes_business_id_fkey (name, area, city, type)`)
+    .select(`${CLASS_COLUMNS}, ${OWNER_AND_VENUE(false)}`)
     .eq("share_slug", slug)
     .is("deleted_at", null)
     .maybeSingle();
@@ -266,6 +281,7 @@ export async function findClassBySlug(
     tenantType: row.businesses?.type ?? "studio",
     tenantArea: row.businesses?.area ?? null,
     tenantCity: row.businesses?.city ?? null,
+    ...venueOf(row),
   };
 }
 

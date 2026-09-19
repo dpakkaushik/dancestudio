@@ -50,6 +50,16 @@ export async function findFollowerCounts(
   return map;
 }
 
+/** A crew's live follower count (`crew_follower_counts`, anon-readable since
+ *  19 Sep 2026) — a number, never a name. A failed read is "no figure", so a
+ *  public page never fails on its count. */
+export async function findCrewFollowerCount(supabase: SupabaseClient, crewId: string): Promise<number | null> {
+  const { data, error } = await supabase.rpc("crew_follower_counts", { p_crew_ids: [crewId] });
+  if (error) return null;
+  const row = ((data ?? []) as Array<{ crew_id: string; followers: number }>).find((r) => r.crew_id === crewId);
+  return row ? Number(row.followers) : 0;
+}
+
 /** Whether the signed-in person follows this business right now. */
 export async function isFollowingTenant(supabase: SupabaseClient, tenantId: string): Promise<boolean> {
   const {

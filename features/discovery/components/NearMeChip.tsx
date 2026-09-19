@@ -38,7 +38,10 @@ export function NearMeChip({ on, params }: { on: boolean; params: Record<string,
     } else {
       next.delete("near");
     }
-    router.push(`/discover?${next.toString()}`);
+    /* REPLACE, not push (19 Sep 2026): the origin of the list is a setting of
+       the page you are on, not a page of its own — a push per toggle made back
+       walk through every state before leaving Discover */
+    router.replace(`/discover?${next.toString()}`, { scroll: false });
   };
 
   const press = () => {

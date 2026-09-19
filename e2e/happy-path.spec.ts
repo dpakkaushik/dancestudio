@@ -30,11 +30,12 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  *
  *  `page` is wherever the picker lives — the page, or the dialog it is in, so
  *  a sheet's own field is not confused with the page's behind it. */
+/** THE ONE CITY DROPDOWN (19 Sep 2026): a native select over the registry with
+ *  "Search another city…" behind it. The helper always goes through the search,
+ *  so it does not depend on which cities the registry holds today. */
 async function pickCity(page: Page | Locator, city: string) {
+  await page.getByLabel("Choose a city").first().selectOption("__search__");
   const box = page.getByRole("searchbox", { name: /Search your city/i });
-  if ((await box.count()) === 0) {
-    await page.getByRole("button", { name: "Change city" }).first().click();
-  }
   await box.first().fill(city);
   await page.getByRole("listbox").getByRole("option", { name: `Use "${city}"` }).click();
 }
@@ -118,7 +119,7 @@ async function onboard(page: Page, name: string, role: "User" | "Organization", 
     await page.getByText("Organization", { exact: true }).click();
   }
   await page.locator('input[name="name"]').fill(name);
-  await page.locator('input[name="city"]').fill(city);
+  await pickCity(page, city);
   // the button reads "Continue" once the name is in (prototype 3820-3821)
   await page.getByRole("button", { name: "Continue" }).click();
   // the row exists now, so the picker is offered — and the button says the photo is missing

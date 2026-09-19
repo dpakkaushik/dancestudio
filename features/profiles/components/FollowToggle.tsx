@@ -15,11 +15,13 @@ import { smallBox } from "./profile-kit";
  *  `followee_id`, `crew_id`), where it used to be two components that had
  *  already drifted (one carried a count, one did not).
  *
- *  ⚠ NO NUMBER ON IT (the user: "remove all kinds of stats from profile page").
- *  The RPC still hands the live count back, and it rides along as
- *  `data-followers` so the suite can assert the count moved without a figure
- *  being printed anywhere a visitor reads. A stranger's press leads to sign-in,
- *  because a follow is a fact about somebody who is on DanceOS. */
+ *  THE COUNT IS ON IT (19 Sep 2026, later — the user: "Follow Following count
+ *  on Profile Pages"): "Follow · 12" / "Following · 13", the live figure the
+ *  RPC hands back after every press, and `data-followers` still carries it for
+ *  the suite. The accessible name stays the bare word so every locator that
+ *  asks for "Follow" or "Following" finds the same control. A stranger's press
+ *  leads to sign-in, because a follow is a fact about somebody who is on
+ *  DanceOS. */
 
 export type FollowTarget = { kind: "business" | "person" | "crew"; id: string };
 
@@ -52,10 +54,13 @@ export function FollowToggle({
     </svg>
   );
 
+  /* the figure beside the word — only once the page has read one */
+  const count = (n: number | null) => (n == null ? null : <span style={{ color: SUB, fontWeight: 800 }}>&nbsp;· {n}</span>);
+
   if (!signedIn) {
     return (
       <Link href="/login" aria-label="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={smallBox(false, accent)}>
-        <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>{star}</span>Follow
+        <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>{star}</span>Follow{count(initialFollowers)}
       </Link>
     );
   }
@@ -88,6 +93,7 @@ export function FollowToggle({
       >
         <span style={{ flexShrink: 0, lineHeight: 0, color: following ? accent : SUB }}>{star}</span>
         {following ? "Following" : "Follow"}
+        {count(followers)}
       </button>
       {error ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 5 }}>{error}</div> : null}
     </>

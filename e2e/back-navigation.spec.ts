@@ -49,9 +49,10 @@ test.describe.serial("system back and the sheets", () => {
 
     await page.locator(FILTERS).click();
     await expect(page.locator(DIALOG).first()).toBeVisible();
-    /* opening armed one entry of our own — Next merges its router state into the
-       same object, so this asserts our marker rides along rather than replacing it */
-    expect(await sheetState(page)).toBe(true);
+    /* opening pushed one entry of our own, marked with the sheet's token — Next
+       merges its router state into the same object, so this asserts our marker
+       rides along rather than replacing it */
+    expect(typeof (await sheetState(page))).toBe("number");
 
     await page.goBack();
 
@@ -59,24 +60,45 @@ test.describe.serial("system back and the sheets", () => {
     expect(page.url()).toContain("/discover");
   });
 
-  test("closing by button leaves the entry; back is a no-op once, then leaves", async ({ page }) => {
+  test("Show results turns the sheet's entry into the results page; back from there is the unfiltered list, then leaves", async ({ page }) => {
     await page.goto("/classes", { waitUntil: "domcontentloaded" });
     await openDiscover(page);
 
     await page.locator(FILTERS).click();
     await expect(page.locator(DIALOG).first()).toBeVisible();
 
+    /* a filter that CHANGES the address — with nothing changed the router has
+       nothing to replace, and the entry is an orphan the next test covers */
+    await page.getByRole("dialog", { name: "Filters" }).getByRole("button", { name: "Cheapest" }).click();
     await page.locator("text=/Show results/i").first().click();
     await expect(page.locator(DIALOG)).toHaveCount(0);
-    /* the entry stays — never spent programmatically (see the header): the hook
-       has let go of it, and it reads as one inert same-URL step in history */
-    expect(await sheetState(page)).toBe(true);
+    await page.waitForURL(/sort=price/);
+    /* the filter sheet closes with `spend: false` and REPLACES the URL in the
+       same tick, so the replace lands on the sheet's own entry: the marker is
+       gone and the entry is the filtered list — an address, not an inert step */
+    await expect.poll(() => sheetState(page)).toBeNull();
 
-    await page.goBack(); // consumes the inert entry: same URL, sheet stays closed
+    await page.goBack(); // the unfiltered list, the entry before the sheet
     await expect(page.locator(DIALOG)).toHaveCount(0);
-    expect(page.url()).toContain("/discover");
+    await expect(page).toHaveURL(/\/discover(?!.*sort=price)/);
 
     await page.goBack(); // and THIS one leaves
+    await expect(page).toHaveURL(/\/classes/);
+  });
+
+  test("an entry a scrim-close leaves behind is skipped: one back leaves the page", async ({ page }) => {
+    await page.goto("/classes", { waitUntil: "domcontentloaded" });
+    await openDiscover(page);
+
+    await page.locator(FILTERS).click();
+    await expect(page.locator(DIALOG).first()).toBeVisible();
+    /* this sheet closes with `spend: false` (its Show results navigates), so a
+       scrim-close leaves its entry standing — and the hook skips an orphaned
+       entry on the next back press, so the person still moves exactly once */
+    await page.mouse.click(10, 10);
+    await expect(page.locator(DIALOG)).toHaveCount(0);
+
+    await page.goBack();
     await expect(page).toHaveURL(/\/classes/);
   });
 

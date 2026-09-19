@@ -174,36 +174,45 @@ export default async function DiscoverPage({
   allClasses.forEach((c) => styleCount.set(c.style, (styleCount.get(c.style) ?? 0) + 1));
   const styleOrder = [...DOS_STYLE_NAMES].sort((a, b) => (styleCount.get(b) ?? 0) - (styleCount.get(a) ?? 0));
 
-  /* Discover's Events tab (Step 21): published, still to come, in this city */
-  const events = tab === "events" ? filterEvents(await findPublishedEvents(supabase, dayKeyOf(stampNowIso()), city), filters) : [];
-  /* who hosts each of them, with a picture and the organization's page (18 Sep 2026) */
-  const hosts = tab === "events" ? await findEventHostCards(supabase, events.map((e) => e.tenantId)) : new Map<string, EventHostCard>();
-  /* Discover's Crews tab (Step 22) */
-  const crews = tab === "crews" ? filterCrews(await findCrewsByCity(supabase, city), filters) : [];
-
   const inCity = filterClasses(
     allClasses.filter((c) => c.tenantCity === city),
     filters
   );
-  /* ⚠ A CLASS WITH NOBODY TAKING IT IS NOT ON DISCOVER (18 Sep 2026, the user:
-     "remove all classes on discover without an artist in it"). The test is the
-     confirmed claim ROW, which everybody may read — not the teacher's name,
-     which only a signed-in reader may — so the shelf is the same list for a
-     stranger as for a member. (A published class should always have one since
-     `classes_publish_needs_a_yes`; what this removes is what was published
-     BEFORE that rule, on 18 Sep 2026.) */
-  const taught = tab === "classes" ? await findClassesWithArtist(supabase, inCity.map((c) => c.id)) : new Set<string>();
-  const classes = tab === "classes" ? inCity.filter((c) => taught.has(c.id)) : inCity;
-  const counts = tab === "classes" ? await countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : new Map<string, number>();
-  /* WHO that teacher is — name and face, for the card's centre. A signed-out
-     visitor may not read `profiles`, so this map is empty for them and the card
-     falls back to the style square; the class is still ON the shelf, because the
-     filter above asked a question anon can answer. */
-  const classArtists = tab === "classes" ? await findClassArtists(supabase, classes.map((c) => c.id)) : new Map<string, ClassArtist>();
 
-  /* every business card ends with its styles — the styles of its published
-     classes — and a style filter narrows through the same map */
-  const stylesByTenant = wantsBusinesses ? await findPublishedStylesByTenant(supabase, nearby.map((t) => t.id)) : new Map<string, string[]>();
+  /* THE TAB'S OWN READS, IN ONE ROUND TRIP (19 Sep 2026, "make app snappier" —
+     these six ran one after another, four of them serial for no reason):
+     · the Events tab (Step 21): published, still to come, in this city;
+     · the Crews tab (Step 22);
+     · ⚠ A CLASS WITH NOBODY TAKING IT IS NOT ON DISCOVER (18 Sep 2026, the user:
+       "remove all classes on discover without an artist in it"). The test is the
+       confirmed claim ROW, which everybody may read — not the teacher's name,
+       which only a signed-in reader may — so the shelf is the same list for a
+       stranger as for a member. (A published class should always have one since
+       `classes_publish_needs_a_yes`; what this removes is what was published
+       BEFORE that rule, on 18 Sep 2026.);
+     · every business card ends with its styles — the styles of its published
+       classes — and a style filter narrows through the same map. */
+  const [eventsRaw, crewsRaw, taught, stylesByTenant] = await Promise.all([
+    tab === "events" ? findPublishedEvents(supabase, dayKeyOf(stampNowIso()), city) : Promise.resolve([]),
+    tab === "crews" ? findCrewsByCity(supabase, city) : Promise.resolve([]),
+    tab === "classes" ? findClassesWithArtist(supabase, inCity.map((c) => c.id)) : Promise.resolve(new Set<string>()),
+    wantsBusinesses ? findPublishedStylesByTenant(supabase, nearby.map((t) => t.id)) : Promise.resolve(new Map<string, string[]>()),
+  ]);
+  const events = tab === "events" ? filterEvents(eventsRaw, filters) : [];
+  const crews = tab === "crews" ? filterCrews(crewsRaw, filters) : [];
+  const classes = tab === "classes" ? inCity.filter((c) => taught.has(c.id)) : inCity;
+
+  /* the second round: what depends on the first — who hosts each event, with a
+     picture and the organization's page (18 Sep 2026); the seat counts; and WHO
+     that teacher is — name and face, for the card's centre. A signed-out visitor
+     may not read `profiles`, so that map is empty for them and the card falls
+     back to the style square; the class is still ON the shelf, because the
+     filter above asked a question anon can answer. */
+  const [hosts, counts, classArtists] = await Promise.all([
+    tab === "events" ? findEventHostCards(supabase, events.map((e) => e.tenantId)) : Promise.resolve(new Map<string, EventHostCard>()),
+    tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
+    tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
+  ]);
   const businesses = wantsBusinesses ? filterTenants(nearby, filters, stylesByTenant) : [];
   const followed = following.filter((f) => f.tenantType === "studio");
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */

@@ -166,11 +166,10 @@ export function PublicProfile({
           ) : null}
         </div>
 
-        {/* ── THE BIO: About as prose, then the links — WhatsApp included, a business's number is a public one ── */}
-        <BioBlock about={tenant.about} links={tenant.socials} editHint={canEdit ? "A sentence in the studio's own words — Edit ›" : null} accent={RC} />
-
-        {/* ── THE BUTTONS A STUDIO'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail · Location ── */}
-        <ActionRow>
+        {/* ── THE BUTTONS A STUDIO'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail ·
+            Location — ONE BLOCK with Follow above them (the user, later that day:
+            "all buttons placed together properly"); the Bio follows the block ── */}
+        <ActionRow marginTop={6}>
           {canAsk ? <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} enquiryTypes={tenant.enquiryTypes} /> : null}
           {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
           {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
@@ -184,6 +183,9 @@ export function PublicProfile({
             Schedule
           </Link>
         </div>
+
+        {/* ── THE BIO: About as prose, then the links — WhatsApp included, a business's number is a public one ── */}
+        <BioBlock about={tenant.about} links={tenant.socials} editHint={canEdit ? "A sentence in the studio's own words — Edit ›" : null} accent={RC} />
 
         {/* ── THE ASSOCIATIONS, in one language (11000-11060): a row per person,
             each group headed with a count — Owner · Faculty · Visiting faculty ── */}

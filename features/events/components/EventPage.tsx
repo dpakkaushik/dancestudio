@@ -907,7 +907,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                     UPI · Cards · Netbanking
                     <span style={{ marginLeft: 6, fontSize: 8, fontWeight: 900, padding: "2px 6px", borderRadius: 999, background: "rgba(34,197,94,.16)", color: "#22C55E" }}>DEFAULT</span>
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--sub)", marginTop: 1 }}>Secure checkout via Cashfree · paid to {ev.tenantName}</div>
+                  <div style={{ fontSize: 10, color: "var(--sub)", marginTop: 1 }}>Secure checkout via Cashfree · paid to {hostCard?.name ?? ev.tenantName}</div>
                 </div>
               </div>
             ) : null}

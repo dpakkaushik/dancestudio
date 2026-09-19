@@ -82,8 +82,11 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
   const [open, setOpen] = useState(false);
   const [tapped, setTapped] = useState<string | null>(null);
   /* system back closes the filter sheet, exactly as its scrim does — the URL is
-     left alone, so the filters themselves are untouched by a back press here */
-  useCloseOnBack(() => setOpen(false), open);
+     left alone, so the filters themselves are untouched by a back press here.
+     `spend: false`: "Show results" closes the sheet AND replaces the URL in one
+     tick, and the replace lands on the sheet's own entry — so the filtered list
+     becomes that entry, and back from it is the unfiltered list (19 Sep 2026) */
+  useCloseOnBack(() => setOpen(false), open, { spend: false });
   const term = q.trim();
 
   useEffect(() => {

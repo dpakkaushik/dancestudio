@@ -62,6 +62,7 @@ export function CrewPublicPage({
   header = [],
   viewer,
   following = false,
+  followers = null,
   canFollow = true,
   signedIn,
   todayKey,
@@ -73,6 +74,8 @@ export function CrewPublicPage({
   header?: HeaderPhoto[];
   viewer: "leader" | "member" | "other";
   following?: boolean;
+  /** the live follower count, printed on the Follow button (19 Sep 2026, later) */
+  followers?: number | null;
   /** false for an organization viewer — one follows nothing */
   canFollow?: boolean;
   /** a stranger who is signed out is offered Follow and Enquiry as doors to sign in */
@@ -129,14 +132,14 @@ export function CrewPublicPage({
           ) : viewer === "member" ? (
             <div style={{ ...smallBox(false, RC), cursor: "default" }}>You are in this crew</div>
           ) : canFollow ? (
-            <FollowToggle target={{ kind: "crew", id: crew.id }} initialFollowing={following} accent={RC} signedIn={signedIn} />
+            <FollowToggle target={{ kind: "crew", id: crew.id }} initialFollowing={following} initialFollowers={followers} accent={RC} signedIn={signedIn} />
           ) : null}
         </div>
 
         {/* ── THE BUTTONS A CREW'S PAGE CARRIES (19 Sep 2026): Enquiry · Mail — the
             enquiry a celebration, a corporate show or a collaboration, answered by
             the leader from the crew's Inbox ── */}
-        <ActionRow>
+        <ActionRow marginTop={6}>
           {viewer === "other" ? <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}

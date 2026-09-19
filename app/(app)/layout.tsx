@@ -4,9 +4,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findMyLedCrews } from "@/repositories/crews";
 import { findMyUnreadCount } from "@/repositories/notifications";
+import { findMyArtistPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships } from "@/repositories/tenants";
-import { MEMBER_ROLE_WORD } from "@/types/staff";
 
 /** Every signed-in surface lives in this group and wears the app chrome (top bar +
  *  tab bar). Auth screens (/login, /onboarding, /auth) stay outside it.
@@ -25,41 +25,50 @@ import { MEMBER_ROLE_WORD } from "@/types/staff";
  *  THE SWITCHER (18 Sep 2026, the user: "DanceOS icon on top left should give a
  *  drop down for profile switcher which takes to different profiles managed by
  *  that specific user"). One set of reads lists the homes: the account's own,
- *  every studio it is on the team of (with its seat named), and every crew it
- *  leads. The chrome draws the list; nothing here is a session switch — each
- *  row is a route to a page the account already owns. */
+ *  every studio it is on the team of, and every crew it leads. The chrome draws
+ *  the list; nothing here is a session switch — each row is a route to a page
+ *  the account already owns. EVERY ROW'S SUB-LINE IS ITS KIND (19 Sep 2026, the
+ *  user: "right profile user type in profile switcher should only be
+ *  Organization, Studio, Crew, Artist, User") — the account's own row reads
+ *  User, Artist (a live plan) or Organization; a studio row reads Studio; a
+ *  crew row reads Crew. Not the seat, not "your profile".
+ *
+ *  ONE ROUND TRIP (19 Sep 2026, "make app snappier"): the profile, the bell, the
+ *  memberships, the crews and the plan all need only the user id, so they are
+ *  read together; the admin check runs only when there is no profile. */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const [profile, unread, memberships, ledCrews, plan] = await Promise.all([
+    user ? findProfileById(supabase, user.id) : Promise.resolve(null),
+    user ? findMyUnreadCount(supabase).catch(() => 0) : Promise.resolve(0),
+    user ? findMyMemberships(supabase).catch(() => []) : Promise.resolve([]),
+    /* an organization leads no crew (guard_person_only) — an empty answer costs nothing */
+    user ? findMyLedCrews(supabase).catch(() => []) : Promise.resolve([]),
+    user ? findMyArtistPlan(supabase).catch(() => null) : Promise.resolve(null),
+  ]);
   /* a platform admin with no profile is ADMIN ONLY (9 Sep 2026): the chrome draws
      no tab bar and no bell for it — every tab needs a profile, and the queue is
-     its whole app. One profile read per render; the admin check only when the
-     row is missing. */
-  const profile = user ? await findProfileById(supabase, user.id) : null;
+     its whole app. */
   const adminOnly = Boolean(user) && !profile && (await amIPlatformAdmin(supabase));
-  const [unread, memberships, ledCrews] = await Promise.all([
-    adminOnly ? Promise.resolve(0) : findMyUnreadCount(supabase),
-    profile ? findMyMemberships(supabase).catch(() => []) : Promise.resolve([]),
-    /* an organization leads no crew (guard_person_only), so it is not asked */
-    profile && profile.role !== "org" ? findMyLedCrews(supabase).catch(() => []) : Promise.resolve([]),
-  ]);
 
   const switcher: SwitcherItem[] = [];
   if (profile) {
-    switcher.push({ key: "me", href: "/", label: profile.fullName, sub: profile.role === "org" ? "Organization" : "Your profile", kind: "me" });
+    const mine = profile.role === "org" ? "Organization" : plan?.active ? "Artist" : "User";
+    switcher.push({ key: "me", href: "/", label: profile.fullName, sub: mine, kind: "me" });
     for (const m of memberships) {
       if (m.tenant.type !== "studio") continue;
-      switcher.push({ key: m.tenant.id, href: `/business/${m.tenant.id}`, label: m.tenant.name, sub: MEMBER_ROLE_WORD[m.memberRole], kind: "studio" });
+      switcher.push({ key: m.tenant.id, href: `/business/${m.tenant.id}`, label: m.tenant.name, sub: "Studio", kind: "studio" });
     }
     for (const c of ledCrews) {
-      switcher.push({ key: c.id, href: `/crews/${c.id}/manage`, label: c.name, sub: "Crew you lead", kind: "crew" });
+      switcher.push({ key: c.id, href: `/crews/${c.id}/manage`, label: c.name, sub: "Crew", kind: "crew" });
     }
   }
 
   return (
-    <AppChrome unread={unread} adminOnly={adminOnly} switcher={switcher}>
+    <AppChrome unread={adminOnly ? 0 : unread} adminOnly={adminOnly} switcher={switcher}>
       {children}
     </AppChrome>
   );

@@ -169,7 +169,7 @@ export async function createClassAction(
     return { error: error instanceof Error ? error.message : "Could not create the class" };
   }
 
-  redirect(`/business/${d.tenantId}/classes`);
+  redirect(afterSave(formData, d.tenantId));
 }
 
 export async function updateClassAction(
@@ -211,8 +211,18 @@ export async function updateClassAction(
     return { error: error instanceof Error ? error.message : "Could not save the class" };
   }
 
-  redirect(`/business/${d.tenantId}/classes`);
+  redirect(afterSave(formData, d.tenantId));
 }
+
+/** WHERE A SAVE LANDS (19 Sep 2026): an artist's register is the Manage segment
+ *  of Your classes, and the form says so in a hidden `after` field — so the
+ *  redirect goes there in ONE hop instead of through `/business/{id}/classes`,
+ *  which for an artist page could only redirect again and left a looping entry
+ *  in the history. Only the two known destinations are honoured. */
+const afterSave = (formData: FormData, tenantId: string) => {
+  const after = String(formData.get("after") ?? "");
+  return after === "/my-classes?show=manage" ? after : `/business/${tenantId}/classes`;
+};
 
 const classRefSchema = z.object({
   classId: z.string().uuid(),

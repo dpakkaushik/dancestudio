@@ -72,7 +72,7 @@ const ICONS = {
   logout: (c: string) => <Glyph c={c}><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" /><path d="m15 8 5 4-5 4M20 12H9" /></Glyph>,
 };
 
-function Tile({ icon, children, href, onClick, badge, ariaLabel, pressed, disabled, onNavigate, danger = false }: { icon: ReactNode; children: ReactNode; href?: string; onClick?: () => void; badge?: ReactNode; ariaLabel?: string; pressed?: boolean; disabled?: boolean; onNavigate?: () => void; danger?: boolean }) {
+function Tile({ icon, children, href, onClick, badge, ariaLabel, pressed, disabled, onNavigate, danger = false }: { icon: ReactNode; children: ReactNode; href?: string; onClick?: () => void; badge?: ReactNode; ariaLabel?: string; pressed?: boolean; disabled?: boolean; onNavigate?: (href: string) => void; danger?: boolean }) {
   const body = (
     <>
       <span style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%", gap: 6 }}>
@@ -85,7 +85,22 @@ function Tile({ icon, children, href, onClick, badge, ariaLabel, pressed, disabl
   const style: CSSProperties = danger ? { ...tile, border: `1.5px solid ${RED}` } : tile;
   if (href) {
     return (
-      <Link href={href} onClick={onNavigate} style={style} aria-label={ariaLabel}>
+      <Link
+        href={href}
+        /* a tile's navigation REPLACES the sheet's `?settings=1` entry (19 Sep
+           2026): back from the desk it opens returns to the page under the
+           sheet, not to the sheet re-opening itself */
+        onClick={
+          onNavigate
+            ? (e) => {
+                e.preventDefault();
+                onNavigate(href);
+              }
+            : undefined
+        }
+        style={style}
+        aria-label={ariaLabel}
+      >
         {body}
       </Link>
     );
@@ -120,10 +135,20 @@ export function SettingsSheet({
   plan: ArtistPlan | null;
 }) {
   const router = useRouter();
+  /* LEAVING THE SHEET FOR A DESK (19 Sep 2026): the sheet's open state is the
+     `?settings=1` entry the gear pushed, so a tile REPLACES that entry with the
+     desk it opens — back from the desk is the page under the sheet, never the
+     sheet re-opening itself. (Closing first and pushing raced the router: the
+     close is `router.back()`, and the push was cancelled by it.) */
+  const go = (href: string) => router.replace(href);
   const [enqOpen, setEnqOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  useCloseOnBack(onClose, open);
+  /* NO sentinel of its own (19 Sep 2026): this sheet's open state IS the URL
+     (`?settings=1`, pushed by the gear), so the entry the system back pops is
+     that one — `onClose` on the Profile tab is `router.back()`. Registering a
+     second, same-URL entry here is what made back re-open Settings. The
+     nested Enquiry-types sheet is ordinary and keeps the hook. */
   useCloseOnBack(() => setEnqOpen(false), enqOpen);
   const fire = (m: string) => {
     setToast(m);
@@ -138,8 +163,10 @@ export function SettingsSheet({
   /* the tile is the plan's switch (8855): off → the plan page; on → end it */
   const flipArtist = () => {
     if (!artistOn) {
-      onClose();
-      router.push("/subscription");
+      /* navigate INSTEAD of closing: a close that spends the sheet's history
+         entry in the same tick as a push races the router (19 Sep 2026) —
+         the route change takes the sheet down by itself */
+      go("/subscription");
       return;
     }
     start(async () => {
@@ -184,7 +211,7 @@ export function SettingsSheet({
             </Tile>
           ) : null}
           {!isDancer || artistOn ? (
-            <Tile icon={ICONS.subscription("#F59E0B")} href="/subscription" onNavigate={onClose} badge={artistOn && plan ? <span style={badgeStyle(true)}>until {dateWords(plan.until)}</span> : undefined}>
+            <Tile icon={ICONS.subscription("#F59E0B")} href="/subscription" onNavigate={go} badge={artistOn && plan ? <span style={badgeStyle(true)}>until {dateWords(plan.until)}</span> : undefined}>
               Subscription
             </Tile>
           ) : null}
@@ -195,17 +222,17 @@ export function SettingsSheet({
         <div style={grid}>
           {/* THE GST NUMBER, ONCE (11 Sep 2026): only an organization has one, so only an organization sees the tile */}
           {role === "org" ? (
-            <Tile icon={ICONS.gst("#0EA5E9")} href="/gst" onNavigate={onClose} badge={<span style={badgeStyle(gstVerified)}>{gstVerified ? "verified" : "needed for events"}</span>}>
+            <Tile icon={ICONS.gst("#0EA5E9")} href="/gst" onNavigate={go} badge={<span style={badgeStyle(gstVerified)}>{gstVerified ? "verified" : "needed for events"}</span>}>
               GST number
             </Tile>
           ) : null}
-          <Tile icon={ICONS.payments("#22C55E")} href={personal ? "/payments" : `${desk}/payments`} onNavigate={onClose}>
+          <Tile icon={ICONS.payments("#22C55E")} href={personal ? "/payments" : `${desk}/payments`} onNavigate={go}>
             {personal ? "Payments" : "Payments & verification"}
           </Tile>
-          <Tile icon={ICONS.invoices("#3B82F6")} href={personal ? "/invoices" : `${desk}/invoices`} onNavigate={onClose}>
+          <Tile icon={ICONS.invoices("#3B82F6")} href={personal ? "/invoices" : `${desk}/invoices`} onNavigate={go}>
             Invoices
           </Tile>
-          <Tile icon={ICONS.refunds("#F97316")} href={personal ? "/refunds" : `${desk}/refunds`} onNavigate={onClose}>
+          <Tile icon={ICONS.refunds("#F97316")} href={personal ? "/refunds" : `${desk}/refunds`} onNavigate={go}>
             Refunds
           </Tile>
         </div>
@@ -228,15 +255,15 @@ export function SettingsSheet({
           <Tile icon={ICONS.language("#06B6D4")} onClick={() => fire("English — more languages are coming")}>
             Language
           </Tile>
-          <Tile icon={ICONS.privacy("#64748B")} href="/legal/privacy" onNavigate={onClose}>
+          <Tile icon={ICONS.privacy("#64748B")} href="/legal/privacy" onNavigate={go}>
             Privacy & data
           </Tile>
           {/* Help & support and Message DanceOS were two doors to one conversation (10 Sep 2026) — one tile */}
-          <Tile icon={ICONS.help("#0EA5E9")} href="/support" onNavigate={onClose}>
+          <Tile icon={ICONS.help("#0EA5E9")} href="/support" onNavigate={go}>
             Help & support
           </Tile>
           {isAdmin ? (
-            <Tile icon={ICONS.admin("#A855F7")} href="/admin" onNavigate={onClose}>
+            <Tile icon={ICONS.admin("#A855F7")} href="/admin" onNavigate={go}>
               Admin panel
             </Tile>
           ) : null}

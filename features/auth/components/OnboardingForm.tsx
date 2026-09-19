@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { DosStyleCoin } from "@/components/ui/DosStyleKit";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { finishOnboardingAction, saveProfileBasicsAction } from "@/features/auth/server-actions/auth";
+import { CityPicker } from "@/features/geo/components/CityPicker";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
@@ -214,7 +215,10 @@ export function OnboardingForm({
         ) : null}
 
         <div style={{ fontSize: 12, color: SUB, fontWeight: 700, margin: "16px 0 8px", letterSpacing: 0.5 }}>{isOrg ? "HEAD OFFICE CITY (OPTIONAL)" : "CITY (OPTIONAL)"}</div>
-        <input name="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Pune" disabled={saved} style={{ ...inputStyle, marginBottom: 18, opacity: saved ? 0.7 : 1 }} />
+        {/* THE ONE CITY DROPDOWN (19 Sep 2026) — the registry, and a search behind it; `name="city"` rides as a hidden input for the post */}
+        <div style={{ marginBottom: 18 }}>
+          <CityPicker value={city.trim() || null} onChange={(c) => setCity(c ?? "")} label="" disabled={saved} name="city" />
+        </div>
 
         {/* ONE PICTURE, SQUARE (3783-3796) — no cover photo. The picker is the app's
             own; it needs the row to exist, so before the first Continue the square explains

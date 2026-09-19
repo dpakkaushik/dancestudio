@@ -148,7 +148,7 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
         {SHOWS.filter((s) => s.k !== "manage" || myPage).map(({ k, label, aria }) => {
           const on = show === k;
           return (
-            <Link key={k} href={k === "booked" ? "/my-classes" : `/my-classes?show=${k}`} aria-label={aria} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
+            <Link key={k} href={k === "booked" ? "/my-classes" : `/my-classes?show=${k}`} replace aria-label={aria} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
               {label}
             </Link>
           );

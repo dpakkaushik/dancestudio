@@ -131,15 +131,13 @@ export function PublicPersonPage({
           </div>
         ) : null}
 
-        {/* ── THE BIO (10739): their own sentence, then where else to find them — a
-            number is not a public handle, so WhatsApp stays off (10778) ── */}
-        <BioBlock about={profile.about} links={profile.socials} hideWhatsApp accent={RC} />
-
         {/* ── THE BUTTONS AN ARTIST'S PAGE CARRIES (19 Sep 2026): Enquiry · Call ·
             Mail — Call only while the artist's own switch is on (push 2: "Call is
             off for artist page by default but should have option to make it
-            available"). A user's page carries none — the row is simply not drawn. ── */}
-        <ActionRow>
+            available"). A user's page carries none — the row is simply not drawn.
+            One block under Follow; the Bio follows (the user, later: "all buttons
+            placed together properly"). ── */}
+        <ActionRow marginTop={6}>
           {canAsk ? <EnquiryButton tenantId={person.artistPageId as string} tenantName={profile.fullName} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {kind === "artist" && profile.phone && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
@@ -155,6 +153,10 @@ export function PublicPersonPage({
             </Link>
           </div>
         ) : null}
+
+        {/* ── THE BIO (10739): their own sentence, then where else to find them — a
+            number is not a public handle, so WhatsApp stays off (10778) ── */}
+        <BioBlock about={profile.about} links={profile.socials} hideWhatsApp accent={RC} />
 
         {/* ── THE ASSOCIATIONS (19 Sep 2026): an artist's studios, and everyone's crews ── */}
         {kind === "artist" && studiosTaughtAt.length ? (
