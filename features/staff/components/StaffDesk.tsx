@@ -18,7 +18,7 @@ import {
   setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
 import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, PINK, SUB } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
 import type { MemberRole, TeamMember } from "@/repositories/tenants";
@@ -27,8 +27,6 @@ import type { TenantType } from "@/types/tenant";
 import {
   MEMBER_GRANTS,
   MEMBER_LEVEL,
-  MEMBER_POWERS,
-  MEMBER_POWER_NOTE,
   MEMBER_ROLE_WORD,
   rolesFor,
   type InvitableRole,
@@ -43,22 +41,32 @@ import {
  *  The prototype's invite offers "QR / mobile / search", and since 19 Sep 2026
  *  so does this — the user: "Team should only be able to add team member by
  *  typing name, number, email or scan … similar suggestion as we get for other
- *  person dropdowns with photo and name". So SEARCH is the app's one
+ *  person dropdowns with photo and name". So the way in is the app's one
  *  `PeoplePicker` (a name, a mobile number, or a scanned profile link, with a
- *  picture on every row), and the email form is the second way in — for
- *  somebody who is not on DanceOS yet, which the picker cannot find by
- *  definition. The QR is kept exactly: it is what you hold up in the room.
+ *  picture on every row). The QR is kept exactly: it is what you hold up in the
+ *  room.
  *
- *  THREE MORE THINGS THE SAME DAY, all the user's:
+ *  ⚠ AND SINCE 20 SEP 2026 THE PICKER IS THE ONLY WAY IN (the user: "Remove
+ *  option to add by email and remove permission section just for labelling").
+ *  What that costs, said plainly: somebody with no DanceOS account cannot be
+ *  asked onto a team at all. The email form, `invite_to_business`, the
+ *  `business_invites.email` column and `/join/{code}` all STAY — an invite
+ *  already sent has to stay acceptable (Rule 14) — but nothing here offers one.
+ *
+ *  THREE MORE THINGS, all the user's:
  *   · LABELS COME FROM THE PROFILE YOU ARE IN (`rolesFor`) — a studio hands out
  *     Faculty, Visiting faculty and Staff; an artist page hands out Faculty and
- *     Assistant. Beside them, a PERMISSIONS section that says what each one
- *     actually carries, one line per power, ticked or not.
+ *     Assistant. The PERMISSIONS table that stood beside them is gone (20 Sep
+ *     2026): every member's own row already prints what their seat carries.
  *   · THE ORDER IS THE OWNER'S (`reorder_business_members`) — ▲▼ on every row,
  *     the crew desk's own control.
  *   · PAY THEM, WITH A METHOD, AND SEE WHAT HAS BEEN PAID. The payment lands in
  *     `payouts`, which IS the Earnings desk's MONEY OUT — so it is an expense
  *     the moment it is written, not a second ledger.
+ *     ⚠ THE BUTTON IS ON THE ROW SINCE 20 SEP 2026. It was inside the member
+ *     sheet, which opens only for a NON-owner — and an account whose every
+ *     business has a team of one could never reach it, which is why the user
+ *     asked whether it had been built at all.
  *
  *  The waiting rows wear the prototype's own "⏳ Invited" treatment (18578). */
 
@@ -120,24 +128,6 @@ const gradOf = (name: string): [string, string] => {
 };
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 
-/** THE PERMISSIONS SECTION (19 Sep 2026) — what a label actually carries, one
- *  line per power. Every one of these is a rule the database keeps. */
-function Powers({ role }: { role: InvitableRole | "owner" }) {
-  return (
-    <>
-      <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "12px 0 7px" }}>PERMISSIONS</div>
-      <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "8px 12px" }}>
-        {MEMBER_POWERS[role].map(([what, on]) => (
-          <div key={what} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 12 }}>
-            <span aria-hidden="true" style={{ width: 16, flexShrink: 0, textAlign: "center", color: on ? "#22C55E" : "var(--muted)", fontWeight: 900 }}>{on ? "✓" : "—"}</span>
-            <span style={{ flex: 1, minWidth: 0, color: on ? INK : SUB }}>{what}</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 7, lineHeight: 1.5 }}>{MEMBER_POWER_NOTE[role]}</div>
-    </>
-  );
-}
 
 const PAY_METHODS: ReadonlyArray<readonly [PayoutMethod, string]> = [
   ["upi", "UPI"],
@@ -178,7 +168,11 @@ export function StaffDesk({
   const [openMember, setOpenMember] = useState<TeamMember | null>(null);
   const [shareInvite, setShareInvite] = useState<TenantInvite | null>(null);
   /* the add sheet's two ways in: pick somebody on DanceOS, or ask an address */
-  const [addBy, setAddBy] = useState<"person" | "email">("person");
+  /* ⚠ ONE WAY IN SINCE 20 SEP 2026 — the picker. "By email" is gone at the
+     user's word; this stays a constant so the email FORM below (and the RPC,
+     the column and /join/{code} behind it) is kept rather than deleted, which
+     is what lets an invite already sent still be accepted. */
+  const addBy: "person" | "email" = "person";
   const [form, setForm] = useState<{ name: string; email: string; role: InvitableRole }>({
     name: "",
     email: "",
@@ -312,9 +306,52 @@ export function StaffDesk({
                 </div>
               ) : null}
             </div>
+
+            {/* ── PAY THEM, FROM THE ROW (20 Sep 2026, the user: "Payment for
+                team wasnt implemented?"). It WAS — `record_team_payment` and its
+                history have been here since 19 Sep — but only two taps in: the
+                row opened a sheet and the button was inside it, and the row
+                opens only for somebody who is NOT the owner. Every one of this
+                account's businesses has a team of ONE (themselves), so there
+                was no row to press and the feature did not exist from where
+                they sat. A control nobody can reach is not a built feature.
+                It sits OUTSIDE the row's click target, beside the ▲▼. ── */}
+            {isOwner && m.role !== "owner" ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }} onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  aria-label={`Pay ${m.name}`}
+                  onClick={() => { setOpenMember(m); setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
+                  style={{ fontSize: 11.5, fontWeight: 900, padding: "7px 13px", borderRadius: 999, border: `1px solid ${DOS_TOOLS.team.c}55`, background: `${DOS_TOOLS.team.c}14`, color: DOS_TOOLS.team.c, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Pay
+                </button>
+                {paidTo(m.userId).length ? (
+                  <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}>
+                    {rupees(paidTo(m.userId).reduce((n, p) => n + p.amountInr, 0))} paid · {paidTo(m.userId).length} {paidTo(m.userId).length === 1 ? "payment" : "payments"}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 10.5, color: MUTED, fontWeight: 700 }}>Nothing paid yet</span>
+                )}
+              </div>
+            ) : null}
           </div>
         );
       })}
+
+      {/* ⚠ A TEAM OF ONE IS WHY PAY LOOKED MISSING (20 Sep 2026). Everything a
+          team desk does — labelling, ordering, paying — needs somebody other
+          than the owner on it, so when there is nobody the desk says so and
+          points at the one thing that changes it, rather than showing a single
+          row that cannot be pressed. */}
+      {isOwner && team.length === 1 ? (
+        <div style={{ ...card, borderLeft: `3px solid ${DOS_TOOLS.team.c}`, padding: "12px 14px" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 900 }}>Nobody else on the team yet</div>
+          <div style={{ fontSize: 11, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
+            Ask somebody on, and you can label them, put them in order and record what you pay them.
+          </div>
+        </div>
+      ) : null}
 
       {/* ── the people who have been asked and have not answered (18578) ── */}
       {invites.map((inv) => (
@@ -477,23 +514,19 @@ export function StaffDesk({
                 );
               })}
             </div>
-            {/* what that label carries, said where it is chosen */}
-            <Powers role={form.role} />
-
-            {/* ── THE TWO WAYS IN (19 Sep 2026) ── */}
-            <div style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, margin: "14px 0 10px" }}>
-              {([["person", "On DanceOS"], ["email", "By email"]] as const).map(([k, word]) => (
-                <button
-                  key={k}
-                  type="button"
-                  aria-pressed={addBy === k}
-                  onClick={() => setAddBy(k)}
-                  style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: addBy === k ? "var(--solid)" : "transparent", color: addBy === k ? INK : SUB }}
-                >
-                  {word}
-                </button>
-              ))}
-            </div>
+            {/* ⚠ NO PERMISSIONS BLOCK, AND NO "BY EMAIL" (20 Sep 2026, the
+                user: "Remove option to add by email and remove permission
+                section just for labelling").
+                The labels are what this sheet is for; what each one carries is
+                the database's business, said on the member's own row rather
+                than as a five-line table over the choice.
+                ⚠ AND WHAT REMOVING THE ADDRESS COSTS, said out loud: somebody
+                with NO DanceOS account cannot be asked onto a team at all now —
+                the picker cannot find them by definition. The column, the RPC
+                and /join/{code} all STAY (Rule 14: invites already sent must
+                still be acceptable), so this is the door closing, not the road.
+                ── */}
+            <div style={{ margin: "14px 0 0" }} />
 
             {addBy === "person" ? (
               /* the app's one people search — a name, a mobile number, or a
@@ -724,7 +757,8 @@ export function StaffDesk({
                 );
               })}
             </div>
-            {openMember.role === "owner" ? null : <Powers role={openMember.role as InvitableRole} />}
+            {/* the permissions table went with the one over the labels (20 Sep
+                2026) — the member's own row already says what the seat carries */}
 
             {/* ── PAY THEM (19 Sep 2026) ─────────────────────────────────────
                 A payment the studio has already made, recorded — Step 13's own
@@ -759,7 +793,11 @@ export function StaffDesk({
                 ))}
                 <button
                   type="button"
-                  aria-label={`Pay ${openMember.name}`}
+                  /* ⚠ NOT "Pay {name}" — the ROW carries that name since 20 Sep
+                     2026, and two controls answering to one name is something
+                     neither a screen reader nor a strict locator can tell apart
+                     (the 19 Sep lesson, met again the day after). */
+                  aria-label={`Record a payment for ${openMember.name}`}
                   onClick={() => { setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
                   style={{ width: "100%", marginTop: 10, textAlign: "center", padding: "11px", borderRadius: 999, border: `1.5px dashed ${PINK}`, background: "none", color: PINK, fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}
                 >

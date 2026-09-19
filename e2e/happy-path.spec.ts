@@ -579,38 +579,40 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
     await expect(owner.getByText("🪞 Mirrors", { exact: false }).first()).toBeVisible();
 
-    // ---- invite a trainer who is not on DanceOS yet (Step 12b) ------------
-    // The whole point of an invite: the address need not have an account. It
-    // waits for whoever signs in with it, and only they can accept.
+    /* ---- THE TRAINER SIGNS UP FIRST, AND IS THEN ASKED BY NAME (Step 12b,
+       re-cut 20 Sep 2026) -------------------------------------------------
+       ⚠ THE ORDER OF THESE TWO IS THE PRODUCT'S, NOT THE TEST'S. Until today
+       the owner invited an ADDRESS that had no account yet and the trainer
+       signed up into it — the whole point of an emailed invite. The user has
+       since removed that door ("Remove option to add by email"), so the only
+       way onto a team is the people picker, and the picker can only find
+       somebody who already exists. The story therefore creates the person
+       first. What it costs is recorded in the backlog: nobody can be asked
+       onto a team before they join DanceOS. */
     const trainerEmail = `e2e-trainer-${stamp}@example.com`;
+    trainerId = await signUp(trainer, trainerEmail);
+    await onboard(trainer, trainerName, "User", "Pune");
+
     await owner.goto(`/business/${tenantId}/staff`);
     await owner.getByRole("button", { name: "Invite staff or team member" }).click();
     const inviteSheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
-    /* ── THE TWO WAYS IN (19 Sep 2026, the user: "Team should only be able to
-       add team member by typing name, number, email or scan"). The picker is
-       the default and cannot find somebody with no account — which is exactly
-       this person — so the story takes the second way, By email. The labels a
-       studio has to give are its own (`rolesFor`), and the PERMISSIONS section
-       says what each one carries. ── */
+    /* ── ONE WAY IN (20 Sep 2026): the picker. The labels a studio has to give
+       are its own (`rolesFor`); the PERMISSIONS table beside them is gone at
+       the user's word — a member's own row prints what their seat carries. ── */
     await expect(inviteSheet.getByRole("button", { name: "Visiting faculty" })).toBeVisible();
-    await expect(inviteSheet.getByText("PERMISSIONS")).toBeVisible();
+    await expect(inviteSheet.getByText("PERMISSIONS")).toHaveCount(0);
+    await expect(inviteSheet.getByRole("button", { name: "By email" })).toHaveCount(0);
     await expect(inviteSheet.getByLabel("Search for somebody to add")).toBeVisible();
     await expect(inviteSheet.getByRole("button", { name: "Scan a profile code" })).toBeVisible();
-    await inviteSheet.getByRole("button", { name: "By email" }).click();
-    await inviteSheet.getByLabel("Their name").fill("E2E Trainer");
-    await inviteSheet.getByLabel("Their email").fill(trainerEmail);
-    await inviteSheet.getByRole("button", { name: "Send invite" }).click();
+    await inviteSheet.getByLabel("Search for somebody to add").fill(trainerName);
+    await inviteSheet.getByRole("button", { name: `Ask ${trainerName}` }).click({ timeout: 20_000 });
     // they show as asked-but-unanswered (18575, the prototype's own words), and the QR it promised is here
-    await expect(owner.getByText(/Waiting on them to confirm/)).toBeVisible();
-    await owner.getByRole("button", { name: "Show the invite for E2E Trainer" }).click();
-    const qrSheet = owner.getByRole("dialog", { name: "Invite for E2E Trainer" });
+    await expect(owner.getByText(/Waiting on them to confirm/)).toBeVisible({ timeout: 15_000 });
+    await owner.getByRole("button", { name: `Show the invite for ${trainerName}` }).click();
+    const qrSheet = owner.getByRole("dialog", { name: `Invite for ${trainerName}` });
     await expect(qrSheet.getByRole("img", { name: /Invite code/ })).toBeVisible();
     await expect(qrSheet.getByText(/\/join\/[0-9a-f]+/)).toBeVisible();
     await qrSheet.getByRole("button", { name: "Done" }).click();
-
-    // ---- the trainer signs up and finds the invite waiting for them --------
-    trainerId = await signUp(trainer, trainerEmail);
-    await onboard(trainer, trainerName, "User", "Pune");
     // Pro is the plan, not a role (8 Sep 2026): the trainer gets it now, so the
     // word every later screen prints beside their name is ARTIST. Since 10 Sep
     // 2026 the plan is ₹700 a month through Cashfree's mandate window, which no
@@ -1941,31 +1943,43 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("button", { name: /^Join/ }).click();
     await learner.waitForURL((u) => !u.pathname.startsWith("/join"), { timeout: 20_000 });
 
-    // ── THE LABELS ARE THE STUDIO'S OWN, AND THE PERMISSIONS SAY WHAT THEY CARRY
+    // ── THE LABELS ARE THE STUDIO'S OWN — and the PERMISSIONS table beside
+    // them is gone (20 Sep 2026, the user: "remove permission section just for
+    // labelling"); the row itself prints what the seat carries.
     await owner.goto(`/business/${tenantId}/staff`);
     const memberRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
     await expect(memberRow).toBeVisible({ timeout: 15_000 });
     await memberRow.click();
     const memberSheet = owner.getByRole("dialog", { name: learnerName });
-    await expect(memberSheet.getByText("PERMISSIONS")).toBeVisible();
+    await expect(memberSheet.getByText("PERMISSIONS")).toHaveCount(0);
     await expect(memberSheet.getByRole("button", { name: `Make ${learnerName} Visiting faculty` })).toBeVisible();
     await memberSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
     await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
+    /* ⚠ the member sheet closes on its scrim or on system back, NOT on Escape —
+       so a reload is the sure way to get back to the rows underneath it */
+    await owner.reload();
 
-    // ── AND PAID, WITH A METHOD — the payment lands in the ledger the Earnings
-    // desk reads as MONEY OUT, so it is an expense the moment it is written
-    await memberSheet.getByRole("button", { name: `Pay ${learnerName}` }).click();
+    /* ── AND PAID, WITH A METHOD — the payment lands in the ledger the Earnings
+       desk reads as MONEY OUT, so it is an expense the moment it is written.
+       ⚠ PRESSED FROM THE ROW (20 Sep 2026). It was inside the member sheet,
+       which opens only for a NON-owner, so an owner whose team is just
+       themselves could never reach it — the user asked whether paying had been
+       built at all, and from where they sat it had not. */
+    await expect(owner.getByText("Nothing paid yet").first()).toBeVisible({ timeout: 15_000 });
+    await owner.getByRole("button", { name: `Pay ${learnerName}` }).click();
     const paySheet = owner.getByRole("dialog", { name: `Pay ${learnerName}` });
     await paySheet.getByLabel("Amount in rupees").fill("2500");
     await paySheet.getByRole("button", { name: "UPI", exact: true }).click();
     await paySheet.getByLabel("Note").fill("September");
     await paySheet.getByRole("button", { name: "Record this payment" }).click();
     await expect(owner.getByRole("status")).toContainText("2,500", { timeout: 20_000 });
-    // the history is on their own row, and the expense is on the studio's ledger
+    /* the history reads on their OWN ROW now — the total beside the Pay button,
+       so what has been paid is visible without opening anything (20 Sep 2026) */
     await owner.reload();
+    await expect(owner.getByText(/₹2,500 paid · 1 payment/).first()).toBeVisible({ timeout: 15_000 });
     await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
-    await expect(memberSheet.getByText(/₹2,500 paid · 1 payment/)).toBeVisible({ timeout: 15_000 });
-    await expect(memberSheet.getByText("September")).toBeVisible();
+    await expect(memberSheet.getByText("September")).toBeVisible({ timeout: 15_000 });
+    await owner.reload();
     await owner.goto(`/business/${tenantId}/earnings`);
     await expect(owner.getByText("₹2,500").first()).toBeVisible({ timeout: 15_000 });
 

@@ -1,6 +1,49 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
+
+> ### STAGE 2, PART ONE — PAY IS ON THE ROW, THE EMAIL DOOR IS SHUT, AND THE PERMISSIONS TABLE IS GONE (20 Sep 2026, latest) — BUILT, no migration
+> The user: *"Team- Remove option to add by email and remove permission section
+> just for labelling and. Payment for team wasnt implemented? fix all in order."*
+> Taken in the order that made sense: the diagnosis first, because it decided
+> what the other two should look like.
+> * ⚠ **THE PAYMENT WAS BUILT AND UNREACHABLE, WHICH IS NOT THE SAME AS BUILT.**
+>   `record_team_payment`, the four methods and the per-person history have been
+>   here since 19 Sep and the e2e proved them — but the Pay button lived INSIDE
+>   the member sheet, and that sheet opens only for a member who is **not the
+>   owner**. Counted rather than assumed: **every one of this account's eight
+>   businesses has a team of ONE — themselves** (`Bb`, `Studio 2`, `ABC Studio`,
+>   `Deepak Eee`, `Deepak EEE TEST 2`, two hosting rows and one artist page), and
+>   **0 payouts recorded anywhere**. So there was no row to press and no way in:
+>   from where the user sat the feature did not exist, and "wasn't implemented"
+>   was a fair report of it. **Pay is on the ROW now**, outside its click target,
+>   beside the ▲▼, with what has been paid printed next to it — and a team of one
+>   says so in a card instead of drawing a single row that cannot be pressed.
+> * **ONE WAY ONTO A TEAM: the picker.** ⚠ **What that costs, said plainly and
+>   recorded in the backlog: somebody with NO DanceOS account cannot be asked
+>   onto a team at all** — the picker cannot find them by definition. The email
+>   form, `invite_to_business`, the `business_invites.email` column and
+>   `/join/{code}` all STAY (Rule 14 — an invite already sent has to stay
+>   acceptable); nothing in the app offers one. ⚠ **It also changed the happy
+>   path's own story**: segment 1 invited an address that had no account and had
+>   the trainer sign up INTO it, which is no longer a thing the product does, so
+>   the trainer now signs up first and is asked by name. The order of those two
+>   steps is the product's, not the test's.
+> * **THE PERMISSIONS TABLE IS GONE** from both the invite sheet and the member
+>   sheet — the labels are what those screens are for, and each member's row
+>   already prints what their seat carries. `Powers`, `MEMBER_POWERS` and
+>   `MEMBER_POWER_NOTE` went with it.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **the happy path
+>   18/18**, its team segment driving the new row control end to end.
+> * ⚠ **AND THE 19 Sep LESSON MET AGAIN THE NEXT DAY: two controls may not answer
+>   to one name.** The new row button and the sheet's "＋ Record a payment" were
+>   both `Pay {name}`, and Playwright's strict mode said so — a screen reader
+>   would have had the same problem and no way to report it. The sheet's is
+>   `Record a payment for {name}`. And a second harness truth worth keeping: the
+>   member sheet closes on its **scrim or system back, never on Escape**, so a
+>   test that needs the rows underneath it reloads rather than pressing Escape.
+
+## LAST SESSION (19 Sep 2026) — history
 
 > ### STAGE 1 — ONE PROFILE SURFACE: THE TYPE AND THE ID ON ONE LINE, A BIGGER DISC, TWO PICTURE EDITORS, AND HOME ↔ PROFILE MADE THE SAME SCREEN (19 Sep 2026, latest) — BUILT, no migration
 > The user asked for the order first and then ran it in two stages. This is
@@ -3759,6 +3802,15 @@ summary; the report has the evidence.
    $env:DANCEOS_BASE_URL="http://localhost:3100"; $env:NODE_PATH="$pwd\node_modules"; node scripts/shots/shoot-hero.js
 ```
    then push `main` and the live smoke.
+
+0a4. **⚠ NOBODY WITHOUT A DANCEOS ACCOUNT CAN BE ASKED ONTO A TEAM ANY MORE**
+   (20 Sep 2026, the user: "Remove option to add by email"). The picker is the
+   only way in and it can only find somebody who exists. Everything behind the
+   old door is kept and working — `invite_to_business`, `business_invites.email`,
+   `/join/{code}`, the QR — so an invite already sent is still acceptable and
+   turning the door back on is one toggle in `StaffDesk`. If a studio ever needs
+   to bring somebody who is not on DanceOS onto its team, that is the decision to
+   revisit, and it is the user's.
 
 0a3. **⚠ THE MAPS DEMO KEY IS HITTING ITS DAILY QUOTA DURING A RUN, AND IT IS NOT
    THEORETICAL ANY MORE** (#7). `shoot-hero.js` logged *"Maps Demo Key limit
