@@ -8,6 +8,8 @@ interface OrderRow {
   session_id: string | null;
   event_id?: string | null;
   event_booking_id?: string | null;
+  membership_id?: string | null;
+  membership_pass_id?: string | null;
   amount_inr: number;
   provider: PaymentProvider;
   provider_order_id: string | null;
@@ -21,6 +23,8 @@ const toOrder = (row: OrderRow): PaymentOrder => ({
   sessionId: row.session_id ?? null,
   eventId: row.event_id ?? null,
   eventBookingId: row.event_booking_id ?? null,
+  membershipId: row.membership_id ?? null,
+  membershipPassId: row.membership_pass_id ?? null,
   amountInr: row.amount_inr,
   provider: row.provider,
   providerOrderId: row.provider_order_id,
@@ -51,6 +55,22 @@ export async function createEventPaymentOrder(
 ): Promise<PaymentOrder> {
   const { data, error } = await supabase.rpc("create_event_payment_order", {
     p_event_booking_id: eventBookingId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return toOrder(data as OrderRow);
+}
+
+/** Start paying for a membership somebody has just taken (19 Sep 2026) — the
+ *  `pending_payment` pass `buy_membership` wrote. The RPC re-checks it is
+ *  theirs and still unpaid; the amount is the PASS's, never the client's. */
+export async function createMembershipPaymentOrder(
+  supabase: SupabaseClient,
+  passId: string
+): Promise<PaymentOrder> {
+  const { data, error } = await supabase.rpc("create_membership_payment_order", {
+    p_pass_id: passId,
   });
   if (error) {
     throw new Error(error.message);

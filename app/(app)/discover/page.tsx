@@ -32,6 +32,7 @@ import type { ClassArtist } from "@/types/claim";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findProfileById } from "@/repositories/profiles";
 import type { EnrollmentStatus } from "@/types/enrollment";
+import { canBook } from "@/types/profile";
 
 /** ONE PAGE OF A SHELF (18 Sep 2026, the user: "should give option for second
  *  page after that"). The radius search answered 50 rows and stopped, so a city
@@ -235,7 +236,13 @@ export default async function DiscoverPage({
       followedPeople
         .filter((p) => p.isArtist)
         .map((p) => ({ id: p.userId, name: p.name, kind: "artist" as const, href: `/person/${p.userId}`, photo: photoUrl(p.avatarPath ?? undefined), grad: gradientOf(p.name) }))
-    : followed.map((f) => ({
+    : /* the STUDIOS shelf is studios (19 Sep 2026, the user: "there should be
+         only one way to view these pages"): an artist is a person here, and a
+         legacy follow of an artist BUSINESS belongs on the Artists tab beside
+         the people, not under a heading that says Studios */
+      followed
+        .filter((f) => f.tenantType === "studio")
+        .map((f) => ({
         id: f.tenantId,
         name: f.tenantName,
         kind: "studio" as const,
@@ -367,6 +374,7 @@ export default async function DiscoverPage({
                     mine={mine.get(c.session.id) ?? null}
                     priceInr={c.priceInr}
                     shareSlug={c.shareSlug}
+                    canBook={canBook(profile?.role)}
                   />
                 ) : null
               }

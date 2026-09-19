@@ -30,6 +30,9 @@ import { photoUrl } from "@/lib/media/photo";
 import type { ClassRegister } from "@/repositories/attendance";
 import { ClassRoutines } from "@/features/routines/components/ClassRoutines";
 import type { Routine } from "@/repositories/routines";
+import { bookWithMembershipAction } from "@/features/memberships/server-actions/memberships";
+import type { PassForSession } from "@/repositories/memberships";
+import { NO_BOOKING_FOR_AN_ORGANIZATION } from "@/types/profile";
 import type { ClassClaim } from "@/types/claim";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
@@ -177,6 +180,16 @@ export interface ClassDetailProps {
   routines?: Routine[];
   myRoutines?: Routine[];
   canSetRoutines?: boolean;
+  /** ⚠ false for an ORGANIZATION account (19 Sep 2026, the user: "studio and
+   *  organizations … should not be able to book any class or event"). The
+   *  database has refused it since 8 Sep (`guard_person_only`); this is the
+   *  screen finally saying so instead of offering a press that gets refused. */
+  viewerCanBook?: boolean;
+  /** THE PASSES THIS VIEWER CAN SPEND HERE (19 Sep 2026): their own live
+   *  memberships that this class admits, with a unit still on them. The database
+   *  decides the list (`passes_for_session` reads the class's two switches), so a
+   *  pass this class refuses is never offered and never spendable. */
+  passes?: PassForSession[];
 }
 
 export function ClassDetail({
@@ -203,6 +216,8 @@ export function ClassDetail({
   routines = [],
   myRoutines = [],
   canSetRoutines = false,
+  viewerCanBook = true,
+  passes = [],
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
   const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
@@ -216,6 +231,9 @@ export function ClassDetail({
   };
   const [passOpen, setPassOpen] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
+  /* which membership pass is being spent right now — the row says so and every
+     row is disabled, because a seat is taken once */
+  const [passPending, setPassPending] = useState<string | null>(null);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   /* Details / Attendance — the strip belongs to the card (prototype 11961-11970) */
@@ -227,6 +245,18 @@ export function ClassDetail({
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
   const actionError = enrollState.error || cancelState.error;
+
+  /* SPEND A PASS ON THIS SEAT — one RPC books the seat and takes the units under
+     the class's own lock, so two presses cannot spend the same unit twice. */
+  const spendPass = async (p: PassForSession) => {
+    if (!c.session) return;
+    setPassPending(p.passId);
+    const out = await bookWithMembershipAction({ passId: p.passId, sessionId: c.session.id });
+    setPassPending(null);
+    if (out.error) return fire(out.error);
+    fire("🎟 Booked with your membership");
+    router.refresh();
+  };
 
   /* the design the studio chose, or the one the class draws from its own name */
   const posterK = c.poster && c.poster !== "none" ? c.poster : dosPosterAuto(c.title);
@@ -1218,6 +1248,23 @@ export function ClassDetail({
             }
           >
             <Row k="Refund" v={isFree ? "Not applicable — free" : "Full refund until 48 h before"} />
+            {/* ── MEMBERSHIPS (19 Sep 2026, the user: "Memberships should be
+                allowed … in Class form and Policy section in Class Detail as
+                well"). The class's own two switches, said to the person about to
+                book — and the same booleans the database reads when a pass is
+                spent, so the page cannot promise what the RPC refuses. ── */}
+            <Row
+              k="Memberships"
+              v={
+                c.allowsStudioMemberships && c.allowsArtistMemberships
+                  ? "A studio's or the artist's pass covers a seat"
+                  : c.allowsStudioMemberships
+                    ? "A studio's pass covers a seat"
+                    : c.allowsArtistMemberships
+                      ? "The artist's pass covers a seat"
+                      : "Not accepted — this one is booked seat by seat"
+              }
+            />
           </Sec>
         )}
           </>
@@ -1528,6 +1575,14 @@ export function ClassDetail({
             >
               Sign in to book
             </Link>
+          ) : !viewerCanBook && !booked ? (
+            /* AN ORGANIZATION DOES NOT BOOK (19 Sep 2026). It reads the page —
+               this is its own studio's class as often as not — and the bar says
+               what the database would say if the button were pressed. */
+            <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)" }}>
+              <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
+              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{NO_BOOKING_FOR_AN_ORGANIZATION}</div>
+            </div>
           ) : soldOut && !booked ? (
             <div
               style={{
@@ -1579,6 +1634,36 @@ export function ClassDetail({
               </form>
             </div>
           ) : (
+            <>
+            {/* ── SPEND A MEMBERSHIP INSTEAD OF PAYING (19 Sep 2026). Offered only
+                when the database says this viewer holds a pass this class admits
+                with a unit left on it; the seat is booked and the unit taken in
+                one RPC, and cancelling puts the unit back. ── */}
+            {!booked && passes.length > 0 && c.session ? (
+              <div data-testid="pass-strip" style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+                {passes.map((p) => (
+                  <button
+                    key={p.passId}
+                    type="button"
+                    disabled={passPending !== null}
+                    aria-label={`Use ${p.membershipName}`}
+                    onClick={() => spendPass(p)}
+                    style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", borderRadius: 14, background: `${col}18`, border: `1px solid ${col}55`, cursor: passPending ? "wait" : "pointer", fontFamily: DOS_UI, color: "var(--text)", textAlign: "left" }}
+                  >
+                    <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🎟</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.membershipName}</span>
+                      <span style={{ display: "block", fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>
+                        {p.unit === "hours"
+                          ? `${p.unitsTotal - p.unitsUsed} hours left · this takes ${p.unitsNeeded}`
+                          : `${p.unitsTotal - p.unitsUsed} classes left · this takes ${p.unitsNeeded}`}
+                      </span>
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 900, color: col }}>{passPending === p.passId ? "…" : "Use it ›"}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flexShrink: 0 }}>
                 <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)" }}>
@@ -1645,6 +1730,7 @@ export function ClassDetail({
                 </div>
               )}
             </div>
+            </>
           )}
           {enrollState.outcome === "waitlisted" && (
             <div style={{ fontSize: 10.5, color: GOLD, fontWeight: 800, marginTop: 8, textAlign: "center" }}>

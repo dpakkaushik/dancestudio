@@ -24,7 +24,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { EditProfileSheet } from "./EditProfileSheet";
 import type { HeroShot } from "./HeroRail";
 import { IdentityHero } from "./hero-kit";
-import { EyeIcon, Group, PencilIcon, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, tierOf, type FollowGlyph } from "./profile-kit";
+import { EyeIcon, Group, PencilIcon, PlaceLink, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -84,7 +84,6 @@ export function MyProfilePage({
   followingTenants,
   followingOrgs = [],
   followingCrews = [],
-  place,
   scheduleHref,
   business,
   businesses = [],
@@ -103,7 +102,6 @@ export function MyProfilePage({
   /** the organizations and the crews this person follows (19 Sep 2026) — two more segments of the Following sheet */
   followingOrgs?: FollowedOrganization[];
   followingCrews?: FollowedCrew[];
-  place: { place: number; population: number } | null;
   scheduleHref: string | null;
   /** the first business this person runs, for the rows that live on its desk */
   business: Tenant | null;
@@ -175,9 +173,13 @@ export function MyProfilePage({
 
   const styleList = profile.styles;
   const socials = profile.socials;
-  const RK = place?.place ?? null;
-  const TT = RK ? tierOf(RK) : null;
-  const seg = kind === "artist" ? "artist" : "dancer";
+  /* the two association groups are STUDIOS — an artist page is not a page (R24) */
+  const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio");
+  const studiosRun = person.runs.filter((t) => t.tenantType === "studio");
+  /* ⚠ NO RANK ON THE PROFILE TAB (19 Sep 2026, the user: "remove rank from
+     profile tab"). Where you stand is the Stats chip's own screen, which prints
+     the place WITH its population — a bare "#4" beside two follower counts said
+     less than it implied. `my_chart_place` is no longer read for this page. */
 
   const bigWhite: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 42, borderRadius: 12, fontWeight: 900, fontSize: 12.5, boxSizing: "border-box", padding: "0 6px", whiteSpace: "nowrap", overflow: "hidden", background: "var(--text)", color: "var(--solid)", border: "1.5px solid var(--text)", textDecoration: "none" };
   const chip: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, padding: "6px 11px", borderRadius: 999, cursor: "pointer", whiteSpace: "nowrap", background: "var(--card)", border: "1px solid var(--el)", fontFamily: "inherit", color: INK };
@@ -230,6 +232,13 @@ export function MyProfilePage({
           }
           avatar={face}
           avatarAlt={profile.fullName}
+          /* ── THE DISC IS THE DOOR TO THE PAGE (19 Sep 2026, the user: "clicking
+             on profile photo on any home tab should take to the profile page for
+             that user"). One address per kind, the same one the eye and the QR
+             carry — so every way into a profile lands on the same page. ── */
+          avatarHref={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`}
+          /* the corner's eye is "Public view"; the disc names the page it opens */
+          avatarLabel="Open your public page"
           /* both pictures are changed in Edit profile (16 Sep 2026) — the
              pencil below, not a ＋ on the disc and a ✕ on each header square */
           shots={shots}
@@ -271,16 +280,6 @@ export function MyProfilePage({
                 <span style={{ display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" }}>{followingN}</span>
                 <span style={{ display: "block", ...micro, color: MUTED, marginTop: 4 }}>Following</span>
               </button>
-              {/* where you stand, in the metal it earned — only once there is a place to stand (Step 25: no "#0") */}
-              {RK && TT ? (
-                <Link href={`/stats?tab=charts&seg=${seg}`} aria-label={`Rank ${RK} of ${place?.population} — open global rankings`} style={{ textDecoration: "none" }}>
-                  <span style={{ display: "flex", alignItems: "baseline", gap: 1, lineHeight: 1, filter: `drop-shadow(0 2px 10px ${TT.text}44)` }}>
-                    <span style={{ fontSize: 14, fontWeight: 900, fontFamily: DOS_DISPLAY, color: TT.text, opacity: 0.8 }}>#</span>
-                    <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: -0.9, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums", background: `linear-gradient(135deg,${TT.ring[0]},${TT.ring[1]})`, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{RK}</span>
-                  </span>
-                  <span style={{ display: "block", ...micro, color: TT.text, marginTop: 4 }}>{TT.label} rank</span>
-                </Link>
-              ) : null}
                 </>
               )}
           </div>
@@ -355,17 +354,23 @@ export function MyProfilePage({
             ))}
           </Group>
         ) : null}
-        {person.teachesAt.length ? (
-          <Group title="Teaches at" n={person.teachesAt.length}>
-            {person.teachesAt.map((t) => (
-              <Row key={t.tenantId} href={`/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[t.kinds, `${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
+        {/* ── ONE PAGE PER PROFILE (19 Sep 2026, the user: "there should be only
+            one way to view these pages"). An artist's public face IS this
+            profile (R24), so their own artist page is not a second thing to
+            open: STUDIOS is what "Teaches at" lists, and "Runs" names the
+            studios they run. The `artist_page` row is still what every class,
+            ask and payout hangs off — it is simply never a destination. ── */}
+        {studiosTaughtAt.length ? (
+          <Group title="Teaches at" n={studiosTaughtAt.length}>
+            {studiosTaughtAt.map((t) => (
+              <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[t.kinds, `${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
             ))}
           </Group>
         ) : null}
-        {!isOrg && person.runs.length ? (
-          <Group title="Runs" n={person.runs.length}>
-            {person.runs.map((t) => (
-              <Row key={t.tenantId} href={`/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`} markName={t.tenantName} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.tenantName} sub={[t.tenantType === "studio" ? "Studio" : "Artist business", t.city].filter(Boolean).join(" · ")} />
+        {!isOrg && studiosRun.length ? (
+          <Group title="Runs" n={studiosRun.length}>
+            {studiosRun.map((t) => (
+              <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.tenantName} sub={["Studio", t.city].filter(Boolean).join(" · ")} />
             ))}
           </Group>
         ) : null}

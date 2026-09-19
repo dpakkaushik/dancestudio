@@ -111,8 +111,11 @@ export function RoutinesDesk({ routines, userId }: { routines: RoutineWithUsage[
             ))}
           </div>
 
+          {/* ⚠ NO SONG NAME FIELD (19 Sep 2026, the user: "just remove song name
+              from the add routine form"). A routine is a song and a video — the
+              link or the MP3 IS the song, and an attached file names itself from
+              its own filename, so the column is still filled where it can be. */}
           <div style={eyebrow}>SONG · required</div>
-          <input aria-label="Song name" value={f.songTitle} onChange={(e) => setF((x) => ({ ...x, songTitle: e.target.value }))} placeholder="Song name" style={input} />
           <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>
             {([["link", "Paste link"], ["file", "Add MP3"]] as const).map(([k, l]) => (
               <button key={k} type="button" onClick={() => setF((x) => ({ ...x, songSrc: k, songUrl: "" }))} aria-pressed={f.songSrc === k} style={{ flex: 1, padding: 9, borderRadius: 10, cursor: "pointer", fontSize: 11.5, fontWeight: 800, fontFamily: "inherit", border: "none", background: f.songSrc === k ? INK : "var(--el)", color: f.songSrc === k ? LILAC : SUB }}>

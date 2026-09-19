@@ -290,13 +290,22 @@ export function AppChrome({
   const entity = entityOf(pathname);
   const showMark = isTab || entity !== null;
   const showBar = (isTab || entity !== null) && !adminOnly;
+  /* ── AN ENTITY'S BAR CARRIES DISCOVER TOO (19 Sep 2026, the user: "studio and
+     organizations can have Discover in navbar but should not be able to book any
+     class or event"). A studio's own pages had Home · Inbox, so the one thing
+     the user named as allowed was the one thing missing from them. Booking is
+     what is refused, and it is refused where the button is drawn, not by hiding
+     the shelf: an organization reading Discover gets the sentence in place of
+     Book, and `guard_person_only` is the rule behind it. Discover is a DOOR out
+     of the entity, never a lit tab here — pressing it leaves for the main bar. ── */
   const bar = entity
     ? [
         { label: "Home", href: entity.home },
+        { label: "Discover", href: "/discover" },
         { label: "Inbox", href: entity.inbox },
       ]
     : TAB_SET;
-  const lit = entity ? (pathname === entity.home ? "Home" : "Inbox") : activeTab;
+  const lit = entity ? (pathname === entity.home ? "Home" : pathname === entity.inbox ? "Inbox" : null) : activeTab;
   /* THE SWITCHER'S OPEN STATE IS KEYED ON THE PAGE IT WAS OPENED ON: a navigation
      changes the pathname, so the menu closes by itself without an effect writing
      state (this repo's setState-in-effect rule) */

@@ -10,6 +10,8 @@ import type { PublicTeamMember, PublicTenantProfile } from "@/types/publicProfil
 import { BioBlock } from "./BioBlock";
 import { BusinessEditButton } from "./BusinessEditSheet";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
+import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
+import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowFigures } from "./FollowFigures";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
@@ -58,6 +60,7 @@ export function PublicProfile({
   followers = null,
   scheduleHref,
   manageHref,
+  memberships = [],
 }: {
   profile: PublicTenantProfile;
   /** THE HEADER PICTURES (15 Sep 2026): a studio's photos of its space —
@@ -84,6 +87,8 @@ export function PublicProfile({
   followers?: TenantFollower[] | null;
   scheduleHref: string;
   manageHref: string;
+  /** what this business has ON SALE (19 Sep 2026) — live ones of a listed business */
+  memberships?: MembershipOnSaleRow[];
 }) {
   const { tenant } = profile;
   const RG = gradientOf(tenant.name);
@@ -190,6 +195,11 @@ export function PublicProfile({
             Schedule
           </Link>
         </div>
+
+        {/* ── WHAT IT SELLS (19 Sep 2026, the user: "Users should be able to buy
+            from Studio and Artist Profile Pages") — a price on a public page is
+            public; who holds one never is ── */}
+        <MembershipsOnSale memberships={memberships} businessName={tenant.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
 
         {/* ── THE ASSOCIATIONS, in one language (11000-11060): a row per person,
             each group headed with a count — Owner · Faculty · Visiting faculty ── */}

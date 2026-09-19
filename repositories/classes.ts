@@ -32,6 +32,8 @@ interface ClassRow {
   lat: number | null;
   lng: number | null;
   maps_url: string | null;
+  allows_studio_memberships: boolean | null;
+  allows_artist_memberships: boolean | null;
   class_sessions: SessionRow[] | null;
 }
 
@@ -55,7 +57,7 @@ const venueOf = (row: PublicClassRow) => ({
 
 /* no `title` in the read: the label is derived from style and level (types/class.ts) */
 const CLASS_COLUMNS =
-  "id, business_id, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, class_sessions (id, starts_at, ends_at)";
+  "id, business_id, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, class_sessions (id, starts_at, ends_at)";
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -82,6 +84,10 @@ const toClass = (row: ClassRow): DanceClass => ({
   lat: row.lat ?? null,
   lng: row.lng ?? null,
   mapsUrl: row.maps_url ?? null,
+  /* ?? the column's own defaults, so a row read before the columns existed
+     (nothing does today, but a narrowed select might) reads as the database would */
+  allowsStudioMemberships: row.allows_studio_memberships ?? true,
+  allowsArtistMemberships: row.allows_artist_memberships ?? false,
 });
 
 export interface CreateClassInput {
@@ -104,6 +110,9 @@ export interface CreateClassInput {
   lat: number | null;
   lng: number | null;
   mapsUrl: string | null;
+  /** whose pass may pay for a seat here (19 Sep 2026) — see the note on the write */
+  allowsStudioMemberships: boolean;
+  allowsArtistMemberships: boolean;
 }
 
 /** Atomic create: class + first session via the create_class_with_session RPC.
@@ -137,7 +146,26 @@ export async function createClassWithSession(
   if (error) {
     throw new Error(`classes.create failed: ${error.message}`);
   }
-  return (data as { id: string }).id;
+  const id = (data as { id: string }).id;
+
+  /* ⚠ THE TWO MEMBERSHIP SWITCHES ARE SET AFTER THE ROW EXISTS, NOT INSIDE THE
+     RPC (19 Sep 2026). `create_class_with_session` is the ONE creation path and
+     adding arguments to it means dropping and re-creating it — the overload
+     lesson, and a second migration for two booleans. The columns carry the
+     defaults the form starts from, so this patch only ever runs when the owner
+     moved a switch, it goes through the owners-only UPDATE policy the edit form
+     already uses, and a refusal leaves a real class wearing the defaults rather
+     than no class at all. */
+  if (input.allowsStudioMemberships !== true || input.allowsArtistMemberships !== false) {
+    const { error: patchError } = await supabase
+      .from("classes")
+      .update({ allows_studio_memberships: input.allowsStudioMemberships, allows_artist_memberships: input.allowsArtistMemberships })
+      .eq("id", id);
+    if (patchError) {
+      throw new Error(`classes.create memberships failed: ${patchError.message}`);
+    }
+  }
+  return id;
 }
 
 /** A tenant's full catalogue, drafts included — RLS admits members only. */
@@ -320,6 +348,8 @@ export interface UpdateClassInput {
   lat: number | null;
   lng: number | null;
   mapsUrl: string | null;
+  allowsStudioMemberships: boolean;
+  allowsArtistMemberships: boolean;
 }
 
 /** Edit a class's fields and move its session — two updates, both RLS-guarded. */
@@ -347,6 +377,8 @@ export async function updateClassDetails(
       lat: input.lat,
       lng: input.lng,
       maps_url: input.mapsUrl,
+      allows_studio_memberships: input.allowsStudioMemberships,
+      allows_artist_memberships: input.allowsArtistMemberships,
     })
     .eq("id", classId)
     .is("deleted_at", null)

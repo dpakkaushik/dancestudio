@@ -53,6 +53,11 @@ export interface DanceClass {
   lat: number | null;
   lng: number | null;
   mapsUrl: string | null;
+  /** WHOSE PASS PAYS FOR A SEAT HERE (19 Sep 2026): the class form's two
+   *  switches, printed in the Policy block and honoured by the database when a
+   *  membership is spent — the business's own passes, and the teacher's. */
+  allowsStudioMemberships: boolean;
+  allowsArtistMemberships: boolean;
 }
 
 /** A published class as the learner listing sees it — with the business behind it. */

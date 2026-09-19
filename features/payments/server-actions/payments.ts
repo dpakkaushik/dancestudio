@@ -21,6 +21,7 @@ import {
   attachProviderRefund,
   cancelBooking,
   createEventPaymentOrder,
+  createMembershipPaymentOrder,
   createPaymentOrder,
   findMyOrder,
 } from "@/repositories/payments";
@@ -123,6 +124,8 @@ async function openRail(
   if (order.sessionId) tags.session_id = order.sessionId;
   if (order.eventId) tags.event_id = order.eventId;
   if (order.eventBookingId) tags.event_booking_id = order.eventBookingId;
+  if (order.membershipId) tags.membership_id = order.membershipId;
+  if (order.membershipPassId) tags.membership_pass_id = order.membershipPassId;
   const cfOrder = await createCashfreeOrder({
     orderId: order.id,
     amountInr: order.amountInr,
@@ -140,6 +143,36 @@ async function openRail(
     businessName,
     description,
   };
+}
+
+const startMembershipSchema = z.object({
+  passId: z.string().uuid(),
+  businessName: z.string().trim().min(1).max(80),
+  description: z.string().trim().min(1).max(120),
+});
+
+/** A PRICED MEMBERSHIP (19 Sep 2026): `buy_membership` writes the pass as
+ *  `pending_payment` — it holds no units — then the order opens against it and
+ *  the Cashfree window opens. The capture (webhook or `confirmCheckoutAction`)
+ *  is what makes the pass active, re-checking the cap under the membership's
+ *  lock. One rail, three subjects; the seller's earnings need no new read. */
+export async function startMembershipCheckoutAction(input: { passId: string; businessName: string; description: string }): Promise<StartCheckoutResult> {
+  const parsed = startMembershipSchema.safeParse(input);
+  if (!parsed.success) {
+    return { checkout: null, error: "Invalid membership request" };
+  }
+  const { supabase, user } = await requireUser();
+  if (!isCashfreeConfigured()) {
+    return { checkout: null, error: NOT_CONFIGURED };
+  }
+  try {
+    const order = await createMembershipPaymentOrder(supabase, parsed.data.passId);
+    const checkout = await openRail(supabase, user, order, parsed.data.businessName, parsed.data.description);
+    revalidatePath("/memberships");
+    return { checkout, error: null };
+  } catch (error: unknown) {
+    return { checkout: null, error: error instanceof Error ? error.message : "Could not start the payment" };
+  }
 }
 
 const startEventSchema = z.object({

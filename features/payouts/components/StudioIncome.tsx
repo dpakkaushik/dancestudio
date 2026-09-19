@@ -230,7 +230,8 @@ function downloadStatement(tenantName: string, month: MonthIncome) {
     ["Month", month.label],
     [],
     ["WHERE IT CAME FROM", ""],
-    ["Classes", month.grossInr],
+    ["Classes", month.grossInr - month.membershipsInr],
+    ["Memberships", month.membershipsInr],
     [],
     ["DEDUCTIONS", ""],
     ["Refunds", -month.refundedInr],
@@ -279,7 +280,12 @@ export function MonthStatements({
     <>
       {months.map((m) => {
         const net = m.grossInr - m.refundedInr;
-        const sources: Array<[string, number]> = [["Classes", m.grossInr]];
+        /* TWO REAL SOURCES SINCE 19 Sep 2026 — memberships are money this
+           business took, and a row is drawn only for a source that took some */
+        const sources: Array<[string, number]> = [
+          ["Classes", m.grossInr - m.membershipsInr],
+          ["Memberships", m.membershipsInr],
+        ].filter(([, v]) => (v as number) > 0) as Array<[string, number]>;
         const deductions: Array<[string, number]> = [["Refunds", m.refundedInr]];
         const max = Math.max(1, ...sources.map((s) => s[1]));
         const open = openKey === m.key;

@@ -961,8 +961,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Spectators" }).click();
     await expect(owner.getByText("GATE LIST · 0/1 arrived")).toBeVisible();
     await owner.getByRole("button", { name: `Check in ${learnerName}` }).click();
-    await expect(owner.getByRole("button", { name: `Check out ${learnerName}` })).toBeVisible();
-    await expect(owner.getByText("GATE LIST · 1/1 arrived")).toBeVisible();
+    /* fifteen: a check-in is a server action and a re-render, and the default
+       five lost a run on a busy machine (19 Sep 2026 — the same shape as the
+       style chip above and the 18 Sep "Since 2016" flake) */
+    await expect(owner.getByRole("button", { name: `Check out ${learnerName}` })).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByText("GATE LIST · 1/1 arrived")).toBeVisible({ timeout: 15_000 });
   });
 
   test("crews: ask, confirm, and a crew entry made by its leader", async () => {
@@ -1397,7 +1400,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("button", { name: "Add Kathak", exact: true }).click();
     await expect(trainer.getByRole("dialog", { name: "Add a dance style" }).getByText("Kathak", { exact: true })).toBeVisible();
     await trainer.getByRole("dialog", { name: "Add a dance style" }).getByRole("button", { name: "Done" }).click();
-    await expect(trainer.getByLabel("Kathak — one of your styles", { exact: true })).toBeVisible();
+    /* fifteen, not five: this waits on a SERVER re-render after the sheet's save
+       (`router.refresh()`), exactly as the About and place lines above it do —
+       and it lost a whole suite run to the default on 19 Sep 2026, which is the
+       18 Sep "Since 2016" flake in a new coat */
+    await expect(trainer.getByLabel("Kathak — one of your styles", { exact: true })).toBeVisible({ timeout: 15_000 });
     // a link, on a known platform — the chip prints the handle, not the URL
     await trainer.getByRole("button", { name: "Add a link" }).click();
     await trainer.getByRole("button", { name: "Add Instagram" }).click();
@@ -1720,6 +1727,83 @@ test.describe.serial("DanceOS, end to end", () => {
     }
   });
 
+  test("memberships: four fields, sold from the studio's page, held and tracked", async () => {
+    // ---- memberships (19 Sep 2026) ----
+    // The user: "Memberships can be created by just 4 things — Name, No. of hrs
+    // / No. of classes and price and total memberships count … Users should be
+    // able to buy from Studio and Artist Profile Pages and track from
+    // memberships section in tools … make sure able to track memberships usage
+    // for class and student wise with progress bar for completion."
+    const passName = `E2E Pass ${stamp}`;
+
+    // ── FOUR FIELDS AND NOTHING ELSE. It is free on purpose: a free membership
+    // is granted on the press, which is the only way a browser test can hold a
+    // real pass — a priced one opens Cashfree's own window.
+    await owner.goto("/memberships");
+    await expect(owner.getByRole("heading", { name: "Memberships" })).toBeVisible();
+    await owner.getByRole("button", { name: "＋ New membership" }).click();
+    await owner.getByLabel("Membership name").fill(passName);
+    await owner.getByLabel("How many classes").fill("2");
+    await owner.getByLabel("Price", { exact: true }).fill("0");
+    await owner.getByLabel("Total memberships").fill("5");
+    await owner.getByRole("button", { name: "Put it on sale" }).click();
+    const card = owner.getByRole("link", { name: `Open ${passName}` });
+    await expect(card).toBeVisible({ timeout: 15_000 });
+
+    // ── IT IS ON SALE ON THE STUDIO'S OWN PUBLIC PAGE, which is where the user
+    // said it is bought — not on a desk somebody has to be told about
+    await learner.goto(`/studio/${tenantId}`);
+    const onSale = learner.getByTestId("memberships-on-sale");
+    await expect(onSale).toBeVisible({ timeout: 15_000 });
+    await expect(onSale.getByText(passName)).toBeVisible();
+    await expect(onSale.getByText("2 classes · 5 left")).toBeVisible();
+
+    // ── AND A PERSON TAKES IT FROM THERE
+    await learner.getByRole("button", { name: `Take ${passName}` }).click();
+    await expect(learner.getByText("find it under Memberships")).toBeVisible({ timeout: 20_000 });
+
+    // ── which is exactly where it is: the tools' own Memberships section, with
+    // the progress bar reading off real units — nothing used yet
+    await learner.goto("/memberships");
+    const held = learner.getByTestId("my-pass").filter({ hasText: passName });
+    await expect(held).toBeVisible({ timeout: 15_000 });
+    // the bar is drawn from two real numbers, never a stored percentage
+    await expect(held.getByTestId("pass-progress")).toHaveAttribute("data-pct", "0");
+    await expect(held.getByTestId("pass-progress")).toHaveAttribute("aria-label", "0 of 2 used");
+    // and they may not take a second one while one is live — the database's rule
+    await learner.goto(`/studio/${tenantId}`);
+    await learner.getByRole("button", { name: `Take ${passName}` }).click();
+    await expect(learner.getByText("use it up first")).toBeVisible({ timeout: 20_000 });
+
+    // ── THE SELLER TRACKS IT, per class and per student (the user's own words).
+    // Nothing has been spent yet, so the honest answer is one holder at nothing
+    // used — a figure and the list behind it being the same number (Step 25).
+    await owner.goto("/memberships");
+    await card.click();
+    await owner.waitForURL(/\/memberships\/[0-9a-f-]+$/);
+    await expect(owner.getByRole("heading", { name: passName })).toBeVisible();
+    await expect(owner.getByTestId("usage-sold")).toHaveText("1/5");
+    await expect(owner.getByTestId("usage-active")).toHaveText("1");
+    // it was free, so nothing was taken — and nobody has spent a unit yet
+    await expect(owner.getByTestId("usage-progress")).toHaveAttribute("data-pct", "0");
+    const holder = owner.getByTestId("membership-holder");
+    await expect(holder).toHaveCount(1);
+    await expect(holder.getByTestId("holder-progress")).toHaveAttribute("aria-label", "0 of 2 used");
+    await expect(owner.getByText("Nobody has spent one on a class yet.")).toBeVisible();
+
+    // ── AND THE CLASS SAYS WHOSE PASS PAYS FOR A SEAT (the Policy block). The
+    // learner already holds a seat on this class, so no pass strip is offered
+    // there — a seat is taken once, and the bar only offers what can happen.
+    await learner.goto(`/c/${shareSlug}`);
+    await expect(learner.getByText("A studio's pass covers a seat")).toBeVisible({ timeout: 15_000 });
+    await expect(learner.getByTestId("pass-strip")).toHaveCount(0);
+
+    // ⚠ SPENDING A PASS ON A SEAT is proven by the migration's own rolled-back
+    // dry run rather than here: every class in this story is already booked by
+    // the one learner it has, and inventing a second learner to spend a unit
+    // would be a bigger change to the story than the thing it proves.
+  });
+
   test("the class form asks the room first: ROOM ALREADY BUSY, and what can honestly happen next", async () => {
     // ---- parity slice 8: F3 (15628-15632) ----
     // The story's class runs in Studio A. A second class in the same room at the
@@ -1950,7 +2034,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("heading", { name: "Routines" })).toBeVisible();
     await trainer.getByRole("button", { name: "＋ New routine" }).click();
     await trainer.getByLabel("Routine name").fill(routineName);
-    await trainer.getByLabel("Song name").fill("Ilahi (instrumental)");
+    // ⚠ NO SONG NAME FIELD since 19 Sep 2026 (the user: "just remove song name
+    // from the add routine form") — the link or the MP3 IS the song
+    await expect(trainer.getByLabel("Song name")).toHaveCount(0);
     await trainer.getByLabel("Song link").fill("https://youtu.be/ilahi-instrumental");
     await trainer.getByLabel("Video link").fill("https://youtu.be/breath-release");
     await trainer.getByRole("button", { name: "Save routine" }).click();

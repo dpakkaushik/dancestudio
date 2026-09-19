@@ -13,7 +13,7 @@ import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { openCashfreeCheckout, type CashfreeCheckoutResult } from "@/lib/cashfree/checkout-client";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import type { Profile } from "@/types/profile";
+import { NO_BOOKING_FOR_AN_ORGANIZATION, type Profile } from "@/types/profile";
 import {
   EVENT_CRITERIA,
   EV_TINT,
@@ -147,9 +147,12 @@ export interface EventPageProps {
    *  its page; null when the host is not public, and then the venue line
    *  prints the name alone as it always did */
   host?: EventCardHost | null;
+  /** ⚠ false for an ORGANIZATION account (19 Sep 2026) — it runs events, it does
+   *  not take a place at one. `guard_person_only` is the real rule. */
+  viewerCanBook?: boolean;
 }
 
-export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, ledCrews = [], todayKey, host: hostCard = null }: EventPageProps) {
+export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, ledCrews = [], todayKey, host: hostCard = null, viewerCanBook = true }: EventPageProps) {
   const router = useRouter();
   const cat = ev.cat;
   const col = EV_TINT[cat];
@@ -650,6 +653,15 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
             <Link href="/login" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "15px", borderRadius: 999, fontWeight: 900, fontSize: 14.5, background: "var(--text)", color: "var(--solid)", textDecoration: "none", boxShadow: "0 5px 16px rgba(0,0,0,.32)" }}>
               Sign in to book
             </Link>
+          ) : !viewerCanBook && mine.length === 0 ? (
+            /* AN ORGANIZATION DOES NOT BOOK (19 Sep 2026, the user: "should not
+               be able to book any class or event"). `guard_person_only` has
+               refused an organization an event booking since 8 Sep; the bar
+               says it now instead of letting the press be refused. */
+            <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)" }}>
+              <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
+              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{NO_BOOKING_FOR_AN_ORGANIZATION}</div>
+            </div>
           ) : allGone && !canEnter ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "rgba(239,68,68,.12)", border: "1px solid rgba(239,68,68,.4)" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="1.9" strokeLinecap="round" style={{ flexShrink: 0 }} aria-hidden="true">

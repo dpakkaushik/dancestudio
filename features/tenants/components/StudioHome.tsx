@@ -136,6 +136,12 @@ export function StudioHome({
           styleAria={(s) => `${s} — a style this studio teaches`}
           avatar={photo}
           avatarAlt={tenant.name}
+          /* the disc opens the studio's own public page (19 Sep 2026) — the same
+             address the QR shares and the eye opens, so there is one way in */
+          avatarHref={`/studio/${tenant.id}`}
+          /* the eye in the corner is already called Public view — the disc says
+             which thing it opens, so the two controls are tellable apart */
+          avatarLabel="Open the studio's public page"
           shots={shots}
           /* the corner (10613, 15 Sep 2026): the owner's pencil — the pictures,
              About, Since, the number, the links, the pin — and for everyone on

@@ -6,7 +6,6 @@ import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople,
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findPublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
-import { findMyPlace } from "@/repositories/stats";
 import { findMyTenants } from "@/repositories/tenants";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findMyGst } from "@/repositories/gst";
@@ -16,9 +15,9 @@ import { kindOf } from "@/types/profile";
  *  `MyProfilePage`, with the Settings sheet behind the chrome's gear
  *  (`?settings=1`, prototype 19263). Everything on it is a row this app keeps:
  *  the profile with its fields, the person's followers and the people,
- *  businesses, organizations and crews they follow, their place on the board
- *  their role belongs to, and the same crews / teaches-at / runs groups the
- *  person page draws. */
+ *  businesses, organizations and crews they follow, and the same crews /
+ *  teaches-at / runs groups the person page draws. Where they stand on a board
+ *  left this page on 19 Sep 2026 — the Stats chip is the door to it. */
 export default async function ProfilePage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -51,13 +50,11 @@ export default async function ProfilePage() {
      for an artist, ten for an organization (19 Sep 2026) — the same rule the
      database keeps on the way in */
   const headerMax = headerMaxFor(kindOf(role, Boolean(plan?.active)));
-  /* the header and where you stand, in one round trip (19 Sep 2026) — an
-     ORGANIZATION has no people board (the prototype hides the rank on a studio,
-     10719); a person stands on the artists' board while the plan is live */
-  const [header, place] = await Promise.all([
-    findPersonHeaderPhotos(supabase, user.id, headerMax),
-    role === "org" ? Promise.resolve(null) : findMyPlace(supabase, plan?.active ? "artist" : "dancer"),
-  ]);
+  /* ⚠ THE RANK IS NOT READ HERE ANY MORE (19 Sep 2026, the user: "remove rank
+     from profile tab") — `findMyPlace` was the only reason this page made a
+     second round trip, so the header is the whole of it now. Where you stand is
+     the Stats chip's own screen, with its population beside it. */
+  const header = await findPersonHeaderPhotos(supabase, user.id, headerMax);
   /* Schedule goes to the public schedule of the business this person runs —
      a trainer's own (prototype `hasSchedule` = mode === "trainer", 10868); with
      none, the button is not drawn rather than pointing nowhere */
@@ -79,7 +76,6 @@ export default async function ProfilePage() {
       followingTenants={followingTenants}
       followingOrgs={followingOrgs}
       followingCrews={followingCrews}
-      place={place ? { place: place.place, population: place.population } : null}
       scheduleHref={scheduleHref}
       business={biz ?? null}
       businesses={businesses}

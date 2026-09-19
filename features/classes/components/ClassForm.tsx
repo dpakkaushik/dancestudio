@@ -235,6 +235,14 @@ export function ClassForm({
   const [poster, setPoster] = useState<PosterChoice | null>(existing?.poster ?? null);
   const [priceInr, setPriceInr] = useState(existing?.priceInr ?? 300);
   const [capacityInput, setCapacityInput] = useState(existing?.capacity ?? 16);
+  /* ── WHICH MEMBERSHIPS PAY FOR A SEAT HERE (19 Sep 2026, the user: "from form
+     should be able toggle whether studio and artist memberships are allowed or
+     not"). Two booleans on the class; the database is what enforces them when a
+     pass is spent (`passes_for_session` offers nothing a class refuses). The
+     defaults are the column's: a business's own memberships work on its classes,
+     and the teacher's do not until the class says so. ── */
+  const [allowsStudioMem, setAllowsStudioMem] = useState(existing?.allowsStudioMemberships ?? true);
+  const [allowsArtistMem, setAllowsArtistMem] = useState(existing?.allowsArtistMemberships ?? isArtist);
 
   /* ── WHERE, for an artist (18 Sep 2026) ── */
   const [whereKind, setWhereKind] = useState<WhereKind>(existing?.venueBusinessId ? "studio" : "place");
@@ -347,6 +355,8 @@ export function ClassForm({
         <input type="hidden" name="poster" value={poster ?? ""} />
         <input type="hidden" name="priceInr" value={priceInr} />
         <input type="hidden" name="capacity" value={capacity} />
+        <input type="hidden" name="allowsStudioMemberships" value={allowsStudioMem ? "1" : ""} />
+        <input type="hidden" name="allowsArtistMemberships" value={allowsArtistMem ? "1" : ""} />
         <input type="hidden" name="people" value={peoplePayload} />
         {/* WHERE, for an artist: the venue, or the pin (18 Sep 2026) */}
         <input type="hidden" name="venueBusinessId" value={atStudio && venue ? venue.id : ""} />
@@ -567,9 +577,40 @@ export function ClassForm({
             <input type="number" min={0} value={priceInr} onChange={(e) => setPriceInr(Math.max(0, Number(e.target.value) || 0))} aria-label="Price per session" style={inputStyle} />
             {priceInr === 0 && <div style={{ fontSize: 12, color: "#22C55E", fontWeight: 700, marginTop: 6 }}>This session is free.</div>}
 
+            {/* ── MEMBERSHIPS (19 Sep 2026) — the two switches the user asked the
+                form to carry. They decide whose pass may pay for a seat here, and
+                the Policy block on the class's own page says the same thing to
+                whoever is about to book. ── */}
+            <div style={labelStyle}>{isArtist ? "7" : "8"} · MEMBERSHIPS</div>
+            <div style={{ fontSize: 12, color: SUB, marginBottom: 8, lineHeight: 1.5 }}>Whose pass can pay for a seat in this class.</div>
+            {(
+              [
+                ["Studio memberships", allowsStudioMem, setAllowsStudioMem, "A pass sold by the studio running this class"],
+                ["Artist memberships", allowsArtistMem, setAllowsArtistMem, "A pass sold by the artist taking it"],
+              ] as const
+            ).map(([word, on, set, sub]) => (
+              <button
+                key={word}
+                type="button"
+                role="switch"
+                aria-checked={on}
+                aria-label={word}
+                onClick={() => set(!on)}
+                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "11px 12px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", color: INK }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{word}</span>
+                  <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 2 }}>{sub}</span>
+                </span>
+                <span style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, background: on ? "#22C55E" : EL, position: "relative", transition: "background .15s" }}>
+                  <span style={{ position: "absolute", top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: 999, background: "#fff", transition: "left .15s" }} />
+                </span>
+              </button>
+            ))}
+
             {/* POSTER — drawn, not uploaded, so it can never disagree with the class it belongs to (6478-6481) */}
             <div style={labelStyle}>
-              {isArtist ? "7" : "8"} · POSTER <span style={{ fontWeight: 500, letterSpacing: 0 }}>· optional</span>
+              {isArtist ? "8" : "9"} · POSTER <span style={{ fontWeight: 500, letterSpacing: 0 }}>· optional</span>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
               {POSTER_DESIGNS.map(([design, word]) => {

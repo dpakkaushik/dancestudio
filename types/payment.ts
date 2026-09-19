@@ -14,6 +14,10 @@ export interface PaymentOrder {
   sessionId: string | null;
   eventId: string | null;
   eventBookingId: string | null;
+  /** the third subject an order may name (19 Sep 2026): a membership, and the
+   *  pass the money turns from `pending_payment` into one somebody holds */
+  membershipId: string | null;
+  membershipPassId: string | null;
   amountInr: number;
   provider: PaymentProvider;
   providerOrderId: string | null;

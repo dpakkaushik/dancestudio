@@ -9,6 +9,7 @@ import {
 } from "@/features/enrollments/server-actions/enrollments";
 import { GOLD, GREEN, INK, LILAC } from "@/lib/design/tokens";
 import type { EnrollmentStatus } from "@/types/enrollment";
+import { NO_BOOKING_FOR_AN_ORGANIZATION } from "@/types/profile";
 
 const EL = "var(--el)";
 const initialState: EnrollActionState = { error: null, outcome: null };
@@ -47,6 +48,7 @@ export function EnrollButton({
   mine,
   priceInr,
   shareSlug,
+  canBook = true,
 }: {
   sessionId: string;
   isFull: boolean;
@@ -54,6 +56,9 @@ export function EnrollButton({
   mine: { id: string; status: EnrollmentStatus } | null;
   priceInr: number;
   shareSlug: string;
+  /** false for an ORGANIZATION account (19 Sep 2026) — `guard_person_only` has
+   *  refused it since 8 Sep, and until today the screen did not say so */
+  canBook?: boolean;
 }) {
   const [enrollState, enrollForm, enrollPending] = useActionState(enrollAction, initialState);
   const [cancelState, cancelForm, cancelPending] = useActionState(cancelEnrollmentAction, initialState);
@@ -65,6 +70,18 @@ export function EnrollButton({
       <Link href="/login" style={{ ...btn(true), textDecoration: "none", display: "block" }}>
         Sign in to book
       </Link>
+    );
+  }
+
+  /* An organization browses Discover and books nothing — said, not refused after
+     the press. ⚠ Only where there is nothing to cancel: `guard_person_only` has
+     refused an organization a seat since 8 Sep 2026, but a row written BEFORE
+     that guard existed would otherwise lose its way out. */
+  if (!canBook && !mine) {
+    return (
+      <div data-testid="org-cannot-book" style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted)", lineHeight: 1.45, padding: "4px 2px" }}>
+        {NO_BOOKING_FOR_AN_ORGANIZATION}
+      </div>
     );
   }
 

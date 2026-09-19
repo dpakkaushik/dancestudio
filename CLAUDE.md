@@ -2,7 +2,153 @@
 
 ## LAST SESSION (19 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A ROUTINE IS A SONG AND A VIDEO (19 Sep 2026, latest) — MIGRATION APPLIED, dry run 19/19 rolled back
+> ### MEMBERSHIPS, ONE PROFILE PAGE PER PROFILE, AND AN ORGANIZATION THAT BOOKS NOTHING (19 Sep 2026, latest) — TWO MIGRATIONS APPLIED (dry runs 31/31 and 9/9, both rolled back first)
+> The user, in points: *"just remove song name from the add routine form.
+> Memberships — can be created by just 4 things: Name, No. of hrs / No. of
+> classes and price and total memberships count. Memberships should be allowed
+> … in Class form and Policy section in Class Detail as well. From form should
+> be able to toggle whether studio and artist memberships are allowed or not.
+> Users should be able to buy from Studio and Artist Profile Pages and track
+> from memberships section in tools. Artist should be able to create and track
+> usage of memberships they have created and memberships they have purchased.
+> Studio should be able to create memberships. Make sure able to track
+> memberships usage for class and student wise with progress bar for completion.
+> Should also be added to earnings for studio and artist … Clicking on profile
+> photo on any home tab should take to the profile page for that user. Same
+> profile should be visible on discover — right now I can see duplicate profile
+> pages; there should be only one way to view these pages. Remove rank from
+> profile tab. Some artist profiles don't have enquiry button on profile."*
+> And mid-build: *"studio and organizations can have Discover in navbar but
+> should not be able to book any class or event. Make sure it is applied in all
+> logics."*
+> * **1. NO SONG NAME ON THE ROUTINE FORM.** The link or the MP3 IS the song; an
+>   attached file still names itself from its own filename, so the column keeps
+>   being filled where it honestly can be.
+> * **2. MEMBERSHIPS — `20260919170000_memberships.sql`, APPLIED.** Three tables:
+>   `memberships` (the user's four things — a name, `unit` classes|hours, `units`,
+>   `price_inr`, `total_count`), `membership_passes` (one person's pass, with the
+>   price, unit and units SNAPSHOTTED so a price change cannot rewrite what
+>   somebody already holds) and `membership_uses` (`class_booking_id` UNIQUE —
+>   which is what makes usage answerable **class-wise AND student-wise** off one
+>   table). `classes` gains **`allows_studio_memberships`** (default true) and
+>   **`allows_artist_memberships`** (default false), which are the class form's
+>   two switches and the Policy block's sentence. Thirteen RPCs; the ones that
+>   matter: `buy_membership` (a free one is ACTIVE at once, a priced one is
+>   `pending_payment`), `passes_for_session` (what THIS class will take from THIS
+>   person — the two switches are read here, so a bar never offers a pass the RPC
+>   would refuse), `book_with_membership` (the seat and the units in one locked
+>   RPC), `membership_holders` / `membership_class_usage` (the two sides of usage)
+>   and `why_no_membership` (one sentence: not on sale, not public, you are on
+>   this team, all taken, you already hold one).
+>   ⚠ **A cancelled seat PUTS THE UNIT BACK** — a trigger on `class_bookings`, so
+>   it holds whichever door cancels the seat.
+>   ⚠ **THE MONEY RIDES THE RAIL THAT EXISTS.** `orders` takes a THIRD subject
+>   (`membership_id` + `membership_pass_id`, the CHECK widened), so a priced
+>   membership goes through the same Cashfree window, the same webhook and the
+>   same `apply_captured_payment` a class seat does — **and the payments row
+>   carries `business_id`, so a studio's and an artist's earnings counted
+>   membership money the moment the rail landed, with no new read.** The applier
+>   was split CATALOG-DRIVEN rather than re-typed: a DO block reads the live
+>   `pg_get_functiondef`, re-creates it as `apply_captured_payment_classes_and_events`,
+>   and the name the webhook calls becomes a dispatcher — the 16 Sep rename's own
+>   technique, because 200 lines of proven money logic re-typed is 200 lines that
+>   can differ.
+>   **App:** `/memberships` is two segments (Yours · On sale) with the four-field
+>   form; `/memberships/{id}` is the usage page — sold / active / taken, the
+>   overall bar, **SPENT ON** (class-wise) and **WHO HOLDS ONE** (student-wise,
+>   a progress bar per holder); `MembershipsOnSale` sits on a studio's AND an
+>   artist's public page, which is where they are bought; the class page's booking
+>   bar offers a pass when one can be spent, and its POLICY block says whose pass
+>   pays for a seat. **Earnings:** the month statement's WHERE IT CAME FROM has
+>   TWO real rows now (Classes · Memberships) instead of one called Classes —
+>   `findTenantIncome` embeds the order's subject, which closes a backlog row
+>   that had been waiting for a second paid source since 28 Aug.
+> * **3. THE DISC ON EVERY HOME IS THE DOOR TO THAT PROFILE'S PAGE** — the
+>   Profile tab, a studio's home and a crew's home gained `avatarHref` (Home had
+>   it since 19 Sep morning). One address per kind, the same one the QR shares
+>   and the eye opens.
+> * **4. ONE PAGE PER PROFILE.** The Profile tab's **Teaches at** and **Runs**
+>   groups list STUDIOS only — an artist's own page was being offered as a second
+>   thing to open, and opening it landed back on the profile you were already on
+>   (`/artist/{id}` has redirected to `/person/{owner}` since 18 Sep). Discover's
+>   "Followed by you" shelf under STUDIOS is studios.
+> * **5. NO RANK ON THE PROFILE TAB** — and `findMyPlace` was the only reason
+>   that page made a second round trip, so it makes one read now. Where you stand
+>   is the Stats chip's own screen, which prints the population beside the place.
+> * **6. AN ARTIST'S PAGE IS PROVISIONED BY THEIR OWN PROFILE VISIT TOO** (the
+>   user: "some artist profiles don't have enquiry button on profile"). Home was
+>   the only place that made it, so anybody who took the plan and then landed on
+>   their own profile — or was VISITED before they next opened Home — had no page
+>   behind them and the Enquiry button was silently not drawn. A refusal is
+>   swallowed exactly as Home swallows it: a profile must never fail over this.
+> * **7. AN ORGANIZATION BOOKS NOTHING, AND THE SCREEN SAYS SO.** This has been
+>   the DATABASE's rule since 8 Sep (`guard_person_only`, R11, eight tables) and
+>   every Book button went on being drawn, so the only way to learn it was to
+>   press and be refused. `canBook(role)` in `types/profile.ts` is that rule where
+>   the button is: Discover's cards, the learner listing, the class page's bar and
+>   the event page's bar draw one sentence instead. **A presentation gate over a
+>   real one** — the RPCs are still the enforcement. And the entity bar gained
+>   **Discover** (a studio's own pages had Home · Inbox), which is the half of the
+>   ask that was permissive.
+> * **⚠⚠ AND A DEFECT IN MY OWN TWO MIGRATIONS OF TODAY, FOUND BY AUDITING THE
+>   CATALOG RATHER THAN BY A FAILURE — `20260919180000_an_account_can_still_be_deleted`,
+>   APPLIED.** Both `20260919160000` (routines) and `20260919170000` (memberships)
+>   gave their audit columns a FOREIGN KEY to `auth.users` with no `on delete`
+>   clause — which is NO ACTION, so the delete is REFUSED. Every other table in
+>   this database has plain uuid audit columns; these five did not. **Proven on
+>   production inside a rolled-back transaction (`dryrunMem.js`, 9/9): deleting
+>   an owner who had made a membership answered
+>   `violates foreign key constraint "memberships_created_by_fkey"`, the ten
+>   constraints were dropped, and the same delete was clean.** It is the 19 Sep
+>   `crew_header_photos` lesson in a new coat, and the tell was the same: an FK
+>   from an audit column into `auth.users`. Reachable only from the admin API
+>   today — which is where `demo-data.js wipe`, the e2e cleanups and every proof's
+>   `finally` live, so it would have started failing RUNS rather than users.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green (`/memberships` and
+>   `/memberships/[membershipId]` new) · **the happy path 17/17 in 11.2 min** on
+>   the final bundle, the memberships segment among them · **`shoot-hero.js`
+>   102/102** against the same bundle (98 before — the four new ones are the
+>   studio home's disc, the studio bar's three links, the Profile tab's disc and
+>   the absent rank) · the other seven specs
+>   **38/38** in the whole-suite run before it, on a bundle differing only by an
+>   `aria-label` and one line of copy, neither of which any of them reads ·
+>   both dry runs rolled back (31/31, 9/9) ·
+>   both applied · read back live (the `orders (membership_id)` embed 200, the two
+>   class columns present, the ten constraints gone) · `demo-data.js wipe` +
+>   `seed` clean, the demo world now holding five memberships across three
+>   sellers with three spent on real seats. A fifteenth happy-path segment drives
+>   the whole loop from the four-field form to the usage page's two sides.
+>   ⚠ **Spending a pass is proven by the migration's dry run, not by the e2e** —
+>   every class in that story is already booked by the one learner it has, and
+>   inventing a second learner to spend a unit is a bigger change to the story
+>   than the thing it would prove. Said in the spec, at the assertion.
+> * ⚠ **AND WHAT THE FIRST SUITE RUN FOUND, WHICH IS WORTH KEEPING: IN A SERIAL
+>   STORY, WHERE A SEGMENT SITS IS PART OF ITS SET-UP.** The memberships segment
+>   was written last and therefore ran last, and the learner could not take a
+>   membership — the control read `—`. The database was right: accepting the
+>   clash segment's class ask seats an outside teacher as **visiting faculty**
+>   (R19, 18 Sep), so by then the learner was ON the studio's team, and
+>   `why_no_membership` says "you are on this team — a membership is for the
+>   people who come to dance". The segment moved to before that ask. **And the
+>   dash became the sentence**: the only signed-in person who cannot take one is
+>   somebody on the seller's own team, so the row says that instead of a dash
+>   that made a real rule look like a broken button. Read off the TRACE's own DOM
+>   snapshot rather than guessed — the failure message named a missing button and
+>   the snapshot named the span that was there instead.
+> * ⚠ **Two controls may not answer to one name.** The disc became a door on the
+>   Profile tab, a studio's home and a crew's home — all three of which already
+>   carry the eye, which is called "Public view". `IdentityHero` takes an
+>   `avatarLabel` now and those three pass their own word, or a screen reader and
+>   a strict locator would both be unable to tell the two apart (`shoot-hero`'s
+>   studio-home check is exactly that locator, and would have broken).
+> * ⚠ **AND TWO FIVE-SECOND WAITS COST A RUN EACH, both on a SERVER re-render
+>   after a save, both green in the runs before and after.** The style chip on
+>   the Profile tab and the event register's Check in now get the fifteen their
+>   own siblings already had. No product change for either, and the tell is this
+>   file's own from 11 Sep: a red on a busy machine — this one had been building
+>   between runs — is not evidence until the spec has been run alone.
+>
+> ### A ROUTINE IS A SONG AND A VIDEO (19 Sep 2026) — MIGRATION APPLIED, dry run 19/19 rolled back
 > The user: *"Routines are just a combination of Music — link or MP3 — and
 > Video — link. Artist should be able to add Routines from the class detail page
 > and should be visible. There should be a way to see the usage for that
@@ -3282,6 +3428,32 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0a1. **⚠ THE MEMBERSHIPS SLICE OWES A `.ps1` PROOF, AND IT IS THE ONE PIECE OF
+   COVER THAT IS MISSING.** `20260919170000_memberships` was proven by a
+   rolled-back dry run (31/31) and the app side by the happy path's fifteenth
+   segment — but there is no `rls-proof-memberships.ps1`, so nothing re-checks it
+   on the migrated schema the way the other 29 proofs cover their slices, and
+   nothing at all covers **spending a pass** outside that one dry run. What it
+   should assert, as real roles: a person who is on the seller's team is refused
+   in words; the cap refuses the (N+1)th pass; a second live pass of the same
+   membership is refused; a free one is ACTIVE and a priced one `pending_payment`
+   with no place taken; `passes_for_session` offers nothing for a class whose two
+   switches are off, and the studio's pass for one whose `allows_studio_memberships`
+   is on; `book_with_membership` takes a seat AND the units under the class's own
+   lock, refuses a pass with too few units left, and refuses somebody else's pass;
+   **cancelling the seat puts the unit back**; a wrong-amount capture refunds and
+   leaves the pass unpaid; a rival business reads no holder and no usage. Add it
+   to `scripts/run-proofs.ps1`'s set.
+
+0a2. **THE SECOND HALF OF "MEMBERSHIPS IN EARNINGS", IF THE USER WANTS IT.** The
+   money is counted (a membership payment carries `business_id`, so gross, the
+   method split and the month statements have always included it) and the
+   statement now names two sources. What it does NOT do: a period chip or a
+   filter by source, a membership line on the CLASS page's Earnings tab (a seat
+   paid by a pass shows as a seat with no payment against it, which reads as an
+   unpaid seat on the register's meta line), and nothing tells a studio how much
+   of what it sold is still unspent — a real liability figure it may want.
+
 0s. **~~THE FIVE PROFILE-PAGE MIGRATIONS ARE NOT APPLIED~~ — APPLIED 19 Sep 2026**
    on the user's third "push to live" (the top block: the classifier accepted the
    whitelisted `Select-String` shape that time). Proofs 8/8, the read-back, the
@@ -3761,6 +3933,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **MEMBERSHIPS, ONE PROFILE PAGE PER PROFILE, AND AN ORGANIZATION THAT BOOKS
+  NOTHING — 19 Sep 2026, no step number ⚠ (Rule 9: money + RLS) — TWO MIGRATIONS
+  APPLIED (dry runs 31/31 and 9/9, both rolled back first).** The user's points,
+  in order: the Song name field off the routine form; **memberships** made from
+  four things (name, classes-or-hours, price, how many exist), sold from a
+  studio's AND an artist's public page, tracked in the Memberships tool, spent by
+  booking a seat with one, usable per class by two toggles on the class form and
+  said in its Policy block, counted per class and per student with a progress bar,
+  and summed into earnings (the statement's WHERE IT CAME FROM has two real rows
+  now); the disc on every home opening that profile's page; ONE page per profile
+  (an artist page is no longer offered as a second thing to open); no rank on the
+  Profile tab; and an artist page provisioned by their own profile visit so the
+  Enquiry button is never silently missing. Mid-build: **an organization books no
+  class and no event** — the database's rule since 8 Sep, finally said where the
+  button is drawn — and the entity bar gained Discover. Deviation rows R30, R31,
+  C19, C20. ⚠ A defect in my own two migrations of today (audit columns with a
+  NO ACTION foreign key into `auth.users`, which made an account undeletable) was
+  found by auditing the catalog and closed by `20260919180000`. Detail at the top.
 - **A ROUTINE IS A SONG AND A VIDEO — 19 Sep 2026, no step number ⚠ (Rule 9:
   RLS) — MIGRATION APPLIED, dry run 19/19 rolled back.** The user: *"Routines are
   just a combination of Music — link or MP3 — and Video — link."* `routines`
@@ -7319,6 +7509,8 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R27 | The people search is a NAME field with initials on every hit and up to eight rows (the crew desk's add panel, 16413-16447: "Type a name to find them") | **Three ways in, one panel** (19 Sep 2026): the field matches a name OR the digits of a person's PUBLISHED number; before a term is typed, RECENTLY ASKED — the last three people this account put on a class or a crew; a **Scan** button reads a `/person/{id}` link's QR through the browser's `BarcodeDetector` or takes the link pasted; every hit wears the person's picture; **five rows at most**. ⚠ The QR the app draws on a profile is not yet a real code (`QRBlock` is a hash pattern), so Scan reads a real QR of the link made anywhere, and phone-to-phone scanning waits on an encoder (NEXT TO DO #0r) | 19 Sep 2026, the user: *"when adding a person from any page in the app should have option to search name, mobile no., scan with a drop down with max 5 options with their profile pics, with max 3 suggestions according to history."* |
 | R28 | A studio account IS a person; the prototype has no organization and nobody to name on one; R9 / R12 made an organization ONE LOGIN with nothing at its level | **An organization NAMES people on its public page** (push 2, 19 Sep 2026): `organization_members` — a user or an artist, asked from the Team desk (`/business/team`, the tile that opened NotBuiltYet) and CONFIRMED from their Inbox like every roster here; `owner \| member` are LABELS — `/org/{id}` prints **Owner** and **Team** above Studios — and give nobody a login to the organization or a seat on a studio's team; a private organization's team reaches nobody (`public_organization_team`, definer, answers for a PUBLIC organization only) | The user: *"You add a user or artist in Team section for organization to label them as owner."* One login stays the rule (8 Sep 2026); what the page shows is a claim about a person, so they are asked. ⚠ Rule 9: a public organization's confirmed team is a stranger's to read by name and picture |
 | R29 | Stats is your own record (S_profiletab historyOnly) and the boards (chartsOnly); C9 made the chip on somebody else's page open the BOARD they stand on | **The Stats chip on somebody else's page opens THEIR page** (push 2): `/person\|studio\|org\|crew/{id}/stats` — `EntityStatsPage`: a person's three sides (`person_dance_stats`), WHERE THEY STAND nationally and in their city off `entity_chart_row` (place + population, "not on this board yet" rather than "#0"), an organization's a row per listed studio; a stranger gets a public artist's, a listed studio's, a live crew's and a public organization's, and is sent to sign in for a plain user's. Your own chip still opens `/stats` | The user: *"stats page on any profile should show all stats for that particular profile and rankings as well."* ⚠ Rule 9: the board row a stranger reads is exactly the shape `dance_chart` has handed signed-in readers since Step 25 — a name, a place, some counts — for the three public kinds only |
+| R30 | The prototype's S_memberships (16846) is class packs and plans on a studio's own settings, with no artist selling anything and nothing linking a pack to a seat | **A MEMBERSHIP IS FOUR THINGS AND ANYBODY WHO TEACHES MAY SELL ONE** (19 Sep 2026): a name, classes **or** hours, a price and how many exist — sold by a STUDIO or by an ARTIST from their own page, bought by a person from the public page, held in the Memberships tool, and SPENT by booking a seat with it (`book_with_membership`, one locked RPC; a cancelled seat puts the unit back). A class decides whose pass it takes with two switches on its own form, printed in its Policy block. Usage is counted both ways — per class and per student — never stored | The user: *"Memberships can be created by just 4 things … Users should be able to buy from Studio and Artist Profile Pages … Artist should be able to create and track usage of memberships they have created and memberships they have purchased … track memberships usage for class and student wise with progress bar for completion."* The prototype has one studio and no artist who sells, so there was nothing to lift for half of it. ⚠ Rule 9: a priced membership rides the SAME Cashfree order, webhook and applier a class seat does — the amount is the pass's, never the client's, and the applier was split out of the catalog rather than re-typed |
+| R31 | Every signed-in account is offered Book on a class and on an event (the prototype has one kind of person) | **AN ORGANIZATION BOOKS NOTHING, AND THE SCREEN SAYS SO** (19 Sep 2026): `canBook(role)` draws one sentence in place of Book on Discover's cards, the learner listing, the class page's bar and the event page's bar. The entity bar gained **Discover**, so a studio's own pages have it too | The user: *"studio and organizations can have Discover in navbar but should not be able to book any class or event. Make sure it is applied in all logics."* It has been the DATABASE's rule since 8 Sep (`guard_person_only`, R11, eight tables) and every button went on being drawn, so the only way to learn it was to press and be refused. ⚠ This is a PRESENTATION gate over a real one — the RPCs are the enforcement and refuse a forged press exactly as before |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -7353,6 +7545,9 @@ Home. **Do not "restore parity" on these.**
 | C16 | Five tabs (19313); C2 (15 Sep 2026) made the fifth an EYE to the account's public page | **THREE in the bar — Home · Discover · Inbox.** For a few hours on 19 Sep the eye sat in Home's hero corner under the pencil; **since later that day Home's DISC is the door** (`IdentityHero avatarHref`, a `Link` named "Public view") **and Home's corner holds the pencil alone**. The Profile tab, a studio's home and a crew's home keep an eye in their corner column. `AppChrome` no longer takes `publicViewHref`; the layout no longer computes it. The target is unchanged: `/org/{id}` for an organization, `/person/{id}` for anybody else | 19 Sep 2026, the user: *"A. Remove profile tab from navbar. B. Give an eye to view profile on the home tab below edit on top right."* Then, the same day: *"clicking on the profile photo on home tab takes to profile so can remove the eye from top right on home."* |
 | C17 | The Settings sheet is a stack of ROWS, each with a bold label and a grey sub-line (11402-11440: "Payments & verification · cards · UPI · saved methods"), Notifications among them with its own switch panel | **A two-column grid of TILES — an icon in its tinted circle and a heading, nothing under it** — under four small heads: YOUR PLAN · MONEY · BUSINESS · ACCOUNT. Help & support and Message DanceOS are ONE tile (`/support`); Privacy & data opens `/legal/privacy`; **Notifications is not here at all** — "What reaches you" is the bell's own screen (S_notif 13800), once; the hero's sub-line and the explanatory paragraph are gone. The Artist tools tile keeps its name, its `aria-pressed` and its PRO / PRO ACTIVE badge; a badge carries STATE only (the GST tile's "verified", Enquiry types' "N of M", Subscription's "until …") | 19 Sep 2026, the user: *"remove all extra information from all setting options and give as buttons with headings and icons. also merge certain options which have similar functionality … can remove notifications and keep it inside the notifications section only and merge it with this in the notifications section on the top right without duplication."* |
 | C18 | Home's deck head carries a Manage door (7150-7154) and, since 18 Sep 2026, a Manage TILE sat on an artist's and an organization's grid | **No Manage tile on any grid.** `DOS_TOOLS.managed` is gone; `/managed` itself, its route, its pills on Home's empty day ("See everything you manage") and its proof all stay exactly as they were | 19 Sep 2026, the user: *"Remove manage from all tool tiles on every profile and remove this page"*, then *"just need to remove manage as the tile in tools nothing else changes."* The first cut deleted the page and added a redirect; the second message narrowed it, and the page came back before anything was committed |
+| C19 | The disc on a hero is a picture; C16 (19 Sep 2026) made HOME's disc the door to the public page | **The disc is the door on EVERY home**: the Profile tab, a studio's own home and a crew's home carry `avatarHref` too — `/person/{id}`, `/org/{id}`, `/studio/{id}`, `/crew/{id}`. And the Profile tab's **Teaches at** and **Runs** list STUDIOS only, so an artist page is never offered as a second thing to open | 19 Sep 2026, the user: *"Clicking on profile photo on any home tab should take to the profile page for that user. Same profile should be visible on discover — right now I can see duplicate profile pages; there should be only one way to view these pages from both home and discover or any other hyperlink in the system."* `/artist/{id}` keeps redirecting (Rule 14) — it is an address, not a second page |
+| C20 | The Profile tab prints the rank in its metal beside Followers and Following (10720-10732) | **No rank on the Profile tab.** Where you stand is the Stats chip's own screen, which prints the place WITH its population | 19 Sep 2026, the user: *"remove rank from profile tab."* A bare "#4" beside two follower counts said less than it implied; `findMyPlace` was also the only reason that page made a second round trip, so it makes one read now |
+| C21 | The bottom bar on a studio's or a crew's own pages is the ENTITY's — Home · Inbox (C14, 18 Sep 2026) | **Home · Discover · Inbox.** Discover is a DOOR out of the entity, never a lit tab there | 19 Sep 2026, the user: *"studio and organizations can have Discover in navbar."* The organization ACCOUNT already had it on the main bar; a studio's own pages were the one place it was missing. What is refused is BOOKING, and that is refused where the button is drawn (R31), not by hiding the shelf |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -7372,6 +7567,8 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **Memberships, what the slice left (19 Sep 2026):** a membership has **no expiry** — it is units, not months, so a pass bought today is still spendable next year (the user's four things named no date, and inventing one would change what people hold); **no refund path** — a `pending_payment` pass that is never paid simply stays unpaid and takes no place, and a paid pass cannot be handed back (a refund on a membership order is a decision about money nobody has made); **a membership is not a seat guarantee** — spending a unit books an ordinary seat under the ordinary capacity lock, so a full class refuses a pass exactly as it refuses a payment, and there is no members-only allocation; **no pause or transfer**; **the seller cannot see WHICH units a holder spent** from the holder's row (the class-wise list answers it from the other side); **`total_count` counts passes SOLD, never passes live**, so cancelling one does not put it back on sale; **a priced membership on an artist's page is bought from the profile, not from a class** — a class page offers only passes already held; and the **statement's source split is two rows** (Classes · Memberships) with no chips to filter by, which is the rest of the 28 Aug source-bar row | S_memberships 16846 | an expiry and a refund path are product decisions; the rest are their own slices |
+| **An organization cannot book, and four smaller places still do not say so** (19 Sep 2026): the **calendar's** Train-side button and **/my-classes** draw a booking control only for a booking that already exists, and an organization can hold none — correct today, and it would be wrong the moment either screen offered a NEW booking; a **crew** and an **enquiry** are refused by `guard_person_only` with no sentence in front of them (an organization is not offered Create crew, and the Enquiry button is drawn on a public page whatever the viewer is); and **nothing tells an organization why** on a page it cannot act on other than the two booking bars | — (the prototype has one kind of person) | a sentence at each remaining door, when one turns out to be reachable |
 | **Routines, what the slice left (19 Sep 2026):** a routine's VIDEO is a link only — the user's own list says so, and a video file would be a second bucket with its own size and its own player; there is no EDIT sheet on a routine's page yet (make a new one, or delete — `save_routine` already takes an id, so the sheet is a form away); a routine carries no PARTS, no notes and no price (the prototype's `choreography:"broken into 4 parts"` and its ₹499 routine sale are a marketplace this app does not have); the desk has no Live/Draft filter (a draft wears its badge in the list); a routine is never shown on a PUBLIC page — only on the class page, to people who can read the class — so "the routines this artist teaches" is not a thing a stranger browses; and the usage counts a person ONCE PER CLASS through attendance rows, so somebody who danced the same routine at two studios is two rows in TAUGHT IN and one row in DANCERS, which is the honest reading of "how many people" | S_choreos 17115, S_routinedetail 17215, 7546 | an edit sheet is a form; parts/notes/price need fields and a decision; a public routines list is a privacy decision |
 | **The profile-page re-cut, what it left (19 Sep 2026):** ⚠ **an organization's page has no "Owner" row** — the user asked for "one of the users added from team in organizations", and an organization is ONE LOGIN with no team table (8 Sep 2026), so there is no user to name; the Studios group stands where Owner would (an organization-members slice is the thing that closes it); **Call is off an artist's page** by the user's list (Call for studios and organizations) — a person's published number stays on the record, the Edit sheet says it is not shown, and one word puts it back if that reading was wrong; **an artist who held ten header pictures still holds them** — the page shows five, the cap refuses a sixth, the Edit sheet lets the rest come down; a **crew has no About** (no column), so its Bio is nothing and its page goes hero → Follow → buttons → roster; the **Following sheet's Organizations rows carry the logo but no city link** and a followed crew's row opens its page; the studio's **`upcomingSessions` and `faculty` left `PublicTenantProfile`** (the team is the roster now; the schedule is the Schedule bar); `person_teaches_at` still names an artist's OWN page among the places they teach and the page filters it to STUDIOS — a cleaner read would filter in SQL; the org's Location button is Maps by NAME + CITY (an organization has no address of its own — **a studio's opens its PIN since later on 19 Sep 2026** when `location_set_at` is stamped); the guest Follow link on a public page also carries `data-followers`, so a stranger's page states the count in the DOM though it prints none. **The user's answers (19 Sep 2026) turned four of these into PUSH 2 — BUILT the same day, dry-run 22/22, WAITING ON THE APPLY (NEXT TO DO #0r):** an organization team so Owner names a person (R28); a Call TOGGLE on an artist's and a crew's page, off by default; an organization's own pin behind its Location button; and **a stats-and-rankings page for somebody ELSE's profile** (R29). **What push 2 itself leaves:** an organization's team members hold no powers (labels only — a decision if one is ever wanted); a crew has a number now but still no About; a SIGNED-IN direct API reader can still read `profiles.phone` off the row whatever the switch says (Step 1's policy — the switch governs every page and every stranger); the org's pin is set from Edit profile only (no "use my location" on Home); `/org/{id}/stats` ranks its studios and has no combined figure of its own (that is the owner's `/business/stats`); the person stats page has no History library behind the figures (the record's three sides and the two rows, by design). **And the picker's Scan reads a code the app does not yet draw:** `QRBlock` is decorative, so a real QR on every profile is a small encoder dependency, the user's call. ⚠ **And one the proof found on the applied schema (19 Sep 2026):** a crew leader whose crew has header pictures **cannot be deleted** — `crew_header_photos`' audit-column FKs to `auth.users` break the cascade with a 500; `20260919130000_a_crew_leader_can_be_deleted` (two `drop constraint`s) is written, dry-run 6/6 and HELD for the user's word (NEXT TO DO #0q); reachable today only from the admin API, which is where the proof met it | S_profiletab 10875-10940, 11000-11060 | push 2 (#0r); the QR encoder a decision (c); #0q one apply |
 | ~~**Crew enquiries — the migration is WRITTEN, DRY-RUN 28/28 and HELD**~~ **CLOSED 18 Sep 2026** — `20260918160000` applied on the user's word and wired: the sheet on a crew's page (three kinds), the crew's Inbox Enquiries side, the leader's `/inbox`, the detail page's sides. **What it leaves:** a crew has no phone, so the sender's Call on a crew's enquiry always reads "no number"; a crew keeps no enquiry-type preferences (the three kinds are fixed); the crew's inbox has no Sent side (a crew sends none) | ENQ_TYPES 4900-4923; publicEntity crew 10871 | decisions (c) |

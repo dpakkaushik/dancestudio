@@ -50,6 +50,11 @@ const classFields = z.object({
   lat: z.coerce.number().min(-90).max(90).optional(),
   lng: z.coerce.number().min(-180).max(180).optional(),
   mapsUrl: z.string().url().max(400).optional(),
+  /* WHOSE PASS PAYS FOR A SEAT (19 Sep 2026) — the form's two switches. They
+     travel as "1" or an empty string, so a missing field reads as off; the
+     database is what refuses a pass a class does not admit. */
+  allowsStudioMemberships: z.coerce.boolean(),
+  allowsArtistMemberships: z.coerce.boolean(),
 });
 
 const endsAfterStart = {
@@ -114,6 +119,8 @@ const readFields = (formData: FormData) => ({
   lat: (formData.get("lat") as string) || undefined,
   lng: (formData.get("lng") as string) || undefined,
   mapsUrl: (formData.get("mapsUrl") as string) || undefined,
+  allowsStudioMemberships: (formData.get("allowsStudioMemberships") as string) === "1",
+  allowsArtistMemberships: (formData.get("allowsArtistMemberships") as string) === "1",
 });
 
 async function requireUser() {
@@ -160,6 +167,8 @@ export async function createClassAction(
       lat: d.lat ?? null,
       lng: d.lng ?? null,
       mapsUrl: d.mapsUrl ?? null,
+      allowsStudioMemberships: d.allowsStudioMemberships,
+      allowsArtistMemberships: d.allowsArtistMemberships,
     });
     // the asks go out once the class they are about exists
     if (people) {
@@ -203,6 +212,8 @@ export async function updateClassAction(
       lat: d.lat ?? null,
       lng: d.lng ?? null,
       mapsUrl: d.mapsUrl ?? null,
+      allowsStudioMemberships: d.allowsStudioMemberships,
+      allowsArtistMemberships: d.allowsArtistMemberships,
     });
     if (people) {
       await reconcileClassPeople(supabase, d.classId, people);

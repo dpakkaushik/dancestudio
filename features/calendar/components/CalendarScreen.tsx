@@ -104,6 +104,10 @@ const toTileClass = (e: CalendarEntry): DanceClass => ({
   lat: null,
   lng: null,
   mapsUrl: null,
+  /* a card stands in for the class; whose pass pays is the class’s own answer,
+     read on its page — these carry the column defaults so the shape matches */
+  allowsStudioMemberships: true,
+  allowsArtistMemberships: false,
   session: { id: e.sessionId, startsAt: e.startsAt, endsAt: e.endsAt },
 });
 

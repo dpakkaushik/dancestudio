@@ -35,6 +35,10 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   lat: null,
   lng: null,
   mapsUrl: null,
+  /* a card stands in for the class; whose pass pays is the class’s own answer,
+     read on its page — these carry the column defaults so the shape matches */
+  allowsStudioMemberships: true,
+  allowsArtistMemberships: false,
 });
 
 /* the class behind a confirmed ask, as the tile draws it (19 Sep 2026) */
@@ -57,6 +61,10 @@ const askToTileClass = (c: MyClaimAsk): DanceClass => ({
   lat: null,
   lng: null,
   mapsUrl: null,
+  /* a card stands in for the class; whose pass pays is the class’s own answer,
+     read on its page — these carry the column defaults so the shape matches */
+  allowsStudioMemberships: true,
+  allowsArtistMemberships: false,
 });
 
 /** YOUR CLASSES — the Home grid's Classes tile (18 Sep 2026, the user's list for

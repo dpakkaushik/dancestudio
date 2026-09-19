@@ -87,6 +87,7 @@ export function IdentityHero({
   avatar,
   avatarAlt,
   avatarHref,
+  avatarLabel = "Public view",
   shots = [],
   corner,
   testId,
@@ -125,6 +126,11 @@ export function IdentityHero({
    *  profile photo on home tab takes to profile") — Home hands it the account's
    *  public page; a page that passes nothing draws a plain disc */
   avatarHref?: string;
+  /** what the disc is CALLED when it is a door. ⚠ A page that also carries the
+   *  eye in its corner must pass its own word here, or two controls on one
+   *  screen answer to "Public view" and neither a screen reader nor a strict
+   *  locator can tell them apart (19 Sep 2026). */
+  avatarLabel?: string;
   /** THE HEADER — what swipes across the top */
   shots?: HeroShot[];
   /** controls pinned to the hero's top-right corner (the Profile tab's Edit and
@@ -167,7 +173,7 @@ export function IdentityHero({
       <div style={{ position: "relative", padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>
           {avatarHref ? (
-            <Link href={avatarHref} aria-label="Public view" style={{ display: "block", flexShrink: 0, textDecoration: "none" }}>
+            <Link href={avatarHref} aria-label={avatarLabel} style={{ display: "block", flexShrink: 0, textDecoration: "none" }}>
               <ProfileDisc name={name} grad={grad} photo={avatar} photoAlt={avatarAlt} testId="hero-disc" />
             </Link>
           ) : (

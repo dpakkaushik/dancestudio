@@ -50,6 +50,10 @@ const classOf = (e: CalendarEntry): DanceClass => ({
   lat: null,
   lng: null,
   mapsUrl: null,
+  /* a card stands in for the class; whose pass pays is the class’s own answer,
+     read on its page — these carry the column defaults so the shape matches */
+  allowsStudioMemberships: true,
+  allowsArtistMemberships: false,
 });
 
 /* an event's day on the IST clock the form took it in (managed.ts does the same);

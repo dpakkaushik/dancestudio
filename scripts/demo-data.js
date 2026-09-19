@@ -746,6 +746,52 @@ async function seed() {
   log("their usage is counted from the registers above — sessions held and the dancers who checked in");
 
   /* ────────────────────────────────────────────────────────────────────────
+     MEMBERSHIPS — a studio's and an artist's, sold, held and spent (19 Sep 2026)
+
+     Four things make one: a name, classes or hours, a price and how many exist.
+     A FREE one is granted the moment it is taken, so the demo world can hold
+     real passes without the payment rail; the priced one is there to be bought
+     from the studio's own page. A pass is spent by BOOKING with it, which is
+     what gives the usage screens something to show — per class and per student,
+     with the progress bar reading off real units.
+     ──────────────────────────────────────────────────────────────────────── */
+  console.log("\nMemberships");
+  const mkMembership = (h, businessId, m) =>
+    rpc(h, "save_membership", {
+      p_membership_id: null,
+      p_business_id: businessId,
+      p_name: m.name,
+      p_unit: m.unit ?? "classes",
+      p_units: m.units,
+      p_price_inr: m.price,
+      p_total_count: m.total,
+      p_status: "live",
+    });
+  const take = (u, m) => rpc(u.h, "buy_membership", { p_membership_id: m.id });
+  const spend = (u, passId, s) => rpc(u.h, "book_with_membership", { p_pass_id: passId, p_session_id: s.id });
+
+  await mkMembership(rhythm.h, s29.id, { name: "10-class pass", units: 10, price: 2500, total: 25 });
+  const s29Trial = await mkMembership(rhythm.h, s29.id, { name: "Trial 3", units: 3, price: 0, total: 30 });
+  const dlfHours = await mkMembership(rhythm.h, dlf.id, { name: "20 studio hours", unit: "hours", units: 20, price: 0, total: 15 });
+  await mkMembership(eeeCo.h, eee.id, { name: "Kothrud 10", units: 10, price: 2000, total: 20 });
+  const adityaEight = await mkMembership(aditya.h, adityaPage.id, { name: "Aditya · 8 classes", units: 8, price: 0, total: 12 });
+  log("Rhythm sells 10-class pass ₹2,500 (25) and Trial 3 free (30) at Sector 29, 20 studio hours free (15) at DLF · EEE sells Kothrud 10 ₹2,000 (20) · Aditya sells 8 classes free (12)");
+
+  /* who holds one. A free pass is active at once; a priced one waits for money,
+     which is what the studio's own page is for. */
+  const rohitTrial = await take(rohit, s29Trial);
+  const priyaTrial = await take(priya, s29Trial);
+  await take(nikhil, dlfHours);
+  const nikhilAditya = await take(nikhil, adityaEight);
+  await take(kabir, adityaEight);
+
+  /* and who has spent one — a seat booked with the pass rather than paid for */
+  await spend(rohit, rohitTrial.id, sHiphop);
+  await spend(priya, priyaTrial.id, sHiphop);
+  await spend(nikhil, nikhilAditya.id, sAdityaS29);
+  log("Rohit and Priya took Trial 3 and spent one each on Hip-Hop at Sector 29 (1 of 3) · Nikhil took Aditya's 8 and spent one on his Sector 29 class · Nikhil holds 20 DLF hours unspent · Kabir holds Aditya's 8 unspent");
+
+  /* ────────────────────────────────────────────────────────────────────────
      THE PLATFORM — a support thread, a report
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nPlatform");

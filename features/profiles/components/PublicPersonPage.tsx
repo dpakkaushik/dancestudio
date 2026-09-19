@@ -9,6 +9,8 @@ import { CREW_ROLE_WORD } from "@/types/crew";
 import { KIND_BADGE, kindOf, memberNoWords } from "@/types/profile";
 import { BioBlock } from "./BioBlock";
 import { ActionRow, CallButton, MailButton } from "./ContactButtons";
+import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
+import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowFigures } from "./FollowFigures";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
@@ -57,6 +59,7 @@ export function PublicPersonPage({
   following,
   signedIn,
   canFollow = true,
+  memberships = [],
 }: {
   person: PublicPerson;
   /** THE HEADER PICTURES — this person's own, as many as their kind shows */
@@ -66,6 +69,8 @@ export function PublicPersonPage({
   signedIn: boolean;
   /** false when either side is an organization viewer, or this is you */
   canFollow?: boolean;
+  /** what this artist has ON SALE through their own page (19 Sep 2026) */
+  memberships?: MembershipOnSaleRow[];
 }) {
   const { profile } = person;
   /* the word over the name is the KIND's: an organization, an artist while the plan is live, a user */
@@ -148,6 +153,10 @@ export function PublicPersonPage({
           {kind === "artist" && profile.phone && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
         </ActionRow>
+
+        {/* ── WHAT THEY SELL (19 Sep 2026): an artist's memberships, bought from
+            their own profile page exactly as a studio's are from its ── */}
+        <MembershipsOnSale memberships={memberships} businessName={profile.fullName} accent={RC} signedIn={signedIn} canBuy={!isMe} />
 
         {/* THE PLACE THIS PROFILE GOES (10905-10940): a business's schedule is a
             list of sessions you can still book */}

@@ -10,6 +10,7 @@ import {
   findMyEnrolledSessionIds,
 } from "@/repositories/enrollments";
 import type { EnrollmentStatus } from "@/types/enrollment";
+import { canBook } from "@/types/profile";
 
 /** Learner class listing — lifted from the prototype's Discover "Upcoming classes"
  *  shelf (DanceOSApp.jsx:4771-4809). City/style filters arrive with Step 5. */
@@ -80,6 +81,7 @@ export default async function ClassesPage() {
                   mine={mine.get(c.session.id) ?? null}
                   priceInr={c.priceInr}
                   shareSlug={c.shareSlug}
+                  canBook={canBook(profile?.role)}
                 />
               ) : null
             }

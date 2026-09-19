@@ -11,6 +11,25 @@ export type PersonKind = "user" | "artist" | "org";
 export const kindOf = (role: ProfileRole, isArtist: boolean): PersonKind =>
   role === "org" ? "org" : isArtist ? "artist" : "user";
 
+/** ⚠ AN ORGANIZATION DOES NOT BOOK (19 Sep 2026, the user: "studio and
+ *  organizations can have Discover in navbar but should not be able to book any
+ *  class or event — make sure it is applied in all logics").
+ *
+ *  This has been the DATABASE's rule since 8 Sep 2026 — `guard_person_only`
+ *  refuses an organization account a class seat, an assistant seat, an event
+ *  booking, a crew, an enquiry and an order across eight tables (R11) — and the
+ *  screens went on offering the button anyway, so the only way to learn it was
+ *  to press Book and be refused. This is that rule, said where the button is
+ *  drawn. A STUDIO is not an account: browsing as an organization is how a
+ *  studio's people reach Discover, so one test covers both.
+ *
+ *  It is a PRESENTATION gate over a real one. Nothing here is the enforcement;
+ *  the RPCs are, and they refuse a forged press exactly as they always did. */
+export const canBook = (role: ProfileRole | null | undefined): boolean => role !== "org";
+
+/** What a page says in place of the button, in the rule's own words. */
+export const NO_BOOKING_FOR_AN_ORGANIZATION = "An organization runs classes and events — it does not book them. Sign in as yourself to take a place.";
+
 /** One link where else to find a person (S_profiletab 10760): a known
  *  platform's name, or a short custom label, and the URL. Order is the
  *  person's own — the rail prints them as arranged. */

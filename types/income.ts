@@ -24,6 +24,9 @@ export interface MonthIncome {
   label: string;
   /** captured payments (a refunded payment still CAME IN; its refund is a deduction) */
   grossInr: number;
+  /** the membership half of gross (19 Sep 2026) — seats are the rest, so the
+   *  statement's WHERE IT CAME FROM has two real rows instead of one guess */
+  membershipsInr: number;
   paymentCount: number;
   /** refunds actually processed in this month — the statement's one real deduction */
   refundedInr: number;

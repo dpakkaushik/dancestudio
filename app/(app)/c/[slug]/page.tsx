@@ -4,6 +4,9 @@ import { cache } from "react";
 import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findArtistPageOwner } from "@/repositories/publicOrganization";
+import { findPassesForSession } from "@/repositories/memberships";
+import { findProfileById } from "@/repositories/profiles";
+import { canBook } from "@/types/profile";
 import { canSetClassRoutines, findClassRoutines, findMyRoutines } from "@/repositories/routines";
 import { findClassRegister } from "@/repositories/attendance";
 import { findClaimsByClass } from "@/repositories/claims";
@@ -96,7 +99,7 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
      published classes only); and, for an artist's class, WHOSE profile the
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
-  const [receipt, register, paidUserIds, claims, room, ownerId, routines, myRoutines, canSetRoutines] = await Promise.all([
+  const [receipt, register, paidUserIds, claims, room, ownerId, routines, myRoutines, canSetRoutines, passes, viewerProfile] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByEnrollment(supabase, myBooking.id) : Promise.resolve(null),
     canManage ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     canManage && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
@@ -109,6 +112,13 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
     findClassRoutines(supabase, danceClass.id).catch(() => []),
     user ? findMyRoutines(supabase).catch(() => []) : Promise.resolve([]),
     user ? canSetClassRoutines(supabase, danceClass.id).catch(() => false) : Promise.resolve(false),
+    /* THE PASSES THIS VIEWER CAN SPEND HERE (19 Sep 2026): their own live
+       memberships that THIS class admits, with a unit left. The database reads
+       the class's two switches, so the bar never offers a pass the RPC refuses;
+       nothing is asked for a viewer who is not signed in or has no seat to take. */
+    user && sessionId && !myBooking ? findPassesForSession(supabase, sessionId).catch(() => []) : Promise.resolve([]),
+    /* WHO IS READING: an organization account books nothing (19 Sep 2026) */
+    user ? findProfileById(supabase, user.id).catch(() => null) : Promise.resolve(null),
   ]);
   const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
 
@@ -157,6 +167,9 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       routines={routines}
       myRoutines={myRoutines}
       canSetRoutines={canSetRoutines}
+      /* an organization reads this page and books nothing (19 Sep 2026) */
+      viewerCanBook={canBook(viewerProfile?.role)}
+      passes={passes}
     />
   );
 }

@@ -76,6 +76,9 @@ export function CrewHome({ crew, members, entries, header = [], todayKey }: { cr
           styleAria={(s) => `${s} — the crew's style`}
           avatar={photoUrl(crew.photo)}
           avatarAlt={crew.name}
+          /* the disc opens the crew's own public page (19 Sep 2026) */
+          avatarHref={`/crew/${crew.id}`}
+          avatarLabel="Open the crew's public page"
           shots={shots}
           corner={
             <>

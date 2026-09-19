@@ -224,6 +224,14 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
     check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
     check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the eye opens the studio's public page");
+    /* 19 Sep 2026, the user: "clicking on profile photo on any home tab should
+       take to the profile page for that user" — the disc is the SECOND door to
+       the same page, and it says which page it opens so the eye stays tellable
+       apart from it (two controls answering to one name is not a hierarchy) */
+    check((await org.getByRole("link", { name: "Open the studio's public page", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the DISC opens the same public page (19 Sep 2026)");
+    /* Discover joined the entity's bar the same day: allowed, while booking is not */
+    const studioBar = org.getByRole("navigation", { name: "Studio" });
+    check((await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 && (await studioBar.getByRole("link").count()) === 3, "studio bar: Home · Discover · Inbox — three (19 Sep 2026)");
     await shot("studio-initials");
 
     /* ⚠ AND IT IS OFF THE DESKS TOO NOW (18 Sep 2026, the user: "remove the blue
@@ -492,6 +500,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await me.getByTestId("my-hero").waitFor();
       check((await discImgs(me)) === 1 && (await railImgs(me)) === 1, "profile tab: the same disc and header");
       check((await me.getByLabel("Change your photo").count()) === 0 && (await me.getByLabel(/^Remove photo/).count()) === 0, "profile tab: and the same bare hero — no ＋, no ✕");
+      /* 19 Sep 2026: the disc is a door here too, and there is no rank beside the figures */
+      check((await me.getByRole("link", { name: "Open your public page", exact: true }).getAttribute("href")) === `/person/${userId}`, "profile tab: the disc opens your own public page");
+      check((await me.getByText(/rank$/).count()) === 0, "profile tab: no rank (19 Sep 2026, the user: 'remove rank from profile tab')");
       /* the person's own PUBLIC view is what a visitor sees, and nothing else */
       await me.goto(`${BASE}/person/${userId}`);
       await me.getByTestId("person-hero").waitFor();

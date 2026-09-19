@@ -7,8 +7,10 @@ import { kindOf } from "@/types/profile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
+import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findProfileById } from "@/repositories/profiles";
 import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
+import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/tenants";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -71,12 +73,27 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      when either side is one (the RPC refuses it too) */
   const viewer = isMe ? person.profile : user ? await findProfileById(supabase, user.id) : null;
   const canFollow = !isMe && !isOrg && viewer?.role !== "org";
-  const [following, header] = await Promise.all([
+  const [following, header, memberships] = await Promise.all([
     canFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist, ten for an organization (19 Sep 2026) */
     findPersonHeaderPhotos(supabase, userId, headerMaxFor(kindOf(person.profile.role, person.isArtist))),
+    /* WHAT THIS ARTIST SELLS (19 Sep 2026): the live memberships of the page
+       behind them — bought from this page, exactly as a studio's are from its */
+    person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId) : Promise.resolve([]),
   ]);
 
-  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} canFollow={canFollow} />;
+  /* ⚠ AN ARTIST'S PAGE IS MADE HERE TOO, NOT ONLY ON HOME (19 Sep 2026, the user:
+     "some artist profiles don't have enquiry button on profile"). The page every
+     ask hangs off was provisioned by Home alone, so anybody who took the plan and
+     then landed on their own profile — or was VISITED before they next opened
+     Home — had no page, and the Enquiry button was silently not drawn. Their own
+     visit makes it; a refusal is swallowed, exactly as Home swallows it, because
+     a profile must never fail to render over this. */
+  if (isMe && person.isArtist && !person.artistPageId) {
+    const made = await ensureArtistPage(supabase, person.profile, await findMyTeams(supabase).catch(() => []));
+    if (made) redirect(`/person/${userId}`);
+  }
+
+  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} canFollow={canFollow} memberships={memberships} />;
 }

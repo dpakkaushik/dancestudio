@@ -23,6 +23,14 @@ interface PaymentRow {
   status: string;
   method: string | null;
   created_at: string;
+  /** WHAT THIS MONEY WAS FOR (19 Sep 2026, the user: memberships "should also be
+   *  added to earnings for studio and artist"). The membership money already
+   *  reached this screen — the order carries the business, so the totals have
+   *  been right since the rail landed — but the statement printed one source row
+   *  called Classes over two real sources. The order names its subject, so now
+   *  it does not. A subscription payment has no order at all (`order_id` is
+   *  nullable since 10 Sep 2026), hence the null. */
+  orders: { membership_id: string | null } | null;
 }
 
 interface ProcessedRefundRow {
@@ -39,6 +47,8 @@ interface OpenRefundRow {
 interface Bucket {
   gross: number;
   count: number;
+  /** the membership half of gross — the rest is seats (19 Sep 2026) */
+  memberships: number;
   refunded: number;
   refundCount: number;
   methods: Map<string, { amount: number; count: number }>;
@@ -61,6 +71,7 @@ const refundMonthKey = (r: ProcessedRefundRow): string => monthKeyOf(r.decided_a
 const emptyBucket = (): Bucket => ({
   gross: 0,
   count: 0,
+  memberships: 0,
   refunded: 0,
   refundCount: 0,
   methods: new Map(),
@@ -78,7 +89,7 @@ export async function findTenantIncome(
   const [paymentsRes, refundsRes, openRes] = await Promise.all([
     supabase
       .from("payments")
-      .select("amount_inr, status, method, created_at")
+      .select("amount_inr, status, method, created_at, orders (membership_id)")
       .eq("business_id", tenantId)
       /* a refunded payment still CAME IN; the refund is its own deduction below */
       .in("status", ["captured", "refunded"])
@@ -130,6 +141,7 @@ export async function findTenantIncome(
     if (!bucket) continue;
     bucket.gross += p.amount_inr;
     bucket.count += 1;
+    if (p.orders?.membership_id) bucket.memberships += p.amount_inr;
     const method = normaliseMethod(p.method);
     const share = bucket.methods.get(method) ?? { amount: 0, count: 0 };
     share.amount += p.amount_inr;
@@ -155,6 +167,7 @@ export async function findTenantIncome(
       monthName: ref.monthName,
       label: ref.label,
       grossInr: bucket.gross,
+      membershipsInr: bucket.memberships,
       paymentCount: bucket.count,
       refundedInr: bucket.refunded,
       refundCount: bucket.refundCount,
