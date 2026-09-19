@@ -118,6 +118,11 @@
 >   `seed` clean, the demo world now holding five memberships across three
 >   sellers with three spent on real seats. A fifteenth happy-path segment drives
 >   the whole loop from the four-field form to the usage page's two sides.
+>   **PUSHED AND LIVE (`85f7b29`):** `/` 307, `/login` · `/discover` ·
+>   `/legal/terms` 200, and a STRANGER on a live studio's page reads the
+>   MEMBERSHIPS block with both its rows and is offered sign-in rather than a
+>   button — while `membership_passes` answers anon **401**. The price is public;
+>   who holds one is not.
 >   ⚠ **Spending a pass is proven by the migration's dry run, not by the e2e** —
 >   every class in that story is already booked by the one learner it has, and
 >   inventing a second learner to spend a unit is a bigger change to the story
@@ -3427,6 +3432,15 @@ summary; the report has the evidence.
   List / Unlist; no 18+ gate; the dead management token.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
+
+0a0. **⚠ `scripts/stranger-smoke.ps1` DOES NOT EXIST**, and the go-live sequence
+   in #0s and #0r names it. It was described on 19 Sep 2026 and never written —
+   or was written outside the repo. Until it exists, the live smoke is four
+   `Invoke-WebRequest` probes by hand (`/` 307, `/login` · `/discover` ·
+   `/legal/terms` 200) plus whatever the slice itself widened, which for
+   memberships was a stranger's read of a studio's page. **Write it, or take its
+   name out of both sequences** — a command in a runbook that is not there is
+   worse than no runbook.
 
 0a1. **⚠ THE MEMBERSHIPS SLICE OWES A `.ps1` PROOF, AND IT IS THE ONE PIECE OF
    COVER THAT IS MISSING.** `20260919170000_memberships` was proven by a
