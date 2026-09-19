@@ -7,6 +7,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import { KIND_BADGE, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
+import { MEMBER_ROLE_WORD } from "@/types/staff";
 import { BioBlock } from "./BioBlock";
 import { ActionRow, CallButton, MailButton } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
@@ -88,6 +89,12 @@ export function PublicPersonPage({
   const canAsk = !isMe && kind === "artist" && Boolean(person.artistPageId);
   /* "Studios taught at" — the studios, never the artist's own page listed as a place they teach */
   const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio");
+  /* ⚠ WHERE THEY ARE SEATED (20 Sep 2026, the user's list E) — a different fact
+     from the one above, which counts published classes: somebody asked onto a
+     team who has not taught yet is associated and teaches at nothing. Their own
+     page is not an association with themselves, so it is left out. */
+  const studiosWith = person.associations.filter((a) => a.tenantType === "studio");
+  const artistsWith = person.associations.filter((a) => a.tenantType === "artist_page" && a.role !== "owner");
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -180,6 +187,40 @@ export function PublicPersonPage({
           <Group title="Studios taught at" n={studiosTaughtAt.length}>
             {studiosTaughtAt.map((t) => (
               <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[t.kinds, `${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
+            ))}
+          </Group>
+        ) : null}
+
+        {/* ── WHERE THEY ARE SEATED (20 Sep 2026, the user's list E) ── */}
+        {studiosWith.length ? (
+          <Group title="Studios associated with" n={studiosWith.length}>
+            {studiosWith.map((a) => (
+              <Row
+                key={a.tenantId}
+                href={`/studio/${a.tenantId}`}
+                markName={a.tenantName}
+                photo={a.photoPath ? photoUrl(a.photoPath) : null}
+                title={a.tenantName}
+                sub={a.city ?? ""}
+                right={MEMBER_ROLE_WORD[a.role]}
+              />
+            ))}
+          </Group>
+        ) : null}
+        {artistsWith.length ? (
+          <Group title="Artists associated with" n={artistsWith.length}>
+            {artistsWith.map((a) => (
+              /* an artist page IS the person behind it (18 Sep 2026) — open them
+                 directly rather than the address that only redirects */
+              <Row
+                key={a.tenantId}
+                href={a.ownerId ? `/person/${a.ownerId}` : `/artist/${a.tenantId}`}
+                markName={a.tenantName}
+                photo={a.photoPath ? photoUrl(a.photoPath) : null}
+                title={a.tenantName}
+                sub={a.city ?? ""}
+                right={MEMBER_ROLE_WORD[a.role]}
+              />
             ))}
           </Group>
         ) : null}

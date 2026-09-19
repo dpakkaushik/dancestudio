@@ -31,6 +31,23 @@ export interface PersonTeachesAt {
   kinds: string;
 }
 
+/** A SEAT THIS PERSON HOLDS (20 Sep 2026, the user's list E): where they are on
+ *  a team, from the business's side — which is a different fact from
+ *  `teachesAt`, that counts PUBLISHED CLASSES. Somebody asked onto a studio's
+ *  team who has not taught a published class yet is associated with it and
+ *  teaches at nothing; both are true and the page says both. ⚠ A `staff` seat
+ *  is never returned — a front-desk job is not a public association. */
+export interface PersonAssociation {
+  tenantId: string;
+  tenantName: string;
+  tenantType: "studio" | "artist_page";
+  city: string | null;
+  photoPath: string | null;
+  role: "owner" | "trainer" | "visiting_faculty" | "assistant";
+  /** the person behind an artist page — its row opens them, not the redirect */
+  ownerId: string | null;
+}
+
 export interface PublicPerson {
   profile: Profile;
   /** the plan's word, through artist_ids — the badge over the name is the plan's to give */
@@ -40,6 +57,8 @@ export interface PublicPerson {
   following: number;
   crews: PersonCrew[];
   teachesAt: PersonTeachesAt[];
+  /** the seats they hold on listed businesses — "Studios / Artists associated with" */
+  associations: PersonAssociation[];
   /** the businesses this person OWNS, when they are listed (a studio's page is public) */
   runs: Array<{ tenantId: string; tenantName: string; tenantType: "studio" | "artist_page"; city: string | null; photoPath: string | null }>;
   /** the listed artist page behind an artist — what an Enquiry on their profile is
@@ -152,7 +171,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     } as Parameters<typeof toProfile>[0]);
   }
 
-  const [statsRes, countsMap, crewsRes, teachesRes, runsRes, artistIds, artistPageRes] = await Promise.all([
+  const [statsRes, countsMap, crewsRes, teachesRes, runsRes, artistIds, artistPageRes, assocRes] = await Promise.all([
     supabase.rpc("person_dance_stats", { p_user_id: userId }),
     findPersonFollowerCounts(supabase, [userId]),
     supabase
@@ -176,6 +195,8 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     findArtistIds(supabase, [userId]),
     /* the page behind an artist, readable signed out (`artist_page_of`, 18 Sep 2026) */
     supabase.rpc("artist_page_of", { p_user_id: userId }),
+    /* where they are SEATED (20 Sep 2026) — listed businesses only, `staff` left out */
+    supabase.rpc("person_associations", { p_user_id: userId }),
   ]);
 
   const sRow = (Array.isArray(statsRes.data) ? statsRes.data[0] : statsRes.data) as StatsRow | undefined;
@@ -242,7 +263,21 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
     .filter((r) => r.businesses && !r.businesses.deleted_at && r.businesses.visibility === "listed")
     .map((r) => ({ tenantId: r.businesses!.id, tenantName: r.businesses!.name, tenantType: r.businesses!.type, city: r.businesses!.city, photoPath: r.businesses!.profile_photo_path ?? null }));
 
+  /* ⚠ swallowed on purpose, like `artist_page_of`: a profile must never fail to
+     render because one association read went wrong (19 Sep 2026's rule) */
+  const associations: PersonAssociation[] = assocRes.error
+    ? []
+    : ((assocRes.data ?? []) as Array<{ business_id: string; business_type: "studio" | "artist_page"; business_name: string; city: string | null; photo_path: string | null; member_role: PersonAssociation["role"]; owner_id: string | null }>).map((r) => ({
+        tenantId: r.business_id,
+        tenantName: r.business_name,
+        tenantType: r.business_type,
+        city: r.city,
+        photoPath: r.photo_path ?? null,
+        role: r.member_role,
+        ownerId: r.owner_id ?? null,
+      }));
+
   const c = countsMap.get(userId) ?? { followers: 0, following: 0 };
   const artistPageId = artistPageRes.error ? null : ((artistPageRes.data as string | null) ?? null);
-  return { profile, isArtist: artistIds.has(userId), stats, followers: c.followers, following: c.following, crews, teachesAt, runs, artistPageId };
+  return { profile, isArtist: artistIds.has(userId), stats, followers: c.followers, following: c.following, crews, teachesAt, associations, runs, artistPageId };
 }

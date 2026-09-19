@@ -176,7 +176,7 @@ interface MembershipRow {
  *  this role, so the register they teach opens for them the way it opens for any
  *  live member with the job (can_run_register_for_class). Never invited into
  *  directly; it is what accepting a class makes you. */
-export type MemberRole = "owner" | "trainer" | "staff" | "visiting_faculty";
+export type MemberRole = "owner" | "trainer" | "staff" | "visiting_faculty" | "assistant";
 
 export interface MyMembership {
   tenant: Tenant;

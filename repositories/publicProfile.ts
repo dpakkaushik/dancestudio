@@ -47,7 +47,7 @@ interface StyleRow {
 
 interface TeamRow {
   user_id: string;
-  member_role: "owner" | "trainer" | "visiting_faculty";
+  member_role: "owner" | "trainer" | "visiting_faculty" | "assistant";
   full_name: string;
   photo_path: string | null;
   is_org: boolean;

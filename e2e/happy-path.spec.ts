@@ -1282,8 +1282,16 @@ test.describe.serial("DanceOS, end to end", () => {
        the studio, whose own meta line reads "Artist · 1 class · Pune". Two matches
        for a bare "ARTIST", so the one that is the hero's is asked for by name. */
     await expect(learner.getByTestId("person-hero").getByText("ARTIST")).toBeVisible();
-    // and the studio they teach at is on the page now, because they really do
-    await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toBeVisible();
+    /* ⚠ AND THE STUDIO IS ON THIS PAGE TWICE SINCE 20 Sep 2026, ON PURPOSE.
+       "Studios taught at" counts PUBLISHED CLASSES; "Studios associated with"
+       counts the SEAT they hold (`person_associations`, the user's list E).
+       Both are true of this trainer — they accepted the class in segment 1 AND
+       that acceptance seated them as visiting faculty — so a bare locator for
+       the studio's door is now a strict-mode violation rather than a check.
+       Assert what the slice actually promises: both groups, one door each. */
+    await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toHaveCount(2);
+    await expect(learner.getByText("Studios taught at")).toBeVisible();
+    await expect(learner.getByText("Studios associated with")).toBeVisible();
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
     // following a person is one bit, and the count moves — as data on the toggle,

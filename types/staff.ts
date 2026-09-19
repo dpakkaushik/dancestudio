@@ -6,7 +6,7 @@ import type { MemberRole } from "@/repositories/tenants";
  *  18 Sep (an outside teacher who accepts a class gets it) and the Team desk
  *  could not hand it out, which made "label them according to what profile I am
  *  in" impossible to satisfy for a studio. */
-export type InvitableRole = "trainer" | "staff" | "visiting_faculty";
+export type InvitableRole = "trainer" | "staff" | "visiting_faculty" | "assistant";
 export type InviteStatus = "pending" | "accepted" | "declined" | "revoked";
 
 export interface TenantInvite {
@@ -57,6 +57,7 @@ export const MEMBER_LEVEL: Record<MemberRole, string> = {
   trainer: "Admin",
   staff: "Staff",
   visiting_faculty: "Faculty",
+  assistant: "Staff",
 };
 
 /** and the line under the name — what this role may actually do (18428-18429).
@@ -67,38 +68,51 @@ export const MEMBER_GRANTS: Record<MemberRole, string> = {
   trainer: "register ✓ students ✓ teaches the classes they accept",
   staff: "students ✓ register when asked ✓",
   visiting_faculty: "teaches the class they accepted · register on it",
+  assistant: "assists on the classes they accept · register when asked ✓",
 };
 
 /** THE WORDS ON THE TEAM DESK (18 Sep 2026, the user: "add Faculty, Assistants and
  *  other type of members"; an outside teacher who accepts "becomes Visiting
  *  Faculty in Team"). `trainer` is the role's name in the database and Faculty
  *  is its word on the screen. */
+/** ⚠ `staff` READS "Other team member" SINCE 20 Sep 2026. The user's list gives a
+ *  studio five seats — Owners · Faculty · Visiting Faculty · Assistants · Other
+ *  Team Members — so `staff` stopped being the catch-all called "Staff" and
+ *  became the honest last one, and `assistant` is its own seat. */
 export const MEMBER_ROLE_WORD: Record<MemberRole, string> = {
   owner: "Owner",
   trainer: "Faculty",
-  staff: "Staff",
+  staff: "Other team member",
   visiting_faculty: "Visiting faculty",
+  assistant: "Assistant",
 };
 
 export const INVITABLE_ROLES: ReadonlyArray<readonly [InvitableRole, string]> = [
   ["trainer", "Faculty"],
   ["visiting_faculty", "Visiting faculty"],
-  ["staff", "Staff"],
+  ["assistant", "Assistant"],
+  ["staff", "Other team member"],
 ];
 
 /** THE LABELS THIS PROFILE HAS TO GIVE (19 Sep 2026, the user: "Should be able
  *  to Label them according to what profile I am in. and labels available for
  *  that with permissions section"). A STUDIO has faculty, visiting faculty and
- *  staff; an ARTIST PAGE is one person's, so what it hands out is help — an
- *  assistant is `staff`, and somebody who teaches a class of theirs is faculty.
+ *  staff; an ARTIST PAGE is one person's, so what it hands out is help.
  *  Visiting faculty is a studio's word for a guest teacher and means nothing on
- *  an artist's own page, so it is not offered there. */
+ *  an artist's own page, so it is not offered there.
+ *
+ *  ⚠ RE-CUT TO THE USER'S LIST, 20 Sep 2026: a STUDIO now offers Faculty ·
+ *  Visiting faculty · Assistant · Other team member (Assistant is its own seat
+ *  since this migration — it used to be `staff` wearing that word on an artist's
+ *  page only), and an ARTIST PAGE offers exactly what their list gave it,
+ *  "1. Assistant, 2. Other Team Members" — so Faculty comes OFF an artist page:
+ *  a person's own page has no faculty, it has help. */
 export const rolesFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<readonly [InvitableRole, string]> =>
   type === "studio"
     ? INVITABLE_ROLES
     : ([
-        ["trainer", "Faculty"],
-        ["staff", "Assistant"],
+        ["assistant", "Assistant"],
+        ["staff", "Other team member"],
       ] as const);
 
 /** WHAT EACH LABEL ACTUALLY CARRIES — the permissions section beside the labels
@@ -127,6 +141,13 @@ export const MEMBER_POWERS: Record<InvitableRole | "owner", ReadonlyArray<readon
     ["Pay the team", false],
     ["Change what the business says", false],
   ],
+  assistant: [
+    ["Create and edit classes", false],
+    ["Run any register", false],
+    ["See and settle refunds", false],
+    ["Pay the team", false],
+    ["Change what the business says", false],
+  ],
   staff: [
     ["Create and edit classes", false],
     ["Run any register", false],
@@ -141,5 +162,6 @@ export const MEMBER_POWER_NOTE: Record<InvitableRole | "owner", string> = {
   owner: "The owner's seat cannot be given away.",
   trainer: "Runs the register on this business's classes and sees its students.",
   visiting_faculty: "Teaches the class they accepted, and runs the register on that one only.",
+  assistant: "Assists on the classes they are asked onto, and runs a register when it is handed to them.",
   staff: "Sees the students desk, and runs a register on a class they are asked onto.",
 };

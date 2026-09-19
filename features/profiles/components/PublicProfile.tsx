@@ -98,10 +98,13 @@ export function PublicProfile({
   const shots: HeroShot[] = header
     .filter((h) => h.url)
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${tenant.name}`, signed: h.signed }));
-  /* the three seats a studio's page names (19 Sep 2026: "Owner, Faculty, Visiting Faculty") */
+  /* the seats a studio's page names (19 Sep 2026: "Owner, Faculty, Visiting
+     Faculty"), and since 20 Sep the ASSISTANTS — the user's list E. A `staff`
+     seat is still never named: a front-desk job is not a public association. */
   const owners = profile.team.filter((m) => m.role === "owner");
   const faculty = profile.team.filter((m) => m.role === "trainer");
   const visiting = profile.team.filter((m) => m.role === "visiting_faculty");
+  const assistants = profile.team.filter((m) => m.role === "assistant");
   /* the owner is an organization more often than not — its row opens the organization's page */
   const teamRow = (m: PublicTeamMember, sub: string) => <Row key={m.userId} href={m.isOrg ? `/org/${m.userId}` : `/person/${m.userId}`} title={m.name} sub={sub} photo={photoUrl(m.photoPath)} />;
   const canAsk = !isMember && enquiryTypesFor(tenant.type).length > 0;
@@ -206,6 +209,7 @@ export function PublicProfile({
         {owners.length ? <Group title="Owner" n={owners.length}>{owners.map((m) => teamRow(m, m.isOrg ? "Organization" : "Owner"))}</Group> : null}
         {faculty.length ? <Group title="Faculty" n={faculty.length}>{faculty.map((m) => teamRow(m, "Faculty"))}</Group> : null}
         {visiting.length ? <Group title="Visiting faculty" n={visiting.length}>{visiting.map((m) => teamRow(m, "Visiting faculty"))}</Group> : null}
+        {assistants.length ? <Group title="Assistants" n={assistants.length}>{assistants.map((m) => teamRow(m, "Assistant"))}</Group> : null}
       </div>
       {/* the quiet control at the foot of a public page (10 Sep 2026) — not for
           its own members, who have the hub for anything that is wrong */}

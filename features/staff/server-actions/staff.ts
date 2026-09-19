@@ -25,8 +25,10 @@ export interface StaffActionResult {
 }
 
 /* VISITING FACULTY IS A SEAT THE DESK CAN HAND OUT (19 Sep 2026) — `set_member_role`
-   has admitted it since 18 Sep and only this list kept it out */
-const ROLE = z.enum(["trainer", "staff", "visiting_faculty"]);
+   has admitted it since 18 Sep and only this list kept it out. ⚠ ASSISTANT joined
+   it on 20 Sep (the user's list E): an artist page hands out Faculty and
+   Assistant, a studio all four. The RPC and both CHECKs decide; this is shape. */
+const ROLE = z.enum(["trainer", "staff", "visiting_faculty", "assistant"]);
 
 const inviteSchema = z.object({
   tenantId: z.string().uuid(),

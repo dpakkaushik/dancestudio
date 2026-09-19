@@ -84,15 +84,22 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
 
 /** A PUBLIC ORGANIZATION'S TEAM (push 2, 19 Sep 2026): the confirmed people it
  *  named, owners first — what its page prints under OWNER and TEAM. Empty for a
- *  private organization, by the definer read's own rule. */
+ *  private organization, by the definer read's own rule.
+ *  ⚠ 20 Sep 2026 (the user's list A): three labels are PUBLISHED — Owner,
+ *  Studio owner (which names the studio it owns) and Event team. A plain
+ *  `member` is the organization's own note and the definer read leaves it out,
+ *  so the page cannot print somebody the organization did not mean to name. */
 export interface PublicOrganizationTeamMember {
   memberId: string;
   userId: string;
-  role: "owner" | "member";
+  role: "owner" | "studio_owner" | "event_team";
   name: string;
   photoPath: string | null;
   city: string | null;
   isArtist: boolean;
+  /** the studio a `studio_owner` owns — null for the other two labels */
+  businessId: string | null;
+  businessName: string | null;
 }
 
 export async function findPublicOrganizationTeam(supabase: SupabaseClient, orgId: string): Promise<PublicOrganizationTeamMember[]> {
@@ -100,7 +107,7 @@ export async function findPublicOrganizationTeam(supabase: SupabaseClient, orgId
   if (error) {
     throw new Error(`publicOrganization.team failed: ${error.message}`);
   }
-  return ((data ?? []) as Array<{ member_id: string; user_id: string; role: "owner" | "member"; full_name: string; photo_path: string | null; city: string | null; is_artist: boolean }>).map((r) => ({
+  return ((data ?? []) as Array<{ member_id: string; user_id: string; role: "owner" | "studio_owner" | "event_team"; full_name: string; photo_path: string | null; city: string | null; is_artist: boolean; business_id: string | null; business_name: string | null }>).map((r) => ({
     memberId: r.member_id,
     userId: r.user_id,
     role: r.role,
@@ -108,6 +115,8 @@ export async function findPublicOrganizationTeam(supabase: SupabaseClient, orgId
     photoPath: r.photo_path,
     city: r.city,
     isArtist: Boolean(r.is_artist),
+    businessId: r.business_id ?? null,
+    businessName: r.business_name ?? null,
   }));
 }
 

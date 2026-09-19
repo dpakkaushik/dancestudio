@@ -16,7 +16,7 @@ import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
-import type { OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam";
+import type { OrgAskRole, OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam";
 
 /** AN ORGANIZATION'S TEAM DESK — `/business/team`, the Team tile on an
  *  organization's Home (push 2, 19 Sep 2026; the user: "You add a user or artist
@@ -34,13 +34,28 @@ import type { OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam
  *  ASKED IS NOT JOINED, Make owner / Make member, Remove or Withdraw, and
  *  "+ Add to the team" opening SEARCH DANCEOS, THEN ASK THEM. */
 
-const ROLE_TINT: Record<OrgTeamRole, string> = { owner: "#F59E0B", member: "#3B82F6" };
-const ROLE_WORD: Record<OrgTeamRole, string> = { owner: "Owner", member: "Team" };
+/* ⚠ FOUR LABELS SINCE 20 Sep 2026 (the user's list A: Owner · Studio owner ·
+   Event Team · Other Team Members). `studio_owner` is amber like Owner because
+   it IS one: it writes a real owner seat on the studio it names. */
+const ROLE_TINT: Record<OrgTeamRole, string> = { owner: "#F59E0B", studio_owner: "#F59E0B", event_team: "#8B5CF6", member: "#3B82F6" };
+const ROLE_WORD: Record<OrgTeamRole, string> = { owner: "Owner", studio_owner: "Studio owner", event_team: "Event team", member: "Other team member" };
+/* what the ASK may offer — a studio-owner seat is real power over a studio, so
+   it is never given to somebody who has not said yes yet (the RPC refuses it) */
+const ASK_ROLES: ReadonlyArray<readonly [OrgAskRole, string]> = [
+  ["owner", "As owner"],
+  ["event_team", "As event team"],
+  ["member", "As team member"],
+];
+/* ⚠ HOW THE ASK BUTTON READS, per role — a phrase, not the label lowercased.
+   "…to be named other team member" is not English, and the accessible name is
+   what a screen reader says and what the e2e presses; deriving it from the chip
+   broke both (20 Sep 2026). */
+const ASK_PHRASE: Record<OrgAskRole, string> = { owner: "an owner", event_team: "on the event team", member: "on the team" };
 
-export function OrgTeamDesk({ orgId, orgName, members }: { orgId: string; orgName: string; members: OrgTeamMember[] }) {
+export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: string; orgName: string; members: OrgTeamMember[]; /** the studios this organization runs — the Studio owner dropdown's options (20 Sep 2026) */ studios?: Array<{ id: string; name: string }> }) {
   const router = useRouter();
   const [add, setAdd] = useState(false);
-  const [askRole, setAskRole] = useState<OrgTeamRole>("member");
+  const [askRole, setAskRole] = useState<OrgAskRole>("member");
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +131,11 @@ export function OrgTeamDesk({ orgId, orgName, members }: { orgId: string; orgNam
                   {pending ? (
                     <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: "#F59E0B", marginTop: 1 }}>⏳ Waiting on them to confirm · as {ROLE_WORD[m.role].toLowerCase()}</div>
                   ) : (
-                    <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: rc, textTransform: "uppercase", marginTop: 1 }}>{ROLE_WORD[m.role]}</div>
+                    <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: rc, textTransform: "uppercase", marginTop: 1 }}>
+                      {ROLE_WORD[m.role]}
+                      {/* a studio owner owns ONE named studio — the label means nothing without it */}
+                      {m.role === "studio_owner" && m.businessName ? ` · ${m.businessName}` : ""}
+                    </div>
                   )}
                   <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2 }}>
                     {pending ? `asked ${sinceWords(m.createdAt)}` : `since ${sinceWords(m.createdAt)}`}
@@ -127,21 +146,34 @@ export function OrgTeamDesk({ orgId, orgName, members }: { orgId: string; orgNam
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
               {/* a row only offers what it can actually change: a label moves only once they have said yes */}
+              {/* ⚠ THE LABEL IS A DROPDOWN NOW (20 Sep 2026), not a toggle — there
+                  are four of them, and one of them names a studio. A plain
+                  <select> so the whole list is one press on a phone. */}
               {!pending ? (
-                <button
-                  type="button"
+                <select
+                  aria-label={`What ${m.name} is`}
                   disabled={busy}
-                  aria-label={m.role === "owner" ? `Make ${m.name} a team member` : `Make ${m.name} an owner`}
-                  onClick={() =>
+                  value={m.role === "studio_owner" ? `studio_owner:${m.businessId ?? ""}` : m.role}
+                  onChange={(e) => {
+                    const [role, biz] = e.target.value.split(":");
                     void run(
-                      () => setOrganizationMemberRoleAction({ memberId: m.id, role: m.role === "owner" ? "member" : "owner" }),
-                      `${m.name} → ${m.role === "owner" ? "Team" : "Owner"}`
-                    )
-                  }
+                      () => setOrganizationMemberRoleAction({ memberId: m.id, role: role as OrgTeamRole, businessId: biz || null }),
+                      `${m.name} → ${role === "studio_owner" ? "Studio owner" : ROLE_WORD[role as OrgTeamRole]}`
+                    );
+                  }}
                   style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", background: "var(--el)", color: "var(--text)", border: "none", fontFamily: "inherit" }}
                 >
-                  {m.role === "owner" ? "Make member" : "Make owner"}
-                </button>
+                  <option value="owner">Owner</option>
+                  {/* one row per studio this organization runs — "Studio owner with
+                      drop down for multiple studios", and naming it IS the grant */}
+                  {studios.map((s) => (
+                    <option key={s.id} value={`studio_owner:${s.id}`}>
+                      Studio owner · {s.name}
+                    </option>
+                  ))}
+                  <option value="event_team">Event team</option>
+                  <option value="member">Other team member</option>
+                </select>
               ) : null}
               <button
                 type="button"
@@ -169,7 +201,7 @@ export function OrgTeamDesk({ orgId, orgName, members }: { orgId: string; orgNam
       {add ? (
         <div style={{ ...bizCard, marginTop: 8 }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 10 }} role="radiogroup" aria-label="Ask them as">
-            {(["owner", "member"] as OrgTeamRole[]).map((r) => {
+            {ASK_ROLES.map(([r, word]) => {
               const on = askRole === r;
               return (
                 <button
@@ -177,18 +209,18 @@ export function OrgTeamDesk({ orgId, orgName, members }: { orgId: string; orgNam
                   type="button"
                   role="radio"
                   aria-checked={on}
-                  aria-label={`Ask as ${r === "owner" ? "owner" : "team member"}`}
+                  aria-label={`Ask as ${ROLE_WORD[r].toLowerCase()}`}
                   onClick={() => setAskRole(r)}
-                  style={{ flex: 1, padding: "9px 0", borderRadius: 999, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: on ? "var(--text)" : "var(--el)", color: on ? "var(--solid)" : "var(--text)", border: "none" }}
+                  style={{ flex: 1, padding: "9px 0", borderRadius: 999, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", background: on ? "var(--text)" : "var(--el)", color: on ? "var(--solid)" : "var(--text)", border: "none" }}
                 >
-                  {r === "owner" ? "As owner" : "As team member"}
+                  {word}
                 </button>
               );
             })}
           </div>
           <PeoplePicker
             exclude={members.map((m) => m.userId)}
-            pickLabel={(p) => `Ask ${p.fullName} to be named ${askRole === "owner" ? "an owner" : "on the team"}`}
+            pickLabel={(p) => `Ask ${p.fullName} to be named ${ASK_PHRASE[askRole]}`}
             onPick={(p) => {
               setAdd(false);
               void run(() => askOrganizationMemberAction({ userId: p.id, role: askRole }), `📨 ${p.fullName} asked to confirm`);

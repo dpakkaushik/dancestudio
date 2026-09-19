@@ -2,7 +2,7 @@ import type { RequestItem } from "@/features/inbox/components/InboxScreen";
 import { sessionDayLabel } from "@/lib/format/session";
 import type { VenueRequest } from "@/repositories/classes";
 import type { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
-import type { MyOrgTeamAsk, OrgTeamMember } from "@/repositories/organizationTeam";
+import type { MyOrgTeamAsk, OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam";
 import type { MyClaimAsk } from "@/types/claim";
 import type { CrewMember, MyCrewAsk, PartnerAsk } from "@/types/crew";
 
@@ -26,10 +26,27 @@ export const PARTNER_WORDS = { what: "your entry partner", verb: "enter with you
 /* 18 Sep 2026: an artist asks a studio for one of its rooms — the class waits for the answer */
 export const VENUE_WORDS = { what: "the room for a class", verb: "hold a class in" } as const;
 /* push 2 (19 Sep 2026): an organization names a person on its public page — as its owner, or on its team */
-export const ORG_TEAM_WORDS = {
+/* ⚠ FOUR LABELS SINCE 20 Sep 2026 (the user's list A). `studio_owner` cannot
+   arrive on an ASK — an owner seat on a studio is only ever given to somebody
+   who has already said yes — but the map covers it so the Inbox can never be
+   handed a role it has no words for. */
+export const ORG_TEAM_WORDS: Record<OrgTeamRole, { what: string; verb: string }> = {
   owner: { what: "an owner", verb: "name you as an owner of" },
+  studio_owner: { what: "the owner of one of its studios", verb: "name you as a studio owner of" },
+  event_team: { what: "its event team", verb: "put you on the event team of" },
   member: { what: "a team member", verb: "add you to the team of" },
-} as const;
+};
+
+/** What saying yes actually means, label by label — the one sentence somebody
+ *  reads before consenting, so each says what its own label does. ⚠ A plain
+ *  `member` is NOT published (`public_organization_team` leaves it out), and
+ *  `studio_owner` is the one that is not a word at all. */
+const ORG_ASK_NOTE: Record<OrgTeamRole, string> = {
+  owner: "You would be shown as this organization's OWNER on its public page — a label, not a login.",
+  studio_owner: "You would be made a real OWNER of one of its studios — you could run that studio, not just be named on a page.",
+  event_team: "You would be shown on this organization's public page under EVENT TEAM — a label, not a login.",
+  member: "You would be on this organization's own list. Other team members are not shown on its public page.",
+};
 
 const dayWords = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -160,7 +177,11 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       when: null,
       href: `/org/${o.orgId}`,
       at: o.createdAt,
-      note: o.role === "owner" ? "You would be shown as this organization's OWNER on its public page — a label, not a login." : "You would be shown on this organization's public page under TEAM.",
+      /* ⚠ WHAT THIS ASK ACTUALLY COSTS THEM, per label (20 Sep 2026). An "Other
+         team member" is the organization's own note and is NOT published, so
+         saying they would appear under TEAM was a claim the page does not keep —
+         and this sentence is the only thing they read before consenting. */
+      note: ORG_ASK_NOTE[o.role],
       memberId: o.id,
       status: askStatus(o.status),
     })),

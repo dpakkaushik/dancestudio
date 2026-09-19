@@ -171,7 +171,10 @@ try {
   $userAsks = Fails { Rpc (Api $lead.token) "ask_organization_member" @{ p_user_id = $fan.id; p_role = "member" } }
   $badRole = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $fan.id; p_role = "boss" } }
   Check 3 "Asking twice ($again); asking an organization ($askOrg); a person asking ($userAsks); an invented role ($badRole)" (
-    ($again -match "already") -and ($askOrg -match "not on DanceOS") -and ($userAsks -match "only an organization") -and ($badRole -match "owner or a member"))
+    # 20 Sep 2026: the ask offers THREE labels now (owner, event team, member) and
+    # refuses studio_owner, which is a seat granted after a yes - so the sentence
+    # is longer than "an owner or a member". It still names what may be asked.
+    ($again -match "already") -and ($askOrg -match "not on DanceOS") -and ($userAsks -match "only an organization") -and ($badRole -match "event team"))
 
   # 4. a PRIVATE organization's confirmed team is nobody else's
   $privAsk = Rpc (Api $private.token) "ask_organization_member" @{ p_user_id = $lead.id; p_role = "member" }

@@ -10,6 +10,8 @@ import {
   respondToOrganizationAsk,
   setOrganizationMemberRole,
   withdrawOrganizationAsk,
+  type OrgAskRole,
+  type OrgTeamRole,
 } from "@/repositories/organizationTeam";
 
 /** AN ORGANIZATION'S TEAM — the five doors (push 2, 19 Sep 2026). Zod checks
@@ -22,7 +24,11 @@ export interface OrgTeamActionResult {
 }
 
 const uuid = z.string().uuid();
-const role = z.enum(["owner", "member"]);
+/* ⚠ THE ASK AND THE LABEL TAKE DIFFERENT SETS (20 Sep 2026): `studio_owner`
+   grants a real owner seat on a studio, so it may only be set on somebody who
+   has already confirmed — the RPC refuses it on an ask, and so does this. */
+const askRole = z.enum(["owner", "event_team", "member"]);
+const labelRole = z.enum(["owner", "studio_owner", "event_team", "member"]);
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -42,8 +48,8 @@ const revalidate = (orgId?: string) => {
   if (orgId) revalidatePath(`/org/${orgId}`);
 };
 
-export async function askOrganizationMemberAction(input: { userId: string; role: "owner" | "member" }): Promise<OrgTeamActionResult> {
-  const parsed = z.object({ userId: uuid, role }).safeParse(input);
+export async function askOrganizationMemberAction(input: { userId: string; role: OrgAskRole }): Promise<OrgTeamActionResult> {
+  const parsed = z.object({ userId: uuid, role: askRole }).safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
   const { supabase, userId } = await requireUser();
   try {
@@ -94,12 +100,12 @@ export async function removeOrganizationMemberAction(input: { memberId: string }
   }
 }
 
-export async function setOrganizationMemberRoleAction(input: { memberId: string; role: "owner" | "member" }): Promise<OrgTeamActionResult> {
-  const parsed = z.object({ memberId: uuid, role }).safeParse(input);
+export async function setOrganizationMemberRoleAction(input: { memberId: string; role: OrgTeamRole; businessId?: string | null }): Promise<OrgTeamActionResult> {
+  const parsed = z.object({ memberId: uuid, role: labelRole, businessId: uuid.nullish() }).safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
   const { supabase, userId } = await requireUser();
   try {
-    await setOrganizationMemberRole(supabase, parsed.data.memberId, parsed.data.role);
+    await setOrganizationMemberRole(supabase, parsed.data.memberId, parsed.data.role, parsed.data.businessId ?? null);
     revalidate(userId);
     return { error: null };
   } catch (error: unknown) {

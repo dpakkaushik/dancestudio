@@ -9,7 +9,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *  scope. Every write is an RPC. Two foreign keys point at `profiles`, so every
  *  embed names its key (the 28 Aug lesson). */
 
-export type OrgTeamRole = "owner" | "member";
+/** ⚠ FOUR LABELS SINCE 20 Sep 2026 (the user's list A). `studio_owner` is not
+ *  a label at all: it writes a REAL owner seat on the studio it names, which is
+ *  why it is set only on a CONFIRMED member and never offered on the ask. */
+export type OrgTeamRole = "owner" | "studio_owner" | "event_team" | "member";
+/** what the ask may offer — everything but studio_owner (a seat, not a word) */
+export type OrgAskRole = "owner" | "event_team" | "member";
 export type OrgTeamStatus = "asked" | "confirmed" | "rejected";
 
 export interface OrgTeamMember {
@@ -23,6 +28,9 @@ export interface OrgTeamMember {
   name: string;
   city: string | null;
   avatarPath: string | null;
+  /** the studio a `studio_owner` owns — null for every other label (20 Sep 2026) */
+  businessId: string | null;
+  businessName: string | null;
 }
 
 /** an ask waiting for the signed-in person — the Requests desk's RECEIVED side */
@@ -43,10 +51,12 @@ interface Row {
   status: OrgTeamStatus;
   sort: number;
   created_at: string;
+  business_id: string | null;
+  business: { name: string } | null;
   person: { full_name: string; city: string | null; profile_photo_path: string | null } | null;
 }
 
-const COLUMNS = "id, org_id, user_id, role, status, sort, created_at, person:profiles!organization_members_user_id_fkey (full_name, city, profile_photo_path)";
+const COLUMNS = "id, org_id, user_id, role, status, sort, created_at, business_id, business:businesses (name), person:profiles!organization_members_user_id_fkey (full_name, city, profile_photo_path)";
 
 const toMember = (r: Row): OrgTeamMember => ({
   id: r.id,
@@ -59,6 +69,8 @@ const toMember = (r: Row): OrgTeamMember => ({
   name: r.person?.full_name ?? "Someone",
   city: r.person?.city ?? null,
   avatarPath: r.person?.profile_photo_path ?? null,
+  businessId: r.business_id ?? null,
+  businessName: r.business?.name ?? null,
 });
 
 async function currentUserId(supabase: SupabaseClient): Promise<string | null> {
@@ -139,7 +151,7 @@ const rpcVoid = async (supabase: SupabaseClient, fn: string, args: Record<string
   }
 };
 
-export const askOrganizationMember = (supabase: SupabaseClient, userId: string, role: OrgTeamRole) =>
+export const askOrganizationMember = (supabase: SupabaseClient, userId: string, role: OrgAskRole) =>
   rpcVoid(supabase, "ask_organization_member", { p_user_id: userId, p_role: role });
 export const respondToOrganizationAsk = (supabase: SupabaseClient, memberId: string, accept: boolean) =>
   rpcVoid(supabase, "respond_to_organization_ask", { p_member_id: memberId, p_accept: accept });
@@ -147,5 +159,7 @@ export const withdrawOrganizationAsk = (supabase: SupabaseClient, memberId: stri
   rpcVoid(supabase, "withdraw_organization_ask", { p_member_id: memberId });
 export const removeOrganizationMember = (supabase: SupabaseClient, memberId: string) =>
   rpcVoid(supabase, "remove_organization_member", { p_member_id: memberId });
-export const setOrganizationMemberRole = (supabase: SupabaseClient, memberId: string, role: OrgTeamRole) =>
-  rpcVoid(supabase, "set_organization_member_role", { p_member_id: memberId, p_role: role });
+/** ⚠ `businessId` is REQUIRED by the database when the label is `studio_owner`
+ *  and refused otherwise — naming the studio IS the grant (20 Sep 2026). */
+export const setOrganizationMemberRole = (supabase: SupabaseClient, memberId: string, role: OrgTeamRole, businessId: string | null = null) =>
+  rpcVoid(supabase, "set_organization_member_role", { p_member_id: memberId, p_role: role, p_business_id: businessId });

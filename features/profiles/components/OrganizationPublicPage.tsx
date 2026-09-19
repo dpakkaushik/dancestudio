@@ -79,8 +79,12 @@ export function OrganizationPublicPage({
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${org.name}`, signed: h.signed }));
   /* an organization is asked through its hosting row (R15) — a celebration, a corporate show, a collaboration */
   const canAsk = !isMe && Boolean(org.hostBusinessId) && enquiryTypesFor("org").length > 0;
+  /* ⚠ THREE PUBLISHED LABELS SINCE 20 Sep 2026 (the user's list A): Owner,
+     Studio owner — which names the studio it owns — and Event team. The definer
+     read leaves a plain `member` out, so there is no fourth group to draw. */
   const owners = team.filter((m) => m.role === "owner");
-  const others = team.filter((m) => m.role !== "owner");
+  const studioOwners = team.filter((m) => m.role === "studio_owner");
+  const eventTeam = team.filter((m) => m.role === "event_team");
   /* the Location button opens the organization's own pin once it has placed itself (push 2) */
   const pinHref = org.lat != null && org.lng != null ? mapsPinHref(org.lat, org.lng) : null;
 
@@ -146,9 +150,18 @@ export function OrganizationPublicPage({
             ))}
           </Group>
         ) : null}
-        {others.length ? (
-          <Group title="Team" n={others.length}>
-            {others.map((m) => (
+        {studioOwners.length ? (
+          <Group title="Studio owners" n={studioOwners.length}>
+            {studioOwners.map((m) => (
+              /* the studio is the fact here, so it is the sub-line — and it is a
+                 real seat on that studio, not a word (20 Sep 2026) */
+              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.businessName, m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} right="Studio owner" />
+            ))}
+          </Group>
+        ) : null}
+        {eventTeam.length ? (
+          <Group title="Event team" n={eventTeam.length}>
+            {eventTeam.map((m) => (
               <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} />
             ))}
           </Group>

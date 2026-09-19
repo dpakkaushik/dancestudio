@@ -48,7 +48,7 @@ export interface PublicTenant {
  *  /org/{id} rather than a person's page. */
 export interface PublicTeamMember {
   userId: string;
-  role: "owner" | "trainer" | "visiting_faculty";
+  role: "owner" | "trainer" | "visiting_faculty" | "assistant";
   name: string;
   photoPath: string | null;
   isOrg: boolean;
