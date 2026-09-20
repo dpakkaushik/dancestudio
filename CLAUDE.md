@@ -85,8 +85,22 @@
 >   which is the test C31's cancel-door lesson sets. The other two pills led to
 >   /my-classes, the events desk and the studio list: all tiles on the grid
 >   directly below.
-> * **Verified:** typecheck 0 · lint 0 · `next build` green · the e2e recorded
->   below. Deviation rows R43, C33–C36.
+> * **Verified, and PUSHED AND LIVE (`f2a8922`):** typecheck 0 · lint 0 ·
+>   `next build` green · **the whole e2e suite 57/57 in 16.1 min on one worker**,
+>   collected as 57 · **`stranger-smoke.ps1` 11/11 against the deployment** after
+>   the push. Deviation rows R43, C33–C36.
+> * ⚠ **AND THE ONE RED ON THE WAY WAS A FIVE-SECOND WAIT ON A SERVER ACTION,
+>   WHICH IS THIS FILE'S OWN RECURRING SHAPE.** The first run was **53 passed / 1
+>   failed**: the room-clash segment could not find ROOM ALREADY BUSY — and the
+>   error-context snapshot had **no dialog in the accessibility tree at all**,
+>   which is the tell. The register's Publish button asks the room BEFORE it opens
+>   the sheet (`checkRoomClashAction`, F3), so the sheet does not exist until a
+>   server action has been out and back; on a loaded machine that round trip is
+>   the whole of the default five seconds, and the failure then reads as "the
+>   warning is missing" rather than "the sheet has not opened yet". Fifteen now,
+>   like every sibling that waits on a server re-render. **Read the DOM snapshot
+>   before believing the assertion's own words** — it said "no clash text" and
+>   meant "no dialog".
 
 > ### FOUR FORMS ON ONE SPEC, AND A STUDENT IS A CONSEQUENCE RATHER THAN A LEAD (21 Sep 2026) — BUILT, no migration
 > The user: *"Create Crew form in crews should look similar to add class page.
@@ -5871,7 +5885,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 ### Progress tracker — update after EVERY push (Rule 11)
 
 - **FOUR COLUMNS OF STUDIOS, A SHARE THAT SHARES, AND A TOOLS PANEL THAT INVERTS
-  THE THEME — 21 Sep 2026, no step number — BUILT, no migration.** The user's
+  THE THEME — 21 Sep 2026, no step number — BUILT AND LIVE (`f2a8922`), no
+  migration; e2e 57/57, stranger smoke 11/11 on the deployment.** The user's
   seven asks, two of them answered by them first (Train is your own profile
   only; the fourth studio column is called **Manage**). A person's associations
   become **Train · Teach · Assist · Manage** and **Leader · Member** — no
