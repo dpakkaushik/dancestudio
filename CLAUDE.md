@@ -5317,14 +5317,15 @@ summary; the report has the evidence.
    run them, and if anything fails the fix is a follow-up migration, never an
    edit to an applied one (Rule 4).
 
-1. **Two `p_limit`s are deliberately not being sent yet.**
-   `findNearbyTenants` only includes `p_limit` when a caller passes one, because
-   PostgREST resolves an RPC by its exact argument NAMES against a cached
-   signature — sending an argument the deployed function does not have is a 404
-   on the whole call, and Discover's main shelf would go blank. After migration
-   `20260913120000` lands, a caller may pass it. Same reasoning applies to
-   `location_set_at`: the app does **not** select it anywhere yet, so nothing
-   breaks before the migration; `nearby_tenants` supplies `located` instead.
+1. **~~Two `p_limit`s are deliberately not being sent yet~~ — ✅ MOOT since
+   11 Sep 2026**, when `20260913120000` landed; `p_limit` and `p_offset` are
+   sent from 18 call sites today and Discover pages on them (#6). Kept only for
+   the RULE, which is still live and still bites: **PostgREST resolves an RPC by
+   its exact argument NAMES against a CACHED signature**, so sending an argument
+   the deployed function does not have is a PGRST202 on the whole call — which
+   is why a signature change is applied BEFORE the deploy that uses it, and why
+   the schema cache is reloaded after a migration that adds a column the app
+   selects (the 19 Sep lesson).
 
 2. **~~The nudge, and reading an event's pin back~~ — BOTH DONE the moment the
    migrations landed (11 Sep 2026).** The business hub asks any studio with
@@ -5432,11 +5433,15 @@ summary; the report has the evidence.
     `onboarding@resend.dev` sender only ever reached the Resend account owner,
     which is what made auth look broken.
 
-15. **`/legal/terms` and `/legal/privacy` still do not exist.** The sign-up
-    screen's Terms and Privacy Policy are bold text, not links, because linking
-    to a 404 on the screen everybody sees is worse. They become `<Link>`s in the
-    same change that adds the pages — which is also where U3's DPDP consent
-    sentence belongs.
+15. **~~`/legal/terms` and `/legal/privacy` still do not exist~~ — ✅ BUILT
+    18 Sep 2026** (`app/legal/terms`, `app/legal/privacy`, outside the signed-in
+    group so somebody reads them before they have an account; the sign-up
+    screen's two bold words are real `<Link>`s and U3's DPDP consent sentence is
+    under them). ⚠ This row was still open on 20 Sep and was **stale** — checked
+    by listing the routes rather than by reading it. **What is genuinely left is
+    not code and is the user's:** counsel's pass over both drafts, and the
+    grievance officer's name and postal address, which each page currently
+    promises "before launch".
 
 16. **Decide whether the app-wide focus ring should stay magenta.** `PINK` in
     `lib/design/tokens.ts` is `#5AC8FA` (cyan — misnamed since the palette swap)
@@ -5445,9 +5450,8 @@ summary; the report has the evidence.
     rings magenta against cyan buttons. One line to align, ~50 screens
     repainted, so it is the user's call.
 
-17. **Three dead `RAZORPAY_*` entries** are still in `.env.local` from before the
-    28 Aug rail swap. Only `CASHFREE_ENV` / `CASHFREE_APP_ID` /
-    `CASHFREE_SECRET_KEY` are ever read by the app.
+17. **~~Three dead `RAZORPAY_*` entries in `.env.local`~~ — ✅ GONE** (counted
+    20 Sep 2026: zero lines match `^RAZORPAY`). Stale row, closed.
 
 18. **Mobile authentication is a LATER PHASE, by the user's decision (7 Sep
     2026)** — not a pending errand. Step 26 stays unbuilt; re-adding it needs
