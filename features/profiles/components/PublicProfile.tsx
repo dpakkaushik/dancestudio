@@ -54,9 +54,7 @@ export function PublicProfile({
   signedIn,
   followingN = null,
   isMember,
-  canEditPhoto = false,
   canEdit = false,
-  ownerId = null,
   followers = null,
   scheduleHref,
   manageHref,
@@ -78,15 +76,12 @@ export function PublicProfile({
   followingN?: number | null;
   /** the viewer belongs to this business: no Follow, a Manage door instead */
   isMember: boolean;
-  /** an owner or trainer — the pair that may change the business's photo. The
-   *  control is inside the Edit sheet since 16 Sep 2026, never on the hero */
-  canEditPhoto?: boolean;
-  /** the owner — the one who edits the pictures, About, Since, the number, the
-   *  email and the links (10613) */
+  /** ⚠ `canEditPhoto` and `ownerId` are GONE (20 Sep 2026). A studio's pictures
+   *  are changed on the studio's OWN HOME now — the ⊕ on the disc and the ⊕ on
+   *  the posters rail, where a person's have been since 19 Sep — so this page
+   *  neither offers them nor needs to know who may write them. */
+  /** the owner — the one who edits the name, Since, the number and the email */
   canEdit?: boolean;
-  /** the owner's own id when the VIEWER is the owner — the folder in the
-   *  private bucket a new header picture goes into; null for everybody else */
-  ownerId?: string | null;
   /** the owner's list — null for everybody else, and nothing is drawn (B6) */
   followers?: TenantFollower[] | null;
   scheduleHref: string;
@@ -246,7 +241,12 @@ export function PublicProfile({
               You are on this team · Manage ›
             </Link>
             {canEdit && followers ? <TenantFollowersButton followers={followers} accent={RC} /> : null}
-            {canEdit ? <BusinessEditButton tenant={tenant} photos={header} ownerId={ownerId} canEditPhoto={canEditPhoto} /> : null}
+            {/* ⚠ THE WORDS ONLY (20 Sep 2026). This sheet used to carry the
+                studio's two pictures as well; they are the ⊕ on the disc and the
+                ⊕ on the posters rail on the studio's OWN HOME now, which is
+                where a person's have been since 19 Sep — and it is the only
+                place either is changed, so there is one door per picture. */}
+            {canEdit ? <BusinessEditButton tenant={tenant} /> : null}
           </div>
         ) : null}
 

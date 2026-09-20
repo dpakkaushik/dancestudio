@@ -9,6 +9,8 @@ import { EntityBand, Figure } from "@/features/profiles/components/profile-band"
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, PROFILE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
+import { StudioLinksRow } from "./StudioLinksRow";
+import { StudioPicturesButton, StudioPostersButton } from "./StudioPictures";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ProofPhoto } from "@/lib/media/proof";
 import type { DeckItem } from "@/types/home";
@@ -142,19 +144,27 @@ export function StudioHome({
           styles={[]}
           avatar={photo}
           avatarAlt={tenant.name}
-          /* the disc opens the studio's own public page (19 Sep 2026) — the same
-             address the QR shares and the eye opens, so there is one way in */
-          avatarHref={`/studio/${tenant.id}`}
-          /* the eye in the corner is already called Public view — the disc says
-             which thing it opens, so the two controls are tellable apart */
-          avatarLabel="Open the studio's public page"
+          /* ⚠ THE DISC IS THE PICTURE, AND THE ⊕ BESIDE IT CHANGES IT (20 Sep
+             2026, the user: "edit profile for studio not consistent with how its
+             done for Artist and users. for social media links, photos etc.").
+             It opened the studio's public page until today — which the eye in
+             the corner and the QR chip both already do, three doors to one
+             address — while a person's disc has opened their own picture since
+             19 Sep and their ⊕ has been the one way to change it. Same two
+             controls, same two jobs, on both kinds of home now. */
+          avatarSlot={<StudioPicturesButton tenantId={tenant.id} tenantName={tenant.name} grad={RG} avatar={photo} canEdit={canEditPhoto} />}
           shots={shots}
+          /* the posters' own ⊕ at the rail's corner — the OWNER's alone, because
+             a new picture goes into the owner's folder in the private bucket */
+          headerEdit={ownerId ? <StudioPostersButton tenantId={tenant.id} tenantName={tenant.name} ownerId={ownerId} photos={header} /> : null}
           /* the corner (10613, 15 Sep 2026): the owner's pencil — the pictures,
              About, Since, the number, the links, the pin — and for everyone on
              the team the eye, the page as a stranger sees it */
           corner={
             <>
-              {editable ? <BusinessEditButton tenant={editable} corner photos={header} ownerId={ownerId} canEditPhoto={canEditPhoto} /> : null}
+              {/* the pencil edits the WORDS now — the pictures are the two ⊕
+                  controls on this hero (20 Sep 2026) */}
+              {editable ? <BusinessEditButton tenant={editable} corner /> : null}
               <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
                 <EyeIcon />
               </Link>
@@ -202,8 +212,17 @@ export function StudioHome({
             }
             styles={styles}
             styleAria={(s) => `${s} — a style this studio teaches`}
-            socials={tenant.socials}
-          />
+            /* ⚠ THE LINKS ROW IS THE EDITABLE ONE (20 Sep 2026) — `EntityBand`'s
+               own `socials` draws a read-only rail, and a person's Home has had
+               a ＋ beside theirs since 19 Sep. Passed as CHILDREN with the
+               band's `socials` left empty, so the row lands where it always did
+               (under the styles) and is the same chips at the same size. */
+            socials={[]}
+          >
+            {/* the studio's own row carries every field the door takes, so no
+                cast is needed and a missing one would be a compile error */}
+            <StudioLinksRow tenant={tenant} canEdit={Boolean(editable)} />
+          </EntityBand>
         </IdentityHero>
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and

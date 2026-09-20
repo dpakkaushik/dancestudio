@@ -569,22 +569,30 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("heading", { name: studioName, exact: true })).toBeVisible();
     await expect(owner.getByText("Studio Tools")).toBeVisible();
     await expect(owner.getByText("Nothing in your rooms today")).toBeVisible();
-    // the studio's pictures are set in the Edit sheet (16 Sep 2026, the user:
-    // "the update image option should be inside the edit profile") — the hero
-    // shows them and offers no control of its own
+    /* ⚠ THE PICTURES MOVED OFF THE PENCIL (20 Sep 2026, the user: "edit profile
+       for studio not consistent with how its done for Artist and users. for
+       social media links, photos etc."). A studio's two pictures are changed
+       from the studio's OWN HOME now — the ⊕ on the disc and the ⊕ on the
+       posters rail, exactly where a person's have been since 19 Sep — and the
+       Edit sheet holds only words. The rails themselves still offer no picker. */
     await expect(owner.getByLabel("Add a photo")).toHaveCount(0);
-    await expect(owner.getByLabel("Add a header picture")).toHaveCount(0);
+    await expect(owner.getByLabel("Add photos of your space")).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: "Change profile picture" })).toBeVisible();
     await owner.getByRole("button", { name: "Edit studio", exact: true }).click();
     const studioSheet = owner.getByRole("dialog", { name: "Edit business" });
-    await expect(studioSheet.getByLabel("Add a photo")).toBeAttached();
-    await expect(studioSheet.getByLabel("Add photos of your space")).toBeAttached();
+    await expect(studioSheet.getByText("Update profile", { exact: true })).toHaveCount(0);
+    await expect(studioSheet.getByText("Update header", { exact: true })).toHaveCount(0);
+    await expect(studioSheet.getByText("Links", { exact: true })).toHaveCount(0);
     // and the address does not move because somebody scrolled past the map
     await expect(studioSheet.getByRole("button", { name: "Change address" })).toBeVisible();
     await expect(studioSheet.getByRole("searchbox", { name: /Search an address/ })).toHaveCount(0);
-    // ⚠ AND CANCEL MEANS CANCEL (16 Sep 2026). A staged picture is held in the
-    // browser and nothing is uploaded until Save, so dismissing the sheet must
-    // leave the record exactly as it was. The reported bug was the opposite: a
-    // pressed ✕ destroyed the file outright and Cancel had nothing to undo.
+    await studioSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(studioSheet).toHaveCount(0);
+    // ⚠ AND CANCEL MEANS CANCEL (16 Sep 2026, carried through the move). A
+    // staged picture is held in the browser and nothing is uploaded until Save,
+    // so dismissing the sheet must leave the record exactly as it was. The
+    // reported bug was the opposite: a pressed ✕ destroyed the file outright
+    // and Cancel had nothing to undo.
     const proofRows = async () =>
       ((await (
         await fetch(`${supabaseUrl}/rest/v1/studio_photos?business_id=eq.${tenantId}&deleted_at=is.null&select=id`, { headers: adminHeaders })
@@ -592,14 +600,17 @@ test.describe.serial("DanceOS, end to end", () => {
     // this studio showed DanceOS five photos to be verified, and they ARE its header
     const before = await proofRows();
     expect(before).toBe(5);
+    await owner.getByRole("button", { name: "Edit posters" }).click();
+    const postersSheet = owner.getByRole("dialog", { name: "Posters", exact: true });
+    await expect(postersSheet).toBeVisible();
     // stage one more, and stage a removal of one that exists
-    await studioSheet.getByLabel("Add photos of your space").setInputFiles(ONE_PX_PNG);
+    await postersSheet.getByLabel("Add photos of your space").setInputFiles(ONE_PX_PNG);
     await confirmCrop(owner);
-    await expect(studioSheet.getByLabel(`Remove photo ${before + 1}`)).toBeAttached({ timeout: 20_000 });
-    await studioSheet.getByLabel("Remove photo 1").click();
-    await expect(studioSheet.getByLabel("Undo removing photo 1")).toBeAttached();
+    await expect(postersSheet.getByLabel(`Remove photo ${before + 1}`)).toBeAttached({ timeout: 20_000 });
+    await postersSheet.getByLabel("Remove photo 1").click();
+    await expect(postersSheet.getByLabel("Undo removing photo 1")).toBeAttached();
     expect(await proofRows(), "a pressed ✕ has not touched the database").toBe(before);
-    await studioSheet.getByRole("button", { name: "Cancel" }).click();
+    await postersSheet.getByRole("button", { name: "Cancel" }).click();
     expect(await proofRows(), "and Cancel left every picture exactly where it was").toBe(before);
     await owner.getByRole("link", { name: "Classes", exact: true }).click();
     await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes$/);

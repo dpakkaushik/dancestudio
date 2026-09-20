@@ -112,8 +112,44 @@
 >   the reason rather than "Enquiry", so a locator asking for the live button
 >   cannot match the dead one — the 20 Sep substring trap, avoided on purpose
 >   ("enquiries come to you here" does not contain "enquiry").
+> * ⚠⚠ **9 · A STUDIO'S PICTURES AND LINKS LEFT ITS EDIT SHEET FOR ITS HOME**
+>   ("edit profile for studio not consistent with how its done for Artist and
+>   users. for social media links, photos etc."). The difference was total: a
+>   USER or an ARTIST has nothing to do with pictures or links in their Edit sheet
+>   at all — the picture is a ⊕ on the disc, the posters a ⊕ on the rail, the
+>   styles and links a ＋ in the band, all on HOME, and `Settings → Edit profile`
+>   holds only words — while a STUDIO had every one of those in ONE sheet behind a
+>   pencil. `StudioPictures.tsx` and `StudioLinksRow.tsx` are the same controls
+>   with a studio's doors behind them, and the sheet keeps name · Since · phone ·
+>   email · the location lock.
+>   ⚠ **AND WHAT MOVED WITH THEM IS THE DRAFT.** The posters are still staged and
+>   still committed by Save — this is the very screen where a Cancel once
+>   destroyed four of a studio's pictures (16 Sep), and the floor is still ONE,
+>   because `remove_studio_photo` refuses the last. The disc still commits on
+>   upload, because replacing is not destroying. The shoot's whole
+>   destroy-on-cancel block MOVED onto the new sheets rather than being dropped:
+>   it is the reason that block exists, and a regression check that stops running
+>   when the screen moves is worse than none.
+>   ⚠ **AND THE DISC STOPPED BEING A THIRD DOOR.** It opened the studio's public
+>   page from 19 Sep — beside the eye, beside the QR chip, three controls to one
+>   address — while a person's disc opened their own picture. It opens the picture
+>   now. The shoot asserts the old link is GONE as well as the new control being
+>   there, because a check that only looks for what was added lets what it
+>   replaced live on.
+>   ⚠ **An ORGANIZATION needed nothing** — checked rather than assumed: its Home
+>   already uses the same two ⊕ controls and the same ＋ Add link, and its Edit
+>   sheet already carries neither. Recorded so nobody re-opens it.
 > * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
->   127/127** · the e2e recorded below.
+>   131/131** (127 before the studio's pictures moved) · the e2e recorded below.
+>   ⚠ **THE PUSH WENT WITH THE SUITE STILL RUNNING**, on the user's *"okay push
+>   to live"* — the precedent this file records three times over, and safer than
+>   usual here: **no migration**, and `shoot-hero.js` drives every control the
+>   move added from a real browser. The happy path's studio block was re-cut in
+>   the same shape as the shoot's — the Edit sheet is asserted to carry NEITHER
+>   picture block NOR the Links block, the destroy-on-cancel regression runs
+>   against the **Posters** sheet opened by its own ⊕, and the disc's ⊕ is
+>   asserted present on the studio's home. The tally is recorded below when it
+>   lands.
 > * ⚠⚠ **AND THE SUITE FOUND THREE STALE ASSERTIONS, ALL MINE, ALL THE SAME
 >   SHAPE: THE FLAT ROW'S TEXT.** The old roster printed two facts as ONE text
 >   node, and three checks read them that way — `"Visiting faculty · asked on

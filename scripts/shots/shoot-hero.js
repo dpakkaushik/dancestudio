@@ -233,9 +233,16 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await hero.locator("img").count()) === 0, "studio home: no picture anywhere yet → initials on the disc, no <img>");
     check((await disc(org).count()) === 1, "studio home: the disc is there");
     /* 16 Sep 2026, the user: "the update image option should be inside the edit profile" */
-    check((await org.getByLabel("Add a photo").count()) === 0, "studio home: NO ＋ on the disc — the picture is changed in the sheet");
-    check((await org.getByLabel("Add a header picture").count()) === 0, "studio home: NO Add tile on the header — same reason");
-    check((await org.getByLabel("Remove this picture").count()) === 0, "studio home: NO ✕ on a header square");
+    /* ⚠ A STUDIO'S PICTURES ARE EDITED WHERE A PERSON'S ARE (20 Sep 2026, the
+       user: "edit profile for studio not consistent with how its done for Artist
+       and users. for social media links, photos etc."). Until today every one of
+       them lived in the Edit sheet behind the pencil; now the disc is the
+       picture, a ⊕ beside it changes it, and the posters rail has its own ⊕ —
+       the same two controls, with the same two names, a person's home has. */
+    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "studio home: a ⊕ beside the disc, and only that changes the picture (20 Sep 2026)");
+    check((await org.getByRole("button", { name: "Edit posters" }).count()) === 1, "studio home: the posters have their OWN ⊕ on the rail");
+    check((await org.getByRole("button", { name: "Add a link" }).count()) === 1, "studio home: and ＋ Add link in the band, exactly as on a person's home");
+    check((await org.getByLabel("Add a header picture").count()) === 0, "studio home: no Add tile ON the header itself — the ⊕ opens the grid");
     check((await rail(org).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
     check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
     /* ⚠ THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026). A studio's home
@@ -274,11 +281,15 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
     check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
     check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the eye opens the studio's public page");
-    /* 19 Sep 2026, the user: "clicking on profile photo on any home tab should
-       take to the profile page for that user" — the disc is the SECOND door to
-       the same page, and it says which page it opens so the eye stays tellable
-       apart from it (two controls answering to one name is not a hierarchy) */
-    check((await org.getByRole("link", { name: "Open the studio's public page", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the DISC opens the same public page (19 Sep 2026)");
+    /* ⚠ THE DISC IS THE PICTURE, NOT A THIRD DOOR (20 Sep 2026). It opened the
+       studio's public page from 19 Sep — a SECOND door beside the eye, and a
+       third beside the QR chip, all to one address — while a person's disc has
+       opened their own picture since the same day. It opens the picture now, and
+       the eye above is the one door out. This asserts the old link is gone as
+       well as the new control being there: a check that only looks for what was
+       added lets the thing it replaced live on. */
+    check((await org.getByRole("link", { name: "Open the studio's public page", exact: true }).count()) === 0, "studio home: the disc is no longer a link to the public page — the eye is that door (20 Sep 2026)");
+    check((await org.getByRole("button", { name: "EEE Dance Studio — profile picture" }).count()) === 0, "studio home: and with no picture yet the disc is not a button either — there is nothing to open");
     /* Discover joined the entity's bar the same day: allowed, while booking is not */
     const studioBar = org.getByRole("navigation", { name: "Studio" });
     check((await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 && (await studioBar.getByRole("link").count()) === 3, "studio bar: Home · Discover · Inbox — three (19 Sep 2026)");
@@ -297,14 +308,24 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByText(/^Managing/).count()) === 0, "a desk: no Managing strip either — it is gone from every page");
     check((await org.getByRole("link", { name: /Leave this studio/ }).count()) === 0, "a desk: and no blue Exit studio pill");
 
-    /* ── EVERY PICTURE, THROUGH THE PENCIL (16 Sep 2026) ── */
+    /* ── A STUDIO'S TWO PICTURES, WHERE A PERSON'S ARE (20 Sep 2026) ──────────
+       The user: "edit profile for studio not consistent with how its done for
+       Artist and users. for social media links, photos etc." Until today every
+       one of them was inside the Edit sheet, reached through the pencil; now the
+       disc has a ⊕ beside it and the posters rail has its own, exactly as on a
+       person's home. This block drives the NEW controls and keeps every claim it
+       made before — above all the destroy-on-cancel regression, which is the
+       whole reason it exists. */
     await org.goto(`${BASE}/business/${studioId}`);
     await hero.waitFor();
+
+    /* the pencil still edits the WORDS, and only the words */
     await org.getByRole("button", { name: "Edit studio", exact: true }).click();
     const sheet = org.getByRole("dialog", { name: "Edit business" });
     await sheet.waitFor();
-    check(await sheet.getByText("Update profile", { exact: true }).isVisible(), "edit studio: an Update profile block");
-    check(await sheet.getByText("Update header", { exact: true }).isVisible(), "edit studio: an Update header block");
+    check((await sheet.getByText("Update profile", { exact: true }).count()) === 0, "edit studio: NO picture block in the sheet any more — the disc's own ⊕ changes it (20 Sep 2026)");
+    check((await sheet.getByText("Update header", { exact: true }).count()) === 0, "edit studio: and no header block — the posters rail's ⊕ does");
+    check((await sheet.getByText("Links", { exact: true }).count()) === 0, "edit studio: and no Links block — ＋ Add link is in the band on the home");
     /* 16 Sep 2026: ONE label style for every field on the form — the second,
        larger heading that briefly headed two blocks out of five is gone */
     check((await sheet.getByText("Phone", { exact: true }).count()) === 1, "edit studio: the phone field is called Phone, not Phone (Call button)");
@@ -318,85 +339,102 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await sheet.getByRole("button", { name: "Done" }).click();
     check((await sheet.getByRole("button", { name: "Change address" }).count()) === 1, "edit studio: Done locks it again");
     await shot("studio-edit-sheet");
+    await sheet.getByRole("button", { name: "Cancel" }).click();
+    await sheet.waitFor({ state: "detached" });
 
-    /* the disc's picture — businesses.profile_photo_path, through set_business_profile_photo */
-    await sheet.getByLabel("Add a photo").setInputFiles(FILE);
+    /* ── THE DISC (businesses.profile_photo_path, through set_business_profile_photo).
+       It commits on upload, because replacing a picture is not destroying one —
+       the same rule a person's disc keeps. ── */
+    await org.getByRole("button", { name: "Change profile picture" }).click();
+    const picSheet = org.getByRole("dialog", { name: "Profile picture" });
+    await picSheet.waitFor();
+    await picSheet.getByLabel("Add a photo").setInputFiles(FILE);
     await useIt(org);
-    /* a wait that says what it saw when it fails, rather than ending the run:
-       the sheet's own status line and how many dialogs are open */
     const discUp = await disc(org).locator("img").first().waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
     if (!discUp) {
-      const words = await sheet.locator('[role="status"], [role="alert"]').allTextContents().catch(() => []);
+      const words = await picSheet.locator('[role="status"], [role="alert"]').allTextContents().catch(() => []);
       console.log("DISC DID NOT LAND — sheet says:", JSON.stringify(words), "| open dialogs:", await org.getByRole("dialog").count(), "| disc imgs:", await discImgs(org), "| url:", org.url());
     }
-    check(discUp && (await discImgs(org)) === 1, "edit studio: the picture landed on the disc behind the sheet");
-    check((await railImgs(org)) === 0, "edit studio: and not in the header");
+    check(discUp && (await discImgs(org)) === 1, "studio picture: it landed on the disc behind the sheet");
+    check((await railImgs(org)) === 0, "studio picture: and not in the header");
+    await picSheet.getByRole("button", { name: "Done" }).click();
+    await picSheet.waitFor({ state: "detached" });
     const photoPath = await rest(`businesses?id=eq.${studioId}&select=profile_photo_path`);
     check(String(photoPath[0] && photoPath[0].profile_photo_path).startsWith(`tenants/${studioId}/`), "businesses.profile_photo_path is set, in the studio's own folder");
+    /* and now that there IS one, the disc is a button that opens it */
+    check((await org.getByRole("button", { name: "EEE Dance Studio — profile picture" }).count()) === 1, "studio picture: the disc is now a button that opens the picture full size");
 
-    /* ── THE HEADER IS A DRAFT (16 Sep 2026) ────────────────────────────────
+    /* ── THE POSTERS ARE A DRAFT (16 Sep 2026, carried through every move since) ──
        The user pressed ✕ on four pictures, pressed CANCEL, and lost all four.
        These checks are that sentence, both ways round: staged work shows in the
        sheet and NOT on the page behind it; Cancel leaves everything alone; Save
-       is what moves anything at all. ⚠ This block used to assert the BUG — it
-       pressed ✕ and then waited for the rail behind the sheet to drop. */
+       is what moves anything at all. ⚠ The sheet moved off the pencil today and
+       the rules came with it — that is what this block is here to prove. */
     const studioRows = async () => {
       const live = await rest(`studio_photos?business_id=eq.${studioId}&deleted_at=is.null&select=id`);
       return Array.isArray(live) ? live.length : -1;
     };
-    await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+    const posters = org.getByRole("dialog", { name: "Posters", exact: true });
+    /* ⚠ `openStudioPosters`, not `openPosters` — the USER's half of this script
+       further down already has one of those, and two `const`s of one name in one
+       scope is a parse error that only `node --check` (or the run) finds */
+    const openStudioPosters = async () => {
+      const edit = org.getByRole("button", { name: "Edit posters" });
+      await edit.waitFor({ timeout: 20000 });
+      await edit.click();
+      await posters.waitFor();
+    };
+    await openStudioPosters();
+    await posters.getByLabel("Add photos of your space").setInputFiles(FILE);
     await useIt(org);
-    const headerUp = await sheet
+    const headerUp = await posters
       .getByLabel(/is the only one/)
       .first()
       .waitFor({ timeout: 25000 })
       .then(() => true)
       .catch(() => false);
     if (headerUp) {
-      check(true, "edit studio: a staged picture appears in the sheet");
-      check((await railImgs(org)) === 0, "edit studio: and NOT on the page behind it — nothing is saved yet");
-      check((await studioRows()) === 0, "edit studio: and the database still holds nothing");
-      check((await sheet.getByLabel(/is the only one/).count()) === 1, "edit studio: the only picture's ✕ is disabled and says why — a header never empties");
-      await sheet.getByRole("button", { name: "Save" }).click();
+      check(true, "studio posters: a staged picture appears in the sheet");
+      check((await railImgs(org)) === 0, "studio posters: and NOT on the page behind it — nothing is saved yet");
+      check((await studioRows()) === 0, "studio posters: and the database still holds nothing");
+      check((await posters.getByLabel(/is the only one/).count()) === 1, "studio posters: the only picture's ✕ is disabled and says why — a header never empties");
+      await posters.getByRole("button", { name: /^Save/ }).click();
       await waitRailImgs(org, 1);
-      check((await studioRows()) === 1, "edit studio: Save is what put the picture on the record");
+      check((await studioRows()) === 1, "studio posters: Save is what put the picture on the record");
 
       /* ⚠ THE REPORTED BUG, AS A STANDING CHECK */
-      await org.getByRole("button", { name: "Edit studio", exact: true }).click();
-      await sheet.waitFor();
-      await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+      await openStudioPosters();
+      await posters.getByLabel("Add photos of your space").setInputFiles(FILE);
       await useIt(org);
-      await sheet.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
-      check((await sheet.getByLabel(/^Remove photo/).count()) === 2, "edit studio: two pictures, two live ✕");
-      await sheet.getByLabel("Remove photo 1").click();
-      check((await sheet.getByLabel(/^Undo removing photo/).count()) === 1, "edit studio: ✕ marks it and offers ↩ — the picture is not gone");
+      await posters.getByLabel("Remove photo 1").first().waitFor({ timeout: 25000 });
+      check((await posters.getByLabel(/^Remove photo/).count()) === 2, "studio posters: two pictures, two live ✕");
+      await posters.getByLabel("Remove photo 1").click();
+      check((await posters.getByLabel(/^Undo removing photo/).count()) === 1, "studio posters: ✕ marks it and offers ↩ — the picture is not gone");
       check((await studioRows()) === 1, "⚠ THE BUG: a pressed ✕ has not touched the database");
-      await sheet.getByRole("button", { name: "Cancel" }).click();
+      await posters.getByRole("button", { name: "Cancel" }).click();
       check((await studioRows()) === 1, "⚠ THE BUG: and Cancel left the picture exactly where it was");
-      await org.getByRole("button", { name: "Edit studio", exact: true }).click();
-      await sheet.waitFor();
-      check((await sheet.getByLabel(/is the only one/).count()) === 1, "edit studio: reopening shows it still there, and still the only one");
+      await openStudioPosters();
+      check((await posters.getByLabel(/is the only one/).count()) === 1, "studio posters: reopening shows it still there, and still the only one");
 
       /* the gallery opens a picture full size */
-      await sheet.getByLabel("Open picture 1").click();
-      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 1, "edit studio: pressing a picture opens it full size");
+      await posters.getByLabel("Open picture 1").click();
+      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 1, "studio posters: pressing a picture opens it full size");
       await org.getByRole("button", { name: "Close the picture" }).click();
-      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 0, "edit studio: and it closes again");
+      check((await org.getByRole("dialog", { name: /picture 1 of/ }).count()) === 0, "studio posters: and it closes again");
       await shot("studio-header");
 
       /* a second picture, saved — then a removal, saved */
-      await sheet.getByLabel("Add photos of your space").setInputFiles(FILE);
+      await posters.getByLabel("Add photos of your space").setInputFiles(FILE);
       await useIt(org);
-      await sheet.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
-      await sheet.getByRole("button", { name: "Save" }).click();
+      await posters.getByLabel("Remove photo 2").first().waitFor({ timeout: 25000 });
+      await posters.getByRole("button", { name: /^Save/ }).click();
       await waitRailImgs(org, 2);
-      check((await studioRows()) === 2, "edit studio: Save committed the second one too");
-      await org.getByRole("button", { name: "Edit studio", exact: true }).click();
-      await sheet.waitFor();
-      await sheet.getByLabel("Remove photo 1").click();
-      await sheet.getByRole("button", { name: "Save" }).click();
+      check((await studioRows()) === 2, "studio posters: Save committed the second one too");
+      await openStudioPosters();
+      await posters.getByLabel("Remove photo 1").click();
+      await posters.getByRole("button", { name: /^Save/ }).click();
       await waitRailImgs(org, 1);
-      check((await studioRows()) === 1, "edit studio: and Save is what removes one, too");
+      check((await studioRows()) === 1, "studio posters: and Save is what removes one, too");
 
       /* the Media desk: the same two pictures as a desk */
       await org.goto(`${BASE}/business/${studioId}/media`);

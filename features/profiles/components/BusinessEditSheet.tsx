@@ -5,20 +5,11 @@ import { useState, useTransition } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
 import { setTenantLocationAction } from "@/features/geo/server-actions/location";
-import { commitHeaderDraft, commitWords, studioPorts } from "@/features/media/commitHeaderDraft";
-import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderPictures";
-import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
-import { useHeaderDraft } from "@/features/media/headerDraft";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
-import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
 import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
-import { photoUrl } from "@/lib/media/photo";
-import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
 import type { PublicTenant } from "@/types/publicProfile";
-import { ProfileDisc } from "./HeroRail";
-import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, gradientOf, sheetBtn } from "./profile-kit";
+import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
 /** The business's own Edit sheet — the prototype has ONE editor for a profile
  *  (11364, "one editor, and it is Edit profile"), and a studio's page is the
@@ -50,21 +41,16 @@ import { PencilIcon, PlatformIcon, Sheet, cornerChip, fieldInput, fieldLabel, gr
  *  the same test the map pin's own comment sets further down. */
 
 
+/** ⚠ `photos`, `ownerId` and `canEditPhoto` are GONE (20 Sep 2026). All three
+ *  existed for the picture blocks, and the pictures are two ⊕ controls on the
+ *  studio's own home now — `StudioPictures.tsx`. Props nothing reads are a lie
+ *  to the next reader, so the three call sites stopped sending them in the same
+ *  push. */
 export function BusinessEditSheet({
   tenant,
-  photos = [],
-  ownerId = null,
-  canEditPhoto = false,
   onClose,
 }: {
   tenant: PublicTenant;
-  /** a studio's header pictures, as this viewer may read them */
-  photos?: ProofPhoto[];
-  /** the owner's own id — the folder in the private bucket a new one goes into;
-   *  null hides the header block, because only the owner may add to it */
-  ownerId?: string | null;
-  /** an owner or a trainer — the pair the storage policy on `tenants/{id}` admits */
-  canEditPhoto?: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -80,29 +66,20 @@ export function BusinessEditSheet({
   const [phone, setPhone] = useState(tenant.phone ?? "");
   /* the Mail button's address (19 Sep 2026) — an empty box clears it */
   const [email, setEmail] = useState(tenant.contactEmail ?? "");
-  const [socials, setSocials] = useState<Array<{ platform: string; url: string }>>(tenant.socials);
+  /* ⚠ NO `socials` STATE — the links are edited on the studio's own home now
+     (`StudioLinksRow`), the way a person's are on theirs. They are still SENT
+     below, unchanged, because this door takes the whole profile and omitting
+     them would empty the rail. */
   /* THE STYLES IT DANCES (19 Sep 2026, the user: "some studios dont show dance
      styles on profile it is mandatory to have one at least"). They were derived
      from the studio's PUBLISHED classes, so a studio with none showed none —
      and a brand-new studio always has none. Its own field now, and the database
      refuses a studio that ends up with an empty list. */
   const [styles, setStyles] = useState<string[]>(tenant.styles);
-  const [addPlatform, setAddPlatform] = useState<string>("");
-  const [addUrl, setAddUrl] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  /* the pictures, as a draft this sheet owns — so Save commits them and Cancel
-     is free, exactly like every other field here */
   const isStudio = tenant.type === "studio";
-  const canEditHeader = isStudio && Boolean(ownerId);
-  const draft = useHeaderDraft({
-    initial: photos.map((p) => ({ id: p.id, path: p.path, url: p.url, signed: true })),
-    min: 1,
-    max: PROOF_MAX,
-  });
-  const tiles = headerTiles(draft, tenant.name);
-  const [lightbox, setLightbox] = useState<number | null>(null);
 
   /** The pin saves itself. A location is chosen by a gesture that is already
    *  visible on screen — the map has moved, the address has appeared — so
@@ -125,17 +102,12 @@ export function BusinessEditSheet({
     });
   const thisYear = new Date().getFullYear();
   const years = Array.from({ length: thisYear - 1950 + 1 }, (_, i) => thisYear - i);
-  const free = PLATFORMS.filter((p) => !socials.some((s) => s.platform === p));
 
-  /** THE WORDS FIRST, THEN THE PICTURES, AND ONE REFRESH AT THE END.
-   *
-   *  The order is deliberate: `update_business_profile` is the likeliest thing to
-   *  refuse (a 221-character About, a phone that is not a phone, a link that is
-   *  not a URL), and a refusal must cost NOTHING — so it happens before a
-   *  single byte moves. If the picture commit then half-fails, the sheet STAYS
-   *  OPEN wearing the database's own sentence and pressing Save again retries
-   *  only what is left: `applyCommit` has already folded in whatever landed, so
-   *  nothing is uploaded or removed twice. */
+  /** ⚠ THE WORDS, AND NOTHING ELSE (20 Sep 2026). This used to be "the words
+   *  first, THEN the pictures" — two commits in one press, with the picture half
+   *  able to fail on its own and leave the sheet open. The pictures are their own
+   *  controls on the studio's home now, so a Save here is one call that either
+   *  refuses or lands. */
   const save = () =>
     start(async () => {
       setErr(null);
@@ -152,7 +124,10 @@ export function BusinessEditSheet({
         foundedYear: yr,
         phone: phone.trim() || null,
         contactEmail: email.trim() || null,
-        socials,
+        /* ⚠ SENT UNCHANGED (20 Sep 2026). The links are edited on the studio's
+           home now, but this door takes the WHOLE profile — omitting them would
+           empty the rail the moment somebody saved a phone number. */
+        socials: tenant.socials,
         enquiryTypes: tenant.enquiryTypes,
         accepts: tenant.accepts,
       });
@@ -160,28 +135,9 @@ export function BusinessEditSheet({
         setErr(out.error);
         return;
       }
-      if (canEditHeader && draft.dirty && ownerId) {
-        const result = await commitHeaderDraft(draft.items, studioPorts(tenant.id, ownerId));
-        draft.applyCommit(result);
-        if (result.failures.length > 0) {
-          setErr(commitWords(result, draft.changeCount));
-          router.refresh();
-          return;
-        }
-      }
       onClose();
       router.refresh();
     });
-
-  const addLink = () => {
-    const platform = addPlatform || "";
-    if (!platform || !addUrl.trim()) return setErr("Pick a platform and paste its address");
-    if (!/^https?:\/\//i.test(addUrl.trim())) return setErr("A link is a web address — it starts with https://");
-    setSocials((s) => [...s, { platform, url: addUrl.trim() }]);
-    setAddPlatform("");
-    setAddUrl("");
-    setErr(null);
-  };
 
   return (
     <Portal>
@@ -205,26 +161,20 @@ export function BusinessEditSheet({
           form is not a hierarchy, it is an accident. A form gets ONE label
           tier — the small tracked caps every app uses for this — and grouping
           comes from the order and the spacing, not from a second typeface. */}
-      <div style={fieldLabel}>Update profile</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <ProfileDisc name={tenant.name} grad={gradientOf(tenant.name)} photo={photoUrl(tenant.photoPath)} photoAlt={`${tenant.name} — profile picture`} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {canEditPhoto ? (
-            <PhotoPicker owner={{ kind: "tenant", id: tenant.id }} hasPhoto={Boolean(tenant.photoPath)} label="Change the photo" />
-          ) : (
-            <div style={{ fontSize: 10.5, color: SUB }}>The owner or a trainer changes this.</div>
-          )}
-        </div>
-      </div>
-
-      {/* a studio's header IS its verification photos; an artist page's header
-          belongs to the PERSON who owns it, and is edited on their own profile */}
-      {canEditHeader ? (
-        <>
-          <div style={fieldLabel}>Update header</div>
-          <HeaderPictures draft={draft} tiles={tiles} kind="studio" canWrite addLabel="Add photos of your space" onOpen={setLightbox} busy={pending} />
-        </>
-      ) : null}
+﻿      {/* ⚠ THE PICTURES LEFT THIS SHEET (20 Sep 2026, the user: "edit profile
+          for studio not consistent with how its done for Artist and users").
+          They arrived here on 16 Sep, when the ask was "the update image option
+          should be inside the edit profile" — and then a person's moved OUT
+          again on 19-20 Sep, to a ⊕ on the disc and a ⊕ on the posters rail on
+          Home, and a studio's stayed. Two kinds of account editing the same two
+          pictures two different ways is the drift this file has been asked about
+          three times, so a studio's are the same two controls in the same two
+          places now (`StudioPictures.tsx`).
+          ⚠ WHAT MOVED WITH THEM IS THE DRAFT. The posters are still staged and
+          still committed by Save, because ✕ on one is a DELETION and Cancel has
+          to be able to mean nothing happened — this is the very screen where a
+          Cancel once destroyed four of a studio's pictures. The disc still
+          commits on upload, because replacing is not destroying. */}
 
       {/* ⚠ EVERY LABEL BELOW IS A SIBLING OF ITS CONTROL, NOT ITS WRAPPER
           (16 Sep 2026). These five were `<label style={fieldLabel}>` around the
@@ -312,45 +262,14 @@ export function BusinessEditSheet({
         </select>
       ) : null}
 
-      <div style={{ ...fieldLabel, marginTop: 6 }}>Links</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
-        {socials.map((l) => (
-          <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 12, background: CARD, border: `1px solid ${LINE}` }}>
-            <span style={{ flexShrink: 0, lineHeight: 0 }}>
-              <PlatformIcon label={l.platform} size={15} />
-            </span>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {l.platform} <span style={{ color: SUB, fontWeight: 600 }}>· {isPlatform(l.platform) ? handleOf(l.url) : l.url}</span>
-            </span>
-            <button type="button" aria-label={`Remove ${l.platform}`} onClick={() => setSocials((s) => s.filter((x) => x.platform !== l.platform))} style={{ background: "none", border: "none", color: "#F87171", fontSize: 15, cursor: "pointer", fontFamily: "inherit" }}>
-              ×
-            </button>
-          </div>
-        ))}
-        {socials.length === 0 ? <div style={{ fontSize: 12, color: SUB }}>No links yet — WhatsApp, Instagram, a website…</div> : null}
-      </div>
-      {free.length ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr auto", gap: 6, alignItems: "end" }}>
-          <div>
-            <div style={fieldLabel}>Platform</div>
-            <select aria-label="Platform" value={addPlatform} onChange={(e) => setAddPlatform(e.target.value)} style={fieldInput}>
-              <option value="">Pick…</option>
-              {free.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <div style={fieldLabel}>URL</div>
-            <input aria-label="URL" value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder={addPlatform === "WhatsApp" ? "https://wa.me/919876543210" : "https://…"} style={fieldInput} />
-          </div>
-          <button type="button" onClick={addLink} style={{ ...sheetBtn(false), padding: "10px 12px", height: 40 }}>
-            Add
-          </button>
-        </div>
-      ) : null}
+﻿      {/* ⚠ THE LINKS LEFT THIS SHEET (20 Sep 2026, the user: "edit profile for
+          studio not consistent with how its done for Artist and users. for
+          social media links, photos etc."). A person's links are a row in the
+          band on HOME with a ＋ beside them and have been since 19 Sep; a
+          studio's were a block halfway down this form. They are that same row
+          now — `StudioLinksRow` on the studio's own home — so the two kinds of
+          account are edited the same way, in the same place, with the same
+          sheets behind the same chips. */}
 
       {/* ── WHERE IT IS (11 Sep 2026) ──────────────────────────────────────────
           The one field the business never had. Until an owner moves this pin
@@ -378,25 +297,18 @@ export function BusinessEditSheet({
         <button type="button" onClick={onClose} style={sheetBtn(false)}>
           Cancel
         </button>
-        {/* the count is a substring, so getByRole("button", { name: "Save" }) still finds it */}
+        {/* ⚠ PLAIN "Save" AGAIN (20 Sep 2026) — it used to count the picture
+            changes ("Save · 2 picture changes") because this sheet committed
+            them; the posters have their own Save on their own sheet now, and
+            this one commits words. */}
         <button type="button" disabled={pending} onClick={save} style={sheetBtn(true)}>
-          {pending ? "Saving…" : draft.dirty ? `Save · ${draft.changeCount} ${draft.changeCount === 1 ? "picture change" : "picture changes"}` : "Save"}
+          {pending ? "Saving…" : "Save"}
         </button>
       </div>
     </Sheet>
-    {/* ⚠ A SIBLING OF THE SHEET, NEVER A CHILD — see PhotoLightbox's own header:
-        the Sheet's panel carries a transform while it rises, and every test that
-        scopes to getByRole("dialog", { name: "Edit business" }) would go
-        ambiguous on a dialog nested inside it. */}
-    {lightbox !== null ? (
-      <PhotoLightbox
-        shots={tiles.map((t) => ({ key: t.key, src: t.url, alt: t.alt, signed: t.signed }))}
-        index={lightbox}
-        onIndex={setLightbox}
-        onClose={() => setLightbox(null)}
-        label={tenant.name}
-      />
-    ) : null}
+    {/* ⚠ NO LIGHTBOX HERE ANY MORE — nothing in this sheet is a picture to open.
+        Pressing the disc on the studio's home opens its picture, and pressing a
+        poster opens that poster, which is where those gestures belong. */}
     </Portal>
   );
 }
@@ -408,15 +320,9 @@ export function BusinessEditSheet({
 export function BusinessEditButton({
   tenant,
   corner = false,
-  photos = [],
-  ownerId = null,
-  canEditPhoto = false,
 }: {
   tenant: PublicTenant;
   corner?: boolean;
-  photos?: ProofPhoto[];
-  ownerId?: string | null;
-  canEditPhoto?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -430,7 +336,7 @@ export function BusinessEditButton({
           Edit
         </button>
       )}
-      {open ? <BusinessEditSheet tenant={tenant} photos={photos} ownerId={ownerId} canEditPhoto={canEditPhoto} onClose={() => setOpen(false)} /> : null}
+      {open ? <BusinessEditSheet tenant={tenant} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }

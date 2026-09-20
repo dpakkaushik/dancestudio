@@ -66,6 +66,11 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
      query is not made for the other 99% of visits either. */
   const followers = role === "owner" ? await findTenantFollowers(supabase, tenantId) : null;
 
+  /* ⚠ `canEditPhoto` and `ownerId` no longer travel to the page (20 Sep 2026):
+     a studio's pictures are changed on the studio's OWN HOME — the ⊕ on the disc
+     and the ⊕ on the posters rail, where a person's have been since 19 Sep — so
+     this page has nothing to hand a picture control, and the Edit button here
+     edits words. */
   return (
     <PublicProfile
       profile={profile}
@@ -75,11 +80,7 @@ export async function PublicTenantPage({ tenantId, expect }: { tenantId: string;
       signedIn={Boolean(user)}
       followingN={followingN}
       isMember={role !== null}
-      canEditPhoto={role === "owner" || role === "trainer"}
       canEdit={role === "owner"}
-      /* the owner's own id, for the Edit sheet's header grid — a new picture
-         goes into `proof/{owner}/…`, which is the only folder they may write */
-      ownerId={role === "owner" ? (user?.id ?? null) : null}
       followers={followers}
       scheduleHref={publicSchedulePath(profile.tenant)}
       manageHref={profile.tenant.type === "studio" ? `/business/${tenantId}` : `/business/${tenantId}/classes`}
