@@ -193,8 +193,11 @@ async function seed() {
     [bounceCo, "Hauz Khas. Bollywood, Hip-Hop, Kathak.", "bouncedance", "+91 98300 10003", "studio@bounce.example"],
     [namma, "Indiranagar's breaking floor.", "nammadance", "+91 98400 10004", "namaste@namma.example"],
   ];
-  for (const [o, about, handle, phone, email] of orgFacts) {
-    await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: o.city, p_age: null, p_about: about, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }, { platform: "YouTube", url: `https://youtube.com/@${handle}` }], p_styles: [], p_phone: phone, p_contact_email: email });
+  /* ⚠ the second element is the old About and is IGNORED (20 Sep 2026): the
+     column is dropped and `update_my_profile` no longer takes `p_about`. The
+     tuples keep their shape so the cast below stays readable. */
+  for (const [o, , handle, phone, email] of orgFacts) {
+    await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: o.city, p_age: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }, { platform: "YouTube", url: `https://youtube.com/@${handle}` }], p_styles: [], p_phone: phone, p_contact_email: email });
     await patch(H_SERVICE, `profiles?id=eq.${o.id}`, {
       verified_at: nowIso(),
       gstin: `DM${handle.slice(0, 1).toUpperCase()}${String(Date.now() % 100000).padStart(5, "0")}`,
@@ -219,9 +222,9 @@ async function seed() {
     [priya, ["Hip-Hop"], 21, null, null, null, null],
     [nikhil, ["Breaking"], 23, null, null, null, null],
   ];
-  for (const [u, styles, age, about, phone, phonePublic, email] of personFacts) {
+  for (const [u, styles, age, , phone, phonePublic, email] of personFacts) {
     const handle = u.name.toLowerCase().replace(/[^a-z]/g, "");
-    await rpc(u.h, "update_my_profile", { p_full_name: u.name, p_city: u.city, p_age: age, p_about: about, p_socials: artists.includes(u) ? [{ platform: "Instagram", url: `https://instagram.com/${handle}` }] : [], p_styles: styles, p_phone: phone, p_contact_email: email, p_phone_public: phonePublic });
+    await rpc(u.h, "update_my_profile", { p_full_name: u.name, p_city: u.city, p_age: age, p_socials: artists.includes(u) ? [{ platform: "Instagram", url: `https://instagram.com/${handle}` }] : [], p_styles: styles, p_phone: phone, p_contact_email: email, p_phone_public: phonePublic });
   }
   log("every person has a city and styles; Meera and Karan show Call on their pages, Aditya keeps his number off it");
 
@@ -236,7 +239,7 @@ async function seed() {
     await patch(H_SERVICE, `businesses?id=eq.${t.id}`, { verified_at: nowIso(), visibility: "listed" });
     /* placed on the map — Discover measures a real distance from here */
     await rpc(o.h, "set_business_location", { p_business_id: t.id, p_lat: CITY[o.city].lat + dLat, p_lng: CITY[o.city].lng + dLng, p_area: area, p_city: o.city });
-    await rpc(o.h, "update_business_profile", { p_business_id: t.id, p_about: `${name} — ${area}.`, p_founded_year: 2016, p_phone: "+91 98111 00000", p_socials: [{ platform: "Instagram", url: `https://instagram.com/${name.toLowerCase().replace(/[^a-z]/g, "")}` }], p_enquiry_types: null, p_accepts_upi: true, p_accepts_cards: true, p_accepts_cash: true, p_accepts_bank: false, p_contact_email: `${area.toLowerCase().replace(/[^a-z]/g, "")}@studio.example` });
+    await rpc(o.h, "update_business_profile", { p_business_id: t.id, p_founded_year: 2016, p_phone: "+91 98111 00000", p_socials: [{ platform: "Instagram", url: `https://instagram.com/${name.toLowerCase().replace(/[^a-z]/g, "")}` }], p_enquiry_types: null, p_accepts_upi: true, p_accepts_cards: true, p_accepts_cash: true, p_accepts_bank: false, p_contact_email: `${area.toLowerCase().replace(/[^a-z]/g, "")}@studio.example` });
     log(`${t.name} (studio · ${o.city} · ${area}) — listed, placed, subscribed`);
     return t;
   };

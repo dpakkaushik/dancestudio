@@ -27,7 +27,6 @@ export interface PublicTenant {
   createdAt: string;
   /** a path in the public media bucket, or null for the business's gradient */
   photoPath: string | null;
-  about: string | null;
   foundedYear: number | null;
   phone: string | null;
   /** the Mail button's address (19 Sep 2026) */

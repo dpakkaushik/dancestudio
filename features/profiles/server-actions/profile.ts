@@ -21,7 +21,6 @@ const schema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "a date of birth is a date")
     .nullable()
     .optional(),
-  about: z.string().trim().max(220).nullable(),
   socials: z
     .array(
       z.object({
@@ -91,7 +90,6 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
     await updateMyProfile(supabase, {
       ...parsed.data,
       city: parsed.data.city || null,
-      about: parsed.data.about || null,
       phone: parsed.data.phone || null,
     });
     revalidatePath("/profile");

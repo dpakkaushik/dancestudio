@@ -22,8 +22,6 @@ export interface Tenant {
   name: string;
   area: string | null;
   city: string | null;
-  /** the business's own words (About, 10834) — null prints nothing */
-  about: string | null;
   /** "Since 2016" (10691) */
   foundedYear: number | null;
   /** the Call button's number (10879) */

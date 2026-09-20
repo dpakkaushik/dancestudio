@@ -165,7 +165,7 @@ export function OnboardingForm({
   };
   const writeProfile = (next: { styles: string[]; socials: SocialLink[] }, then: () => void) => {
     start(async () => {
-      const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, about: null, phone: null, styles: next.styles, socials: next.socials });
+      const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, phone: null, styles: next.styles, socials: next.socials });
       if (out.error) return fire(out.error);
       then();
     });
@@ -371,7 +371,7 @@ export function OnboardingForm({
   const leave = () =>
     start(async () => {
       if (isOrg) {
-        const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, about: null, phone: null, styles: [], socials: [] });
+        const out = await updateMyProfileAction({ fullName, city: city.trim(), age: null, phone: null, styles: [], socials: [] });
         if (out.error) return fire(out.error);
       }
       await finishOnboardingAction();

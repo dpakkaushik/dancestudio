@@ -217,7 +217,6 @@ export function StudioVerificationStrip({
       const others = tenant.socials.filter((s) => !FIELDS.some((f) => f.platform === s.platform));
       const saved = await updateTenantProfileAction({
         tenantId: tenant.id,
-        about: tenant.about,
         foundedYear: tenant.foundedYear,
         phone: tenant.phone,
         socials: [...next, ...others],

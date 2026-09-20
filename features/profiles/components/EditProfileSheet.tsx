@@ -79,7 +79,7 @@ export function EditProfileSheet({
 }) {
   const router = useRouter();
   const isOrg = profile.role === "org";
-  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, dob: profile.dob ?? "", about: profile.about ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "", phonePublic: profile.phonePublic });
+  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, dob: profile.dob ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "", phonePublic: profile.phonePublic });
   const [err, setErr] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -99,7 +99,6 @@ export function EditProfileSheet({
         age: isOrg ? null : d.age,
         /* THE DATE OF BIRTH (19 Sep 2026): the database works the age out from it; an empty box leaves it as it is */
         dob: isOrg || !d.dob ? undefined : d.dob,
-        about: d.about.trim() || null,
         socials: profile.socials,
         styles: profile.styles,
         phone: d.phone.trim() || null,
@@ -209,11 +208,10 @@ export function EditProfileSheet({
           </div>
         </>
       )}
-      {/* ⚠ NO BIO FIELD (20 Sep 2026, the user: "Remove bio from all profiles").
-          The About paragraph is off every page in the app, so asking for one here
-          would be a box nobody ever reads back. `profiles.about` and the door's
-          `p_about` argument both STAY — an account that wrote one keeps it, and
-          turning the field back on is this block again. */}
+      {/* ⚠ NO BIO FIELD, AND NO COLUMN BEHIND IT (20 Sep 2026: "Remove bio from
+          all profiles", then "about and bio for profiles need to go away").
+          `profiles.about` and this door's `p_about` argument are both gone; the
+          16 paragraphs that existed were copied out before the column dropped. */}
       {err ? <div role="alert" style={{ fontSize: 12, color: "#F87171", marginTop: 8 }}>{err}</div> : null}
       <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
         <button type="button" onClick={onClose} style={sheetBtn(false)}>Cancel</button>

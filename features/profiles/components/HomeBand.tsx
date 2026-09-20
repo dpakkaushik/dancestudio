@@ -102,7 +102,6 @@ export function HomeBand({
         fullName: profile.fullName,
         city: (profile.city ?? "").trim(),
         age: profile.age,
-        about: profile.about ?? null,
         socials: next.socials ?? profile.socials,
         styles: next.styles ?? profile.styles,
         phone: profile.phone ?? null,

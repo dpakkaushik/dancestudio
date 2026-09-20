@@ -73,10 +73,11 @@ function New-EmailUser($email, $name, $role) {
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
 # the body the Edit / links / styles sheets send, with one field changed at a time
-function ProfileBody($name, $city, $age, $about, $socials, $styles) {
-  return @{ p_full_name = $name; p_city = $city; p_age = $age; p_about = $about; p_socials = $socials; p_styles = $styles }
+function ProfileBody($name, $city, $age, $socials, $styles) {
+  # the About argument left on 20 Sep 2026 with profiles.about and p_about
+  return @{ p_full_name = $name; p_city = $city; p_age = $age; p_socials = $socials; p_styles = $styles }
 }
-$SEL = "select=id,full_name,city,age,about,socials,styles,member_no"
+$SEL = "select=id,full_name,city,age,socials,styles,member_no"
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
@@ -92,7 +93,7 @@ try {
 
   # 2. the door writes the caller's own row: name, city, age, bio, two links, three styles
   $links = @(@{ platform = "Instagram"; url = "https://instagram.com/rheamoves" }, @{ platform = "YouTube"; url = "https://youtube.com/@rheamoves" })
-  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 "Movement is a language." $links @("Hip-Hop", "Kathak", "Contemporary")) | Out-Null
+  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 $links @("Hip-Hop", "Kathak", "Contemporary")) | Out-Null
   $mine = Rows (Api $rhea.token) "profiles?$SEL&id=eq.$($rhea.id)"
   Check 2 "the caller's row takes the sheet's fields (age $($mine[0].age), $(@($mine[0].socials).Count) links, $(@($mine[0].styles).Count) styles)" (
     $mine[0].full_name -eq "Rhea Kapoor $stamp" -and $mine[0].city -eq "New Delhi" -and $mine[0].age -eq 24 -and
@@ -106,50 +107,56 @@ try {
   # 4. a signed-in person reads the fields back; the public reads nothing at all
   $seen = Rows (Api $other.token) "profiles?$SEL&id=eq.$($rhea.id)"
   $anonSeen = Rows $anonH "profiles?$SEL&id=eq.$($rhea.id)"
-  Check 4 "a signed-in person reads About and the links (Step 1's policy); the public reads $($anonSeen.Count) rows" (
-    $seen.Count -eq 1 -and $seen[0].about -eq "Movement is a language." -and $anonSeen.Count -eq 0)
+  Check 4 "a signed-in person reads the name and the links (Step 1's policy); the public reads $($anonSeen.Count) rows" (
+    $seen.Count -eq 1 -and $seen[0].full_name -eq "Rhea Kapoor $stamp" -and @($seen[0].socials).Count -eq 2 -and $anonSeen.Count -eq 0)
 
   # 5. an impossible age is refused with a sentence
-  $r5 = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 7 $null $links @("Hip-Hop")) }
+  $r5 = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 7 $links @("Hip-Hop")) }
   Check 5 "an age of 7 is refused ('$(if ($r5) { ($r5 -split 'message')[1] } else { 'went through' })')" ($r5 -and $r5 -like "*between 13 and 99*")
 
-  # 6. a bio over 220 characters is refused
-  $long = "x" * 221
-  $r6 = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 $long $links @("Hip-Hop")) }
-  Check 6 "a 221-character bio is refused" ($r6 -and $r6 -like "*220*")
+  # 6. THE BIO IS GONE (20 Sep 2026). This check used to prove the 220-character
+  #    cap; the user dropped the column, so the rule it tested no longer exists
+  #    and asserting it would be asserting the old world. What is worth proving
+  #    instead is that the column really went: asking for it is an error, and the
+  #    door refuses the argument that used to carry it.
+  $r6 = Fails { Rows (Api $rhea.token) "profiles?select=id,about&id=eq.$($rhea.id)" }
+  $r6b = Fails { Rpc (Api $rhea.token) "update_my_profile" @{ p_full_name = "Rhea Kapoor $stamp"; p_city = "New Delhi"; p_age = 24; p_about = "a bio"; p_socials = $links; p_styles = @("Hip-Hop") } }
+  Check 6 "profiles.about is gone: reading it fails, and p_about is refused" ($r6 -and $r6b)
 
   # 7. a link that is not a web address, and two links for one platform, are refused
-  $r7a = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 $null @(@{ platform = "Instagram"; url = "rheamoves" }) @("Hip-Hop")) }
-  $r7b = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 $null @(@{ platform = "Instagram"; url = "https://a.example" }, @{ platform = "Instagram"; url = "https://b.example" }) @("Hip-Hop")) }
+  $r7a = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 @(@{ platform = "Instagram"; url = "rheamoves" }) @("Hip-Hop")) }
+  $r7b = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 @(@{ platform = "Instagram"; url = "https://a.example" }, @{ platform = "Instagram"; url = "https://b.example" }) @("Hip-Hop")) }
   Check 7 "a bare handle is refused ('web address'), and one link per platform" (
     $r7a -and $r7a -like "*web address*" -and $r7b -and $r7b -like "*one link per platform*")
 
   # 8. an empty style is refused; a repeated style is kept once, in order
-  $r8 = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 $null @() @("Hip-Hop", "")) }
-  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 $null @() @("Kathak", "Hip-Hop", "Kathak")) | Out-Null
+  $r8 = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 @() @("Hip-Hop", "")) }
+  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 @() @("Kathak", "Hip-Hop", "Kathak")) | Out-Null
   $mine = Rows (Api $rhea.token) "profiles?$SEL&id=eq.$($rhea.id)"
   Check 8 "an empty style is refused; a repeat is kept once in order (got: $(@($mine[0].styles) -join ','))" (
     $r8 -and (@($mine[0].styles) -join ",") -eq "Kathak,Hip-Hop")
 
   # 9. a direct PATCH of somebody else's row changes nothing (Step 1's own-row policy)
   $plainH = @{ apikey = $anon; Authorization = "Bearer $($other.token)"; "Content-Type" = "application/json" }
-  try { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($rhea.id)" -Headers $plainH -Body (@{ about = "hijacked" } | ConvertTo-Json) | Out-Null } catch {}
+  # ⚠ the column it used to hijack (about) is gone, so it aims at the CITY - the
+  #   claim is about the own-row policy, not about which column is written
+  try { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($rhea.id)" -Headers $plainH -Body (@{ city = "Hijacked" } | ConvertTo-Json) | Out-Null } catch {}
   $mine = Rows (Api $rhea.token) "profiles?$SEL&id=eq.$($rhea.id)"
-  Check 9 "a direct PATCH of another person's About changes nothing (still '$($mine[0].about)')" ($mine[0].about -ne "hijacked")
+  Check 9 "a direct PATCH of another person's row changes nothing (city is still '$($mine[0].city)')" ($mine[0].city -ne "Hijacked")
 
   # 10. the public cannot call the door at all
-  $r10 = Fails { Rpc $anonH "update_my_profile" (ProfileBody "X" $null $null $null @() @()) }
+  $r10 = Fails { Rpc $anonH "update_my_profile" (ProfileBody "X" $null $null @() @()) }
   Check 10 "the public cannot call update_my_profile" ($null -ne $r10)
 
-  # 11. clearing: null age and an empty About come back as null, not as empty strings -
-  #     but a CITY is required and a USER keeps at least one style (9 Sep 2026, requirements 2 and 3)
-  $r11a = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "" $null $null @() @("Kathak")) }
-  $r11b = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" $null $null @() @()) }
-  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" $null "   " @() @("Kathak")) | Out-Null
+  # 11. clearing: a null age comes back as null, not as an empty string - but a
+  #     CITY is required and a USER keeps at least one style (9 Sep 2026, requirements 2 and 3)
+  $r11a = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "" $null @() @("Kathak")) }
+  $r11b = Fails { Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" $null @() @()) }
+  Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" $null @() @("Kathak")) | Out-Null
   $mine = Rows (Api $rhea.token) "profiles?$SEL&id=eq.$($rhea.id)"
-  Check 11 "an empty city is refused ($r11a); a user with no style is refused ($r11b); age and About clear to null, links to 0, the one style stays" (
+  Check 11 "an empty city is refused ($r11a); a user with no style is refused ($r11b); age clears to null, links to 0, the one style stays" (
     ($r11a -like "*city is required*") -and ($r11b -like "*at least one dance style*") -and
-    $mine[0].city -eq "New Delhi" -and $null -eq $mine[0].age -and $null -eq $mine[0].about -and @($mine[0].socials).Count -eq 0 -and @($mine[0].styles).Count -eq 1)
+    $mine[0].city -eq "New Delhi" -and $null -eq $mine[0].age -and @($mine[0].socials).Count -eq 0 -and @($mine[0].styles).Count -eq 1)
 
   # 12. an ORGANIZATION carries no styles and - since 20260914110000 (14 Sep 2026,
   #     "an organization keeps no link") - needs no link of its own: what DanceOS
@@ -157,9 +164,9 @@ try {
   #     paperwork is its GST number. This check asserted the OLD rule ("at least
   #     one link") and had been red since that migration; re-cut 16 Sep 2026.
   $org = New-EmailUser "prof-o-$stamp@example.com" "Org Proof $stamp" "org"
-  Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null $null @() @("Hip-Hop")) | Out-Null
+  Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null @() @("Hip-Hop")) | Out-Null
   $noLink = Rows (Api $org.token) "profiles?$SEL&id=eq.$($org.id)"
-  Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null $null @(@{ platform = "Instagram"; url = "https://instagram.com/orgproof" }) @("Hip-Hop")) | Out-Null
+  Rpc (Api $org.token) "update_my_profile" (ProfileBody "Org Proof $stamp" "Pune" $null @(@{ platform = "Instagram"; url = "https://instagram.com/orgproof" }) @("Hip-Hop")) | Out-Null
   $orgRow = Rows (Api $org.token) "profiles?$SEL&id=eq.$($org.id)"
   Check 12 "an organization with no link SAVES (links: $(@($noLink[0].socials).Count)); with one it saves that ($(@($orgRow[0].socials).Count)); and its styles are empty either way ($(@($noLink[0].styles).Count), $(@($orgRow[0].styles).Count))" (
     @($noLink[0].socials).Count -eq 0 -and @($orgRow[0].socials).Count -eq 1 -and @($noLink[0].styles).Count -eq 0 -and @($orgRow[0].styles).Count -eq 0)

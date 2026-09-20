@@ -90,10 +90,15 @@ function Try-Patch($label, $body, $column) {
 # studio flipped to an artist page can then be listed for free. Testing the
 # controls first keeps each claim about one thing.
 
-# 1. VALIDATION. update_business_profile caps About at 220 characters.
+# 1. VALIDATION. The name: update_business_profile caps it at 80 characters and
+#    businesses_name_check caps it at 140, so a direct PATCH is refused too.
+#    ⚠ This check used to write a 5,000-character About, because About was the
+#    longest free-text column a business had and carried its own CHECK. The
+#    column was dropped on 20 Sep 2026, so the same claim - the DATABASE holds a
+#    rule that a direct PATCH would otherwise walk past - is made on the name.
 $long = "x" * 5000
-$r = Try-Patch "about" (@{ about = $long } | ConvertTo-Json) "about"
-"1. Owner writes a 5,000-character About (the RPC caps it at 220): $(if ($r.ok) {"$($r.how) -- BLOCKED"} else {"WROTE 5,000 chars -- !!! VALIDATION BYPASSED !!!"})"
+$r = Try-Patch "name" (@{ name = $long } | ConvertTo-Json) "name"
+"1. Owner writes a 5,000-character name (the CHECK caps it at 140): $(if ($r.ok) {"$($r.how) -- BLOCKED"} else {"WROTE 5,000 chars -- !!! VALIDATION BYPASSED !!!"})"
 if (-not $r.ok) { $pass = $false }
 
 # 2. VALIDATION. The RPC demands a phone that looks like a phone.

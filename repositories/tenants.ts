@@ -11,7 +11,6 @@ export interface TenantRow {
   name: string;
   area: string | null;
   city: string | null;
-  about?: string | null;
   founded_year?: number | null;
   phone?: string | null;
   socials?: unknown;
@@ -27,7 +26,9 @@ export interface TenantRow {
   member_no?: number | null;
 }
 
-export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles, member_no";
+/* ⚠ `about` LEFT on 20 Sep 2026 (`20260920160000_the_bio_is_gone`) — selecting a
+   dropped column would fail every business read. `events.about` is untouched. */
+export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles, member_no";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -44,7 +45,6 @@ export const toTenant = (row: TenantRow): Tenant => ({
   area: row.area,
   city: row.city,
   photoPath: row.profile_photo_path ?? null,
-  about: row.about ?? null,
   foundedYear: row.founded_year == null ? null : Number(row.founded_year),
   phone: row.phone ?? null,
   socials: toSocials(row.socials),
@@ -67,7 +67,6 @@ export const toTenant = (row: TenantRow): Tenant => ({
 export interface TenantProfileInput {
   /** the NAME (18 Sep 2026) — sent only when it changed; omitted, the row keeps its own */
   name?: string | null;
-  about: string | null;
   foundedYear: number | null;
   phone: string | null;
   socials: SocialLink[];
@@ -88,7 +87,6 @@ export interface TenantProfileInput {
 export async function updateTenantProfile(supabase: SupabaseClient, tenantId: string, input: TenantProfileInput): Promise<void> {
   const { error } = await supabase.rpc("update_business_profile", {
     p_business_id: tenantId,
-    p_about: input.about,
     p_founded_year: input.foundedYear,
     p_phone: input.phone,
     p_socials: input.socials,

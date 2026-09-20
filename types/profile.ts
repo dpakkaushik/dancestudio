@@ -45,8 +45,6 @@ export interface Profile {
   fullName: string;
   role: ProfileRole;
   city: string | null;
-  /** the person's own sentence, ≤ 220 chars; null prints nothing */
-  about: string | null;
   /** the age, printed as the number alone ("24, New Delhi") — worked out from
    *  `dob` by the database on the day (19 Sep 2026), a bare number only for a
    *  profile that never gave a date */

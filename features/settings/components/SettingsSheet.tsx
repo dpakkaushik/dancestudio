@@ -195,7 +195,7 @@ export function SettingsSheet({
     if (!business) return;
     const next = enqAll.map((t) => t.k).filter((kk) => (kk === k ? !enqOn(kk) : enqOn(kk)));
     start(async () => {
-      const out = await updateTenantProfileAction({ tenantId: business.id, about: business.about, foundedYear: business.foundedYear, phone: business.phone, socials: business.socials, enquiryTypes: next.length === enqAll.length ? null : next, accepts: business.accepts });
+      const out = await updateTenantProfileAction({ tenantId: business.id, foundedYear: business.foundedYear, phone: business.phone, socials: business.socials, enquiryTypes: next.length === enqAll.length ? null : next, accepts: business.accepts });
       if (out.error) return fire(out.error);
       router.refresh();
     });

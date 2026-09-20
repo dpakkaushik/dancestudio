@@ -84,7 +84,7 @@ export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }
     if (!canEdit) return fire("Only the owner changes what the business accepts");
     const accepts = { ...tenant.accepts, [k]: !tenant.accepts[k] };
     start(async () => {
-      const out = await updateTenantProfileAction({ tenantId: tenant.id, about: tenant.about, foundedYear: tenant.foundedYear, phone: tenant.phone, socials: tenant.socials, enquiryTypes: tenant.enquiryTypes, accepts });
+      const out = await updateTenantProfileAction({ tenantId: tenant.id, foundedYear: tenant.foundedYear, phone: tenant.phone, socials: tenant.socials, enquiryTypes: tenant.enquiryTypes, accepts });
       if (out.error) return fire(out.error);
       fire(`${ACCEPT_ROWS.find(([kk]) => kk === k)?.[1]} ${accepts[k] ? "enabled" : "disabled"}`);
       router.refresh();

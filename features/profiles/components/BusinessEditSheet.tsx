@@ -71,11 +71,11 @@ export function BusinessEditSheet({
   /* the name (18 Sep 2026, the user: "give option to rename") — the owner's alone,
      like everything else this sheet saves through the one door */
   const [name, setName] = useState(tenant.name);
-  /* ⚠ READ, NEVER WRITTEN (20 Sep 2026): the About field is gone from this sheet
-     but `update_business_profile` still takes `p_about`, and passing the value
-     back is what stops a Save from wiping a paragraph somebody wrote before the
-     field went away. Nothing on this screen can change it. */
-  const about = tenant.about ?? "";
+  /* ⚠ THE ABOUT IS GONE ENTIRELY (20 Sep 2026). For one day this sheet read the
+     column without writing it, so a Save could not wipe a paragraph written
+     before the field went away; the user then asked for the column itself, so
+     `update_business_profile` no longer takes `p_about` and there is nothing
+     left to pass back. */
   const [founded, setFounded] = useState(tenant.foundedYear ? String(tenant.foundedYear) : "");
   const [phone, setPhone] = useState(tenant.phone ?? "");
   /* the Mail button's address (19 Sep 2026) — an empty box clears it */
@@ -149,7 +149,6 @@ export function BusinessEditSheet({
         tenantId: tenant.id,
         styles,
         name: name.trim() !== tenant.name ? name.trim() : undefined,
-        about: about.trim() || null,
         foundedYear: yr,
         phone: phone.trim() || null,
         contactEmail: email.trim() || null,
@@ -237,9 +236,10 @@ export function BusinessEditSheet({
           suite finds three of them by it. */}
       <div style={fieldLabel}>Name</div>
       <input aria-label="Name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder={isStudio ? "The studio's name" : "Your page's name"} style={fieldInput} />
-      {/* ⚠ NO ABOUT FIELD (20 Sep 2026, the user: "Remove bio from all profiles").
-          `businesses.about` and `p_about` stay, so a studio that wrote one keeps
-          it; nothing in the app draws it and nothing asks for one. */}
+      {/* ⚠ NO ABOUT FIELD, AND NO COLUMN BEHIND IT (20 Sep 2026: "Remove bio from
+          all profiles", then "about and bio for profiles need to go away"). For
+          one day the column stayed and was read but never written; it is dropped
+          now, so there is nothing to keep and nothing to pass back. */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
           <div style={fieldLabel}>Since</div>

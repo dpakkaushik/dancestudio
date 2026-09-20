@@ -167,23 +167,23 @@ try {
 
   # -- A CONTACT EMAIL, THROUGH THREE DOORS ------------------------------------
   # 6. the person's door: checked, set, cleared; a stranger reads an artist's through public_artist
-  $bad = Fails { Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_about = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "not-an-address" } }
-  Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_about = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "artist@example.com" } | Out-Null
+  $bad = Fails { Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "not-an-address" } }
+  Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "artist@example.com" } | Out-Null
   $artistRow = @(Get-Rows $svcH "profiles?id=eq.$($artist.id)&select=contact_email")[0]
   $pubArtist = Rpc-Rows $anonH "public_artist" @{ p_user_id = $artist.id }
-  Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_about = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "" } | Out-Null
+  Rpc (Api $artist.token) "update_my_profile" @{ p_full_name = $artist.name; p_city = "Pune"; p_age = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $null; p_contact_email = "" } | Out-Null
   $cleared = @(Get-Rows $svcH "profiles?id=eq.$($artist.id)&select=contact_email")[0]
   Check 6 "A bad address is refused ($bad); a good one lands ($($artistRow.contact_email)) and a stranger reads it off public_artist ($($pubArtist[0].contact_email)); an empty string clears it (now '$($cleared.contact_email)')" (
     ($bad -match "not an email address") -and ($artistRow.contact_email -eq "artist@example.com") -and ($pubArtist.Count -eq 1) -and ($pubArtist[0].contact_email -eq "artist@example.com") -and ([string]$cleared.contact_email -eq ""))
 
   # 7. the business door and the crew door; the organization's through public_organization, with its phone
-  Rpc (Api $org.token) "update_business_profile" @{ p_business_id = $studio.id; p_about = "A studio"; p_founded_year = 2016; p_phone = "+91 98765 43210"; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true; p_name = $null; p_contact_email = "hello@studio.example" } | Out-Null
+  Rpc (Api $org.token) "update_business_profile" @{ p_business_id = $studio.id; p_founded_year = 2016; p_phone = "+91 98765 43210"; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true; p_name = $null; p_contact_email = "hello@studio.example" } | Out-Null
   $bizRow = @(Get-Rows $anonH "businesses?id=eq.$($studio.id)&select=contact_email,phone")[0]
-  $bizBad = Fails { Rpc (Api $org.token) "update_business_profile" @{ p_business_id = $studio.id; p_about = "A studio"; p_founded_year = 2016; p_phone = "+91 98765 43210"; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true; p_name = $null; p_contact_email = "nope" } }
+  $bizBad = Fails { Rpc (Api $org.token) "update_business_profile" @{ p_business_id = $studio.id; p_founded_year = 2016; p_phone = "+91 98765 43210"; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true; p_name = $null; p_contact_email = "nope" } }
   $crewRow = Rpc (Api $lead.token) "update_crew" @{ p_crew_id = $crew.id; p_name = $crew.name; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = "crew@example.com" }
   $crewBad = Fails { Rpc (Api $lead.token) "update_crew" @{ p_crew_id = $crew.id; p_name = $crew.name; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = "nope" } }
   $crewOutsider = Fails { Rpc (Api $fan.token) "update_crew" @{ p_crew_id = $crew.id; p_name = "Taken"; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = $null } }
-  Rpc (Api $org.token) "update_my_profile" @{ p_full_name = $org.name; p_city = "Pune"; p_age = $null; p_about = "We run studios"; p_socials = @(); p_styles = @(); p_phone = "+91 91234 56789"; p_contact_email = "org@example.com" } | Out-Null
+  Rpc (Api $org.token) "update_my_profile" @{ p_full_name = $org.name; p_city = "Pune"; p_age = $null; p_socials = @(); p_styles = @(); p_phone = "+91 91234 56789"; p_contact_email = "org@example.com" } | Out-Null
   $pubOrg = Rpc-Rows $anonH "public_organization" @{ p_org_id = $org.id }
   Check 7 "The studio's lands ($($bizRow.contact_email)) and a bad one is refused ($bizBad); the crew's lands ($($crewRow.contact_email)), a bad one is refused ($crewBad), an outsider is refused ($crewOutsider); a stranger reads the organization's phone ($($pubOrg[0].phone)) and email ($($pubOrg[0].contact_email)) off its page" (
     ($bizRow.contact_email -eq "hello@studio.example") -and ($bizBad -match "not an email address") -and ($crewRow.contact_email -eq "crew@example.com") -and ($crewBad -match "not an email address") -and ($crewOutsider -match "leader") -and ($pubOrg.Count -eq 1) -and ($pubOrg[0].phone -eq "+91 91234 56789") -and ($pubOrg[0].contact_email -eq "org@example.com"))

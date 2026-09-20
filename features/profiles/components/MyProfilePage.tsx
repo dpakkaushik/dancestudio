@@ -23,7 +23,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
-import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, TYPE, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -271,17 +271,12 @@ export function MyProfilePage({
         </IdentityHero>
 
         <div style={{ textAlign: "left" }}>
-          {/* ABOUT, WHERE IT BELONGS (10811) — prose, not a boxed card */}
-          <div style={{ margin: "20px 0 14px" }}>
-            <div style={{ ...TYPE.shelf, color: INK, marginBottom: 6 }}>About</div>
-            {profile.about ? (
-              <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>{profile.about}</div>
-            ) : (
-              <div style={{ fontSize: 13.5, color: SUB, lineHeight: 1.62 }}>
-                A sentence in your own words — <b style={{ color: PINK }}>Settings › Edit profile</b>
-              </div>
-            )}
-          </div>
+          {/* ⚠ THE ABOUT BLOCK IS GONE (20 Sep 2026, the user: "about and bio for
+              profiles need to go away"). The field left both Edit sheets the day
+              before, which left this screen printing a heading over a prompt to
+              go and fill a box that no longer exists — and then the column went
+              too (`20260920160000_the_bio_is_gone`), so there is nothing to read.
+              `events.about` is a different column and is untouched. */}
 
           {/* THE PLACE THIS PROFILE GOES (10905): the prototype drew Stats · Schedule
               as two big white buttons; Stats is the chip beside the QR in the hero

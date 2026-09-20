@@ -76,8 +76,9 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
 }
-function TenantBody($id, $about, $year, $phone, $socials, $enq, $upi, $cards, $cash, $bank) {
-  return @{ p_business_id = $id; p_about = $about; p_founded_year = $year; p_phone = $phone; p_socials = $socials; p_enquiry_types = $enq;
+function TenantBody($id, $year, $phone, $socials, $enq, $upi, $cards, $cash, $bank) {
+  # the About argument left on 20 Sep 2026 with businesses.about and p_about
+  return @{ p_business_id = $id; p_founded_year = $year; p_phone = $phone; p_socials = $socials; p_enquiry_types = $enq;
             p_accepts_upi = $upi; p_accepts_cards = $cards; p_accepts_cash = $cash; p_accepts_bank = $bank }
 }
 function Plain($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json" } }
@@ -98,7 +99,7 @@ $dancer = New-EmailUser "set-a-$stamp@example.com" "Plan Proof $stamp" "user"
 $owner = New-EmailUser "set-b-$stamp@example.com" "Owner Proof $stamp" "org"
 $stranger = New-EmailUser "set-c-$stamp@example.com" "Stranger Proof $stamp" "user"
 $tenantId = $null
-$TSEL = "select=id,about,founded_year,phone,socials,enquiry_types,accepts_upi,accepts_cards,accepts_cash,accepts_bank,verified_at"
+$TSEL = "select=id,founded_year,phone,socials,enquiry_types,accepts_upi,accepts_cards,accepts_cash,accepts_bank,verified_at"
 
 try {
   # -- the Artist plan (10 Sep 2026: a PAID subscription, Rs 700 a month through Cashfree) --
@@ -151,32 +152,37 @@ try {
 
   # 7. the owner's door saves everything and the PUBLIC reads it on a listed business
   $links = @(@{ platform = "Instagram"; url = "https://instagram.com/proofstudio" }, @{ platform = "WhatsApp"; url = "https://wa.me/919876543210" })
-  Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId "Where the city comes to move." 2016 "+91 98765 43210" $links @("celebration", "private") $true $true $false $true) | Out-Null
+  Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId 2016 "+91 98765 43210" $links @("celebration", "private") $true $true $false $true) | Out-Null
   $pubRow = Rows $anonH "businesses?$TSEL&id=eq.$tenantId"
-  Check 7 "the owner's words are saved and the public reads them (about, Since $($pubRow[0].founded_year), phone, $(@($pubRow[0].socials).Count) links, $(@($pubRow[0].enquiry_types).Count) enquiry types, cash off / bank on)" (
-    $pubRow.Count -eq 1 -and $pubRow[0].about -eq "Where the city comes to move." -and $pubRow[0].founded_year -eq 2016 -and $pubRow[0].phone -eq "+91 98765 43210" -and
+  Check 7 "the owner's words are saved and the public reads them (Since $($pubRow[0].founded_year), phone, $(@($pubRow[0].socials).Count) links, $(@($pubRow[0].enquiry_types).Count) enquiry types, cash off / bank on)" (
+    $pubRow.Count -eq 1 -and $pubRow[0].founded_year -eq 2016 -and $pubRow[0].phone -eq "+91 98765 43210" -and
     @($pubRow[0].socials).Count -eq 2 -and (@($pubRow[0].enquiry_types) -join ",") -eq "celebration,private" -and
     $pubRow[0].accepts_cash -eq $false -and $pubRow[0].accepts_bank -eq $true -and $pubRow[0].accepts_upi -eq $true)
 
   # 8. a stranger is refused with the door's sentence, and their PATCH changes nothing
-  $r8 = Fails { Rpc (Api $stranger.token) "update_business_profile" (TenantBody $tenantId "hijacked" $null $null @() $null $true $true $true $true) }
-  try { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers (Plain $stranger.token) -Body (@{ about = "hijacked" } | ConvertTo-Json) | Out-Null } catch {}
+  $r8 = Fails { Rpc (Api $stranger.token) "update_business_profile" (TenantBody $tenantId $null $null @() $null $true $true $true $true) }
+  # the column it used to hijack (about) went on 20 Sep 2026; the claim is the
+  # owner-only door, so it aims at the founding year instead
+  try { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers (Plain $stranger.token) -Body (@{ founded_year = 1999 } | ConvertTo-Json) | Out-Null } catch {}
   $row8 = Rows $anonH "businesses?$TSEL&id=eq.$tenantId"
-  Check 8 "a stranger is refused ('only an owner') and a direct PATCH changes nothing (still '$($row8[0].about)')" (
-    $r8 -and $r8 -like "*only an owner*" -and $row8[0].about -eq "Where the city comes to move.")
+  Check 8 "a stranger is refused ('only an owner') and a direct PATCH changes nothing (Since is still $($row8[0].founded_year))" (
+    $r8 -and $r8 -like "*only an owner*" -and $row8[0].founded_year -eq 2016)
 
-  # 9. the door validates: a 221-character About, a bad phone, a bare handle
-  $r9a = Fails { Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId ("x" * 221) $null $null @() $null $true $true $true $true) }
-  $r9b = Fails { Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId $null $null "call me" @() $null $true $true $true $true) }
-  $r9c = Fails { Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId $null $null $null @(@{ platform = "Instagram"; url = "proofstudio" }) $null $true $true $true $true) }
-  Check 9 "a 221-char About, a bad phone and a bare handle are each refused" (
-    $r9a -and $r9a -like "*220*" -and $r9b -and $r9b -like "*8 to 18 digits*" -and $r9c -and $r9c -like "*web address*")
+  # 9. the door validates: a bad phone and a bare handle. ⚠ The 221-character
+  #    About was the third claim here until 20 Sep 2026; the column and the
+  #    argument are gone, so what is proven instead is that the door REFUSES the
+  #    argument outright rather than ignoring it.
+  $r9a = Fails { Rpc (Api $owner.token) "update_business_profile" @{ p_business_id = $tenantId; p_about = "a bio"; p_founded_year = $null; p_phone = $null; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true } }
+  $r9b = Fails { Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId $null "call me" @() $null $true $true $true $true) }
+  $r9c = Fails { Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId $null $null @(@{ platform = "Instagram"; url = "proofstudio" }) $null $true $true $true $true) }
+  Check 9 "p_about is refused outright, and a bad phone and a bare handle are each refused" (
+    $r9a -and $r9b -and $r9b -like "*8 to 18 digits*" -and $r9c -and $r9c -like "*web address*")
 
   # 10. null enquiry types means every type (the default); clearing lands as null, not blanks (the app sends null for an emptied phone - the door refuses a blank string as not-a-number)
-  Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId "  " $null $null @() $null $true $true $true $false) | Out-Null
+  Rpc (Api $owner.token) "update_business_profile" (TenantBody $tenantId $null $null @() $null $true $true $true $false) | Out-Null
   $row10 = Rows (Api $owner.token) "businesses?$TSEL&id=eq.$tenantId"
-  Check 10 "clearing leaves null (about, phone, enquiry types all null; 0 links)" (
-    $null -eq $row10[0].about -and $null -eq $row10[0].phone -and $null -eq $row10[0].enquiry_types -and @($row10[0].socials).Count -eq 0)
+  Check 10 "clearing leaves null (phone and enquiry types null; 0 links)" (
+    $null -eq $row10[0].phone -and $null -eq $row10[0].enquiry_types -and @($row10[0].socials).Count -eq 0)
 
   # -- the tick nobody can give themselves -------------------------
   # 11. the owner's direct PATCH of verified_at is refused by the guard; so is a person's on their own profile

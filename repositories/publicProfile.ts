@@ -27,7 +27,6 @@ interface TenantRow {
   location_set_at?: string | null;
   created_at: string;
   profile_photo_path?: string | null;
-  about?: string | null;
   founded_year?: number | null;
   phone?: string | null;
   contact_email?: string | null;
@@ -59,7 +58,7 @@ interface TeamRow {
 export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
   const { data, error } = await supabase
     .from("businesses")
-    .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, about, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, styles, member_no")
+    .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, styles, member_no")
     .eq("id", tenantId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -82,7 +81,6 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
     locationSetAt: row.location_set_at ?? null,
     createdAt: row.created_at,
     photoPath: row.profile_photo_path ?? null,
-    about: row.about ?? null,
     foundedYear: row.founded_year == null ? null : Number(row.founded_year),
     phone: row.phone ?? null,
     contactEmail: row.contact_email ?? null,

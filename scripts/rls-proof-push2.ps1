@@ -110,7 +110,7 @@ function Grant-ArtistPlan($userId) {
 }
 # the person's door, with the switch as the last argument (null = leave it alone)
 function Set-Profile($u, $phone, $phonePublic) {
-  return Rpc (Api $u.token) "update_my_profile" @{ p_full_name = $u.name; p_city = "Pune"; p_age = $null; p_about = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $phone; p_contact_email = $null; p_phone_public = $phonePublic }
+  return Rpc (Api $u.token) "update_my_profile" @{ p_full_name = $u.name; p_city = "Pune"; p_age = $null; p_socials = @(); p_styles = @("Hip-Hop"); p_phone = $phone; p_contact_email = $null; p_phone_public = $phonePublic }
 }
 function Set-Crew($u, $crewId, $name, $phone, $phonePublic) {
   return Rpc (Api $u.token) "update_crew" @{ p_crew_id = $crewId; p_name = $name; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = $null; p_phone = $phone; p_phone_public = $phonePublic }

@@ -15,7 +15,6 @@ export interface PublicOrganization {
   name: string;
   city: string | null;
   photoPath: string | null;
-  about: string | null;
   socials: SocialLink[];
   verified: boolean;
   since: string;
@@ -64,7 +63,7 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     throw new Error(`publicOrganization.find failed: ${error.message}`);
   }
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { id: string; name: string; city: string | null; photo_path: string | null; about: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null; phone?: string | null; contact_email?: string | null; lat?: number | string | null; lng?: number | string | null; member_no?: number | string | null }
+    | { id: string; name: string; city: string | null; photo_path: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null; phone?: string | null; contact_email?: string | null; lat?: number | string | null; lng?: number | string | null; member_no?: number | string | null }
     | undefined;
   if (!row) return null;
   return {
@@ -72,7 +71,6 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     name: row.name,
     city: row.city,
     photoPath: row.photo_path,
-    about: row.about,
     socials: toSocials(row.socials),
     verified: Boolean(row.verified),
     since: row.since,

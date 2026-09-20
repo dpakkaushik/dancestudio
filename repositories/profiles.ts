@@ -7,7 +7,6 @@ interface ProfileRow {
   role: ProfileRole;
   city: string | null;
   profile_photo_path?: string | null;
-  about?: string | null;
   age?: number | null;
   socials?: unknown;
   styles?: string[] | null;
@@ -27,7 +26,10 @@ interface ProfileRow {
  *  ⚠ `phone_public`, `lat`, `lng`, `location_set_at` arrive with push 2's
  *  migrations (19 Sep 2026): the app cannot run against the schema before them. */
 /* ⚠ `dob` arrives with `20260919151000_age_is_a_date_of_birth` — the app cannot run against the schema before it. */
-export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, about, age, dob, socials, styles, member_no, verified_at, phone, contact_email, phone_public, lat, lng, location_set_at";
+/* ⚠ `about` LEFT on 20 Sep 2026 (`20260920160000_the_bio_is_gone`): the column is
+   dropped, so selecting it here would fail every profile read. `events.about` is
+   a different column and is untouched. */
+export const PROFILE_COLUMNS = "id, full_name, role, city, profile_photo_path, age, dob, socials, styles, member_no, verified_at, phone, contact_email, phone_public, lat, lng, location_set_at";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -43,7 +45,6 @@ export const toProfile = (row: ProfileRow): Profile => ({
   role: row.role,
   city: row.city,
   avatarPath: row.profile_photo_path ?? null,
-  about: row.about ?? null,
   age: row.age == null ? null : Number(row.age),
   dob: row.dob ?? null,
   socials: toSocials(row.socials),
@@ -100,7 +101,6 @@ export interface MyProfileInput {
   fullName: string;
   city: string | null;
   age: number | null;
-  about: string | null;
   socials: SocialLink[];
   styles: string[];
   /** the number the person chooses to publish — Call on their page (N8) */
@@ -126,7 +126,6 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
     p_full_name: input.fullName,
     p_city: input.city,
     p_age: input.age,
-    p_about: input.about,
     p_socials: input.socials,
     p_styles: input.styles,
     p_phone: input.phone,
