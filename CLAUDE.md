@@ -127,12 +127,18 @@
 >     THIS token's account owns, only ones sharing this call's name prefix, only
 >     ones over two hours old, list read as the owner so RLS scopes it, every
 >     failure swallowed.
-> * **Verified:** typecheck 0 · lint 0 · `next build` green · both dry runs rolled
->   back (20/20 and 10/10) · both applied, schema cache reloaded, the three new
->   columns and the re-cut function read back live · **the proof suite 30/32, and
->   both reds green re-run alone — so 32/32 across the runs** · the new memberships
->   proof 12/12 · `rls-proof-org-team` 13/13 as regression cover on the migrated
->   schema.
+> * **Verified, and PUSHED AND LIVE (`038063a`):** typecheck 0 · lint 0 ·
+>   `next build` green · **three dry runs rolled back — 20/20, 10/10 and 5/5**,
+>   each asserting the ACL multiset and anon's executable set as well as the
+>   behaviour · all three applied, schema cache reloaded, the new columns, the
+>   re-cut functions and the narrowed policy read back live · **the proof suite
+>   30/32, and both reds green re-run alone — so 32/32 across the runs** · the new
+>   `rls-proof-memberships` **12/12 first run** · `rls-proof-org-team` **13/13**
+>   with the new ceiling check · **the happy path 19/19** including the new
+>   segment · **`shoot-hero.js` 119/119** · **`stranger-smoke.ps1` 11/11 against
+>   `:3100` and 11/11 against the deployment** after the push.
+>   ⚠ The happy path took FOUR runs and the shoot two; every red but the first was
+>   a locator of mine, and the first was the real pencil bug below.
 > * ⚠⚠ **AND THE NEAR-MISS WORTH KEEPING: WIDENING ONE SCHEMA WOULD HAVE LET AN
 >   INVITE HAND OUT THE OWNER SEAT.** `roleSchema` was shared by the invite action
 >   and the relabel action. Adding `owner` to it — the obvious edit — would have
@@ -4422,6 +4428,18 @@ summary; the report has the evidence.
    a stranger reads nothing from. It takes `-Site` so the same script smokes
    `:3100` and the deployment. ⚠ Every check DEGRADES to a named failure when the
    database has nothing of that kind to smoke, rather than passing vacuously.
+
+0ag. **⚠ `next/image` LOGS A PAGE ERROR DURING THE MEDIA SHEETS' RE-RENDER**
+   (20 Sep 2026): *"Failed to execute 'observe' on 'IntersectionObserver':
+   parameter 1 is not of type 'Element'"*, three or four times per `shoot-hero`
+   run, always just after a sheet saves and re-renders its picture grid. **No app
+   code creates an IntersectionObserver** — it is next/image's own lazy-load
+   observer meeting a ref that has already gone. Nothing fails because of it
+   (119/119 and the whole e2e are green with it present), so it is recorded
+   rather than chased; if it is ever worth removing, the likely fix is `priority`
+   or a stable key on the tiles that unmount fastest. ⚠ It is NOT the 16 Sep
+   stacking-context family and not the posters pencil, which was a real bug and
+   is fixed.
 
 0af. **⚠ THE 500 THAT LEFT FIVE LISTED STUDIOS ON PRODUCTION IS NOT EXPLAINED**
    (20 Sep 2026). `rls-proof-search`'s cleanup answered 500 on a delete, and
