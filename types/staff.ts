@@ -87,6 +87,57 @@ export const MEMBER_ROLE_WORD: Record<MemberRole, string> = {
   assistant: "Assistant",
 };
 
+/** THE LABEL REGISTRY — ONE ROW PER SEAT (20 Sep 2026, the user, holding up the
+ *  prototype's own Team screen: *"fix team view like this"*).
+ *
+ *  `DOS_TEAM_LABELS` (DanceOSApp.jsx:2130-2141) is what S_team groups by: each
+ *  label carries a COLOUR, a SHORT PLURAL for its heading, and whether the seat
+ *  may take a class or assist on one — which is the badge beside the count. The
+ *  Team desk was a flat list of cards until today, so a studio with a dozen
+ *  people had no shape at all.
+ *
+ *  ⚠ THE VOCABULARY IS OURS, NOT THE PROTOTYPE'S, and that is the user's own
+ *  decision (20 Sep 2026). The prototype offers Videographer, Music Editor,
+ *  Artist Manager, Photographer and labels a studio types in itself; ours are the
+ *  five `member_role` values a CHECK constraint allows, so the LOOK is lifted and
+ *  the WORDS are the ones the database will accept. Adding the other four is one
+ *  migration — and it has to move TWO CHECKs, `business_members` and
+ *  `business_invites`, which is the pair that was missed on 19 Sep.
+ *
+ *  ⚠ AND VISITING FACULTY STAYS, though the prototype deleted it ("a THIRD
+ *  teaching label … carried no different permission", 2133-2136). In THIS app it
+ *  carries a different origin: accepting a class ask seats an outside teacher as
+ *  `visiting_faculty` (R19), so removing it would break the door that creates it.
+ *
+ *  The colours are the prototype's own where a seat matches — gold for the owner,
+ *  teal for faculty, blue for the class assistant (2131-2137). Visiting faculty
+ *  takes the violet its Music Editor had, because it needs to be tellable from
+ *  faculty's teal at a glance; "other team member" takes the neutral slate the
+ *  prototype falls back to (2160), which is the honest colour for a seat that is
+ *  defined by not being one of the others. */
+export interface MemberLabel {
+  /** the plural that heads the group — "Owners", "Class assistants" (2131's `short`) */
+  short: string;
+  /** the label's own ink: the dot, the row's left edge and the word on the row */
+  colour: string;
+  /** the badge beside the count: a seat a class can be HANDED to */
+  teach?: boolean;
+  /** …or one that can be put on somebody else's class */
+  assist?: boolean;
+}
+
+export const MEMBER_LABEL: Record<MemberRole, MemberLabel> = {
+  owner: { short: "Owners", colour: "#F2C14E" },
+  trainer: { short: "Faculty", colour: "#0D9488", teach: true, assist: true },
+  visiting_faculty: { short: "Visiting faculty", colour: "#8B5CF6", teach: true, assist: true },
+  assistant: { short: "Class assistants", colour: "#3B82F6", assist: true },
+  staff: { short: "Other team members", colour: "#64748B" },
+};
+
+/** the order the groups are drawn in — the prototype's own `order` (2131-2141):
+ *  who runs it, who teaches, who assists, then everybody else */
+export const MEMBER_LABEL_ORDER: ReadonlyArray<MemberRole> = ["owner", "trainer", "visiting_faculty", "assistant", "staff"];
+
 export const INVITABLE_ROLES: ReadonlyArray<readonly [InvitableRole, string]> = [
   ["trainer", "Faculty"],
   ["visiting_faculty", "Visiting faculty"],

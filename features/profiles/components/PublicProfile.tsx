@@ -19,7 +19,7 @@ import { StatsChip } from "./StatsChip";
 import { TenantFollowersButton } from "./TenantFollowersButton";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, PersonIcon, Row, SchedIcon, bigWhite, cornerChip, gradientOf, smallBox } from "./profile-kit";
+import { Group, PROFILE_RING, PersonIcon, Row, SchedIcon, bigWhite, cornerChip, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
  *  `publicEntity="studio"` (10565-11060): THE PROFILE, LIT LIKE A PLAYER — the
@@ -95,7 +95,12 @@ export function PublicProfile({
   memberships?: MembershipOnSaleRow[];
 }) {
   const { tenant } = profile;
-  const RG = gradientOf(tenant.name);
+  /* ⚠ THE KIND'S OWN COLOUR, NOT A HASH OF THE NAME (20 Sep 2026, the user:
+     "Profile Type Colors … Studio: Gold"). This was `gradientOf(tenant.name)`,
+     so two studios of one organization came out two unrelated colours. A studio
+     is gold; an artist page read through this component is silver, like the
+     person whose face it is. */
+  const RG = PROFILE_RING[tenant.type === "studio" ? "studio" : "artist"];
   const RC = RG[1];
   const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
   const face = photoUrl(tenant.photoPath);
@@ -111,7 +116,15 @@ export function PublicProfile({
   const assistants = profile.team.filter((m) => m.role === "assistant");
   /* the owner is an organization more often than not — its row opens the organization's page */
   const teamRow = (m: PublicTeamMember, sub: string) => <Row key={m.userId} href={m.isOrg ? `/org/${m.userId}` : `/person/${m.userId}`} title={m.name} sub={sub} photo={photoUrl(m.photoPath)} />;
-  const canAsk = !isMember && enquiryTypesFor(tenant.type).length > 0;
+  /* ⚠ DRAWN FOR THE TEAM TOO, AND DISABLED (20 Sep 2026, the user: "Viewing your
+     own profile should show same buttons which you see on discover it should
+     look the same way"). `ActionRow` is a grid sized by its cell count, so
+     dropping this button for a member did not merely hide it — it re-laid out
+     Call, Mail and Location beside it, and the studio page a team member opened
+     from their own home was a different shape from the one a visitor opened
+     from Discover. Same treatment the Follow bell already gets. */
+  const asksGoHere = enquiryTypesFor(tenant.type).length > 0;
+  const canAsk = !isMember && asksGoHere;
   /* the Location button is the studio's own pin once the owner has placed it
      (19 Sep 2026); until then the centroid is nobody's address, so Maps is asked
      by name and place */
@@ -241,7 +254,17 @@ export function PublicProfile({
             Location — ONE BLOCK with Follow above them (the user, later that day:
             "all buttons placed together properly"); the Bio follows the block ── */}
         <ActionRow marginTop={isMember ? 6 : 12}>
-          {canAsk ? <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} enquiryTypes={tenant.enquiryTypes} /> : null}
+          {asksGoHere ? (
+            <EnquiryButton
+              tenantId={tenant.id}
+              tenantName={tenant.name}
+              tenantType={tenant.type}
+              signedIn={signedIn}
+              accent={RC}
+              enquiryTypes={tenant.enquiryTypes}
+              cannotAsk={canAsk ? null : "You are on this team — enquiries come to you here"}
+            />
+          ) : null}
           {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
           {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${tenant.name} ${place}`} /> : null}

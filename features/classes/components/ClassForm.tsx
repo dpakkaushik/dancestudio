@@ -11,13 +11,14 @@ import {
   venueRoomsAction,
   type ClassActionState,
 } from "@/features/classes/server-actions/classes";
-import { LocationPicker } from "@/features/geo/components/LocationPicker";
+/* ⚠ NO `LocationPicker` HERE ANY MORE (20 Sep 2026, the user: "should just need
+   a map link not map location picker") — and with it goes the Maps script on
+   this form entirely. */
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { centreOf } from "@/repositories/cities";
 import type { ClassClaim } from "@/types/claim";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
@@ -175,8 +176,11 @@ export function ClassForm({
   claims = [],
   isOwner = false,
   studioPlace = "",
-  cityCentres = [],
-  city = null,
+  /* ⚠ `cityCentres` and `city` are GONE (20 Sep 2026). They existed for one
+     reason — centring the map picker — and the picker left with the user's
+     "should just need a map link". A prop nothing reads is a lie to the next
+     reader, so the two routes stopped sending them in the same push; the
+     edit route's `findDiscoverCities` round trip went with it. */
   venueName = null,
 }: {
   tenantId: string;
@@ -195,9 +199,6 @@ export function ClassForm({
   /** Only the owner sets what a session pays (prototype 18434: payout approval
    *  is owner-only and cannot be granted). */
   isOwner?: boolean;
-  /** where an artist's map opens when they pick a place of their own */
-  cityCentres?: Array<{ city: string; lat: number; lng: number }>;
-  city?: string | null;
 }) {
   const isEdit = Boolean(existing);
   const isArtist = tenantType === "artist_page";
@@ -245,12 +246,24 @@ export function ClassForm({
   const [allowsArtistMem, setAllowsArtistMem] = useState(existing?.allowsArtistMemberships ?? isArtist);
 
   /* ── WHERE, for an artist (18 Sep 2026) ── */
-  const [whereKind, setWhereKind] = useState<WhereKind>(existing?.venueBusinessId ? "studio" : "place");
+  /* ⚠ THE FORM OPENS ON DANCEOS (20 Sep 2026, the user: "should always be on
+     dance os when opening the form by default"). A NEW class started on "A place
+     of my own", so the commonest answer by far — a studio that is already here,
+     with rooms and a register and a team — was one tap away and the rarer one
+     was free. An EXISTING class still opens on whichever it actually has: a
+     class already pinned to a map link is not "at a studio", and re-opening its
+     form must not say it is. */
+  const [whereKind, setWhereKind] = useState<WhereKind>(existing && !existing.venueBusinessId && (existing.mapsUrl || existing.lat != null) ? "place" : "studio");
   const [venue, setVenue] = useState<Venue | null>(existing?.venueBusinessId ? { id: existing.venueBusinessId, name: venueName ?? "the studio you asked", sub: "" } : null);
   const [venueRooms, setVenueRooms] = useState<Room[]>([]);
   const [venueQ, setVenueQ] = useState("");
   const [venueHits, setVenueHits] = useState<Venue[]>([]);
-  const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(existing?.lat != null && existing?.lng != null ? { lat: existing.lat, lng: existing.lng } : null);
+  /* ⚠ READ-ONLY SINCE THE PICKER LEFT (20 Sep 2026). There is no map on this
+     form any more, so nothing SETS a pin — but a class that already has one
+     keeps it, and it rides back out through the hidden fields below. Taking a
+     control off a form must never silently delete what it used to hold (the
+     16 Sep destroy-on-cancel lesson, in a quieter coat). */
+  const [geo] = useState<{ lat: number; lng: number } | null>(existing?.lat != null && existing?.lng != null ? { lat: existing.lat, lng: existing.lng } : null);
   const [mapsUrl, setMapsUrl] = useState<string>(existing?.mapsUrl ?? "");
   const [placeLabel, setPlaceLabel] = useState<string | null>(null);
 
@@ -280,6 +293,10 @@ export function ClassForm({
   const capacity = room ? room.capacity : capacityInput;
   const atStudio = isArtist && whereKind === "studio";
   const atPlace = isArtist && whereKind === "place";
+  /* a link, and a real one — the same http(s) test `save_class` applies to
+     anything rendered as an href on a page somebody else reads (11 Sep's
+     `javascript:` lesson) */
+  const mapsLinkOk = /^https?:\/\/\S+$/i.test(mapsUrl.trim());
 
   const basicsOk = style.length > 0 && date.length > 0 && endTime > startTime;
   /* the first missing answer, in the words the button will wear (15573-15578) */
@@ -297,8 +314,12 @@ export function ClassForm({
               ? "Pick a studio"
               : atStudio && venue && !roomId
                 ? "Pick one of its rooms"
-                : atPlace && !geo
-                  ? "Put it on the map"
+                /* ⚠ THE ANSWER IS A LINK NOW, NOT A PIN (20 Sep 2026) — the map
+                   picker is gone from this step, so what has to be there is a
+                   web address, and the check is the same http(s) rule the
+                   database keeps on every link somebody else will click */
+                : atPlace && !mapsLinkOk
+                  ? "Paste the Google Maps link"
                   : null;
   const ok = basicsOk && !stepOneErr;
 
@@ -308,7 +329,7 @@ export function ClassForm({
      from somebody else, later, and the register is where Publish lives. */
   const blockers: string[] = [];
   if (atPlace) {
-    if (!geo) blockers.push("Put it on the map — a place of your own");
+    if (!mapsLinkOk) blockers.push("Paste the Google Maps link for where it happens");
     if (!(capacity > 0)) blockers.push("Say how many people can book");
     if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
   }
@@ -317,7 +338,7 @@ export function ClassForm({
   /* the rate only travels when an OWNER is saving — the RPCs reject it from anybody else */
   const peoplePayload = isArtist ? "" : JSON.stringify({ artistUserId: teacher?.id ?? null, ...(isOwner ? { artistPayInr } : {}) });
 
-  const whereWords = atStudio && venue ? `${room?.name ?? "a room"} at ${venue.name}` : atPlace ? (placeLabel ?? (geo ? "a place on the map" : "—")) : room?.name ?? "—";
+  const whereWords = atStudio && venue ? `${room?.name ?? "a room"} at ${venue.name}` : atPlace ? (placeLabel ?? (mapsLinkOk ? "the place you linked" : "—")) : room?.name ?? "—";
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 150px", boxSizing: "border-box" }}>
@@ -433,8 +454,8 @@ export function ClassForm({
                 <div role="group" aria-label="Where the class happens" style={{ display: "flex", gap: 2, background: EL, borderRadius: 12, padding: 3, marginBottom: 10 }}>
                   {(
                     [
-                      ["studio", "At a studio"],
-                      ["place", "A place of my own"],
+                      ["studio", "A studio on DanceOS"],
+                      ["place", "Somewhere else"],
                     ] as Array<[WhereKind, string]>
                   ).map(([k, word]) => {
                     const on = whereKind === k;
@@ -497,16 +518,50 @@ export function ClassForm({
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>Search the address or drag the map — the pin is what students get directions to.</div>
-                    <LocationPicker
-                      value={{ lat: geo?.lat ?? null, lng: geo?.lng ?? null, area: placeLabel }}
-                      centre={centreOf(cityCentres, city ?? null)}
-                      onChange={(p) => {
-                        setGeo({ lat: p.lat, lng: p.lng });
-                        setMapsUrl(`https://maps.google.com/?q=${p.lat},${p.lng}`);
-                        if (p.label) setPlaceLabel(p.label.split(",").slice(0, 3).join(",").trim());
-                      }}
+                    {/* ── ⚠ A MAP LINK, NOT A MAP (20 Sep 2026, the user: "when
+                        adding a class by artist with studio not on dance os
+                        should just need a map link not map location picker").
+                        They are right, and it is about who knows the answer: a
+                        studio that is not on DanceOS ALREADY HAS a Google Maps
+                        listing, and its own link is more accurate than anything
+                        an artist can find by dragging a pin around a map of a
+                        place they may not be standing in. Pasting the link they
+                        were sent is one action; hunting for the right rooftop is
+                        several, and gets it wrong.
+                        ⚠ AND IT IS THE ONLY MAPS LOAD ON THIS FORM, so an artist
+                        who teaches at their own place never waits for the Maps
+                        script (and never meets the demo key's daily quota). ── */}
+                    <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
+                      A studio that is not on DanceOS, or your own space. Paste its Google Maps link — that is what students get directions from.
+                    </div>
+                    <input
+                      value={mapsUrl}
+                      onChange={(e) => setMapsUrl(e.target.value)}
+                      aria-label="Google Maps link"
+                      inputMode="url"
+                      placeholder="https://maps.app.goo.gl/… or https://maps.google.com/…"
+                      style={inputStyle}
                     />
+                    {/* the sentence a bad paste gets, where they can act on it —
+                        the same http(s) rule `save_class`'s own check keeps */}
+                    {mapsUrl.trim() && !/^https?:\/\//i.test(mapsUrl.trim()) ? (
+                      <div style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 6 }}>
+                        That is not a web address — open the place in Google Maps, press Share, and paste the link it gives you.
+                      </div>
+                    ) : null}
+                    {/* what they will type on the class page beside it, so the
+                        row is not just a URL somebody has to trust */}
+                    <div style={{ marginTop: 10 }}>
+                      <div style={labelStyle}>WHAT TO CALL IT</div>
+                      <input
+                        value={placeLabel ?? ""}
+                        onChange={(e) => setPlaceLabel(e.target.value || null)}
+                        aria-label="What to call this place"
+                        maxLength={80}
+                        placeholder="The studio's name, or your space"
+                        style={inputStyle}
+                      />
+                    </div>
                   </>
                 )}
               </>

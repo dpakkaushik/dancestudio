@@ -306,6 +306,11 @@ export interface TeamMember {
    *  seat and carries them false here — the sheet draws no switch for one. */
   canAttendance: boolean;
   canRefunds: boolean;
+  /** THE ONE STYLE THE ROW PRINTS (20 Sep 2026, the prototype's `DosTeamRow`
+   *   18563 — "Aki Sharma · CLASS ASSISTANT · DANCER · Contemporary"). Their
+   *  FIRST style, which is the one they put first themselves; null when they
+   *  have named none. One more column on a select that already runs. */
+  style: string | null;
 }
 
 /** The tenant's own people — the pool the class form's artist and assistant
@@ -339,7 +344,7 @@ export async function findTenantTeam(
 
   const { data: people, error: peopleError } = await supabase
     .from("profiles")
-    .select("id, full_name, city, role, profile_photo_path")
+    .select("id, full_name, city, role, profile_photo_path, styles")
     .in(
       "id",
       rows.map((r) => r.user_id)
@@ -355,6 +360,7 @@ export async function findTenantTeam(
     city: string | null;
     role: ProfileRole;
     profile_photo_path: string | null;
+    styles: string[] | null;
   }
   const byId = new Map((people as PersonRow[]).map((p) => [p.id, p]));
   const artists = await findArtistIds(supabase, rows.map((r) => r.user_id));
@@ -371,6 +377,7 @@ export async function findTenantTeam(
       avatarPath: p?.profile_photo_path ?? null,
       canAttendance: Boolean(row.can_attendance),
       canRefunds: Boolean(row.can_refunds),
+      style: Array.isArray(p?.styles) && p.styles.length ? p.styles[0] : null,
     };
   });
 }

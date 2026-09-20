@@ -631,8 +631,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await onboard(trainer, trainerName, "User", "Pune");
 
     await owner.goto(`/business/${tenantId}/staff`);
-    await owner.getByRole("button", { name: "Invite staff or team member" }).click();
-    const inviteSheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
+    await owner.getByRole("button", { name: "Add a team member" }).click();
+    const inviteSheet = owner.getByRole("dialog", { name: "Add a team member" });
     /* ── ONE WAY IN (20 Sep 2026): the picker. The labels a studio has to give
        are its own (`rolesFor`); the PERMISSIONS table beside them is gone at
        the user's word — a member's own row prints what their seat carries. ── */
@@ -2010,14 +2010,21 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ── ASKED BY NAME. The learner is on DanceOS and not on this team, so the
     // picker finds them — a name, and the row wears their picture.
-    await owner.getByRole("button", { name: "Invite staff or team member" }).click();
-    const sheet = owner.getByRole("dialog", { name: "Invite staff or team member" });
+    await owner.getByRole("button", { name: "Add a team member" }).click();
+    const sheet = owner.getByRole("dialog", { name: "Add a team member" });
     await sheet.getByRole("button", { name: "Visiting faculty" }).click();
     await sheet.getByLabel("Search for somebody to add").fill(learnerName);
     await sheet.getByRole("button", { name: `Ask ${learnerName}` }).click({ timeout: 20_000 });
     await expect(owner.getByText(/Waiting on them to confirm/).first()).toBeVisible({ timeout: 15_000 });
-    /* no address was typed and none is shown: this invite names a PERSON */
-    await expect(owner.getByText("Visiting faculty · asked on DanceOS")).toBeVisible();
+    /* no address was typed and none is shown: this invite names a PERSON.
+       ⚠ RE-CUT 20 Sep 2026: the flat roster printed the label and the address as
+       ONE text node ("Visiting faculty · asked on DanceOS"), and the grouped
+       roster prints them as separate spans — with no address span at all when
+       there is none, because the "Waiting on them to confirm" line already says
+       what the row is. So the claim is made directly: the fallback words are
+       nowhere on the page, and the row carries the label it was asked into. */
+    await expect(owner.getByText("asked on DanceOS")).toHaveCount(0);
+    await expect(owner.getByText("Visiting faculty", { exact: true }).first()).toBeVisible();
 
     // and only they can answer it — the code is in the link the desk shows
     await owner.getByRole("button", { name: `Show the invite for ${learnerName}` }).click();
@@ -2386,8 +2393,17 @@ test.describe.serial("DanceOS, end to end", () => {
     // stops being something the desk manages (an owner is not managed from here).
     await owner.goto(`/business/${tenantId}/staff`);
     /* two owners on this desk now — the organization that made the studio, and the
-       person it just named; order-independent, because either may be drawn first */
-    await expect(owner.getByText("Admin · Owner")).toHaveCount(2, { timeout: 15_000 });
+       person it just named.
+       ⚠ RE-CUT 20 Sep 2026: the flat roster printed a LEVEL and a label in one
+       text node ("Admin · Owner") and the grouped roster prints neither — the
+       level word is gone (every label carries its own colour now, so a second,
+       coarser scale would have painted Faculty, Visiting faculty and Assistant
+       the same orange) and the label stands alone in the row. The group heading
+       is the better claim anyway: it is the desk's own count of that seat, which
+       is exactly what this check is about, and it does not care which row was
+       drawn first. */
+    await expect(owner.getByText("Owners", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByText("Owner", { exact: true })).toHaveCount(2);
     await expect(owner.getByRole("button", { name: `Manage ${learnerName}` })).toHaveCount(0);
 
     // …and the organization's public page prints them under Studio owners, with the

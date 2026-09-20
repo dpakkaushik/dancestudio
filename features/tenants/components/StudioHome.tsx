@@ -8,7 +8,7 @@ import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { EyeIcon, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
+import { EyeIcon, PROFILE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ProofPhoto } from "@/lib/media/proof";
 import type { DeckItem } from "@/types/home";
@@ -81,7 +81,10 @@ export function StudioHome({
   followingN?: number | null;
   tiles: Tile[];
 }) {
-  const RG = gradientOf(tenant.name);
+  /* ⚠ GOLD, BECAUSE IT IS A STUDIO (20 Sep 2026, the user's colour list) — it
+     was `gradientOf(tenant.name)`, a hash, so this screen and the studio's own
+     public page could not even agree with each other */
+  const RG = PROFILE_RING.studio;
   const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
   const roomsWords = `${roomCount} room${roomCount === 1 ? "" : "s"}`;
   /* a photo whose URL could not be signed is not a square the rail can draw —

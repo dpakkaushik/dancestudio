@@ -31,12 +31,23 @@ const wordOf = (f: TenantFollower) => KIND_WORD[kindOf(f.role, f.isArtist)].toLo
  *  The rows are the person's Followers sheet's rows, drawn by the same kit with
  *  the same tint: the same people, so the same list. Each opens that person's
  *  page. A follower with no photo shows their initials on their own colour. */
+/** the same segments the person's Followers / Following sheets carry (11336) —
+ *  the list is the same people, so it is narrowed the same way */
+const FOLLOW_SEGS = ["All", "Users", "Artists", "Organizations"] as const;
+type FollowSeg = (typeof FOLLOW_SEGS)[number];
+const segOf = (f: TenantFollower): FollowSeg => {
+  const k = kindOf(f.role, f.isArtist);
+  return k === "user" ? "Users" : k === "artist" ? "Artists" : "Organizations";
+};
+
 export function TenantFollowersButton({ followers, accent }: { followers: TenantFollower[]; accent: string }) {
   const [open, setOpen] = useState(false);
+  const [seg, setSeg] = useState<FollowSeg>("All");
+  const shown = followers.filter((f) => seg === "All" || segOf(f) === seg);
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-label="Followers — see who" aria-haspopup="dialog" style={smallBox(false, accent)}>
+      <button type="button" onClick={() => { setSeg("All"); setOpen(true); }} aria-label="Followers — see who" aria-haspopup="dialog" style={smallBox(false, accent)}>
         Followers ›
       </button>
 
@@ -46,8 +57,30 @@ export function TenantFollowersButton({ followers, accent }: { followers: Tenant
             <b style={{ fontSize: 18 }}>Followers</b>
             <span style={{ fontSize: 13, color: SUB, fontWeight: 700 }}>{followers.length}</span>
           </div>
+          {/* ⚠ BIFURCATED BY PROFILE TYPE, LIKE THE OTHER TWO (20 Sep 2026, the
+              user: "follow following list open with profile type bifercation and
+              photo with name of profiles"). This sheet had the photos and the
+              names since it was built and never the segments, so a studio with
+              two hundred followers had one long column and the person's own
+              sheet — the SAME rows, the same kit — had chips. ⚠ Only three
+              words, not the person's six: a STUDIO and a CREW cannot follow, so
+              those two segments could only ever be empty here, and a chip that
+              can never match anything is worse than no chip. */}
+          <div style={{ display: "flex", gap: 5, marginBottom: 14, overflowX: "auto", scrollbarWidth: "none" }}>
+            {FOLLOW_SEGS.map((s) => (
+              <button
+                type="button"
+                key={s}
+                onClick={() => setSeg(s)}
+                aria-pressed={seg === s}
+                style={{ flex: "0 0 auto", textAlign: "center", padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, whiteSpace: "nowrap", background: seg === s ? accent : "var(--card)", color: seg === s ? "#fff" : SUB, border: "none", fontFamily: "inherit" }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {followers.map((f) => {
+            {shown.map((f) => {
               const tint = followTint(kindOfFollower(f));
               const face = photoUrl(f.avatarPath);
               return (
@@ -75,8 +108,10 @@ export function TenantFollowersButton({ followers, accent }: { followers: Tenant
                 </Link>
               );
             })}
-            {followers.length === 0 ? (
-              <div style={{ fontSize: 12, color: SUB, padding: "8px 2px" }}>Nobody follows this page yet.</div>
+            {shown.length === 0 ? (
+              <div style={{ fontSize: 12, color: SUB, padding: "8px 2px" }}>
+                {followers.length === 0 ? "Nobody follows this page yet." : `No ${seg.toLowerCase()} among your followers yet.`}
+              </div>
             ) : null}
           </div>
         </Sheet>

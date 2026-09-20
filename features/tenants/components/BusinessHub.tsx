@@ -6,7 +6,7 @@ import { useActionState, useState } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { StudioVerificationStrip } from "@/features/tenants/components/StudioVerificationStrip";
 import type { StudioVerificationState } from "@/repositories/studioVerification";
-import { VerifiedTick } from "@/features/settings/components/settings-kit";
+import { DeskAddButton, VerifiedTick } from "@/features/settings/components/settings-kit";
 import { photoUrl } from "@/lib/media/photo";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { CityPicker } from "@/features/geo/components/CityPicker";
@@ -419,24 +419,23 @@ export function BusinessHub({
 
         {isOrg ? (
           <>
-            <Head>YOUR STUDIOS</Head>
-            {myStudios.length ? (
-              myStudios.map((t) => studioCard(t))
-            ) : (
-              <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>
-                {gateShut
-                  ? "No studios yet. One studio = one location; add another for each branch."
-                  : "No studios yet — add the first one below. One studio = one location; add another for each branch."}
-              </div>
-            )}
-            {/* R14: the gate. Not a greyed control with no explanation — the
-                database's own sentence, and the door to the person who can move
-                it. The dashed button is only drawn when pressing it would work. */}
+            {/* ⚠ ＋ ADD STUDIO IS THE DESK PILL, AT THE TOP (20 Sep 2026, the user:
+                "fix add studio button also similarly"). It was a DASHED row at the
+                FOOT of the studios list — so on an organization with several
+                branches you scrolled past all of them to open another, which is
+                exactly what the 20 Sep move fixed for Team, Rooms and Crews and
+                then missed here. The same `DeskAddButton` those three use, so a
+                desk is a desk whatever it holds.
+                ⚠ THE GATE IS NOT A GREYED PILL (R14). When the database would
+                refuse a studio, the button is not drawn at all and its SENTENCE
+                stands in its place with the door to the person who can move it —
+                a control that exists only to be refused says less than the
+                refusal itself. */}
             {gateShut ? (
               <div
                 role="status"
                 aria-label={`Cannot add a studio: ${gateShut}`}
-                style={{ borderRadius: 16, border: `1.5px dashed var(--el)`, padding: "13px 14px", background: CARD }}
+                style={{ borderRadius: 16, border: `1.5px dashed var(--el)`, padding: "13px 14px", background: CARD, marginBottom: 12 }}
               >
                 <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>＋ Add studio</div>
                 <div style={{ fontSize: 11, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{gateShut}</div>
@@ -445,24 +444,17 @@ export function BusinessHub({
                 </Link>
               </div>
             ) : (
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="Add studio"
-                onKeyDown={dosKey}
-                onClick={() => setSheetOpen(true)}
-                style={{
-                  textAlign: "center",
-                  padding: "13px",
-                  borderRadius: 16,
-                  border: `1.5px dashed ${ACCENT}`,
-                  color: ACCENT,
-                  fontWeight: 800,
-                  fontSize: 13,
-                  cursor: "pointer",
-                }}
-              >
-                ＋ Add studio
+              <DeskAddButton label="Add studio" onClick={() => setSheetOpen(true)} />
+            )}
+
+            <Head>YOUR STUDIOS</Head>
+            {myStudios.length ? (
+              myStudios.map((t) => studioCard(t))
+            ) : (
+              <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>
+                {gateShut
+                  ? "No studios yet. One studio = one location; add another for each branch."
+                  : "No studios yet — the button above opens the first. One studio = one location; add another for each branch."}
               </div>
             )}
 

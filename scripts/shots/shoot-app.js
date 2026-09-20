@@ -92,7 +92,9 @@ async function signUp(page, email) {
     /* a studio, which since 10 Sep 2026 is born PRIVATE */
     await page.goto(`${BASE}/business`);
     await shot("business-hub-empty");
-    await page.getByText("＋ Add studio").click();
+    /* the shared DeskAddButton's accessible name — its ＋ is an aria-hidden SVG
+       now, so the old text locator finds nothing (20 Sep 2026) */
+    await page.getByRole("button", { name: "Add studio" }).first().click();
     await page.locator('input[name="name"]').fill("EEE Dance Studio");
     await page.locator('input[name="area"]').fill("Kothrud");
     /* the city picker replaced the select (11 Sep 2026) — a Google city search,

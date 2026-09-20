@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findDiscoverCities } from "@/repositories/cities";
 import { findRoomsByTenant } from "@/repositories/rooms";
 import { findMyMemberships } from "@/repositories/tenants";
 
@@ -38,10 +37,11 @@ export default async function NewClassPage({
     redirect(tenant.type === "artist_page" ? "/my-classes" : `/business/${tenantId}/classes`);
   }
 
-  const [rooms, cityCentres] = await Promise.all([
-    tenant.type === "studio" ? findRoomsByTenant(supabase, tenantId) : Promise.resolve([]),
-    tenant.type === "artist_page" ? findDiscoverCities(supabase).catch(() => []) : Promise.resolve([]),
-  ]);
+  /* ⚠ ONE READ, NOT TWO (20 Sep 2026): `findDiscoverCities` was here to centre
+     the class form's map picker, and the picker is gone — an artist teaching
+     somewhere that is not on DanceOS pastes that place's Google Maps link now,
+     which is both more accurate and a round trip cheaper. */
+  const rooms = tenant.type === "studio" ? await findRoomsByTenant(supabase, tenantId) : [];
 
   return (
     <ClassForm
@@ -50,8 +50,6 @@ export default async function NewClassPage({
       rooms={rooms}
       isOwner
       studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
-      cityCentres={cityCentres}
-      city={tenant.city}
     />
   );
 }

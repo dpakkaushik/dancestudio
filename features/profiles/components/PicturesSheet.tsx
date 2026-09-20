@@ -206,7 +206,7 @@ export function PicturesButton({
           fontFamily: "inherit",
         }}
       >
-        <PencilIcon />
+        <PlusIcon />
       </button>
       {viewing && avatar ? (
         <PhotoLightbox
@@ -256,7 +256,7 @@ export function HeaderEditButton({
           fontFamily: "inherit",
         }}
       >
-        <PencilIcon light />
+        <PlusIcon light />
       </button>
       {open ? (
         <HeaderPicturesSheet profile={profile} header={header} headerMax={headerMax} onClose={() => setOpen(false)} />
@@ -265,11 +265,20 @@ export function HeaderEditButton({
   );
 }
 
-function PencilIcon({ light = false }: { light?: boolean }) {
+/** ⚠ A PLUS, NOT A PENCIL (20 Sep 2026, the user: "edit button for photos should
+ *  be a plus sign how it is for instagram").
+ *
+ *  They are right about the gesture as well as the glyph. A pencil says "change
+ *  the thing that is here", and on the DISC that is true — but on the posters
+ *  rail the commonest act by a distance is ADDING one, and on an empty rail
+ *  there is nothing to edit at all. Instagram's ⊕ on the avatar is the same
+ *  reading. Both controls keep their accessible NAMES, so every locator and
+ *  every screen reader still says what the button does rather than what it looks
+ *  like — the glyph is decoration, the name is the control. */
+function PlusIcon({ light = false }: { light?: boolean }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={light ? "#fff" : "var(--text)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={light ? "#fff" : "var(--text)"} strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }

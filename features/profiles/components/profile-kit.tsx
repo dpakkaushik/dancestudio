@@ -1,10 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { DOS_DISPLAY, GOLD, PINK } from "@/lib/design/tokens";
+import { DOS_DISPLAY, GOLD } from "@/lib/design/tokens";
 import { isPlatform, type Platform } from "@/lib/constants/socials";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { CREW_TINT } from "@/types/crew";
 import type { PersonKind } from "@/types/profile";
 
 /** The Profile tab's small parts, lifted from the prototype so the own page and
@@ -18,12 +17,45 @@ export const TYPE = {
   micro: { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase" } as CSSProperties,
 };
 
-/** DOS_RINGS (1462): the metal each KIND wears — an organization the gold a
- *  studio wore, an artist the silver, a user the bronze */
+/** THE COLOUR A PROFILE TYPE WEARS — ONE REGISTRY, ALL FIVE KINDS (20 Sep 2026).
+ *
+ *  The user: *"Profile Type Colors for both Profile and home Tab — User: Bronze,
+ *  Artist: Silver, Studio: Gold, Crew: Red, Organization: Blue."*
+ *
+ *  Until today only THREE of the five had a colour that meant anything.
+ *  `ROLE_RING` (DOS_RINGS 1462) covered the person kinds — user, artist and an
+ *  organization wearing the gold a studio used to — and the other two had no
+ *  identity colour at all:
+ *    · a STUDIO's hero was painted from `gradientOf(name)`, a HASH OF ITS NAME,
+ *      so two studios of one organization came out two unrelated colours and the
+ *      same studio was a different colour from a studio next door for no reason
+ *      anybody could see;
+ *    · a CREW wore `CREW_GRAD`, which is violet→pink — the artist's tint, not a
+ *      crew's.
+ *  A colour that is a hash is decoration; a colour that names the KIND is
+ *  information, and that is what the user asked for.
+ *
+ *  ⚠ ORGANIZATION MOVED OFF GOLD, and a studio took it. That is the user's own
+ *  ordering and it reads correctly: the STUDIO is the thing on Discover that
+ *  people walk into, so it gets the metal; the organization behind it is
+ *  infrastructure, and blue is the colour `DOS_TINT.org` has always given it in
+ *  the tile palette. Nothing else in the app keyed a meaning on the old gold. */
+export type ProfileKind = PersonKind | "studio" | "crew";
+
+export const PROFILE_RING: Record<ProfileKind, [string, string]> = {
+  /* bronze */ user: ["#F0BC8A", "#8C5A2B"],
+  /* silver */ artist: ["#F2F2F2", "#8E9BAE"],
+  /* gold   */ studio: ["#F9E27D", "#B8860B"],
+  /* red    */ crew: ["#FCA5A5", "#B91C1C"],
+  /* blue   */ org: ["#93C5FD", "#1D4ED8"],
+};
+
+/** the same registry under its old name, so the three person screens that read
+ *  `ROLE_RING[kind]` keep compiling and keep meaning the same thing */
 export const ROLE_RING: Record<PersonKind, [string, string]> = {
-  org: ["#F9E27D", "#B8860B"],
-  artist: ["#F2F2F2", "#8E9BAE"],
-  user: ["#F0BC8A", "#8C5A2B"],
+  org: PROFILE_RING.org,
+  artist: PROFILE_RING.artist,
+  user: PROFILE_RING.user,
 };
 
 /** WHERE YOU STAND (1418): one number, and the metal it earns */
@@ -377,8 +409,21 @@ export function RoleGlyph({ kind, size = 11 }: { kind: FollowGlyph; size?: numbe
  *  Followers sheet and a person's are the same list of the same people and a
  *  dancer who is pink on one and blue on the other is two answers to one
  *  question. */
+/** ⚠ IT IS THE PROFILE TYPE'S OWN COLOUR NOW (20 Sep 2026, the user's list).
+ *  It used to be a fourth palette — pink for a user, gold for an artist, a
+ *  one-off blue for a studio — so the same account was one colour in a follow
+ *  list and another on its own page. One registry: bronze, silver, gold, red,
+ *  blue. The darker end of the pair is what a row's tint has always been. */
 export const followTint = (kind: PersonKind | "studio-biz" | "artist-biz" | "crew") =>
-  kind === "user" ? PINK : kind === "artist" || kind === "artist-biz" ? GOLD : kind === "crew" ? CREW_TINT : "#3498DB";
+  kind === "user"
+    ? PROFILE_RING.user[1]
+    : kind === "artist" || kind === "artist-biz"
+      ? PROFILE_RING.artist[1]
+      : kind === "crew"
+        ? PROFILE_RING.crew[1]
+        : kind === "org"
+          ? PROFILE_RING.org[1]
+          : PROFILE_RING.studio[1];
 
 export function RoleBadge({ kind, tint }: { kind: FollowGlyph; tint: string }) {
   return (

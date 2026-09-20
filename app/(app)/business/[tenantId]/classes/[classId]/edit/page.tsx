@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { ClassForm } from "@/features/classes/components/ClassForm";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findDiscoverCities } from "@/repositories/cities";
 import { findClaimsByClass } from "@/repositories/claims";
 import { findClassById } from "@/repositories/classes";
 import { findRoomsByTenant } from "@/repositories/rooms";
@@ -40,10 +39,12 @@ export default async function EditClassPage({
     redirect(tenant.type === "artist_page" ? "/my-classes?show=manage" : `/business/${tenantId}/classes`);
   }
 
-  const [rooms, claims, cityCentres, venueName] = await Promise.all([
+  /* ⚠ `findDiscoverCities` LEFT THIS LIST WITH THE MAP PICKER (20 Sep 2026) —
+     it centred a map this form no longer draws. One round trip fewer on every
+     edit. */
+  const [rooms, claims, venueName] = await Promise.all([
     tenant.type === "studio" ? findRoomsByTenant(supabase, tenantId) : Promise.resolve([]),
     findClaimsByClass(supabase, classId),
-    tenant.type === "artist_page" ? findDiscoverCities(supabase).catch(() => []) : Promise.resolve([]),
     /* the studio an artist asked for a room, BY NAME — the form used to reopen on
        "the studio you asked" because only the id was on the row (18 Sep 2026) */
     danceClass.venueBusinessId ? findBusinessName(supabase, danceClass.venueBusinessId).catch(() => null) : Promise.resolve(null),
@@ -59,8 +60,6 @@ export default async function EditClassPage({
       claims={claims}
       isOwner
       studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
-      cityCentres={cityCentres}
-      city={tenant.city}
     />
   );
 }

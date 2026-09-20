@@ -83,8 +83,15 @@ export function PublicPersonPage({
   const shots: HeroShot[] = header
     .filter((h) => h.url)
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, signed: h.signed }));
-  /* an artist is asked through the page behind them; a user is not asked at all */
-  const canAsk = !isMe && kind === "artist" && Boolean(person.artistPageId);
+  /* an artist is asked through the page behind them; a user is not asked at all.
+     ⚠ ON YOUR OWN PAGE IT IS DRAWN AND DISABLED, NOT DROPPED (20 Sep 2026, the
+     user: "Viewing your own profile should show same buttons which you see on
+     discover"). `ActionRow` is a grid sized by how many cells it is given, so a
+     missing button did not just go missing — it resized the ones left, and the
+     page you reach from Home's eye laid out differently from the same page
+     reached from Discover. */
+  const asksGoHere = kind === "artist" && Boolean(person.artistPageId);
+  const canAsk = !isMe && asksGoHere;
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -204,7 +211,16 @@ export function PublicPersonPage({
             available"). A user's page carries none — the row is simply not drawn.
             One block; Follow is the bell in the figures row above. ── */}
         <ActionRow marginTop={12}>
-          {canAsk ? <EnquiryButton tenantId={person.artistPageId as string} tenantName={profile.fullName} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
+          {asksGoHere ? (
+            <EnquiryButton
+              tenantId={person.artistPageId as string}
+              tenantName={profile.fullName}
+              tenantType="artist_page"
+              signedIn={signedIn}
+              accent={RC}
+              cannotAsk={canAsk ? null : "This is your own page — enquiries come to you here"}
+            />
+          ) : null}
           {kind === "artist" && profile.phone && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
         </ActionRow>

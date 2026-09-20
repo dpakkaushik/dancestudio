@@ -28,7 +28,8 @@ import type { PayoutMethod, PayoutRecord, PayoutStatus } from "@/types/payout";
 import type { TenantType } from "@/types/tenant";
 import {
   MEMBER_GRANTS,
-  MEMBER_LEVEL,
+  MEMBER_LABEL,
+  MEMBER_LABEL_ORDER,
   MEMBER_ROLE_WORD,
   labelsFor,
   rolesFor,
@@ -121,8 +122,13 @@ const sheet: React.CSSProperties = {
   fontFamily: DOS_UI,
 };
 
-/* DosTeamRow's marks (18560-18565): the label wears its own colour, the person's kind rides beside it */
-const LEVEL_TINT: Record<string, string> = { Admin: "#F59E0B", Staff: "#F97316" };
+/* DosTeamRow's marks (18560-18565): the label wears its own colour, the person's
+   kind rides beside it.
+   ⚠ `LEVEL_TINT` — two colours keyed on "Admin" / "Staff" — is DELETED (20 Sep
+   2026). The roster is grouped by LABEL now and every label carries its own ink
+   (`MEMBER_LABEL`), so a second colour scale keyed on a coarser word would paint
+   Faculty and Visiting faculty and Assistant all the same orange, which is the
+   opposite of what the grouping is for. */
 const gradOf = (name: string): [string, string] => {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
@@ -248,9 +254,15 @@ export function StaffDesk({
           event and should be on top of the page"). It was a dashed row at the
           FOOT of the roster, so on a studio with a real team you scrolled past
           everybody to add somebody. */}
+      {/* ⚠ "Add a team member" — the prototype's own words (18673), and the
+          user's: *"butoon should say add team member"*. It read "Invite staff or
+          team member", which is the DASHED row's wording from the settings
+          segment (18435) carried onto a pill it no longer belongs on: "staff" is
+          not a seat any more (it is "Other team member" since 20 Sep) and the
+          sheet behind it asks somebody by NAME, not by post. */}
       {isOwner ? (
         <DeskAddButton
-          label="Invite staff or team member"
+          label="Add a team member"
           onClick={() => {
             setForm({ name: "", email: "", role: "trainer" });
             setError(null);
@@ -259,103 +271,214 @@ export function StaffDesk({
         />
       ) : null}
 
-      {/* ── the people who are already here (18428-18433) ── */}
-      {team.map((m) => {
-        const level = MEMBER_LEVEL[m.role];
-        const mine = m.userId === meUserId;
+      {/* ── THE ROSTER, GROUPED BY LABEL (20 Sep 2026) ──────────────────────
+          The user held up the prototype's own Team screen: *"fix team view like
+          this"*. S_team (18679-18698) does not draw a list of people — it draws
+          a group per LABEL, each headed by the label's colour as a dot, its
+          short plural, the count, and a badge saying what that seat may do. This
+          desk was a flat stack of cards, so a studio with a dozen people had no
+          shape at all and you read twelve names to find the one assistant.
+
+          Three things the heading carries, all the prototype's (18680-18688):
+          the DOT in the label's own ink, "· N", and CAN TAKE A CLASS / CAN
+          ASSIST — which is not decoration, it is the rule `can_run_register_for_class`
+          keeps, said where somebody is choosing a label.
+
+          ⚠ THE PEOPLE WHO HAVE NOT ANSWERED SIT IN THEIR OWN GROUP, not in a
+          block underneath it (18578's "⏳ Invited" treatment, on the row rather
+          than beside it). Somebody asked to be a class assistant IS what the
+          Class assistants group is about; parking them below the whole roster
+          made the group's count and the group's rows disagree. The count says
+          so: it is members + waiting, because that is what you asked for.
+
+          ⚠ AND NO DRAG HANDLE, though the prototype's row has one (18692-18696)
+          and the screenshot shows it. Its gesture is a 220 ms hold, a pointer
+          capture and a per-row measurement that commits to localStorage; ours
+          would have to commit a SERVER action, so it is its own slice and it is
+          on the backlog. ▲▼ are drawn instead — they are in the same screenshot,
+          they already work, and six grey dots that do nothing would be the same
+          lie as a tile that opens nothing. */}
+      {MEMBER_LABEL_ORDER.map((role) => {
+        const L = MEMBER_LABEL[role];
+        const members = team.filter((m) => m.role === role);
+        /* an owner is never INVITED (the seat is not grantable through an
+           invite — `rolesFor` leaves it out), so that group never has a waiting
+           row; the others may */
+        const waiting = invites.filter((inv) => inv.memberRole === role);
+        if (!members.length && !waiting.length) return null;
         return (
-          <div
-            role={isOwner && m.role !== "owner" ? "button" : undefined}
-            tabIndex={isOwner && m.role !== "owner" ? 0 : undefined}
-            onKeyDown={isOwner && m.role !== "owner" ? dosKey : undefined}
-            key={m.userId}
-            aria-label={isOwner && m.role !== "owner" ? `Manage ${m.name}` : undefined}
-            onClick={isOwner && m.role !== "owner" ? () => setOpenMember(m) : undefined}
-            style={{ ...card, borderLeft: `4px solid ${LEVEL_TINT[level] ?? SUB}`, padding: "10px 12px", cursor: isOwner && m.role !== "owner" ? "pointer" : "default" }}
-          >
-            {/* DosTeamRow (18541-18592): the face with the label's ring, the name, the label in its colour, the kind */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {(() => {
-                const g = gradOf(m.name);
-                const face = photoUrl(m.avatarPath);
-                const tint = LEVEL_TINT[level] ?? SUB;
-                return (
-                  <span style={{ width: 34, height: 34, borderRadius: 17, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})`, border: `1.5px solid ${tint}55`, boxSizing: "border-box" }}>
-                    {face ? <Image src={face} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
-                  </span>
-                );
-              })()}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {m.name}
-                  {mine && <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}> · you</span>}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: LEVEL_TINT[level] ?? SUB }}>{level} · {MEMBER_ROLE_WORD[m.role]}</span>
-                  <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--muted)" }}>· {m.profileRole ? KIND_WORD[kindOf(m.profileRole, m.isArtist)] : "User"}</span>
-                  {m.city ? <span style={{ fontSize: 10, color: SUB }}>· {m.city}</span> : null}
-                </div>
-                <div style={{ fontSize: 10.5, color: SUB, marginTop: 3 }}>{MEMBER_GRANTS[m.role]}</div>
-              </div>
-              {/* ── THE ORDER (19 Sep 2026) — the crew desk's own ▲▼, and the
-                  owner's alone. It sits OUTSIDE the row's click target, so
-                  arranging never opens the sheet by accident. ── */}
-              {isOwner && team.length > 1 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                  {([-1, 1] as const).map((dir) => {
-                    const at = team.findIndex((x) => x.userId === m.userId);
-                    const to = at + dir;
-                    const off = to < 0 || to >= team.length;
-                    return (
-                      <button
-                        key={dir}
-                        type="button"
-                        disabled={off || busy}
-                        aria-label={dir === -1 ? `Move ${m.name} up` : `Move ${m.name} down`}
-                        onClick={() => {
-                          if (off) return;
-                          const next = team.map((x) => x.userId);
-                          [next[at], next[to]] = [next[to], next[at]];
-                          void run(() => reorderMembersAction({ tenantId, userIds: next }), null);
-                        }}
-                        style={{ fontSize: 10, lineHeight: 1, padding: 0, background: "none", border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit" }}
-                      >
-                        {dir === -1 ? "▲" : "▼"}
-                      </button>
-                    );
-                  })}
-                </div>
+          <div key={role} style={{ marginBottom: 14 }}>
+            {/* the heading (18680-18688) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, margin: "2px 0 7px", flexWrap: "wrap" }}>
+              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: L.colour, flexShrink: 0 }} />
+              <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", color: INK }}>{L.short}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: MUTED }}>· {members.length + waiting.length}</span>
+              {L.teach ? (
+                <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, padding: "2px 7px", borderRadius: 999, background: `${L.colour}22`, color: L.colour }}>CAN TAKE A CLASS</span>
+              ) : L.assist ? (
+                <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, padding: "2px 7px", borderRadius: 999, background: `${L.colour}22`, color: L.colour }}>CAN ASSIST</span>
               ) : null}
             </div>
 
-            {/* ── PAY THEM, FROM THE ROW (20 Sep 2026, the user: "Payment for
-                team wasnt implemented?"). It WAS — `record_team_payment` and its
-                history have been here since 19 Sep — but only two taps in: the
-                row opened a sheet and the button was inside it, and the row
-                opens only for somebody who is NOT the owner. Every one of this
-                account's businesses has a team of ONE (themselves), so there
-                was no row to press and the feature did not exist from where
-                they sat. A control nobody can reach is not a built feature.
-                It sits OUTSIDE the row's click target, beside the ▲▼. ── */}
-            {isOwner && m.role !== "owner" ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }} onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  aria-label={`Pay ${m.name}`}
-                  onClick={() => { setOpenMember(m); setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
-                  style={{ fontSize: 11.5, fontWeight: 900, padding: "7px 13px", borderRadius: 999, border: `1px solid ${DOS_TOOLS.team.c}55`, background: `${DOS_TOOLS.team.c}14`, color: DOS_TOOLS.team.c, cursor: "pointer", fontFamily: "inherit" }}
+            {members.map((m, i) => {
+              const mine = m.userId === meUserId;
+              const manageable = isOwner && m.role !== "owner";
+              const g = gradOf(m.name);
+              const face = photoUrl(m.avatarPath);
+              return (
+                <div
+                  role={manageable ? "button" : undefined}
+                  tabIndex={manageable ? 0 : undefined}
+                  onKeyDown={manageable ? dosKey : undefined}
+                  key={m.userId}
+                  aria-label={manageable ? `Manage ${m.name}` : undefined}
+                  onClick={manageable ? () => setOpenMember(m) : undefined}
+                  style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "10px 12px", cursor: manageable ? "pointer" : "default" }}
                 >
-                  Pay
-                </button>
-                {paidTo(m.userId).length ? (
-                  <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}>
-                    {rupees(paidTo(m.userId).reduce((n, p) => n + p.amountInr, 0))} paid · {paidTo(m.userId).length} {paidTo(m.userId).length === 1 ? "payment" : "payments"}
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 10.5, color: MUTED, fontWeight: 700 }}>Nothing paid yet</span>
-                )}
-              </div>
-            ) : null}
+                  {/* DosTeamRow (18541-18592): the face, the name, the label in
+                      its own colour, then what they are on DanceOS and what they
+                      dance — one line, the way the prototype sets it */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 38, height: 38, borderRadius: 19, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
+                      {face ? <Image src={face} alt="" width={38} height={38} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.name}
+                        {mine && <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}> · you</span>}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: L.colour }}>{MEMBER_ROLE_WORD[m.role]}</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: MUTED }}>· {m.profileRole ? KIND_WORD[kindOf(m.profileRole, m.isArtist)] : "User"}</span>
+                        {/* what they dance — their FIRST style, the one they put first (18563) */}
+                        {m.style ? <span style={{ fontSize: 10.5, color: SUB }}>· {m.style}</span> : null}
+                      </div>
+                    </div>
+                    {/* ── THE ORDER, WITHIN THE GROUP (20 Sep 2026) ──────────
+                        ⚠ The arrows used to walk the WHOLE roster, which made no
+                        sense the moment it was drawn in groups: pressing ▲ on the
+                        first assistant would have swapped them with the last
+                        faculty member and moved them nowhere on screen. They swap
+                        with their NEIGHBOUR IN THE SAME GROUP now, and the stored
+                        `sort` is still one global order — the swap just skips the
+                        rows in between. The owner's alone, and outside the row's
+                        click target so arranging never opens the sheet. */}
+                    {/* ⚠ DRAWN EVEN FOR A GROUP OF ONE, DISABLED — which is what
+                        the prototype's own row does and what the screenshot
+                        shows: the Videographers group has a single person and
+                        their ↑↓ are both there and both greyed. A control that
+                        appears and disappears as a group grows is harder to find
+                        than one that is always in the same place. */}
+                    {isOwner ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                        {([-1, 1] as const).map((dir) => {
+                          const partner = members[i + dir];
+                          const off = !partner || busy;
+                          return (
+                            <button
+                              key={dir}
+                              type="button"
+                              disabled={off}
+                              aria-label={dir === -1 ? `Move ${m.name} up` : `Move ${m.name} down`}
+                              onClick={() => {
+                                if (!partner) return;
+                                const next = team.map((x) => x.userId);
+                                const a = next.indexOf(m.userId);
+                                const b = next.indexOf(partner.userId);
+                                if (a < 0 || b < 0) return;
+                                [next[a], next[b]] = [next[b], next[a]];
+                                void run(() => reorderMembersAction({ tenantId, userIds: next }), null);
+                              }}
+                              style={{ fontSize: 11, lineHeight: 1.1, padding: "2px 5px", background: off ? "transparent" : "var(--el)", borderRadius: 7, border: "none", cursor: off ? "default" : "pointer", color: off ? EL : SUB, fontFamily: "inherit" }}
+                            >
+                              {dir === -1 ? "↑" : "↓"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* ── PAY THEM, FROM THE ROW (20 Sep 2026, the user: "Payment for
+                      team wasnt implemented?"). It WAS — `record_team_payment` and
+                      its history have been here since 19 Sep — but only two taps
+                      in: the row opened a sheet and the button was inside it, and
+                      the row opens only for somebody who is NOT the owner. Every
+                      one of this account's businesses has a team of ONE
+                      (themselves), so there was no row to press and the feature did
+                      not exist from where they sat. It sits OUTSIDE the row's click
+                      target, beside the ▲▼. ── */}
+                  {manageable ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        aria-label={`Pay ${m.name}`}
+                        onClick={() => { setOpenMember(m); setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
+                        style={{ fontSize: 11.5, fontWeight: 900, padding: "7px 13px", borderRadius: 999, border: `1px solid ${DOS_TOOLS.team.c}55`, background: `${DOS_TOOLS.team.c}14`, color: DOS_TOOLS.team.c, cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        Pay
+                      </button>
+                      {paidTo(m.userId).length ? (
+                        <span style={{ fontSize: 10.5, color: SUB, fontWeight: 700 }}>
+                          {rupees(paidTo(m.userId).reduce((n, p) => n + p.amountInr, 0))} paid · {paidTo(m.userId).length} {paidTo(m.userId).length === 1 ? "payment" : "payments"}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 10.5, color: MUTED, fontWeight: 700 }}>Nothing paid yet</span>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            {/* ── asked, and not answered yet (18578) — in the group they were
+                asked INTO, wearing the same row so the group reads as one list ── */}
+            {waiting.map((inv) => {
+              const g = gradOf(inv.name);
+              return (
+                <div key={inv.id} style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "10px 12px", opacity: inv.status === "declined" ? 0.75 : 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 38, height: 38, borderRadius: 19, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
+                      {initialsOf(inv.name)}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{inv.name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: L.colour }}>{MEMBER_ROLE_WORD[inv.memberRole]}</span>
+                        {inv.email ? <span style={{ fontSize: 10.5, color: SUB }}>· {inv.email}</span> : null}
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 800, marginTop: 3, color: inv.status === "declined" ? "#F87171" : "#F59E0B" }}>
+                        {inv.status === "declined" ? "✕ They said no to being on your team" : "⏳ Waiting on them to confirm"}
+                      </div>
+                    </div>
+                  </div>
+                  {isOwner && (
+                    <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={dosKey}
+                        aria-label={`Show the invite for ${inv.name}`}
+                        onClick={() => setShareInvite(inv)}
+                        style={{ flex: 1, textAlign: "center", padding: "9px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 800, fontSize: 12, cursor: "pointer" }}
+                      >
+                        Show QR &amp; link
+                      </span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={dosKey}
+                        aria-label={`Withdraw the invite for ${inv.name}`}
+                        onClick={() => run(() => revokeInviteAction({ tenantId, inviteId: inv.id }), `${inv.name} — invite withdrawn`)}
+                        style={{ flex: 1, textAlign: "center", padding: "9px", borderRadius: 999, background: EL, color: "#F87171", fontWeight: 800, fontSize: 12, cursor: "pointer" }}
+                      >
+                        Withdraw
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })}
@@ -363,9 +486,8 @@ export function StaffDesk({
       {/* ⚠ A TEAM OF ONE IS WHY PAY LOOKED MISSING (20 Sep 2026). Everything a
           team desk does — labelling, ordering, paying — needs somebody other
           than the owner on it, so when there is nobody the desk says so and
-          points at the one thing that changes it, rather than showing a single
-          row that cannot be pressed. */}
-      {isOwner && team.length === 1 ? (
+          points at the one thing that changes it. */}
+      {isOwner && team.length === 1 && invites.length === 0 ? (
         <div style={{ ...card, borderLeft: `3px solid ${DOS_TOOLS.team.c}`, padding: "12px 14px" }}>
           <div style={{ fontSize: 12.5, fontWeight: 900 }}>Nobody else on the team yet</div>
           <div style={{ fontSize: 11, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
@@ -373,82 +495,6 @@ export function StaffDesk({
           </div>
         </div>
       ) : null}
-
-      {/* ── the people who have been asked and have not answered (18578) ── */}
-      {invites.map((inv) => (
-        <div key={inv.id} style={card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <b style={{ fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {inv.name}
-            </b>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                color: SUB,
-                background: EL,
-                padding: "3px 9px",
-                borderRadius: 999,
-                flexShrink: 0,
-              }}
-            >
-              {MEMBER_LEVEL[inv.memberRole]}
-            </span>
-          </div>
-          <div style={{ fontSize: 12, color: SUB, marginTop: 3 }}>
-            {MEMBER_ROLE_WORD[inv.memberRole]} · {inv.email ?? "asked on DanceOS"}
-          </div>
-          <div style={{ fontSize: 9.5, fontWeight: 800, marginTop: 3, color: inv.status === "declined" ? "#F87171" : "#F59E0B" }}>
-            {inv.status === "declined" ? "✕ They said no to being on your team" : "⏳ Waiting on them to confirm"}
-          </div>
-          {isOwner && (
-            <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
-              <span
-                role="button"
-                tabIndex={0}
-                onKeyDown={dosKey}
-                aria-label={`Show the invite for ${inv.name}`}
-                onClick={() => setShareInvite(inv)}
-                style={{
-                  flex: 1,
-                  textAlign: "center",
-                  padding: "9px",
-                  borderRadius: 999,
-                  background: "var(--text)",
-                  color: "var(--solid)",
-                  fontWeight: 800,
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                Show QR &amp; link
-              </span>
-              <span
-                role="button"
-                tabIndex={0}
-                onKeyDown={dosKey}
-                aria-label={`Withdraw the invite for ${inv.name}`}
-                onClick={() =>
-                  run(() => revokeInviteAction({ tenantId, inviteId: inv.id }), `${inv.name} — invite withdrawn`)
-                }
-                style={{
-                  flex: 1,
-                  textAlign: "center",
-                  padding: "9px",
-                  borderRadius: 999,
-                  background: EL,
-                  color: "#F87171",
-                  fontWeight: 800,
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                Withdraw
-              </span>
-            </div>
-          )}
-        </div>
-      ))}
 
       {/* the footnote, verbatim (18434) */}
       <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.55 }}>
@@ -473,12 +519,14 @@ export function StaffDesk({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Invite staff or team member"
+            /* the sheet answers to the same words as the button that opens it
+               (20 Sep 2026) — the prototype's own `aria-label` at 18788 */
+            aria-label="Add a team member"
             onClick={(e) => e.stopPropagation()}
             style={sheet}
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
-            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Invite someone</b>
+            <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add a team member</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
               They accept before anything is theirs to run — nobody is added to a business without saying yes.
             </div>
@@ -713,9 +761,18 @@ export function StaffDesk({
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{openMember.name}</b>
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px" }}>
+            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 10px" }}>
               {MEMBER_ROLE_WORD[openMember.role]}
               {openMember.city ? ` · ${openMember.city}` : ""}
+            </div>
+            {/* ⚠ WHAT THE SEAT CARRIES, MOVED HERE FROM THE ROW (20 Sep 2026).
+                The roster prints a group per label now and its rows are one line
+                each, the way the prototype sets them (18541-18592) — so this
+                sentence, which used to sit under every name and said the same
+                thing for everybody in a group, reads where somebody is actually
+                CHOOSING a label. Nothing was lost; it moved. */}
+            <div style={{ fontSize: 11.5, color: MUTED, marginBottom: 14, lineHeight: 1.5 }}>
+              {MEMBER_GRANTS[openMember.role]}
             </div>
 
             <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", marginBottom: 7 }}>

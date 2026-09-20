@@ -1,10 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { searchEverythingAction } from "@/features/discovery/server-actions/search";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
+import { photoUrl } from "@/lib/media/photo";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -177,9 +179,20 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
                   .filter((h) => h.kind === k)
                   .map((h) => {
                     const g = gradientOf(h.name);
+                    /* ⚠ THE PICTURE, WHERE THERE IS ONE (20 Sep 2026, the user:
+                       "search on discover should also show photo and name
+                       similarly"). The row drew one initial on a gradient; the
+                       follow list has drawn the real face since 19 Sep, and a
+                       search result and a follow row are the same account. The
+                       initials are the fallback, not the design — two letters,
+                       the way every other people row in the app sets them. */
+                    const face = photoUrl(h.photoPath);
+                    const initials = h.name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
                     return (
                       <Link key={h.id} href={h.href} role="option" aria-label={`${h.name} — ${h.sub}`} onMouseDown={(e) => e.preventDefault()} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", cursor: "pointer", color: "var(--text)", textDecoration: "none" }}>
-                        <span style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0, background: `linear-gradient(135deg,${g[0]},${g[1]})`, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 12 }}>{h.name[0]}</span>
+                        <span style={{ width: 34, height: 34, borderRadius: 11, flexShrink: 0, overflow: "hidden", background: `linear-gradient(135deg,${g[0]},${g[1]})`, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 12 }}>
+                          {face ? <Image src={face} alt="" width={34} height={34} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initials}
+                        </span>
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ display: "block", fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
                           <span style={{ display: "block", fontSize: 11, color: "var(--sub)" }}>{h.sub}</span>

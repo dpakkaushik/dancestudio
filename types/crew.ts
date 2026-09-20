@@ -12,7 +12,12 @@ export const CREW_ROLE_TINT: Record<CrewRole, string> = { leader: "#F59E0B", mem
 export const CREW_ROLE_WORD: Record<CrewRole, string> = { leader: "Leader", member: "Member", trainee: "Trainee" };
 /** the crews accent (DOS_TINT.crew 2707) and the desk's paint (16333) */
 export const CREW_TINT = "#DC2626";
-export const CREW_GRAD: [string, string] = ["#7C3AED", "#EC4899"];
+/** ⚠ RED, BECAUSE A CREW IS RED (20 Sep 2026, the user: "Profile Type Colors …
+ *  Crew: Red"). This was violet→pink — the ARTIST's tint — so a crew's hero and
+ *  a crew's own accent (`CREW_TINT`, red, right there above it) disagreed on
+ *  every screen a crew has. It is `PROFILE_RING.crew`'s pair, written here so
+ *  `types/crew.ts` keeps no import of a component file. */
+export const CREW_GRAD: [string, string] = ["#FCA5A5", "#B91C1C"];
 
 export interface Crew {
   id: string;

@@ -9,8 +9,8 @@ import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { Group, PersonIcon, Row, TYPE, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
-import { DOS_TINT, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
+import { Group, PROFILE_RING, PersonIcon, Row, TYPE, cornerChip } from "@/features/profiles/components/profile-kit";
+import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { PublicOrganization, PublicOrganizationStudio, PublicOrganizationTeamMember } from "@/repositories/publicOrganization";
@@ -75,12 +75,23 @@ export function OrganizationPublicPage({
   followingN?: number | null;
   signedIn?: boolean;
 }) {
-  const grad = gradientOf(org.name);
-  const tint = DOS_TINT.org;
+  /* ⚠ BLUE, BECAUSE IT IS AN ORGANIZATION (20 Sep 2026, the user's colour list).
+     The hero was `gradientOf(org.name)` — a hash — while its accent was already
+     `DOS_TINT.org`, so the wash and the ink on one screen came from two
+     different ideas. One registry; the organization moved off the gold a studio
+     now wears. */
+  const grad = PROFILE_RING.org;
+  const tint = grad[1];
   const host: EventCardHost = { name: org.name, photo: photoUrl(org.photoPath), href: null };
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${org.name}`, signed: h.signed }));
-  /* an organization is asked through its hosting row (R15) — a celebration, a corporate show, a collaboration */
-  const canAsk = !isMe && Boolean(org.hostBusinessId) && enquiryTypesFor("org").length > 0;
+  /* an organization is asked through its hosting row (R15) — a celebration, a
+     corporate show, a collaboration.
+     ⚠ DRAWN ON ITS OWN PAGE TOO, AND DISABLED (20 Sep 2026, the user: "Viewing
+     your own profile should show same buttons which you see on discover") —
+     `ActionRow` sizes its grid by how many cells it gets, so dropping this one
+     re-laid out the three beside it. */
+  const asksGoHere = Boolean(org.hostBusinessId) && enquiryTypesFor("org").length > 0;
+  const canAsk = !isMe && asksGoHere;
   /* ⚠ THREE PUBLISHED LABELS SINCE 20 Sep 2026 (the user's list A): Owner,
      Studio owner — which names the studio it owns — and Event team. The definer
      read leaves a plain `member` out, so there is no fourth group to draw. */
@@ -168,7 +179,16 @@ export function OrganizationPublicPage({
         {/* ── THE BUTTONS AN ORGANIZATION'S PAGE CARRIES (19 Sep 2026): Enquiry · Call ·
             Mail · Location — one block; Follow is the bell in the row above ── */}
         <ActionRow marginTop={12}>
-          {canAsk ? <EnquiryButton tenantId={org.hostBusinessId as string} tenantName={org.name} tenantType="org" signedIn={signedIn} accent={tint} /> : null}
+          {asksGoHere ? (
+            <EnquiryButton
+              tenantId={org.hostBusinessId as string}
+              tenantName={org.name}
+              tenantType="org"
+              signedIn={signedIn}
+              accent={tint}
+              cannotAsk={canAsk ? null : "This is your own page — enquiries come to you here"}
+            />
+          ) : null}
           {org.phone ? <CallButton phone={org.phone} /> : null}
           {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : org.city ? <LocationButton query={`${org.name} ${org.city}`} /> : null}

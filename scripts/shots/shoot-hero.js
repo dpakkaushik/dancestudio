@@ -154,7 +154,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       body: JSON.stringify({ gstin: `HRO${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString() }),
     });
     await org.goto(`${BASE}/business`);
-    await org.getByText("＋ Add studio").click();
+    /* ⚠ BY ITS ACCESSIBLE NAME, NOT ITS TEXT (20 Sep 2026, the user: "fix add
+       studio button also similarly"). It was a dashed row whose whole content
+       was the string "＋ Add studio"; it is the shared `DeskAddButton` pill now,
+       whose ＋ is an aria-hidden SVG — so the text node is "Add studio" and the
+       NAME is what every other add button in the app is found by. */
+    await org.getByRole("button", { name: "Add studio" }).first().click();
     await org.locator('input[name="name"]').fill("EEE Dance Studio");
     await org.locator('input[name="area"]').fill("Kothrud");
     await pickCity(org, "Pune");

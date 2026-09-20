@@ -58,6 +58,7 @@ export function EnquiryButton({
   accent,
   enquiryTypes = null,
   crewId = null,
+  cannotAsk = null,
 }: {
   /** the business asked — ignored when `crewId` is set */
   tenantId: string;
@@ -70,6 +71,16 @@ export function EnquiryButton({
   /** A CREW CAN BE ASKED (18 Sep 2026): set on a crew's page, the enquiry goes to
    *  the crew — its leader answers — and offers the three kinds a crew takes */
   crewId?: string | null;
+  /** ⚠ WHY THE PRESS WOULD BE REFUSED, WHEN IT WOULD (20 Sep 2026, the user:
+   *  "Viewing your own profile should show same buttons which you see on
+   *  discover it should look the same way"). Your own page used to DROP this
+   *  button, so the page you reach from Home's eye had one fewer control than
+   *  the same page reached from Discover — and `ActionRow` is a grid sized by
+   *  how many cells it gets, so the remaining buttons changed width too. It is
+   *  drawn and disabled with its reason on it, which is exactly what the Follow
+   *  bell does for the same reason (C27, the user's own "should be available to
+   *  all"). */
+  cannotAsk?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const box: React.CSSProperties = {
@@ -98,6 +109,13 @@ export function EnquiryButton({
       <path d="M21 3 10.5 13.5M21 3l-6.8 18-3.7-7.5L3 9.8z" />
     </svg>
   );
+  if (cannotAsk) {
+    return (
+      <button type="button" disabled aria-label={cannotAsk} title={cannotAsk} style={{ ...box, opacity: 0.45, cursor: "not-allowed" }}>
+        <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>Enquiry
+      </button>
+    );
+  }
   if (!signedIn) {
     return (
       <Link href="/login" aria-label="Enquiry" style={box}>

@@ -2,7 +2,153 @@
 
 ## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE COLUMN THAT SWITCHES WITHOUT THE SERVER, AN ORGANIZATION THAT FOLLOWS, AND TWO PROFILE SCREENS MADE ONE (20 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (Rule 9: it widens who may write a follow), dry run 19/19 rolled back
+> ### THE TEAM DESK IS GROUPED BY LABEL, A PROFILE TYPE HAS A COLOUR, AND A CLASS SOMEWHERE ELSE TAKES A LINK (20 Sep 2026, latest) — BUILT, no migration
+> The user, over four messages, holding up a screenshot of the prototype's own
+> Team screen: *"fix team view like this and butoon should say add team member"*;
+> *"fix add studio button also similarly"*; *"Profile Type Colors for both Profile
+> and home Tab — User: Bronze, Artist: Silver, Studio: Gold, Crew: Red,
+> Organization: Blue … edit button for photos should be a plus sign how it is for
+> instagram … follow following list open with profile type bifercation and photo
+> with name of profiles. search on discover should also show photo and name
+> similarly."*; and *"when adding a class by artist with studio not on dance os
+> should just need a map link not map location picker. and should always be on
+> dance os when opening the form by default."*
+> * ⚠⚠ **1 · THE SCREENSHOT WAS A PROTOTYPE SCREEN WE HAD NEVER LIFTED.** The
+>   image came in over WhatsApp and looked like our app; it is `S_team`
+>   (18596-18800), and the tell was three labels our database has never had —
+>   CLASS ASSISTANT, VIDEOGRAPHER, MUSIC EDITOR. Our Team desk was a FLAT list of
+>   cards; the prototype draws a GROUP PER LABEL, each headed by the label's
+>   colour as a dot, its short plural, the count, and **CAN TAKE A CLASS / CAN
+>   ASSIST** — which is not decoration, it is the rule `can_run_register_for_class`
+>   keeps, said where somebody is choosing a label. That is what this push lifts.
+>   ⚠ **AND THE PEOPLE WHO HAVE NOT ANSWERED MOVED INTO THEIR OWN GROUP** rather
+>   than a block underneath the whole roster: somebody asked to be a class
+>   assistant IS what the Class assistants group is about, and parking them below
+>   everybody made the group's count and the group's rows disagree.
+> * ⚠ **THE VOCABULARY IS OURS, AND THAT WAS THE USER'S CHOICE.** Asked how far to
+>   take it, they picked "layout only, our five labels". The prototype offers
+>   Videographer, Music Editor, Artist Manager, Photographer **and labels a studio
+>   types in itself**; ours are the five `member_role` values a CHECK allows. The
+>   four extra words are one migration — and it would have to move **TWO** CHECKs,
+>   `business_members` AND `business_invites`, which is exactly the pair missed on
+>   19 Sep. ⚠ **Visiting faculty STAYS though the prototype deleted it** (2133): in
+>   THIS app accepting a class ask seats an outside teacher as `visiting_faculty`
+>   (R19), so removing it would break the door that creates it.
+> * ⚠ **AND NO DRAG HANDLE, though the screenshot shows one.** Its gesture is a
+>   220 ms hold, a pointer capture and a per-row measurement that commits to
+>   localStorage; ours would have to commit a SERVER action, so it is its own
+>   slice. **▲▼ are drawn instead — they are in the same screenshot and they
+>   already work.** Six grey dots that do nothing would be the same lie as a tile
+>   that opens nothing. ⚠ They now move a row **within its group**: walking the
+>   whole roster made no sense the moment it was drawn in groups, because ▲ on the
+>   first assistant would have swapped them with the last faculty member and moved
+>   them nowhere on screen. The stored `sort` is still one global order; the swap
+>   just skips the rows in between.
+> * **2 · ＋ ADD STUDIO IS THE DESK PILL, AT THE TOP.** It was a dashed row at the
+>   FOOT of the studios list, so an organization with several branches scrolled
+>   past all of them to open another — the very thing the 20 Sep move fixed for
+>   Team, Rooms and Crews and then missed here. ⚠ **The R14 gate is not a greyed
+>   pill:** when the database would refuse a studio the button is not drawn at all
+>   and its SENTENCE stands in its place, with the door to the person who can move
+>   it.
+> * ⚠⚠ **3 · A PROFILE TYPE HAS A COLOUR, AND TWO OF THE FIVE NEVER DID.**
+>   `ROLE_RING` covered the three PERSON kinds; the other two had no identity
+>   colour at all — a **STUDIO's** hero was painted from `gradientOf(name)`, A HASH
+>   OF ITS NAME, so two studios of one organization came out two unrelated colours
+>   and a studio's own home disagreed with its own public page; a **CREW** wore
+>   violet→pink, which is the ARTIST's tint, while its own accent `CREW_TINT` sat
+>   red in the same file. `PROFILE_RING` is the one registry: bronze · silver ·
+>   gold · red · blue. ⚠ **An organization moved OFF gold and a studio took it** —
+>   the user's own ordering, and it reads right: the studio is the thing people
+>   walk into, the organization behind it is infrastructure. `followTint` reads the
+>   same registry now, so an account cannot be one colour in a follow list and
+>   another on its own page.
+> * **4 · THE PHOTO CONTROL IS A ⊕, NOT A PENCIL** ("how it is for instagram").
+>   Right about the gesture as well as the glyph: on the posters rail the commonest
+>   act is ADDING one, and on an empty rail there is nothing to edit. ⚠ **Both keep
+>   their accessible NAMES** ("Change profile picture", "Edit posters"), so every
+>   locator and every screen reader still says what the button does rather than
+>   what it looks like.
+> * **5 · THE FOLLOWERS SHEET A BUSINESS OPENS IS BIFURCATED TOO.** It had the
+>   photos and the names since it was built and never the segments, so a studio's
+>   list was one long column while the person's own sheet — the SAME rows, the same
+>   kit — had chips. ⚠ **Three words, not the person's six:** a studio and a crew
+>   cannot follow, so those two segments could only ever be empty here, and a chip
+>   that can never match anything is worse than no chip.
+> * ⚠ **6 · DISCOVER'S SEARCH DRAWS THE FACE**, and the reads are deliberately
+>   AFTER the search rather than inside it. `search_dance_os` is SECURITY INVOKER
+>   on purpose — the caller's own RLS is what makes a stranger's answer differ from
+>   an owner's — so widening its RETURNS TABLE would mean dropping and re-creating
+>   it, and a definer join would quietly hand back a picture for a row the caller
+>   could not otherwise read. Three batched reads as the CALLER; a row whose
+>   picture this reader may not see comes back without one and draws initials.
+>   ⚠ An **ARTIST hit is a PERSON** (R24), so it reads from `profiles` beside the
+>   plain users — getting that backwards would have drawn every artist as initials
+>   for ever and looked like missing data.
+> * ⚠⚠ **7 · A CLASS SOMEWHERE ELSE TAKES A LINK, NOT A MAP.** The user is right
+>   about who knows the answer: a studio that is not on DanceOS **already has a
+>   Google Maps listing**, and its own link is more accurate than anything an
+>   artist can find by dragging a pin around a map of a place they may not be
+>   standing in. The `LocationPicker` is gone from the class form — **with it, the
+>   Maps script on that form entirely**, so an artist never waits for it and never
+>   meets the demo key's daily quota (#0a3) here — and the two routes stopped
+>   reading `findDiscoverCities`, a round trip each. The segments read **A studio
+>   on DanceOS · Somewhere else**, and a NEW class **opens on DanceOS** ("should
+>   always be on dance os when opening the form by default"); an EXISTING one still
+>   opens on whichever it actually has. ⚠ **A pin somebody already placed is
+>   KEPT** — `geo` is read-only state that rides back out through the hidden
+>   fields, because taking a control off a form must never silently delete what it
+>   used to hold (the 16 Sep destroy-on-cancel lesson, in a quieter coat).
+> * ⚠⚠ **8 · YOUR OWN PAGE CARRIES THE SAME BUTTONS AS ONE OPENED FROM DISCOVER**
+>   ("Viewing your own profile should show same buttons which you see on
+>   discover"). The Enquiry button was DROPPED on your own page — and `ActionRow`
+>   is a grid sized by **how many cells it is given**, so a missing button did not
+>   merely go missing: it re-laid out Call, Mail and Location beside it, and the
+>   page reached from Home's eye was a different SHAPE from the same page reached
+>   from Discover. It is drawn and disabled with its reason on it now
+>   (`cannotAsk`), on a person's, a studio's and an organization's own page —
+>   exactly the treatment the Follow bell already gets, which is the user's own
+>   precedent (C27, "should be available to all"). ⚠ Its accessible NAME becomes
+>   the reason rather than "Enquiry", so a locator asking for the live button
+>   cannot match the dead one — the 20 Sep substring trap, avoided on purpose
+>   ("enquiries come to you here" does not contain "enquiry").
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
+>   127/127** · the e2e recorded below.
+> * ⚠⚠ **AND THE SUITE FOUND THREE STALE ASSERTIONS, ALL MINE, ALL THE SAME
+>   SHAPE: THE FLAT ROW'S TEXT.** The old roster printed two facts as ONE text
+>   node, and three checks read them that way — `"Visiting faculty · asked on
+>   DanceOS"` and `"Admin · Owner"` (twice). The grouped row prints them as
+>   separate spans, drops the "asked on DanceOS" fallback (the waiting line
+>   already says it) and has no LEVEL word at all. Each was re-cut to the claim it
+>   was really making rather than to the new string: that the invite names a
+>   PERSON is now asserted as *the fallback words are nowhere on the page*, and
+>   that the desk has two owners as *the Owners group exists and the label appears
+>   twice*. **A concatenated string in an assertion is a bet on a layout; the
+>   claim underneath it usually survives the layout that broke it.**
+> * ⚠ **AND ONE REAL CONSEQUENCE CAUGHT BY READING THE LOCATORS RATHER THAN BY A
+>   FOURTH 17-MINUTE RUN:** the ▲▼ move a row WITHIN its group now, so a group of
+>   one has nothing to swap with — and the first cut simply did not draw them
+>   there, which would have made `Move X up` unfindable the moment somebody was
+>   alone under a label. They are drawn for the owner always and DISABLED when
+>   there is no partner, which is also what the screenshot shows (its
+>   Videographers group has one person and both arrows greyed).
+> * ⚠ **AND THE SHOOT CAUGHT THE ADD-STUDIO RENAME IN ONE LINE:** two scripts
+>   pressed `getByText("＋ Add studio")` — the dashed row's whole content — and the
+>   pill's ＋ is an `aria-hidden` SVG, so the text node is "Add studio" and the
+>   old locator found nothing. Both read the accessible NAME now, which is what
+>   every other add button in the app has always been found by. **The same shape
+>   as 20 Sep's "＋ Create crew" → "Create crew": a shared control changes an
+>   accessible name, and only a run finds which locators were leaning on the
+>   glyph.**
+> * ⚠ **A 190-LINE REPLACEMENT WAS DONE IN NODE WITH BOTH ANCHORS ASSERTED**, not
+>   through PowerShell — Rule 16, and the mojibake count, the em-dash count and
+>   the ⚠ count were all read back afterwards rather than assumed (0 / 44 / 15).
+>   ⚠ And a PowerShell one-liner that merely CHECKED for mojibake failed to parse
+>   because the check string itself was non-ASCII, which is the same trap wearing
+>   yet another coat: **the command did not run at all**, and only reading its
+>   error said so rather than a silent "applied".
+
+> ### THE COLUMN THAT SWITCHES WITHOUT THE SERVER, AN ORGANIZATION THAT FOLLOWS, AND TWO PROFILE SCREENS MADE ONE (20 Sep 2026) — ⚠ ONE MIGRATION APPLIED (Rule 9: it widens who may write a follow), dry run 19/19 rolled back
 > The user: *"PULL TASKS FROM PREVIOUS CHAT AND FINISH THEM. CLASSES LAG ISSUE IS
 > THERE WHEN SWITCHING COLUMNS … ORGANIZATION AND sTUDIO STILL DONT HAVE FOLLOWING
 > SECTION IN PROFILE AND HOME … DUMMY PROFILE AND ACTUAL WORKING PROFILES HAVE SOME

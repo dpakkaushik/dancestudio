@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { searchEverything, type SearchHit } from "@/repositories/search";
+import { searchEverything, withSearchPhotos, type SearchHit } from "@/repositories/search";
 
 /** The search box's read. Works signed out — the function is invoker-scoped, so
  *  a stranger simply finds less. */
@@ -22,7 +22,12 @@ export async function searchEverythingAction(input: { term: string }): Promise<S
   try {
     const supabase = await createSupabaseServerClient();
     const hits = await searchEverything(supabase, parsed.data.term);
-    return { hits, error: null };
+    /* the faces (20 Sep 2026, the user: "search on discover should also show
+       photo and name similarly"). ⚠ Swallowed on purpose: a dropdown that shows
+       initials is a dropdown; one that shows an error because a picture could
+       not be read is a broken search. */
+    const withFaces = await withSearchPhotos(supabase, hits).catch(() => hits);
+    return { hits: withFaces, error: null };
   } catch (error: unknown) {
     return { hits: [], error: error instanceof Error ? error.message : "Search failed" };
   }
