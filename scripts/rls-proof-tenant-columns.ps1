@@ -11,9 +11,10 @@
 #     month) flipped to an artist page (which costs the Rs 700 Artist plan), or
 #     back, with neither ever bought. The CHECK constraint allows both values,
 #     so nothing below the policy says no.
-#   * `about` / `phone` / `socials` - update_business_profile caps About at 220
-#     characters, demands a phone that looks like a phone and a link that looks
-#     like a link, and stops at twelve of them. A PATCH obeys none of it.
+#   * `name` / `phone` / `socials` - update_business_profile caps the name,
+#     demands a phone that looks like a phone and a link that looks like a link,
+#     and stops at twelve of them. A PATCH obeys none of it.
+#     (About was the example here until 20 Sep 2026, when the column was dropped.)
 #
 # The two columns somebody already thought about - `verified_at` and
 # `visibility` - have guard triggers, and they are the CONTROLS here: if those
@@ -142,12 +143,14 @@ if (-not $r.ok) { $pass = $false }
 # 7. The door itself must still open: the RPC an owner is MEANT to use still works.
 try {
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/update_business_profile" -Headers $H -Body (@{
-    p_business_id = $t.id; p_about = "A room in Kothrud."; p_founded_year = 2016; p_phone = "+91 98765 43210"
+    p_business_id = $t.id; p_founded_year = 2016; p_phone = "+91 98765 43210"
     p_socials = @(@{ platform = "Instagram"; url = "https://instagram.com/example" }); p_enquiry_types = @("Workshop")
     p_accepts_upi = $true; p_accepts_cards = $false; p_accepts_cash = $true; p_accepts_bank = $false } | ConvertTo-Json) | Out-Null
-  $back = Invoke-RestMethod -Uri "$base/rest/v1/businesses?id=eq.$($t.id)&select=about,phone" -Headers $H
-  $wrote = ($back[0].about -eq "A room in Kothrud.")
-  "7. The door an owner is MEANT to use still opens: $(if ($wrote) {'about saved -- OK'} else {'DID NOT SAVE -- !!! FAILED !!!'})"
+  # ⚠ reads the PHONE back, not the About: the column went on 20 Sep 2026 and
+  #   selecting it is a 400, which is what this check reported as a broken door
+  $back = Invoke-RestMethod -Uri "$base/rest/v1/businesses?id=eq.$($t.id)&select=founded_year,phone" -Headers $H
+  $wrote = ($back[0].phone -eq "+91 98765 43210" -and $back[0].founded_year -eq 2016)
+  "7. The door an owner is MEANT to use still opens: $(if ($wrote) {'phone and Since saved -- OK'} else {'DID NOT SAVE -- !!! FAILED !!!'})"
   if (-not $wrote) { $pass = $false }
 } catch {
   "7. The door an owner is MEANT to use still opens: THREW '$($_.Exception.Message)' -- !!! FAILED !!!"; $pass = $false

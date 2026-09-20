@@ -2,6 +2,100 @@
 
 ## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
 
+> ### THE BIO IS GONE, AND AN ASSISTANT STARTS WITH ATTENDANCE (20 Sep 2026, latest) — ⚠ TWO MIGRATIONS APPLIED (Rule 9: one changes who may run a register)
+> Three decisions the user took when asked what was left: *"drop the about
+> column"*, *"yes assistant carry attendance by default"*, *"remove reviews and
+> ratings for now"* — then, narrowing the first themselves: *"about and bio for
+> profiles need to go away nothing for events"*.
+> * **1 · THE BIO IS DROPPED — `20260920160000_the_bio_is_gone`, APPLIED.**
+>   ⚠ **THREE TABLES CARRY A COLUMN CALLED `about` AND ONLY TWO OF THEM WERE
+>   THIS.** `profiles.about` and `businesses.about` are the Bio and are gone;
+>   **`events.about` is the event page's WHAT TO KNOW** — written by `save_event`,
+>   read by the event page and the manager, on **174 rows** — and is untouched.
+>   The user said so in as many words before a line was written, and the
+>   difference was found by SURVEYING the column rather than by trusting its name.
+>   **Counted before it was destroyed: 12 of 37 live profiles and 5 of 194 live
+>   businesses held a paragraph** (16 and 31 with soft-deleted rows, mostly proof
+>   leftovers), and **all of them were copied out to JSON first**, so a decision
+>   that the column cannot reverse is reversible by hand.
+>   **Four functions were dropped and re-created** — `public_artist` and
+>   `public_organization` because `about` sat in their RETURNS TABLE, and
+>   `update_my_profile` / `update_business_profile` because they took `p_about` —
+>   **each body read back with `pg_get_functiondef` and copied verbatim**, the ACLs
+>   restated. ⚠ `entity_chart_row` and `person_dance_stats` also match the word,
+>   in a COMMENT, and were deliberately left alone.
+> * **2 · AN ASSISTANT STARTS WITH ATTENDANCE — `20260920170000`, APPLIED.**
+>   ⚠ **"By default" was read literally, and the alternative would have undone
+>   yesterday's rule.** `assistant` could have been admitted by
+>   `can_run_register_for_class` the way an OWNER is — always — but that makes the
+>   member sheet's switch a control that cannot be turned off, which is exactly
+>   what R38 refused for an owner. So it is a DEFAULT: the seat starts with
+>   `can_attendance = true` and the owner may still take it away. **It is a
+>   TRIGGER on `member_role`, not a line in each RPC** — an assistant seat arrives
+>   from `accept_business_invite` or `set_member_role`, and any door added later
+>   would otherwise have to remember. It fires only when the role BECOMES
+>   assistant, so `set_member_powers` (which never sets `member_role`) is never
+>   overruled a moment later. **Nothing was backfilled because there was nothing
+>   to backfill** — counted first: 35 owner, 5 visiting_faculty, 3 trainer, 2
+>   staff and ZERO assistant seats.
+> * **3 · REVIEWS AND RATINGS ARE OFF THE LIST** (NEXT TO DO #5) — the user's
+>   call. Nothing to remove: the prototype deleted its own rating ("There is no
+>   rating anywhere in DanceOS any more", 4218) and this app never built one.
+> * ⚠⚠ **AND THE LIVE APP BROKE FOR THE MINUTES BETWEEN THE APPLY AND THE PUSH,
+>   EXACTLY AS PREDICTED AND NOT AVOIDED.** Both doors changed SIGNATURE, and the
+>   deployed bundle still sent `p_about`, so every profile read and save answered
+>   PGRST202 — *"app broke completely"*, in the user's words, before the deploy
+>   landed. The migration comment says "apply first, then push, exactly as every
+>   other signature change here has been", and that is what happened; what it did
+>   NOT do was say the window out loud to the user beforehand. **A signature
+>   change has a window whichever order you choose** — the old app cannot call the
+>   new function and the new app cannot call the old one — so the thing to do is
+>   NAME it before applying, and push within the minute. Restored by the deploy
+>   (`86851a2`); the live smoke is 11/11 and both column lists resolve.
+> * ⚠ **AND A CLAIM IN THIS FILE WAS WRONG, FOUND BY A DUPLICATE-KEY ERROR.** The
+>   20 Sep note says the seat grant "was written `on conflict do nothing` — and
+>   **there is no unique index on `business_members(business_id, user_id)`**".
+>   There is: `business_members_business_id_user_id_key UNIQUE (business_id,
+>   user_id)`. The explicit exists-check that replaced it is still right, but the
+>   REASON recorded for it was not. ⚠ And the constraint carries **no `deleted_at`
+>   predicate**, so it spans soft-deleted rows too: somebody removed from a team
+>   cannot be re-INSERTED, only revived by UPDATE — which is what
+>   `set_organization_member_role` already does, and a fact worth knowing before
+>   writing the next seating door.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **the dry run
+>   15/15, rolled back** (both columns gone and `events.about` intact at 174 rows,
+>   both public faces answering without it, no `p_about` overload left, a real
+>   person still editing their profile, a staff seat NOT starting with attendance
+>   and an assistant seat DOING, the owner still able to switch it off and it
+>   staying off, every untouched ACL identical, the four re-created doors carrying
+>   exactly their old grants, anon's set 46 → 46 and the policy count 102 → 102) ·
+>   both applied · schema cache reloaded · read back live · **the affected proofs
+>   green** (profile-fields, settings-screens, tenant-columns, profile-pages,
+>   push2, staff) · **stranger-smoke 11/11 against the deployment**.
+> * ⚠ **THE HARNESS COST MORE THAN THE MIGRATION, AND THAT IS THE STANDING
+>   LESSON AGAIN** ("a rule the database starts keeping is a rule every SCRIPT has
+>   to keep"): six scripts sent `p_about` and five made ASSERTIONS ABOUT A RULE
+>   THAT NO LONGER EXISTS — the 220-character cap, the 5,000-character PATCH, the
+>   About read back, the About hijack. Each was re-cut to the claim it was really
+>   making rather than deleted: the hijack aims at the city and the founding year,
+>   the length cap at the name (`businesses_name_check`, 140 — **looked up rather
+>   than assumed**), and profile-fields check 6 now proves the OPPOSITE of what it
+>   used to: that the column is gone and `p_about` is refused.
+> * ⚠⚠ **AND I WALKED INTO THIS FILE'S OWN RULE 16 A THIRD TIME, IN A NEW COAT.**
+>   Patching three files from PowerShell, I wrote
+>   `[System.IO.File]::WriteAllText($p, ($t.Replace(...)) -replace "\`n","\`r\`n")` —
+>   and `-replace` binds as a THIRD ARGUMENT, so the call threw
+>   *"Cannot find an overload … argument count: 3"* while my own loop printed
+>   **"applied"** for all three files. Nothing was written. Caught by checking
+>   `git diff --stat` and the mojibake count immediately after, both clean, and
+>   redone with the Edit tool. **The lesson is not "be careful with PowerShell
+>   quoting" — it is the one already written: use the Edit tool. And a loop that
+>   prints its own success without reading the result is a loop that lies.**
+>   The one mechanical pass that WAS justified (20 call sites across two proof
+>   helpers) was done in Node, with every anchor asserted — and two anchors missed
+>   because the files are CRLF and the anchors were `\n`, which the assertions
+>   caught and named rather than silently skipping.
+
 > ### TWO GRANTED POWERS, A NUMBER, A HISTORY — AND THE FIVE OWED THINGS PAID (20 Sep 2026, latest) — ⚠ TWO MIGRATIONS APPLIED (Rule 9: both touch who may run a studio)
 > The user answered the "incomplete things" list point by point and then said
 > *"run all and push to live"*: *"1. permision given by Artist or Studio for
@@ -4852,9 +4946,11 @@ summary; the report has the evidence.
    backlog row says what it leaves.
 
 5. **The records a marketplace at this scale normally keeps and this one does
-   not** (§3 of the audit): **reviews / ratings** — there is no table at all,
-   and for "the Zomato of dancers" that is the ranking signal, the trust signal
-   and the reason to return; **search and impression events**, without which
+   not** (§3 of the audit). ⚠ **REVIEWS AND RATINGS ARE OFF THIS LIST BY THE
+   USER'S DECISION (20 Sep 2026: "remove reviews and ratings for now")** — there
+   is nothing to remove, since the prototype deleted its own rating (4218) and
+   this app never built one; do not propose it again without being asked. What is
+   left: **search and impression events**, without which
    there is no relevance ranking and no way to tell a studio why it gets no
    bookings; a **delivery log** for email/SMS; **device / push tokens**. All are
    product decisions, so none was built. Reviews is the one to do first by a

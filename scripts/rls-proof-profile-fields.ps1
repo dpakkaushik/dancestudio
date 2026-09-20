@@ -91,13 +91,13 @@ try {
   Check 1 "a member number is assigned at creation and is unique ($($mine[0].member_no) vs $($theirs[0].member_no))" (
     $mine[0].member_no -gt 0 -and $theirs[0].member_no -gt 0 -and $mine[0].member_no -ne $theirs[0].member_no)
 
-  # 2. the door writes the caller's own row: name, city, age, bio, two links, three styles
+  # 2. the door writes the caller's own row: name, city, age, two links, three styles
   $links = @(@{ platform = "Instagram"; url = "https://instagram.com/rheamoves" }, @{ platform = "YouTube"; url = "https://youtube.com/@rheamoves" })
   Rpc (Api $rhea.token) "update_my_profile" (ProfileBody "Rhea Kapoor $stamp" "New Delhi" 24 $links @("Hip-Hop", "Kathak", "Contemporary")) | Out-Null
   $mine = Rows (Api $rhea.token) "profiles?$SEL&id=eq.$($rhea.id)"
   Check 2 "the caller's row takes the sheet's fields (age $($mine[0].age), $(@($mine[0].socials).Count) links, $(@($mine[0].styles).Count) styles)" (
     $mine[0].full_name -eq "Rhea Kapoor $stamp" -and $mine[0].city -eq "New Delhi" -and $mine[0].age -eq 24 -and
-    $mine[0].about -eq "Movement is a language." -and @($mine[0].socials).Count -eq 2 -and (@($mine[0].styles) -join ",") -eq "Hip-Hop,Kathak,Contemporary")
+    @($mine[0].socials).Count -eq 2 -and (@($mine[0].styles) -join ",") -eq "Hip-Hop,Kathak,Contemporary")
 
   # 3. ... and nobody else's row moved
   $theirs2 = Rows (Api $other.token) "profiles?$SEL&id=eq.$($other.id)"
