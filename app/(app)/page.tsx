@@ -19,7 +19,9 @@ import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { EyeIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
+import { PersonIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
+import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
@@ -178,6 +180,15 @@ export default async function HomePage() {
      page they OWN (Team, Students); a user's and an organization's carry no
      desk of a business at all — a studio's desks are on the studio's own home. */
   const homeKind = isOrg ? "org" : isArtist ? "artist" : "user";
+  /* ⚠ WHERE AN ENQUIRY WOULD LAND, AND WHY IT IS NOT THE PROFILE (21 Sep 2026).
+     `send_enquiry` names a BUSINESS or a crew, never a person — so an artist's
+     asks go to the `artist_page` row behind them (R24) and an organization's to
+     its own hosting row (R15). A plain user has neither, which is why their row
+     carries no Enquiry at all rather than a dead one: the public page draws none
+     for a user either ("user — nothing", the 19 Sep list), and Home matching it
+     is the whole point of this row. */
+  const asksGoHere = isOrg ? eventsHostId : isArtist ? pageId : null;
+  const isPlainUser = !isOrg && !isArtist;
   /* THE ARTIST PAGE IS PROVISIONED HERE, NOT SET UP IN A SHEET (18 Sep 2026, the
      user: "no need for a separate artist page to be created … you just subscribe
      from a user to artist to get the additional tools"). A live plan and no page
@@ -246,13 +257,24 @@ export default async function HomePage() {
           /* the posters' own pencil, at the rail's corner (20 Sep 2026) — a
              press on a poster opens the poster; this is how the set changes */
           headerEdit={headerMax > 0 ? <HeaderEditButton profile={profile} header={header} headerMax={headerMax} /> : null}
-          /* ⚠ NO PENCIL (19 Sep 2026, the user: "Editing profile should be
-             shifted to settings and should be the top option, all edit profile
-             options to be removed from home and profile pages") — the corner is
-             the eye alone, and Edit profile is Settings' first tile */
+          /* ⚠ NO PENCIL (19 Sep 2026) — Edit profile is Settings' first tile.
+             ⚠⚠ AND THE CORNER OPENS YOUR PROFILE, NOT YOUR PUBLIC PAGE (21 Sep
+             2026, the user: "the top right button on all home tabs should just
+             take to the user profile right now its looping between student
+             record and profile from that top right section"). THE LOOP WAS REAL
+             AND IT WAS TWO OF MY OWN CONTROLS FACING EACH OTHER: this eye opened
+             `/person/{me}`, and C29 (20 Sep) put a corner THERE opening
+             `/profile`, whose own eye opened `/person/{me}` again — press the
+             corner four times and you are back where you started, having seen
+             two screens. The same loop existed on a studio's home and a crew's,
+             through "Manage this studio" / "Manage this crew".
+             The corner is ONE door now, the same on every home: the Profile tab,
+             which lost its slot in the tab bar on 19 Sep (C16) and has needed a
+             door ever since. The public page is reached from there, or from the
+             Share chip in the figures row. */
           corner={
-            <Link href={publicHref} aria-label="Public view" style={cornerChip}>
-              <EyeIcon />
+            <Link href="/profile" aria-label="Your profile" style={cornerChip}>
+              <PersonIcon />
             </Link>
           }
         >
@@ -314,8 +336,49 @@ export default async function HomePage() {
         {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
             live first — under the one shelf head, with both doors named. An organization
             still waiting on approval sees neither this nor the tools. ── */}
+        {/* ── THE BUTTONS ABOVE THE SCHEDULE, THE SAME ROW THE PROFILE PAGE
+            CARRIES (21 Sep 2026, the user: "buttons above schedule should also
+            be visible on the home tab in the same way as profile"). On the
+            public page they sit between the band and Schedule; Home's schedule
+            is "Today's schedule", so they sit here, in the same order, from the
+            same fields — `profile` already carries the number, the address, the
+            Call switch and the pin, so this costs no read.
+            ⚠ ENQUIRY IS DRAWN AND DISABLED WITH ITS REASON, which is the user's
+            own precedent from 20 Sep ("Viewing your own profile should show same
+            buttons which you see on discover"): `ActionRow` is a grid sized by
+            how many cells it is GIVEN, so dropping a button does not merely drop
+            it — it re-lays out the ones beside it, and the row would be a
+            different shape here from the page it is meant to match. Its
+            accessible NAME becomes the reason, so a locator asking for the live
+            button cannot match the dead one.
+            ⚠ An organization still waiting on approval sees none of this, for
+            the same reason it sees no deck and no tools. ── */}
         {orgAwaitingApproval ? null : (
-          <TodayShelf deck={deck} />
+          <>
+            <ActionRow marginTop={12}>
+              {asksGoHere ? (
+                <EnquiryButton
+                  tenantId={asksGoHere}
+                  tenantName={profile.fullName}
+                  tenantType={isOrg ? "org" : "artist_page"}
+                  signedIn
+                  accent={ring[1]}
+                  cannotAsk="This is your own page — enquiries come to you here"
+                />
+              ) : null}
+              {/* an ORGANIZATION's Call is always drawn; an ARTIST's only while
+                  their own switch is on (push 2, 19 Sep 2026) */}
+              {profile.phone && (isOrg || (isArtist && profile.phonePublic)) ? <CallButton phone={profile.phone} /> : null}
+              {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
+              {/* a person's row never carries a pin — only an organization's */}
+              {isOrg && profile.lat != null && profile.lng != null ? (
+                <LocationButton href={mapsPinHref(profile.lat, profile.lng)} />
+              ) : isOrg && place ? (
+                <LocationButton query={`${profile.fullName} ${place}`} />
+              ) : null}
+            </ActionRow>
+            <TodayShelf deck={deck} />
+          </>
         )}
 
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the

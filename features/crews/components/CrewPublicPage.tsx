@@ -8,7 +8,7 @@ import { ProfileLink, ProfileShare } from "@/features/profiles/components/Profil
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityMark, Group, PersonIcon, TYPE, cornerChip, smallBox } from "@/features/profiles/components/profile-kit";
+import { EntityMark, Group, TYPE, smallBox } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -118,15 +118,9 @@ export function CrewPublicPage({
           avatar={photoUrl(crew.photo)}
           avatarAlt={crew.name}
           shots={shots}
-          /* one press back to the crew's own home (20 Sep 2026) — its home
-             carries the eye to here, and nothing went the other way */
-          corner={
-            viewer === "leader" ? (
-              <Link href={`/crews/${crew.id}/manage`} aria-label="Manage this crew" style={cornerChip}>
-                <PersonIcon />
-              </Link>
-            ) : null
-          }
+          /* ⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026) — see `PublicPersonPage`.
+             ⚠ The leader keeps their door: "You lead this crew · Manage ›" is
+             drawn under the hero and names what it opens. */
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026). A crew follows nobody, so
               followers alone; `crews` has no `socials` column, so no links row —

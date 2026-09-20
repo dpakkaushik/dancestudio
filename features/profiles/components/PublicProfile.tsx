@@ -19,7 +19,7 @@ import { StatsChip } from "./StatsChip";
 import { TenantFollowersButton } from "./TenantFollowersButton";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, PROFILE_RING, PersonIcon, Row, SchedIcon, bigWhite, cornerChip, smallBox } from "./profile-kit";
+import { Group, PROFILE_RING, Row, SchedIcon, bigWhite, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
  *  `publicEntity="studio"` (10565-11060): THE PROFILE, LIT LIKE A PLAYER — the
@@ -162,15 +162,11 @@ export function PublicProfile({
           avatar={face}
           avatarAlt={tenant.name}
           shots={shots}
-          /* one press back to the studio's own screens (20 Sep 2026) — its home
-             carries the eye to here, and nothing went the other way */
-          corner={
-            isMember ? (
-              <Link href={manageHref} aria-label="Manage this studio" style={cornerChip}>
-                <PersonIcon />
-              </Link>
-            ) : null
-          }
+          /* ⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026) — see `PublicPersonPage`
+             for the loop this cuts; a studio's ran home → eye → here → "Manage
+             this studio" → home. ⚠ Nothing is lost: the member's own door to the
+             desk is the "You are on this team · Manage ›" box further down, which
+             says what it is instead of being a glyph in a corner. */
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026, the user: "Upper layer of
               Home tab to exactly the same used for profile pages for all kinds of

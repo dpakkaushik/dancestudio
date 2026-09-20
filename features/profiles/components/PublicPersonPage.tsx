@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
@@ -15,7 +14,7 @@ import { PersonBody } from "./PersonBody";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, PersonIcon, ROLE_RING, Row, cornerChip } from "./profile-kit";
+import { Group, ROLE_RING, Row } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
@@ -143,21 +142,16 @@ export function PublicPersonPage({
           avatar={face}
           avatarAlt={profile.fullName}
           shots={shots}
-          /* ⚠ ONE PRESS BACK FROM YOUR OWN PAGE (20 Sep 2026, the user: "when
-             looking at your own profile from somewhere should also look same as
-             profile page. that breaks a lot of times"). The Profile tab's corner
-             has carried the eye to HERE since 15 Sep and there was nothing in the
-             other direction, so landing on your own page from a row somewhere in
-             the app left the back chip as the only way out — and after two or
-             three hops that is not where you came from. The same corner, the
-             other way round, named for the thing it opens. */
-          corner={
-            isMe ? (
-              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
-                <PersonIcon />
-              </Link>
-            ) : null
-          }
+          /* ⚠⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026, the user: "no top right
+             button required on profile pages"). C29 put one here on 20 Sep — a
+             door back to `/profile`, because the eye had gone one way since
+             15 Sep and nothing came back. It solved that and created a worse
+             thing: Home's eye opened this page, this corner opened the Profile
+             tab, and the Profile tab's eye opened this page again, so the corner
+             cycled two screens for ever. The loop is cut at BOTH ends — every
+             home's corner opens the Profile tab (one direction, one door) and a
+             profile page has no corner at all. The back chip is how you leave a
+             page you drilled into, which is what this is. */
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026, the user: "Upper layer of
               Home tab to exactly the same used for profile pages for all kinds of

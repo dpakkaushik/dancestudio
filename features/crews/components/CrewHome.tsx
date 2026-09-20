@@ -6,7 +6,9 @@ import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
+import { PersonIcon, cornerChip } from "@/features/profiles/components/profile-kit";
+import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -84,11 +86,15 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
           avatarHref={`/crew/${crew.id}`}
           avatarLabel="Open the crew's public page"
           shots={shots}
+          /* ⚠ THE EYE IS GONE, AND THE CORNER IS THE ONE DOOR EVERY HOME CARRIES
+             (21 Sep 2026): it opened `/crew/{id}`, whose own corner opened this
+             page again — the same two-screen loop. The crew's public page is the
+             Share chip in the figures row. */
           corner={
             <>
               <CrewEditButton crew={crew} header={header} />
-              <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
-                <EyeIcon />
+              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
+                <PersonIcon />
               </Link>
             </>
           }
@@ -117,6 +123,28 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
             styleAria={(s) => `${s} — the crew's style`}
           />
         </IdentityHero>
+
+        {/* ── THE BUTTONS THE CREW'S PAGE CARRIES (21 Sep 2026): Enquiry · Call ·
+            Mail, in that order, from the crew's own fields. A crew has no
+            schedule bar, so they sit where the page puts them — directly under
+            the band. ⚠ Enquiry is drawn and DISABLED: you are in this crew, and
+            `send_enquiry` refuses the leader and every confirmed member in those
+            words (#0u). ⚠ Call is the LEADER'S SWITCH, exactly as on the page —
+            `crew_contacts`' own SELECT policy IS the switch, so a number that
+            reaches nobody is not drawn here either. ── */}
+        <ActionRow marginTop={12}>
+          <EnquiryButton
+            tenantId={crew.id}
+            crewId={crew.id}
+            tenantName={crew.name}
+            tenantType="artist_page"
+            signedIn
+            accent={CREW_GRAD[1]}
+            cannotAsk="You are in this crew — enquiries come to you here"
+          />
+          {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
+          {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}
+        </ActionRow>
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
           <ToolsPanel kind="crew">

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
@@ -9,7 +8,7 @@ import { ProfileLink, ProfileShare } from "@/features/profiles/components/Profil
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { Group, PROFILE_RING, PersonIcon, Row, TYPE, cornerChip } from "@/features/profiles/components/profile-kit";
+import { Group, PROFILE_RING, Row, TYPE } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -127,15 +126,9 @@ export function OrganizationPublicPage({
           avatar={photoUrl(org.photoPath)}
           avatarAlt={`${org.name} — logo`}
           shots={shots}
-          /* one press back to your own screens (20 Sep 2026) — the Profile tab's
-             eye opens this page, and until today nothing went the other way */
-          corner={
-            isMe ? (
-              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
-                <PersonIcon />
-              </Link>
-            ) : null
-          }
+          /* ⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026) — the same loop, and the
+             plainest case of it: this corner and the Profile tab's eye pointed
+             at each other. See `PublicPersonPage`. */
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026). An organization dances no
               style of its own — what it runs does — so it draws figures and links

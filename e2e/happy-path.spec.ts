@@ -1559,11 +1559,19 @@ test.describe.serial("DanceOS, end to end", () => {
        side in a zero-gap row (that looked joined and read as two words). */
     await expect(trainer.getByText(/^Artist-\d{6}$/).first()).toBeVisible();
     await expect(trainer.getByTestId("my-followers")).toHaveText("0");
-    /* ⚠ AND NO PENCIL ON THIS PAGE (19 Sep 2026, the user: "all edit profile
-       options to be removed from home and profile pages") — the corner is the
-       eye alone, and Edit profile is Settings' first tile */
+    /* ⚠ AND NO CORNER AT ALL ON THIS PAGE (21 Sep 2026). The pencil went to
+       Settings on 19 Sep ("all edit profile options to be removed from home and
+       profile pages") and the EYE went today, on the user's own question —
+       "i guess profile tab and profile page are the same thing?" — which makes
+       "no top right button required on profile pages" cover this screen too.
+       ⚠ The claim underneath the old assertion was never "an eye exists": it was
+       "you can get from here to your public page". That is what is asserted now,
+       and it is the DISC that carries it, saying so in plainer words than the
+       glyph did. Removing a door is only safe while the other one is there, so
+       both halves are checked. */
     await expect(trainer.getByRole("button", { name: "Edit profile", exact: true })).toHaveCount(0);
-    await expect(trainer.getByRole("link", { name: "Public view" })).toBeVisible();
+    await expect(trainer.getByRole("link", { name: "Public view" })).toHaveCount(0);
+    await expect(trainer.getByRole("link", { name: "Open your public page", exact: true })).toBeVisible();
     // Edit profile: a date of birth, from Settings.
     // ⚠ NO BIO SINCE 20 Sep 2026 (the user: "Remove bio from all profiles") — the
     // field is off both Edit sheets and `BioBlock` is deleted. The sheet is

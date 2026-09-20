@@ -12,6 +12,8 @@ import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repo
 import type { FollowedTenant } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { PersonBody } from "./PersonBody";
+import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
@@ -21,7 +23,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { EntityBand, figureLabel, figureNum } from "./profile-band";
-import { EyeIcon, Group, ROLE_RING, RoleBadge, Row, Sheet, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { Group, ROLE_RING, RoleBadge, Row, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -68,6 +70,7 @@ export function MyProfilePage({
   businesses = [],
   memberships = [],
   trainsAt = [],
+  eventsHostId = null,
   plan,
   isAdmin = false,
   gstVerified = false,
@@ -98,6 +101,9 @@ export function MyProfilePage({
    *  booking is private, so where somebody has taken classes is drawn on their
    *  own tab and never on the public page `PersonBody` also serves. */
   trainsAt?: Tenant[];
+  /** an ORGANIZATION's own event-hosting row (R15) — where an enquiry to it
+   *  lands, and the one id the button row needs that `person` cannot carry */
+  eventsHostId?: string | null;
   /** the Artist plan, for the settings sheet's switch */
   plan: ArtistPlan | null;
   /** a platform admin gets the verification queue as a row in the settings sheet */
@@ -125,6 +131,17 @@ export function MyProfilePage({
      CAN be followed since 19 Sep 2026 — it still follows nobody and dances
      nothing, so its figures are its studios and its followers */
   const isOrg = profile.role === "org";
+  /* the button row's three questions, asked exactly as `/person/{id}` asks them
+     (21 Sep 2026): an artist's Call is their own switch, a plain user's row is
+     not drawn at all, and an enquiry names a BUSINESS — the artist page behind
+     them, or an organization's hosting row — because `send_enquiry` takes no
+     person (R24, R15) */
+  const isArtist = kind === "artist";
+  const isPlainUser = !isOrg && !isArtist;
+  /* ⚠ an ORGANIZATION's asks go to its own HOSTING row (R15), which is NOT an
+     artist page and is not in `person` — the route reads it and hands it over,
+     the same id Home already asks for */
+  const asksGoHere = isOrg ? eventsHostId : isArtist ? person.artistPageId : null;
 
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   /* the gear arrives as ?settings=1 (prototype 19263). The sheet is a PLACE, so
@@ -191,18 +208,19 @@ export function MyProfilePage({
           /* both pictures are changed in Edit profile (16 Sep 2026) — the
              pencil below, not a ＋ on the disc and a ✕ on each header square */
           shots={shots}
-          /* ── THE THREE CONTROLS, TOP RIGHT (10613) — Share is the QR beside the name ── */
-          /* ⚠ NO PENCIL HERE ANY MORE (19 Sep 2026, the user: "all edit profile
-             options to be removed from home and profile pages") — Edit profile
-             is Settings' first option, behind the gear in the top bar. What is
-             left in the corner is the eye: "Public view" — the page as a
-             stranger reads it (/org/{id} for an organization, /person/{id} for
-             anybody else). */
-          corner={
-            <Link href={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} aria-label="Public view" style={cornerChip}>
-              <EyeIcon />
-            </Link>
-          }
+          /* ⚠⚠ NO CORNER AT ALL (21 Sep 2026). The pencil went to Settings on
+             19 Sep, and the eye goes now: asked whether the Profile tab and a
+             profile page are the same thing, the user's reading is that they
+             are — and under it "no top right button required on profile pages"
+             covers this screen too.
+             ⚠ NOTHING IS LOST, which is the only reason it may go (C31): the
+             DISC directly above is already that door and says so — its
+             accessible name is "Open your public page", which is plainer than a
+             glyph called "Public view" — and the Share chip in the figures row
+             sends the same address. The eye was a SECOND door to one page, on a
+             screen that also had a third. So the rule is now one sentence with
+             no exception: a corner exists on a HOME and points at the Profile
+             tab; no profile surface has one. */
         >
           {/* ── THE BAND — `EntityBand`, THE ONE EVERY OTHER PROFILE DRAWS
               (20 Sep 2026, the user: "FIX IT PERMANENTLY").
@@ -277,6 +295,34 @@ export function MyProfilePage({
         {/* ⚠ THE ABOUT BLOCK IS GONE (20 Sep 2026, the user: "about and bio for
             profiles need to go away"). The column went too
             (`20260920160000_the_bio_is_gone`), so there is nothing to read. */}
+
+        {/* ── THE BUTTONS ABOVE SCHEDULE (21 Sep 2026, the user: "buttons above
+            schedule should also be visible on the home tab in the same way as
+            profile"). They asked for Home, and this tab is the third surface
+            drawing the same person — leaving it as the only one WITHOUT the row
+            would recreate, on the same screen, the very difference they have
+            reported three times (C32). One row, three places, from the same
+            fields. ⚠ Enquiry is drawn and disabled with its reason, as on your
+            own public page. ── */}
+        <ActionRow marginTop={12}>
+          {asksGoHere ? (
+            <EnquiryButton
+              tenantId={asksGoHere}
+              tenantName={profile.fullName}
+              tenantType={isOrg ? "org" : "artist_page"}
+              signedIn
+              accent={RC}
+              cannotAsk="This is your own page — enquiries come to you here"
+            />
+          ) : null}
+          {profile.phone && (isOrg || (isArtist && profile.phonePublic)) ? <CallButton phone={profile.phone} /> : null}
+          {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
+          {isOrg && profile.lat != null && profile.lng != null ? (
+            <LocationButton href={mapsPinHref(profile.lat, profile.lng)} />
+          ) : isOrg && profile.city ? (
+            <LocationButton query={`${profile.fullName} ${profile.city}`} />
+          ) : null}
+        </ActionRow>
 
         {/* ── AND EVERYTHING BELOW IS `PersonBody`, THE VERY COMPONENT
             /person/{id} DRAWS (20 Sep 2026): **Schedule**, then what is on sale,

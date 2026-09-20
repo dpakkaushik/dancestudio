@@ -280,7 +280,16 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
     check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
     check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
-    check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the eye opens the studio's public page");
+    /* ⚠ THE CORNER OPENS THE PROFILE TAB, AND THE EYE IS GONE (21 Sep 2026, the
+       user: "the top right button on all home tabs should just take to the user
+       profile right now its looping"). The eye opened `/studio/{id}`, whose own
+       corner opened this page again — a two-screen loop. Both ends are asserted:
+       the new door, and the absence of the old one, because a check that only
+       looks for what was added lets what it replaced live on. */
+    check((await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === "/profile", "studio home: the corner opens the Profile tab (21 Sep 2026)");
+    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "studio home: no eye — the loop's first end is cut");
+    /* AND THE BUTTONS ABOVE THE SCHEDULE, the row its public page carries */
+    check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 1, "studio home: Enquiry is drawn and disabled with its reason, as on your own page");
     /* ⚠ THE DISC IS THE PICTURE, NOT A THIRD DOOR (20 Sep 2026). It opened the
        studio's public page from 19 Sep — a SECOND door beside the eye, and a
        third beside the QR chip, all to one address — while a person's disc has
@@ -518,7 +527,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        ("all edit profile options to be removed from home and profile pages") and
        the DISC became the door to both picture sections ("should be able to click
        and view both pictures sections when clicking on that photo") */
-    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: one eye in the corner, opening the organization's own page as a stranger sees it");
+    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === "/profile", "org home: the corner opens the Profile tab (21 Sep 2026)");
+    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "org home: no eye — its public page is the Share chip, and the corner no longer loops");
+    check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 1, "org home: the buttons above the schedule, Enquiry disabled with its reason");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "org home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
     /* ⚠ NO "YOUR PICTURES" SHEET SINCE 20 Sep 2026 (the user: "Profile pic edit
@@ -568,7 +579,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled behind the disc");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText(/^User(-\d{6})?$/).first().isVisible(), "user home: the role word, with the account number against it");
-    check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: one eye in the corner, opening their person page");
+    check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === "/profile", "user home: the corner opens the Profile tab (21 Sep 2026)");
+    check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "user home: no eye — this is the end of the loop the user reported");
+    /* ⚠ A PLAIN USER'S ROW IS NOT DRAWN AT ALL, which is what the public page
+       does too ("user — nothing", the 19 Sep list): they have no artist page for
+       an enquiry to land on, so a dead Enquiry would be worse than none */
+    check((await me.getByRole("button", { name: /enquiries come to you here/ }).count()) === 0, "user home: no Enquiry — a plain user's page carries no buttons, and Home matches it");
     check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "user home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
     /* THE BAND ON HOME (19 Sep 2026): the two figures, the styles with their ＋,
        the links right under them with theirs — and NO rank */
@@ -714,12 +730,25 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
          links kept their rows and lost their ＋ (19 Sep 2026) */
       check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "profile tab: NO pencil — Edit profile is Settings' first option");
       check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 0 && (await me.getByRole("button", { name: "Add a link" }).count()) === 0, "profile tab: the styles and the links are SHOWN here and changed on Home");
+      /* ⚠ AND THE TAB HAS NO CORNER EITHER (21 Sep 2026, on the user's reading
+         that the Profile tab and a profile page are the same thing). The check
+         above is what makes it safe: the DISC is the door to the public page and
+         names it, so the eye was a second door to one address. Both halves are
+         asserted — the corner gone AND the disc still opening it — because
+         removing a door is only safe while the other one is there. */
+      check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 0, "profile tab: NO corner — the disc opens your public page and the Share chip sends it");
       /* the person's own PUBLIC view is what a visitor sees, and nothing else */
       await me.goto(`${BASE}/person/${userId}`);
       await me.getByTestId("person-hero").waitFor();
       /* "This is you · Your record" is gone (19 Sep 2026): no Follow on your own page, and Stats is the chip */
       check((await me.getByRole("button", { name: "Follow" }).count()) === 0 && (await me.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === "/stats", "public view of yourself: no Follow, and the Stats chip opens your own record");
       check((await me.getByLabel("Change your photo").count()) === 0, "public view of yourself: no photo control — it is the view a visitor gets");
+      /* ⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026, the user: "no top right
+         button required on profile pages"). This is the OTHER end of the loop:
+         C29 put a "Your profile" door here on 20 Sep, and with Home's eye
+         pointing in it cycled two screens for ever. Both names are asserted
+         absent, because the corner has worn each of them. */
+      check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "public view of yourself: NO corner at all — the back chip is how you leave a page you drilled into");
     } else {
       console.log("HEADER  the picture did not land in 25 s — is migration 20260915090000 on the database?");
       fail += 1;

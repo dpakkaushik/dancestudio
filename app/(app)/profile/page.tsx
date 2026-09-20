@@ -4,6 +4,7 @@ import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findStudiosAttended } from "@/repositories/enrollments";
+import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicPerson } from "@/repositories/publicPerson";
@@ -34,7 +35,7 @@ export default async function ProfilePage() {
   }
   const role = person.profile.role;
   /* what reaches you left this page on 19 Sep 2026 — the bell's own screen carries it, once */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst, memberships, trainsAt] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst, memberships, trainsAt, eventsHostId] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -62,6 +63,10 @@ export default async function ProfilePage() {
        nobody else's view of you. An organization books nothing (R11), so it is
        not asked. */
     role === "org" ? Promise.resolve([]) : findStudiosAttended(supabase, user.id).catch(() => []),
+    /* an ORGANIZATION's own hosting row (R15) — where an enquiry to it lands,
+       and the one id the new button row needs that `findPublicPerson` cannot
+       carry (21 Sep 2026). A person has none and is not asked. */
+    role === "org" ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
   ]);
   /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user, five
      for an artist, ten for an organization (19 Sep 2026) — the same rule the
@@ -98,6 +103,7 @@ export default async function ProfilePage() {
       businesses={businesses}
       memberships={memberships}
       trainsAt={trainsAt}
+      eventsHostId={eventsHostId}
       plan={plan}
       isAdmin={isAdmin}
       gstVerified={Boolean(gst.verifiedAt)}

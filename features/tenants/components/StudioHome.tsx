@@ -8,7 +8,9 @@ import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { EyeIcon, PROFILE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
+import { PROFILE_RING, PersonIcon, cornerChip } from "@/features/profiles/components/profile-kit";
+import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
+import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { StudioLinksRow } from "./StudioLinksRow";
 import { StudioPicturesButton, StudioPostersButton } from "./StudioPictures";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -88,6 +90,7 @@ export function StudioHome({
      public page could not even agree with each other */
   const RG = PROFILE_RING.studio;
   const place = [tenant.area, tenant.city].filter(Boolean).join(", ");
+  const pinHref = editable?.locationSetAt && editable.lat != null && editable.lng != null ? mapsPinHref(editable.lat, editable.lng) : null;
   const roomsWords = `${roomCount} room${roomCount === 1 ? "" : "s"}`;
   /* a photo whose URL could not be signed is not a square the rail can draw —
      it is still one of the studio's pictures, and the Edit sheet still counts it */
@@ -157,16 +160,22 @@ export function StudioHome({
           /* the posters' own ⊕ at the rail's corner — the OWNER's alone, because
              a new picture goes into the owner's folder in the private bucket */
           headerEdit={ownerId ? <StudioPostersButton tenantId={tenant.id} tenantName={tenant.name} ownerId={ownerId} photos={header} /> : null}
-          /* the corner (10613, 15 Sep 2026): the owner's pencil — the pictures,
-             About, Since, the number, the links, the pin — and for everyone on
-             the team the eye, the page as a stranger sees it */
+          /* the corner (10613, 15 Sep 2026): the owner's pencil — About, Since,
+             the number, the links, the pin — and, since 21 Sep, the one door
+             every home's corner carries.
+             ⚠ THE EYE IS GONE FROM HERE (the user: "the top right button on all
+             home tabs should just take to the user profile"). It opened
+             `/studio/{id}`, whose own corner opened this page again — the same
+             two-screen loop Home had, and the reason the user could not tell
+             which screen they were on. The studio's public page is reached from
+             the Share chip in the figures row, which is what shares it anyway. */
           corner={
             <>
               {/* the pencil edits the WORDS now — the pictures are the two ⊕
                   controls on this hero (20 Sep 2026) */}
               {editable ? <BusinessEditButton tenant={editable} corner /> : null}
-              <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
-                <EyeIcon />
+              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
+                <PersonIcon />
               </Link>
             </>
           }
@@ -226,6 +235,36 @@ export function StudioHome({
             <StudioLinksRow tenant={tenant} canEdit={Boolean(editable)} />
           </EntityBand>
         </IdentityHero>
+
+        {/* ── THE BUTTONS ABOVE THE SCHEDULE (21 Sep 2026) — the same row this
+            studio's public page carries, in the same order, from the same
+            fields. ⚠ Enquiry is drawn and DISABLED with its reason, because you
+            are on this team: `ActionRow` is sized by how many cells it is given,
+            so dropping it would re-lay out Call, Mail and Location and the row
+            would be a different shape from the page it matches. ── */}
+        <ActionRow marginTop={12}>
+          <EnquiryButton
+            tenantId={tenant.id}
+            tenantName={tenant.name}
+            tenantType={tenant.type}
+            signedIn
+            accent={RG[1]}
+            enquiryTypes={tenant.enquiryTypes}
+            cannotAsk="You are on this team — enquiries come to you here"
+          />
+          {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
+          {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
+          {/* ⚠ the PIN comes off `editable`, which is the owner's read and the
+              only one carrying lat/lng — a trainer gets the name-and-place query
+              instead, which still opens Maps. Same `locationSetAt` guard the
+              public page uses: a studio sitting on its city's centroid has not
+              placed itself, and a pin there would be a lie (11 Sep 2026). */}
+          {pinHref ? (
+            <LocationButton href={pinHref} />
+          ) : place ? (
+            <LocationButton query={`${tenant.name} ${place}`} />
+          ) : null}
+        </ActionRow>
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and
             event running in THIS studio's rooms today, one card each, in the
