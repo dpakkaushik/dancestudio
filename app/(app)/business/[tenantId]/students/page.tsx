@@ -1,14 +1,17 @@
 import { redirect } from "next/navigation";
-import { LeadsDesk } from "@/features/leads/components/LeadsDesk";
+import { StudentsDesk } from "@/features/leads/components/StudentsDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findClassesByTenant } from "@/repositories/classes";
-import { findLeadsByTenant, findStudentStats } from "@/repositories/leads";
+import { findStudents } from "@/repositories/students";
 import { findMyTenants } from "@/repositories/tenants";
 
-/* the clock lives outside the component — this repo's lint refuses an impure
-   call during render (react-hooks/purity), the same rule Step 7 hit */
-const stampNow = (): number => Date.now();
-
+/** THE STUDENTS DESK (21 Sep 2026, re-cut from the leads pipeline).
+ *
+ *  ⚠ NO LEAD READS LEFT HERE. The desk used to compose `findLeadsByTenant` +
+ *  `findStudentStats` + every published class (for the trial picker); it now
+ *  makes ONE call, `findStudents`, which is where the word "student" is defined:
+ *  checked in here, or holding a pass this business sold, or a walk-in the desk
+ *  typed in itself. The stages, the funnel and the trial class are gone — the
+ *  user: "Students section dont need to track a lead". */
 export default async function TenantStudentsPage({
   params,
 }: {
@@ -29,29 +32,16 @@ export default async function TenantStudentsPage({
     redirect("/business");
   }
 
-  const [leads, classes] = await Promise.all([
-    findLeadsByTenant(supabase, tenantId),
-    findClassesByTenant(supabase, tenantId),
-  ]);
-  /* WHAT EACH STUDENT HAS DONE HERE (19 Sep 2026, the user: "track student
-     performance, photo stats"). Only the rows that name somebody on DanceOS
-     have a record to count; a walk-in typed at the desk has none. Fails soft —
-     the desk is the studio's list of people first. */
-  const stats = await findStudentStats(
-    supabase,
-    tenantId,
-    leads.map((l) => l.userId).filter((x): x is string => Boolean(x))
-  ).catch(() => new Map());
+  /* fails soft: a studio's own list of people must draw even when one of the
+     four reads under it is refused */
+  const students = await findStudents(supabase, tenantId).catch(() => []);
 
-  return (
-    <LeadsDesk
-      tenantId={tenantId}
-      tenantName={tenant.name}
-      leads={leads}
-      stats={Object.fromEntries(stats)}
-      // a trial is agreed against a real, bookable class
-      classes={classes.filter((c) => c.status === "published")}
-      now={stampNow()}
-    />
-  );
+  /* WHERE AN INVITED PERSON LANDS — the studio's own public page, which is the
+     one address that explains what they are being invited to. An artist page
+     redirects to its owner's profile, so it is named the way the rest of the app
+     names it rather than being linked at directly. */
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "";
+  const inviteUrl = `${base}/${tenant.type === "studio" ? "studio" : "artist"}/${tenantId}`;
+
+  return <StudentsDesk tenantId={tenantId} tenantName={tenant.name} students={students} inviteUrl={inviteUrl} />;
 }

@@ -8,7 +8,20 @@ import { createLead, softDeleteLead, updateLead } from "@/repositories/leads";
 
 /** Step 12 lead actions. Authorization is RLS (any member of the tenant — staff
  *  answer the phone, so staff work the desk); what a lead may say is validated
- *  here. Leads are private business records with no public policy at all. */
+ *  here. Leads are private business records with no public policy at all.
+ *
+ *  ⚠ TWO OF THESE HAVE NO CALLER SINCE 21 Sep 2026, and that is deliberate
+ *  rather than an oversight. The user: *"Students section dont need to track a
+ *  lead"* — so the pipeline screen is gone, and with it every way to CREATE a
+ *  lead or move one between stages. What survives in the app is
+ *  `deleteLeadAction`, because the walk-ins a studio already typed in are still
+ *  its own list and it must be able to take one off.
+ *
+ *  `createLeadAction` and `updateLeadAction` are kept for the same reason the
+ *  email invite door was kept when the picker replaced it (#0a4): the table, the
+ *  columns and the rows are all still there, nothing about them was destroyed,
+ *  and putting a walk-in form back is one screen rather than a migration. They
+ *  are doors with nothing in front of them, not doors that are gone. */
 
 export interface LeadActionResult {
   error: string | null;

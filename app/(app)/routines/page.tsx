@@ -28,5 +28,5 @@ export default async function RoutinesPage() {
     findRoutinesLearned(supabase, user.id).catch(() => []),
     findMyArtistPlan(supabase).catch(() => null),
   ]);
-  return <RoutinesDesk routines={routines} learned={learned} canMake={Boolean(plan?.active)} userId={user.id} />;
+  return <RoutinesDesk routines={routines} learned={learned} canMake={Boolean(plan?.active)} />;
 }

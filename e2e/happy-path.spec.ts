@@ -1072,15 +1072,24 @@ test.describe.serial("DanceOS, end to end", () => {
        against HEAD rather than hunt with another 12-minute run. */
     await learner.getByRole("link", { name: "Create crew", exact: true }).click();
     await learner.waitForURL(/\/crews\/new$/);
+    /* ⚠ THE FORM WEARS THE ADD CLASS ANATOMY NOW (21 Sep 2026, the user:
+       "Create Crew form in crews should look similar to add class page"): a ←
+       heading, two steps, and a fixed bar whose button NAMES the missing answer
+       rather than greying out. That last part is the one worth asserting — it is
+       the prototype's own rule (15573-15578) and the reason the three forms were
+       moved onto one kit at all. */
+    await expect(learner.getByRole("heading", { name: "Create crew" })).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Name your crew first" })).toBeVisible();
     await learner.getByLabel("Crew name").fill(crewName);
     await learner.getByLabel("Dance style", { exact: true }).click();
     await learner.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    await learner.getByRole("button", { name: "Continue" }).click();
     await learner.getByRole("button", { name: "Add a member" }).click();
     await learner.getByLabel("Search DanceOS for a dancer").fill(trainerName);
     await learner.getByRole("button", { name: `Add ${trainerName} to the crew` }).click();
     await expect(learner.getByText("MEMBERS · 1 added")).toBeVisible();
-    await learner.getByRole("button", { name: "Save crew" }).click();
-    await learner.getByRole("dialog", { name: "Confirm · create crew" }).getByRole("button", { name: "Confirm & create" }).click();
+    await learner.getByRole("button", { name: "Create crew", exact: true }).click();
+    await learner.getByRole("dialog", { name: "Create this crew?" }).getByRole("button", { name: "Create crew", exact: true }).click();
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage$/);
     crewId = learner.url().match(/\/crews\/([0-9a-f-]+)\/manage$/)![1];
     // the crew's HOME (18 Sep 2026): the hero, the Team and Events tiles, the crew's own bar
@@ -1923,12 +1932,20 @@ test.describe.serial("DanceOS, end to end", () => {
     // real pass — a priced one opens Cashfree's own window.
     await owner.goto("/memberships");
     await expect(owner.getByRole("heading", { name: "Memberships" })).toBeVisible();
-    await owner.getByRole("button", { name: "＋ New membership" }).click();
+    /* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026) and wears the Add class anatomy,
+       so the desk's button is a LINK and the four fields are split across the
+       two steps the class form splits its own across. Still four fields. */
+    await owner.getByRole("link", { name: "New membership" }).click();
+    await owner.waitForURL(/\/memberships\/new$/);
+    await expect(owner.getByRole("button", { name: "Name the membership first" })).toBeVisible();
     await owner.getByLabel("Membership name").fill(passName);
     await owner.getByLabel("How many classes").fill("2");
+    await owner.getByRole("button", { name: "Continue" }).click();
     await owner.getByLabel("Price", { exact: true }).fill("0");
     await owner.getByLabel("Total memberships").fill("5");
     await owner.getByRole("button", { name: "Put it on sale" }).click();
+    await owner.getByRole("dialog", { name: "Put this on sale?" }).getByRole("button", { name: "Put it on sale" }).click();
+    await owner.waitForURL(/\/memberships$/, { timeout: 20_000 });
     const card = owner.getByRole("link", { name: `Open ${passName}` });
     await expect(card).toBeVisible({ timeout: 15_000 });
 
@@ -2098,21 +2115,43 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto(`/business/${tenantId}/staff`);
     await expect(trainer.getByRole("button", { name: /^Move / })).toHaveCount(0);
 
-    // ── A STUDENT IS A PERSON: picked, so the row carries their picture, opens
-    // their profile, and counts what they have actually done here.
+    /* ── A STUDENT IS NOT A LEAD ANY MORE (21 Sep 2026, the user: "Students
+       section dont need to track a lead should just simply be able to send
+       invite to a new user from here through mobile no. or email. rest all
+       students are added automatically when they attend a class or take a
+       membership").
+
+       So this block proves the three halves of that sentence: the pipeline is
+       GONE, a student arrives by CONSEQUENCE, and the invite is a real link
+       rather than a send nothing can make. ⚠ The learner took one of this
+       studio's memberships in the segment above, which is exactly the "or take
+       a membership" case — so they must already be here, with nobody having
+       typed them in. */
     await owner.goto(`/business/${tenantId}/students`);
-    await owner.getByRole("button", { name: "Add a lead" }).click();
-    const addStudent = owner.getByRole("dialog", { name: "Add a lead" });
-    await addStudent.getByLabel("Search for a student").fill(trainerName);
-    await addStudent.getByRole("button", { name: `Add ${trainerName}` }).click({ timeout: 20_000 });
-    await expect(owner.getByRole("link", { name: `Open ${trainerName}'s profile` })).toHaveAttribute("href", `/person/${trainerId}`, { timeout: 15_000 });
-    /* the walk-in is still a real student, and has neither a door nor a record */
-    await owner.getByRole("button", { name: "Add a lead" }).click();
-    await addStudent.getByRole("button", { name: "Walk-in" }).click();
-    await addStudent.getByLabel("Lead name").fill("E2E Walk-in");
-    await addStudent.getByRole("button", { name: "Save lead" }).click();
-    await expect(owner.getByRole("button", { name: "Open E2E Walk-in" })).toBeVisible({ timeout: 15_000 });
-    await expect(owner.getByRole("link", { name: "Open E2E Walk-in's profile" })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: "Add a lead" })).toHaveCount(0);
+    await expect(owner.getByText("Any stage")).toHaveCount(0);
+
+    const learnerRow = owner.getByRole("link", { name: `Open ${learnerName}` });
+    await expect(learnerRow).toHaveAttribute("href", `/person/${learnerId}`, { timeout: 15_000 });
+    /* the row says WHY they are here — the pass they hold, not a stage somebody set */
+    await expect(learnerRow).toContainText("🎟");
+
+    /* ── THE INVITE IS A HAND-OFF, and the link it hands off carries this
+       studio's own page. There is no SMS provider and Resend reaches nobody but
+       the account owner, so a "Send" button would be a door that does not open;
+       what this asserts is the thing that DOES work from a phone. */
+    await owner.getByRole("button", { name: "Invite a student" }).click();
+    const inviteSheet = owner.getByRole("dialog", { name: "Invite a student" });
+    await expect(inviteSheet).toBeVisible();
+    await inviteSheet.getByLabel("Mobile number").fill("+91 98765 43210");
+    const wa = inviteSheet.getByRole("link", { name: "WhatsApp" });
+    await expect(wa).toHaveAttribute("href", new RegExp(`^https://wa\\.me/919876543210\\?text=.*${tenantId}`));
+    /* and the other half of the user's own sentence — "through mobile no. or email" */
+    await inviteSheet.getByRole("button", { name: "Email" }).click();
+    await inviteSheet.getByLabel("Email address").fill("someone@example.com");
+    await expect(inviteSheet.getByRole("link", { name: "Open mail" })).toHaveAttribute("href", /^mailto:someone@example\.com\?subject=/);
+    await inviteSheet.getByRole("button", { name: "Done" }).click();
+    await expect(inviteSheet).toHaveCount(0);
   });
 
   test("the class form asks the room first: ROOM ALREADY BUSY, and what can honestly happen next", async () => {
@@ -2479,14 +2518,22 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── the desk: a routine is made in Routines, never typed on a class (12334)
     await trainer.goto("/routines");
     await expect(trainer.getByRole("heading", { name: "Routines" })).toBeVisible();
-    await trainer.getByRole("button", { name: "＋ New routine" }).click();
+    /* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026) and wears the Add class anatomy —
+       the desk's button is a LINK to it, and the name comes before the media the
+       way the class form's session comes before its price. */
+    await trainer.getByRole("link", { name: "New routine" }).click();
+    await trainer.waitForURL(/\/routines\/new$/);
+    await expect(trainer.getByRole("button", { name: "Name the routine first" })).toBeVisible();
     await trainer.getByLabel("Routine name").fill(routineName);
+    await trainer.getByRole("button", { name: "Continue" }).click();
     // ⚠ NO SONG NAME FIELD since 19 Sep 2026 (the user: "just remove song name
     // from the add routine form") — the link or the MP3 IS the song
     await expect(trainer.getByLabel("Song name")).toHaveCount(0);
     await trainer.getByLabel("Song link").fill("https://youtu.be/ilahi-instrumental");
     await trainer.getByLabel("Video link").fill("https://youtu.be/breath-release");
     await trainer.getByRole("button", { name: "Save routine" }).click();
+    await trainer.getByRole("dialog", { name: "Save this routine?" }).getByRole("button", { name: "Save routine" }).click();
+    await trainer.waitForURL(/\/routines$/, { timeout: 20_000 });
     const row = trainer.getByRole("link", { name: `Open ${routineName}` });
     await expect(row).toBeVisible({ timeout: 15_000 });
     // it is on no class yet, and both media are real links on the row

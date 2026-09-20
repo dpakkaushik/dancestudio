@@ -29,5 +29,5 @@ export default async function MembershipsPage() {
   /* an organization's hosting row sells nothing — a membership is spent on classes */
   const owned = teams.find((m) => m.memberRole === "owner" && (m.tenant.type === "studio" || m.tenant.type === "artist_page"))?.tenant ?? null;
   const selling = owned ? await findBusinessMemberships(supabase, owned.id).catch(() => []) : [];
-  return <MembershipsScreen passes={passes} selling={selling} sellerId={owned?.id ?? null} sellerName={owned?.name ?? null} canSell={Boolean(owned)} />;
+  return <MembershipsScreen passes={passes} selling={selling} canSell={Boolean(owned)} />;
 }

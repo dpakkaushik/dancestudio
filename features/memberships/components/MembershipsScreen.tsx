@@ -6,10 +6,10 @@ import { useState, useTransition, type CSSProperties } from "react";
 import { confirmCheckoutAction, startMembershipCheckoutAction } from "@/features/payments/server-actions/payments";
 import { openCashfreeCheckout } from "@/lib/cashfree/checkout-client";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import type { MembershipWithUsage, MyPass } from "@/repositories/memberships";
-import { saveMembershipAction } from "@/features/memberships/server-actions/memberships";
 
 /** MEMBERSHIPS (19 Sep 2026, the user: "Users should be able to buy from Studio
  *  and Artist Profile Pages and track from memberships section in tools. Artist
@@ -28,8 +28,6 @@ import { saveMembershipAction } from "@/features/memberships/server-actions/memb
  *  hours with how many, a price, and how many may be sold. */
 
 const card: CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
-const input: CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "11px 12px", fontSize: 13, color: INK, outline: "none", marginBottom: 8, fontFamily: "inherit", textTransform: "none" };
-const eyebrow: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", margin: "4px 0 6px" };
 const btn = (on: boolean): CSSProperties => ({ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, cursor: "pointer", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", border: on ? "none" : "1px solid var(--el)", background: on ? INK : "var(--card)", color: on ? LILAC : INK });
 
 /** HOW FAR THROUGH — the one thing a membership is for (the user: "progress bar
@@ -56,17 +54,16 @@ const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `
 export function MembershipsScreen({
   passes,
   selling,
-  sellerId,
-  sellerName,
   canSell,
 }: {
   /** what this person HOLDS */
   passes: MyPass[];
   /** what their studio or artist page SELLS — empty for a plain user */
   selling: MembershipWithUsage[];
-  sellerId: string | null;
-  sellerName: string | null;
   canSell: boolean;
+  /* ⚠ NO `sellerId` / `sellerName` ANY MORE (21 Sep 2026): the form left this
+     desk for `/memberships/new`, which resolves whose membership it is on the
+     server rather than taking it from a prop. A dead prop is a lie. */
 }) {
   const router = useRouter();
   /* ⚠ MANAGE IS FIRST, AND IT IS WHERE THE TILE OPENS (20 Sep 2026, the user:
@@ -75,32 +72,11 @@ export function MembershipsScreen({
      somebody who only holds passes has no Manage side to open, so they land on
      Booked — which is the only segment they have. */
   const [seg, setSeg] = useState<"mine" | "selling">(canSell ? "selling" : "mine");
-  const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const [f, setF] = useState({ name: "", unit: "classes" as "classes" | "hours", units: "10", price: "", total: "20" });
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2600);
-  };
-
-  const save = () => {
-    const units = Number(f.units);
-    const price = Number(f.price);
-    const total = Number(f.total);
-    if (!f.name.trim()) return fire("Name the membership");
-    if (!Number.isFinite(units) || units <= 0) return fire("Say how many classes or hours it is worth");
-    if (!Number.isFinite(price) || price < 0) return fire("Put a price on it — ₹0 is allowed");
-    if (!Number.isFinite(total) || total < 1) return fire("Say how many of these may be sold");
-    if (!sellerId) return fire("No business to sell it from");
-    start(async () => {
-      const out = await saveMembershipAction({ membershipId: null, businessId: sellerId, name: f.name, unit: f.unit, units, priceInr: price, totalCount: total, status: "live" });
-      if (out.error) return fire(out.error);
-      setOpen(false);
-      setF({ name: "", unit: "classes", units: "10", price: "", total: "20" });
-      fire("🎟 Membership on sale");
-      router.refresh();
-    });
   };
 
   /* A PASS TAKEN BUT NOT PAID FOR — the checkout picks up where it left off, on
@@ -178,36 +154,12 @@ export function MembershipsScreen({
         </>
       ) : (
         <>
-          <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{ ...btn(true), width: "100%", marginBottom: 11, padding: 13 }}>
-            ＋ New membership
-          </button>
-          {open ? (
-            <div style={card}>
-              <div style={{ ...eyebrow, marginTop: 0 }}>NEW MEMBERSHIP{sellerName ? ` · ${sellerName.toUpperCase()}` : ""}</div>
-              <input aria-label="Membership name" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value }))} placeholder="e.g. 10 classes" style={input} />
-              <div style={eyebrow}>WHAT IT IS WORTH</div>
-              <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>
-                {([["classes", "Classes"], ["hours", "Hours"]] as const).map(([k, l]) => (
-                  <button key={k} type="button" onClick={() => setF((x) => ({ ...x, unit: k }))} aria-pressed={f.unit === k} style={{ flex: 1, padding: 9, borderRadius: 10, cursor: "pointer", fontSize: 11.5, fontWeight: 800, fontFamily: "inherit", border: "none", background: f.unit === k ? INK : "var(--el)", color: f.unit === k ? LILAC : SUB }}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <input aria-label={f.unit === "hours" ? "How many hours" : "How many classes"} inputMode="decimal" value={f.units} onChange={(e) => setF((x) => ({ ...x, units: e.target.value }))} placeholder={f.unit === "hours" ? "How many hours" : "How many classes"} style={input} />
-              <div style={eyebrow}>PRICE</div>
-              <input aria-label="Price" inputMode="numeric" value={f.price} onChange={(e) => setF((x) => ({ ...x, price: e.target.value }))} placeholder="₹ — 0 for a free one" style={input} />
-              <div style={eyebrow}>HOW MANY MAY BE SOLD</div>
-              <input aria-label="Total memberships" inputMode="numeric" value={f.total} onChange={(e) => setF((x) => ({ ...x, total: e.target.value }))} placeholder="e.g. 20" style={input} />
-              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                <button type="button" onClick={() => setOpen(false)} style={btn(false)}>
-                  Cancel
-                </button>
-                <button type="button" disabled={pending} onClick={save} style={{ ...btn(true), flex: 1.4 }}>
-                  {pending ? "Saving…" : "Put it on sale"}
-                </button>
-              </div>
-            </div>
-          ) : null}
+          {/* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026, the user: "same should be for
+              new routine and new membership"). It expanded inside this desk,
+              which is why it looked nothing like Add class. `/memberships/new`
+              wears the shared `FormPage` anatomy and resolves WHOSE membership
+              it is on the server, the same way this desk does. */}
+          <DeskAddButton label="New membership" href="/memberships/new" />
 
           {selling.map((m) => (
             <Link key={m.id} href={`/memberships/${m.id}`} aria-label={`Open ${m.name}`} style={{ ...card, display: "block", textDecoration: "none", color: INK }} data-testid="selling-membership">

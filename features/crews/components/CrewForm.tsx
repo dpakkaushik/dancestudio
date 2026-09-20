@@ -6,29 +6,46 @@ import { createCrewAction } from "@/features/crews/server-actions/crews";
 import { PeoplePicker, personGradient, personInitials } from "@/features/people/components/PeoplePicker";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
-import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import {
+  EL,
+  FORM_LABEL,
+  FORM_INPUT,
+  FormBar,
+  FormConfirm,
+  FormNote,
+  FormPage,
+  FormSummary,
+  FormToast,
+  formPrimary,
+  formSecondary,
+} from "@/components/ui/FormPage";
+import { dosStyleColor } from "@/lib/constants/styles";
+import { SUB } from "@/lib/design/tokens";
 import type { Profile } from "@/types/profile";
-import { Toast, pressKey } from "./crew-kit";
+import { pressKey } from "./crew-kit";
 
-/** Create your crew — prototype S_profiletab's `crewFormOnly` render
- *  (9545-9611): the blue sleeve ("Details · members · done — you'll be the
- *  leader"), DETAILS (name, city, style), MEMBERS · N added as a row of faces
- *  with the dashed ＋, the Save crew bar, and the CONFIRM · CREATE CREW sheet.
- *  "AND NOW IT ACTUALLY CREATES ONE": the crew is a record, you are its leader,
- *  and the manager opens on it. Everyone you added is being put on a public
- *  roster — same rule as everywhere — so each of them is ASKED, not written. */
-
-const card: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "12px 14px", marginBottom: 10 };
-const inp: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "10px 12px", fontSize: 13, color: "var(--text)", outline: "none", fontFamily: DOS_UI };
+/** Create your crew — the prototype's `crewFormOnly` (9545-9611) wearing the
+ *  ADD CLASS anatomy (21 Sep 2026, the user: *"Create Crew form in crews should
+ *  look similar to add class page"*). Its own content is unchanged: DETAILS,
+ *  then MEMBERS as a row of faces with the dashed ＋, then the confirm sheet.
+ *  What changed is the frame — `components/ui/FormPage`, which is now the one
+ *  place that anatomy is written down.
+ *
+ *  ⚠ THE TWO STEPS ARE NOT DECORATION. Step one is what a crew IS and cannot be
+ *  skipped; step two is who is in it, and is legitimately EMPTY — a crew of one
+ *  is a real crew, and the bar says so rather than blocking. Splitting them is
+ *  also what lets the primary button name the missing answer the way the class
+ *  form's does, which needs a step whose answers are all required.
+ *
+ *  ⚠ Everyone named is ASKED, never written onto a public roster — the rule
+ *  since Step 22, and the confirm sheet says it in as many words. */
 
 export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
   const router = useRouter();
+  const [step, setStep] = useState(0);
   const [name, setName] = useState("");
-  /* whatever this dancer says their own city is, else wherever is busiest —
-     never one of twelve hardcoded names any more (11 Sep 2026) */
-  /* the leader's own city to start with; a crew has no address to read one
-     off, so the field is a Google city search (11 Sep 2026) */
+  /* the leader's own city to start with; a crew has no address to read one off,
+     so the field is the app's one city control (11 / 19 Sep 2026) */
   const [city, setCity] = useState<string>(defaultCity?.trim() || "");
   const [style, setStyle] = useState("");
   const [members, setMembers] = useState<Profile[]>([]);
@@ -36,12 +53,14 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  /* system back closes the sheet that is open, exactly as tapping the scrim does */
-  useCloseOnBack(() => setConfirm(false), confirm);
+
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2300);
   };
+
+  /* the button NAMES what is missing rather than greying out (15573-15578) */
+  const stepOneErr = !name.trim() ? "Name your crew first" : !city ? "Pick a city" : null;
 
   const create = async () => {
     if (busy) return;
@@ -58,23 +77,22 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
   };
 
   return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
-      <div style={{ margin: "12px 16px 0", borderRadius: 22, padding: "18px 18px 14px", background: "linear-gradient(135deg,#2563EB,#60A5FA)", color: "#fff" }}>
-        <div style={{ fontSize: 22, fontWeight: 900 }}>Create your crew</div>
-        <div style={{ fontSize: 11.5, opacity: 0.9, marginTop: 2 }}>Details · members · done — you&apos;ll be the leader</div>
-      </div>
-      <div style={{ padding: "12px 16px 0", textAlign: "left" }}>
-        <div style={card}>
-          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", marginBottom: 8 }}>DETAILS</div>
-          <input value={name} aria-label="Crew name" onChange={(e) => setName(e.target.value.slice(0, 64))} placeholder="Crew name" style={{ ...inp, marginBottom: 8 }} />
+    <FormPage title="Create crew" steps={["The crew", "Members"]} step={step} onBack={() => (step > 0 ? setStep(0) : router.back())}>
+      {step === 0 ? (
+        <>
+          <div style={FORM_LABEL}>CREW NAME</div>
+          <input value={name} aria-label="Crew name" onChange={(e) => setName(e.target.value.slice(0, 64))} placeholder="e.g. EEE Crew" style={FORM_INPUT} />
+
+          <div style={FORM_LABEL}>CITY</div>
           <CityPicker value={city || null} label="City" onChange={(next) => setCity(next ?? "")} />
-          {/* the app's one style picker (9561) — searchable, with "All styles" above the list */}
-          <div style={{ marginTop: 8 }}>
-            <DosStylePicker value={style} onChange={setStyle} all placeholder="Dance style" />
-          </div>
-        </div>
-        <div style={card}>
-          <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", marginBottom: 8 }}>MEMBERS · {members.length} added</div>
+
+          <div style={FORM_LABEL}>DANCE STYLE</div>
+          {/* the app's one style picker (9561) — searchable, "All styles" above the list */}
+          <DosStylePicker value={style} onChange={setStyle} all placeholder="Dance style" />
+        </>
+      ) : (
+        <>
+          <div style={FORM_LABEL}>MEMBERS · {members.length} added</div>
           <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
             {members.map((m) => {
               const g = personGradient(m.fullName);
@@ -90,13 +108,13 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
                   >
                     {personInitials(m.fullName)}
                   </div>
-                  <div style={{ fontSize: 9, color: "var(--sub)", marginTop: 3, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.fullName.split(" ")[0]}</div>
+                  <div style={{ fontSize: 9, color: SUB, marginTop: 3, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.fullName.split(" ")[0]}</div>
                 </div>
               );
             })}
             <div role="button" tabIndex={0} aria-label="Add a member" onKeyDown={pressKey(() => setPick((v) => !v))} onClick={() => setPick((v) => !v)} style={{ textAlign: "center", width: 58, flexShrink: 0, cursor: "pointer" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 22, border: "2px dashed var(--el)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "var(--sub)", margin: "0 auto" }}>＋</div>
-              <div style={{ fontSize: 9, color: "var(--sub)", marginTop: 3, fontWeight: 700 }}>Add</div>
+              <div style={{ width: 44, height: 44, borderRadius: 22, border: `2px dashed ${EL}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: SUB, margin: "0 auto" }}>＋</div>
+              <div style={{ fontSize: 9, color: SUB, marginTop: 3, fontWeight: 700 }}>Add</div>
             </div>
           </div>
           {pick ? (
@@ -114,39 +132,60 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
               />
             </div>
           ) : null}
-        </div>
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Save crew"
-          onKeyDown={pressKey(() => (name.trim() ? setConfirm(true) : fire("Name your crew first")))}
-          onClick={() => (name.trim() ? setConfirm(true) : fire("Name your crew first"))}
-          style={{ textAlign: "center", padding: "14px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 14, cursor: "pointer" }}
+
+          <FormNote>
+            {members.length
+              ? `Nobody is put on a public roster without saying yes — each of the ${members.length} will be asked, and the crew is yours from the moment you create it.`
+              : "A crew of one is a real crew. You can ask people onto it any time from the crew's own desk."}
+          </FormNote>
+        </>
+      )}
+
+      <FormBar>
+        {step === 0 ? (
+          <button
+            type="button"
+            aria-disabled={Boolean(stepOneErr)}
+            onClick={() => (stepOneErr ? fire(stepOneErr) : setStep(1))}
+            style={{ ...formPrimary(!stepOneErr), flex: 1 }}
+          >
+            {stepOneErr ?? "Continue"}
+          </button>
+        ) : (
+          <>
+            <button type="button" onClick={() => setStep(0)} style={formSecondary}>
+              Back
+            </button>
+            <button type="button" aria-label="Create crew" onClick={() => setConfirm(true)} style={formPrimary(true)}>
+              Create crew
+            </button>
+          </>
+        )}
+      </FormBar>
+
+      {confirm ? (
+        <FormConfirm
+          label="Create this crew?"
+          title="Create this crew?"
+          sub={members.length ? `${members.length} ${members.length === 1 ? "person is" : "people are"} asked to confirm — the crew is yours either way.` : "You will be its leader. Add people any time from the crew's desk."}
+          confirmWord={busy ? "Creating…" : "Create crew"}
+          busy={busy}
+          onCancel={() => setConfirm(false)}
+          onConfirm={() => void create()}
         >
-          Save crew
-        </div>
-        {confirm ? (
-          <div onClick={() => setConfirm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 620 }}>
-            <div role="dialog" aria-modal="true" aria-label="Confirm · create crew" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", color: "var(--text)", borderRadius: "24px 24px 0 0", padding: "18px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", textAlign: "center" }}>
-              <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
-              <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)" }}>CONFIRM · CREATE CREW</div>
-              <b style={{ fontSize: 17, display: "block", marginTop: 8 }}>{name.trim()}</b>
-              <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 4 }}>
-                {style || "All styles"} · {city} · {members.length} member{members.length === 1 ? "" : "s"} + you as leader
-              </div>
-              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button type="button" onClick={() => setConfirm(false)} style={{ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", color: "var(--text)", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
-                  Go back
-                </button>
-                <button type="button" disabled={busy} onClick={() => void create()} style={{ flex: 1.3, textAlign: "center", padding: "12px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13, cursor: "pointer", border: "none", fontFamily: "inherit" }}>
-                  {busy ? "Creating…" : "Confirm & create"}
-                </button>
-              </div>
+          <FormSummary
+            tint={dosStyleColor(style || "All styles")}
+            head={<span style={{ fontSize: 11.5, fontWeight: 800 }}>👥 {style || "All styles"} · {city}</span>}
+          >
+            <b style={{ fontSize: 15 }}>{name.trim()}</b>
+            <div style={{ fontSize: 12, color: SUB, marginTop: 4 }}>
+              {members.length} member{members.length === 1 ? "" : "s"} + you as leader
             </div>
-          </div>
-        ) : null}
-      </div>
-      <Toast msg={toast} />
-    </div>
+          </FormSummary>
+        </FormConfirm>
+      ) : null}
+
+      <FormToast msg={toast} />
+    </FormPage>
   );
 }

@@ -16,8 +16,18 @@ import {
    this form entirely. */
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
+import {
+  FORM_LABEL,
+  FORM_INPUT,
+  FormBar,
+  FormConfirm,
+  FormNote,
+  FormPage,
+  FormToast,
+  formChip,
+} from "@/components/ui/FormPage";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
-import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
+import { INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ClassClaim } from "@/types/claim";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
@@ -28,40 +38,16 @@ const CARD = "var(--card)";
 const EL = "var(--el)";
 const initialState: ClassActionState = { error: null };
 
-/* form kit lifted from the prototype's S_classform (DanceOSApp.jsx:15169-15196) */
-const labelStyle: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 800,
-  letterSpacing: 1.1,
-  color: "var(--muted)",
-  margin: "18px 0 8px",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  background: CARD,
-  border: "none",
-  borderRadius: 12,
-  padding: "12px 14px",
-  color: INK,
-  fontSize: 14,
-  outline: "none",
-  fontFamily: "inherit",
-};
-
-const chipStyle = (active: boolean): React.CSSProperties => ({
-  padding: "9px 13px",
-  borderRadius: 999,
-  cursor: "pointer",
-  fontSize: 13,
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-  border: `1.5px solid ${active ? INK : "transparent"}`,
-  background: active ? EL : CARD,
-  color: INK,
-  transition: "all .15s",
-});
+/* ⚠ THE FORM KIT LIVES IN `components/ui/FormPage` NOW (21 Sep 2026). It was
+   lifted from this file's own S_classform (15169-15196) and had been written out
+   HERE alone — which is why Create crew, New routine and New membership had all
+   drifted away from it. The three were moved onto the kit when the user asked
+   for them to match this page; THIS page moved onto it in the same breath,
+   because the screen everything is being matched to is the one that must not be
+   allowed to drift. The names below are kept so no call site had to change. */
+const labelStyle = FORM_LABEL;
+const inputStyle = FORM_INPUT;
+const chipStyle = formChip;
 
 /** Half-hour steps, 06:00–23:00 — the day a studio actually runs. */
 const TIMES: string[] = Array.from({ length: 35 }, (_, i) => {
@@ -341,23 +327,13 @@ export function ClassForm({
   const whereWords = atStudio && venue ? `${room?.name ?? "a room"} at ${venue.name}` : atPlace ? (placeLabel ?? (mapsLinkOk ? "the place you linked" : "—")) : room?.name ?? "—";
 
   return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 150px", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 2px" }}>
-        <button type="button" aria-label={step > 0 ? "Back a step" : "Back"} onClick={() => (step > 0 ? setStep(step - 1) : router.back())} style={{ fontSize: 20, cursor: "pointer", lineHeight: 1, background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
-          ←
-        </button>
-        <div style={{ fontSize: 21, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.5, flex: 1 }}>{isEdit ? "Edit class" : "Add class"}</div>
-      </div>
-      <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
-        {isEdit ? "Your saved details stay put — step through and change only what you need" : `Step ${step + 1} of ${STEPS.length} — ${STEPS[step]}`}
-      </div>
-      {/* progress (prototype 15547-15550) */}
-      <div style={{ display: "flex", gap: 5, margin: "12px 0 4px" }}>
-        {STEPS.map((s, i) => (
-          <div key={s} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? INK : EL, transition: "all .2s" }} />
-        ))}
-      </div>
-
+    <FormPage
+      title={isEdit ? "Edit class" : "Add class"}
+      steps={STEPS}
+      step={step}
+      sub={isEdit ? "Your saved details stay put — step through and change only what you need" : undefined}
+      onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
+    >
       <form action={formAction} ref={formRef}>
         {!isEdit ? <input type="hidden" name="status" ref={statusRef} defaultValue="draft" /> : null}
         {/* every field lives in state and submits as a hidden input, so stepping
@@ -689,19 +665,16 @@ export function ClassForm({
         {/* WHAT HAPPENS ON SAVE (18 Sep 2026): said plainly, because the form no
             longer publishes a studio's class — the register does, once the yes is in */}
         {step === STEPS.length - 1 && !isEdit ? (
-          <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "12px 13px", margin: "16px 0 4px", fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
+          <FormNote blockers={atPlace && blockers.length ? blockers : undefined}>
             {atPlace
-              ? blockers.length
-                ? blockers.map((b) => <div key={b}>· {b}</div>)
-                : "Your place, your capacity — this one can go straight on Discover."
+              ? "Your place, your capacity — this one can go straight on Discover."
               : atStudio
                 ? `Saved as a draft. ${venue?.name ?? "The studio"} is asked for the room; publish from Your classes once they accept.`
                 : `Saved as a draft. ${teacher ? `${teacher.name} is asked` : "Nobody is asked yet — pick who takes it"}; publish from the register once they have said yes.`}
-          </div>
+          </FormNote>
         ) : null}
 
-        {/* the sticky action bar, gesture-inset aware (15568-15582) */}
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 310, boxSizing: "border-box", background: "var(--solid)", borderTop: `1px solid ${EL}`, padding: "12px 16px calc(14px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
+        <FormBar>
           {step === 0 ? (
             /* the button NAMES the missing answer rather than greying out (15573-15578) */
             <button
@@ -754,23 +727,30 @@ export function ClassForm({
               )}
             </>
           )}
-        </div>
+        </FormBar>
       </form>
 
       {confirm && !isEdit ? (
-        <div onClick={() => setConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600 }}>
-          <div role="dialog" aria-modal="true" aria-label={confirm === "publish" ? "Publish this class?" : "Save as draft?"} onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "18px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: INK, animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 14px" }} />
-            <b style={{ fontSize: 17 }}>{confirm === "publish" ? "Publish this class?" : "Save as draft?"}</b>
-            <div style={{ fontSize: 12, color: SUB, margin: "3px 0 14px" }}>
-              {confirm === "publish"
-                ? "It'll be added to your calendar and go live on Discover."
-                : atStudio
-                  ? `${venue?.name ?? "The studio"} will be asked for ${room?.name ?? "the room"}. Only you can see the draft until they accept and you publish.`
-                  : teacher
-                    ? `${teacher.name} will be asked to take it. Only you can see the draft until they say yes and you publish.`
-                    : "Only you can see drafts — edit anytime from the register's Drafts tab."}
-            </div>
+        <FormConfirm
+          label={confirm === "publish" ? "Publish this class?" : "Save as draft?"}
+          title={confirm === "publish" ? "Publish this class?" : "Save as draft?"}
+          sub={
+            confirm === "publish"
+              ? "It'll be added to your calendar and go live on Discover."
+              : atStudio
+                ? `${venue?.name ?? "The studio"} will be asked for ${room?.name ?? "the room"}. Only you can see the draft until they accept and you publish.`
+                : teacher
+                  ? `${teacher.name} will be asked to take it. Only you can see the draft until they say yes and you publish.`
+                  : "Only you can see drafts — edit anytime from the register's Drafts tab."
+          }
+          confirmWord={confirm === "publish" ? "Publish it" : atStudio ? "Save & ask" : teacher && !isArtist ? "Save & ask" : "Save draft"}
+          busy={isPending}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            setConfirm(null);
+            formRef.current?.requestSubmit();
+          }}
+        >
             {/* the calendar-style card (15595-15617) */}
             {(() => {
               const styleColor = dosStyleColor(style);
@@ -796,27 +776,10 @@ export function ClassForm({
                 </div>
               );
             })()}
-            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: INK }}>
-                Keep editing
-              </button>
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  setConfirm(null);
-                  formRef.current?.requestSubmit();
-                }}
-                style={{ flex: 1.4, textAlign: "center", padding: 13, borderRadius: 999, background: INK, color: LILAC, fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
-              >
-                {confirm === "publish" ? "Publish it" : atStudio ? "Save & ask" : teacher && !isArtist ? "Save & ask" : "Save draft"}
-              </button>
-            </div>
-          </div>
-        </div>
+        </FormConfirm>
       ) : null}
 
-      {toast ? <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650, boxShadow: "0 6px 24px rgba(0,0,0,.45)" }}>{toast}</div> : null}
-    </div>
+      <FormToast msg={toast} />
+    </FormPage>
   );
 }

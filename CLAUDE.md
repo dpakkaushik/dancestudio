@@ -1,6 +1,108 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
+
+> ### FOUR FORMS ON ONE SPEC, AND A STUDENT IS A CONSEQUENCE RATHER THAN A LEAD (21 Sep 2026, latest) — BUILT, no migration
+> The user: *"Create Crew form in crews should look similar to add class page.
+> same should be for new routine and new membership. Students section dont need
+> to track a lead should just simply be able to send invite to a new user from
+> here through mobile no. or email. rest all students are added automatically
+> when they attend a class or take a membership."*
+> * ⚠⚠ **1 · THE FOUR FORMS HAD DRIFTED, AND THE ADD CLASS PAGE WAS THE ONLY ONE
+>   WITH THE ANATOMY WRITTEN DOWN — INSIDE ITSELF.** That is the whole reason the
+>   other three looked nothing like it. `ClassForm` carried the prototype's
+>   S_classform (15108-15650) as inline literals: the ← heading, the step bar, the
+>   field labels, the **fixed bottom bar whose button NAMES the missing answer**
+>   (15573-15578) and the **confirm sheet with a summary card** (15595-15617).
+>   Meanwhile **Create crew** was a page with a blue sleeve and a plain Save row,
+>   and **New routine** and **New membership** were not pages at all — they were
+>   cards that expanded inside their own desks, with a Cancel that collapsed a box
+>   rather than leaving a screen.
+>   **`components/ui/FormPage.tsx` is that anatomy, once** — `FormPage` ·
+>   `FormBar` · `FormNote` · `FormConfirm` · `FormSummary` · `FormToast` ·
+>   `FORM_LABEL` / `FORM_INPUT` / `formChip` / `formPrimary` / `formSecondary`.
+>   ⚠ **And `ClassForm` MOVED ONTO IT IN THE SAME BREATH.** Leaving it as the
+>   fourth copy would have made the one screen everything is matched to the one
+>   screen free to drift — this repo's own recurring lesson (`linkChip` declared
+>   twice, the figure row written out three times, three copies of the identity
+>   band). Its local `labelStyle` / `inputStyle` / `chipStyle` are now aliases of
+>   the kit's, so no call site in a 48 KB file had to change.
+>   ⚠ **What a caller still owns is the FIELDS and the confirm sheet's BODY**: a
+>   class shows a calendar card, a membership shows what a pass is worth, a crew
+>   shows its style and city. They are different objects and should read
+>   differently; the frame around them should not.
+> * **2 · `/routines/new` AND `/memberships/new` ARE REAL PAGES NOW**, and the two
+>   desks keep only the door — the shared `DeskAddButton`, so the ＋ is an
+>   `aria-hidden` icon and the accessible name is the words (the 20 Sep lesson
+>   about "＋ Create crew" → "Create crew", applied on purpose this time rather
+>   than discovered by a run).
+>   ⚠ **EACH NEW PAGE RE-CHECKS ITS OWN GATE.** `/routines/new` reads the Artist
+>   plan and sends somebody without one back to the desk, which says so in words;
+>   `/memberships/new` resolves WHOSE membership it is (the business you own) on
+>   the server rather than taking it from a prop. **A page is a door anybody can
+>   type, so a guard cannot live only on the button that opens it.**
+>   ⚠ The MP3 upload moved to the routine form with the form — still straight from
+>   the browser to Storage, never through a server action (Rule 5).
+> * ⚠⚠ **3 · A STUDENT IS A CONSEQUENCE NOW, AND THE PIPELINE IS GONE.**
+>   `repositories/students.ts` is the one place the word is defined:
+>   **checked in here, OR holding a pass this business sold, OR a walk-in its own
+>   desk typed in.** Four batched reads, no new table and no migration — the
+>   attendance rows and the membership passes already say all of it, and a table
+>   would be a second source of truth for a fact the database can answer.
+>   ⚠ **CHECKED IN, NOT BOOKED** — the user's own choice when asked, and Step 25's
+>   standing rule: *a booking nobody marked is not a session danced*. Somebody who
+>   booked next Tuesday is not yet a student; their `booked` figure is still
+>   printed beside their `in` count, so a studio can see the difference.
+>   **What went:** the five stages (New · Quoted · Trial · Won · Lost), the
+>   open/enrolled funnel, the stage chips, the trial-class picker, the per-lead
+>   sheet — and `LeadsDesk.tsx`, 31 KB that nothing rendered any more, **deleted
+>   rather than left standing**.
+>   ⚠ **What STAYED, and why it is not tidy-up left undone:** the `leads` table,
+>   its columns, its rows and `createLeadAction` / `updateLeadAction`. The user's
+>   third answer was *"keep the people, drop the pipeline"*, so a walk-in the
+>   front desk typed in is still a student on the list and still removable — and
+>   the two write doors are kept exactly as the email-invite door was kept when
+>   the picker replaced it (#0a4): **doors with nothing in front of them, not
+>   doors that are gone.** Nothing was deleted from the database.
+> * ⚠⚠ **4 · AND THE INVITE IS A HAND-OFF, WHICH IS THE HONEST BUILD RATHER THAN
+>   THE SMALLER ONE.** The user asked to *"send invite … through mobile no. or
+>   email"*. **There is no SMS provider wired at all** — the phone channel was
+>   deleted on 7 Sep, there is no Twilio and no DLT registration — **and Resend is
+>   still in test mode, so a server-sent email reaches nobody but the account
+>   owner.** A "Send invite" button would therefore have been a door that does not
+>   open, which is the exact thing this file keeps refusing to ship. So the number
+>   or the address opens the studio's OWN WhatsApp (`wa.me`), SMS app (`sms:`) or
+>   mail client (`mailto:`) with the invite already written, carrying the studio's
+>   public page — and Copy link and a QR are the same invite for somebody standing
+>   at the desk. **It works today, from a phone, with nothing signed up for.**
+>   ⚠ An Indian number typed without its country code gets one, because that is
+>   what people type. The user was asked before a line was written and chose this
+>   over wiring a real send; the server-send path is a backlog row.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green (`/routines/new` and
+>   `/memberships/new` new) · **the whole e2e suite 57/57 in one run, 17.5 min on
+>   one worker**, collected as 57. Four segments were re-cut to the new screens
+>   and all four are green: the crew form's two steps with its bar naming the
+>   missing answer, the membership form as a page, the routine form as a page,
+>   and the students desk — **which asserts the thing the slice is actually
+>   about**: the learner took one of the studio's memberships two segments
+>   earlier and is therefore ALREADY on the desk, with nobody having typed them
+>   in, their row saying 🎟 rather than a stage, no "Add a lead" button and no
+>   stage chips anywhere — and the invite's `wa.me` link carrying this studio's
+>   own page, plus the `mailto:` for the other half of the user's sentence. THE THREE GATES CANNOT SEE: A FORM PAGE
+>   HAD NO HEADING AT ALL.** The crews segment went red on
+>   `getByRole("heading", { name: "Create crew" })` — and the locator was
+>   FAITHFUL to the old screen, because `ClassForm` has drawn its title as a
+>   plain `<div>` since the day it was lifted. So every add-something page in
+>   this app has been headingless for a screen reader for a month, and the only
+>   reason anybody noticed is that a new assertion asked for the thing a page
+>   ought to have. It is an `<h1>` now, margins zeroed so the look is identical —
+>   the same gap `DeskHero as="h1"` closed for the desks on 18 Sep, met one
+>   screen further in. **The fix is the product's, not the test's**, which is
+>   the right way round and was worth checking before changing the locator:
+>   nothing else in the tree asserted that title.
+>   ⚠ **It cost a whole run** — the serial suite hid 14 segments behind it, this
+>   file's own standing lesson — and the first run was still 42 passed with one
+>   red and nothing else wrong.
 
 > ### THE TEAM DESK IS GROUPED BY LABEL, A PROFILE TYPE HAS A COLOUR, AND A CLASS SOMEWHERE ELSE TAKES A LINK (20 Sep 2026, latest) — BUILT, no migration
 > The user, over four messages, holding up a screenshot of the prototype's own
@@ -5682,6 +5784,26 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **FOUR FORMS ON ONE SPEC, AND A STUDENT IS A CONSEQUENCE — 21 Sep 2026, no
+  step number — BUILT, no migration.** The user's four asks. **(1)** Create crew,
+  New routine and New membership now wear the Add class anatomy, because that
+  anatomy finally lives somewhere (`components/ui/FormPage`) instead of inside
+  `ClassForm` alone — and ClassForm moved onto it too, so the screen the others
+  match cannot drift. **(2)** `/routines/new` and `/memberships/new` are real
+  pages, each re-checking its own gate on the server; their desks keep only the
+  shared `DeskAddButton`. **(3)** The students desk is a list, not a pipeline:
+  `repositories/students.ts` defines a student as checked in here, or holding a
+  pass this business sold, or a walk-in the desk typed in — no table, no
+  migration, and attendance rather than bookings (Step 25's rule, the user's own
+  choice when asked). The five stages, the funnel, the trial class and
+  `LeadsDesk.tsx` are gone; the `leads` rows, columns and both write doors stay.
+  **(4)** The invite hands off to WhatsApp / SMS / mail with the link written,
+  because there is no SMS provider and Resend reaches nobody but the account
+  owner — a Send button would be a door that does not open. Deviation rows R43
+  and R44. ⚠ The suite found that a form page had **no heading at all** for a
+  screen reader, a gap `ClassForm` had carried since it was lifted; it is an
+  `<h1>` now. **57/57 in one run.** Detail at the top.
+
 - **THE COLUMN THAT SWITCHES WITHOUT THE SERVER, AN ORGANIZATION THAT FOLLOWS,
   AND TWO PROFILE SCREENS MADE ONE — 20 Sep 2026, no step number ⚠ (Rule 9: the
   migration widens who may write a follow) — ONE MIGRATION APPLIED, dry run
@@ -9398,6 +9520,9 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R42 | The prototype has one studio and no payroll desk: "A studio pays its faculty; DanceOS is not the thing that runs the payroll" (S_earn's closing line), and R35 (19 Sep) added `record_team_payment` for the front desk | The studio Earnings desk's money-out card is headed **WHAT YOU PAY YOUR PEOPLE**, not SESSION PAY, and its note names both kinds | 20 Sep 2026 — the 19 Sep earnings audit's own leftover, in its words: "the studio desk still files team payments under a card headed SESSION PAY". A payment with no session lines is exactly what that RPC exists for, so the heading said the opposite of what the card counted |
 | R37 | A studio's team is Faculty · Visiting faculty · Staff, and an artist page calls its `staff` seat "Assistant" on the screen alone (19 Sep 2026, R34) | **`assistant` IS THE FIFTH `member_role`**, so a studio hands out Faculty · Visiting faculty · **Assistant** · Other team member and an artist page Faculty · Assistant · Other team member — and `staff` is called **"Other team member"** everywhere. A studio's public page gained an **Assistants** group. A person's own page gained **Studios associated with** and **Artists associated with** off the new `person_associations` — the SEATS they hold, which is a different fact from "Studios taught at" (published classes): somebody asked onto a team who has not taught yet is associated and teaches at nothing. ⚠ `staff` is never returned by either read | 20 Sep 2026, the user's list B, C and E. The old model could not say both "Assistants" and "Other team members" on one studio, because one word was doing both jobs |
 
+| R43 | New routine is a card that expands inside S_choreos (17129) and New membership one inside S_memberships (16846); Create crew is `crewFormOnly`'s own page with a blue sleeve (9545) — three different shapes, none of them S_classform's | **ALL FOUR "ADD SOMETHING" FORMS WEAR ONE ANATOMY** — `components/ui/FormPage`, which IS S_classform's (15108-15650): a ← heading, a step bar, one label tier, a fixed bottom bar whose button names the missing answer, and a confirm sheet with a summary card. `/routines/new` and `/memberships/new` are pages now; each re-checks its own gate on the server. ⚠ **`ClassForm` moved onto the kit too** — the screen the others are matched to is not allowed to be the one that drifts | 21 Sep 2026, the user: *"Create Crew form in crews should look similar to add class page. same should be for new routine and new membership."* The prototype has one studio and three unrelated add-flows; this app has four and they had drifted apart exactly the way `linkChip` and the figure row did before |
+| R44 | S_people (17293) is a student POOL a studio curates, and this app built it as the leads pipeline — five stages, a funnel, a trial class, a per-lead sheet (Step 12) | **A STUDENT IS A CONSEQUENCE**: checked in here, or holding a pass this business sold, or a walk-in the desk typed in (`repositories/students.ts`). No stages, no funnel, no trial. The only manual act is an INVITE, and it is a hand-off — the number or address opens the studio's own WhatsApp, SMS app or mail client with the link written, because there is no SMS provider and Resend reaches nobody but the account owner. ⚠ `leads` rows, columns and both write doors are KEPT (#0a4's precedent); `LeadsDesk.tsx` is deleted | 21 Sep 2026, the user: *"Students section dont need to track a lead should just simply be able to send invite to a new user from here through mobile no. or email. rest all students are added automatically when they attend a class or take a membership."* ⚠ **Attendance, not bookings** — their own answer when asked, and Step 25's standing rule |
+
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
 the service role's:** `tenants.verified_at` (the KYC tick on a business) is
@@ -9463,6 +9588,8 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The four forms on one spec, what it left (21 Sep 2026):** the kit covers the frame and NOT the fields, so a form still writes its own inputs — which is right, but it means the next new form has to remember to reach for `FORM_LABEL` rather than inventing a style (nothing enforces it). `FormConfirm` mounts `useCloseOnBack` on render, which is the hook's documented contract for a conditionally-mounted sheet, but it is a DIFFERENT call pattern from the `(cb, openFlag)` one three other screens use — two shapes for one job. **Neither `/routines/new` nor `/memberships/new` has an EDIT twin**: a routine is still remade rather than edited (`save_routine` takes an id and no screen passes one) and a membership is taken off sale rather than re-priced. And the crew form's step 2 is legitimately skippable, so its progress bar can read "half done" on a crew that is finished — honest, and it looks like a bug for a second | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit twin for each when somebody asks; one call shape for `useCloseOnBack` next time it is opened |
+| **The students desk, what it left (21 Sep 2026):** **the invite sends nothing itself** — it hands off to WhatsApp / SMS / mail, so there is no record that an invite was made, no "invited" state on the desk, and nothing to chase. A real send needs a verified Resend domain (the user's, #14) and a Twilio account with DLT registration (#18, a phase the user parked) — until both exist a Send button would be a door that does not open. **There is no way to add a walk-in any more**: `createLeadAction` survives with no caller, so putting the form back is one screen. **A student cannot be removed unless they are a walk-in** — attendance and passes are facts, and un-attending is not a thing a button can do, but a studio that wants somebody off its list has no way to do it. **No paging**: the reads cap at 4,000 attendance rows and 400 profiles, which is a year of a busy studio and not two. And the desk no longer shows **per-student progress against a membership** — that lives on the membership's own usage page, one screen away | S_people 17293, S_persondetail 17516 | a real send with #14 and #18; paging when a pilot studio outgrows one screen; a walk-in form if the user asks |
 | **The instant column, the organization that follows and the one profile body, what they left (20 Sep 2026):** the **studio's Following figure is its OWNER's**, so two studios of the same organization print the same number and nothing on the row says whose it is — the visible label is just "Following", and the Owner group further down is the only thing that explains it; an organization's **Following list on its own Home and Profile tab is the full sheet**, but its **public page prints the figure with no door** (a count is public, a list is not — the same rule a studio's Followers figure keeps); nothing anywhere lets an organization follow **from a studio's page as the studio** — it follows as itself, which is the only thing the column can hold. `SegmentedPanels` **replaces** the history entry rather than pushing, so back leaves the page instead of walking the segments — unchanged from `router.replace`, and deliberate, but it means a phone's back gesture never undoes a segment tap; the panels are **mounted one at a time**, so a scroll position inside one segment is lost on the way back to it. `PersonBody` is shared by the two person screens and **not by the studio, organization or crew pages**, which still draw their own associations — the same facts, four components, and the next drift will be there rather than here. And **no automated check asserts Schedule above Memberships**: the order is guaranteed by the single component rather than by a test, because setting an artist with a live membership up in the e2e is a bigger change to that story than the thing it would prove | S_profiletab 10905-10940; S_earn 18195 | a label naming whose Following a studio prints, if it confuses anybody; a shared body for the other three pages, when one of them is next opened |
 | **The chips, the ID and the moved cancel door, what they left (20 Sep 2026):** the Follow bell's **count is invisible** — it rides as `data-followers` for the suite and the figure beside it is the page's own Followers, so on a page whose count read fails the bell says nothing about how many; `cannotFollow` is a **`title` and an `aria-label`**, not a visible sentence, so an organization account presses nothing and reads nothing unless it hovers or uses a screen reader; **a stranger's bell links to `/login` with no `next=`**, so signing in to follow lands on Home rather than back on the page they were looking at. The chips row **wraps** on a very narrow screen because `FIGURE_ROW` has `flexWrap`, and three 44px chips plus two figures is about 300px — which is the honest behaviour and not the designed one. `/subscription` for an organization **lists every studio it owns with no paging**, which is fine at the 15-studio cap and would not be at fifty; it reads `why_not_public` once per studio, so N+1 round trips on that screen. And **nothing on a studio's home says where its subscription went** — the tile grid is the only hint, and Settings is two taps. ⚠ **`FollowToggle`'s `pill` branch has no caller left** — all five screens pass `variant="chip"` — so the prototype's own Follow button (10930) is dead code in this file; left standing deliberately rather than deleted in the same push as the change that orphaned it, but it is dead, and this repo's own rule is that a branch no screen renders is the same bug as a field no screen reads | S_profiletab 10688, 10930; 16935-16990 | a `next=` on the bell's sign-in; a visible reason; a batched `why_not_public` if a pilot organization ever has ten studios |
 | **The granted powers, the number and the history, what they left (20 Sep 2026):** the two powers are **standing and studio-wide** — "run the register on any class here", not on one class, which is what the per-class `class_people` grant is for; there is no screen that lists WHO holds a standing power across a studio's classes, and no audit line when one is given or taken (the toast is the only trace). **A grant dies with the seat** and is not restored if somebody is re-seated — deliberate, but nothing says so on the screen. **An organization's Event team can run every event the organization hosts**, with no per-event scoping, because there is no table that would hold one (E7's "YOU ARE HELPING WITH THIS ONE" is the same missing thing). **`person_associations.ended` shows a past seat only where a confirmed class proves it** — so somebody who was on a team for two years and taught under a colleague's name has nothing, and the row prints no dates either way. **A business's `member_no` is printed but never searched** — the people picker matches a person's name and number, and nothing matches a studio's. **The Bio column still exists and is still readable through the API**; it is only unwritable through the app, so an old paragraph sits on the row until somebody decides whether to drop the column | 18428-18433; S_profiletab 10834 | a per-studio powers list and an audit line; per-event rights with E7; a decision on dropping `about` |
