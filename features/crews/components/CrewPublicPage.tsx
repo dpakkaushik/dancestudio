@@ -65,7 +65,6 @@ export function CrewPublicPage({
   viewer,
   following = false,
   followers = null,
-  canFollow = true,
   signedIn,
   todayKey,
 }: {
@@ -78,8 +77,6 @@ export function CrewPublicPage({
   following?: boolean;
   /** the live follower count, printed on the Follow button (19 Sep 2026, later) */
   followers?: number | null;
-  /** false for an organization viewer — one follows nothing */
-  canFollow?: boolean;
   /** a stranger who is signed out is offered Follow and Enquiry as doors to sign in */
   signedIn: boolean;
   todayKey: string;
@@ -153,7 +150,6 @@ export function CrewPublicPage({
                     accent={RC}
                     signedIn={signedIn}
                     variant="chip"
-                    cannotFollow={canFollow ? null : "An organization does not follow"}
                   />
                 ) : null}
               </>

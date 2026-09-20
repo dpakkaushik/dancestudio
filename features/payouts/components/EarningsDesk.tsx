@@ -258,10 +258,21 @@ export function EarningsDesk({
           ) : null}
 
           {/* ── money out ── */}
+          {/* ⚠ "WHAT YOU PAY YOUR PEOPLE", NOT "SESSION PAY" (20 Sep 2026). The
+              19 Sep earnings audit left this one on the list in its own words:
+              "the studio desk still files team payments under a card headed
+              SESSION PAY". `record_team_payment` writes a payout with an amount
+              the owner states and NO session lines — it exists precisely because
+              `record_payout` bills for sessions taught and a studio could not
+              otherwise pay its front desk at all — so a front-desk salary landed
+              under a heading that said it was pay for sessions. The card counts
+              both kinds and now says so; the SESSIONS column in the ledger below
+              still says how many sessions each row is for, which is where that
+              distinction belongs. */}
           <MoneyCard
-            label={`SESSION PAY · ${monthLabel.toUpperCase()}`}
+            label={`WHAT YOU PAY YOUR PEOPLE · ${monthLabel.toUpperCase()}`}
             amount={accrued}
-            note="What your people have earned teaching. You settle it by bank or UPI and record it here — DanceOS does not move this money."
+            note="Sessions your people have taught, and anything else you have paid them — a front-desk salary has no sessions behind it. You settle it by bank or UPI and record it here; DanceOS does not move this money."
             segments={ledger.people
               .filter((p) => p.owedInr + p.paidInr > 0)
               .map((p, i) => ({ label: p.personName.split(" ")[0], value: p.owedInr + p.paidInr, colour: barColour(i) }))}

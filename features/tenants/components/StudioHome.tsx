@@ -63,6 +63,7 @@ export function StudioHome({
    *  (20 Sep 2026). `follower_counts` is aggregate-only and anon-readable, so
    *  it costs one row and names nobody. */
   followers = 0,
+  followingN = null,
   tiles,
 }: {
   tenant: Tenant;
@@ -75,6 +76,9 @@ export function StudioHome({
   roomCount: number;
   styles: string[];
   followers?: number;
+  /** what the ACCOUNT THAT OWNS this studio follows (20 Sep 2026) — a studio
+   *  has nothing to follow with of its own; null draws no figure */
+  followingN?: number | null;
   tiles: Tile[];
 }) {
   const RG = gradientOf(tenant.name);
@@ -171,7 +175,18 @@ export function StudioHome({
               who"), and a second door to one list is the duplication this slice
               exists to remove. ── */}
           <EntityBand
-            figures={<Figure n={followers} label="Followers" testId="studio-followers" />}
+            figures={
+              <>
+                <Figure n={followers} label="Followers" testId="studio-followers" />
+                {/* ⚠ THE SECOND FIGURE IS THE OWNER'S (20 Sep 2026, the user:
+                    "Organization and Studio still dont have Following section in
+                    profile and home"). A studio cannot follow anything itself,
+                    so what is counted is what the account that RUNS it follows —
+                    which is the honest answer to the question without inventing
+                    a column. Null prints nothing at all. */}
+                <Figure n={followingN} label="Following" testId="studio-following" />
+              </>
+            }
             /* the chips at the row's right edge (20 Sep 2026) — the studio's own
                code to be held up at its door (7381, 7424) and the studio board.
                No Follow bell: this is the studio's own home, and its team cannot

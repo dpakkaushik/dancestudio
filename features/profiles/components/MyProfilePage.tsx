@@ -4,16 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
-import { dosStyleColor } from "@/lib/constants/styles";
-import { handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { CARD, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
+import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
-import { CREW_ROLE_WORD } from "@/types/crew";
 import type { FollowedTenant } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
+import { PersonBody } from "./PersonBody";
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
@@ -22,8 +20,8 @@ import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { CHIP_ROW, FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
-import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import { EntityBand, figureLabel, figureNum } from "./profile-band";
+import { EyeIcon, Group, ROLE_RING, RoleBadge, Row, Sheet, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -42,9 +40,14 @@ import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, cornerC
  *  What is real: every figure is a row this app keeps. Deliberately absent,
  *  each with a backlog row: the verified tick (nobody performs a verification),
  *  the albums grid and its tab strip (an albums slice), Call (a person holds no
- *  number), and the long-press-for-QR gesture (the QR is a button). */
-
-const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
+ *  number), and the long-press-for-QR gesture (the QR is a button).
+ *
+ *  ⚠ THE BAND AND EVERYTHING UNDER IT ARE SHARED WITH /person/{id} SINCE
+ *  20 Sep 2026 — `EntityBand` and `PersonBody`. This screen used to draw both
+ *  itself, which is why the two kept diverging; `PersonBody`'s own comment lists
+ *  the five ways they had. What is left here is what only your own tab has: the
+ *  Settings sheet, the two follow lists behind the figures, the eye in the
+ *  corner, and an organization's own studios. */
 
 /* the Following sheet's segments (11336), in the words for the kinds we have —
    Organizations and Crews joined on 19 Sep 2026, when both became followable */
@@ -63,6 +66,7 @@ export function MyProfilePage({
   scheduleHref,
   business,
   businesses = [],
+  memberships = [],
   plan,
   isAdmin = false,
   gstVerified = false,
@@ -85,6 +89,10 @@ export function MyProfilePage({
   business: Tenant | null;
   /** every business this account runs — an ORGANIZATION's studios, under one hood (8 Sep 2026) */
   businesses?: Tenant[];
+  /** what this artist has ON SALE (20 Sep 2026) — the public page has shown it
+   *  since 19 Sep and this one showed nothing, which is one of the five ways the
+   *  two screens had drifted */
+  memberships?: MembershipOnSale[];
   /** the Artist plan, for the settings sheet's switch */
   plan: ArtistPlan | null;
   /** a platform admin gets the verification queue as a row in the settings sheet */
@@ -124,17 +132,10 @@ export function MyProfilePage({
 
   const styleList = profile.styles;
   const socials = profile.socials;
-  /* the two association groups are STUDIOS — an artist page is not a page (R24) */
-  const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio");
-  const studiosRun = person.runs.filter((t) => t.tenantType === "studio");
   /* ⚠ NO RANK ON THE PROFILE TAB (19 Sep 2026, the user: "remove rank from
      profile tab"). Where you stand is the Stats chip's own screen, which prints
      the place WITH its population — a bare "#4" beside two follower counts said
      less than it implied. `my_chart_place` is no longer read for this page. */
-
-  const bigWhite: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 42, borderRadius: 12, fontWeight: 900, fontSize: 12.5, boxSizing: "border-box", padding: "0 6px", whiteSpace: "nowrap", overflow: "hidden", background: "var(--text)", color: "var(--solid)", border: "1.5px solid var(--text)", textDecoration: "none" };
-  /* one declaration, in profile-band.tsx (20 Sep 2026) */
-  const chip = linkChip;
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
     followList === "followers"
@@ -198,141 +199,110 @@ export function MyProfilePage({
             </Link>
           }
         >
-          {/* ── THE THREE FIGURES, AT THE SIZE OF FIGURES (10683) ── */}
-          <div style={FIGURE_ROW}>
-              {isOrg ? (
-                /* an organization's figures are its studios and — since it can be
-                   followed (19 Sep 2026) — its followers; it follows nobody and stands on no board */
-                <>
+          {/* ── THE BAND — `EntityBand`, THE ONE EVERY OTHER PROFILE DRAWS
+              (20 Sep 2026, the user: "FIX IT PERMANENTLY").
+              This screen hand-wrote the figures row, the styles row and the links
+              row, so their spacing, their order and their empty states were its
+              own — and a fix to the shared component reached the other four
+              screens and never this one. The FIGURES are still buttons here,
+              because on your own tab they open your lists; everything about how
+              they are SET comes from the shared file. ── */}
+          <EntityBand
+            figures={
+              <>
+                {/* an organization's first figure is what it actually has: its
+                    studios, a door to the hub. Followers and Following follow,
+                    exactly as they do for a person (20 Sep 2026: an organization
+                    follows now, so the second figure means something). */}
+                {isOrg ? (
                   <Link href="/business" aria-label={`${businesses.length} ${businesses.length === 1 ? "studio" : "studios"} — open the hub`} style={{ textDecoration: "none", textAlign: "left" }}>
                     <span style={figureNum}>{businesses.length}</span>
                     <span style={figureLabel}>{businesses.length === 1 ? "Studio" : "Studios"}</span>
                   </Link>
-                  <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                    <span data-testid="my-followers" style={figureNum}>{followers.length}</span>
-                    <span style={figureLabel}>Followers</span>
-                  </button>
-                </>
-              ) : (
-                <>
-              <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                <span data-testid="my-followers" style={figureNum}>{followers.length}</span>
-                <span style={figureLabel}>Followers</span>
-              </button>
-              <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                <span style={figureNum}>{followingN}</span>
-                <span style={figureLabel}>Following</span>
-              </button>
-                </>
-              )}
-            {/* the chips at the row's right edge (20 Sep 2026) — the QR that
-                shares the page a stranger reads (an organization's own since
-                18 Sep) and the Stats chip beside it. No Follow bell: this is
-                your own profile, and you do not follow yourself. */}
-            <div style={CHIP_ROW}>
-              <ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
-              <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
-            </div>
-          </div>
-
-          {/* ⚠ THE STYLES AND THE LINKS ARE INSIDE THE HERO, EXACTLY AS THEY ARE
-              ON HOME (19 Sep 2026, the user: "Hometab from Top to Social media
-              links should look same on profile").
-              They sat OUTSIDE it until today — on the plain page background,
-              below the hero's wash — while Home draws the same two rows inside
-              it as part of `HomeBand`. That one difference is what made the two
-              screens read as different profiles: same content, a different
-              surface under it, and the eye reads the surface first. Now both
-              run from the top of the wash down to the last link.
-              They are still SHOWN here and CHANGED on Home (the user's earlier
-              rule), so these two rows carry no ＋ — a style edited in two places
-              is a style that disagrees with itself. */}
-          {isOrg ? null : styleList.length ? (
-            <div style={STYLES_ROW}>
-              {styleList.map((s) => (
-                <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} small />
-              ))}
-            </div>
-          ) : (
-            <div style={{ marginTop: 12, fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance are added on Home.</div>
-          )}
-
-          {/* THE LINKS, DIRECTLY UNDER THE STYLES (10760) — the user's own order */}
-          {isOrg && !socials.length ? null : socials.length ? (
-            <div style={LINKS_ROW}>
-              {socials.map((l) => (
-                <a key={l.platform} href={safeHref(l.url) ?? undefined} target="_blank" rel="noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ ...chip, textDecoration: "none" }}>
-                  <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div style={{ marginTop: 8, fontSize: 11.5, color: SUB, fontWeight: 700 }}>Your links are added on Home.</div>
-          )}
+                ) : null}
+                <button type="button" aria-label={`${followers.length} followers`} onClick={() => { setFollowSeg("All"); setFollowList("followers"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                  <span data-testid="my-followers" style={figureNum}>{followers.length}</span>
+                  <span style={figureLabel}>Followers</span>
+                </button>
+                {/* ⚠ AN ORGANIZATION HAS THIS FIGURE NOW (20 Sep 2026, the user:
+                    "Organization and Studio still dont have Following section in
+                    profile and home"). It was withheld because R11 made an
+                    organization follow nothing; asked which way to take it the
+                    user chose to let it really follow, so
+                    `20260920180000_an_organization_follows` lifts the refusal in
+                    the three doors and this figure counts real rows. */}
+                <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+                  <span data-testid="my-following" style={figureNum}>{followingN}</span>
+                  <span style={figureLabel}>Following</span>
+                </button>
+              </>
+            }
+            /* the chips at the row's right edge (20 Sep 2026) — the QR that
+               shares the page a stranger reads (an organization's own since
+               18 Sep) and the Stats chip beside it. No Follow bell: this is
+               your own profile, and you do not follow yourself. */
+            chips={
+              <>
+                <ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
+                <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
+              </>
+            }
+            /* an organization dances no style of its own — what it runs does */
+            styles={isOrg ? [] : styleList}
+            styleAria={(s) => `${s} — one of your styles`}
+            /* ⚠ WHATSAPP IS OFF THE PUBLISHED RAIL, HERE TOO (20 Sep 2026): the
+               public page has filtered it since the rail was built — "a number is
+               not a public handle" (10778) — and this screen did not, so your own
+               tab and your own public page listed different links. This tab is
+               the published view of yourself; the link is still yours to edit on
+               Home, where every platform is shown. */
+            socials={isOrg ? socials : socials.filter((l) => l.platform !== "WhatsApp")}
+          >
+            {/* THE ONE THING THIS SCREEN SAYS THAT THE PUBLIC ONE CANNOT: where a
+                row is filled in. Drawn only when a row is EMPTY, so a profile
+                with styles and links is pixel-for-pixel its own public page. */}
+            {isOrg || styleList.length ? null : <div style={{ marginTop: 12, fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance are added on Home.</div>}
+            {socials.length ? null : <div style={{ marginTop: 8, fontSize: 11.5, color: SUB, fontWeight: 700 }}>Your links are added on Home.</div>}
+          </EntityBand>
         </IdentityHero>
 
-        <div style={{ textAlign: "left" }}>
-          {/* ⚠ THE ABOUT BLOCK IS GONE (20 Sep 2026, the user: "about and bio for
-              profiles need to go away"). The field left both Edit sheets the day
-              before, which left this screen printing a heading over a prompt to
-              go and fill a box that no longer exists — and then the column went
-              too (`20260920160000_the_bio_is_gone`), so there is nothing to read.
-              `events.about` is a different column and is untouched. */}
+        {/* ⚠ THE ABOUT BLOCK IS GONE (20 Sep 2026, the user: "about and bio for
+            profiles need to go away"). The column went too
+            (`20260920160000_the_bio_is_gone`), so there is nothing to read. */}
 
-          {/* THE PLACE THIS PROFILE GOES (10905): the prototype drew Stats · Schedule
-              as two big white buttons; Stats is the chip beside the QR in the hero
-              since 18 Sep 2026 (the user's ask), so only Schedule is left here, and
-              only when there is a schedule to open */}
-          {scheduleHref ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
-              <Link href={scheduleHref} aria-label="Schedule" style={bigWhite}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3" /><path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" /></svg>
-                Schedule
-              </Link>
-            </div>
-          ) : null}
-        </div>
-
-        {/* ── THE PEOPLE, IN ONE LANGUAGE (10990): a row per person, each group headed with a count ── */}
-        {/* an ORGANIZATION's studios, under one hood (8 Sep 2026): every one it runs, public or
-            not yet, each a door to its desk. Nobody else sees this list — they see each studio
-            on its own page, and never the organization behind it. */}
-        {isOrg ? (
-          <Group title="Your studios" n={businesses.length}>
-            {businesses.map((t) => (
-              <Row key={t.id} href={`/business/${t.id}/classes`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ") || "Studio"} right={t.verifiedAt ? "Verified" : "Not verified yet"} />
-            ))}
-            <Row href="/business" title="＋ Add studio" sub={businesses.length === 0 ? "Your first studio is opened from the hub" : "Opened from the hub — the same organization, another address"} />
-          </Group>
-        ) : null}
-        {person.crews.length ? (
-          <Group title="Crews" n={person.crews.length}>
-            {person.crews.map((c) => (
-              <Row key={c.crewId} href={`/crew/${c.crewId}`} markName={c.name} title={c.name} sub={`${c.style} · ${c.city} · since ${sinceWords(c.since)}`} right={c.role === "leader" ? "Leads this crew" : CREW_ROLE_WORD[c.role]} />
-            ))}
-          </Group>
-        ) : null}
-        {/* ── ONE PAGE PER PROFILE (19 Sep 2026, the user: "there should be only
-            one way to view these pages"). An artist's public face IS this
-            profile (R24), so their own artist page is not a second thing to
-            open: STUDIOS is what "Teaches at" lists, and "Runs" names the
-            studios they run. The `artist_page` row is still what every class,
-            ask and payout hangs off — it is simply never a destination. ── */}
-        {studiosTaughtAt.length ? (
-          <Group title="Teaches at" n={studiosTaughtAt.length}>
-            {studiosTaughtAt.map((t) => (
-              <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[t.kinds, `${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
-            ))}
-          </Group>
-        ) : null}
-        {!isOrg && studiosRun.length ? (
-          <Group title="Runs" n={studiosRun.length}>
-            {studiosRun.map((t) => (
-              <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.tenantName} sub={["Studio", t.city].filter(Boolean).join(" · ")} />
-            ))}
-          </Group>
-        ) : null}
+        {/* ── AND EVERYTHING BELOW IS `PersonBody`, THE VERY COMPONENT
+            /person/{id} DRAWS (20 Sep 2026): **Schedule**, then what is on sale,
+            then the associations in one language. What used to be here was the
+            same facts under different headings — "Teaches at" and "Runs" where
+            the public page said "Studios taught at" and "Studios associated
+            with" — plus no memberships at all, and Schedule alone. That is the
+            drift the user has now reported three times. ── */}
+        <PersonBody
+          person={person}
+          isMe
+          signedIn
+          memberships={memberships}
+          scheduleHref={scheduleHref}
+          accent={RC}
+          /* an organization's only seats are the owner rows on its own studios,
+             and "Your studios" below lists those already — and more completely,
+             because it carries the unlisted ones too */
+          omitStudioSeats={isOrg}
+          beforeGroups={
+            /* an ORGANIZATION's studios, under one hood (8 Sep 2026): every one it
+               runs, public or not yet, each a door to its desk. Nobody else sees
+               this list — they see each studio on its own page, and never the
+               organization behind it. */
+            isOrg ? (
+              <Group title="Your studios" n={businesses.length}>
+                {businesses.map((t) => (
+                  <Row key={t.id} href={`/business/${t.id}/classes`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ") || "Studio"} right={t.verifiedAt ? "Verified" : "Not verified yet"} />
+                ))}
+                <Row href="/business" title="＋ Add studio" sub={businesses.length === 0 ? "Your first studio is opened from the hub" : "Opened from the hub — the same organization, another address"} />
+              </Group>
+            ) : null
+          }
+        />
 
         {/* Log out is in the Settings sheet, where the prototype keeps it (11416) —
             the gear in the top bar opens it from anywhere. */}

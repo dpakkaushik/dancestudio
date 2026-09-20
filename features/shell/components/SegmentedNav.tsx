@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useOptimistic, useTransition, type CSSProperties } from "react";
+import { useOptimistic, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { INK, SUB } from "@/lib/design/tokens";
 
 /** THE SEGMENTED CONTROL, AND WHY IT IS A CLIENT COMPONENT (20 Sep 2026).
@@ -64,15 +64,9 @@ export interface Segment {
 
 const WRAP: CSSProperties = { display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 };
 
-export function SegmentedNav({ segments, active, label = "Show" }: { segments: Segment[]; active: string; label?: string }) {
-  const router = useRouter();
-  const [, start] = useTransition();
-  /* ⚠ `useOptimistic`, not `useState` + an effect: this repo's lint forbids
-     setState in an effect, and the optimistic value also REVERTS by itself when
-     the transition settles — so a navigation that fails leaves the lit segment
-     telling the truth rather than a lie that needs clearing up. */
-  const [shown, press] = useOptimistic(active);
-
+/** THE PILL ROW ITSELF — drawn once, used by both controls below, so the
+ *  navigating segment and the instant one cannot drift apart. */
+function Pills({ segments, shown, label, onPress }: { segments: Segment[]; shown: string; label: string; onPress: (s: Segment, e: React.MouseEvent) => void }) {
   return (
     <div role="group" aria-label={label} style={WRAP}>
       {segments.map((s) => {
@@ -83,16 +77,7 @@ export function SegmentedNav({ segments, active, label = "Show" }: { segments: S
             href={s.href}
             aria-label={`${s.aria}${s.n == null ? "" : ` (${s.n})`}`}
             aria-current={on ? "page" : undefined}
-            onClick={(e) => {
-              /* a modified click stays the browser's — new tab, copy link */
-              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-              e.preventDefault();
-              if (s.key === active) return;
-              start(() => {
-                press(s.key);
-                router.replace(s.href, { scroll: false });
-              });
-            }}
+            onClick={(e) => onPress(s, e)}
             style={{
               flex: 1,
               textAlign: "center",
@@ -112,5 +97,92 @@ export function SegmentedNav({ segments, active, label = "Show" }: { segments: S
         );
       })}
     </div>
+  );
+}
+
+/** a modified click stays the browser's — new tab, copy link */
+const plainClick = (e: React.MouseEvent) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0);
+
+/* ⚠ `SegmentedNav` — the NAVIGATING segment, which pressed optimistically and
+   then waited for a server round trip — is DELETED (20 Sep 2026). Every one of
+   its three callers is `SegmentedPanels` now, and a component nothing renders is
+   the same lie as a field no screen reads. The mechanic it was built on survives
+   as `useOptimisticNav` above, which Discover's tiles still need, because each
+   of those tabs IS a different server read. If a desk ever appears whose
+   segments genuinely cannot all be rendered at once, that hook plus `Pills`
+   below is what it is made of. */
+
+/** ⚠ THE SEGMENT THAT DOES NOT GO TO THE SERVER AT ALL (20 Sep 2026).
+ *
+ *  The user, after the optimistic press landed: *"CLASSES LAG ISSUE IS THERE
+ *  WHEN SWITCHING COLUMNS."* They were still right. `SegmentedNav` answers the
+ *  finger — the pill lights the instant it is tapped — but the LIST underneath
+ *  it does not move until a server round trip comes back, and on a phone on a
+ *  slow connection that is the whole of what "lagging" means. Lighting the pill
+ *  made the control honest; it did not make the page fast.
+ *
+ *  So where every segment's content is ALREADY on the page, the switch is pure
+ *  client state and costs nothing: no fetch, no round trip, no waiting. The
+ *  panels are rendered on the server in the one pass — Booked, Assist and
+ *  Manage together — and handed here as props, so React only has to choose
+ *  between them.
+ *
+ *  ⚠ THE ADDRESS IS STILL THE STATE, which is this app's rule since Discover's
+ *  filters (19 Sep 2026): `history.replaceState` puts the segment in the URL
+ *  without a navigation, so a narrowed list is still a link somebody can be
+ *  sent and a reload lands on the same segment. It REPLACES rather than pushes,
+ *  which is exactly what `router.replace` did before — back leaves the page
+ *  instead of walking the segments, and that has not changed.
+ *
+ *  ⚠ AND IT IS STILL A REAL `<a href>`: ctrl-click opens the segment in a new
+ *  tab, the link is copyable, and a crawler or a client with no JavaScript
+ *  follows it to a server render of the same list. */
+export function SegmentedPanels({
+  segments,
+  initial,
+  panels,
+  label = "Show",
+}: {
+  segments: Segment[];
+  /** the segment the SERVER decided, from `?show=` — the URL still wins on load */
+  initial: string;
+  /** one node per segment; only the shown one is mounted */
+  panels: Array<{ key: string; node: ReactNode }>;
+  label?: string;
+}) {
+  /* ⚠ THE CALLER PASSES `key={initial}` — see the note at each call site. React
+     keeps a component's state across a re-render at the same position, so
+     arriving at `/my-classes?show=assist` from a LINK somewhere else in the app
+     would otherwise redraw the pills from the old `shown` and ignore the address
+     the person just followed. A changed key remounts; a client-side switch never
+     changes it, because `initial` is the SERVER's answer and `replaceState` does
+     not go to the server. */
+  const [shown, setShown] = useState(initial);
+  const on = panels.find((p) => p.key === shown) ?? panels.find((p) => p.key === initial);
+  return (
+    <>
+      <Pills
+        segments={segments}
+        shown={shown}
+        label={label}
+        onPress={(s, e) => {
+          if (!plainClick(e)) return;
+          e.preventDefault();
+          if (s.key === shown) return;
+          setShown(s.key);
+          /* the URL follows the finger rather than leading it. `replaceState`
+             is Next's supported way to change the query without a navigation —
+             no RSC request, no loading boundary, nothing to wait for. Wrapped
+             because a browser that refuses it (a sandboxed frame) must still
+             leave the list switched. */
+          try {
+            window.history.replaceState(window.history.state, "", s.href);
+          } catch {
+            /* the segment is switched; only the address failed to follow */
+          }
+        }}
+      />
+      {on?.node ?? null}
+    </>
   );
 }

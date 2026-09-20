@@ -5,19 +5,17 @@ import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { PublicPerson } from "@/repositories/publicPerson";
-import { CREW_ROLE_WORD } from "@/types/crew";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
-import { MEMBER_ROLE_WORD } from "@/types/staff";
 import { EntityBand, Figure } from "./profile-band";
 import { ActionRow, CallButton, MailButton } from "./ContactButtons";
-import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
+import { PersonBody } from "./PersonBody";
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, PersonIcon, ROLE_RING, Row, SchedIcon, bigWhite, cornerChip } from "./profile-kit";
+import { Group, PersonIcon, ROLE_RING, Row, cornerChip } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
@@ -48,9 +46,13 @@ export { Group, Row };
  *
  *  Who reads it: a signed-in person reads anybody's; a stranger reads an
  *  ARTIST's public face (`public_artist`, the public columns only) and is sent
- *  to sign in for a plain user's. */
-
-const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
+ *  to sign in for a stranger reading a plain user's.
+ *
+ *  ⚠ WHAT IS BELOW THE BUTTONS IS `PersonBody`, SHARED WITH THE PROFILE TAB
+ *  (20 Sep 2026) — Schedule, then what is on sale, then the associations. The
+ *  two screens draw the same person from the same read and had drifted five
+ *  ways; that file says which five and why one component is the only fix that
+ *  holds. */
 
 export function PublicPersonPage({
   person,
@@ -58,7 +60,6 @@ export function PublicPersonPage({
   isMe,
   following,
   signedIn,
-  canFollow = true,
   memberships = [],
 }: {
   person: PublicPerson;
@@ -67,8 +68,6 @@ export function PublicPersonPage({
   isMe: boolean;
   following: boolean;
   signedIn: boolean;
-  /** false when either side is an organization viewer, or this is you */
-  canFollow?: boolean;
   /** what this artist has ON SALE through their own page (19 Sep 2026) */
   memberships?: MembershipOnSaleRow[];
 }) {
@@ -86,14 +85,6 @@ export function PublicPersonPage({
     .map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}`, signed: h.signed }));
   /* an artist is asked through the page behind them; a user is not asked at all */
   const canAsk = !isMe && kind === "artist" && Boolean(person.artistPageId);
-  /* "Studios taught at" — the studios, never the artist's own page listed as a place they teach */
-  const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio");
-  /* ⚠ WHERE THEY ARE SEATED (20 Sep 2026, the user's list E) — a different fact
-     from the one above, which counts published classes: somebody asked onto a
-     team who has not taught yet is associated and teaches at nothing. Their own
-     page is not an association with themselves, so it is left out. */
-  const studiosWith = person.associations.filter((a) => a.tenantType === "studio");
-  const artistsWith = person.associations.filter((a) => a.tenantType === "artist_page" && a.role !== "owner");
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40, boxSizing: "border-box" }}>
@@ -197,7 +188,6 @@ export function PublicPersonPage({
                     accent={RC}
                     signedIn={signedIn}
                     variant="chip"
-                    cannotFollow={canFollow ? null : "An organization does not follow"}
                   />
                 )}
               </>
@@ -219,84 +209,21 @@ export function PublicPersonPage({
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
         </ActionRow>
 
-        {/* ── WHAT THEY SELL (19 Sep 2026): an artist's memberships, bought from
-            their own profile page exactly as a studio's are from its ── */}
-        <MembershipsOnSale memberships={memberships} businessName={profile.fullName} accent={RC} signedIn={signedIn} canBuy={!isMe} />
-
-        {/* THE PLACE THIS PROFILE GOES (10905-10940): a business's schedule is a
-            list of sessions you can still book */}
-        {person.runs.length ? (
-          <div style={{ marginTop: 8 }}>
-            <Link href={`/${person.runs[0].tenantType === "studio" ? "studio" : "artist"}/${person.runs[0].tenantId}/schedule`} aria-label="Schedule" style={bigWhite}>
-              <SchedIcon />
-              Schedule
-            </Link>
-          </div>
-        ) : null}
-
-        {/* ── THE ASSOCIATIONS (19 Sep 2026): an artist's studios, and everyone's crews ── */}
-        {kind === "artist" && studiosTaughtAt.length ? (
-          <Group title="Studios taught at" n={studiosTaughtAt.length}>
-            {studiosTaughtAt.map((t) => (
-              <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[t.kinds, `${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
-            ))}
-          </Group>
-        ) : null}
-
-        {/* ── WHERE THEY ARE SEATED (20 Sep 2026, the user's list E) ── */}
-        {studiosWith.length ? (
-          <Group title="Studios associated with" n={studiosWith.length}>
-            {studiosWith.map((a) => (
-              <Row
-                key={a.tenantId}
-                href={`/studio/${a.tenantId}`}
-                markName={a.tenantName}
-                photo={a.photoPath ? photoUrl(a.photoPath) : null}
-                title={a.tenantName}
-                sub={a.city ?? ""}
-                /* ⚠ a seat they have LEFT says so rather than disappearing
-                   (20 Sep 2026) — the years somebody taught somewhere are part
-                   of who they are, and a page that forgets them the day they
-                   leave is not a record */
-                right={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
-              />
-            ))}
-          </Group>
-        ) : null}
-        {artistsWith.length ? (
-          <Group title="Artists associated with" n={artistsWith.length}>
-            {artistsWith.map((a) => (
-              /* an artist page IS the person behind it (18 Sep 2026) — open them
-                 directly rather than the address that only redirects */
-              <Row
-                key={a.tenantId}
-                href={a.ownerId ? `/person/${a.ownerId}` : `/artist/${a.tenantId}`}
-                markName={a.tenantName}
-                photo={a.photoPath ? photoUrl(a.photoPath) : null}
-                title={a.tenantName}
-                sub={a.city ?? ""}
-                right={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
-              />
-            ))}
-          </Group>
-        ) : null}
-
-        {/* the crews they are IN — confirmed only (Step 22) */}
-        {person.crews.length ? (
-          <Group title="Crews" n={person.crews.length}>
-            {person.crews.map((c) => (
-              <Row
-                key={c.crewId}
-                href={`/crew/${c.crewId}`}
-                markName={c.name}
-                photo={c.photo ? photoUrl(c.photo) : null}
-                title={c.name}
-                sub={`${c.style} · ${c.city} · since ${sinceWords(c.since)}`}
-                right={c.role === "leader" ? "Leads this crew" : CREW_ROLE_WORD[c.role]}
-              />
-            ))}
-          </Group>
-        ) : null}
+        {/* ── EVERYTHING FROM HERE DOWN IS `PersonBody`, THE ONE THE PROFILE TAB
+            ALSO DRAWS (20 Sep 2026): **Schedule**, then what is on sale, then the
+            associations. ⚠ Schedule and Memberships were the other way round on
+            this screen and the right way round on a studio's — which is the
+            difference the user caught on their own page: "SCHEDULE WILL ALWAYS BE
+            ABOVE MEMBERSHIPS IN PROFILE PAGE". One component now, so the two
+            cannot disagree again. ── */}
+        <PersonBody
+          person={person}
+          isMe={isMe}
+          signedIn={signedIn}
+          memberships={memberships}
+          scheduleHref={person.runs.length ? `/${person.runs[0].tenantType === "studio" ? "studio" : "artist"}/${person.runs[0].tenantId}/schedule` : null}
+          accent={RC}
+        />
       </div>
       {/* you cannot report yourself, and the RPC refuses it too (10 Sep 2026) */}
       {isMe ? null : <ReportButton subjectKind="profile" subjectId={profile.id} subjectName={profile.fullName} signedIn={signedIn} />}

@@ -8,7 +8,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
-import { findProfileById } from "@/repositories/profiles";
 import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
 import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/tenants";
 
@@ -69,12 +68,15 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
     /* an organization's public face is its own page now (18 Sep 2026) */
     redirect(`/org/${userId}`);
   }
-  /* an organization neither follows nor is followed — the button is not drawn
-     when either side is one (the RPC refuses it too) */
-  const viewer = isMe ? person.profile : user ? await findProfileById(supabase, user.id) : null;
-  const canFollow = !isMe && !isOrg && viewer?.role !== "org";
+  /* ⚠ AN ORGANIZATION FOLLOWS SINCE 20 Sep 2026
+     (`20260920180000_an_organization_follows`), so the VIEWER's kind no longer
+     decides anything here and their profile is not read for it — one round trip
+     fewer on every person's page. What is still true is the other half: this
+     address is not where an ORGANIZATION is followed — its public face is
+     /org/{id}, which draws its own bell — and you do not follow yourself. */
+  const canAskToFollow = !isMe && !isOrg;
   const [following, header, memberships] = await Promise.all([
-    canFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
+    canAskToFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist, ten for an organization (19 Sep 2026) */
     findPersonHeaderPhotos(supabase, userId, headerMaxFor(kindOf(person.profile.role, person.isArtist))),
@@ -95,5 +97,5 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
     if (made) redirect(`/person/${userId}`);
   }
 
-  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} canFollow={canFollow} memberships={memberships} />;
+  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} />;
 }

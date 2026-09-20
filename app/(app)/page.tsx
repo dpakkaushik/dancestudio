@@ -145,17 +145,20 @@ export default async function HomePage() {
      an artist (see below), and — since the figures came to Home the same day —
      the five follow lists behind them. They used to run in sequence, and the
      rank that was here is gone.
-     ⚠ AN ORGANIZATION FOLLOWS NOBODY (R11), so it asks for none of the four
-     following reads; its own followers it does have. */
+     ⚠ AN ORGANIZATION ASKS FOR ALL FOUR NOW (20 Sep 2026, the user:
+     "Organization and Studio still dont have Following section in profile and
+     home"). They were skipped because R11 made an organization follow nothing;
+     `20260920180000_an_organization_follows` lifts that refusal in the three
+     doors, so these reads answer with real rows and the figure means something. */
   const [header, deck, pageId, followers, followingPeople, followingTenants, followingOrgs, followingCrews] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     findMyDeck(supabase, user.id, nowIso, businesses),
     isOrg || !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
     findMyPersonFollowers(supabase).catch(() => []),
-    isOrg ? Promise.resolve([]) : findMyFollowedPeople(supabase).catch(() => []),
-    isOrg ? Promise.resolve([]) : findMyFollowing(supabase).catch(() => []),
-    isOrg ? Promise.resolve([]) : findMyFollowedOrganizations(supabase).catch(() => []),
-    isOrg ? Promise.resolve([]) : findMyFollowedCrews(supabase).catch(() => []),
+    findMyFollowedPeople(supabase).catch(() => []),
+    findMyFollowing(supabase).catch(() => []),
+    findMyFollowedOrganizations(supabase).catch(() => []),
+    findMyFollowedCrews(supabase).catch(() => []),
   ]);
 
   /* the metal the KIND wears (DOS_RINGS 1462): gold for an organization, silver

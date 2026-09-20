@@ -7,7 +7,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findCrewById, findCrewEntries, findCrewMembers } from "@/repositories/crews";
 import { findCrewFollowerCount, isFollowingCrew } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
-import { findProfileById } from "@/repositories/profiles";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const stampNowIso = (): string => new Date().toISOString();
@@ -41,11 +40,13 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [members, entries, header, viewerProfile, following, followers] = await Promise.all([
+  /* ⚠ THE VIEWER'S OWN PROFILE IS NO LONGER READ (20 Sep 2026). It was fetched
+     for one reason — "an organization does not follow" — and an organization
+     follows since `20260920180000_an_organization_follows`. */
+  const [members, entries, header, following, followers] = await Promise.all([
     findCrewMembers(supabase, crewId),
     findCrewEntries(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
-    user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     user ? isFollowingCrew(supabase, crewId) : Promise.resolve(false),
     /* the count on the Follow button (19 Sep 2026, later) */
     findCrewFollowerCount(supabase, crewId),
@@ -62,7 +63,6 @@ export default async function CrewPage({ params }: { params: Promise<{ crewId: s
       viewer={viewer}
       following={following}
       followers={followers}
-      canFollow={viewerProfile?.role !== "org"}
       signedIn={Boolean(user)}
       todayKey={dayKeyOf(stampNowIso())}
     />

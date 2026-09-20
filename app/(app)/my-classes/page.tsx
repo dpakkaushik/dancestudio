@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
-import { SegmentedNav } from "@/features/shell/components/SegmentedNav";
+import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -149,10 +149,17 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
      itself, so Manage costs one query fewer than it did. */
   const myPageClasses = myPage ? await findClassesByTenant(supabase, myPage.id).catch(() => []) : [];
 
-  /* the register, when Manage is open: the page's classes, their seats, and what
-     each one still waits for before it can be published */
+  /* THE REGISTER, WHETHER OR NOT MANAGE IS THE OPEN SEGMENT (20 Sep 2026, the
+     user: "CLASSES LAG ISSUE IS THERE WHEN SWITCHING COLUMNS").
+     ⚠ It used to be read only when `show === "manage"`, which is exactly what
+     made the tap lag: switching to Manage was a server round trip that then had
+     to make four more queries before anything could be drawn. All three
+     segments are rendered in this one pass now and `SegmentedPanels` chooses
+     between them in the browser, so a tap costs NOTHING — and the cost of
+     always reading it is four queries that run in parallel, on a page that
+     already made six. Somebody with no artist page still reads none of it. */
   const manage =
-    show === "manage" && myPage
+    myPage
       ? await (async () => {
           const classes = myPageClasses;
           const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
@@ -192,14 +199,20 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           on Home is still its door. */}
       <DeskHero tool="classes" as="h1" margin="0 0 14px" />
 
-      {/* ⚠ THE SEGMENT LIGHTS THE MOMENT IT IS TAPPED (20 Sep 2026, the user:
-          "when switching between class columns its lagging … check from artist
-          profiles"). These are real links and stay real links — the address is
-          the state — but a tap here is a server round trip, and Manage reads the
-          whole register, so a plain `<Link>` left the finger with nothing to look
-          at until it came back. `SegmentedNav` presses optimistically. */}
-      <SegmentedNav
-        active={show}
+      {/* ⚠ SWITCHING A COLUMN DOES NOT GO TO THE SERVER AT ALL (20 Sep 2026, the
+          user: "CLASSES LAG ISSUE IS THERE WHEN SWITCHING COLUMNS").
+          The 20 Sep morning's fix made the PILL answer instantly (`useOptimistic`)
+          and left the LIST waiting on a round trip — which is the half a finger
+          actually watches. All three segments are rendered above, in this one
+          server pass, and `SegmentedPanels` picks between them in the browser:
+          no fetch, no loading boundary, nothing to wait for. The address still
+          follows (`history.replaceState`), so the link is still shareable, the
+          reload still lands here, and back still leaves the page. */}
+      <SegmentedPanels
+        /* the key is the SERVER's answer: a link from elsewhere carrying a
+           different `?show=` must win over whatever this control last showed */
+        key={show}
+        initial={show}
         segments={showsFor(Boolean(myPage)).map((k) => ({
           key: k,
           href: k === "booked" ? "/my-classes" : `/my-classes?show=${k}`,
@@ -207,71 +220,85 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           aria: SHOWS[k].aria,
           n: k === "booked" ? booked : k === "assist" ? jobs.length : myPageClasses.length,
         }))}
+        panels={[
+          ...(myPage && manage
+            ? [
+                {
+                  key: "manage",
+                  /* the artist's register, in place: Create, Draft · Published ·
+                     Completed, each row wearing the request it waits on */
+                  node: (
+                    <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
+                  ),
+                },
+              ]
+            : []),
+          {
+            key: "booked",
+            node: (
+              <>
+                {class_bookings.map((e) => (
+                  <ClassTile
+                    key={e.id}
+                    danceClass={toTileClass(e)}
+                    artist={bookedArtists.get(e.classId) ?? null}
+                    city={e.tenantCity}
+                    href={`/c/${e.shareSlug}`}
+                    actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
+                  />
+                ))}
+                {class_bookings.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13 }}>
+                    Nothing booked yet —{" "}
+                    <Link href="/classes" style={{ color: "#5AC8FA", fontWeight: 800 }}>
+                      find a class
+                    </Link>{" "}
+                    to get started.
+                  </div>
+                )}
+              </>
+            ),
+          },
+          {
+            key: "assist",
+            /* THE SAME CARD AS BOOKED (19 Sep 2026, the user: "assisting should also
+               show class cards in same way") — the app's one class tile, with the
+               job you hold on it where a booked card carries its booking action */
+            node: (
+              <>
+                {jobs.map((c) => (
+                  <ClassTile
+                    key={c.id}
+                    danceClass={askToTileClass(c)}
+                    artist={bookedArtists.get(c.classId) ?? null}
+                    city={c.tenantCity}
+                    href={`/c/${c.classShareSlug}`}
+                    actions={
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <span style={{ fontSize: 10.5, color: SUB }}>
+                          {c.tenantName} · {when(c.startsAt)}
+                        </span>
+                        <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: c.job === "Teaching" ? "#F59E0B" : "#8B5CF6" }}>{c.job}</span>
+                      </div>
+                    }
+                  />
+                ))}
+                {jobs.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
+                    Nothing you teach or assist on yet. A studio asks you onto a class, you say yes in your Inbox, and it appears here.
+                  </div>
+                )}
+              </>
+            ),
+          },
+        ]}
       />
 
       {/* ⚠ THE TOTAL IS GONE (20 Sep 2026, the user, circling "5 on your page":
           "similar figures need to be removed from all pages in the app inside the
           home tab for all profiles"). The segment above ALREADY carries its own
           count — "Manage 5" — so this line said the same number a second time,
-          one row lower, in smaller type. Its own 19 Sep note is why it read as a
-          duplicate: it moved here to be "over the list it counts", and the counts
-          moved into the toggles in the same breath. One number, one place. */}
-
-      {show === "manage" && myPage && manage ? (
-        /* the artist's register, in place: Create, Draft · Published · Completed,
-           each row wearing the request it waits on (ClassesManager, embedded) */
-        <ClassesManager embedded tenantId={myPage.id} classes={manage.classes} filledBySession={manage.filled} artists={manage.artists} publishState={manage.state} whyNoClass={manage.whyNoClass} nowIso={new Date().toISOString()} />
-      ) : show === "booked" ? (
-        <>
-          {class_bookings.map((e) => (
-            <ClassTile
-              key={e.id}
-              danceClass={toTileClass(e)}
-              artist={bookedArtists.get(e.classId) ?? null}
-              city={e.tenantCity}
-              href={`/c/${e.shareSlug}`}
-              actions={<EnrollButton sessionId={e.sessionId} isFull={false} isSignedIn mine={{ id: e.id, status: e.status }} priceInr={e.priceInr} shareSlug={e.shareSlug} />}
-            />
-          ))}
-          {class_bookings.length === 0 && (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13 }}>
-              Nothing booked yet —{" "}
-              <Link href="/classes" style={{ color: "#5AC8FA", fontWeight: 800 }}>
-                find a class
-              </Link>{" "}
-              to get started.
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          {/* THE SAME CARD AS BOOKED (19 Sep 2026, the user: "assisting should also
-              show class cards in same way") — the app's one class tile, with the
-              job you hold on it where a booked card carries its booking action */}
-          {jobs.map((c) => (
-            <ClassTile
-              key={c.id}
-              danceClass={askToTileClass(c)}
-              artist={bookedArtists.get(c.classId) ?? null}
-              city={c.tenantCity}
-              href={`/c/${c.classShareSlug}`}
-              actions={
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ fontSize: 10.5, color: SUB }}>
-                    {c.tenantName} · {when(c.startsAt)}
-                  </span>
-                  <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: c.job === "Teaching" ? "#F59E0B" : "#8B5CF6" }}>{c.job}</span>
-                </div>
-              }
-            />
-          ))}
-          {jobs.length === 0 && (
-            <div style={{ textAlign: "center", padding: "40px 20px", color: SUB, border: "1.5px dashed var(--el)", borderRadius: 20, fontSize: 13, lineHeight: 1.5 }}>
-              Nothing you teach or assist on yet. A studio asks you onto a class, you say yes in your Inbox, and it appears here.
-            </div>
-          )}
-        </>
-      )}
+          one row lower, in smaller type. */}
     </div>
   );
 }

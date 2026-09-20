@@ -238,6 +238,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        Home and the Profile tab both lead with Followers. It is a plain number
        here, not a door: the list already has its own control on the public page. */
     check((await hero.getByTestId("studio-followers").count()) === 1, "studio home: the Followers figure, like every other profile (20 Sep 2026)");
+    /* ⚠ AND THE SECOND FIGURE (20 Sep 2026, the user: "Organization and Studio
+       still dont have Following section in profile and home"). A studio cannot
+       follow anything of its own — `follows.follower_id` references `profiles` —
+       so what is counted is what the account that RUNS it follows. The
+       organization owning this studio exists, so the figure is drawn. */
+    check((await hero.getByTestId("studio-following").count()) === 1, "studio home: the Following figure too — the owner's, since a studio has nothing to follow with (20 Sep 2026)");
     /* ⚠ AND IN THE RIGHT ORDER — figures, THEN the styles (20 Sep 2026). The
        first cut of the band left a studio using `IdentityHero`'s own `styles`
        prop, which renders BEFORE children, so it read styles → figures → links
@@ -428,6 +434,20 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (an organization holds up to ten since 19 Sep 2026)");
     check((await org.getByLabel("Share this profile — QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
     check(await org.getByText(/^Organization(-\d{6})?$/).first().isVisible(), "org home: the role word, with the account number against it");
+    /* ⚠ BOTH FIGURES, ON AN ORGANIZATION TOO (20 Sep 2026, the user: "Organization
+       and Studio still dont have Following section in profile and home"). The
+       Following figure was withheld from an organization because R11 made it
+       follow nothing; `20260920180000_an_organization_follows` lifts that, so the
+       count is real and the sheet behind it opens like everybody else's. */
+    check(
+      (await org.getByTestId("home-followers").count()) === 1 && (await org.getByTestId("home-following").count()) === 1,
+      "org home: Followers AND Following, both drawn and both clickable (20 Sep 2026)"
+    );
+    await org.getByTestId("home-following").click();
+    check(await org.getByRole("dialog", { name: "Following", exact: true }).isVisible(), "org home: and the Following figure opens its list");
+    await org.keyboard.press("Escape").catch(() => {});
+    await org.goto(`${BASE}/`);
+    await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
     check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed behind the pencil beside it");
     /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the DISC is the door to the public page (the eye left Home
        later the same day — the user: "clicking on the profile photo on home tab takes to profile so can remove

@@ -4,6 +4,7 @@ import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
+import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyTenants } from "@/repositories/tenants";
@@ -32,11 +33,14 @@ export default async function ProfilePage() {
   }
   const role = person.profile.role;
   /* what reaches you left this page on 19 Sep 2026 — the bell's own screen carries it, once */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst, memberships] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
-    /* the two kinds that became followable on 19 Sep 2026 */
+    /* the two kinds that became followable on 19 Sep 2026.
+       ⚠ AN ORGANIZATION ASKS FOR ALL FOUR NOW (20 Sep 2026): it follows since
+       `20260920180000_an_organization_follows`, so its Following figure counts
+       real rows rather than being withheld. */
     findMyFollowedOrganizations(supabase),
     findMyFollowedCrews(supabase),
     findMyTenants(supabase),
@@ -45,6 +49,12 @@ export default async function ProfilePage() {
     /* the Settings sheet's GST row says verified or not (11 Sep 2026); only an
        organization has the row, so only an organization is asked about it */
     role === "org" ? findMyGst(supabase, person.profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
+    /* ⚠ WHAT YOU SELL, ON YOUR OWN TAB TOO (20 Sep 2026). /person/{id} has drawn
+       an artist's live memberships since 19 Sep and this screen drew none, so an
+       artist saw one thing on their public page and another on their own — one
+       of the five ways the two had drifted. A failed read is no block, never a
+       profile that will not open. */
+    person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
   ]);
   /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user, five
      for an artist, ten for an organization (19 Sep 2026) — the same rule the
@@ -79,6 +89,7 @@ export default async function ProfilePage() {
       scheduleHref={scheduleHref}
       business={biz ?? null}
       businesses={businesses}
+      memberships={memberships}
       plan={plan}
       isAdmin={isAdmin}
       gstVerified={Boolean(gst.verifiedAt)}

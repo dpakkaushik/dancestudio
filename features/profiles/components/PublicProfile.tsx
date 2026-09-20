@@ -52,7 +52,7 @@ export function PublicProfile({
   path,
   following,
   signedIn,
-  canFollow = true,
+  followingN = null,
   isMember,
   canEditPhoto = false,
   canEdit = false,
@@ -70,8 +70,12 @@ export function PublicProfile({
   path: string;
   following: boolean;
   signedIn: boolean;
-  /** false for an organization viewer — one follows nothing (8 Sep 2026) */
-  canFollow?: boolean;
+  /** WHAT THIS STUDIO FOLLOWS — which is what the ACCOUNT THAT OWNS IT follows
+   *  (20 Sep 2026). A studio is a `businesses` row and `follows.follower_id`
+   *  references `profiles`, so a studio has nothing to follow with; null when
+   *  the owner's counts are not this viewer's to read, and the figure is then
+   *  not drawn at all rather than printed as a zero. */
+  followingN?: number | null;
   /** the viewer belongs to this business: no Follow, a Manage door instead */
   isMember: boolean;
   /** an owner or trainer — the pair that may change the business's photo. The
@@ -166,7 +170,18 @@ export function PublicProfile({
               sits on the hero's own wash rather than the plain page under it,
               which is what made Home and the Profile tab read as one screen. ── */}
           <EntityBand
-            figures={<Figure n={profile.followers} label={profile.followers === 1 ? "Follower" : "Followers"} testId="tenant-followers" />}
+            figures={
+              <>
+                <Figure n={profile.followers} label={profile.followers === 1 ? "Follower" : "Followers"} testId="tenant-followers" />
+                {/* ⚠ THE SECOND FIGURE IS THE OWNER'S (20 Sep 2026, the user:
+                    "Organization and Studio still dont have Following section in
+                    profile and home"). A studio cannot follow — see the prop's
+                    own note — so what is counted here is what the account that
+                    RUNS it follows, and the Owner group further down the page is
+                    who that is. Null reads as no figure, never as 0. */}
+                <Figure n={followingN} label="Following" testId="tenant-following" />
+              </>
+            }
             /* ⚠ THE THREE CHIPS (20 Sep 2026, the user: "Follow button to be a
                bell with qr code and stats … in same row as follower following
                numbers on its right side"). The QR shares the page; Stats opens
@@ -179,9 +194,10 @@ export function PublicProfile({
                 <ProfileShare path={path} name={tenant.name} />
                 <StatsChip href={`/studio/${tenant.id}/stats`} />
                 {/* ⚠ NOT DRAWN FOR THE TEAM — this is their own studio, and a
-                    control that exists only to be disabled is noise. Drawn and
-                    DISABLED for an organization account, which is a real visitor
-                    who would otherwise wonder why the bell did nothing. */}
+                    control that exists only to be disabled is noise. Every other
+                    visitor gets a live bell: an organization account may follow
+                    since `20260920180000_an_organization_follows`, so the one
+                    reason it used to be drawn DISABLED has gone. */}
                 {isMember ? null : (
                   <FollowToggle
                     target={{ kind: "business", id: tenant.id }}
@@ -190,7 +206,6 @@ export function PublicProfile({
                     accent={RC}
                     signedIn={signedIn}
                     variant="chip"
-                    cannotFollow={canFollow ? null : "An organization does not follow"}
                   />
                 )}
               </>

@@ -2,7 +2,158 @@
 
 ## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A SEGMENT THAT ANSWERS THE FINGER, ROUTINES YOU LEARNED, AND EVERY REVENUE SOURCE AUDITED (20 Sep 2026, latest) — BUILT, no migration ⚠ (Rule 9: two money reads were wrong)
+> ### THE COLUMN THAT SWITCHES WITHOUT THE SERVER, AN ORGANIZATION THAT FOLLOWS, AND TWO PROFILE SCREENS MADE ONE (20 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (Rule 9: it widens who may write a follow), dry run 19/19 rolled back
+> The user: *"PULL TASKS FROM PREVIOUS CHAT AND FINISH THEM. CLASSES LAG ISSUE IS
+> THERE WHEN SWITCHING COLUMNS … ORGANIZATION AND sTUDIO STILL DONT HAVE FOLLOWING
+> SECTION IN PROFILE AND HOME … DUMMY PROFILE AND ACTUAL WORKING PROFILES HAVE SOME
+> DISPLAY ISSUE ON PROFILES FIX THAT THEY BOTH SHOULD BE SAME. SCHEDULE WILL ALWAYS
+> BE ABOVE MEMBERSHIPS IN PROFILE PAGE PLEASE CHECK FOR dEEPAK kAUSHIK PROFILE. FOR
+> SOME REASON YOU ARE NOT ABLE TO FIX THE DIFFEERENC IN PROFILES. FIX IT
+> PERMANENTLY."* Two decisions were put to them before a line was written and both
+> were answered: let an organization **really** follow rather than draw a figure
+> that could only read 0, and make the segments switch **in the browser** rather
+> than only look faster.
+> * ⚠⚠ **1 · THE LAG WAS ONLY HALF FIXED THIS MORNING, AND THE USER WAS RIGHT TO
+>   SAY SO.** `SegmentedNav` (20 Sep, earlier) made the PILL answer the finger
+>   with `useOptimistic` — and left the LIST waiting on a server round trip, which
+>   is the half a finger actually watches. **`SegmentedPanels` does not go to the
+>   server at all**: every segment is rendered in the ONE server pass and React
+>   picks between them, so a tap costs nothing — no fetch, no loading boundary,
+>   nothing to wait for. The address still follows through
+>   `window.history.replaceState`, so the link is still shareable, a reload still
+>   lands on the segment, and back still leaves the page exactly as `router.replace`
+>   left it. It is still a real `<a href>`, so ctrl-click and copy-link are
+>   untouched. **Three desks:** Your classes (Manage · Booked · Assist), Your
+>   events (Participant · Spectator · Assisting) and `/managed` (All · Classes ·
+>   Events). ⚠ **`/managed` was the plainest case of all** — it read every listing
+>   and then filtered it IN JAVASCRIPT, and still sent the finger to the server and
+>   back to choose which `kind` to compare against. ⚠ **What this COSTS, said
+>   plainly:** `/my-classes` now reads the artist's register on every load rather
+>   than only when Manage is open — four queries that run in parallel on a page
+>   that already made six, and none at all for somebody with no artist page.
+>   ⚠ **Discover's five tiles are deliberately NOT changed**: each tab is a
+>   genuinely different server read (`nearby_businesses`, a city's classes and
+>   their artists…), so rendering all five to make one tap instant would make every
+>   load slower for everybody. They keep the optimistic press.
+> * ⚠⚠ **2 · AN ORGANIZATION FOLLOWS — `20260920180000_an_organization_follows`,
+>   APPLIED.** The Following figure was withheld from an organization because R11
+>   made it follow nothing, which was true and is why the figure would have read 0
+>   for ever. Asked which way to take it, the user chose to lift the rule. The
+>   migration is **three `create or replace`s with the org-refusal block removed
+>   and every other line copied verbatim out of `pg_get_functiondef`** (this file's
+>   own standing lesson — a re-typed body is one that can differ, and it has
+>   differed five ways before now). ⚠ **`guard_person_only` is NOT touched**: an
+>   organization still books nothing, leads and joins no crew, sends no enquiry and
+>   takes no seat on a class — `follows` was never one of its eight tables, which
+>   is why this is three function bodies and no trigger change. Every other refusal
+>   each door keeps is proven still standing: an unlisted business, **a business
+>   you belong to** (so an owner still cannot follow its own studio), yourself, a
+>   private organization, a crew you lead, and anon. **The figure is now on all
+>   five kinds** — Home, the Profile tab and `/org/{id}`.
+> * ⚠ **AND A STUDIO'S FIGURE IS ITS OWNER'S, because a studio has nothing to
+>   follow WITH.** `follows.follower_id` references `profiles`; a studio is a
+>   `businesses` row. So what its home and its public page count is what the
+>   ACCOUNT THAT RUNS IT follows — the honest answer to the question without
+>   inventing a column — and the Owner group further down the page is who that is.
+>   A count the viewer may not read draws **no figure at all**, never a 0.
+> * ⚠⚠ **3 · THE PROFILE DIFFERENCE, FIXED STRUCTURALLY RATHER THAN AGAIN.** The
+>   user has reported this three times, and the reason it kept coming back is that
+>   `/profile` (`MyProfilePage`) and `/person/{id}` (`PublicPersonPage`) are TWO
+>   components drawing the same person **from the same read** — both routes call
+>   `findPublicPerson` — so every fix had to be made twice and one was always
+>   missed. Read side by side they had drifted **five** ways:
+>   * ⚠ **SCHEDULE AND MEMBERSHIPS WERE IN OPPOSITE ORDERS.** A studio's page ran
+>     Schedule → Memberships; a person's ran Memberships → Schedule. That is the
+>     one the user caught by name on their own profile.
+>   * The Profile tab drew **no memberships at all**, so an artist selling one saw
+>     it on their public page and not on their own.
+>   * The same rows were headed differently — **"Teaches at" and "Runs"** on one,
+>     **"Studios taught at" / "Studios associated with" / "Artists associated
+>     with"** on the other.
+>   * The Profile tab **hand-wrote the figures, styles and links rows** instead of
+>     `EntityBand`, so their spacing and their empty states were its own — and a
+>     fix to the shared component reached four screens and never this one.
+>   * One showed a **WhatsApp** handle in the published links rail and the other
+>     hid it ("a number is not a public handle", 10778).
+>   **`PersonBody` is now the one component for everything under the hero** —
+>   Schedule (always first), then what is on sale, then the associations — and the
+>   Profile tab is on `EntityBand` like the other four. What is left on each screen
+>   is only what is genuinely its own: the Follow bell, the Enquiry row and the
+>   report link on the public page; the Settings sheet, the two follow sheets, the
+>   corner eye and an organization's own studios on the tab. **A future change to
+>   the order or to a heading lands on both by construction**, which is the only
+>   kind of "permanently" that survives the next slice.
+>   ⚠ **The one thing the tab still says that the public page cannot** — "The
+>   styles you dance are added on Home" — is drawn ONLY when that row is empty, so
+>   a profile with styles and links is pixel-for-pixel its own public page.
+>   ⚠ **And the `kind === "artist"` gate came OFF "Studios taught at"**: the public
+>   page hid it from anybody without a live plan while the tab showed it, which is
+>   two answers to one question, and the rows are public either way.
+> * ⚠⚠ **AND THE E2E FOUND A DUPLICATION THE SHARED COMPONENT INTRODUCED, IN ONE
+>   LINE.** An organization's own studio appeared TWICE on its Profile tab — once
+>   under "Your studios" and once under "Studios associated with", because an
+>   organization's only seats ARE the owner rows on its own studios. `omitStudioSeats`
+>   for an organization; "Your studios" is the completer list anyway, since it
+>   carries the unlisted ones too. **A component shared between two screens inherits
+>   both screens' assumptions, and only a run finds where they collide.**
+> * **4 · AND ONE THING THE PREVIOUS SESSION LEFT ON ITS OWN LIST, PAID:** the
+>   studio Earnings desk filed team payments under a card headed **SESSION PAY** —
+>   and `record_team_payment` exists precisely because a front-desk salary has NO
+>   sessions behind it, so a salary landed under a heading saying it was pay for
+>   sessions. The card reads **WHAT YOU PAY YOUR PEOPLE** and its note says both
+>   kinds; the ledger's SESSIONS column below still makes the distinction where it
+>   belongs. ⚠ The other three rows from that audit are unchanged and still open
+>   (enquiry advances on no earnings screen; `/business/stats` excluding the event
+>   money `/business/earnings` includes; a roll-up that cannot be reconciled against
+>   a desk).
+> * ⚠ **AND FIVE DEAD PROPS WENT WITH THE MIGRATION, rather than being left to
+>   lie.** `canFollow` on the four public pages said "An organization does not
+>   follow" and no caller can produce it any more; **two `findProfileById` round
+>   trips went with it** — the crew page's and the organization page's read the
+>   viewer's whole profile for that one sentence — so a stranger's page makes one
+>   query fewer. `cannotFollow` stays on `FollowToggle` with a note saying no
+>   caller passes one today and why the mechanism is kept.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **the dry run 19/19,
+>   rolled back** (the three refusals BEFORE, the three follows AFTER, the count
+>   function reporting the same number the page prints, and every other refusal
+>   still standing — plus the ACL multiset identical at 273 rows, anon's executable
+>   set identical at 46, and the policy count untouched at 102) · applied, and the
+>   three bodies read back live · **`shoot-hero.js` 127/127** (124 before — the
+>   three new ones are the studio's Following figure, an organization's two figures
+>   and its Following list opening) · the four follow proofs green
+>   (`follows` · `person-pages` · `profile-pages` · `crews`) · **the whole e2e
+>   suite 57/57 in 17.6 min on one worker**, collected as 57 rather than a stale
+>   subset (the 20 Sep cache lesson: the transform cache was deleted and
+>   `--list` read 57 first).
+> * ⚠ **AND ONE THING ADDED AFTER THAT RUN, ON PURPOSE — `key={show}` ON THE THREE
+>   `SegmentedPanels`.** React keeps a client component's state across a re-render
+>   at the same position, so following a LINK to `/my-classes?show=assist` from
+>   somewhere else in the app would have redrawn the pills from whatever this
+>   control last showed and ignored the address the person just followed. The key
+>   is the SERVER's answer and never changes on a client-side switch — a
+>   `replaceState` does not go to the server — so it remounts exactly when it
+>   should and never while somebody is tapping. **The happy path was re-run whole
+>   on that bundle: 19/19 in 11.8 min**, and `shoot-hero.js` 127/127 on the final
+>   one.
+> * ⚠ **AND `SegmentedNav` ITSELF IS DELETED**, because all three of its callers
+>   became `SegmentedPanels` and a component nothing renders is the same lie as a
+>   field no screen reads. `useOptimisticNav` — the mechanic under it — stays, and
+>   is what Discover's five tiles still use.
+> * ⚠ **THREE PROOF CHECKS ASSERTED THE RULE THIS SLICE REPLACED**, and each was
+>   re-cut to the NEW truth rather than deleted — `rls-proof-follows` 8,
+>   `rls-proof-person-pages` 7b and `rls-proof-profile-pages` 2 and 4. ⚠ **The
+>   follows one had been passing for the wrong reason since 8 Sep**: it read the
+>   OWNER's refusal as "an organization follows nothing at all", and the owner was
+>   refused one clause earlier than that anyway, for BELONGING to the business.
+>   Both halves are proven apart now. ⚠ And the person-pages re-cut broke a
+>   LATER check the first time: the organization followed the teacher, so the
+>   account that check 9 uses as a *bystander* to the teacher's followers held a
+>   row of its own — correctly readable, since a follower reads their own row even
+>   after unfollowing. It follows the fan instead. **A proof's accounts have roles
+>   in it, and a new check that gives one a second role breaks the checks that
+>   depended on the first.**
+
+> ### A SEGMENT THAT ANSWERS THE FINGER, ROUTINES YOU LEARNED, AND EVERY REVENUE SOURCE AUDITED (20 Sep 2026) — BUILT, no migration ⚠ (Rule 9: two money reads were wrong)
 > * ⚠⚠ **THE EARNINGS AUDIT FOUND THREE REAL DEFECTS, TWO OF THEM MONEY.** The
 >   user: *"Earnings make sure to check all revenue sources mentioned for all
 >   types of profiles according to there revenue sources."* Every screen was read
@@ -4575,6 +4726,36 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0ah. **~~AN ORGANIZATION CANNOT FOLLOW ANYTHING~~ — ✅ APPLIED 20 Sep 2026**
+   (`20260920180000_an_organization_follows`), on the user's answer to a question
+   put before a line was written. Dry run **19/19 rolled back**, `db-push -DryRun`
+   listed exactly the one file, the three bodies read back live, ACLs and anon's
+   set unchanged. Kept for the shape, because it will recur: **a rule that lives
+   in three function bodies and nowhere else moves in three `create or replace`s
+   — and the way to be sure it is only that rule moving is to read the bodies out
+   of `pg_get_functiondef` and delete five lines, never to re-type them.**
+   ⚠ **What it does NOT open, said out loud:** `guard_person_only` still keeps an
+   organization out of the person's seat on eight tables, so it books no class,
+   holds no order, enters no event, leads and joins no crew, sends no enquiry and
+   takes no seat on a class or a team. And a **STUDIO** still cannot follow at
+   all — `follows.follower_id` references `profiles` — so what its home and its
+   public page print is its OWNER's following, which is a reading of the question
+   rather than a new fact. If that ever needs to be the studio's own, it is a
+   `follower_business_id` column and a decision, not a patch.
+
+0ai. **⚠ THE THREE SEGMENTED DESKS NOW RENDER EVERY SEGMENT ON EVERY LOAD**
+   (20 Sep 2026, `SegmentedPanels`). That is what makes the tap free, and it is a
+   real trade: `/my-classes` reads the artist's register whether or not Manage is
+   open (four queries, in parallel, on a page that already made six), and
+   `/my-events` and `/managed` were already reading everything for their counts.
+   Two things to watch: a person on the team of **many** businesses makes
+   `/my-events`' Assisting read wide, and `/managed` holds every listing in one
+   payload. Neither is near a limit at pilot scale. **Discover's five tiles were
+   deliberately left on the optimistic press** — each tab is a different server
+   read, so rendering all five would make every load slower to make one tap fast.
+   If Discover is ever the complaint, the answer is to make its reads cheaper,
+   not to pre-render five shelves.
+
 0ab. **~~A STUDIO THAT EVER TOOK A SUBSCRIPTION PAYMENT CANNOT BE DELETED~~ —
    ✅ FIXED AND APPLIED 20 Sep 2026** (`20260920090000_a_studio_that_took_money_can_still_be_deleted`),
    on the user's *"apply all"*. ⚠ Rule 9 (money). Kept because the SHAPE will
@@ -5304,6 +5485,27 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE COLUMN THAT SWITCHES WITHOUT THE SERVER, AN ORGANIZATION THAT FOLLOWS,
+  AND TWO PROFILE SCREENS MADE ONE — 20 Sep 2026, no step number ⚠ (Rule 9: the
+  migration widens who may write a follow) — ONE MIGRATION APPLIED, dry run
+  19/19 rolled back.** Three things the user named. **(1)** The class columns
+  still lagged because the morning's fix lit the PILL and left the LIST waiting
+  on a round trip: `SegmentedPanels` renders every segment in the one server
+  pass and switches in the browser (`history.replaceState` keeps the address the
+  state), on Your classes, Your events and `/managed` — Discover's five tiles
+  deliberately keep the optimistic press, because each tab is a genuinely
+  different read. **(2)** An organization **follows** now
+  (`20260920180000_an_organization_follows` — three bodies copied verbatim with
+  one refusal removed; `guard_person_only` untouched, so it still books nothing
+  and joins no crew), which is what makes the Following figure on its Home, its
+  Profile tab and its public page count something; a studio's figure is its
+  OWNER's, because a studio has nothing to follow with. **(3)** The two person
+  screens are one: `PersonBody` holds Schedule → Memberships → the associations
+  for both `/profile` and `/person/{id}`, and the Profile tab moved onto
+  `EntityBand` — five drifts closed at once, including the Schedule/Memberships
+  order the user caught on their own page. Plus the previous session's own
+  leftover: the studio Earnings desk's SESSION PAY card is **WHAT YOU PAY YOUR
+  PEOPLE**. Deviation rows R41, R42 and C32. Detail at the top.
 - **THREE CHIPS IN THE FIGURES ROW, AN ID THAT IS ONE TOKEN, AND THE CANCEL DOOR
   MOVED RATHER THAN DELETED — 20 Sep 2026, no step number — BUILT, no migration
   ⚠ (Rule 9: the only Stop renewing in the app changed screens).** The user's UI
@@ -8995,6 +9197,8 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R39 | `set_member_role` refuses `owner` — "owner is not a grantable role on any path" (Step 12b, 25 Aug 2026) | **A STUDIO'S OWN DESK MAY HAND OVER THE OWNER SEAT** to somebody already on the team, and the person's switcher then opens that studio. ⚠ An INVITE still refuses it — `labelsFor` is deliberately not `rolesFor`, and the two server-action schemas are deliberately not one — because consent comes first and the seat after. The new guard is that **the last owner cannot be demoted**, which the old refusal made unnecessary and its removal made essential | The user's answer 3: *"Yes and should be able to switch profile for that studio from profile switcher."* ⚠ Closing this found a pre-existing hole: the old body refused the ROLE and never looked at the TARGET, so demoting the only owner would have orphaned a studio |
 | R40 | An organization is ONE LOGIN and its team are labels with no powers (R28, R36) | **EVENT TEAM MAY RUN THE ORGANIZATION'S EVENTS** — `can_run_events` admits a confirmed `owner` or `event_team` on the organization's own HOSTING row (`type = 'org'`), and never on its studios | The user's answer 4: *"Only to be used for managing all events according to permissions assigned by the organization."* R28's "labels, not powers" still holds for the other two; running events is the one thing the label is FOR |
 | C26 | The disc and the header are edited from one sheet reached by pressing the disc (C23, 19 Sep 2026), and About is a field in both Edit sheets since 29 Aug | **VIEWING AND EDITING ARE TWO CONTROLS, TWICE OVER**: pressing the disc opens the picture, a pencil on its corner opens the editor; the posters rail has its own pencil and each poster opens in the lightbox. **And there is no Bio field anywhere** — `BioBlock` is deleted and both sheets lost their About textarea. ⚠ The column is still READ and never written, so a Save cannot wipe a paragraph somebody already has | 20 Sep 2026, the user: *"Profile pic edit should just be a pencil besides and clciking on photo to view it not together in one. Similarly seprate for poster photos in profiles."* and *"Remove bio from all profiles."* This narrows C23 rather than undoing it — still one place to change a picture, now two controls instead of one that did both jobs |
+| R41 | R9 / R11 (8 Sep 2026): an organization "neither follows nor is followed", and 19 Sep opened only the second half — a PUBLIC organization became followable while all three doors still refused it as the CALLER | **AN ORGANIZATION FOLLOWS** (20 Sep 2026): `20260920180000_an_organization_follows` removes the refusal from `set_follow`, `set_person_follow` and `set_crew_follow`, so its **Following** figure and list are real on its Home, its Profile tab and `/org/{id}`. ⚠ `guard_person_only` is UNTOUCHED — it still books no class, holds no order, enters no event, leads and joins no crew, sends no enquiry and takes no seat on a class or a team. `follows` was never one of that trigger's eight tables. ⚠ A **STUDIO** still cannot follow anything and never will without a schema change (`follows.follower_id` references `profiles`); its pages count what the ACCOUNT THAT OWNS IT follows | 20 Sep 2026, the user: *"ORGANIZATION AND sTUDIO STILL DONT HAVE FOLLOWING SECTION IN PROFILE AND HOME."* Asked which way to take it — a real follow, or a figure that could only ever read 0 — they chose the first. The alternative was a dead control on five screens |
+| R42 | The prototype has one studio and no payroll desk: "A studio pays its faculty; DanceOS is not the thing that runs the payroll" (S_earn's closing line), and R35 (19 Sep) added `record_team_payment` for the front desk | The studio Earnings desk's money-out card is headed **WHAT YOU PAY YOUR PEOPLE**, not SESSION PAY, and its note names both kinds | 20 Sep 2026 — the 19 Sep earnings audit's own leftover, in its words: "the studio desk still files team payments under a card headed SESSION PAY". A payment with no session lines is exactly what that RPC exists for, so the heading said the opposite of what the card counted |
 | R37 | A studio's team is Faculty · Visiting faculty · Staff, and an artist page calls its `staff` seat "Assistant" on the screen alone (19 Sep 2026, R34) | **`assistant` IS THE FIFTH `member_role`**, so a studio hands out Faculty · Visiting faculty · **Assistant** · Other team member and an artist page Faculty · Assistant · Other team member — and `staff` is called **"Other team member"** everywhere. A studio's public page gained an **Assistants** group. A person's own page gained **Studios associated with** and **Artists associated with** off the new `person_associations` — the SEATS they hold, which is a different fact from "Studios taught at" (published classes): somebody asked onto a team who has not taught yet is associated and teaches at nothing. ⚠ `staff` is never returned by either read | 20 Sep 2026, the user's list B, C and E. The old model could not say both "Assistants" and "Other team members" on one studio, because one word was doing both jobs |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
@@ -9041,6 +9245,7 @@ Home. **Do not "restore parity" on these.**
 | C28 | The account number is a line under the eyebrow (18 Sep 2026); since 19 Sep it shares the eyebrow's LINE, at the far right of a `space-between` row | **ONE TOKEN: `ARTIST-000482`** — `HeroId` carries the hyphen, the row no longer spreads, and all five kinds read it (`PublicPersonPage` was still setting the number its own way) | 20 Sep 2026: *"Id still needs to be placed like for eg. Artist-000123 together there should be no gap in that on both profile and home"*, then *"id one to be implemented for kinds of profiles."* ⚠ A stranger reading an ARTIST still sees no number — `public_artist` hands back no `member_no` (20260919090000), so the data decides, not this row |
 | C29 | S_profiletab's own "This is you · Your record ›" is the only thing marking your own page, and the prototype has no door back | **A CORNER DOOR BACK FROM YOUR OWN PUBLIC PAGE** (`PersonIcon` in the same `cornerChip` the eye uses) — on a person's, an organization's, a studio's and a crew's | 20 Sep 2026, the user: *"when looking at your own profile from somewhere should also look same as profile page. that breaks a lot of times."* The eye has gone one way since 15 Sep and nothing came back, so landing on your own page from a row deep in the app left the back chip as the only exit — and after three hops that is not where you came from. Two other differences went in the same breath: `PublicPersonPage`'s eyebrow moved onto `KIND_WORD` (**`KIND_BADGE` is deleted**) and the disabled Follow bell on your own page is not drawn |
 | C30 | A desk's shelf head carries its count beside the heading (`DosShelfHead`, 3446) | **NO FLOATING COUNT UNDER A TOOL HERO** — `/my-classes`, `/my-events` and the Routines desk lost theirs; the counts INSIDE a shelf head stay | 20 Sep 2026, the user, circling "5 on your page": *"similar figures need to be removed from all pages in the app inside the home tab for all profiles."* The segments above already carried the same number, one row higher, in larger type — the 19 Sep move that put the total "over the list it counts" and the move that put counts into the toggles happened in the same breath, and together they made a duplicate |
+| C32 | The prototype's Profile tab (S_profiletab 10565-11400) and its public `publicEntity` render are ONE screen behind a flag, and this app built them as two components — `MyProfilePage` and `PublicPersonPage` — drawing the same person from the same read | **`PersonBody` and `EntityBand` are shared by both.** Everything under the hero — **Schedule, then what is on sale, then the associations** — is one component, and the Profile tab draws the band through `EntityBand` like the other four screens. What each keeps is only its own: the Follow bell, the Enquiry row and the report link on the public page; the Settings sheet, the follow sheets, the corner eye and an organization's studios on the tab. ⚠ SCHEDULE IS ALWAYS ABOVE MEMBERSHIPS, everywhere. ⚠ "Teaches at" and "Runs" are gone from the tab — the shared headings are **Studios taught at · Studios associated with · Artists associated with · Crews**, and an owner's seat on an unlisted studio is still reachable through the hub | 20 Sep 2026, the user's third report of it: *"FOR SOME REASON YOU ARE NOT ABLE TO FIX THE DIFFERENCE IN PROFILES. FIX IT PERMANENTLY."* Two components drawing one person is why it kept coming back — every fix had to be made twice and one was always missed. The five drifts are listed in `PersonBody`'s own comment |
 | C31 | The prototype has no subscription and no support desk | **NEITHER THE SUBSCRIPTION NOR THE DANCEOS CONVERSATION IS ON A STUDIO'S OR AN ORGANIZATION'S HOME.** The subscription is `/subscription` (Settings' own tile), one strip per studio with the studio's name on it; the conversation is Settings → Help & support | 20 Sep 2026, the user: *"remove your conversation with dance os and subscription from just the home tab for studio and organization profiles as already being handled from settings."* ⚠ **Rule 9.** The premise was true of an artist's plan and NOT of a studio's: `/subscription` sent an organization back to the hub, the hub has no cancel, and the strip on the studio's home was the only Stop renewing in the app. It MOVED rather than going, so the premise is true now. **A screen the user asks to remove is only removed once the thing it was the only door to has another one** |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
@@ -9061,6 +9266,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The instant column, the organization that follows and the one profile body, what they left (20 Sep 2026):** the **studio's Following figure is its OWNER's**, so two studios of the same organization print the same number and nothing on the row says whose it is — the visible label is just "Following", and the Owner group further down is the only thing that explains it; an organization's **Following list on its own Home and Profile tab is the full sheet**, but its **public page prints the figure with no door** (a count is public, a list is not — the same rule a studio's Followers figure keeps); nothing anywhere lets an organization follow **from a studio's page as the studio** — it follows as itself, which is the only thing the column can hold. `SegmentedPanels` **replaces** the history entry rather than pushing, so back leaves the page instead of walking the segments — unchanged from `router.replace`, and deliberate, but it means a phone's back gesture never undoes a segment tap; the panels are **mounted one at a time**, so a scroll position inside one segment is lost on the way back to it. `PersonBody` is shared by the two person screens and **not by the studio, organization or crew pages**, which still draw their own associations — the same facts, four components, and the next drift will be there rather than here. And **no automated check asserts Schedule above Memberships**: the order is guaranteed by the single component rather than by a test, because setting an artist with a live membership up in the e2e is a bigger change to that story than the thing it would prove | S_profiletab 10905-10940; S_earn 18195 | a label naming whose Following a studio prints, if it confuses anybody; a shared body for the other three pages, when one of them is next opened |
 | **The chips, the ID and the moved cancel door, what they left (20 Sep 2026):** the Follow bell's **count is invisible** — it rides as `data-followers` for the suite and the figure beside it is the page's own Followers, so on a page whose count read fails the bell says nothing about how many; `cannotFollow` is a **`title` and an `aria-label`**, not a visible sentence, so an organization account presses nothing and reads nothing unless it hovers or uses a screen reader; **a stranger's bell links to `/login` with no `next=`**, so signing in to follow lands on Home rather than back on the page they were looking at. The chips row **wraps** on a very narrow screen because `FIGURE_ROW` has `flexWrap`, and three 44px chips plus two figures is about 300px — which is the honest behaviour and not the designed one. `/subscription` for an organization **lists every studio it owns with no paging**, which is fine at the 15-studio cap and would not be at fifty; it reads `why_not_public` once per studio, so N+1 round trips on that screen. And **nothing on a studio's home says where its subscription went** — the tile grid is the only hint, and Settings is two taps. ⚠ **`FollowToggle`'s `pill` branch has no caller left** — all five screens pass `variant="chip"` — so the prototype's own Follow button (10930) is dead code in this file; left standing deliberately rather than deleted in the same push as the change that orphaned it, but it is dead, and this repo's own rule is that a branch no screen renders is the same bug as a field no screen reads | S_profiletab 10688, 10930; 16935-16990 | a `next=` on the bell's sign-in; a visible reason; a batched `why_not_public` if a pilot organization ever has ten studios |
 | **The granted powers, the number and the history, what they left (20 Sep 2026):** the two powers are **standing and studio-wide** — "run the register on any class here", not on one class, which is what the per-class `class_people` grant is for; there is no screen that lists WHO holds a standing power across a studio's classes, and no audit line when one is given or taken (the toast is the only trace). **A grant dies with the seat** and is not restored if somebody is re-seated — deliberate, but nothing says so on the screen. **An organization's Event team can run every event the organization hosts**, with no per-event scoping, because there is no table that would hold one (E7's "YOU ARE HELPING WITH THIS ONE" is the same missing thing). **`person_associations.ended` shows a past seat only where a confirmed class proves it** — so somebody who was on a team for two years and taught under a colleague's name has nothing, and the row prints no dates either way. **A business's `member_no` is printed but never searched** — the people picker matches a person's name and number, and nothing matches a studio's. **The Bio column still exists and is still readable through the API**; it is only unwritable through the app, so an old paragraph sits on the row until somebody decides whether to drop the column | 18428-18433; S_profiletab 10834 | a per-studio powers list and an audit line; per-event rights with E7; a decision on dropping `about` |
 | **The team by profile type, what it left (20 Sep 2026):** there is **no e2e segment** for any of it (NEXT TO DO #0ae) and **no rolled-back dry run** for its migration (#0ac), so nothing checks that anon's executable set did not grow — the behaviour's cover is `rls-proof-org-team` (12/12), which found a real defect in the door on its first run. **A studio owner can be given only to somebody who is already on the organization's team** — there is no "make this person the owner of this studio" from the studio's own desk, and the studio's Team desk does not say that seat came from the organization; **relabelling away from Studio owner takes the seat back silently** (the row's word changes and nothing on the screen says a seat moved). **`assistant` has no powers of its own** — it is `staff`'s power set with a different name, so the Permissions block prints the same five lines for both; whether an assistant should hold attendance by default is a decision nobody has made. **A person's two new association groups are seats, not a history**: leaving a team removes the row, so a studio somebody taught at for two years disappears from their page the day they leave, while "Studios taught at" (published classes) keeps them. And **an organization's Event team carries no event powers** — it is a published label, exactly as R28 said, so somebody on it still cannot save or run an event | — (the prototype has one studio and no organization) | a proof, a segment, and a decision on each of the three |

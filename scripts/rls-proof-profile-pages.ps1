@@ -125,13 +125,19 @@ try {
   Check 1 "The fan follows the crew: following $($c1.following), $($c1.followers) follower; again still $($c1b.followers); a stranger reads the count $anonN" (
     ($c1.following -eq $true) -and ([int]$c1.followers -eq 1) -and ([int]$c1b.followers -eq 1) -and ($anonN -eq 1))
 
-  # 2. not by the crew itself, not by an organization
+  # 2. not by the crew itself; AN ORGANIZATION MAY, SINCE 20 Sep 2026
+  #    (20260920180000_an_organization_follows - the user: "Organization and Studio
+  #    still dont have Following section in profile and home"). The refusal this
+  #    check used to assert was the ONLY thing between an organization and a
+  #    Following figure that could ever move; the rules that remain are the ones
+  #    about the CREW - its leader and its confirmed members are the crew.
   $byLead = Fails { Rpc (Api $lead.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
   $byMember = Fails { Rpc (Api $member.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
-  $byOrg = Fails { Rpc (Api $org.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
+  $byOrg = Rpc (Api $org.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true }
+  Rpc (Api $org.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $false } | Out-Null
   $byAnon = Fails { Rpc $anonH "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
-  Check 2 "The leader is refused ($byLead); a member is refused ($byMember); an organization is refused ($byOrg); the public cannot call it ($([bool]$byAnon))" (
-    ($byLead -match "in this crew") -and ($byMember -match "in this crew") -and ($byOrg -match "organization") -and ($byAnon -ne ""))
+  Check 2 "The leader is refused ($byLead); a member is refused ($byMember); an organization FOLLOWS the crew ($($byOrg.following), $($byOrg.followers) followers) and unfollows again; the public cannot call it ($([bool]$byAnon))" (
+    ($byLead -match "in this crew") -and ($byMember -match "in this crew") -and ($byOrg.following -eq $true) -and ([int]$byOrg.followers -eq 2) -and ($byAnon -ne ""))
 
   # 3. WHO follows is the leader's to read; the row is the follower's own; nobody else's; unfollow soft-deletes
   $leadSees = Get-Rows (Api $lead.token) "follows?crew_id=eq.$($crew.id)&deleted_at=is.null&select=id,follower_id"
@@ -145,13 +151,18 @@ try {
 
   # -- AN ORGANIZATION CAN BE FOLLOWED, WHILE IT IS PUBLIC ---------------------
   # 4. a public one yes, a private one no, an organization as the caller never
+  # !! re-cut 20 Sep 2026: an organization is BOTH ends of a follow now. What is
+  #    still refused is a PRIVATE organization as the target - that rule never moved.
   $o1 = Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $org.id; p_on = $true }
   $priv = Fails { Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $private.id; p_on = $true } }
-  $orgCaller = Fails { Rpc (Api $org.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $true } }
+  $orgCaller = Rpc (Api $org.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $true }
+  $orgCounts = Rpc-Rows (Api $org.token) "person_follower_counts" @{ p_user_ids = @($org.id) }
+  $orgFollowing = 0; foreach ($r in $orgCounts) { if ($r.user_id -eq $org.id) { $orgFollowing = [int]$r.following } }
+  Rpc (Api $org.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $false } | Out-Null
   $anonOrgCount = Rpc-Rows $anonH "person_follower_counts" @{ p_user_ids = @($org.id) }
   $mine = Rpc-Rows (Api $fan.token) "my_followed_organizations" @{}
-  Check 4 "The fan follows the public organization ($($o1.followers)); a private one is refused ($priv); an organization following is refused ($orgCaller); a stranger reads the public one's count ($($anonOrgCount.Count) row, $($anonOrgCount[0].followers)); the fan's Following sheet lists $($mine.Count) organization ($($mine[0].name))" (
-    ([int]$o1.followers -eq 1) -and ($priv -match "not open to the public") -and ($orgCaller -match "organization") -and ($anonOrgCount.Count -eq 1) -and ([int]$anonOrgCount[0].followers -eq 1) -and ($mine.Count -eq 1) -and ($mine[0].org_id -eq $org.id))
+  Check 4 "The fan follows the public organization ($($o1.followers)); a private one is refused ($priv); the organization FOLLOWS the fan back ($($orgCaller.following)) and its own Following reads $orgFollowing; a stranger reads the public one's count ($($anonOrgCount.Count) row, $($anonOrgCount[0].followers)); the fan's Following sheet lists $($mine.Count) organization ($($mine[0].name))" (
+    ([int]$o1.followers -eq 1) -and ($priv -match "not open to the public") -and ($orgCaller.following -eq $true) -and ($orgFollowing -eq 1) -and ($anonOrgCount.Count -eq 1) -and ([int]$anonOrgCount[0].followers -eq 1) -and ($mine.Count -eq 1) -and ($mine[0].org_id -eq $org.id))
 
   # -- AN ORGANIZATION TAKES ENQUIRIES ------------------------------------------
   # 5. through its hosting row, for the three kinds it can be asked for

@@ -145,13 +145,18 @@ export function HomeBand({
           <span data-testid="home-followers" style={figureNum}>{followers.length}</span>
           <span style={figureLabel}>Followers</span>
         </button>
-        {/* an organization follows nobody (R11), so it is offered no figure for it */}
-        {isOrg ? null : (
-          <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-            <span data-testid="home-following" style={figureNum}>{followingN}</span>
-            <span style={figureLabel}>Following</span>
-          </button>
-        )}
+        {/* ⚠ AN ORGANIZATION HAS THIS FIGURE NOW (20 Sep 2026, the user:
+            "Organization and Studio still dont have Following section in profile
+            and home"). It was withheld because R11 made an organization follow
+            nothing — true until today, and the reason the figure would have read
+            0 for ever. Asked which way to take it the user chose to let an
+            organization really follow, and
+            `20260920180000_an_organization_follows` removes the refusal from the
+            three doors, so this counts rows rather than pretending. */}
+        <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+          <span data-testid="home-following" style={figureNum}>{followingN}</span>
+          <span style={figureLabel}>Following</span>
+        </button>
         {chips ? <div style={CHIP_ROW}>{chips}</div> : null}
       </div>
 

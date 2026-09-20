@@ -51,11 +51,15 @@ export function FollowToggle({
    *  fact is how Follow came to exist twice before, one carrying a count and one
    *  not (19 Sep). Same state, same action, same accessible name. */
   variant?: "pill" | "chip";
-  /** when the database would refuse this follow — your own team, or an
-   *  organization account, which `guard_person_only` has refused since 8 Sep —
-   *  the chip is still DRAWN and says why rather than vanishing. "Available to
-   *  all" is about the control being there, never about promising a press that
-   *  would be refused (R31's rule). */
+  /** when the database would refuse this follow, the chip is still DRAWN and
+   *  says why rather than vanishing — "available to all" is about the control
+   *  being there, never about promising a press that would be refused (R31).
+   *  ⚠ NO CALLER PASSES ONE TODAY (20 Sep 2026): its one reason was "an
+   *  organization does not follow", and an organization follows since
+   *  `20260920180000_an_organization_follows`. The mechanism is kept rather than
+   *  deleted because the refusals it was built for are still in the doors — a
+   *  private organization, a crew you are in, a business you belong to — and the
+   *  pages that meet those simply do not draw the bell at all yet. */
   cannotFollow?: string | null;
 }) {
   const [following, setFollowing] = useState(initialFollowing);

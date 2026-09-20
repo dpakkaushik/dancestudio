@@ -7,7 +7,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
 import { findFollowerCounts } from "@/repositories/follows";
 import { findStudioDeck } from "@/repositories/home";
-import { findPublicTenant } from "@/repositories/publicProfile";
+import { findPublicStudioTeam, findPublicTenant } from "@/repositories/publicProfile";
+import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -52,7 +53,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      policy and set_business_profile_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, editable, followerCounts] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByTenant, editable, followerCounts, team] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
@@ -76,7 +77,18 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
        the app now leads with. `follower_counts` is aggregate-only, so it names
        nobody; a failed read is a 0 on a figure, never a home that will not open. */
     findFollowerCounts(supabase, [tenantId]).catch(() => new Map<string, number>()),
+    /* ⚠ AND WHAT IT FOLLOWS, WHICH IS WHAT ITS OWNER FOLLOWS (20 Sep 2026, the
+       user: "Organization and Studio still dont have Following section in
+       profile and home"). A studio has nothing to follow WITH —
+       `follows.follower_id` references `profiles` and a studio is a `businesses`
+       row — so the honest count is the one belonging to the account that runs
+       it. `public_studio_team` is the read that already names the owner on the
+       studio's public page; a refusal on either leaves the figure undrawn rather
+       than printing a zero nobody measured. */
+    findPublicStudioTeam(supabase, tenantId).catch(() => []),
   ]);
+  const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
+  const ownerCounts = ownerUserId ? await findPersonFollowerCounts(supabase, [ownerUserId]).catch(() => new Map()) : new Map();
 
   /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, their list for all four
      kinds of account — deviation row R18): Classes · Calendar · Team · Students ·
@@ -115,6 +127,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
          first, the derived list only for a row that predates it */
       styles={tenant.styles.length ? tenant.styles : (stylesByTenant.get(tenantId) ?? [])}
       followers={followerCounts.get(tenantId) ?? 0}
+      followingN={ownerUserId ? (ownerCounts.get(ownerUserId)?.following ?? null) : null}
       tiles={tiles}
     />
   );

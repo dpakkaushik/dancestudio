@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EventCard } from "@/features/events/components/EventCard";
-import { SegmentedNav } from "@/features/shell/components/SegmentedNav";
+import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DOS_DISPLAY, tintForTenantType, DOS_UI, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
 import { EV_TINT } from "@/types/event";
 import { MANAGED_FILTERS, type ManagedKind, type ManagedListing } from "@/types/managed";
@@ -53,16 +53,17 @@ export function ManagedScreen({
   listings: ManagedListing[];
   filter: "all" | ManagedKind;
 }) {
-  const rows = listings.filter((l) => filter === "all" || l.kind === filter);
   const manyBusinesses = businesses.length > 1;
-  return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
-      <div style={{ padding: "14px 16px 0" }}>
-        {/* the segmented control — three links, the pressed one solid, and
-            pressed the MOMENT it is tapped (20 Sep 2026, the user: "see such bug
-            doesnt appear anywhere in the system where things are getting stuck") */}
-        <SegmentedNav active={filter} segments={MANAGED_FILTERS.map(({ k, label, aria }) => ({ key: k, href: k === "all" ? "/managed" : `/managed?kind=${k}`, label, aria }))} />
-
+  /* ⚠ EVERY LISTING IS ALREADY HERE, so the filter never needed the server
+     (20 Sep 2026, the user: "see such bug doesnt appear anywhere in the system
+     where things are getting stuck"). This screen was the clearest case of all:
+     it read the whole list and then filtered it IN JAVASCRIPT — and still sent
+     the finger to the server and back to decide which of two `kind` values to
+     compare against. Each panel is built here; `SegmentedPanels` picks. */
+  const panelFor = (k: "all" | ManagedKind) => {
+    const rows = listings.filter((l) => k === "all" || l.kind === k);
+    return (
+      <>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "2px 0 8px" }}>
           {/* DosShelfHead (3446-3450, 3430): 17px display, sentence case, the count small and muted */}
           <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.2, fontFamily: DOS_DISPLAY, color: INK }}>What you run</div>
@@ -96,6 +97,20 @@ export function ManagedScreen({
             </Link>
           </div>
         ) : null}
+      </>
+    );
+  };
+
+  return (
+    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
+      <div style={{ padding: "14px 16px 0" }}>
+        <SegmentedPanels
+          /* the key is the SERVER's answer — see /my-classes for why */
+          key={filter}
+          initial={filter}
+          segments={MANAGED_FILTERS.map(({ k, label, aria }) => ({ key: k, href: k === "all" ? "/managed" : `/managed?kind=${k}`, label, aria }))}
+          panels={MANAGED_FILTERS.map(({ k }) => ({ key: k, node: panelFor(k) }))}
+        />
       </div>
     </div>
   );

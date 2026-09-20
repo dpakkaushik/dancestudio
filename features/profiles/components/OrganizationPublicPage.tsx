@@ -55,7 +55,7 @@ export function OrganizationPublicPage({
   isMe = false,
   following = false,
   followers = null,
-  canFollow = true,
+  followingN = null,
   signedIn = false,
 }: {
   org: PublicOrganization;
@@ -70,8 +70,9 @@ export function OrganizationPublicPage({
   following?: boolean;
   /** the live follower count, printed on the Follow button (19 Sep 2026, later) */
   followers?: number | null;
-  /** false for an organization viewer — one follows nothing */
-  canFollow?: boolean;
+  /** and how many it follows (20 Sep 2026) — the second figure every other
+   *  profile has had, and the one the user asked for by name */
+  followingN?: number | null;
   signedIn?: boolean;
 }) {
   const grad = gradientOf(org.name);
@@ -129,7 +130,17 @@ export function OrganizationPublicPage({
               style of its own — what it runs does — so it draws figures and links
               and no styles row. ⚠ NO BIO ("Remove bio from all profiles"). ── */}
           <EntityBand
-            figures={<Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />}
+            figures={
+              <>
+                <Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />
+                {/* ⚠ AND WHAT IT FOLLOWS (20 Sep 2026, the user: "Organization and
+                    Studio still dont have Following section in profile and home").
+                    An organization follows since
+                    `20260920180000_an_organization_follows`, so this is a real
+                    count rather than a zero that could never move. */}
+                <Figure n={followingN} label="Following" />
+              </>
+            }
             /* the three chips (20 Sep 2026) — the QR, the organization's own
                combined board (or, for a visitor, where each of its studios ranks),
                and the Follow bell, drawn for every viewer */
@@ -146,7 +157,6 @@ export function OrganizationPublicPage({
                     accent={tint}
                     signedIn={signedIn}
                     variant="chip"
-                    cannotFollow={canFollow ? null : "An organization does not follow"}
                   />
                 )}
               </>

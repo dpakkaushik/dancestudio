@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EventCard } from "@/features/events/components/EventCard";
 import { EvIcon, bookingWords, eventCodeOf, eventTimeWords, eventWhen } from "@/features/events/components/event-kit";
-import { SegmentedNav } from "@/features/shell/components/SegmentedNav";
+import { SegmentedPanels } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -90,31 +90,48 @@ export default async function MyEventsPage({ searchParams }: { searchParams: Pro
           moved down onto the list it counts. The hero's own margin is the gap. */}
       <DeskHero tool="events" as="h1" margin="0 0 14px" />
 
-      {/* the same optimistic segment as Your classes (20 Sep 2026) */}
-      <SegmentedNav
-        active={show}
+      {/* ⚠ THE SWITCH IS INSTANT (20 Sep 2026, the user: "CLASSES LAG ISSUE IS
+          THERE WHEN SWITCHING COLUMNS" — the same control, so the same fix).
+          All three lists were ALREADY read in one pass here, because each pill
+          carries a count; the only thing the server round trip ever decided was
+          which of three arrays already in hand to print. `SegmentedPanels` makes
+          that choice in the browser and lets the URL follow. */}
+      <SegmentedPanels
+        /* the key is the SERVER's answer — see /my-classes for why */
+        key={show}
+        initial={show}
         segments={SHOWS.map(({ k, label, aria }) => ({ key: k, href: k === "participant" ? "/my-events" : `/my-events?show=${k}`, label, aria, n: nOf(k) }))}
+        panels={[
+          {
+            key: "participant",
+            node: entries.length ? <>{entries.map((t) => <TicketRow key={t.id} t={t} />)}</> : <Empty>No entries yet. A battle or a tournament you enter — solo, as a duet, or with a crew you lead — appears here.</Empty>,
+          },
+          {
+            key: "spectator",
+            node: seats.length ? <>{seats.map((t) => <TicketRow key={t.id} t={t} />)}</> : <Empty>No seats yet. Book a ticket to a showcase or a battle and it appears here, with its code.</Empty>,
+          },
+          {
+            key: "assisting",
+            node: assisting.length ? (
+              <>
+                {assisting.map((ev) => (
+                  <div key={ev.id} style={{ marginBottom: 10 }}>
+                    <EventCard event={ev} href={`/business/${ev.tenantId}/events/${ev.id}`} />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <Empty>
+                {helpingIds.length ? "The businesses you are on the team of have no events on." : "You are not on any business’s team yet. Once you are, the events it runs appear here, and you can help at the door."}
+              </Empty>
+            ),
+          },
+        ]}
       />
 
       {/* ⚠ THE TOTAL IS GONE (20 Sep 2026, the user: "similar figures need to be
           removed from all pages in the app"). The segment above already carries
           the same count. */}
-
-      {show === "participant" ? (
-        entries.length ? entries.map((t) => <TicketRow key={t.id} t={t} />) : <Empty>No entries yet. A battle or a tournament you enter — solo, as a duet, or with a crew you lead — appears here.</Empty>
-      ) : show === "spectator" ? (
-        seats.length ? seats.map((t) => <TicketRow key={t.id} t={t} />) : <Empty>No seats yet. Book a ticket to a showcase or a battle and it appears here, with its code.</Empty>
-      ) : assisting.length ? (
-        assisting.map((ev) => (
-          <div key={ev.id} style={{ marginBottom: 10 }}>
-            <EventCard event={ev} href={`/business/${ev.tenantId}/events/${ev.id}`} />
-          </div>
-        ))
-      ) : (
-        <Empty>
-          {helpingIds.length ? "The businesses you are on the team of have no events on." : "You are not on any business’s team yet. Once you are, the events it runs appear here, and you can help at the door."}
-        </Empty>
-      )}
     </div>
   );
 }
