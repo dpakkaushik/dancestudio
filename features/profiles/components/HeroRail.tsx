@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { initialsOf } from "@/features/profiles/components/profile-kit";
 import { DISC_RADIUS, DOS_DISPLAY, HERO_DISC, HERO_DISC_RING, HERO_HEAD_H, HERO_HEAD_W, HERO_SQ_SHADOW, LILAC } from "@/lib/design/tokens";
 
@@ -51,14 +52,25 @@ export function HeroRail({
   name,
   grad,
   shots = [],
+  edit = null,
 }: {
   name: string;
   /** the two colours an empty header stands on */
   grad: [string, string];
   shots?: HeroShot[];
+  /** ⚠ THE PENCIL, AND NOTHING ELSE (20 Sep 2026, the user: "Profile pic edit
+   *  should just be a pencil besides and clicking on photo to view it not
+   *  together in one. Similarly seprate for poster photos"). Pressing a poster
+   *  OPENS the poster — that is what a picture on a page does — and changing the
+   *  set is this deliberate second control at the rail's corner. Only the
+   *  account's own screens pass one; every public page passes none and the rail
+   *  is a rail. */
+  edit?: ReactNode;
 }) {
   const [idx, setIdx] = useState(0);
   const [broken, setBroken] = useState<Record<string, true>>({});
+  /** which poster is open full size — pressing one is how you look at it */
+  const [open, setOpen] = useState<number | null>(null);
 
   const slides: Slide[] = shots.map((m): Slide => ({ key: m.key, src: m.src, alt: m.alt, signed: m.signed }));
   if (slides.length === 0) {
@@ -82,6 +94,17 @@ export function HeroRail({
 
   return (
     <>
+      {/* ⚠ THE RAIL IS THE PENCIL'S CONTAINING BLOCK, and it has to say so
+          (20 Sep 2026). The pencil is absolutely placed, and this wrapper was
+          missing — so it resolved against whatever positioned ancestor it found
+          further up the page and landed at `top: 12` of THAT, which is behind
+          the fixed top bar. The Settings gear then intercepted every press: the
+          only control that changes the posters could not be pressed at all, by
+          a test or by a person. The e2e found it as a 120-second timeout wearing
+          a crash's words ("Target page, context or browser has been closed"),
+          and only the trace's "…intercepts pointer events" named the culprit.
+          `position: relative` here, and the corner is the rail's own corner. */}
+      <div style={{ position: "relative" }}>
       <div
         role={many ? "region" : undefined}
         aria-label={many ? `${name} — ${shots.length} header picture${shots.length === 1 ? "" : "s"}, swipe sideways` : undefined}
@@ -99,8 +122,8 @@ export function HeroRail({
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {slides.map((s) => (
-          <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
+        {slides.map((s, i) => {
+          const pic = (
             <div aria-label={s.alt} style={square}>
               {s.src && !broken[s.key] ? (
                 <Image
@@ -114,9 +137,40 @@ export function HeroRail({
                 />
               ) : null}
             </div>
-          </div>
-        ))}
+          );
+          return (
+            <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", display: "flex", justifyContent: "center", padding: "24px 0 14px" }}>
+              {/* a picture with nothing behind it is not a button — an empty
+                  header square opens nothing rather than an empty viewer */}
+              {s.src && !broken[s.key] ? (
+                <button
+                  type="button"
+                  aria-label={`${s.alt} — open`}
+                  onClick={() => setOpen(i)}
+                  style={{ padding: 0, border: "none", background: "none", cursor: "pointer", lineHeight: 0, fontFamily: "inherit" }}
+                >
+                  {pic}
+                </button>
+              ) : (
+                pic
+              )}
+            </div>
+          );
+        })}
       </div>
+      {/* the rail's own bottom-right corner — the same corner the disc's pencil
+          sits in, so the two read as one pair rather than two conventions */}
+      {edit ? <div style={{ position: "absolute", right: 12, bottom: 12, zIndex: 2 }}>{edit}</div> : null}
+      </div>
+      {open !== null && slides[open]?.src ? (
+        <PhotoLightbox
+          shots={slides.filter((s) => s.src).map((s) => ({ key: s.key, src: s.src as string, alt: s.alt, signed: Boolean(s.signed) }))}
+          index={Math.min(open, slides.filter((s) => s.src).length - 1)}
+          onIndex={setOpen}
+          onClose={() => setOpen(null)}
+          label={name}
+        />
+      ) : null}
       {many ? (
         <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", gap: 5, marginTop: -4, paddingBottom: 2 }}>
           {slides.map((s, i) => (

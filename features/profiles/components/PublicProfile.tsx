@@ -7,18 +7,18 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { TenantFollower } from "@/types/follow";
 import type { PublicTeamMember, PublicTenantProfile } from "@/types/publicProfile";
-import { BioBlock } from "./BioBlock";
 import { BusinessEditButton } from "./BusinessEditSheet";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
-import { FollowFigures } from "./FollowFigures";
 import { FollowToggle } from "./FollowToggle";
+import { EntityBand, Figure } from "./profile-band";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { TenantFollowersButton } from "./TenantFollowersButton";
-import { HeroDot, HeroPlace, IdentityHero } from "./hero-kit";
+import { memberNoWords } from "@/types/profile";
+import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { Group, Row, SchedIcon, bigWhite, gradientOf, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
@@ -123,6 +123,7 @@ export function PublicProfile({
           grad={RG}
           tint={RC}
           eyebrow={tenant.type === "studio" ? "Studio" : "Artist"}
+          eyebrowSub={tenant.memberNo ? <HeroId>{memberNoWords(tenant.memberNo)}</HeroId> : null}
           /* the tick is DanceOS's to give — set when a verification actually clears (DosVerified 10592) */
           verified={Boolean(tenant.verifiedAt)}
           share={<ProfileShare path={path} name={tenant.name} />}
@@ -148,22 +149,33 @@ export function PublicProfile({
               ) : null}
             </>
           }
-          /* the styles it teaches, off its published classes (DosStyleRow 1767) */
-          styles={profile.styles}
-          styleAria={(s) => `${s} — a style this business teaches`}
+          /* ⚠ THE BAND DRAWS THE STYLES, so the hero is passed none (20 Sep 2026).
+             `IdentityHero` renders its own `styles` prop BEFORE `children`, and
+             the order every profile screen keeps is figures → styles → links. */
+          styles={[]}
           avatar={face}
           avatarAlt={tenant.name}
           shots={shots}
-        />
+        >
+          {/* ── THE SAME BAND HOME WEARS (20 Sep 2026, the user: "Upper layer of
+              Home tab to exactly the same used for profile pages for all kinds of
+              profiles"). Figures, then styles, then links — inside the hero, so it
+              sits on the hero's own wash rather than the plain page under it,
+              which is what made Home and the Profile tab read as one screen. ── */}
+          <EntityBand
+            figures={<Figure n={profile.followers} label={profile.followers === 1 ? "Follower" : "Followers"} testId="tenant-followers" />}
+            styles={profile.styles}
+            styleAria={(s) => `${s} — a style this business teaches`}
+            socials={tenant.socials}
+          />
+        </IdentityHero>
 
         {/* ── a business with nothing published yet says so where the styles would be ── */}
         {profile.styles.length === 0 ? <div style={{ fontSize: 12, color: MUTED, padding: "12px 0 0" }}>No published classes yet.</div> : null}
 
-        {/* ── THE FIGURES, THEN THE BIO (19 Sep 2026, the user: "follow following counts
-            visible on every profile and bio also should be visible below that for all
-            kinds of users") — one order on every public page ── */}
-        <FollowFigures followers={profile.followers} />
-        <BioBlock about={tenant.about} links={tenant.socials} editHint={canEdit ? "A sentence in the studio's own words — Edit ›" : null} accent={RC} />
+        {/* ⚠ NO BIO (20 Sep 2026, the user: "Remove bio from all profiles"). The
+            About paragraph is off every profile in the app; the links it used to
+            carry are the band's links row, inside the hero above. */}
 
         {/* ── FOLLOW · FOLLOWING, first under the hero (19 Sep 2026) — or, for the
             team, the door to the desk; the owner's Followers and Edit beside it ── */}

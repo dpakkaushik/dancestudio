@@ -113,6 +113,7 @@ export function IdentityHero({
   avatarHref,
   avatarLabel = "Public view",
   avatarSlot = null,
+  headerEdit = null,
   shots = [],
   corner,
   testId,
@@ -162,6 +163,9 @@ export function IdentityHero({
    *  that opens BOTH picture sections; everywhere else leaves it out. Given
    *  together with `avatarHref`, this wins — a disc has one job. */
   avatarSlot?: ReactNode;
+  /** the pencil at the header rail's corner — the posters' own editor, kept
+   *  apart from pressing a poster to look at it (20 Sep 2026) */
+  headerEdit?: ReactNode;
   /** THE HEADER — what swipes across the top */
   shots?: HeroShot[];
   /** controls pinned to the hero's top-right corner (the Profile tab's Edit and
@@ -199,7 +203,7 @@ export function IdentityHero({
           the eye under it, on every page that has both */}
       {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>{corner}</div> : null}
 
-      <HeroRail name={name} grad={grad} shots={shots} />
+      <HeroRail name={name} grad={grad} shots={shots} edit={headerEdit} />
 
       <div style={{ position: "relative", padding: "14px 16px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 13 }}>

@@ -14,7 +14,7 @@ import {
   setMemberRole,
 } from "@/repositories/invites";
 import { recordTeamPayment } from "@/repositories/payouts";
-import { reorderTenantMembers } from "@/repositories/tenants";
+import { reorderTenantMembers, setTenantMemberPowers } from "@/repositories/tenants";
 
 /** Step 12b staff actions. Authorization is NOT here — it is in the RPCs, which
  *  is the only place that can be trusted (owner-only to ask, and only the person
@@ -40,6 +40,14 @@ const inviteSchema = z.object({
 const inviteIdSchema = z.object({ tenantId: z.string().uuid(), inviteId: z.string().uuid() });
 const memberSchema = z.object({ tenantId: z.string().uuid(), userId: z.string().uuid() });
 const roleSchema = memberSchema.extend({ role: ROLE });
+/* ⚠ THE RELABEL TAKES A WIDER SET THAN THE INVITE, AND THEY ARE TWO SCHEMAS FOR
+   THAT REASON (20 Sep 2026, the user's answer 3). An INVITE may still never hand
+   out `owner` — `roleSchema` above, and both invite RPCs refuse it — but a
+   studio's desk may promote somebody already on the team, which is what
+   `set_member_role` now admits. Widening the one schema both used would have
+   quietly let an invite offer the owner seat; typecheck caught it. */
+const relabelSchema = memberSchema.extend({ role: z.enum(["owner", "trainer", "staff", "visiting_faculty", "assistant"]) });
+const powersSchema = memberSchema.extend({ canAttendance: z.boolean(), canRefunds: z.boolean() });
 const codeSchema = z.object({ code: z.string().trim().min(8).max(24) });
 
 async function requireUser() {
@@ -194,13 +202,37 @@ export async function setMemberRoleAction(input: {
   userId: string;
   role: string;
 }): Promise<StaffActionResult> {
-  const parsed = roleSchema.safeParse(input);
+  const parsed = relabelSchema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid role" };
   }
   const supabase = await requireUser();
   try {
     await setMemberRole(supabase, parsed.data);
+    revalidateDesk(parsed.data.tenantId);
+    return { error: null };
+  } catch (error: unknown) {
+    return { error: message(error, "Could not change what they may do") };
+  }
+}
+
+/** THE TWO STANDING POWERS (20 Sep 2026, the user: "permission given by Artist
+ *  or Studio for managing Attendance and Refunds"). Shape only — the RPC decides
+ *  who may grant, refuses an owner (who already holds both) and refuses somebody
+ *  who is not on the team. */
+export async function setMemberPowersAction(input: {
+  tenantId: string;
+  userId: string;
+  canAttendance: boolean;
+  canRefunds: boolean;
+}): Promise<StaffActionResult> {
+  const parsed = powersSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid request" };
+  }
+  const supabase = await requireUser();
+  try {
+    await setTenantMemberPowers(supabase, parsed.data.tenantId, parsed.data.userId, parsed.data.canAttendance, parsed.data.canRefunds);
     revalidateDesk(parsed.data.tenantId);
     return { error: null };
   } catch (error: unknown) {

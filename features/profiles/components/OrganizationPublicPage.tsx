@@ -1,13 +1,13 @@
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
-import { BioBlock } from "@/features/profiles/components/BioBlock";
+import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
-import { FollowFigures } from "@/features/profiles/components/FollowFigures";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { memberNoWords } from "@/types/profile";
 import { Group, Row, TYPE, gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_TINT, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -97,6 +97,7 @@ export function OrganizationPublicPage({
           grad={grad}
           tint={tint}
           eyebrow="Organization"
+          eyebrowSub={org.memberNo ? <HeroId>{memberNoWords(org.memberNo)}</HeroId> : null}
           verified={org.verified}
           share={<ProfileShare path={`/org/${org.id}`} name={org.name} />}
           /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): the organization's own
@@ -115,15 +116,18 @@ export function OrganizationPublicPage({
             </>
           }
           styles={[]}
-          styleAria={(s) => s}
           avatar={photoUrl(org.photoPath)}
           avatarAlt={`${org.name} — logo`}
           shots={shots}
-        />
-
-        {/* ── THE FIGURES, THEN THE BIO (19 Sep 2026): one order on every public page ── */}
-        <FollowFigures followers={followers} />
-        <BioBlock about={org.about} links={org.socials} accent={tint} />
+        >
+          {/* ── THE SAME BAND HOME WEARS (20 Sep 2026). An organization dances no
+              style of its own — what it runs does — so it draws figures and links
+              and no styles row. ⚠ NO BIO ("Remove bio from all profiles"). ── */}
+          <EntityBand
+            figures={<Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />}
+            socials={org.socials}
+          />
+        </IdentityHero>
 
         {/* ── FOLLOW · FOLLOWING (19 Sep 2026) ── */}
         {!isMe && canFollow ? (

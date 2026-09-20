@@ -32,6 +32,8 @@ export interface Tenant {
   contactEmail: string | null;
   /** the social chips (10760) */
   socials: SocialLink[];
+  /** the business's own account number, printed beside its type (20 Sep 2026) */
+  memberNo?: number | null;
   /** THE STYLES IT SAYS IT DANCES (19 Sep 2026, the user: "some studios dont
    *  show dance styles on profile it is mandatory to have one at least"). Its
    *  own field now — they used to be derived from its PUBLISHED classes, so a

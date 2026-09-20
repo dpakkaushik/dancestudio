@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { CREW_TINT, type CrewSummary } from "@/types/crew";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { CrewI, dosToolPaint } from "./crew-kit";
 
 /** The Crews hub — prototype S_bizhub with kind="crews" (2585-2691): TWO LISTS,
@@ -46,18 +47,16 @@ export function CrewsHub({ led, member }: { led: CrewSummary[]; member: Array<Cr
           <div style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
           <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Crews</div>
         </div>
+        {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026) — it was a dashed
+            row under the list, so somebody who leads several scrolled past them
+            all to start one */}
+        <DeskAddButton label="Create crew" href="/crews/new" />
         {head("CREWS YOU LEAD")}
         {led.length ? (
           led.map((c) => <Row key={c.id} crew={c} own sub={`${c.members} member${c.members === 1 ? "" : "s"} · ${c.style} · ${c.city}`} />)
         ) : (
           <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>You do not lead a crew yet.</div>
         )}
-        <Link
-          href="/crews/new"
-          style={{ display: "block", textAlign: "center", padding: "13px", borderRadius: 16, border: `1.5px dashed ${accent}`, color: accent, fontWeight: 800, fontSize: 13, textDecoration: "none" }}
-        >
-          ＋ Create crew
-        </Link>
         {/* and below it, the places that are not yours to run */}
         {member.length > 0 ? (
           <div style={{ marginTop: 20 }}>

@@ -45,6 +45,24 @@ function Get-Rows($headers, $path) {
   return ,@(($res.Content | ConvertFrom-Json) | Where-Object { $null -ne $_ })
 }
 function Expect-Fail($script) { try { & $script | Out-Null; return $false } catch { return $true } }
+# ⚠ Expect-Fail swallows the WORDS, which is fine for "this is refused" and useless
+# when a call that should SUCCEED does not: the script dies on an unhandled 400 and
+# the report says "(400) Bad Request" with no clue which line or why (20 Sep 2026,
+# and it cost a whole diagnosis). This one hands the message back: "" means it went
+# through, anything else is the database's own sentence.
+function Why-Fail($script) {
+  try { & $script | Out-Null; return "" }
+  catch {
+    $msg = $_.Exception.Message
+    $body = $_.ErrorDetails.Message
+    if (-not $body) {
+      try { $s = $_.Exception.Response.GetResponseStream(); $s.Position = 0
+        $body = (New-Object System.IO.StreamReader($s)).ReadToEnd() } catch {}
+    }
+    try { if ($body) { $j = $body | ConvertFrom-Json; if ($j.message) { $msg = $j.message } } } catch {}
+    return $msg
+  }
+}
 function Check($n, $label, $ok) {
   "$n. $label $(if ($ok) {'-- OK'} else {'-- !!! FAILED !!!'})"
   if (-not $ok) { $script:pass = $false }
@@ -145,14 +163,45 @@ try {
   }
   Check 11 "A trainer can neither invite nor remove" ($nonOwnerAskBlocked -and $nonOwnerRemoveBlocked)
 
-  # 12. the owner changes what somebody may do - but 'owner' is still not settable
+  # 12. the owner changes what somebody may do - AND MAY NOW HAND OVER THE SEAT
+  #
+  # !! RE-CUT 20 Sep 2026, and the old assertion was not wrong, it was OUT OF DATE.
+  # It read "promoting to owner is refused", which was this door's rule until the
+  # user asked for the other half of it: "should be able to switch profile for
+  # that studio from profile switcher" - i.e. a studio can name a second owner
+  # from its own desk, and that person's home appears in their switcher because
+  # the seat is real. 20260920130000 admits 'owner' here.
+  #
+  # An INVITE still refuses it (check 2, untouched): consent first, the seat after.
+  # And the guard that arrived with the widening is what this now proves instead -
+  # the LAST owner cannot be demoted, because a studio with no owner is a studio
+  # nobody can run and nothing else in the schema forbids it.
   Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "staff" } | Out-Null
   $roleNow = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&select=member_role"
-  $promoteBlocked = Expect-Fail {
-    Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "owner" }
+  # the only owner cannot be demoted, whoever asks
+  $lastOwner = Why-Fail {
+    Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $owner.id; p_role = "trainer" }
   }
-  Check 12 "Owner sets them to $($roleNow[0].member_role); promoting to owner is refused" (
-    ($roleNow[0].member_role -eq "staff") -and $promoteBlocked)
+  # hand the seat over: now there are two owners
+  $handOver = Why-Fail { Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "owner" } }
+  $promoted = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&select=member_role"
+  # ⚠ AND NOW THE SECOND GUARD, which this proof's own cast made visible: there are
+  # two owners, so the last-owner rule is satisfied - and the first owner STILL
+  # cannot be moved to a person's seat, because it is an ORGANIZATION. R11
+  # (guard_person_only, 8 Sep 2026): an organization owns a studio, it does not
+  # teach at one. Two independent reasons an owner may not be demoted, and only a
+  # call distinguishes them - the first cut of this check assumed the refusal it
+  # got was the last-owner rule, and it was not.
+  $orgStepDown = Why-Fail { Rpc (Api $joiner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $owner.id; p_role = "trainer" } }
+  $stepped = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($owner.id)&select=member_role"
+  # a PERSON holding the second seat may step down, because the organization still owns it
+  $joinerDown = Why-Fail { Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "staff" } }
+  $joinerNow = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&select=member_role"
+  Check 12 "Owner sets them to $($roleNow[0].member_role); the ONLY owner cannot be demoted ('$lastOwner'); the seat is handed to a person ($($promoted[0].member_role)$(if ($handOver) { " !$handOver" })); an ORGANIZATION owner still cannot take a person's seat ('$orgStepDown', still $($stepped[0].member_role)) while the person can step down ($($joinerNow[0].member_role))" (
+    ($roleNow[0].member_role -eq "staff") -and ($lastOwner -match "only owner") -and
+    ($handOver -eq "") -and ($promoted[0].member_role -eq "owner") -and
+    ($orgStepDown -match "organization") -and ($stepped[0].member_role -eq "owner") -and
+    ($joinerDown -eq "") -and ($joinerNow[0].member_role -eq "staff"))
 
   # 13. an owner cannot be removed from their own business (so the last owner survives)
   $ownerRemoveBlocked = Expect-Fail {

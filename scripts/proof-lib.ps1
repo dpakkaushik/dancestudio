@@ -29,9 +29,64 @@
 # it dot-sources this file.
 function New-Studio($token, $name, $area, $city, $styles = @("Hip-Hop")) {
   Assert-City $city
+  Sweep-Own-Leftovers $token $name
   $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
     p_name = $name; p_type = "studio"; p_area = $area; p_city = $city; p_styles = $styles } | ConvertTo-Json)
+}
+
+# ---------------------------------------------------------------------------
+# A PROOF THAT IS KILLED LEAVES A STUDIO, AND THE PILE IS NOT COSMETIC.
+#
+# Every proof's `finally` deletes what it made; a run stopped with Ctrl-C, or one
+# that dies before its `try`, never reaches it. One row per interrupted run does
+# not sound like much, and by 19 Sep 2026 it was 147 businesses - which broke
+# THREE REAL THINGS rather than merely looking untidy:
+#   * `why_no_studio()` caps an organization at 15 studios, so the test-phone
+#     owner sat at 15 and NINE PHONE-BASED PROOFS could not create their world
+#     at all - red for a day, for a reason none of them named;
+#   * `nearby_businesses` answers 50 rows, and Pune's shelf became 88 junk
+#     studios with the demo world's real one outside the cap;
+#   * `findMyTenants` reads the oldest 50, so the app bounced that account off
+#     every studio page it owned.
+#
+# So the sweep goes where the studio is made. It is deliberately the NARROWEST
+# thing that works, because it runs unattended against production:
+#   * only businesses THIS TOKEN'S OWN ACCOUNT owns. The LIST is read as the
+#     owner, so RLS is what scopes it and a bug in the filter cannot reach
+#     somebody else's row; the DELETE itself is service-role, because
+#     `businesses` carries no delete policy for anybody (the proofs' own
+#     `finally` blocks have always deleted that way);
+#   * only ones whose name shares this very call's prefix, so it sweeps earlier
+#     runs OF THE SAME PROOF and cannot reach a differently-named neighbour;
+#   * only ones older than two hours, so a parallel run in flight is untouchable;
+#   * failures are swallowed - a proof must never die in its own housekeeping.
+#
+# Proof studio names are "<Something> Studio <HHmmss>", so the prefix is the name
+# with its trailing digits taken off. A name with no stamp sweeps nothing, which
+# is the safe way round.
+function Sweep-Own-Leftovers($token, $name) {
+  try {
+    $prefix = ([regex]::Replace([string]$name, '\s*\d+\s*$', '')).Trim()
+    if ($prefix.Length -lt 6 -or $prefix -eq [string]$name) { return }   # no stamp - nothing to match on
+    $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json" }
+    $me = Invoke-RestMethod -Method Get -Uri "$base/auth/v1/user" -Headers $h
+    $cutoff = [DateTime]::UtcNow.AddHours(-2).ToString("o")
+    $seats = Invoke-RestMethod -Method Get -Headers $h -Uri (
+      "$base/rest/v1/business_members?user_id=eq.$($me.id)&member_role=eq.owner&deleted_at=is.null" +
+      "&select=business_id,businesses!inner(id,name,created_at)" +
+      "&businesses.name=like." + [uri]::EscapeDataString("$prefix%") +
+      "&businesses.created_at=lt." + [uri]::EscapeDataString($cutoff))
+    foreach ($s in @($seats)) {
+      $id = [string]$s.business_id
+      if ($id) {
+        try {
+          Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$id" -Headers $svcH | Out-Null
+          Write-Host "   (swept a leftover '$($s.businesses.name)' from an earlier run)"
+        } catch {}
+      }
+    }
+  } catch {}
 }
 
 # An artist page - the other thing create_business_with_owner makes. It takes NO

@@ -71,7 +71,11 @@ export function BusinessEditSheet({
   /* the name (18 Sep 2026, the user: "give option to rename") — the owner's alone,
      like everything else this sheet saves through the one door */
   const [name, setName] = useState(tenant.name);
-  const [about, setAbout] = useState(tenant.about ?? "");
+  /* ⚠ READ, NEVER WRITTEN (20 Sep 2026): the About field is gone from this sheet
+     but `update_business_profile` still takes `p_about`, and passing the value
+     back is what stops a Save from wiping a paragraph somebody wrote before the
+     field went away. Nothing on this screen can change it. */
+  const about = tenant.about ?? "";
   const [founded, setFounded] = useState(tenant.foundedYear ? String(tenant.foundedYear) : "");
   const [phone, setPhone] = useState(tenant.phone ?? "");
   /* the Mail button's address (19 Sep 2026) — an empty box clears it */
@@ -233,9 +237,9 @@ export function BusinessEditSheet({
           suite finds three of them by it. */}
       <div style={fieldLabel}>Name</div>
       <input aria-label="Name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder={isStudio ? "The studio's name" : "Your page's name"} style={fieldInput} />
-      <div style={fieldLabel}>About</div>
-      <textarea aria-label="About" value={about} maxLength={220} onChange={(e) => setAbout(e.target.value)} rows={3} placeholder={isStudio ? "Where the city comes to move…" : "Movement is a language…"} style={{ ...fieldInput, resize: "none", lineHeight: 1.5 }} />
-      <span style={{ display: "block", textAlign: "right", fontSize: 10.5, color: about.length > 200 ? "#F59E0B" : MUTED, marginTop: 3 }}>{about.length}/220</span>
+      {/* ⚠ NO ABOUT FIELD (20 Sep 2026, the user: "Remove bio from all profiles").
+          `businesses.about` and `p_about` stay, so a studio that wrote one keeps
+          it; nothing in the app draws it and nothing asks for one. */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div>
           <div style={fieldLabel}>Since</div>

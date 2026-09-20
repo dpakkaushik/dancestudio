@@ -29,6 +29,8 @@ export interface PublicOrganization {
   /** its PIN (push 2, 19 Sep 2026) — the Location button opens it; null until the organization places itself */
   lat: number | null;
   lng: number | null;
+  /** its own account number, beside the word ORGANIZATION (20 Sep 2026) */
+  memberNo: number | null;
 }
 
 export interface PublicOrganizationStudio {
@@ -62,7 +64,7 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     throw new Error(`publicOrganization.find failed: ${error.message}`);
   }
   const row = (Array.isArray(data) ? data[0] : data) as
-    | { id: string; name: string; city: string | null; photo_path: string | null; about: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null; phone?: string | null; contact_email?: string | null; lat?: number | string | null; lng?: number | string | null }
+    | { id: string; name: string; city: string | null; photo_path: string | null; about: string | null; socials: unknown; verified: boolean; since: string; host_business_id: string | null; phone?: string | null; contact_email?: string | null; lat?: number | string | null; lng?: number | string | null; member_no?: number | string | null }
     | undefined;
   if (!row) return null;
   return {
@@ -79,6 +81,7 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
     contactEmail: row.contact_email ?? null,
     lat: row.lat == null ? null : Number(row.lat),
     lng: row.lng == null ? null : Number(row.lng),
+    memberNo: row.member_no == null ? null : Number(row.member_no),
   };
 }
 

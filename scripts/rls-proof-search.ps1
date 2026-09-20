@@ -167,12 +167,25 @@ try {
     ($styles.Count -eq 1) -and ($styles[0] -eq "Hip-Hop") -and ($allStyles.Count -eq 1))
 }
 finally {
-  foreach ($t in @($ta, $tb)) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null }
-  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?name=like.$tag*" -Headers $svcH | Out-Null
-  foreach ($u in @($ownerA, $ownerB, $dancer)) {
-    Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
+  # ⚠ EVERY DELETE STANDS ON ITS OWN (20 Sep 2026). $ErrorActionPreference is Stop,
+  # so this block used to abort on its FIRST failure and skip everything after it -
+  # which is how one 500 on 20 Sep left five businesses behind, three of them
+  # LISTED ON DISCOVER, and made the next run of this very proof fail check 3
+  # (it counted the leftovers as matches). A cleanup that cannot survive its own
+  # failure is not a cleanup; the pile in NEXT TO DO #0aa is what it grows into.
+  $left = @()
+  foreach ($t in @($ta, $tb)) {
+    try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null }
+    catch { $left += "business $($t.id)" }
   }
-  "   (cleanup: proof studios, crew, events and throwaway accounts deleted)"
+  try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?name=like.$tag*" -Headers $svcH | Out-Null }
+  catch { $left += "businesses named $tag*" }
+  foreach ($u in @($ownerA, $ownerB, $dancer)) {
+    try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
+    catch { $left += "account $($u.id)" }
+  }
+  if ($left.Count) { "   (!! CLEANUP INCOMPLETE - still on production: $($left -join '; '))" }
+  else { "   (cleanup: proof studios, crew, events and throwaway accounts deleted)" }
 }
 
 if ($pass) { "`nALL SEARCH CHECKS PASSED"; exit 0 } else { "`nSEARCH CHECKS FAILED"; exit 1 }

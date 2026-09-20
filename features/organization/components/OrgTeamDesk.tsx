@@ -156,10 +156,21 @@ export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: 
                   value={m.role === "studio_owner" ? `studio_owner:${m.businessId ?? ""}` : m.role}
                   onChange={(e) => {
                     const [role, biz] = e.target.value.split(":");
-                    void run(
-                      () => setOrganizationMemberRoleAction({ memberId: m.id, role: role as OrgTeamRole, businessId: biz || null }),
-                      `${m.name} → ${role === "studio_owner" ? "Studio owner" : ROLE_WORD[role as OrgTeamRole]}`
-                    );
+                    /* ⚠ SAY THAT A SEAT MOVED (20 Sep 2026, the user's answer 2:
+                       "fix in best way"). Studio owner is not a word — it writes
+                       a real owner row on that studio, and taking it away takes
+                       the seat back. The toast said only the new label, so the
+                       one label on this screen that changes who can RUN a studio
+                       looked exactly like the three that change nothing. */
+                    const was = m.role === "studio_owner" ? m.businessName : null;
+                    const now = role === "studio_owner" ? (studios.find((s) => s.id === biz)?.name ?? null) : null;
+                    const word = role === "studio_owner" ? "Studio owner" : ROLE_WORD[role as OrgTeamRole];
+                    const note = now
+                      ? `${m.name} → Studio owner · now runs ${now}`
+                      : was
+                        ? `${m.name} → ${word} · no longer runs ${was}`
+                        : `${m.name} → ${word}`;
+                    void run(() => setOrganizationMemberRoleAction({ memberId: m.id, role: role as OrgTeamRole, businessId: biz || null }), note);
                   }}
                   style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", background: "var(--el)", color: "var(--text)", border: "none", fontFamily: "inherit" }}
                 >

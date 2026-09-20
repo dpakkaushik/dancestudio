@@ -1039,7 +1039,14 @@ test.describe.serial("DanceOS, end to end", () => {
     crewName = `E2E Crew ${stamp}`;
     await learner.goto("/crews");
     await expect(learner.getByText("You do not lead a crew yet.")).toBeVisible();
-    await learner.getByRole("link", { name: "＋ Create crew" }).click();
+    /* ⚠ "Create crew", not "＋ Create crew" (20 Sep 2026). The ＋ moved to the top
+       of the desk as the shared `DeskAddButton`, where the glyph is an
+       `aria-hidden` icon and the LABEL is the words — which is what a screen
+       reader should say, and a different accessible name from the one the dashed
+       row carried. The same slice's Rooms and Team buttons kept theirs, and the
+       only way to know which of the three moved was to DIFF the three files
+       against HEAD rather than hunt with another 12-minute run. */
+    await learner.getByRole("link", { name: "Create crew", exact: true }).click();
     await learner.waitForURL(/\/crews\/new$/);
     await learner.getByLabel("Crew name").fill(crewName);
     await learner.getByLabel("Dance style", { exact: true }).click();
@@ -1369,20 +1376,20 @@ test.describe.serial("DanceOS, end to end", () => {
        covers the rules; only a browser can cover the upload). */
     await trainer.goto("/");
     await trainer.getByTestId("hero-disc").waitFor();
-    await trainer.getByRole("button", { name: "Your pictures" }).click();
-    const profileSheet = trainer.getByRole("dialog", { name: "Your pictures" });
-    /* ⚠ TWO PICTURES, TWO EDITORS, AND EACH ONE OPENS ITSELF (19 Sep 2026, the
-       user: "edit seprate for profile pic and seprate for poster … when clicking
-       on profile pic should open the profile pic"). So this screen SHOWS both
-       and changes neither: the profile picture is pressed to view it and
-       changed behind "Change profile picture"; the posters behind "Edit
-       posters". */
-    await expect(profileSheet.getByRole("button", { name: "Open profile picture" })).toBeVisible();
-    await expect(profileSheet.getByRole("button", { name: "Edit posters" })).toBeVisible();
-    await expect(profileSheet.getByLabel("Change your photo")).toHaveCount(0);
+    /* ⚠ TWO CONTROLS, TWO JOBS, NO SHEET IN BETWEEN (20 Sep 2026, the user:
+       "Profile pic edit should just be a pencil besides and clciking on photo to
+       view it not together in one. Similarly seprate for poster photos"). Until
+       today the disc opened "Your pictures", which SHOWED both and edited
+       neither — so looking at your own photo meant reading an editor and then
+       opening a second one. The picture is a picture now: pressing it opens it,
+       and the pencil beside it is the one way to change it. */
+    await expect(trainer.getByRole("button", { name: "Your pictures" })).toHaveCount(0);
     await expect(trainer.getByTestId("hero-disc").locator("img").first()).toBeVisible();
-    /* the picture's own editor — it commits on upload, so there is no Save */
-    await profileSheet.getByRole("button", { name: "Change profile picture" }).click();
+    await trainer.getByRole("button", { name: `${trainerName} — profile picture` }).click();
+    await expect(trainer.getByLabel(`${trainerName} — picture 1 of 1`)).toBeVisible();
+    await trainer.getByRole("button", { name: "Close the picture" }).click();
+    /* the pencil, and the picture's own editor — it commits on upload, so no Save */
+    await trainer.getByRole("button", { name: "Change profile picture" }).click();
     const picSheet = trainer.getByRole("dialog", { name: "Profile picture" });
     await expect(picSheet.getByLabel("Change your photo")).toBeAttached();
     await picSheet.getByRole("button", { name: "Remove the photo" }).click();
@@ -1392,7 +1399,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByTestId("hero-disc").locator("img").first()).toBeVisible({ timeout: 20_000 });
     await expect(picSheet.getByLabel("Change your photo")).toBeAttached();
     await picSheet.getByRole("button", { name: "Done" }).click();
-    await profileSheet.getByRole("button", { name: "Done" }).click();
+    /* and the POSTERS have their own pencil, on the rail rather than the disc */
+    await trainer.getByRole("button", { name: "Edit posters" }).click();
+    await expect(trainer.getByRole("dialog", { name: "Posters" })).toBeVisible();
+    await trainer.getByRole("dialog", { name: "Posters" }).getByRole("button", { name: "Cancel" }).click();
     /* and Edit profile carries neither picture any more */
     const wordsOnly = await openEditProfile(trainer);
     await expect(wordsOnly.getByLabel("Change your photo")).toHaveCount(0);
@@ -1472,8 +1482,12 @@ test.describe.serial("DanceOS, end to end", () => {
        eye alone, and Edit profile is Settings' first tile */
     await expect(trainer.getByRole("button", { name: "Edit profile", exact: true })).toHaveCount(0);
     await expect(trainer.getByRole("link", { name: "Public view" })).toBeVisible();
-    // Edit profile: age and a bio, from Settings
+    // Edit profile: a date of birth, from Settings.
+    // ⚠ NO BIO SINCE 20 Sep 2026 (the user: "Remove bio from all profiles") — the
+    // field is off both Edit sheets and `BioBlock` is deleted. The sheet is
+    // asserted NOT to offer one, because a removal nobody checks comes back.
     await openEditProfile(trainer);
+    await expect(trainer.getByRole("dialog", { name: "Edit profile" }).getByLabel("Bio")).toHaveCount(0);
     /* A DATE OF BIRTH, NOT AN AGE (19 Sep 2026, the user: "age should always be
        DOB instead when selecting anywhere in the app"): a date 24 years and a
        day ago, so the page prints "24" whatever today is */
@@ -1481,15 +1495,13 @@ test.describe.serial("DanceOS, end to end", () => {
     dob.setFullYear(dob.getFullYear() - 24);
     dob.setDate(dob.getDate() - 1);
     await trainer.getByLabel("Date of birth").fill(dob.toISOString().slice(0, 10));
-    await trainer.getByLabel("Bio").fill("Movement is a language.");
     await trainer.getByRole("dialog", { name: "Edit profile" }).getByRole("button", { name: "Save" }).click();
     /* the sheet closes when the action returns, and the page refreshes after
        that — two round trips, 10 s on a loaded machine (14 Sep 2026). Wait for
-       the close first: while the sheet is open its textarea carries the typed
-       bio as text content, and a text match there is not the page showing it. */
+       the close first: a value read while the sheet is still open is the form's,
+       not the page's. */
     await expect(trainer.getByRole("dialog", { name: "Edit profile" })).toHaveCount(0, { timeout: 20_000 });
     await trainer.goto("/profile");
-    await expect(trainer.getByText("Movement is a language.")).toBeVisible({ timeout: 15_000 });
     await expect(trainer.getByText("24 Yrs · Pune")).toBeVisible({ timeout: 15_000 });
 
     /* ---- THE BAND IS EDITED ON HOME (19 Sep 2026, the user: "Dance style for
@@ -1604,28 +1616,31 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto("/profile");
     await expect(trainer.getByText("Artist", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 
-    // ---- the business's own words on its public page (About 10826, Since 10691, Call 10879) ----
+    // ---- the business's own words on its public page (Since 10691, Call 10879) ----
+    // ⚠ NO ABOUT SINCE 20 Sep 2026 (the user: "Remove bio from all profiles") — the
+    // textarea is off this sheet too, and the sheet is asserted not to offer one.
+    // The COLUMN is still read and simply never written, so an existing paragraph
+    // survives a Save; what is proven here is that the form cannot set one.
     await owner.goto(studioUrl);
     await owner.getByRole("button", { name: "Edit business" }).click();
     const bizEdit = owner.getByRole("dialog", { name: "Edit business" });
-    await bizEdit.getByLabel("About").fill("Where Pune comes to move.");
+    await expect(bizEdit.getByLabel("About")).toHaveCount(0);
     await bizEdit.getByLabel("Since").selectOption("2016");
     await bizEdit.getByLabel("Phone", { exact: true }).fill("+91 98765 43210");
     await bizEdit.getByRole("button", { name: "Save" }).click();
-    await expect(owner.getByText("Where Pune comes to move.")).toBeVisible({ timeout: 15_000 });
-    /* the same window as the line above: both land in the one re-render the save
-       triggers, and on 18 Sep 2026 a whole-suite run lost this segment to the
-       default five seconds here while the About line, given fifteen, had passed —
-       a green re-run alone, and nothing on this page had changed */
+    /* fifteen seconds, not the default five: this lands in the one SERVER
+       re-render the save triggers, and a whole-suite run was lost to the default
+       here on 18 Sep 2026 (green alone, nothing on the page changed) */
     await expect(owner.getByText("Since 2016")).toBeVisible({ timeout: 15_000 });
-    // a stranger reads the same words, and Call is a real tel: hand-off
+    // a stranger reads it too, and Call is a real tel: hand-off
     await learner.goto(studioUrl);
-    await expect(learner.getByText("Where Pune comes to move.")).toBeVisible();
+    await expect(learner.getByText("Since 2016")).toBeVisible({ timeout: 15_000 });
     await expect(learner.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+919876543210");
 
-    // somebody else reads the same three things on the person page — and can open the link
+    // somebody else reads the same things on the person page — and can open the link.
+    // ⚠ NO BIO ANYWHERE (20 Sep 2026): the page draws none, on any of the five kinds.
     await learner.goto(`/person/${trainerId}`);
-    await expect(learner.getByText("Movement is a language.")).toBeVisible();
+    await expect(learner.getByText("Movement is a language.")).toHaveCount(0);
     await expect(learner.getByText("24 Yrs · Pune")).toBeVisible();
     /* the tile names whose style it is (15 Sep 2026, when this page moved onto
        `IdentityHero`, which takes a `styleAria`) — a bare "Kathak" is the label
@@ -2249,6 +2264,132 @@ test.describe.serial("DanceOS, end to end", () => {
     } finally {
       await guestContext.close();
     }
+  });
+
+  test("the team by the profile you are in: two granted powers, four labels, and a label that IS a seat", async () => {
+    // ---- 20 Sep 2026: the user's answers on the team slice ----
+    // "1. permission given by Artist or Studio for managing Attendance and Refunds.
+    //  2. [relabelling away from Studio owner silently takes the seat back] Fix in
+    //  best way. 3. [no way to make somebody an owner from the studio's own desk]
+    //  Yes and should be able to switch profile for that studio from profile
+    //  switcher. 5. [associations are seats, not history] fix in best way."
+    //
+    // ⚠ Rule 9 in an e2e: one of the controls below hands out a REAL OWNER SEAT on
+    // a studio. The migration's dry run proves the door; this proves the SCREENS
+    // that reach it, which is the half that was missing when the door shipped.
+
+    // ── 1. THE TWO STANDING POWERS are the studio's to grant, and only those two.
+    // Everything else a seat carries is decided by the seat; these two are the ones
+    // an owner hands out per person, because the database keeps them per person.
+    await owner.goto(`/business/${tenantId}/staff`);
+    await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
+    const teamSheet = owner.getByRole("dialog", { name: learnerName });
+    await expect(teamSheet.getByText("WHAT YOU GRANT THEM")).toBeVisible();
+    const register = teamSheet.getByRole("switch", { name: `Run the register — ${learnerName}` });
+    const refunds = teamSheet.getByRole("switch", { name: `Settle refunds — ${learnerName}` });
+    await expect(register).toHaveAttribute("aria-checked", "false");
+    await register.click();
+    await expect(owner.getByRole("status")).toContainText("run the register on", { timeout: 15_000 });
+    await expect(register).toHaveAttribute("aria-checked", "true");
+    await expect(refunds).toHaveAttribute("aria-checked", "false");
+    /* the grant is on the ROW, not in this sheet's head: a reload is the sure way
+       back to the rows (the member sheet closes on its scrim, never on Escape) */
+    await owner.reload();
+    await owner.getByRole("button", { name: `Manage ${learnerName}` }).click();
+    await expect(register).toHaveAttribute("aria-checked", "true", { timeout: 15_000 });
+
+    // ── 2. AND THE OWNER SEAT CAN BE HANDED OVER from the studio's own desk — the
+    // half of the user's answer 3 that needed a new word in `set_member_role`. An
+    // INVITE still cannot offer it: consent first, the seat after.
+    await expect(teamSheet.getByRole("button", { name: `Make ${learnerName} Owner` })).toBeVisible();
+    await teamSheet.getByRole("button", { name: `Make ${learnerName} Owner` }).click();
+    await expect(owner.getByRole("status")).toContainText("Owner", { timeout: 15_000 });
+    /* an owner holds both powers by their seat, so the grants beside them are gone
+       rather than left as switches that cannot be turned off */
+    await expect(teamSheet.getByText("WHAT YOU GRANT THEM")).toHaveCount(0);
+    await expect(teamSheet.getByRole("button", { name: `Make ${learnerName} Owner` })).toHaveAttribute("aria-pressed", "true");
+    /* ⚠ AND BACK TO FACULTY WITHOUT CLOSING THE SHEET. An OWNER's row carries no
+       "Manage …" control at all (a studio's owner is not somebody the desk
+       manages), so reloading here would shut the only door back — the sheet that
+       is already open is the way out of the state it just created. */
+    await teamSheet.getByRole("button", { name: `Make ${learnerName} Faculty` }).click();
+    await expect(owner.getByRole("status")).toContainText("Faculty", { timeout: 15_000 });
+    await owner.reload();
+    await expect(owner.getByRole("button", { name: `Manage ${learnerName}` })).toBeVisible({ timeout: 15_000 });
+
+    // ── 3. THE ORGANIZATION'S FOUR LABELS, and the one that is not a word.
+    // The learner is this organization's confirmed Owner from the push-2 segment.
+    await owner.goto("/business/team");
+    const label = owner.getByRole("combobox", { name: `What ${learnerName} is` });
+    await expect(label).toBeVisible({ timeout: 15_000 });
+    /* all four are offered, and Studio owner names a studio rather than being one word */
+    await expect(label.getByRole("option", { name: "Owner", exact: true })).toHaveCount(1);
+    await expect(label.getByRole("option", { name: `Studio owner · ${studioName}` })).toHaveCount(1);
+    await expect(label.getByRole("option", { name: "Event team" })).toHaveCount(1);
+    await expect(label.getByRole("option", { name: "Other team member" })).toHaveCount(1);
+
+    // ⚠ NAMING THE STUDIO IS THE GRANT. The toast says so, because this is the one
+    // label on the screen that changes who can RUN something.
+    await label.selectOption(`studio_owner:${tenantId}`);
+    await expect(owner.getByRole("status")).toContainText(`now runs ${studioName}`, { timeout: 20_000 });
+
+    // THE STUDIO'S OWN DESK SAYS THEY ARE AN OWNER OF IT NOW — the seat is real,
+    // and the desk shows it the way it shows every owner: the row prints Owner and
+    // stops being something the desk manages (an owner is not managed from here).
+    await owner.goto(`/business/${tenantId}/staff`);
+    /* two owners on this desk now — the organization that made the studio, and the
+       person it just named; order-independent, because either may be drawn first */
+    await expect(owner.getByText("Admin · Owner")).toHaveCount(2, { timeout: 15_000 });
+    await expect(owner.getByRole("button", { name: `Manage ${learnerName}` })).toHaveCount(0);
+
+    // …and the organization's public page prints them under Studio owners, with the
+    // studio they run beside their name
+    await trainer.goto(`/org/${ownerId}`);
+    /* ⚠ `Group`'s title is a styled SPAN, not a heading (profile-kit) — so
+       getByRole("heading") finds nothing here, and the absence check below would
+       have passed for that reason rather than the right one. Text locators. */
+    await expect(trainer.getByText("Studio owners", { exact: true })).toBeVisible({ timeout: 15_000 });
+    const soRow = trainer.getByRole("link", { name: `Open ${learnerName}` });
+    await expect(soRow).toContainText("Studio owner");
+    await expect(soRow).toContainText(studioName);
+
+    // ── 4. THE STUDIO IS A HOME THEY CAN SWITCH TO. ⚠ Not a before/after: they were
+    // already on this studio's team as Faculty, so the row was already in their
+    // switcher — what the owner seat changes is what they may DO once they are
+    // there, which is why the studio's own home opens for them at all.
+    await learner.goto("/");
+    await learner.getByRole("button", { name: "Switch profile" }).click();
+    /* ⚠ a MENUITEM, not a link: the switcher is a menu (`aria-haspopup="menu"`),
+       so its rows carry that role however they are rendered. Read off the trace's
+       own DOM snapshot rather than guessed — the row was there all along. */
+    const studioRow = learner.getByRole("menuitem", { name: new RegExp(studioName) });
+    await expect(studioRow).toBeVisible({ timeout: 15_000 });
+    await expect(studioRow).toHaveAttribute("href", `/business/${tenantId}`);
+    await studioRow.click();
+    await learner.waitForURL(`**/business/${tenantId}`, { timeout: 20_000 });
+    await expect(learner.getByRole("heading", { name: studioName })).toBeVisible({ timeout: 15_000 });
+
+    // ── 5. A SEAT IS NOT A CLASS TAUGHT — the user's answer 5. Two groups, two
+    // different facts: where somebody is on the team, and where they have published.
+    await trainer.goto(`/person/${learnerId}`);
+    await expect(trainer.getByText("Studios associated with", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByRole("link", { name: new RegExp(`Open ${studioName}`) }).first()).toBeVisible();
+
+    // ── 6. ⚠ AND MOVING THE LABEL AWAY PUTS BACK WHAT IT REPLACED (20260920140000).
+    // Before that migration this took the whole seat away: somebody who was Faculty
+    // when the organization named them Studio owner fell off the studio's team
+    // altogether when it changed the word back — and nothing said so.
+    await owner.goto("/business/team");
+    await label.selectOption("event_team");
+    await expect(owner.getByRole("status")).toContainText(`no longer runs ${studioName}`, { timeout: 20_000 });
+    await owner.goto(`/business/${tenantId}/staff`);
+    const backRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
+    await expect(backRow).toBeVisible({ timeout: 15_000 });
+    await backRow.click();
+    await expect(teamSheet.getByRole("button", { name: `Make ${learnerName} Faculty` })).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
+    /* and the public page stops calling them a studio owner */
+    await trainer.goto(`/org/${ownerId}`);
+    await expect(trainer.getByText("Studio owners", { exact: true })).toHaveCount(0);
   });
 
   test("routines: a song and a video, added from the class page, with its usage counted", async () => {

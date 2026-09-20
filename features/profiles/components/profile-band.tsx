@@ -65,11 +65,16 @@ export const linkChip: CSSProperties = {
  *  plain, because the list a studio's owner reads already has its own control
  *  on the public page ("Followers — see who") and a second door to one list is
  *  the duplication this file exists to stop. */
-export function Figure({ n, label, testId }: { n: number; label: string; testId?: string }) {
+export function Figure({ n, label, testId }: { n: number | null; label: string; testId?: string }) {
+  /* ⚠ A NULL FIGURE PRINTS NOTHING, NEVER A ZERO (the rule `FollowFigures`
+     carried before the public pages moved onto this band, 20 Sep 2026): a count
+     a read did not answer is not the same fact as a count of none, and every
+     one of these reads is wrapped in a `.catch` so a home still opens. */
+  if (n == null) return null;
   return (
     <div>
       <span data-testid={testId} style={figureNum}>
-        {n}
+        {n.toLocaleString("en-IN")}
       </span>
       <span style={figureLabel}>{label}</span>
     </div>

@@ -9,8 +9,9 @@ import {
 } from "@/features/rooms/server-actions/rooms";
 import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
-import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
 
 /** The studio's rooms — lifted from the prototype's business settings Rooms
  *  segment (DanceOSApp.jsx:18389-18425): a card per room with its name and
@@ -108,6 +109,22 @@ export function RoomsManager({
         <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Rooms</div>
       </div>
+
+      {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026, the user's list 14) */}
+      <DeskAddButton
+        label="Add room"
+        onClick={() =>
+          void run(
+            () =>
+              createRoomAction({
+                tenantId,
+                name: `Room ${rooms.length + 1}`,
+                capacity: 20,
+              }),
+            "● Room added",
+          )
+        }
+      />
 
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -266,36 +283,9 @@ export function RoomsManager({
         )}
       </div>
 
-      <div
-        role="button"
-        tabIndex={0}
-        onKeyDown={dosKey}
-        aria-label="Add room"
-        onClick={() =>
-          void run(
-            () =>
-              createRoomAction({
-                tenantId,
-                name: `Room ${rooms.length + 1}`,
-                capacity: 20,
-              }),
-            "● Room added"
-          )
-        }
-        style={{
-          textAlign: "center",
-          padding: "12px",
-          borderRadius: 16,
-          border: `1.5px dashed ${PINK}`,
-          color: PINK,
-          fontWeight: 800,
-          fontSize: 13.5,
-          cursor: "pointer",
-          opacity: busy ? 0.6 : 1,
-        }}
-      >
-        ＋ Add room
-      </div>
+      {/* ⚠ the dashed row that stood here is the pill at the TOP of this page now
+          (20 Sep 2026) — a studio with eight rooms had to scroll past all of them
+          to add a ninth */}
       {error && (
         <div style={{ fontSize: 11.5, color: "#EF4444", fontWeight: 700, marginTop: 10 }}>{error}</div>
       )}

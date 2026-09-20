@@ -21,6 +21,7 @@ interface TenantRow {
   name: string;
   area: string | null;
   city: string | null;
+  member_no?: number | null;
   lat?: number | null;
   lng?: number | null;
   location_set_at?: string | null;
@@ -58,7 +59,7 @@ interface TeamRow {
 export async function findPublicTenant(supabase: SupabaseClient, tenantId: string): Promise<PublicTenant | null> {
   const { data, error } = await supabase
     .from("businesses")
-    .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, about, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, styles")
+    .select("id, type, name, area, city, lat, lng, location_set_at, created_at, profile_photo_path, about, founded_year, phone, contact_email, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, styles, member_no")
     .eq("id", tenantId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -92,6 +93,7 @@ export async function findPublicTenant(supabase: SupabaseClient, tenantId: strin
     /* what it SAYS it dances (19 Sep 2026) — its own field, not the styles of
        whatever it happens to have published */
     styles: Array.isArray(row.styles) ? row.styles : [],
+    memberNo: row.member_no == null ? null : Number(row.member_no),
   };
 }
 

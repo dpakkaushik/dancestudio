@@ -18,7 +18,7 @@ import { CARD, DOS_UI, GOLD, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { BizSection } from "@/features/home/components/home-kit";
 import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
-import { PicturesButton } from "@/features/profiles/components/PicturesSheet";
+import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { EyeIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
 import { HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
@@ -245,8 +245,11 @@ export default async function HomePage() {
              header are changed, so the disc is that door; the eye in the corner
              is the public page, which is what the disc opened for a few hours
              the same day. */
-          avatarSlot={<PicturesButton profile={profile} header={header} headerMax={headerMax} grad={ring} avatar={face} />}
+          avatarSlot={<PicturesButton profile={profile} grad={ring} avatar={face} />}
           shots={shots}
+          /* the posters' own pencil, at the rail's corner (20 Sep 2026) — a
+             press on a poster opens the poster; this is how the set changes */
+          headerEdit={headerMax > 0 ? <HeaderEditButton profile={profile} header={header} headerMax={headerMax} /> : null}
           /* ⚠ NO PENCIL (19 Sep 2026, the user: "Editing profile should be
              shifted to settings and should be the top option, all edit profile
              options to be removed from home and profile pages") — the corner is

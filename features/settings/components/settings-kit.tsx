@@ -16,6 +16,40 @@ export const chip = (on: boolean): CSSProperties => ({ flexShrink: 0, padding: "
    sheets' field labels got, so the Media desk's own headings are not a
    different grey from the sheet that edits the same two pictures */
 export const eyebrow: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--sub)", margin: "2px 0 8px", textTransform: "uppercase" };
+/** ＋ ADD — ONE CONTROL, EVERY DESK (20 Sep 2026, the user: "Add button for team,
+ *  room, crew to be similar to add class and event and should be on top of the
+ *  page"). Classes and Events have opened with this pill since the parity audit;
+ *  Team, Rooms and Crews each had their own dashed row further down the page, in
+ *  three different shapes. It is the `bizBtn` pill with the same ＋ those two
+ *  draw, so a desk is a desk whatever it holds.
+ *
+ *  ⚠ It takes `onClick` OR `href`, never both: Team and Rooms open a sheet in
+ *  place, Crews is a route. Three copies of one pill is how the bands drifted
+ *  earlier today, so this is the one declaration and the desks read it. */
+export function DeskAddButton({ label, href, onClick }: { label: string; href?: string; onClick?: () => void }) {
+  const inner = (
+    <>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+      {label}
+    </>
+  );
+  const style: CSSProperties = { ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 };
+  if (href) {
+    return (
+      <a href={href} aria-label={label} style={style}>
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <button type="button" aria-label={label} onClick={onClick} style={style}>
+      {inner}
+    </button>
+  );
+}
+
 export const rupees = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 export const dayWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date(iso));
 export const dateWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" }).format(new Date(iso.length === 10 ? `${iso}T00:00:00+05:30` : iso));

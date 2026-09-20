@@ -3,7 +3,8 @@ import { ToolGrid, ToolsHead, type Tile } from "@/features/home/components/home-
 import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { HeroDot, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
@@ -122,6 +123,10 @@ export function StudioHome({
           grad={RG}
           tint={RG[1]}
           eyebrow="Studio"
+          /* the number beside the word, exactly as a person's Home prints theirs
+             (20 Sep 2026, the user: "Id should be besides profile type on home
+             and profilepage both") — `businesses.member_no` is new today */
+          eyebrowSub={tenant.memberNo ? <HeroId>{memberNoWords(tenant.memberNo)}</HeroId> : null}
           /* the badge — set when a DanceOS admin approved this studio */
           verified={Boolean(tenant.verifiedAt)}
           /* the studio's own code, to be held up at its door — the app's one share sheet (7381, 7424) */

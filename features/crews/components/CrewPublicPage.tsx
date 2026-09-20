@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
-import { FollowFigures } from "@/features/profiles/components/FollowFigures";
+import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { memberNoWords } from "@/types/profile";
 import { EntityMark, Group, TYPE, smallBox } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -99,6 +100,7 @@ export function CrewPublicPage({
           grad={RG}
           tint={RC}
           eyebrow="Crew"
+          eyebrowSub={crew.memberNo ? <HeroId>{memberNoWords(crew.memberNo)}</HeroId> : null}
           verified={false}
           share={<ProfileShare path={path} name={crew.name} />}
           /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): since push 2 THIS crew's
@@ -117,15 +119,22 @@ export function CrewPublicPage({
               <span>{crew.city}</span>
             </>
           }
-          styles={[crew.style]}
-          styleAria={(s) => `${s} — the crew's style`}
+          /* ⚠ the BAND draws the style (20 Sep 2026) — the hero renders its own
+             `styles` prop before `children`, and the order is figures → styles */
+          styles={[]}
           avatar={photoUrl(crew.photo)}
           avatarAlt={crew.name}
           shots={shots}
-        />
-
-        {/* ── THE FIGURES (19 Sep 2026): a crew follows nobody, so followers alone; a crew has no About ── */}
-        <FollowFigures followers={followers} />
+        >
+          {/* ── THE SAME BAND HOME WEARS (20 Sep 2026). A crew follows nobody, so
+              followers alone; `crews` has no `socials` column, so no links row —
+              an empty rail is not a row. ── */}
+          <EntityBand
+            figures={<Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />}
+            styles={[crew.style]}
+            styleAria={(s) => `${s} — the crew's style`}
+          />
+        </IdentityHero>
 
         {/* ── what you can do here depends on who you are to the crew ── */}
         <div style={{ marginTop: 12 }}>

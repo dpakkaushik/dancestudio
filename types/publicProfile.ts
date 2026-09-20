@@ -10,6 +10,8 @@ export interface PublicTenant {
   name: string;
   area: string | null;
   city: string | null;
+  /** the business's own account number, beside its type (20 Sep 2026) */
+  memberNo?: number | null;
   /** WHERE IT IS (11 Sep 2026). Until an owner opens the location picker these
    *  are the CITY CENTROID `create_business_with_owner` defaulted to, which is
    *  why every studio in a city used to sit on the same point and Discover's

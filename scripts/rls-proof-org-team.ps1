@@ -209,8 +209,19 @@ try {
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$studioId" -Headers $svcH -Body (@{ visibility = "unlisted" } | ConvertTo-Json) | Out-Null
   $assocUnlisted = Rpc-Rows (Api $fan.token) "person_associations" @{ p_user_id = $artist.id }
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$studioId" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
-  Check 11 "A front-desk seat is not a public association ($($assocStaff.Count)); an unlisted studio is named to nobody ($($assocUnlisted.Count))" (
-    ($assocStaff.Count -eq 0) -and ($assocUnlisted.Count -eq 0))
+  # !! AND THE SAME RULE AT THE CEILING, WHICH IS WHERE IT WAS NOT KEPT (20 Sep 2026).
+  # `public_organization_team` has always left `member` out; the TABLE POLICY beside
+  # it did not, so a plain GET /organization_members handed a stranger the
+  # front-desk seat the page hides - found by scripts/stranger-smoke.ps1 on its
+  # first run, closed by 20260920150000. RLS IS THE CEILING: a rule kept only in
+  # the definer read is kept only at the door you went in by.
+  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "member"; p_business_id = $null } | Out-Null
+  $anonMembers = Get-Rows $anonH "organization_members?org_id=eq.$($org.id)&select=role"
+  $anonFrontDesk = Get-Rows $anonH "organization_members?org_id=eq.$($org.id)&role=eq.member&select=role"
+  $ownMembers = Get-Rows (Api $org.token) "organization_members?org_id=eq.$($org.id)&role=eq.member&select=role"
+  Check 11 "A front-desk seat is not a public association ($($assocStaff.Count)); an unlisted studio is named to nobody ($($assocUnlisted.Count)); a STRANGER reads $($anonFrontDesk.Count) front-desk rows off the table itself while the organization reads its own ($($ownMembers.Count))" (
+    ($assocStaff.Count -eq 0) -and ($assocUnlisted.Count -eq 0) -and
+    ($anonFrontDesk.Count -eq 0) -and ($anonMembers.Count -eq 0) -and ($ownMembers.Count -ge 1))
 
   # -- 12. A PLAIN USER'S SEATS ARE NOT A STRANGER'S TO READ ---------------------
   Insert "business_members" @{ business_id = $studioId; user_id = $fan.id; member_role = "trainer"; created_by = $org.id; updated_by = $org.id } | Out-Null

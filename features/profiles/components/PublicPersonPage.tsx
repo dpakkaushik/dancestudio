@@ -8,11 +8,10 @@ import type { PublicPerson } from "@/repositories/publicPerson";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import { KIND_BADGE, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
-import { BioBlock } from "./BioBlock";
+import { EntityBand, Figure } from "./profile-band";
 import { ActionRow, CallButton, MailButton } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
-import { FollowFigures } from "./FollowFigures";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
@@ -135,18 +134,29 @@ export function PublicPersonPage({
               )
             ) : null
           }
-          /* the styles they dance (DosStyleRow 1767) */
-          styles={profile.styles}
-          styleAria={(s) => `${s} — a style ${profile.fullName} dances`}
+          /* ⚠ the BAND draws the styles (20 Sep 2026) — see the note below */
+          styles={[]}
           avatar={face}
           avatarAlt={profile.fullName}
           shots={shots}
-        />
-
-        {/* ── THE FIGURES, THEN THE BIO (19 Sep 2026): one order on every public page.
-            A number is not a public handle, so WhatsApp stays off the links (10778) ── */}
-        <FollowFigures followers={person.followers} following={person.following} />
-        <BioBlock about={profile.about} links={profile.socials} hideWhatsApp accent={RC} />
+        >
+          {/* ── THE SAME BAND HOME WEARS (20 Sep 2026, the user: "Upper layer of
+              Home tab to exactly the same used for profile pages for all kinds of
+              profiles"): figures → styles → links, inside the hero.
+              ⚠ NO BIO — "Remove bio from all profiles" — and a person's WhatsApp
+              stays off the links, because a number is not a public handle (10778). ── */}
+          <EntityBand
+            figures={
+              <>
+                <Figure n={person.followers} label={person.followers === 1 ? "Follower" : "Followers"} />
+                <Figure n={person.following} label="Following" />
+              </>
+            }
+            styles={profile.styles}
+            styleAria={(s) => `${s} — a style ${profile.fullName} dances`}
+            socials={profile.socials.filter((l) => l.platform !== "WhatsApp")}
+          />
+        </IdentityHero>
 
         {/* ── FOLLOW · FOLLOWING — never on your own page ── */}
         {!isMe && canFollow ? (
@@ -202,7 +212,11 @@ export function PublicPersonPage({
                 photo={a.photoPath ? photoUrl(a.photoPath) : null}
                 title={a.tenantName}
                 sub={a.city ?? ""}
-                right={MEMBER_ROLE_WORD[a.role]}
+                /* ⚠ a seat they have LEFT says so rather than disappearing
+                   (20 Sep 2026) — the years somebody taught somewhere are part
+                   of who they are, and a page that forgets them the day they
+                   leave is not a record */
+                right={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
               />
             ))}
           </Group>
@@ -219,7 +233,7 @@ export function PublicPersonPage({
                 photo={a.photoPath ? photoUrl(a.photoPath) : null}
                 title={a.tenantName}
                 sub={a.city ?? ""}
-                right={MEMBER_ROLE_WORD[a.role]}
+                right={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
               />
             ))}
           </Group>

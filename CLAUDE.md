@@ -2,7 +2,223 @@
 
 ## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE TEAM, BY THE PROFILE YOU ARE IN — AND TWO DEFECTS THE LEFTOVER PILE WAS HIDING (20 Sep 2026, latest) — ⚠ TWO MIGRATIONS APPLIED (Rule 9: one grants a REAL owner seat)
+> ### TWO GRANTED POWERS, A NUMBER, A HISTORY — AND THE FIVE OWED THINGS PAID (20 Sep 2026, latest) — ⚠ TWO MIGRATIONS APPLIED (Rule 9: both touch who may run a studio)
+> The user answered the "incomplete things" list point by point and then said
+> *"run all and push to live"*: *"1. permision given by Artist or Studio for
+> managing Attendance and Refunds. 2. Fix in best way. 3. Yes and should be able
+> to switch profile for that studio from profile switcher. 4. Only to be used for
+> managing all events according to permissions assigned by the organization.
+> 5. fix in best way. fix all from 6- 10. 11. Remove bio from all profiles.
+> 12. Profile pic edit should just be a pencil besides and clciking on photo to
+> view it not together in one. Similarly seprate for poster photos in profiles.
+> 12. Upper layer of Home tab to exactly the same used for profile pages for all
+> kinds of profiles."* Then: *"13. Id should be besides profile type on home and
+> profilepage both."* And: *"14. Add button for team, room, crew to be similar to
+> add class and event and should be on top of the page. 15. Manage Membership and
+> classes to be first option in order and when opening the tile."*
+> * **1 · THE TWO POWERS ARE GRANTED, NOT IMPLIED — `20260920130000_powers_a_number_and_a_history`, APPLIED.**
+>   `business_members.can_attendance` / `can_refunds` + `set_member_powers`
+>   (owner-only; **refused for an owner**, who holds both by their seat — a switch
+>   that cannot be turned off is not a switch). `can_run_register_for_class` and
+>   `can_settle_refunds_for_class` each gained a THIRD branch reading the standing
+>   grant, **with their two existing branches copied verbatim** (the per-class
+>   claim and the owner). A grant is only ever as live as the seat behind it.
+>   The Team desk's member sheet carries **WHAT YOU GRANT THEM**, two switches.
+> * **3 · AND THE OWNER SEAT CAN BE HANDED OVER FROM THE STUDIO'S OWN DESK.**
+>   `set_member_role` admits `'owner'` now — and closing that door's other half
+>   found **a hole that had been open the whole time**: the old body refused
+>   `p_role = 'owner'` but never looked at the TARGET, so
+>   `set_member_role(studio, the_only_owner, 'trainer')` would have **orphaned a
+>   studio**. It refuses the last owner now. ⚠ An INVITE still cannot offer the
+>   seat (`labelsFor` is deliberately NOT `rolesFor`, and typecheck caught the one
+>   schema that would have let it — see below).
+> * **4 · AN ORGANIZATION'S EVENT TEAM MAY RUN ITS EVENTS.** `can_run_events`
+>   gained a branch for a confirmed `owner`/`event_team` on the organization's own
+>   HOSTING row (`type = 'org'`) — never its studios, which are a different thing
+>   to be able to run.
+> * **5 · AN ASSOCIATION REMEMBERS A SEAT THAT ENDED, but only where it was real.**
+>   `person_associations` gained `ended`, and an ended seat is returned **only
+>   where a confirmed `class_people` row proves they actually taught there** — so
+>   two years of teaching survives leaving, and a seat somebody held for a day and
+>   never used does not become a permanent claim on somebody else's page.
+> * **13 · A BUSINESS AND A CREW HAVE A NUMBER.** `businesses.member_no` and
+>   `crews.member_no` (identity columns, so every existing row was numbered), beside
+>   the type word on Home and on the public page, exactly as a person's has been.
+>   ⚠ **`public_artist` was deliberately NOT touched**: 20260919090000 took a
+>   person's account number OUT of their public face on purpose, and giving a
+>   BUSINESS a public number is not a reason to give a PERSON one back.
+> * ⚠⚠ **2 · AND THE ONE THE E2E WOULD HAVE EXPOSED — `20260920140000_a_grant_remembers_what_it_replaced`, APPLIED.**
+>   The user's "fix in best way" was about the SILENT part, and the toast now names
+>   the studio (*"→ Studio owner · now runs X"* / *"· no longer runs X"*). Writing
+>   the test found the part underneath it: the grant seats somebody by **updating
+>   whatever `business_members` row they already have**, and the revoke assumed the
+>   grant had CREATED that row and soft-deleted it — so **a studio's Faculty who
+>   was named Studio owner and later moved to Event team fell off the studio's team
+>   altogether**, losing the seat that reached their classes, their register and
+>   their pay. `organization_members.prior_member_role` is what the grant writes
+>   down and the revoke puts back; null still means "the grant made this seat", and
+>   then ending it is right. Dry run **10/10 rolled back** — including that moving
+>   a person from studio A to studio B gives A's trainer seat back and B the owner
+>   seat, that the never-the-last-owner rule still holds, and that anon's
+>   executable set (46), the policy count (102) and **every function ACL** are
+>   identical.
+> * ⚠⚠ **AND THE SMOKE SCRIPT PAID FOR ITSELF ON ITS FIRST RUN — A STRANGER COULD
+>   READ A FRONT-DESK SEAT. `20260920150000_a_front_desk_seat_is_not_public`,
+>   APPLIED.** Rule 9: RLS. The user's answer on the organization's labels (R36)
+>   is *"Other team members do not appear on somebody's public profile"*, and
+>   `public_organization_team` keeps it exactly (`where m.role <> 'member'`). The
+>   TABLE POLICY beside it did not: `confirmed AND org_is_public(org_id)`, with no
+>   role filter — so a plain `GET /rest/v1/organization_members` handed anybody
+>   every confirmed row, `member` included, with the person's user_id beside it.
+>   **One such row was live on production.** The promise was kept by the SCREEN and
+>   not by the DATABASE — **RLS IS THE CEILING**, this file's oldest lesson, and a
+>   rule that lives only above it holds only at the door you went in by. The fix is
+>   the one clause the definer read already had; the organization still reads its
+>   whole team and a person their own rows, no grant moved, the policy count is
+>   unchanged. Dry run **5/5 rolled back** (a stranger read the member row BEFORE
+>   and none AFTER, both other policies intact). `rls-proof-org-team` check 11 now
+>   asserts it off the TABLE as well as through the read, so the suite keeps it
+>   closed; `stranger-smoke` check 11 is the go-live half.
+> * **11 · THE BIO IS OFF EVERY PROFILE.** Both Edit sheets lost their About
+>   textarea and `BioBlock` is deleted. ⚠ The column is READ but never written
+>   (`const about = tenant.about ?? ""`), so a Save cannot wipe a paragraph
+>   somebody already has — taking a field off a form must not silently delete what
+>   it used to hold.
+> * **12a · THE PENCIL IS BESIDE THE PICTURE, AND THE PICTURE OPENS ITSELF.**
+>   Pressing the disc opens the profile picture full size; a 28px pencil on its
+>   corner opens the editor. The posters rail got its own pencil
+>   (`HeaderEditButton`) and each poster opens in the lightbox. `PicturesSheet`
+>   gained `onlyAvatar` / `onlyPosters`, so the two halves are two doors rather
+>   than one sheet holding both.
+> * **12b · HOME'S UPPER LAYER IS THE PROFILE PAGES' UPPER LAYER, ON ALL FIVE KINDS.**
+>   The four public pages moved onto `EntityBand` as hero children (`styles={[]}`
+>   on the hero, because `IdentityHero` draws its own styles row BEFORE its
+>   children and the band would otherwise be drawn twice). `FollowFigures` is
+>   deleted; its "never a zero that lies" rule moved INTO `Figure`, which renders
+>   nothing for a null count.
+> * **14 · ＋ ON TOP, FOR TEAM, ROOMS AND CREWS** — one shared `DeskAddButton` in
+>   `settings-kit`, the same pill and the same ＋ Classes and Events draw, at the
+>   TOP of each desk; the dashed rows at the foot are gone.
+> * **15 · MANAGE OPENS FIRST** — `/my-classes` defaults to Manage for anybody who
+>   has a page to manage, and Memberships opens on what you SELL when you sell
+>   anything.
+> * **6–10 · THE FIVE OWED ENGINEERING ITEMS, PAID:**
+>   * **6 · `pg` is in the scratchpad**, so a rolled-back dry run is possible again
+>     — #0ac's gap. Both migrations this session had one, and the first one caught
+>     `cannot change return type of existing function` before it reached production.
+>   * **7 · A new e2e segment** drives the whole slice: the two granted powers, the
+>     owner seat handed over from the studio's own desk, the four organization
+>     labels, the grant writing a real seat, the public page printing it with the
+>     studio, the switcher, the associations, and the relabel putting the prior
+>     seat back.
+>   * **8 · `scripts/stranger-smoke.ps1` EXISTS NOW** — two go-live runbooks had
+>     named it since 19 Sep and it had never been written. Ten checks with no
+>     session at all: the front door, the three open pages, the four public
+>     profiles, **a plain user's still not public**, an artist's face carrying
+>     neither account number nor age, what 20 Sep widened, and four tables a
+>     stranger reads nothing from.
+>   * **9 · `scripts/rls-proof-memberships.ps1`, 12/12 first run** — #0a1's gap, and
+>     the one that mattered most: **spending a pass had no cover on the migrated
+>     schema at all**. It proves the team refusal in words, the cap, one live pass
+>     each, a priced pass being INERT until paid, the two class switches, the seat
+>     and the units moving together, an hours pass against a three-hour class, the
+>     unit coming back on the learner's own cancel, and the rival reading nothing.
+>   * **10 · `New-Studio` sweeps its own earlier runs** — narrowly: only businesses
+>     THIS token's account owns, only ones sharing this call's name prefix, only
+>     ones over two hours old, list read as the owner so RLS scopes it, every
+>     failure swallowed.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · both dry runs rolled
+>   back (20/20 and 10/10) · both applied, schema cache reloaded, the three new
+>   columns and the re-cut function read back live · **the proof suite 30/32, and
+>   both reds green re-run alone — so 32/32 across the runs** · the new memberships
+>   proof 12/12 · `rls-proof-org-team` 13/13 as regression cover on the migrated
+>   schema.
+> * ⚠⚠ **AND THE NEAR-MISS WORTH KEEPING: WIDENING ONE SCHEMA WOULD HAVE LET AN
+>   INVITE HAND OUT THE OWNER SEAT.** `roleSchema` was shared by the invite action
+>   and the relabel action. Adding `owner` to it — the obvious edit — would have
+>   made `invitePersonAction` offer a seat to somebody who has agreed to nothing,
+>   and the RPC's own refusal would then have been the only thing left. **Typecheck
+>   caught it at the invite call site**, and they are two schemas now with the
+>   reason written between them. The same split is why `labelsFor` exists beside
+>   `rolesFor` rather than replacing it.
+> * ⚠ **AND TWO PROOF REDS, ONE STALE AND ONE MINE.** (1) `rls-proof-staff` check
+>   12 asserted *"promoting to owner is refused"* — the rule this slice
+>   deliberately replaced, so it was OUT OF DATE rather than wrong. Re-cut to the
+>   new truth, and **its first re-cut was wrong too**: it expected the first owner
+>   to step down to trainer, and the database refused because that owner is an
+>   ORGANIZATION (R11, `guard_person_only`). **Two independent reasons an owner may
+>   not be demoted, and only a call tells them apart** — the check now proves both.
+>   (2) `rls-proof-search` failed on a count because **five businesses, three of
+>   them LISTED ON DISCOVER, were left by an earlier run whose cleanup hit a 500 on
+>   its first delete and skipped everything after it** — `$ErrorActionPreference`
+>   is Stop, so one failure took the whole `finally` with it. Every delete stands
+>   on its own now and an incomplete cleanup SAYS what it left. **A cleanup that
+>   cannot survive its own failure is not a cleanup** — the 20 Sep lesson's cousin,
+>   and the same pile.
+>   ⚠ **The 500 itself is not explained**: the same five rows deleted cleanly by
+>   hand minutes later, and the proof has been green twice since. Recorded rather
+>   than claimed as fixed.
+> * ⚠⚠ **AND A REAL PRODUCT BUG THE E2E FOUND, IN THE CONTROL THIS SLICE ADDED:
+>   THE POSTERS' PENCIL COULD NOT BE PRESSED BY ANYBODY.** It is absolutely
+>   placed, and `HeroRail` had **no positioned ancestor** — so it resolved against
+>   something further up the page and landed at `top: 12` of THAT, which is behind
+>   the fixed top bar. The **Settings gear intercepted every press**, so the one
+>   control that changes the posters was dead on Home for a test and for a person
+>   alike. One `position: relative` on the rail, and the corner is the rail's own
+>   (bottom-right, where the disc's pencil already is, so the two read as a pair).
+>   **The tell was in the trace and nowhere else**: it arrived as a 120-second
+>   timeout wearing a crash's words — *"Target page, context or browser has been
+>   closed"*, the 20 Sep phrase again — and only the call log's
+>   *"…intercepts pointer events"* named the element on top of it. **An absolutely
+>   positioned control needs its container to say `position: relative`, and the
+>   only thing that finds it is a click.**
+> * ⚠ **AND ONE ACCESSIBLE NAME CHANGED THAT I DID NOT INTEND:** the shared
+>   `DeskAddButton` made the crews link read **"Create crew"** where the dashed
+>   row had read **"＋ Create crew"** — the ＋ is an `aria-hidden` icon now, which
+>   is better for a screen reader and a different object for a locator. Rooms
+>   ("Add room") and Team ("Invite staff or team member") kept theirs, and **the
+>   way to know which of the three moved was to DIFF the three files against
+>   `HEAD`** rather than hunt with another twelve-minute run — the 20 Sep lesson,
+>   applied the same day rather than re-learnt.
+> * ⚠ **AND THE NEW SEGMENT COST FOUR RUNS, EVERY ONE OF THEM A LOCATOR AND NONE
+>   OF THEM THE PRODUCT — except the first, which was the pencil above.** (1) An
+>   owner's row carries no "Manage …" control, so reloading after promoting
+>   somebody shuts the only door back. (2) `Group`'s title is a styled SPAN, so
+>   `getByRole("heading")` finds nothing — and the ABSENCE check further down
+>   would then have passed for the wrong reason, which is the worse half. (3) The
+>   profile switcher's rows are **menuitems**, not links, because the switcher is
+>   a menu: the studio was in the list the whole time. **Each was answered by the
+>   TRACE's own DOM snapshot in one read**, and each cost twelve minutes because
+>   the segment was written end to end before any of it was run. A new segment is
+>   cheaper built a few assertions at a time against a running server.
+> * ⚠⚠ **AND I BROKE THIS FILE'S OWN RULE 16 AGAIN, FOUR DAYS AFTER IT WAS
+>   WRITTEN — `Get-Content` + `WriteAllLines` TO DELETE A COMPONENT.** Removing
+>   the unreachable combined sheet was a line-range deletion, so a two-line
+>   PowerShell round trip looked like the cheap way to do it. PowerShell 5.1 read
+>   the UTF-8 file as ANSI and wrote it back as UTF-8, **double-encoding every em
+>   dash and every ⚠ in the file** — the 18 Sep disaster exactly, in a new coat.
+>   Caught in the same breath (the echoed line came back as `â€"`), and repaired
+>   rather than reverted, because `git checkout` would have taken the day's work
+>   on that file with it: the damage is a pure cp1252↔UTF-8 round trip, so
+>   decoding each character back to a cp1252 byte and re-reading the buffer as
+>   UTF-8 is exact. **Verified afterwards rather than assumed** — 0 mojibake
+>   sequences, 10 em dashes and 2 ⚠ intact, line endings matching a file the Edit
+>   tool had touched, then typecheck and lint. **There is no file size at which
+>   the round trip is safe. Use the Edit tool, or read the bytes and write the
+>   bytes.**
+> * ⚠ **AND THE REMOVAL FOUND A THIRD THING: taking the combined screen away took
+>   the only place a person could read HOW MANY POSTERS THEY MAY HOLD** — the
+>   `0 / 1` counter lived there and the posters editor had none. It is on the
+>   editor now, with "The Artist plan makes it five" beside it. **A rule nobody
+>   can see is a rule they meet as a refusal**, and the shoot script's own check
+>   is what noticed the number had gone.
+> * ⚠ **AND `Expect-Fail` HIDES THE ONE THING YOU NEED WHEN A CALL THAT SHOULD
+>   SUCCEED DOES NOT.** The staff proof died on a bare *"(400) Bad Request"* with
+>   no line and no reason, and the diagnosis cost more than the fix. `Why-Fail`
+>   hands the message back — `""` means it went through — and check 12 now prints
+>   the database's own sentence either way.
+
+> ### THE TEAM, BY THE PROFILE YOU ARE IN — AND TWO DEFECTS THE LEFTOVER PILE WAS HIDING (20 Sep 2026) — ⚠ TWO MIGRATIONS APPLIED (Rule 9: one grants a REAL owner seat)
 > The user: *"apply all and fix remaining things and push to live. give me list of
 > incomplete things."* Three things had been waiting on their word, and applying
 > them in order is what made the third possible.
@@ -4046,9 +4262,17 @@ summary; the report has the evidence.
    around; the second attempt, after the user's explicit authorization, went
    through. **It regrows about one row per interrupted run**, and now that
    deleting a studio actually works, `paid-webhook`'s own self-sweep clears its
-   nine; the proof scripts still leak one studio each when a run is killed, and
-   the honest fix is the same trick inside `New-Studio` — one edit, now that
-   studio creation lives in one file. The commands, for the next time:
+   nine.
+   ⚠ **`New-Studio` sweeps its own now (20 Sep 2026)** — but only where it CAN:
+   businesses this token's account owns, sharing this call's name prefix (the
+   name with its trailing stamp taken off), over two hours old, the list read as
+   the owner so RLS scopes it. That covers the phone-based proofs, which reuse
+   two accounts and were the whole pile. It does NOT cover a proof whose studio
+   names carry no trailing stamp (`rls-proof-search` names them "Zq060518 Studio
+   Two"), and it cannot cover a fresh throwaway owner per run, which is most
+   email-based proofs — their leftovers belong to accounts that no longer exist.
+   **For those the sweeper below is still the only answer**, and #0af is the shape
+   of the leak that made five of them. The commands, for the next time:
 ```
    node scripts/cleanup-proof-leftovers.js --show-kept   # dry run, and READ WHAT STAYS
    node scripts/cleanup-proof-leftovers.js --apply       # soft delete only - deleted_at, one UPDATE back
@@ -4056,8 +4280,20 @@ summary; the report has the evidence.
    ⚠ **Never while a proof suite or the e2e is running** — the kept set includes
    the `earnproof-*` / `staffproof-*` rows of whatever is in flight.
 
-0ac. **⚠ `20260920100000_the_team_by_profile_type` WENT IN WITHOUT A ROLLED-BACK
-   DRY RUN, AND THAT IS A GAP, NOT A STYLE (20 Sep 2026).** ⚠ Rule 9: one of its
+0ac. **~~`20260920100000` WENT IN WITHOUT A ROLLED-BACK DRY RUN~~ — ✅ THE TOOL IS
+   BACK, 20 Sep 2026.** `npm i -D pg` in the session scratchpad, which is all that
+   was ever missing, and both migrations since have had one: `20260920130000`
+   **20/20** and `20260920140000` **10/10**, each asserting the ACL multiset and
+   anon's executable set as well as the behaviour. It paid for itself twice on the
+   first attempt — `cannot change return type of existing function` (a RETURNS
+   TABLE gaining a column needs a `drop function` first) and a re-typed
+   `public_organization` that differed from the original in EIGHT ways. **Install
+   it before the next migration, not after.** The block below is kept as the
+   record of what a missing dry run costs.
+   ⚠ `20260920100000` itself still has no dry run, and cannot get one now that it
+   is applied; `rls-proof-org-team` (13/13) is its standing cover.
+
+0ac-old. **⚠ WHAT THE GAP LOOKED LIKE (20 Sep 2026).** ⚠ Rule 9: one of its
    doors grants a REAL owner seat on a studio. Every migration since 16 Sep has
    been applied inside `BEGIN … ROLLBACK` first, through a `pg` client in the
    session scratchpad — **and there is no `pg` module in this tree**, so this one
@@ -4087,12 +4323,21 @@ summary; the report has the evidence.
    `public_organization_team` returns (Owner, then Studio owners, then Event
    team — asserted only by the function's own `order by`).
 
-0ae. **THE TEAM SLICE ALSO OWES ITS E2E SEGMENT.** The happy path drives the
-   studio's Team desk but nothing drives an organization's four labels, the
-   studio-owner grant, or the two new groups on a person's page. A segment
-   should: ask somebody as Event team, have them accept, relabel them Studio
-   owner naming a studio, and then read that studio's OWN team desk and find
-   them as an owner — which is the whole of the user's answer in one story.
+0ae. **~~THE TEAM SLICE ALSO OWES ITS E2E SEGMENT~~ — ✅ WRITTEN 20 Sep 2026**
+   ("the team by the profile you are in", after the push-2 segment). It drives the
+   two granted powers and their absence on an owner; the owner seat handed over
+   from the studio's own desk; all four organization labels offered, with Studio
+   owner naming the studio; the grant writing a REAL seat (the studio's desk reads
+   two owners and stops offering to manage the new one); the public page printing
+   them under Studio owners WITH the studio; the switcher; "Studios associated
+   with" on their page; and the relabel away putting the prior seat back.
+   ⚠ **Two locators had to be written around the app's own rule** that an owner's
+   row carries no "Manage …" control: the sheet that is already open is the way
+   out of the state it just created, and the desk's "two owners" is asserted by
+   counting the row word rather than by re-opening a sheet that no longer opens.
+   ⚠ **Still not driven:** a plain user's Assistant seat and the powers reaching a
+   real register (the segment asserts the grant and its persistence, not a
+   check-in performed with it).
 
 
 0. **~~APPLY `20260919190000_a_studio_says_what_it_dances_and_a_team_has_an_order`~~
@@ -4166,31 +4411,45 @@ summary; the report has the evidence.
    a deploy, not a rewrite: a billed Google Cloud project with the three APIs
    enabled and a referrer-restricted browser key.
 
-0a0. **⚠ `scripts/stranger-smoke.ps1` DOES NOT EXIST**, and the go-live sequence
-   in #0s and #0r names it. It was described on 19 Sep 2026 and never written —
-   or was written outside the repo. Until it exists, the live smoke is four
-   `Invoke-WebRequest` probes by hand (`/` 307, `/login` · `/discover` ·
-   `/legal/terms` 200) plus whatever the slice itself widened, which for
-   memberships was a stranger's read of a studio's page. **Write it, or take its
-   name out of both sequences** — a command in a runbook that is not there is
-   worse than no runbook.
+0a0. **~~`scripts/stranger-smoke.ps1` DOES NOT EXIST~~ — ✅ WRITTEN 20 Sep 2026.**
+   Ten checks with no session at all: `/` 307 and `/login` 200; Discover, Terms
+   and Privacy open; a listed studio's, a public organization's, a crew's and an
+   artist's pages public and each carrying the thing that makes it that page; **a
+   plain user's still NOT public**; an artist's public face carrying neither
+   account number nor age (the 19 Sep privacy decision, kept — and re-checked now
+   that a BUSINESS has a number); the two things 20 Sep widened; and four tables
+   (`business_members`, `organization_members`, `membership_passes`, `payments`)
+   a stranger reads nothing from. It takes `-Site` so the same script smokes
+   `:3100` and the deployment. ⚠ Every check DEGRADES to a named failure when the
+   database has nothing of that kind to smoke, rather than passing vacuously.
 
-0a1. **⚠ THE MEMBERSHIPS SLICE OWES A `.ps1` PROOF, AND IT IS THE ONE PIECE OF
-   COVER THAT IS MISSING.** `20260919170000_memberships` was proven by a
-   rolled-back dry run (31/31) and the app side by the happy path's fifteenth
-   segment — but there is no `rls-proof-memberships.ps1`, so nothing re-checks it
-   on the migrated schema the way the other 29 proofs cover their slices, and
-   nothing at all covers **spending a pass** outside that one dry run. What it
-   should assert, as real roles: a person who is on the seller's team is refused
-   in words; the cap refuses the (N+1)th pass; a second live pass of the same
-   membership is refused; a free one is ACTIVE and a priced one `pending_payment`
-   with no place taken; `passes_for_session` offers nothing for a class whose two
-   switches are off, and the studio's pass for one whose `allows_studio_memberships`
-   is on; `book_with_membership` takes a seat AND the units under the class's own
-   lock, refuses a pass with too few units left, and refuses somebody else's pass;
-   **cancelling the seat puts the unit back**; a wrong-amount capture refunds and
-   leaves the pass unpaid; a rival business reads no holder and no usage. Add it
-   to `scripts/run-proofs.ps1`'s set.
+0af. **⚠ THE 500 THAT LEFT FIVE LISTED STUDIOS ON PRODUCTION IS NOT EXPLAINED**
+   (20 Sep 2026). `rls-proof-search`'s cleanup answered 500 on a delete, and
+   because `$ErrorActionPreference` is Stop the rest of its `finally` never ran —
+   five businesses left, three LISTED, which then made the NEXT run of that proof
+   fail a count. The `finally` is per-delete now and says what it left (fixed),
+   but the 500 itself never reproduced: the same five rows deleted cleanly by hand
+   minutes later and the proof has been green twice since. **If it returns, the
+   thing to capture is the response BODY** — PostgREST puts the constraint name in
+   it, and that is what turned the 20 Sep payments defect from a mystery into one
+   line. Worth sweeping the other proofs' `finally` blocks into the same shape
+   while somebody is in there.
+
+0a1. **~~THE MEMBERSHIPS SLICE OWES A `.ps1` PROOF~~ — ✅ WRITTEN 20 Sep 2026,
+   `scripts/rls-proof-memberships.ps1`, 12/12 on its first real run** (the runner
+   globs `rls-proof-*.ps1`, so it is in the set already). It covers what the dry
+   run covered and nothing had re-checked since: only an owner sells; the team
+   refusal IN WORDS (the one that reads as a broken button when it is a dash); the
+   cap and the count that cannot be cut below what is sold; one live pass each; a
+   free pass ACTIVE at once and a priced one **inert** until the money lands; the
+   two class switches read by `passes_for_session`; the seat and the units moving
+   together; somebody else's pass and an unpaid one both refused; an HOURS pass
+   against a three-hour class (3 needed, `enough=false`); **the unit coming back on
+   the learner's OWN cancel**, through the trigger; the rival reading no holder, no
+   usage and no pass; and no direct writes to any of the three tables.
+   ⚠ **Still not covered anywhere:** a wrong-amount capture refunding and leaving
+   the pass unpaid (it needs the webhook rail, which `rls-proof-event-money`
+   exercises for events and nothing exercises for a membership).
 
 0a2. **THE SECOND HALF OF "MEMBERSHIPS IN EARNINGS", IF THE USER WANTS IT.** The
    money is counted (a membership payment carries `business_id`, so gross, the
@@ -4680,6 +4939,28 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **TWO GRANTED POWERS, A NUMBER, A HISTORY — AND THE FIVE OWED THINGS PAID —
+  20 Sep 2026, no step number ⚠ (Rule 9: both migrations touch who may run a
+  studio) — TWO MIGRATIONS APPLIED (dry runs 20/20 and 10/10, both rolled back
+  first).** The user's answers to the "incomplete things" list, in their order:
+  Attendance and Refunds became **grantable powers** an owner hands out per
+  person (`set_member_powers`, refused for an owner who holds both by their
+  seat); the **owner seat can be handed over from the studio's own desk**, which
+  found and closed a hole where the ONLY owner could be demoted and a studio
+  orphaned; an organization's **Event team may run its events** (its hosting row,
+  never its studios); an **association remembers a seat that ended** where a
+  confirmed class proves it was real; a **business and a crew have a number**
+  beside their type word (a person's public face deliberately still has none);
+  the **Bio is off every profile** (read, never written, so nothing is wiped);
+  the **pencil is beside the picture and the picture opens itself**, separately
+  for the disc and the posters; **Home's upper layer is the profile pages'**, on
+  all five kinds; **＋ on top** for Team, Rooms and Crews; **Manage opens first**
+  on classes and memberships. ⚠ And the second migration is the one the test
+  found: granting Studio owner over an EXISTING seat and then relabelling away
+  used to remove somebody from the studio's team altogether — it puts back what
+  it replaced now. The five owed engineering items are paid: the `pg` dry-run
+  tool, an e2e segment, `stranger-smoke.ps1`, `rls-proof-memberships.ps1` (12/12)
+  and a self-sweep in `New-Studio`. Deviation rows R38–R40, C26. Detail at the top.
 - **THE TEAM BY THE PROFILE YOU ARE IN — 20 Sep 2026, no step number ⚠ (Rule 9:
   one door grants a real owner seat) — TWO MIGRATIONS APPLIED.** On the user's
   *"apply all and fix remaining things and push to live"*: the payments CHECK
@@ -8326,6 +8607,10 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R35 | The prototype deleted its payroll desk: *"A studio pays its faculty; DanceOS is not the thing that runs the payroll"* (S_earn's closing line) | **A studio records a payment to anybody on its team** — `record_team_payment`: an amount the owner states, one of the four methods the ledger knows, no session lines. The history is on the person's own row, and it IS the expense, because `payouts` is what the Earnings desk reads as MONEY OUT | 19 Sep 2026, the user: *"able to pay them, track payment history and should be part of expenses in the earnings."* ⚠ This does NOT contradict the prototype: no money moves through code, exactly as Step 13 decided. What it adds is the one thing `record_payout` refused — a payment that is not a bill for sessions taught, which is the only kind a front-desk seat ever gets. It cannot double-pay a session because it claims none |
 | R31 | Every signed-in account is offered Book on a class and on an event (the prototype has one kind of person) | **AN ORGANIZATION BOOKS NOTHING, AND THE SCREEN SAYS SO** (19 Sep 2026): `canBook(role)` draws one sentence in place of Book on Discover's cards, the learner listing, the class page's bar and the event page's bar. The entity bar gained **Discover**, so a studio's own pages have it too | The user: *"studio and organizations can have Discover in navbar but should not be able to book any class or event. Make sure it is applied in all logics."* It has been the DATABASE's rule since 8 Sep (`guard_person_only`, R11, eight tables) and every button went on being drawn, so the only way to learn it was to press and be refused. ⚠ This is a PRESENTATION gate over a real one — the RPCs are the enforcement and refuse a forged press exactly as before |
 | R36 | R28 (push 2, 19 Sep 2026): an organization NAMES people, and `owner \| member` are LABELS that give nobody a login and nobody a seat on a studio | **FOUR LABELS, AND ONE OF THEM IS A REAL SEAT** (20 Sep 2026): Owner · **Studio owner** · Event team · Other team member. ⚠ Setting `studio_owner` names a STUDIO and writes a genuine `business_members` row with `member_role = 'owner'` on it — so it is offered only on somebody already CONFIRMED, never on the ask, and `organization_members.business_id` carries a CHECK making the studio and the label one fact. It never removes the last owner. `public_organization_team` prints Owner · Studio owners (with the studio) · Event team and **leaves `member` out** | 20 Sep 2026, the user's list A, and their two answers: *"Studio owner … reflected in that studio as Owner"*, and *"Other team members do not appear on somebody's public profile."* R28's "labels, not powers" still holds for the other three; this one is the deliberate exception, and it is the only place in the app where an organization hands out authority |
+| R38 | The prototype's Staff & permissions prints a LEVEL and a grants line per person (18428-18433); everything a seat may do follows from the seat | **TWO POWERS ARE GRANTED PER PERSON** (20 Sep 2026): `business_members.can_attendance` / `can_refunds`, set from the member sheet's **WHAT YOU GRANT THEM** and read by `can_run_register_for_class` and `can_settle_refunds_for_class` as a third branch beside the per-class claim and the owner. ⚠ Not drawn for an OWNER, who holds both by their seat — a switch that cannot be turned off is not a switch — and promoting somebody to owner clears the grants it supersedes. A grant is only ever as live as the seat behind it | The user's answer 1: *"permision given by Artist or Studio for managing Attendance and Refunds."* The 19 Sep permissions block was a STATEMENT of what each label carries (R34); this is the part an owner actually decides, and the only part the database will take standing |
+| R39 | `set_member_role` refuses `owner` — "owner is not a grantable role on any path" (Step 12b, 25 Aug 2026) | **A STUDIO'S OWN DESK MAY HAND OVER THE OWNER SEAT** to somebody already on the team, and the person's switcher then opens that studio. ⚠ An INVITE still refuses it — `labelsFor` is deliberately not `rolesFor`, and the two server-action schemas are deliberately not one — because consent comes first and the seat after. The new guard is that **the last owner cannot be demoted**, which the old refusal made unnecessary and its removal made essential | The user's answer 3: *"Yes and should be able to switch profile for that studio from profile switcher."* ⚠ Closing this found a pre-existing hole: the old body refused the ROLE and never looked at the TARGET, so demoting the only owner would have orphaned a studio |
+| R40 | An organization is ONE LOGIN and its team are labels with no powers (R28, R36) | **EVENT TEAM MAY RUN THE ORGANIZATION'S EVENTS** — `can_run_events` admits a confirmed `owner` or `event_team` on the organization's own HOSTING row (`type = 'org'`), and never on its studios | The user's answer 4: *"Only to be used for managing all events according to permissions assigned by the organization."* R28's "labels, not powers" still holds for the other two; running events is the one thing the label is FOR |
+| C26 | The disc and the header are edited from one sheet reached by pressing the disc (C23, 19 Sep 2026), and About is a field in both Edit sheets since 29 Aug | **VIEWING AND EDITING ARE TWO CONTROLS, TWICE OVER**: pressing the disc opens the picture, a pencil on its corner opens the editor; the posters rail has its own pencil and each poster opens in the lightbox. **And there is no Bio field anywhere** — `BioBlock` is deleted and both sheets lost their About textarea. ⚠ The column is still READ and never written, so a Save cannot wipe a paragraph somebody already has | 20 Sep 2026, the user: *"Profile pic edit should just be a pencil besides and clciking on photo to view it not together in one. Similarly seprate for poster photos in profiles."* and *"Remove bio from all profiles."* This narrows C23 rather than undoing it — still one place to change a picture, now two controls instead of one that did both jobs |
 | R37 | A studio's team is Faculty · Visiting faculty · Staff, and an artist page calls its `staff` seat "Assistant" on the screen alone (19 Sep 2026, R34) | **`assistant` IS THE FIFTH `member_role`**, so a studio hands out Faculty · Visiting faculty · **Assistant** · Other team member and an artist page Faculty · Assistant · Other team member — and `staff` is called **"Other team member"** everywhere. A studio's public page gained an **Assistants** group. A person's own page gained **Studios associated with** and **Artists associated with** off the new `person_associations` — the SEATS they hold, which is a different fact from "Studios taught at" (published classes): somebody asked onto a team who has not taught yet is associated and teaches at nothing. ⚠ `staff` is never returned by either read | 20 Sep 2026, the user's list B, C and E. The old model could not say both "Assistants" and "Other team members" on one studio, because one word was doing both jobs |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
@@ -8387,6 +8672,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The granted powers, the number and the history, what they left (20 Sep 2026):** the two powers are **standing and studio-wide** — "run the register on any class here", not on one class, which is what the per-class `class_people` grant is for; there is no screen that lists WHO holds a standing power across a studio's classes, and no audit line when one is given or taken (the toast is the only trace). **A grant dies with the seat** and is not restored if somebody is re-seated — deliberate, but nothing says so on the screen. **An organization's Event team can run every event the organization hosts**, with no per-event scoping, because there is no table that would hold one (E7's "YOU ARE HELPING WITH THIS ONE" is the same missing thing). **`person_associations.ended` shows a past seat only where a confirmed class proves it** — so somebody who was on a team for two years and taught under a colleague's name has nothing, and the row prints no dates either way. **A business's `member_no` is printed but never searched** — the people picker matches a person's name and number, and nothing matches a studio's. **The Bio column still exists and is still readable through the API**; it is only unwritable through the app, so an old paragraph sits on the row until somebody decides whether to drop the column | 18428-18433; S_profiletab 10834 | a per-studio powers list and an audit line; per-event rights with E7; a decision on dropping `about` |
 | **The team by profile type, what it left (20 Sep 2026):** there is **no e2e segment** for any of it (NEXT TO DO #0ae) and **no rolled-back dry run** for its migration (#0ac), so nothing checks that anon's executable set did not grow — the behaviour's cover is `rls-proof-org-team` (12/12), which found a real defect in the door on its first run. **A studio owner can be given only to somebody who is already on the organization's team** — there is no "make this person the owner of this studio" from the studio's own desk, and the studio's Team desk does not say that seat came from the organization; **relabelling away from Studio owner takes the seat back silently** (the row's word changes and nothing on the screen says a seat moved). **`assistant` has no powers of its own** — it is `staff`'s power set with a different name, so the Permissions block prints the same five lines for both; whether an assistant should hold attendance by default is a decision nobody has made. **A person's two new association groups are seats, not a history**: leaving a team removes the row, so a studio somebody taught at for two years disappears from their page the day they leave, while "Studios taught at" (published classes) keeps them. And **an organization's Event team carries no event powers** — it is a published label, exactly as R28 said, so somebody on it still cannot save or run an event | — (the prototype has one studio and no organization) | a proof, a segment, and a decision on each of the three |
 | **Memberships, what the slice left (19 Sep 2026):** a membership has **no expiry** — it is units, not months, so a pass bought today is still spendable next year (the user's four things named no date, and inventing one would change what people hold); **no refund path** — a `pending_payment` pass that is never paid simply stays unpaid and takes no place, and a paid pass cannot be handed back (a refund on a membership order is a decision about money nobody has made); **a membership is not a seat guarantee** — spending a unit books an ordinary seat under the ordinary capacity lock, so a full class refuses a pass exactly as it refuses a payment, and there is no members-only allocation; **no pause or transfer**; **the seller cannot see WHICH units a holder spent** from the holder's row (the class-wise list answers it from the other side); **`total_count` counts passes SOLD, never passes live**, so cancelling one does not put it back on sale; **a priced membership on an artist's page is bought from the profile, not from a class** — a class page offers only passes already held; and the **statement's source split is two rows** (Classes · Memberships) with no chips to filter by, which is the rest of the 28 Aug source-bar row | S_memberships 16846 | an expiry and a refund path are product decisions; the rest are their own slices |
 | **The 28-point list, what it left (19 Sep 2026):** a **studio's styles are not on its Discover card** — `nearby_businesses` hands back its own shape and does not carry the column, so a card still draws the styles of the studio's published classes and a style-less studio still shows none there (the PROFILE pages, which is what the user named, read the field); the **twelve style-less studios stay listed** until their owner next saves; **a team member's payment cannot be edited or voided from the Team desk** (`void_payout` exists and only the Earnings desk offers it), there is no **payment reminder** or "what you still owe them" figure beside the history, and a payment is still a RECORD — no money moves (Step 13's limit, unchanged); the **permissions block is a statement, not a switch** — the five lines are the rules the database keeps and nothing on that screen can change one, so a per-person grant (the prototype's own open row, S4) is still not built; **the team order is the owner's alone** and a trainer sees it without the ▲▼; a **student's figures are booked and attended only** — no progress, no last-seen, no per-style breakdown, and a walk-in has none at all because there is no record to count; **a lead cannot be linked to a person after the fact** (`converted_user_id` still has no screen); the **Followers / Following sheet on Home has no paging** past what one read returns; and **Edit profile being in Settings means a profile-less admin cannot reach it**, which is right (they have no profile) but means the tile is simply absent rather than explained | S_profiletab 10613, 11402; settings 18428-18433; S_earn 18195 | a Discover read that carries the column; a per-person grant is decision (c); the rest are their own slices |

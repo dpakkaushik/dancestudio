@@ -24,9 +24,10 @@ export interface TenantRow {
   location_set_at?: string | null;
   contact_email?: string | null;
   styles?: string[] | null;
+  member_no?: number | null;
 }
 
-export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles";
+export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, about, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles, member_no";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -57,6 +58,10 @@ export const toTenant = (row: TenantRow): Tenant => ({
      They were DERIVED from its published classes until today, so a studio with
      no class yet showed none — twelve of production's eighteen listed studios. */
   styles: Array.isArray(row.styles) ? row.styles : [],
+  /* the business's own number, printed beside its type the way a person's is
+     (20 Sep 2026, the user: "Id should be besides profile type on home and
+     profilepage both") — until today only `profiles` had one */
+  memberNo: row.member_no == null ? null : Number(row.member_no),
 });
 
 export interface TenantProfileInput {
@@ -298,6 +303,11 @@ export interface TeamMember {
   isArtist: boolean;
   /** a path in the public media bucket, or null for initials on the gradient */
   avatarPath: string | null;
+  /** THE STANDING GRANTS (20 Sep 2026, the user: "permission given by Artist or
+   *  Studio for managing Attendance and Refunds"). An owner holds both by their
+   *  seat and carries them false here — the sheet draws no switch for one. */
+  canAttendance: boolean;
+  canRefunds: boolean;
 }
 
 /** The tenant's own people — the pool the class form's artist and assistant
@@ -312,7 +322,7 @@ export async function findTenantTeam(
 ): Promise<TeamMember[]> {
   const { data, error } = await supabase
     .from("business_members")
-    .select("user_id, member_role")
+    .select("user_id, member_role, can_attendance, can_refunds")
     .eq("business_id", tenantId)
     .is("deleted_at", null)
     /* THE ORDER THE OWNER ARRANGED (19 Sep 2026, the user: "should be able to
@@ -324,7 +334,7 @@ export async function findTenantTeam(
   if (error) {
     throw new Error(`businesses.team failed: ${error.message}`);
   }
-  const rows = data as Array<{ user_id: string; member_role: MemberRole }>;
+  const rows = data as Array<{ user_id: string; member_role: MemberRole; can_attendance?: boolean; can_refunds?: boolean }>;
   if (rows.length === 0) {
     return [];
   }
@@ -361,8 +371,31 @@ export async function findTenantTeam(
       profileRole: p?.role ?? null,
       isArtist: artists.has(row.user_id),
       avatarPath: p?.profile_photo_path ?? null,
+      canAttendance: Boolean(row.can_attendance),
+      canRefunds: Boolean(row.can_refunds),
     };
   });
+}
+
+/** THE OWNER GRANTS THE TWO STANDING POWERS (20 Sep 2026). Owner-only inside the
+ *  RPC, refused for an owner (who already holds both), and the seat is still the
+ *  ceiling — the grant dies with it. */
+export async function setTenantMemberPowers(
+  supabase: SupabaseClient,
+  tenantId: string,
+  userId: string,
+  canAttendance: boolean,
+  canRefunds: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc("set_member_powers", {
+    p_business_id: tenantId,
+    p_user_id: userId,
+    p_can_attendance: canAttendance,
+    p_can_refunds: canRefunds,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 /** THE ORDER THE TEAM IS SHOWN IN (19 Sep 2026) — the owner's alone, and the

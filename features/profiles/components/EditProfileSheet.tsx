@@ -209,9 +209,11 @@ export function EditProfileSheet({
           </div>
         </>
       )}
-      <div style={fieldLabel}>{isOrg ? "About" : "Bio"}</div>
-      <textarea aria-label="Bio" value={d.about} rows={3} maxLength={220} onChange={(e) => setD((x) => ({ ...x, about: e.target.value }))} style={{ ...fieldInput, lineHeight: 1.5, resize: "none" }} />
-      <div style={{ fontSize: 10, color: MUTED, textAlign: "right", marginTop: 4 }}>{d.about.length}/220</div>
+      {/* ⚠ NO BIO FIELD (20 Sep 2026, the user: "Remove bio from all profiles").
+          The About paragraph is off every page in the app, so asking for one here
+          would be a box nobody ever reads back. `profiles.about` and the door's
+          `p_about` argument both STAY — an account that wrote one keeps it, and
+          turning the field back on is this block again. */}
       {err ? <div role="alert" style={{ fontSize: 12, color: "#F87171", marginTop: 8 }}>{err}</div> : null}
       <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
         <button type="button" onClick={onClose} style={sheetBtn(false)}>Cancel</button>

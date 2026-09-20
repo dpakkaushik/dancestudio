@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ToolGrid, ToolsHead, type Tile } from "@/features/home/components/home-kit";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { HeroDot, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
+import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
@@ -47,6 +48,8 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
           grad={CREW_GRAD}
           tint={CREW_GRAD[1]}
           eyebrow="Crew"
+          /* the crew's own number beside the word (20 Sep 2026) */
+          eyebrowSub={crew.memberNo ? <HeroId>{memberNoWords(crew.memberNo)}</HeroId> : null}
           verified={false}
           share={<ProfileShare path={`/crew/${crew.id}`} name={crew.name} />}
           stats={<StatsChip href="/stats?tab=charts&seg=crew" />}

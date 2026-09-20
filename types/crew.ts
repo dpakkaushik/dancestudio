@@ -29,6 +29,8 @@ export interface Crew {
   phonePublic: boolean;
   /** when the crew was created — the prototype's "since" */
   createdAt: string;
+  /** the crew's own account number, printed beside its type (20 Sep 2026) */
+  memberNo?: number | null;
 }
 
 export interface CrewMember {

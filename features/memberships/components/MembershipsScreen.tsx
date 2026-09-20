@@ -69,7 +69,12 @@ export function MembershipsScreen({
   canSell: boolean;
 }) {
   const router = useRouter();
-  const [seg, setSeg] = useState<"mine" | "selling">(passes.length === 0 && canSell ? "selling" : "mine");
+  /* ⚠ MANAGE IS FIRST, AND IT IS WHERE THE TILE OPENS (20 Sep 2026, the user:
+     "Manage Membership and classes to be first option in order and when opening
+     the tile"). Somebody who SELLS memberships opens on the ones they sell;
+     somebody who only holds passes has no Manage side to open, so they land on
+     Booked — which is the only segment they have. */
+  const [seg, setSeg] = useState<"mine" | "selling">(canSell ? "selling" : "mine");
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -126,7 +131,10 @@ export function MembershipsScreen({
           {/* BOOKED · MANAGE (19 Sep 2026, the user: "membership columns should be
               Booked and Manage") — the same two sides, in the words the Classes
               desk already uses: what you hold, and what you sell */}
-          {([["mine", `Booked · ${passes.length}`], ["selling", `Manage · ${selling.length}`]] as const).map(([k, label]) => (
+          {/* ⚠ MANAGE FIRST IN THE ORDER TOO (20 Sep 2026) — the segment you land
+              on and the segment you read first are the same one, or the order is
+              telling you something the page then contradicts. */}
+          {([["selling", `Manage · ${selling.length}`], ["mine", `Booked · ${passes.length}`]] as const).map(([k, label]) => (
             <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: seg === k ? "var(--solid)" : "transparent", color: seg === k ? INK : SUB }}>
               {label}
             </button>

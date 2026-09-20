@@ -404,7 +404,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (an organization holds up to ten since 19 Sep 2026)");
     check((await org.getByLabel("Share this profile — QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
     check(await org.getByText("Organization", { exact: true }).isVisible(), "org home: the role word under the sleeve");
-    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed behind it, in Your pictures");
+    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed behind the pencil beside it");
     /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the DISC is the door to the public page (the eye left Home
        later the same day — the user: "clicking on the profile photo on home tab takes to profile so can remove
        the eye from top right on home"), Stats the chip */
@@ -418,24 +418,23 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        and view both pictures sections when clicking on that photo") */
     check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: one eye in the corner, opening the organization's own page as a stranger sees it");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "org home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
-    check((await org.getByRole("button", { name: "Your pictures", exact: true }).count()) === 1, "org home: the disc opens Your pictures");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
-    await org.getByRole("button", { name: "Your pictures", exact: true }).click();
-    const orgPics = org.getByRole("dialog", { name: "Your pictures" });
-    await orgPics.waitFor();
-    check(await org.getByText("Logo", { exact: true }).isVisible(), "org pictures: an organization's disc is its Logo");
-    /* TWO EDITORS, NOT ONE SHEET (19 Sep 2026, the user: "edit seprate for
-       profile pic and seprate for poster"): the disc here OPENS the picture, and
-       changing it is its own step behind its own button */
-    check((await orgPics.getByRole("button", { name: "Open logo" }).count()) === 1, "org pictures: the logo opens itself when pressed");
-    check((await orgPics.getByRole("button", { name: "Change logo" }).count()) === 1, "org pictures: and it is changed behind its OWN button");
-    await orgPics.getByRole("button", { name: "Change logo" }).click();
+    /* ⚠ NO "YOUR PICTURES" SHEET SINCE 20 Sep 2026 (the user: "Profile pic edit
+       should just be a pencil besides and clciking on photo to view it not
+       together in one. Similarly seprate for poster photos"). The in-between
+       screen that showed both and edited neither is gone: the picture is pressed
+       to SEE it, the pencil beside it CHANGES it, and the posters have a pencil
+       of their own on the rail. */
+    check((await org.getByRole("button", { name: "Your pictures", exact: true }).count()) === 0, "org home: the in-between 'Your pictures' sheet is gone (20 Sep 2026)");
+    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "org home: a pencil beside the disc, and only that changes the logo");
+    check((await org.getByRole("button", { name: "Edit posters" }).count()) === 1, "org home: the posters have their OWN pencil on the rail");
+    await org.getByRole("button", { name: "Change profile picture" }).click();
     const orgLogo = org.getByRole("dialog", { name: "Logo" });
     await orgLogo.waitFor();
-    check((await orgLogo.getByLabel("Change your photo").count()) === 1, "org logo: the picker is in the logo's own editor");
-    await orgLogo.getByRole("button", { name: "Done" }).click().catch(() => {});
+    check(await org.getByText("Logo", { exact: true }).first().isVisible(), "org logo: an organization's disc is its Logo");
+    check((await orgLogo.getByLabel("Change your photo").count()) === 1, "org logo: the picker is in the logo's own editor, reached in ONE press");
     await shot("org-pictures");
-    await orgPics.getByRole("button", { name: "Done" }).click().catch(() => {});
+    await orgLogo.getByRole("button", { name: "Done" }).click().catch(() => {});
     /* and the words are behind the gear */
     await org.goto(`${BASE}/profile?settings=1`);
     const orgSettings = org.getByRole("dialog", { name: "Settings" });
@@ -502,32 +501,33 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await me.goto(BASE);
     await me.getByTestId("home-followers").waitFor();
 
-    /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026; behind the disc since 19 Sep) ── */
-    await me.getByRole("button", { name: "Your pictures", exact: true }).click();
-    const mySheet = me.getByRole("dialog", { name: "Your pictures" });
-    /* THE POSTERS HAVE THEIR OWN EDITOR (19 Sep 2026) — "Your pictures" shows
-       the two pictures; this is the draft grid behind "Edit posters" */
+    /* ── THE ONE PLACE A PICTURE CHANGES (16 Sep 2026; behind the disc since 19 Sep;
+       ⚠ TWO PENCILS AND NO SHEET IN BETWEEN SINCE 20 Sep 2026 — the user: "Profile
+       pic edit should just be a pencil besides and clciking on photo to view it not
+       together in one. Similarly seprate for poster photos"). The picture is a
+       picture: pressing it OPENS it. Each editor is one press from the hero. ── */
+    check((await me.getByRole("button", { name: "Your pictures", exact: true }).count()) === 0, "user home: the in-between 'Your pictures' sheet is gone (20 Sep 2026)");
+    check((await me.getByRole("button", { name: "Rhea Kapoor — profile picture" }).count()) === 1, "user home: pressing the disc opens the picture, nothing else");
+    check((await me.getByRole("button", { name: "Change profile picture" }).count()) === 1, "user home: and a pencil beside it is the only way to change it");
+    check((await me.getByRole("button", { name: "Edit posters" }).count()) === 1, "user home: the posters have their OWN pencil on the rail");
+    /* the disc's lightbox — what "clicking on profile pic should open the profile pic" means */
+    await me.getByRole("button", { name: "Rhea Kapoor — profile picture" }).click();
+    check((await me.getByLabel("Rhea Kapoor — picture 1 of 1").count()) === 1, "user home: and it is the PICTURE that opens, full size");
+    await me.getByRole("button", { name: "Close the picture" }).click();
+    /* the posters' draft grid, reached in ONE press from the rail */
     const myPosters = me.getByRole("dialog", { name: "Posters", exact: true });
     const openPosters = async () => {
-      /* ⚠ Save and Cancel in the posters editor return TO "Your pictures"
-         rather than closing it, while a reload closes both — so this opens
-         whatever is not open yet instead of assuming either state, and WAITS
-         for the button rather than racing the page. */
-      if (!(await mySheet.isVisible().catch(() => false))) {
-        await me.getByRole("button", { name: "Your pictures", exact: true }).click();
-        await mySheet.waitFor();
-      }
-      const edit = mySheet.getByRole("button", { name: "Edit posters" });
+      /* Save and Cancel close it outright now that it is not nested in anything,
+         so each visit is one press — and this WAITS for the pencil rather than
+         racing the page after a re-render. */
+      const edit = me.getByRole("button", { name: "Edit posters" });
       await edit.waitFor({ timeout: 20000 });
       await edit.click();
       await myPosters.waitFor();
     };
-    await mySheet.waitFor();
-    check(await me.getByText("Profile picture", { exact: true }).isVisible(), "your pictures: a Profile picture block");
-    check((await mySheet.getByRole("button", { name: "Open profile picture" }).count()) === 1, "your pictures: pressing the profile picture opens the profile picture (19 Sep 2026)");
-    check(await me.getByText("Posters", { exact: true }).isVisible(), "your pictures: and a Posters block — both pictures, each with its own editor");
-    check((await mySheet.getByRole("button", { name: "Edit posters" }).count()) === 1, "your pictures: the posters are edited behind their OWN button");
-    check(await mySheet.getByText("0 / 1", { exact: true }).isVisible(), "your pictures: a user is offered ONE poster");
+    await openPosters();
+    check(await myPosters.getByText("0 / 1", { exact: true }).isVisible(), "posters: a user is offered ONE poster");
+    await myPosters.getByRole("button", { name: "Cancel" }).click();
     const personRows = async () => {
       const live = await rest(`profile_header_photos?user_id=eq.${userId}&deleted_at=is.null&select=id`);
       return Array.isArray(live) ? live.length : -1;

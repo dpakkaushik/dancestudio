@@ -17,6 +17,7 @@ interface CrewRow {
   photo: string | null;
   contact_email?: string | null;
   created_at: string;
+  member_no?: number | null;
   /** CALL IS A TOGGLE (push 2): the number's own row, or null for a reader the
    *  policy keeps it from. PostgREST hands a one-to-one embed back as an OBJECT;
    *  the client's own inference calls it an array — both shapes are read */
@@ -68,7 +69,7 @@ interface PartnerRow {
 /* `crew_contacts` is one-to-one (its crew_id is the primary key), so the embed is an
    object or null — null for a reader its policy keeps the number from, which is how
    a switched-off number never reaches a page (push 2, 19 Sep 2026) */
-const CREW_COLUMNS = "id, name, city, style, leader_id, photo, contact_email, created_at, crew_contacts (phone, phone_public)";
+const CREW_COLUMNS = "id, name, city, style, leader_id, photo, contact_email, created_at, member_no, crew_contacts (phone, phone_public)";
 const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city, profile_photo_path)";
 
 const toCrew = (r: CrewRow): Crew => ({
@@ -82,6 +83,8 @@ const toCrew = (r: CrewRow): Crew => ({
   phone: contactOf(r.crew_contacts)?.phone ?? null,
   phonePublic: Boolean(contactOf(r.crew_contacts)?.phone_public),
   createdAt: r.created_at,
+  /* the crew's own number, beside its type (20 Sep 2026) */
+  memberNo: r.member_no == null ? null : Number(r.member_no),
 });
 const toMember = (r: MemberRow): CrewMember => ({
   id: r.id,

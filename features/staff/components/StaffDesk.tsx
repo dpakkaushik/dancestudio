@@ -15,8 +15,10 @@ import {
   removeMemberAction,
   reorderMembersAction,
   revokeInviteAction,
+  setMemberPowersAction,
   setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -28,6 +30,7 @@ import {
   MEMBER_GRANTS,
   MEMBER_LEVEL,
   MEMBER_ROLE_WORD,
+  labelsFor,
   rolesFor,
   type InvitableRole,
   type TenantInvite,
@@ -192,6 +195,8 @@ export function StaffDesk({
 
   /** the labels this profile has to give, and the seats already on the team */
   const roles = rolesFor(tenantType);
+  /* ⚠ the member sheet may hand over OWNER; an invite may not (20 Sep 2026) */
+  const labels = labelsFor(tenantType);
   const onTeam = team.map((m) => m.userId);
   const paidTo = (userId: string) => payments.filter((p) => p.userId === userId);
 
@@ -237,6 +242,22 @@ export function StaffDesk({
         <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Team</div>
       </div>
+
+      {/* ＋ ADD, AT THE TOP, THE WAY CLASSES AND EVENTS OPEN (20 Sep 2026, the
+          user: "Add button for team, room, crew to be similar to add class and
+          event and should be on top of the page"). It was a dashed row at the
+          FOOT of the roster, so on a studio with a real team you scrolled past
+          everybody to add somebody. */}
+      {isOwner ? (
+        <DeskAddButton
+          label="Invite staff or team member"
+          onClick={() => {
+            setForm({ name: "", email: "", role: "trainer" });
+            setError(null);
+            setAddOpen(true);
+          }}
+        />
+      ) : null}
 
       {/* ── the people who are already here (18428-18433) ── */}
       {team.map((m) => {
@@ -435,32 +456,10 @@ export function StaffDesk({
         → accept.
       </div>
 
-      {isOwner ? (
-        <div
-          role="button"
-          tabIndex={0}
-          onKeyDown={dosKey}
-          aria-label="Invite staff or team member"
-          onClick={() => {
-            setForm({ name: "", email: "", role: "trainer" });
-            setError(null);
-            setAddOpen(true);
-          }}
-          style={{
-            textAlign: "center",
-            padding: "12px",
-            borderRadius: 16,
-            border: `1.5px dashed ${PINK}`,
-            color: PINK,
-            fontWeight: 800,
-            fontSize: 13.5,
-            cursor: "pointer",
-            marginTop: 8,
-          }}
-        >
-          ＋ Invite staff or team member
-        </div>
-      ) : (
+      {/* ⚠ the dashed row that used to sit here is the pill at the TOP now; what
+          stays is the sentence for somebody who cannot invite, because its job
+          was never the button — it was saying why there isn't one */}
+      {isOwner ? null : (
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
           Only the owner can invite or remove people.
         </div>
@@ -723,7 +722,7 @@ export function StaffDesk({
               WHAT THEY MAY DO
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-              {roles.map(([k, word]) => {
+              {labels.map(([k, word]) => {
                 const on = openMember.role === k;
                 return (
                   <span
@@ -757,8 +756,72 @@ export function StaffDesk({
                 );
               })}
             </div>
-            {/* the permissions table went with the one over the labels (20 Sep
-                2026) — the member's own row already says what the seat carries */}
+            {/* ── WHAT THE STUDIO GRANTS THEM (20 Sep 2026, the user's answer 1:
+                "permission given by Artist or Studio for managing Attendance and
+                Refunds") ────────────────────────────────────────────────────
+                ⚠ These are the only two powers worth granting and the only two
+                the database will take standing — `business_members.can_attendance`
+                and `can_refunds`, read by `can_run_register_for_class` and
+                `can_settle_refunds_for_class`. An owner holds both by their seat,
+                so the block is not drawn for one: a switch that cannot be turned
+                off is not a switch. And a grant is only ever as live as the seat
+                behind it — removing somebody takes both with them. */}
+            {openMember.role !== "owner" ? (
+              <>
+                <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.1, color: "var(--muted)", margin: "12px 0 7px" }}>
+                  WHAT YOU GRANT THEM
+                </div>
+                {(
+                  [
+                    ["attendance", "Run the register", "Check people in on any class here"],
+                    ["refunds", "Settle refunds", "Decide refunds on any class here"],
+                  ] as const
+                ).map(([key, title, why]) => {
+                  const on = key === "attendance" ? openMember.canAttendance : openMember.canRefunds;
+                  return (
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1px solid ${EL}` }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 800 }}>{title}</div>
+                        <div style={{ fontSize: 11, color: SUB, marginTop: 1 }}>{why}</div>
+                      </div>
+                      <span
+                        role="switch"
+                        tabIndex={0}
+                        onKeyDown={dosKey}
+                        aria-checked={on}
+                        aria-label={`${title} — ${openMember.name}`}
+                        onClick={async () => {
+                          const next = {
+                            canAttendance: key === "attendance" ? !on : openMember.canAttendance,
+                            canRefunds: key === "refunds" ? !on : openMember.canRefunds,
+                          };
+                          const done = await run(
+                            () => setMemberPowersAction({ tenantId, userId: openMember.userId, ...next }),
+                            `${openMember.name} · ${title.toLowerCase()} ${!on ? "on" : "off"}`,
+                          );
+                          if (done) setOpenMember({ ...openMember, ...next });
+                        }}
+                        style={{
+                          flexShrink: 0,
+                          width: 42,
+                          height: 24,
+                          borderRadius: 999,
+                          cursor: "pointer",
+                          background: on ? "var(--text)" : EL,
+                          position: "relative",
+                          transition: "background .15s",
+                        }}
+                      >
+                        <span
+                          aria-hidden="true"
+                          style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: 999, background: "var(--solid)", transition: "left .15s" }}
+                        />
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            ) : null}
 
             {/* ── PAY THEM (19 Sep 2026) ─────────────────────────────────────
                 A payment the studio has already made, recorded — Step 13's own

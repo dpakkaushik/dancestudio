@@ -115,6 +115,19 @@ export const rolesFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<
         ["staff", "Other team member"],
       ] as const);
 
+/** ⚠ WHAT THE MEMBER SHEET MAY SET — the invite's list PLUS Owner (20 Sep 2026,
+ *  the user's answer 3: a studio's own desk can make somebody its owner).
+ *
+ *  It is deliberately NOT `rolesFor`, because the two lists answer different
+ *  questions. An INVITE is offered to somebody who has not agreed to anything
+ *  yet, and `invite_to_business` / `invite_person_to_business` both still refuse
+ *  `owner` — Step 12b's rule, unchanged. This list relabels somebody who is
+ *  ALREADY on the team and already consented to be there, which is what
+ *  `set_member_role` now admits. The database refuses to demote the last owner,
+ *  so the desk cannot leave a studio ownerless however the chips are pressed. */
+export const labelsFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<readonly [MemberRole, string]> =>
+  [["owner", "Owner"] as const, ...rolesFor(type)];
+
 /** WHAT EACH LABEL ACTUALLY CARRIES — the permissions section beside the labels
  *  (19 Sep 2026). One line per thing a seat may do, so the owner reads the
  *  consequence rather than the word. These are the rules the database keeps, not

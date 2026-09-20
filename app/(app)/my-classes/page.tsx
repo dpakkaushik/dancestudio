@@ -124,7 +124,14 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     findMyMemberships(supabase),
   ]);
   const myPage = memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null;
-  const show: Show = rawShow === "assist" ? "assist" : rawShow === "manage" && myPage ? "manage" : "booked";
+  /* ⚠ MANAGE OPENS FIRST FOR SOMEBODY WHO RUNS CLASSES (20 Sep 2026, the user:
+     "Manage Membership and classes to be first option in order and when opening
+     the tile"). It has been first in the ORDER since 19 Sep; what it was not was
+     the segment you LAND on, so an artist opening their own tile still arrived
+     at other people's classes they had booked. A URL that names a segment still
+     wins, so every existing link keeps landing where it always did (Rule 14). */
+  const show: Show =
+    rawShow === "assist" ? "assist" : rawShow === "manage" && myPage ? "manage" : rawShow === "booked" ? "booked" : myPage ? "manage" : "booked";
   /* the teacher's own classes are theirs to manage, not to "assist on": an
      artist page's owner is its every class's confirmed teacher by construction */
   const jobs: Array<MyClaimAsk & { job: "Teaching" | "Assisting" }> = [

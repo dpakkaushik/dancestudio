@@ -46,6 +46,12 @@ export interface PersonAssociation {
   role: "owner" | "trainer" | "visiting_faculty" | "assistant";
   /** the person behind an artist page — its row opens them, not the redirect */
   ownerId: string | null;
+  /** ⚠ A SEAT THEY NO LONGER HOLD (20 Sep 2026, the user's answer 5: "fix in
+   *  best way"). An association used to vanish the day somebody left, so a
+   *  studio they taught at for two years disappeared off their page. An ended
+   *  seat is returned only where they were really put on a class there, so a
+   *  seat created and revoked the same afternoon is not resurrected. */
+  ended: boolean;
 }
 
 export interface PublicPerson {
@@ -267,7 +273,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
      render because one association read went wrong (19 Sep 2026's rule) */
   const associations: PersonAssociation[] = assocRes.error
     ? []
-    : ((assocRes.data ?? []) as Array<{ business_id: string; business_type: "studio" | "artist_page"; business_name: string; city: string | null; photo_path: string | null; member_role: PersonAssociation["role"]; owner_id: string | null }>).map((r) => ({
+    : ((assocRes.data ?? []) as Array<{ business_id: string; business_type: "studio" | "artist_page"; business_name: string; city: string | null; photo_path: string | null; member_role: PersonAssociation["role"]; owner_id: string | null; ended: boolean }>).map((r) => ({
         tenantId: r.business_id,
         tenantName: r.business_name,
         tenantType: r.business_type,
@@ -275,6 +281,7 @@ export async function findPublicPerson(supabase: SupabaseClient, userId: string)
         photoPath: r.photo_path ?? null,
         role: r.member_role,
         ownerId: r.owner_id ?? null,
+        ended: Boolean(r.ended),
       }));
 
   const c = countsMap.get(userId) ?? { followers: 0, following: 0 };

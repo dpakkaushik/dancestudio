@@ -180,9 +180,13 @@ export async function declineInvite(supabase: SupabaseClient, code: string): Pro
 }
 
 /** Owner-only, and the RPC says so. 'owner' is not a settable role. */
+/** ⚠ A RELABEL, NOT AN INVITE (20 Sep 2026): this one takes `MemberRole`, which
+ *  includes `owner`, because a studio's desk may hand the owner seat to somebody
+ *  ALREADY on the team. Every INVITE door beside it still takes `InvitableRole`
+ *  and the two invite RPCs still refuse owner — consent first, the seat after. */
 export async function setMemberRole(
   supabase: SupabaseClient,
-  input: { tenantId: string; userId: string; role: InvitableRole }
+  input: { tenantId: string; userId: string; role: MemberRole }
 ): Promise<void> {
   const { error } = await supabase.rpc("set_member_role", {
     p_business_id: input.tenantId,
