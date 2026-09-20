@@ -139,6 +139,40 @@
 >   `:3100` and 11/11 against the deployment** after the push.
 >   ⚠ The happy path took FOUR runs and the shoot two; every red but the first was
 >   a locator of mine, and the first was the real pencil bug below.
+>   **AND THEN BOTH SUITES WERE RUN WHOLE AFTERWARDS (the standing rule #0z, and
+>   three migrations had landed since the last full runs): the proof suite
+>   33/33 IN ONE RUN — the first single-run green since the migrations, the two
+>   new proofs among them — and the e2e suite 57/57 in 18.4 min on one worker,
+>   first run.** Both took a fix each, below.
+> * ⚠⚠ **AND THE ONE THAT WOULD HAVE MADE EVERY "GREEN" A LIE: A FOUR-DAY-OLD
+>   PLAYWRIGHT TRANSFORM CACHE RAN A STALE SPEC AND SILENTLY COLLECTED ONE FILE OF
+>   EIGHT.** A run reported *"Running 19 tests"* and finished *"8 passed"* — and
+>   19 is `happy-path.spec.ts` alone, where the suite is 57. The same run's failure
+>   pointed at line 1403 when the file on disk had that line at 1414: **it was
+>   executing a copy of the spec from 16 Sep**, four days old, with my edits
+>   nowhere in it. `%TEMP%\playwright-transform-cache` was last written on the
+>   16th; deleting it made the very next run read *"Running 57 tests"* and compile
+>   the real file. **The tell is free and must be checked every time: the header
+>   line says how many tests were COLLECTED, and a reported line number that does
+>   not match the file on disk means you are not running your own code.** Nothing
+>   about the report says "stale" — it says PASSED, which is worse than a red.
+> * ⚠⚠ **AND AN ASSERTION THAT PROVED NOTHING AND SYNCHRONISED NOTHING — the
+>   crews segment.** It read `getByText("✅ Confirmed — you said yes")` against the
+>   WHOLE DESK, and the class ask segment 1 confirmed already wears that exact
+>   sentence — so it passed the instant the page rendered, said nothing about the
+>   crew, and **waited for nothing**. The `toHaveCount(0)` under it was therefore
+>   the only real check, with 5 seconds to beat a server action the trace timed at
+>   **4.01 s** on this machine: a coin toss wearing a test's clothes. Worse, once
+>   the crew WAS confirmed the desk held two of that sentence, so the bare locator
+>   was one green run away from a strict-mode violation. **Every answered ask wears
+>   the same words, so the row is the unit** — `Row` takes a `data-testid` and the
+>   two places that made this mistake (crews, and push 2's owner ask, which had
+>   dodged strict mode with `.first()` and was racing the same way) scope to their
+>   own row now. **A shared sentence is not an identifier, and an assertion that
+>   can pass before the thing happens is not a wait.** Read off the trace's own
+>   DOM snapshot — the crew row was still `asked`, with its Reject and Confirm
+>   intact, while the sentence the test "found" belonged to a class two segments
+>   earlier.
 > * ⚠⚠ **AND THE NEAR-MISS WORTH KEEPING: WIDENING ONE SCHEMA WOULD HAVE LET AN
 >   INVITE HAND OUT THE OWNER SEAT.** `roleSchema` was shared by the invite action
 >   and the relabel action. Adding `owner` to it — the obvious edit — would have
@@ -4718,10 +4752,20 @@ summary; the report has the evidence.
    Every record in this file below the top block uses the OLD names — the map
    at the top is how to read them; do not rewrite history.
 
-0z. **RUN THE WHOLE SUITE, ON ONE WORKER, AND RUN IT OFTEN.**
+0z. **RUN THE WHOLE SUITE, ON ONE WORKER, AND RUN IT OFTEN — AND READ THE HEADER
+   LINE BEFORE BELIEVING THE TALLY.**
 ```
    npx playwright test --reporter=line --workers=1
 ```
+   ⚠ **20 Sep 2026: "Running N tests" is the only thing that tells you the suite
+   was the suite.** A run said *"Running 19 tests"* and ended *"8 passed"* — 19
+   being `happy-path.spec.ts` alone against a suite of 57 — and it was executing a
+   FOUR-DAY-OLD copy of that spec, because `%TEMP%\playwright-transform-cache`
+   had gone stale (the tell: a failure pointing at line 1403 where the file on
+   disk has that line at 1414). `npx playwright test --list` still said 57, so
+   only the run itself was wrong. **Delete that temp directory whenever a run's
+   line numbers or its collected count look off**; nothing in the report says
+   "stale", it just says passed.
    16 Sep 2026: the suite had not been run whole since 14 Sep, and it was hiding
    **six** things — three stale assertions AND TWO REAL PRODUCT BUGS (an admin
    could not search the verification queue by studio name; an admin could not

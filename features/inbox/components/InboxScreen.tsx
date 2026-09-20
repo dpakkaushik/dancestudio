@@ -77,8 +77,8 @@ const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite:
 
 const REQ_TINT = "#8B5CF6";
 
-const Row = ({ children, c }: { children: React.ReactNode; c: string }) => (
-  <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
+const Row = ({ children, c, testId }: { children: React.ReactNode; c: string; testId?: string }) => (
+  <div data-testid={testId} style={{ background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
 );
 
 const pillBtn = (on: boolean): React.CSSProperties => ({
@@ -212,7 +212,13 @@ export function InboxScreen({
       ["Asked by", r.dir === "in" ? r.who : "you"],
     ];
     return (
-      <Row key={`${r.kind}-${r.id}`} c={c}>
+      /* ⚠ ADDRESSABLE AS A ROW (20 Sep 2026). Every answered ask wears the SAME
+         sentence ("✅ Confirmed — you said yes"), so with two answered asks on one
+         desk that text names neither of them: an assertion on it passes off
+         somebody else's row and synchronises nothing. A test that means "THIS ask
+         was answered" has to scope to the row, and nothing else here identifies
+         one. */
+      <Row key={`${r.kind}-${r.id}`} c={c} testId="request-row">
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
           <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, padding: "3px 8px", borderRadius: 999, background: `${c}22`, color: c }}>{r.subjectKind}</span>
           <span style={{ fontSize: 9.5, fontWeight: 800, color: "var(--muted)", textTransform: "capitalize" }}>{KIND_WORD[r.kind]}</span>

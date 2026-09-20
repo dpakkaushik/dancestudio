@@ -1078,9 +1078,20 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("button", { name: `Confirm ${crewName}` }).click();
     /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
        requests don't get removed after accepting") — the row wears its answer
-       and its buttons are gone; it used to vanish */
-    await expect(trainer.getByText("✅ Confirmed — you said yes")).toBeVisible();
-    await expect(trainer.getByRole("button", { name: `Confirm ${crewName}` })).toHaveCount(0);
+       and its buttons are gone; it used to vanish.
+       ⚠ SCOPED TO THIS ROW, AND THAT IS THE POINT (20 Sep 2026). This read
+       `getByText("✅ Confirmed — you said yes")` against the whole desk, where the
+       CLASS ask segment 1 confirmed already wears that exact sentence — so it
+       passed the instant the page rendered, proved nothing about the crew, and
+       waited for nothing. The count check under it was then the only real
+       assertion and had 5 seconds to beat a server action that takes ~4 s on this
+       machine, which is a coin toss rather than a test. Worse, once the crew was
+       confirmed the desk held TWO of that sentence, so the bare locator was one
+       green run away from a strict-mode violation. The row is the unit here. */
+    const crewAsk = trainer.getByTestId("request-row").filter({ hasText: `wants to add you to ${crewName}` });
+    await expect(crewAsk.getByText("✅ Confirmed — you said yes")).toBeVisible({ timeout: 15_000 });
+    await expect(crewAsk.getByRole("button", { name: `Confirm ${crewName}` })).toHaveCount(0);
+    await expect(crewAsk.getByRole("button", { name: `Reject ${crewName}` })).toHaveCount(0);
     await learner.reload();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("2");
     await expect(learner.getByText("Member", { exact: true })).toBeVisible();
@@ -2166,9 +2177,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await pressPill(learner, /^Requests — \d+ waiting/);
     await expect(learner.getByText("wants to name you as an owner of E2E Owner")).toBeVisible({ timeout: 15_000 });
     await learner.getByRole("button", { name: "Confirm E2E Owner" }).click();
-    /* the answered ask stays on the desk, wearing its answer (19 Sep 2026) */
-    await expect(learner.getByText("✅ Confirmed — you said yes").first()).toBeVisible();
-    await expect(learner.getByRole("button", { name: "Confirm E2E Owner" })).toHaveCount(0);
+    /* the answered ask stays on the desk, wearing its answer (19 Sep 2026).
+       ⚠ Scoped to THIS row for the reason written out at the crews segment: every
+       answered ask wears the same sentence, so `.first()` dodged strict mode by
+       matching whichever row came first — proving nothing here and waiting for
+       nothing, which left the count below racing the server action. */
+    const ownerAsk = learner.getByTestId("request-row").filter({ hasText: "wants to name you as an owner of E2E Owner" });
+    await expect(ownerAsk.getByText("✅ Confirmed — you said yes")).toBeVisible({ timeout: 15_000 });
+    await expect(ownerAsk.getByRole("button", { name: "Confirm E2E Owner" })).toHaveCount(0);
     // the desk counts one owner; the public page prints them under OWNER, with a door to their profile
     await owner.reload();
     await expect(owner.getByTestId("org-team-tile-owners")).toHaveText("1");
