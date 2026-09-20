@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROFILE_CHIP } from "./profile-band";
 
 /** STATS AS A BUTTON BESIDE THE QR (18 Sep 2026, the user: "remove stats from
  *  tools and place like a button similar to the qr code in the same area on both
@@ -14,21 +15,9 @@ export function StatsChip({ href, label = "Stats" }: { href: string; label?: str
       href={href}
       aria-label={label}
       title={label}
-      style={{
-        flexShrink: 0,
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--text)",
-        color: "var(--solid)",
-        textDecoration: "none",
-        boxShadow: "0 4px 14px -6px rgba(0,0,0,.6)",
-      }}
+      style={PROFILE_CHIP}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M4 19.5h16" />
         <path d="M6 16V11.5M10.5 16V7.5M15 16v-6" />
         <path d="m19.5 16-.01-9" />

@@ -306,6 +306,7 @@ export async function findMyEarnings(
       earnedInr: 0,
       paidInr: 0,
       dueInr: 0,
+      otherPaidInr: 0,
       rates: new Set<number>(),
     };
     row.sessions += taught.length;
@@ -314,17 +315,40 @@ export async function findMyEarnings(
     byTenant.set(claim.business_id, row);
   }
 
-  // what has actually been settled, per studio
-  const paidByTenant = new Map<string, number>();
-  for (const p of payoutRows) {
-    if (p.status === "done") {
-      paidByTenant.set(p.business_id, (paidByTenant.get(p.business_id) ?? 0) + p.amount_inr);
-    }
-  }
-
   const linesByPayout = new Map<string, number>();
   for (const line of lines) {
     linesByPayout.set(line.payout_id, (linesByPayout.get(line.payout_id) ?? 0) + 1);
+  }
+
+  /* ⚠ WHAT WAS SETTLED, SPLIT BY WHAT IT WAS FOR (20 Sep 2026, the user:
+     "Earnings make sure to check all revenue sources … according to there
+     revenue sources"; Rule 9 — this is money owed).
+     `record_payout` bills for SESSIONS and writes a line per session;
+     `record_team_payment` (19 Sep, R35) writes an amount the owner states with
+     NO lines, because a studio could not otherwise pay its front desk at all.
+     Both are `payouts` rows, and this read summed them together — so a salary
+     cancelled teaching money the studio still owed, and a person who only ever
+     worked the desk had their payment dropped from the totals entirely because
+     `byTenant` is keyed on CLAIMS and they hold none. A payout with lines nets
+     against sessions; one without is its own figure and nets against nothing. */
+  const paidByTenant = new Map<string, number>();
+  const otherByTenant = new Map<string, { amount: number; name: string }>();
+  for (const p of payoutRows) {
+    if (p.status !== "done") continue;
+    if ((linesByPayout.get(p.id) ?? 0) > 0) {
+      paidByTenant.set(p.business_id, (paidByTenant.get(p.business_id) ?? 0) + p.amount_inr);
+    } else {
+      const at = otherByTenant.get(p.business_id) ?? { amount: 0, name: p.businesses?.name ?? "A studio" };
+      at.amount += p.amount_inr;
+      otherByTenant.set(p.business_id, at);
+    }
+  }
+  /* a studio that has only ever paid you off the register still gets a row —
+     otherwise the money is in WHO HAS PAID YOU and in none of the totals */
+  for (const [tenantId, at] of otherByTenant) {
+    if (!byTenant.has(tenantId)) {
+      byTenant.set(tenantId, { tenantId, tenantName: at.name, sessions: 0, ratePerSessionInr: null, earnedInr: 0, paidInr: 0, dueInr: 0, otherPaidInr: 0, rates: new Set<number>() });
+    }
   }
 
   const studios: StudioEarning[] = [...byTenant.values()]
@@ -337,6 +361,7 @@ export async function findMyEarnings(
         ratePerSessionInr: rates.size === 1 ? [...rates][0] : null,
         paidInr: paid,
         dueInr: Math.max(0, row.earnedInr - paid),
+        otherPaidInr: otherByTenant.get(row.tenantId)?.amount ?? 0,
       };
     })
     .sort((a, b) => b.earnedInr - a.earnedInr || a.tenantName.localeCompare(b.tenantName));
@@ -344,7 +369,8 @@ export async function findMyEarnings(
   return {
     studios,
     earnedTotal: studios.reduce((a, s) => a + s.earnedInr, 0),
-    paidTotal: studios.reduce((a, s) => a + s.paidInr, 0),
+    /* the Settled tile is every rupee that reached you — sessions and the rest */
+    paidTotal: studios.reduce((a, s) => a + s.paidInr + s.otherPaidInr, 0),
     dueTotal: studios.reduce((a, s) => a + s.dueInr, 0),
     payouts: payoutRows.map((p) => ({
       id: p.id,

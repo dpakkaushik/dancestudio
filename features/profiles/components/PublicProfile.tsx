@@ -19,7 +19,7 @@ import { StatsChip } from "./StatsChip";
 import { TenantFollowersButton } from "./TenantFollowersButton";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, Row, SchedIcon, bigWhite, gradientOf, smallBox } from "./profile-kit";
+import { Group, PersonIcon, Row, SchedIcon, bigWhite, cornerChip, gradientOf, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
  *  `publicEntity="studio"` (10565-11060): THE PROFILE, LIT LIKE A PLAYER — the
@@ -126,12 +126,6 @@ export function PublicProfile({
           eyebrowSub={tenant.memberNo ? <HeroId>{memberNoWords(tenant.memberNo)}</HeroId> : null}
           /* the tick is DanceOS's to give — set when a verification actually clears (DosVerified 10592) */
           verified={Boolean(tenant.verifiedAt)}
-          share={<ProfileShare path={path} name={tenant.name} />}
-          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026, the user: "give Stats
-             button same as home page on profile") — a studio's is the studios'
-             board, where this one is ranked */
-          /* since push 2 (19 Sep 2026): THIS studio's figures and its place on the studio board */
-          stats={<StatsChip href={`/studio/${tenant.id}/stats`} />}
           meta={
             <>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK }}>
@@ -156,6 +150,15 @@ export function PublicProfile({
           avatar={face}
           avatarAlt={tenant.name}
           shots={shots}
+          /* one press back to the studio's own screens (20 Sep 2026) — its home
+             carries the eye to here, and nothing went the other way */
+          corner={
+            isMember ? (
+              <Link href={manageHref} aria-label="Manage this studio" style={cornerChip}>
+                <PersonIcon />
+              </Link>
+            ) : null
+          }
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026, the user: "Upper layer of
               Home tab to exactly the same used for profile pages for all kinds of
@@ -164,6 +167,34 @@ export function PublicProfile({
               which is what made Home and the Profile tab read as one screen. ── */}
           <EntityBand
             figures={<Figure n={profile.followers} label={profile.followers === 1 ? "Follower" : "Followers"} testId="tenant-followers" />}
+            /* ⚠ THE THREE CHIPS (20 Sep 2026, the user: "Follow button to be a
+               bell with qr code and stats … in same row as follower following
+               numbers on its right side"). The QR shares the page; Stats opens
+               the studios' board this one is ranked on (19 Sep); the BELL is the
+               Follow that used to be a pill under the hero — and it is drawn for
+               EVERY viewer now ("should be available to all"), saying why when
+               the database would refuse the press rather than vanishing. */
+            chips={
+              <>
+                <ProfileShare path={path} name={tenant.name} />
+                <StatsChip href={`/studio/${tenant.id}/stats`} />
+                {/* ⚠ NOT DRAWN FOR THE TEAM — this is their own studio, and a
+                    control that exists only to be disabled is noise. Drawn and
+                    DISABLED for an organization account, which is a real visitor
+                    who would otherwise wonder why the bell did nothing. */}
+                {isMember ? null : (
+                  <FollowToggle
+                    target={{ kind: "business", id: tenant.id }}
+                    initialFollowing={following}
+                    initialFollowers={profile.followers}
+                    accent={RC}
+                    signedIn={signedIn}
+                    variant="chip"
+                    cannotFollow={canFollow ? null : "An organization does not follow"}
+                  />
+                )}
+              </>
+            }
             styles={profile.styles}
             styleAria={(s) => `${s} — a style this business teaches`}
             socials={tenant.socials}
@@ -177,26 +208,24 @@ export function PublicProfile({
             About paragraph is off every profile in the app; the links it used to
             carry are the band's links row, inside the hero above. */}
 
-        {/* ── FOLLOW · FOLLOWING, first under the hero (19 Sep 2026) — or, for the
-            team, the door to the desk; the owner's Followers and Edit beside it ── */}
-        <div style={{ marginTop: 12 }}>
-          {isMember ? (
-            <div style={{ display: "grid", gridTemplateColumns: canEdit ? "2fr 1fr 1fr" : "1fr", gap: 6 }}>
-              <Link href={manageHref} style={smallBox(false, RC)}>
-                You are on this team · Manage ›
-              </Link>
-              {canEdit && followers ? <TenantFollowersButton followers={followers} accent={RC} /> : null}
-              {canEdit ? <BusinessEditButton tenant={tenant} photos={header} ownerId={ownerId} canEditPhoto={canEditPhoto} /> : null}
-            </div>
-          ) : canFollow ? (
-            <FollowToggle target={{ kind: "business", id: tenant.id }} initialFollowing={following} initialFollowers={profile.followers} accent={RC} signedIn={signedIn} />
-          ) : null}
-        </div>
+        {/* ── THE TEAM'S OWN ROW — the door to the desk, the owner's Followers and
+            Edit beside it. ⚠ FOLLOW IS NOT HERE ANY MORE (20 Sep 2026): it is the
+            bell in the figures row above, so this block draws only for the team
+            and a visitor goes straight to the buttons. ── */}
+        {isMember ? (
+          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: canEdit ? "2fr 1fr 1fr" : "1fr", gap: 6 }}>
+            <Link href={manageHref} style={smallBox(false, RC)}>
+              You are on this team · Manage ›
+            </Link>
+            {canEdit && followers ? <TenantFollowersButton followers={followers} accent={RC} /> : null}
+            {canEdit ? <BusinessEditButton tenant={tenant} photos={header} ownerId={ownerId} canEditPhoto={canEditPhoto} /> : null}
+          </div>
+        ) : null}
 
         {/* ── THE BUTTONS A STUDIO'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail ·
             Location — ONE BLOCK with Follow above them (the user, later that day:
             "all buttons placed together properly"); the Bio follows the block ── */}
-        <ActionRow marginTop={6}>
+        <ActionRow marginTop={isMember ? 6 : 12}>
           {canAsk ? <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType={tenant.type} signedIn={signedIn} accent={RC} enquiryTypes={tenant.enquiryTypes} /> : null}
           {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
           {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}

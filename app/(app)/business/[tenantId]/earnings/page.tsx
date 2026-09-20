@@ -55,6 +55,11 @@ export default async function TenantEarningsPage({
       ledger={ledger}
       income={income}
       monthLabel={monthLabelOf(now)}
+      /* an ARTIST PAGE's owner is the one person with two ledgers — what their
+         page took, and what studios have paid them for teaching. Their Home tile
+         opens this one now (20 Sep 2026), so the other gets its door here. A
+         studio's owner is paid by nobody, so they are offered none. */
+      selfEarningsHref={tenant.type === "artist_page" ? "/earnings" : null}
     />
   );
 }

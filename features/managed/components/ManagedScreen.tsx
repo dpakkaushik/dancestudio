@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EventCard } from "@/features/events/components/EventCard";
+import { SegmentedNav } from "@/features/shell/components/SegmentedNav";
 import { DOS_DISPLAY, tintForTenantType, DOS_UI, INK, LILAC, LINE, SUB } from "@/lib/design/tokens";
 import { EV_TINT } from "@/types/event";
 import { MANAGED_FILTERS, type ManagedKind, type ManagedListing } from "@/types/managed";
@@ -57,35 +58,10 @@ export function ManagedScreen({
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div style={{ padding: "14px 16px 0" }}>
-        {/* the segmented control — three links, the pressed one solid */}
-        <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
-          {MANAGED_FILTERS.map(({ k, label, aria }) => {
-            const on = filter === k;
-            return (
-              <Link
-                key={k}
-                href={k === "all" ? "/managed" : `/managed?kind=${k}`}
-                replace
-                aria-label={aria}
-                aria-current={on ? "page" : undefined}
-                style={{
-                  flex: 1,
-                  textAlign: "center",
-                  padding: "8px 2px",
-                  borderRadius: 9,
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                  background: on ? "var(--solid)" : "transparent",
-                  color: on ? INK : SUB,
-                  boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none",
-                }}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </div>
+        {/* the segmented control — three links, the pressed one solid, and
+            pressed the MOMENT it is tapped (20 Sep 2026, the user: "see such bug
+            doesnt appear anywhere in the system where things are getting stuck") */}
+        <SegmentedNav active={filter} segments={MANAGED_FILTERS.map(({ k, label, aria }) => ({ key: k, href: k === "all" ? "/managed" : `/managed?kind=${k}`, label, aria }))} />
 
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "2px 0 8px" }}>
           {/* DosShelfHead (3446-3450, 3430): 17px display, sentence case, the count small and muted */}

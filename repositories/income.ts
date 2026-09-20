@@ -30,7 +30,7 @@ interface PaymentRow {
    *  called Classes over two real sources. The order names its subject, so now
    *  it does not. A subscription payment has no order at all (`order_id` is
    *  nullable since 10 Sep 2026), hence the null. */
-  orders: { membership_id: string | null } | null;
+  orders: { membership_id: string | null; event_id: string | null } | null;
 }
 
 interface ProcessedRefundRow {
@@ -47,8 +47,17 @@ interface OpenRefundRow {
 interface Bucket {
   gross: number;
   count: number;
-  /** the membership half of gross — the rest is seats (19 Sep 2026) */
+  /** the membership share of gross (19 Sep 2026) */
   memberships: number;
+  /** ⚠ THE TICKET SHARE (20 Sep 2026, the user: "Earnings make sure to check all
+   *  revenue sources mentioned for all types of profiles according to there
+   *  revenue sources"). An order names a class session, an EVENT or a membership
+   *  (`orders_subject_check`), and this read only ever asked about the third — so
+   *  on the ORGANIZATION's hosting row, whose every payment is a ticket or an
+   *  entry, 100% of the money printed under a row headed **Classes**, on the very
+   *  desk the events screen links to as "Ticket money ›". Three subjects, three
+   *  rows; what is left after the two named ones is seats. */
+  events: number;
   refunded: number;
   refundCount: number;
   methods: Map<string, { amount: number; count: number }>;
@@ -72,6 +81,7 @@ const emptyBucket = (): Bucket => ({
   gross: 0,
   count: 0,
   memberships: 0,
+  events: 0,
   refunded: 0,
   refundCount: 0,
   methods: new Map(),
@@ -89,8 +99,17 @@ export async function findTenantIncome(
   const [paymentsRes, refundsRes, openRes] = await Promise.all([
     supabase
       .from("payments")
-      .select("amount_inr, status, method, created_at, orders (membership_id)")
+      .select("amount_inr, status, method, created_at, orders (membership_id, event_id)")
       .eq("business_id", tenantId)
+      /* ⚠ MONEY THIS BUSINESS TOOK, SAID OUT LOUD (20 Sep 2026). `payments.kind`
+         is order | subscription_auth | subscription_charge, and the last two are
+         a studio PAYING DanceOS — money out, never in. They never reached this
+         sum, but only because a subscription payment is written with a null
+         business_id: the rule was kept by an accident of another table's shape
+         rather than by this query. It is stated now. (The same file's own
+         20 Sep lesson: `payments_subject_check` was relaxed once already, so an
+         invariant two migrations away is not a filter.) */
+      .eq("kind", "order")
       /* a refunded payment still CAME IN; the refund is its own deduction below */
       .in("status", ["captured", "refunded"])
       .is("deleted_at", null)
@@ -142,6 +161,7 @@ export async function findTenantIncome(
     bucket.gross += p.amount_inr;
     bucket.count += 1;
     if (p.orders?.membership_id) bucket.memberships += p.amount_inr;
+    else if (p.orders?.event_id) bucket.events += p.amount_inr;
     const method = normaliseMethod(p.method);
     const share = bucket.methods.get(method) ?? { amount: 0, count: 0 };
     share.amount += p.amount_inr;
@@ -168,6 +188,7 @@ export async function findTenantIncome(
       label: ref.label,
       grossInr: bucket.gross,
       membershipsInr: bucket.memberships,
+      eventsInr: bucket.events,
       paymentCount: bucket.count,
       refundedInr: bucket.refunded,
       refundCount: bucket.refundCount,

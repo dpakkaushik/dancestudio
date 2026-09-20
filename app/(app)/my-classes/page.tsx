@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
+import { SegmentedNav } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -191,25 +192,30 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           on Home is still its door. */}
       <DeskHero tool="classes" as="h1" margin="0 0 14px" />
 
-      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 }}>
-        {showsFor(Boolean(myPage)).map((k) => {
-          const { label, aria } = SHOWS[k];
-          const on = show === k;
-          const n = k === "booked" ? booked : k === "assist" ? jobs.length : myPageClasses.length;
-          return (
-            <Link key={k} href={k === "booked" ? "/my-classes" : `/my-classes?show=${k}`} replace aria-label={`${aria} (${n})`} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
-              {label} <span style={{ fontVariantNumeric: "tabular-nums", opacity: on ? 0.75 : 0.6 }}>{n}</span>
-            </Link>
-          );
-        })}
-      </div>
+      {/* ⚠ THE SEGMENT LIGHTS THE MOMENT IT IS TAPPED (20 Sep 2026, the user:
+          "when switching between class columns its lagging … check from artist
+          profiles"). These are real links and stay real links — the address is
+          the state — but a tap here is a server round trip, and Manage reads the
+          whole register, so a plain `<Link>` left the finger with nothing to look
+          at until it came back. `SegmentedNav` presses optimistically. */}
+      <SegmentedNav
+        active={show}
+        segments={showsFor(Boolean(myPage)).map((k) => ({
+          key: k,
+          href: k === "booked" ? "/my-classes" : `/my-classes?show=${k}`,
+          label: SHOWS[k].label,
+          aria: SHOWS[k].aria,
+          n: k === "booked" ? booked : k === "assist" ? jobs.length : myPageClasses.length,
+        }))}
+      />
 
-      {/* THE TOTAL SITS OVER THE LIST IT COUNTS (19 Sep 2026) — it used to head the
-          page beside the Calendar chip, a line about one segment above a control
-          for all three */}
-      <div data-testid="classes-total" style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", padding: "0 2px 8px" }}>
-        {show === "booked" ? `${booked} booked` : show === "assist" ? `${jobs.length} on` : `${myPageClasses.length} on your page`}
-      </div>
+      {/* ⚠ THE TOTAL IS GONE (20 Sep 2026, the user, circling "5 on your page":
+          "similar figures need to be removed from all pages in the app inside the
+          home tab for all profiles"). The segment above ALREADY carries its own
+          count — "Manage 5" — so this line said the same number a second time,
+          one row lower, in smaller type. Its own 19 Sep note is why it read as a
+          duplicate: it moved here to be "over the list it counts", and the counts
+          moved into the toggles in the same breath. One number, one place. */}
 
       {show === "manage" && myPage && manage ? (
         /* the artist's register, in place: Create, Draft · Published · Completed,

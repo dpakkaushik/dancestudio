@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ReportButton } from "@/features/reports/components/ReportButton";
-import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
+import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import { CREW_ROLE_WORD } from "@/types/crew";
-import { KIND_BADGE, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
+import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
 import { EntityBand, Figure } from "./profile-band";
 import { ActionRow, CallButton, MailButton } from "./ContactButtons";
@@ -16,8 +16,8 @@ import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
-import { HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, ROLE_RING, Row, SchedIcon, bigWhite } from "./profile-kit";
+import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
+import { Group, PersonIcon, ROLE_RING, Row, SchedIcon, bigWhite, cornerChip } from "./profile-kit";
 
 /* one Group and one Row for both profile screens (they are the same rows) */
 export { Group, Row };
@@ -104,20 +104,26 @@ export function PublicPersonPage({
           name={profile.fullName}
           grad={ring}
           tint={RC}
-          eyebrow={KIND_BADGE[kind]}
-          /* the account number reads under the word that names the account (18 Sep 2026) */
-          eyebrowSub={
-            profile.memberNo ? (
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums", letterSpacing: 0.3 }}>{memberNoWords(profile.memberNo)}</div>
-            ) : null
-          }
+          /* ⚠ `KIND_WORD`, THE MAP THE OTHER FOUR SCREENS READ (20 Sep 2026, the
+             user: "when looking at your own profile from somewhere should also
+             look same as profile page"). This page read `KIND_BADGE` ("ARTIST")
+             where Home and the Profile tab read `KIND_WORD` ("Artist") —
+             `HERO_EYEBROW` uppercases in CSS, so the two LOOKED identical and a
+             screen reader said two different things. That unification was made on
+             19 Sep and this screen was the one it missed. */
+          eyebrow={KIND_WORD[kind]}
+          /* ⚠ `HeroId`, LIKE EVERY OTHER PROFILE (20 Sep 2026, the user: "id one to
+             be implemented for kinds of profiles"). This page had been setting the
+             number its own way — 10.5/700/.3 in MUTED against the hero's own
+             10.5/800/1.1 — which is the same drift `HeroId` was extracted to end
+             on 19 Sep, and the one screen that never moved onto it.
+             ⚠ A STRANGER READING AN ARTIST SEES NO NUMBER, and that is the data's
+             doing rather than this line's: `public_artist` hands back no
+             `member_no` (20260919090000 took a person's account number out of
+             their public face on purpose), so `memberNo` is null and nothing is
+             drawn. A signed-in reader gets the row, and the number with it. */
+          eyebrowSub={profile.memberNo ? <HeroId>{memberNoWords(profile.memberNo)}</HeroId> : null}
           verified={Boolean(profile.verifiedAt)}
-          /* an organization's page to share is /org/{id}; this one is the admin's view of it */
-          share={kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
-          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): your own record, or — since
-             push 2 — THIS person's record and rank (the user: "stats page on any
-             profile should show all stats for that particular profile and rankings") */
-          stats={<StatsChip href={isMe ? "/stats" : `${path}/stats`} />}
           meta={
             metaLine ? (
               /* "24 Yrs · Pune" — ONE introduction, not two facts (10664), and the
@@ -139,6 +145,21 @@ export function PublicPersonPage({
           avatar={face}
           avatarAlt={profile.fullName}
           shots={shots}
+          /* ⚠ ONE PRESS BACK FROM YOUR OWN PAGE (20 Sep 2026, the user: "when
+             looking at your own profile from somewhere should also look same as
+             profile page. that breaks a lot of times"). The Profile tab's corner
+             has carried the eye to HERE since 15 Sep and there was nothing in the
+             other direction, so landing on your own page from a row somewhere in
+             the app left the back chip as the only way out — and after two or
+             three hops that is not where you came from. The same corner, the
+             other way round, named for the thing it opens. */
+          corner={
+            isMe ? (
+              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
+                <PersonIcon />
+              </Link>
+            ) : null
+          }
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026, the user: "Upper layer of
               Home tab to exactly the same used for profile pages for all kinds of
@@ -152,26 +173,47 @@ export function PublicPersonPage({
                 <Figure n={person.following} label="Following" />
               </>
             }
+            /* the three chips (20 Sep 2026). ⚠ An ORGANIZATION read through this
+               page has no QR: the page to share is `/org/{id}`, and this one is
+               the admin's view of it — sharing a link that 404s for the reader is
+               worse than offering no share at all. */
+            chips={
+              <>
+                {kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
+                <StatsChip href={isMe ? "/stats" : `${path}/stats`} />
+                {/* ⚠ NO BELL ON YOUR OWN PAGE — you do not follow yourself, and a
+                    control drawn only to be disabled is worse than none. Your own
+                    page wears exactly the two chips the Profile tab wears, which
+                    is the whole of "should look same as profile page".
+                    ⚠ AND NONE ON AN ORGANIZATION READ THROUGH THIS PAGE, for the
+                    same reason the QR is not drawn: this is the admin's view of
+                    it, and its public face — with its own Follow — is /org/{id}.
+                    A bell here would follow a row nobody arrives at. */}
+                {isMe || kind === "org" ? null : (
+                  <FollowToggle
+                    target={{ kind: "person", id: profile.id }}
+                    initialFollowing={following}
+                    initialFollowers={person.followers}
+                    accent={RC}
+                    signedIn={signedIn}
+                    variant="chip"
+                    cannotFollow={canFollow ? null : "An organization does not follow"}
+                  />
+                )}
+              </>
+            }
             styles={profile.styles}
             styleAria={(s) => `${s} — a style ${profile.fullName} dances`}
             socials={profile.socials.filter((l) => l.platform !== "WhatsApp")}
           />
         </IdentityHero>
 
-        {/* ── FOLLOW · FOLLOWING — never on your own page ── */}
-        {!isMe && canFollow ? (
-          <div style={{ marginTop: 12 }}>
-            <FollowToggle target={{ kind: "person", id: profile.id }} initialFollowing={following} initialFollowers={person.followers} accent={RC} signedIn={signedIn} />
-          </div>
-        ) : null}
-
         {/* ── THE BUTTONS AN ARTIST'S PAGE CARRIES (19 Sep 2026): Enquiry · Call ·
             Mail — Call only while the artist's own switch is on (push 2: "Call is
             off for artist page by default but should have option to make it
             available"). A user's page carries none — the row is simply not drawn.
-            One block under Follow; the Bio follows (the user, later: "all buttons
-            placed together properly"). ── */}
-        <ActionRow marginTop={6}>
+            One block; Follow is the bell in the figures row above. ── */}
+        <ActionRow marginTop={12}>
           {canAsk ? <EnquiryButton tenantId={person.artistPageId as string} tenantName={profile.fullName} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {kind === "artist" && profile.phone && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}

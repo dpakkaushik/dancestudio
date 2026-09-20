@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
@@ -8,7 +9,7 @@ import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { Group, Row, TYPE, gradientOf } from "@/features/profiles/components/profile-kit";
+import { Group, PersonIcon, Row, TYPE, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_TINT, DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -99,11 +100,6 @@ export function OrganizationPublicPage({
           eyebrow="Organization"
           eyebrowSub={org.memberNo ? <HeroId>{memberNoWords(org.memberNo)}</HeroId> : null}
           verified={org.verified}
-          share={<ProfileShare path={`/org/${org.id}`} name={org.name} />}
-          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): the organization's own
-             combined board, or — for a visitor, since push 2 — THIS organization's
-             standing: where each of its studios ranks */
-          stats={<StatsChip href={isMe ? "/business/stats" : `/org/${org.id}/stats`} />}
           meta={
             <>
               {org.city ? <span>{org.city}</span> : null}
@@ -119,26 +115,49 @@ export function OrganizationPublicPage({
           avatar={photoUrl(org.photoPath)}
           avatarAlt={`${org.name} — logo`}
           shots={shots}
+          /* one press back to your own screens (20 Sep 2026) — the Profile tab's
+             eye opens this page, and until today nothing went the other way */
+          corner={
+            isMe ? (
+              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
+                <PersonIcon />
+              </Link>
+            ) : null
+          }
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026). An organization dances no
               style of its own — what it runs does — so it draws figures and links
               and no styles row. ⚠ NO BIO ("Remove bio from all profiles"). ── */}
           <EntityBand
             figures={<Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />}
+            /* the three chips (20 Sep 2026) — the QR, the organization's own
+               combined board (or, for a visitor, where each of its studios ranks),
+               and the Follow bell, drawn for every viewer */
+            chips={
+              <>
+                <ProfileShare path={`/org/${org.id}`} name={org.name} />
+                <StatsChip href={isMe ? "/business/stats" : `/org/${org.id}/stats`} />
+                {/* not drawn on your own page — you do not follow yourself */}
+                {isMe ? null : (
+                  <FollowToggle
+                    target={{ kind: "person", id: org.id }}
+                    initialFollowing={following}
+                    initialFollowers={followers}
+                    accent={tint}
+                    signedIn={signedIn}
+                    variant="chip"
+                    cannotFollow={canFollow ? null : "An organization does not follow"}
+                  />
+                )}
+              </>
+            }
             socials={org.socials}
           />
         </IdentityHero>
 
-        {/* ── FOLLOW · FOLLOWING (19 Sep 2026) ── */}
-        {!isMe && canFollow ? (
-          <div style={{ marginTop: 12 }}>
-            <FollowToggle target={{ kind: "person", id: org.id }} initialFollowing={following} initialFollowers={followers} accent={tint} signedIn={signedIn} />
-          </div>
-        ) : null}
-
         {/* ── THE BUTTONS AN ORGANIZATION'S PAGE CARRIES (19 Sep 2026): Enquiry · Call ·
-            Mail · Location — one block under Follow; the Bio follows ── */}
-        <ActionRow marginTop={6}>
+            Mail · Location — one block; Follow is the bell in the row above ── */}
+        <ActionRow marginTop={12}>
           {canAsk ? <EnquiryButton tenantId={org.hostBusinessId as string} tenantName={org.name} tenantType="org" signedIn={signedIn} accent={tint} /> : null}
           {org.phone ? <CallButton phone={org.phone} /> : null}
           {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}

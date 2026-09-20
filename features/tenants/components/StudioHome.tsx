@@ -9,11 +9,8 @@ import { EntityBand, Figure } from "@/features/profiles/components/profile-band"
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip, gradientOf } from "@/features/profiles/components/profile-kit";
-import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ProofPhoto } from "@/lib/media/proof";
-import type { PlanCatalogRow } from "@/repositories/plans";
-import type { StudioSubscriptionState } from "@/repositories/subscriptions";
 import type { DeckItem } from "@/types/home";
 import type { PublicTenant } from "@/types/publicProfile";
 import type { Tenant } from "@/types/tenant";
@@ -58,11 +55,6 @@ export function StudioHome({
   /** the studio as its Edit sheet reads it — About, Since, the number, the links,
    *  the pin; null for anybody but the owner, and the pencil is not drawn */
   editable = null,
-  /** WHERE THIS STUDIO'S SUBSCRIPTION STANDS — the owner's only door to
-   *  cancelling since the hub collapsed to one card (15 Sep 2026); null for a
-   *  trainer, who neither pays nor cancels */
-  subscription = null,
-  studioPrice = null,
   deck,
   roomCount,
   /** what it teaches, off its PUBLISHED classes — a studio with none says nothing (7419-7421) */
@@ -79,8 +71,6 @@ export function StudioHome({
   header: ProofPhoto[];
   ownerId: string | null;
   editable?: PublicTenant | null;
-  subscription?: StudioSubscriptionState | null;
-  studioPrice?: PlanCatalogRow | null;
   deck: DeckItem[];
   roomCount: number;
   styles: string[];
@@ -129,10 +119,6 @@ export function StudioHome({
           eyebrowSub={tenant.memberNo ? <HeroId>{memberNoWords(tenant.memberNo)}</HeroId> : null}
           /* the badge — set when a DanceOS admin approved this studio */
           verified={Boolean(tenant.verifiedAt)}
-          /* the studio's own code, to be held up at its door — the app's one share sheet (7381, 7424) */
-          share={<ProfileShare path={`/studio/${tenant.id}`} name={tenant.name} />}
-          /* the studio board, as the chip beside the QR (18 Sep 2026) — it was a tile in the grid below */
-          stats={<StatsChip href="/stats?tab=charts&seg=studio" />}
           meta={
             <>
               {place ? <HeroPlace text={place} query={`${tenant.name} ${place}`} /> : null}
@@ -186,6 +172,16 @@ export function StudioHome({
               exists to remove. ── */}
           <EntityBand
             figures={<Figure n={followers} label="Followers" testId="studio-followers" />}
+            /* the chips at the row's right edge (20 Sep 2026) — the studio's own
+               code to be held up at its door (7381, 7424) and the studio board.
+               No Follow bell: this is the studio's own home, and its team cannot
+               follow it (`set_follow` refuses a business you belong to). */
+            chips={
+              <>
+                <ProfileShare path={`/studio/${tenant.id}`} name={tenant.name} />
+                <StatsChip href="/stats?tab=charts&seg=studio" />
+              </>
+            }
             styles={styles}
             styleAria={(s) => `${s} — a style this studio teaches`}
             socials={tenant.socials}
@@ -211,21 +207,14 @@ export function StudioHome({
           }
         />
 
-        {/* ── the subscription, for the owner (15 Sep 2026): what it is doing,
-              and the one control. It lived under the studio's row on the hub
-              until that collapsed to one card — and the hub was the only door
-              to cancelling, so it came here rather than being lost. ── */}
-        {subscription ? (
-          <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-            <StudioSubscriptionStrip
-              tenantId={tenant.id}
-              tenantName={tenant.name}
-              verified={Boolean(tenant.verifiedAt)}
-              state={subscription}
-              studioPrice={studioPrice}
-            />
-          </div>
-        ) : null}
+        {/* ⚠ NO SUBSCRIPTION STRIP HERE (20 Sep 2026, the user: "remove your
+            conversation with dance os and subscription from just the home tab for
+            studio and organization profiles as already being handled from
+            settings"). It is on `/subscription` now — Settings' own Subscription
+            tile — with one strip per studio, so the premise behind the ask is
+            true rather than nearly true. ⚠ It was NOT simply deleted: this was
+            the only Stop renewing in the app, and deleting it would have made a
+            studio's subscription impossible to cancel anywhere (Rule 9). */}
 
         {/* ── STUDIO TOOLS (7590-7620): the same tile language as Home's grid, and
             every door is THIS studio's ── */}

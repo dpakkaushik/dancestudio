@@ -78,8 +78,13 @@ export interface Profile {
 
 /** the word over the name (10639) — by KIND, because the badge on an artist is
  *  the plan's to give and the badge on an organization is what it is */
-export const KIND_BADGE: Record<PersonKind, string> = { user: "USER", artist: "ARTIST", org: "ORGANIZATION" };
-/** the same three, in a sentence */
+/** ⚠ DELETED 20 Sep 2026 — `KIND_BADGE` was `{ USER, ARTIST, ORGANIZATION }`,
+ *  and `HERO_EYEBROW` uppercases in CSS, so a screen reading it and a screen
+ *  reading `KIND_WORD` LOOKED identical while a screen reader said two different
+ *  things. Home and the Profile tab were unified onto `KIND_WORD` on 19 Sep;
+ *  `PublicPersonPage` was the one that was missed, and it is on this map now.
+ *  The capitals belong to the style sheet, never to the text. */
+/** what an account IS, in a sentence — the word every hero's eyebrow prints */
 export const KIND_WORD: Record<PersonKind, string> = { user: "User", artist: "Artist", org: "Organization" };
 
 /** the account number as the prototype prints it: six digits, zero-padded */

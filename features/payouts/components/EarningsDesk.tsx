@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   recordPayoutAction,
@@ -121,12 +122,17 @@ export function EarningsDesk({
   ledger,
   income,
   monthLabel,
+  selfEarningsHref = null,
 }: {
   tenantId: string;
   tenantName: string;
   ledger: TenantPayLedger;
   income: TenantIncome;
   monthLabel: string;
+  /** `/earnings` — what STUDIOS have paid this person — drawn only on an artist
+   *  page's desk, whose owner is the one person who has both kinds of money
+   *  (20 Sep 2026) */
+  selfEarningsHref?: string | null;
 }) {
   /* the prototype remembers its period across drill-ins (17880-17884) — here the
      desk stays mounted through the server actions' revalidation, so plain state
@@ -235,6 +241,21 @@ export function EarningsDesk({
           {/* ── money in ── */}
           <GrossCard income={income} />
           <HowStudentsPaid month={income.current} />
+
+          {/* ⚠ THE DOOR TO YOUR OWN PAYOUT LEDGER (20 Sep 2026). An artist's Home
+              Earnings tile opens THIS desk now — what their page took — where it
+              used to open `/earnings`, which is what STUDIOS have paid them. Two
+              different ledgers, both real, and the second had no door left on
+              Home; it has one here, where somebody looking at money is already
+              standing. Drawn for a page's owner only: a studio's owner is paid by
+              nobody. */}
+          {selfEarningsHref ? (
+            <Link href={selfEarningsHref} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)", color: INK, textDecoration: "none", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
+              <span aria-hidden="true" style={{ fontSize: 14 }}>↩</span>
+              <span style={{ flex: 1, minWidth: 0 }}>What studios pay you</span>
+              <span aria-hidden="true" style={{ color: "var(--sub)" }}>›</span>
+            </Link>
+          ) : null}
 
           {/* ── money out ── */}
           <MoneyCard

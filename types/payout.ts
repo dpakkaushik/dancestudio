@@ -81,8 +81,18 @@ export interface StudioEarning {
   sessions: number;
   ratePerSessionInr: number | null;
   earnedInr: number;
+  /** what this studio has settled AGAINST SESSIONS — a payout carrying lines */
   paidInr: number;
   dueInr: number;
+  /** ⚠ WHAT IT PAID THAT WAS NOT FOR SESSIONS (20 Sep 2026) — `record_team_payment`
+   *  writes a payout with an amount the owner states and NO session lines, which
+   *  is the only kind a front-desk seat ever gets (19 Sep, R35). It used to be
+   *  summed into `paidInr` with everything else, so a ₹2,500 salary silently
+   *  cancelled ₹2,500 of teaching money the studio still owed — and if the person
+   *  taught nothing there, the studio had no row at all and the payment vanished
+   *  from the Settled tile while still showing in WHO HAS PAID YOU. Its own
+   *  figure now, netted against nothing. */
+  otherPaidInr: number;
 }
 
 /** The teacher's side of the same screen. */

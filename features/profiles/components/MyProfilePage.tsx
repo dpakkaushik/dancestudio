@@ -22,7 +22,7 @@ import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
+import { CHIP_ROW, FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
 import { EyeIcon, Group, PlatformIcon, ROLE_RING, RoleBadge, Row, Sheet, cornerChip, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
@@ -164,12 +164,6 @@ export function MyProfilePage({
              (18 Sep 2026) — it sat under the styles until today */
           eyebrowSub={<HeroId>{memberNoWords(profile.memberNo)}</HeroId>}
           verified={Boolean(profile.verifiedAt)}
-          /* the QR shares the page a stranger reads: an organization's own since 18 Sep 2026 */
-          share={<ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />}
-          /* STATS, AS THE CHIP BESIDE THE QR (18 Sep 2026, the user: "…in the same
-             area on both home and profile") — it was the big white button under
-             About (10905); a person's record, an organization's combined board */
-          stats={<StatsChip href={isOrg ? "/business/stats" : "/stats"} />}
           /* ⚠ THE SAME SENTENCE HOME PRINTS — "20 Yrs · Gurugram", built by
              `heroMetaWords` (19 Sep 2026). This screen used to hand `PlaceLink`
              a `prefix` of "20, " while Home joined its own string with a comma,
@@ -231,6 +225,14 @@ export function MyProfilePage({
               </button>
                 </>
               )}
+            {/* the chips at the row's right edge (20 Sep 2026) — the QR that
+                shares the page a stranger reads (an organization's own since
+                18 Sep) and the Stats chip beside it. No Follow bell: this is
+                your own profile, and you do not follow yourself. */}
+            <div style={CHIP_ROW}>
+              <ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
+              <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
+            </div>
           </div>
 
           {/* ⚠ THE STYLES AND THE LINKS ARE INSIDE THE HERO, EXACTLY AS THEY ARE

@@ -158,6 +158,13 @@ export const EyeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
 );
 
+/** the eye's opposite number (20 Sep 2026): from your own PUBLIC page back to
+ *  your Profile tab, in the same corner chip, so the two directions are one
+ *  gesture rather than the back chip and a guess */
+export const PersonIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6" /><path d="M4.5 20c0-3.6 3.4-5.6 7.5-5.6s7.5 2 7.5 5.6" /></svg>
+);
+
 /** ⚠ `var(--sub)`, NOT `var(--muted)` (16 Sep 2026, the user: "the headings are
  *  in light grey color isnt looking good"). They were right and it is
  *  measurable: `--muted` is #707070 on the sheet's #0A0A0A ground — 4.0:1 — and

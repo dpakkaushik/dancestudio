@@ -49,6 +49,23 @@ export function MyEarnings({ data, monthLabel }: { data: MyEarningsData; monthLa
         status: money(s.dueInr),
         statusColour: s.dueInr > 0 ? GOLD : SUB,
       },
+      /* ⚠ MONEY THAT WAS NOT FOR SESSIONS, ON ITS OWN LINE (20 Sep 2026) — what
+         the studio paid you off the register (`record_team_payment`, 19 Sep).
+         It used to be summed into Settled, where it silently cancelled teaching
+         money the studio still owed; it nets against nothing now, and it is
+         drawn only when there is some, so a teacher who has only ever been paid
+         for sessions reads exactly what they read before. */
+      ...(s.otherPaidInr > 0
+        ? [
+            {
+              key: `${s.tenantId}-other`,
+              label: "Other payments",
+              meta: "not against sessions",
+              status: money(s.otherPaidInr),
+              statusColour: GREEN,
+            },
+          ]
+        : []),
     ],
   }));
 

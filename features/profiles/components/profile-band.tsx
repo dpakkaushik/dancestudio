@@ -32,8 +32,44 @@ import { PlatformIcon, TYPE } from "./profile-kit";
  *  `IdentityHero`'s own `styles` row — which a studio and a crew already used.
  *  Moving one screen is a smaller change than moving three. */
 
-/** the figure row: the numbers set like numbers (10683) */
-export const FIGURE_ROW: CSSProperties = { display: "flex", alignItems: "flex-start", gap: 22, marginTop: 12, flexWrap: "wrap" };
+/** the figure row: the numbers set like numbers (10683).
+ *  ⚠ `alignItems: center` since 20 Sep 2026, because the row now ends in the
+ *  three chips and a 44px control against a top-aligned number reads as a
+ *  mistake; the numbers still start the row. */
+export const FIGURE_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 22, marginTop: 12, flexWrap: "wrap" };
+
+/** THE THREE CHIPS — QR · STATS · FOLLOW (20 Sep 2026, the user: "Follow button
+ *  to be a bell with qr code and stats. should be placed in same row as follower
+ *  following numbers on its right side").
+ *
+ *  ⚠ THEY LEFT THE HERO'S RIGHT EDGE, and that is the point. C13 put the QR and
+ *  Stats in a COLUMN beside the name because the QR used to share the name's
+ *  line and cut long names (18 Sep). A third chip there would have squeezed the
+ *  name column again on a 360px phone — the very bug C13 exists to stop — so the
+ *  row that already had horizontal room to spare is where they go.
+ *
+ *  One declaration for all three, because the last time a shared look was
+ *  written out per component the rows drifted into three different bands. */
+export const PROFILE_CHIP: CSSProperties = {
+  flexShrink: 0,
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "var(--text)",
+  color: "var(--solid)",
+  textDecoration: "none",
+  border: "none",
+  cursor: "pointer",
+  fontFamily: "inherit",
+  boxShadow: "0 4px 14px -6px rgba(0,0,0,.6)",
+};
+
+/** the chips sit at the row's right edge — `marginLeft: auto` is what puts them
+ *  there without a second flex container fighting the figures for space */
+export const CHIP_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 };
 export const figureNum: CSSProperties = { display: "block", fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.6, fontFamily: DOS_DISPLAY, color: INK, fontVariantNumeric: "tabular-nums" };
 export const figureLabel: CSSProperties = { display: "block", ...TYPE.micro, color: MUTED, marginTop: 4 };
 
@@ -132,12 +168,15 @@ export function EntityStyles({ styles, aria }: { styles: string[]; aria: (s: str
  *  exactly what the first cut of this band did. */
 export function EntityBand({
   figures,
+  chips = null,
   styles = [],
   styleAria = (s) => s,
   socials = [],
   children = null,
 }: {
   figures: ReactNode;
+  /** the QR · Stats · Follow chips, right-aligned in the figures row (20 Sep 2026) */
+  chips?: ReactNode;
   styles?: string[];
   styleAria?: (s: string) => string;
   socials?: SocialLink[];
@@ -145,7 +184,10 @@ export function EntityBand({
 }) {
   return (
     <>
-      <div style={FIGURE_ROW}>{figures}</div>
+      <div style={FIGURE_ROW}>
+        {figures}
+        {chips ? <div style={CHIP_ROW}>{chips}</div> : null}
+      </div>
       <EntityStyles styles={styles} aria={styleAria} />
       <EntityLinks socials={socials} />
       {children}

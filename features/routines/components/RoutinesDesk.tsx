@@ -7,7 +7,7 @@ import { DOS_LEVELS, DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styl
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { AUDIO_MAX_WORDS, MEDIA_BUCKET, photoUrl, routineAudioPath, whyNotATrack } from "@/lib/media/photo";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { RoutineWithUsage } from "@/repositories/routines";
+import type { LearnedRoutine, RoutineWithUsage } from "@/repositories/routines";
 import type { ClassLevel } from "@/types/class";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { saveRoutineAction } from "@/features/routines/server-actions/routines";
@@ -28,7 +28,26 @@ const input: CSSProperties = { width: "100%", boxSizing: "border-box", backgroun
 const eyebrow: CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", margin: "4px 0 6px" };
 const bigBtn = (on: boolean): CSSProperties => ({ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, cursor: "pointer", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", border: on ? "none" : "1px solid var(--el)", background: on ? INK : "var(--card)", color: on ? LILAC : INK });
 
-export function RoutinesDesk({ routines, userId }: { routines: RoutineWithUsage[]; userId: string }) {
+export function RoutinesDesk({
+  routines,
+  learned = [],
+  canMake = true,
+  userId,
+}: {
+  routines: RoutineWithUsage[];
+  /** ⚠ ROUTINES YOU LEARNED (20 Sep 2026, the user: "routines you learned should
+   *  also be a seprate tab in routines section and should be visible to user
+   *  profiles as well in tools") — what was taught in a class you actually
+   *  turned up to. Attendance, not bookings: the same rule the owner's side of
+   *  this desk keeps, and Step 25's. */
+  learned?: LearnedRoutine[];
+  /** a routine belongs to the PERSON and is an artist's tool to make — a plain
+   *  user opens this desk to see what they have been taught, so the making side
+   *  says so rather than offering a form the database would refuse */
+  canMake?: boolean;
+  userId: string;
+}) {
+  const [seg, setSeg] = useState<"mine" | "learned">(canMake ? "mine" : "learned");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -42,7 +61,6 @@ export function RoutinesDesk({ routines, userId }: { routines: RoutineWithUsage[
 
   const term = q.trim().toLowerCase();
   const list = term ? routines.filter((r) => [r.title, r.style, r.songTitle ?? ""].some((s) => s.toLowerCase().includes(term))) : routines;
-  const live = routines.filter((r) => r.status === "live").length;
 
   /* THE MP3 GOES STRAIGHT FROM THIS BROWSER TO STORAGE (the photos slice's rule,
      Rule 5): the file never rides a server action, and only the PATH is sent. */
@@ -89,11 +107,48 @@ export function RoutinesDesk({ routines, userId }: { routines: RoutineWithUsage[
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
-      <DeskHero tool="routines" as="h1" margin="0 0 10px" />
-      <div style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", padding: "0 2px 10px" }}>
-        {routines.length} {routines.length === 1 ? "routine" : "routines"} · {live} live
+      {/* ⚠ NO FLOATING COUNT UNDER THE HERO (20 Sep 2026, the user: "similar
+          figures need to be removed from all pages in the app inside the home tab
+          for all profiles"). The list below IS the count, and each row already
+          wears its own Live / Draft badge — so "4 routines · 3 live" was the page
+          reading itself back. ⚠ The counts that STAY are the ones inside a shelf
+          head beside its heading (`ManagedScreen`, `/classes`), which is the
+          prototype's own DosShelfHead (3446) and a different object. */}
+      <DeskHero tool="routines" as="h1" margin="0 0 12px" />
+
+      {/* ── YOURS · LEARNED (20 Sep 2026) — the two sides of a routine: the ones
+          you made and teach from, and the ones you were taught. Client state,
+          not a URL: both lists are already on the page, so switching is free and
+          there is nothing for a server to fetch (the lag the user reported on
+          the class columns is a round trip; this one has none). ── */}
+      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 11 }}>
+        {([["mine", `Yours · ${routines.length}`], ["learned", `Learned · ${learned.length}`]] as const).map(([k, label]) => (
+          <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k} style={{ flex: 1, padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, border: "none", cursor: "pointer", fontFamily: "inherit", background: seg === k ? "var(--solid)" : "transparent", color: seg === k ? INK : SUB }}>
+            {label}
+          </button>
+        ))}
       </div>
 
+      {seg === "learned" ? (
+        <>
+          <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, padding: "0 2px 10px" }}>
+            What was taught in a class you turned up to. It counts <b>attendance</b>, not bookings — a seat nobody marked is not a session danced.
+          </div>
+          {learned.map((r) => (
+            <LearnedRow key={`${r.id}-${r.classId}`} r={r} />
+          ))}
+          {learned.length === 0 ? (
+            <div style={{ ...card, textAlign: "center", fontSize: 12, color: SUB, border: "1.5px dashed var(--el)" }}>
+              Nothing yet. A routine appears here once you have been checked in to a class that was taught from one.
+            </div>
+          ) : null}
+        </>
+      ) : !canMake ? (
+        <div style={{ ...card, textAlign: "center", fontSize: 12, color: SUB, border: "1.5px dashed var(--el)" }}>
+          Making a routine is an artist&rsquo;s tool. Take the Artist plan from Settings &rsaquo; Subscription and this side becomes yours.
+        </div>
+      ) : (
+        <>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{ ...bigBtn(true), width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 11, padding: "13px" }}>
         ＋ New routine
       </button>
@@ -174,6 +229,8 @@ export function RoutinesDesk({ routines, userId }: { routines: RoutineWithUsage[
           {routines.length === 0 ? "No routines yet. A routine is a song and a video — add one, then put it on a class from the class's own page." : "No routines match that."}
         </div>
       ) : null}
+        </>
+      )}
 
       {toast ? (
         <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "#241B33", color: "#fff", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 40 }}>
@@ -181,6 +238,48 @@ export function RoutinesDesk({ routines, userId }: { routines: RoutineWithUsage[
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** ONE ROUTINE YOU LEARNED — its two media, the class it was taught in, and how
+ *  many of that class's sessions you actually turned up to.
+ *
+ *  ⚠ THE ROW OPENS THE CLASS, not the routine's own page: `/routines/{id}` is the
+ *  OWNER's usage screen — who danced it, how often — and who attended a class is
+ *  not a fact the platform hands to somebody who was in the room. The song and
+ *  the video are the part that is yours to keep, and they are on the row. */
+function LearnedRow({ r }: { r: LearnedRoutine }) {
+  const col = dosStyleColor(r.style);
+  const songHref = r.songUrl ? (r.songIsFile ? photoUrl(r.songUrl) : r.songUrl) : null;
+  const chip = (label: string, href: string | null, tint: string) =>
+    href ? (
+      <a key={label} href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${label.startsWith("♪") ? "song" : "video"} for ${r.title}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "48%", padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {label}
+      </a>
+    ) : null;
+  const when = r.lastOn ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date(r.lastOn)) : null;
+  return (
+    <Link href={`/c/${r.shareSlug}`} aria-label={`Open the class ${r.title} was taught in`} style={{ ...card, display: "flex", gap: 11, alignItems: "center", textDecoration: "none", color: INK }}>
+      <span aria-hidden="true" style={{ flexShrink: 0, width: 38, height: 38, borderRadius: 12, background: `${col}22`, border: `1px solid ${col}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+        ♪
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <b style={{ display: "block", fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</b>
+        <span style={{ display: "block", fontSize: 10.5, color: SUB, fontWeight: 700, marginTop: 1 }}>
+          {r.style} · {DOS_LEVEL_LABEL[r.level] ?? r.level}
+          {r.tenantName ? ` · ${r.tenantName}` : ""}
+        </span>
+        <span style={{ display: "flex", gap: 5, marginTop: 5 }}>
+          {chip("♪ Song", songHref, col)}
+          {chip("▶ Video", r.videoUrl, col)}
+        </span>
+      </span>
+      <span style={{ flexShrink: 0, textAlign: "right" }}>
+        <b style={{ display: "block", fontSize: 17, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{r.sessions}</b>
+        <span style={{ display: "block", fontSize: 9, fontWeight: 800, color: "var(--muted)", letterSpacing: 0.6, marginTop: 3 }}>{r.sessions === 1 ? "SESSION" : "SESSIONS"}</span>
+        {when ? <span style={{ display: "block", fontSize: 9.5, color: SUB, marginTop: 3 }}>{when}</span> : null}
+      </span>
+    </Link>
   );
 }
 

@@ -7,7 +7,6 @@ import { findMyPendingInvites } from "@/repositories/invites";
 import { ensureArtistPage, findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
-import { findSupportThreads } from "@/repositories/support";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -77,7 +76,7 @@ export default async function HomePage() {
      six-step organization card, and that card became the GST card. They were
      four round-trips on every single Home load for a component that is not
      drawn any more; what is still asked for is what is still shown. */
-  const [memberships, invites, plan, eventsHostId, threads] = await Promise.all([
+  const [memberships, invites, plan, eventsHostId] = await Promise.all([
     /* WITH the role (18 Sep 2026): an artist's grid needs the page they OWN, not
        the first business they belong to — a studio they teach at is not theirs */
     findMyMemberships(supabase),
@@ -88,16 +87,16 @@ export default async function HomePage() {
     /* R15: the organization's ONE events host, so Studio Tools can carry an
        Events tile (11 Sep 2026) — the desk existed, the door from Home did not */
     isOrg ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
-    /* THE ONE READ THAT CAME BACK (11 Sep 2026). The six-step card carried the
-       door to the organization's conversation with DanceOS, and with the card
-       gone an organization that had written in had no way back to the reply
-       from Home. One read, drawn only when a thread exists. */
-    isOrg ? findSupportThreads(supabase).catch(() => []) : Promise.resolve([]),
+    /* ⚠ AND THE FIFTH READ WENT WITH ITS CARD (20 Sep 2026, the user: "remove
+       your conversation with dance os and subscription from just the home tab
+       for studio and organization profiles as already being handled from
+       settings"). `findSupportThreads` existed on Home for one row — the door
+       back to DanceOS's reply — and Settings' Help & support tile is that door
+       for every kind of account, so Home was the second one. The read is gone
+       too, not just the card: a round trip on every Home load for something
+       nothing renders is the shape this list was already trimmed for on 11 Sep. */
   ]);
   const businesses = memberships.map((m) => m.tenant);
-  /* the newest conversation, and whether DanceOS has said something unread */
-  const thread = threads[0] ?? null;
-  const unread = threads.reduce((n, t) => n + t.unread, 0);
   /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
@@ -225,13 +224,6 @@ export default async function HomePage() {
              looks at an organization now, the badge moved to the studio. An
              organization verified under the old model keeps its tick. */
           verified={Boolean(profile.verifiedAt)}
-          /* the QR beside the name shares this account's page (7288) — a person's,
-             or the organization's own since it has one (18 Sep 2026, R23) */
-          share={<ProfileShare path={publicHref} name={profile.fullName} />}
-          /* STATS IS THE CHIP BESIDE THE QR (18 Sep 2026, the user: "remove stats
-             from tools and place like a button similar to the qr code in the
-             same area") — a person's record, an organization's combined board */
-          stats={<StatsChip href={isOrg ? "/business/stats" : "/stats"} />}
           meta={metaLine ? place ? <HeroPlace text={metaLine} query={place} /> : <span style={{ fontVariantNumeric: "tabular-nums" }}>{metaLine}</span> : null}
           /* ⚠ THE STYLES ARE IN THE BAND BELOW, NOT HERE (19 Sep 2026, the user:
              "Dance style for the page should also be editable only from the home
@@ -268,6 +260,17 @@ export default async function HomePage() {
               message; it is the Stats chip's own screen. */}
           <HomeBand
             profile={profile}
+            /* ⚠ THE CHIPS RIDE THE FIGURES ROW NOW (20 Sep 2026, the user: "should
+               be placed in same row as follower following numbers on its right
+               side") — the QR that shares this account's page (7288), and the
+               Stats chip beside it (18 Sep). There is no Follow bell on your own
+               Home: you do not follow yourself. */
+            chips={
+              <>
+                <ProfileShare path={publicHref} name={profile.fullName} />
+                <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
+              </>
+            }
             followers={followers}
             followingPeople={followingPeople}
             followingTenants={followingTenants}
@@ -294,18 +297,13 @@ export default async function HomePage() {
             an organization opens most. It lives at /gst now, reached from
             Settings' own row and from the events desk, which is the only place
             it actually stands in anybody's way. */}
-        {/* the conversation with DanceOS, when there is one — the reply is read
-            by opening it, and the count says whether there is one to read */}
-        {isOrg && thread ? (
-          <Link
-            href={`/support/${thread.id}`}
-            style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "11px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)", color: INK, textDecoration: "none", fontSize: 12.5, fontWeight: 800 }}
-          >
-            <span aria-hidden="true" style={{ fontSize: 15 }}>💬</span>
-            <span style={{ flex: 1, minWidth: 0 }}>{unread > 0 ? `Read DanceOS's reply (${unread})` : "Your conversation with DanceOS"}</span>
-            <span aria-hidden="true" style={{ color: "var(--sub)" }}>›</span>
-          </Link>
-        ) : null}
+        {/* ⚠ AND THE CONVERSATION WITH DANCEOS IS GONE FROM HERE (20 Sep 2026,
+            the user: "remove your conversation with dance os … from just the home
+            tab for studio and organization profiles as already being handled from
+            settings"). It is Settings → Help & support, which every account has
+            and which is where the 10 Sep merge already put this one conversation.
+            A permanent card on the screen an organization opens most, for a door
+            that exists one tap away, is the same clutter the GST card was. */}
 
         {/* ── THE DECK JUST SCROLLS (prototype 7106-7204): today, whole — one list, every side,
             live first — under the one shelf head, with both doors named. An organization

@@ -446,7 +446,15 @@ test.describe.serial("DanceOS, end to end", () => {
     // verified, and Subscribe is NOT offered yet.
     const verifyStrip = owner.getByTestId("studio-verification");
     await expect(verifyStrip).toHaveAttribute("aria-label", "Studio verification: Not verified");
-    await expect(owner.getByTestId("studio-subscription").getByRole("button", { name: /^Subscribe/ })).toHaveCount(0);
+    /* ⚠ AND SUBSCRIBE IS NOT OFFERED ANYWHERE YET — asked on /subscription, which
+       is where a studio's subscription lives since 20 Sep 2026 (the user: "remove
+       … subscription from just the home tab … as already being handled from
+       settings"). Reading it off the hub, as this line used to, could only ever
+       pass: the strip has never been there. */
+    await owner.goto("/subscription");
+    await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toBeVisible();
+    await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName }).getByRole("button", { name: /^Subscribe/ })).toHaveCount(0);
+    await owner.goto("/business");
     // 14 Sep 2026: the strip IS the form — the links are typed in it beside each
     // platform's own mark, the photos go under them, and ONE Submit saves the
     // links and files the request. Nothing is written by the service role here.
@@ -491,13 +499,18 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(hubCard.getByLabel("Verified")).toBeVisible();
     await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
     await expect(hubCard.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
-    // and the sentence between this studio and Discover is on the page that card
-    // opens — where the cancel door moved when the hub collapsed
-    await owner.goto(`/business/${studioId}`);
-    const studioStrip = owner.getByTestId("studio-subscription");
+    // and the sentence between this studio and Discover is on /subscription —
+    // Settings' own Subscription tile, where the cancel door lives since 20 Sep
+    // 2026 (it was the studio's own home from 15 Sep, and the hub before that;
+    // there is exactly ONE Stop renewing in this app and it must have a screen)
+    await owner.goto("/subscription");
+    const studioStrip = owner.getByTestId("studio-subscription").filter({ hasText: studioName });
     await expect(studioStrip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     await expect(studioStrip).toContainText("Each studio has its own subscription");
     await expect(studioStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
+    // and the studio's own home no longer carries it
+    await owner.goto(`/business/${studioId}`);
+    await expect(owner.getByTestId("studio-subscription")).toHaveCount(0);
     await admin.goto(`/admin/businesses?q=${encodeURIComponent(studioName)}`);
     const studioCard = admin.getByTestId("admin-business").filter({ hasText: studioName });
     await expect(studioCard).toContainText("NO SUBSCRIPTION");
@@ -508,8 +521,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // and the standing behind it is the grant
     await owner.goto("/business");
     await expect(owner.getByTestId("studio-live")).toBeVisible();
-    await owner.goto(`/business/${studioId}`);
-    await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
+    await owner.goto("/subscription");
+    await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toContainText("GRANTED");
     // the Accounts desk counts it for the organization (the chip appears with the first studio)
     await admin.goto(`/admin/accounts?q=${encodeURIComponent(ownerEmail)}`);
     await expect(admin.getByTestId("admin-account").filter({ hasText: ownerEmail })).toContainText("1/1 STUDIOS SUBSCRIBED");
@@ -1299,7 +1312,9 @@ test.describe.serial("DanceOS, end to end", () => {
        1 — and their page now carries what that makes true: a TEACHES AT row for
        the studio, whose own meta line reads "Artist · 1 class · Pune". Two matches
        for a bare "ARTIST", so the one that is the hero's is asked for by name. */
-    await expect(learner.getByTestId("person-hero").getByText("ARTIST")).toBeVisible();
+    /* "Artist", not "ARTIST" — the eyebrow uppercases in CSS (20 Sep 2026, C29),
+       and it carries the account number against it (C28) */
+    await expect(learner.getByTestId("person-hero").getByText(/^Artist(-\d{6})?$/)).toBeVisible();
     /* ⚠ AND THE STUDIO IS ON THIS PAGE TWICE SINCE 20 Sep 2026, ON PURPOSE.
        "Studios taught at" counts PUBLISHED CLASSES; "Studios associated with"
        counts the SEAT they hold (`person_associations`, the user's list E).
@@ -1359,8 +1374,20 @@ test.describe.serial("DanceOS, end to end", () => {
     const orgPage = await learner.goto(`/person/${ownerId}`);
     expect(orgPage?.status()).toBe(404);
     await admin.goto(`/person/${ownerId}`);
-    await expect(admin.getByText("ORGANIZATION", { exact: true })).toBeVisible();
-    await expect(admin.getByRole("button", { name: "Follow" })).toHaveCount(0);
+    /* ⚠ "Organization", NOT "ORGANIZATION" (20 Sep 2026): this page read
+       `KIND_BADGE` where Home and the Profile tab read `KIND_WORD`, and
+       `HERO_EYEBROW` uppercases in CSS — so the two LOOKED identical while a
+       screen reader said two different things. `KIND_BADGE` is deleted. The word
+       carries the account number against it now, with no gap (C28), so the match
+       is on the joined token rather than on the word alone. */
+    await expect(admin.getByTestId("person-hero").getByText(/^Organization(-\d{6})?$/)).toBeVisible();
+    /* ⚠ `exact: true` (20 Sep 2026): Playwright's name matching with a bare
+       STRING is a case-insensitive SUBSTRING, so "An organization does not
+       follow" — the disabled bell's own reason — matched a locator asking for
+       "Follow" and this line went red on a page that was right. The bell is not
+       drawn here at all now (an organization's public face is /org/{id}), and
+       the locator says what it means either way. */
+    await expect(admin.getByRole("button", { name: "Follow", exact: true })).toHaveCount(0);
 
     // the crew's public roster opens its people too, and the trainer's own page
     // says it is theirs rather than offering them a Follow button
@@ -1372,7 +1399,7 @@ test.describe.serial("DanceOS, end to end", () => {
        Stats chip beside the QR opens your own record */
     await expect(trainer.getByTestId("person-hero")).toBeVisible();
     await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", "/stats");
-    await expect(trainer.getByRole("button", { name: "Follow" })).toHaveCount(0);
+    await expect(trainer.getByRole("button", { name: "Follow", exact: true })).toHaveCount(0);
     // ⚠ and the public view of yourself offers NO photo control (16 Sep 2026):
     // this page is what the eye in the tab bar opens, so it is what a visitor
     // sees and nothing else
@@ -1485,8 +1512,13 @@ test.describe.serial("DanceOS, end to end", () => {
     /* ⚠ "Artist", not "ARTIST" (19 Sep 2026): the Profile tab and Home read ONE
        kind map now, and it is the title-cased one — `HERO_EYEBROW` does the
        shouting in CSS, so the DOM keeps the word a screen reader should say. */
-    await expect(trainer.getByText("Artist", { exact: true }).first()).toBeVisible();
-    await expect(trainer.getByText(/^\d{6}$/)).toBeVisible();
+    /* ⚠ AND THE NUMBER IS PART OF THAT WORD (20 Sep 2026, the user: "Id should be
+       placed like for eg. Artist-000123 together there should be no gap"). It was
+       its own text node, matched by /^\d{6}$/; the two are nested in ONE span now,
+       so the assertion is on the joined token — which is also what a screen
+       reader says, and the reason for nesting rather than sitting them side by
+       side in a zero-gap row (that looked joined and read as two words). */
+    await expect(trainer.getByText(/^Artist-\d{6}$/).first()).toBeVisible();
     await expect(trainer.getByTestId("my-followers")).toHaveText("0");
     /* ⚠ AND NO PENCIL ON THIS PAGE (19 Sep 2026, the user: "all edit profile
        options to be removed from home and profile pages") — the corner is the
@@ -1625,7 +1657,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByText("This period does not renew. Once it ends you can subscribe again from here.")).toBeVisible();
     // what was paid for stands: the same profile is still an artist
     await trainer.goto("/profile");
-    await expect(trainer.getByText("Artist", { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+    await expect(trainer.getByText(/^Artist(-\d{6})?$/).first()).toBeVisible({ timeout: 15_000 });
 
     // ---- the business's own words on its public page (Since 10691, Call 10879) ----
     // ⚠ NO ABOUT SINCE 20 Sep 2026 (the user: "Remove bio from all profiles") — the

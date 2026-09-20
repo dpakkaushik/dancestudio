@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { setCrewFollowAction, setFollowAction, setPersonFollowAction, type FollowActionResult } from "@/features/follows/server-actions/follows";
 import { SUB } from "@/lib/design/tokens";
+import { PROFILE_CHIP } from "./profile-band";
 import { smallBox } from "./profile-kit";
 
 /** FOLLOW · FOLLOWING, ONE CONTROL FOR EVERY PROFILE PAGE (19 Sep 2026, the user:
@@ -34,6 +35,8 @@ export function FollowToggle({
   initialFollowers = null,
   accent,
   signedIn,
+  variant = "pill",
+  cannotFollow = null,
 }: {
   target: FollowTarget;
   initialFollowing: boolean;
@@ -42,6 +45,18 @@ export function FollowToggle({
   /** the page's own colour — the lit edge of a Following button */
   accent: string;
   signedIn: boolean;
+  /** ⚠ `chip` is the BELL beside the QR and Stats in the figures row (20 Sep
+   *  2026, the user: "Follow button to be a bell with qr code and stats"). It is
+   *  a variant rather than a second component on purpose: two controls for one
+   *  fact is how Follow came to exist twice before, one carrying a count and one
+   *  not (19 Sep). Same state, same action, same accessible name. */
+  variant?: "pill" | "chip";
+  /** when the database would refuse this follow — your own team, or an
+   *  organization account, which `guard_person_only` has refused since 8 Sep —
+   *  the chip is still DRAWN and says why rather than vanishing. "Available to
+   *  all" is about the control being there, never about promising a press that
+   *  would be refused (R31's rule). */
+  cannotFollow?: string | null;
 }) {
   const [following, setFollowing] = useState(initialFollowing);
   const [followers, setFollowers] = useState<number | null>(initialFollowers);
@@ -54,17 +69,10 @@ export function FollowToggle({
     </svg>
   );
 
-  /* the figures moved to their own line under the hero (`FollowFigures`, later
-     on 19 Sep 2026: "follow following counts visible on every profile") — the
-     button is the word alone again, and `followers` rides as data */
-  if (!signedIn) {
-    return (
-      <Link href="/login" aria-label="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={smallBox(false, accent)}>
-        <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>{star}</span>Follow
-      </Link>
-    );
-  }
-
+  /* ⚠ DEFINED BEFORE THE FIRST `return`, not after it. The chip branch below
+     returns early, and a `const` arrow declared after that point is in the
+     temporal dead zone for the closure that captured it — the press would throw
+     rather than follow anybody. */
   const toggle = async () => {
     if (busy) return;
     setBusy(true);
@@ -78,6 +86,59 @@ export function FollowToggle({
     setFollowing(out.state.following);
     setFollowers(out.state.followers);
   };
+
+  /* the BELL the chip wears — filled once you follow, so the two states read at
+     a glance the way the star's fill already did on the pill */
+  const bell = (on: boolean) => (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 8.5a6 6 0 1 0-12 0c0 6-2 7.5-2 7.5h16s-2-1.5-2-7.5" />
+      <path d="M13.7 20a2 2 0 0 1-3.4 0" />
+    </svg>
+  );
+
+  if (variant === "chip") {
+    /* the database would refuse it — drawn, disabled, and it says why */
+    if (cannotFollow) {
+      return (
+        <button type="button" disabled aria-label={cannotFollow} title={cannotFollow} data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={{ ...PROFILE_CHIP, opacity: 0.45, cursor: "not-allowed" }}>
+          {bell(false)}
+        </button>
+      );
+    }
+    if (!signedIn) {
+      return (
+        <Link href="/login" aria-label="Follow" title="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={PROFILE_CHIP}>
+          {bell(false)}
+        </Link>
+      );
+    }
+    return (
+      <button
+        type="button"
+        disabled={busy}
+        aria-pressed={following}
+        aria-label={following ? "Following" : "Follow"}
+        title={following ? "Following" : "Follow"}
+        data-testid="follow-toggle"
+        data-followers={followers ?? undefined}
+        onClick={() => void toggle()}
+        style={{ ...PROFILE_CHIP, cursor: busy ? "wait" : "pointer", background: following ? accent : "var(--text)" }}
+      >
+        {bell(following)}
+      </button>
+    );
+  }
+
+  /* the figures moved to their own line under the hero (`FollowFigures`, later
+     on 19 Sep 2026: "follow following counts visible on every profile") — the
+     button is the word alone again, and `followers` rides as data */
+  if (!signedIn) {
+    return (
+      <Link href="/login" aria-label="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={smallBox(false, accent)}>
+        <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>{star}</span>Follow
+      </Link>
+    );
+  }
 
   return (
     <>

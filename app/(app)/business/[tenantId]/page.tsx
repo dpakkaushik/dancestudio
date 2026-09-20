@@ -7,11 +7,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
 import { findFollowerCounts } from "@/repositories/follows";
 import { findStudioDeck } from "@/repositories/home";
-import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findPublicTenant } from "@/repositories/publicProfile";
 import { countRoomsByTenants } from "@/repositories/rooms";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
-import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
 import { findMyMemberships } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the deck's one
@@ -54,7 +52,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      policy and set_business_profile_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, editable, subs, catalog, followerCounts] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByTenant, editable, followerCounts] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
@@ -70,12 +68,10 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
        the organization's Home. */
     /* the studio as its Edit sheet reads it (About, Since, the pin…) — the owner's pencil */
     isOwner ? findPublicTenant(supabase, tenantId).catch(() => null) : Promise.resolve(null),
-    /* WHERE ITS SUBSCRIPTION STANDS (15 Sep 2026) — the owner's only door to
-       cancelling, now that the hub is one card per studio */
-    isOwner
-      ? findMyStudioSubscriptions(supabase, [tenantId]).catch(() => ({}) as Record<string, StudioSubscriptionState>)
-      : Promise.resolve({} as Record<string, StudioSubscriptionState>),
-    isOwner ? findPlanCatalog(supabase).catch(() => []) : Promise.resolve([]),
+    /* ⚠ TWO READS LEFT THIS LIST WITH THE SUBSCRIPTION STRIP (20 Sep 2026) — the
+       studio's own subscription state and the price list fed a card that now
+       lives on `/subscription`, where Settings' Subscription tile opens it. The
+       reads went with the card, exactly as Home's fifth read did the same day. */
     /* HOW MANY FOLLOW THIS STUDIO (20 Sep 2026) — the figure every profile in
        the app now leads with. `follower_counts` is aggregate-only, so it names
        nobody; a failed read is a 0 on a figure, never a home that will not open. */
@@ -113,8 +109,6 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       header={photos}
       ownerId={isOwner ? user.id : null}
       editable={editable}
-      subscription={subs[tenantId] ?? null}
-      studioPrice={pickPlan(catalog, "studio")}
       deck={deck}
       roomCount={roomCounts[tenantId] ?? 0}
       /* WHAT IT SAYS IT DANCES, then what it teaches (19 Sep 2026) — the field

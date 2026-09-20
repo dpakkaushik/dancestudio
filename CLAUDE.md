@@ -2,7 +2,214 @@
 
 ## LAST SESSION (20 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE BIO IS GONE, AND AN ASSISTANT STARTS WITH ATTENDANCE (20 Sep 2026, latest) — ⚠ TWO MIGRATIONS APPLIED (Rule 9: one changes who may run a register)
+> ### A SEGMENT THAT ANSWERS THE FINGER, ROUTINES YOU LEARNED, AND EVERY REVENUE SOURCE AUDITED (20 Sep 2026, latest) — BUILT, no migration ⚠ (Rule 9: two money reads were wrong)
+> * ⚠⚠ **THE EARNINGS AUDIT FOUND THREE REAL DEFECTS, TWO OF THEM MONEY.** The
+>   user: *"Earnings make sure to check all revenue sources mentioned for all
+>   types of profiles according to there revenue sources."* Every screen was read
+>   against every way money can arrive.
+>   * **TICKETS PRINTED AS "CLASSES".** An order names a class session, an EVENT
+>     or a membership (`orders_subject_check`), and `findTenantIncome` selected
+>     `orders (membership_id)` and nothing else — so on the ORGANIZATION's hosting
+>     row, whose every payment is a ticket or an entry, **100% of the money was
+>     filed under a source row headed Classes, on the very desk the Events desk
+>     links to as "Ticket money ›"**. Three subjects, three rows now
+>     (`sourceRows`), and ⚠ **the list was written TWICE** — once for the card and
+>     once for the CSV — so the statement a studio hands its accountant could
+>     disagree with the screen it was downloaded from. One list, both.
+>   * ⚠⚠ **A FRONT-DESK SALARY CANCELLED TEACHING MONEY THE STUDIO STILL OWED.**
+>     `record_payout` bills for SESSIONS and writes a line per session;
+>     `record_team_payment` (19 Sep, R35) writes an amount with **no lines**,
+>     because a studio could not otherwise pay its front desk at all. A person's
+>     `/earnings` summed both into one `paidInr` and then computed
+>     `dueInr = max(0, earned − paid)` — so ₹2,500 of salary silently wiped ₹2,500
+>     of unpaid teaching. **And worse for somebody who only ever worked the desk:**
+>     that map is keyed on CLAIMS, so with no claim at that studio the row did not
+>     exist and the payment vanished from the Settled tile while still showing in
+>     WHO HAS PAID YOU — the list and the headline disagreeing about the same
+>     money. Split by whether the payout carries lines; `otherPaidInr` nets
+>     against nothing and gets its own row on the screen.
+>   * **AN ARTIST'S EARNINGS TILE OPENED THE WRONG LEDGER.** It pointed at
+>     `/earnings`, which is what STUDIOS have paid them for sessions — so
+>     everything their own page took (class fees, the memberships they sell) was
+>     behind a door nothing on Home opened. The tile opens the page's desk now,
+>     like Team and Students two lines above it, and the payout ledger gets its
+>     own door there (**What studios pay you ›**) rather than being orphaned.
+>   * **AND ONE THE AUDIT CALLED A NON-BUG, FIXED ANYWAY:** `findTenantIncome` had
+>     no `kind` filter, so it excluded subscription payments (a studio paying
+>     DanceOS — money OUT) only because those rows happen to carry a null
+>     `business_id`. That is an invariant two migrations away keeping a money
+>     rule, and `payments_subject_check` was already relaxed once this week. The
+>     query says `kind = 'order'` now.
+>   ⚠ **What the audit found and this push does NOT fix, said plainly:** enquiry
+>   advances are counted on no earnings screen at all (`record_enquiry_payment`
+>   writes no `orders` and no `payments` row — a known backlog row since 28 Aug);
+>   an organization's `/business/stats` headline excludes the event money its
+>   `/business/earnings` headline includes; a roll-up (all-time, SQL-summed)
+>   cannot be reconciled against a desk (4 months, 4,000 rows); and the studio
+>   desk still files team payments under a card headed SESSION PAY.
+>
+> ### A SEGMENT THAT ANSWERS THE FINGER, AND ROUTINES YOU LEARNED (20 Sep 2026) — BUILT, no migration
+> * ⚠ **THE LAG WAS REAL AND IT IS ONE CAUSE ON EVERY DESK.** The user: *"when
+>   switching between class columns its lagging … check from artist profiles saw
+>   it there. see such bug doesnt appear anywhere in the system where things are
+>   getting stuck."* Booked · Assist · Manage are real `<Link>`s — the address IS
+>   the state, which is the rule this app keeps so a narrowed list can be sent to
+>   somebody — so **a tap is a server round trip**, and on an artist's own page
+>   the Manage segment reads the whole register (the classes, the seat counts, the
+>   publish state, the artists and `why_no_class`). Until that came back the old
+>   segment stayed lit and **nothing moved**, which reads as stuck rather than as
+>   busy. `features/shell/components/SegmentedNav.tsx` presses the tapped segment
+>   **optimistically** (`useOptimistic` + `useTransition`), so the tap is answered
+>   before the server is; the URL still changes, back still works and the server
+>   still decides what is in the list. ⚠ `useOptimistic` rather than `useState`
+>   and an effect for two reasons: this repo's lint forbids setState in an effect,
+>   AND the value reverts by itself if the navigation never lands, so a failed
+>   press leaves the lit segment telling the truth. **One component, because the
+>   same control was written out three times and the same lag was in all three** —
+>   Your classes, Your events and What you run — plus `useOptimisticNav`, the
+>   mechanic on its own, for Discover's five icon tiles, which are the other place
+>   a tap is a round trip and the old tile stayed on the ink while it happened.
+>   ⚠ The Memberships desk's segments are pure client state and were never laggy;
+>   they are left alone.
+> * **ROUTINES YOU LEARNED, AND THE TILE ON A USER'S GRID.** The user: *"routines
+>   you learned should also be a seprate tab in routines section and should be
+>   visible to user profiles as well in tools."* The desk is **Yours · Learned**;
+>   a learned row is the song and the video, the class it was taught in, how many
+>   of that class's sessions you turned up to and when the last one was, and it
+>   opens the CLASS — never `/routines/{id}`, which is the OWNER's usage screen
+>   and would hand who-attended to somebody who was merely in the room.
+>   ⚠ **NO MIGRATION, and the reason is this file's own rule:** a routine you
+>   learned is not a new fact, it is two rows the app already has — an
+>   `attendance` row saying you were there and a `class_routines` row saying what
+>   was taught — and both are readable under policies that already exist (Step 10
+>   admits you to your own check-ins; `20260919160000` lets everybody who can read
+>   the class read its routines). ⚠ **It counts ATTENDANCE, not bookings**, the
+>   same rule the owner's side keeps and Step 25's, and the screen says so.
+>   The tile is on a plain user's grid now because MAKING a routine is still an
+>   artist's tool: the making side says whose tool it is rather than drawing a
+>   form the database would refuse.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
+>   124/124** · **33/33 proofs green in one run** (no database surface changed —
+>   pure regression cover) · the e2e suite recorded below.
+>
+> ### THREE CHIPS IN THE FIGURES ROW, AN ID THAT IS ONE TOKEN, AND THE CANCEL DOOR MOVED RATHER THAN DELETED (20 Sep 2026) — BUILT, no migration ⚠ (Rule 9: the ONE Stop renewing in the app changed screens)
+> The user's UI batch, given over several messages and then *"start with all ui
+> changes and push to live"*.
+> * **1 · THE THREE CHIPS ARE ONE ROW — QR · STATS · FOLLOW.** The user: *"Follow
+>   button t be a bell with qr code and stats. should be placed in same row as
+>   follower following numbers on its right side"*, and *"all 3 buttons in same
+>   row … with a bigger size"*. `PROFILE_CHIP` (44px, was 38) and `CHIP_ROW`
+>   (`marginLeft: auto`) live in `profile-band.tsx`; `EntityBand` and `HomeBand`
+>   take a `chips` slot, and **`IdentityHero` lost its `share` and `stats` props
+>   entirely** — deleted, not left unread, because a dead prop is a lie to the next
+>   reader. ⚠ **They had to leave the hero's right edge rather than gain a third
+>   member there:** C13 gave them that column on 18 Sep because the QR used to
+>   share the NAME's line and cut long names, and a third 44px chip would have
+>   squeezed the name column again — the very bug C13 exists to stop. The figures
+>   row had horizontal room to spare, which is why the user's own placement is the
+>   right one. `FollowToggle` gained a `variant="chip"` (a BELL, filled once you
+>   follow, the same action and the same accessible name) rather than a second
+>   component — two controls for one fact is how Follow came to exist twice
+>   before. Deviation rows C27 and C28.
+> * **2 · AND THE BELL IS ON ALL FIVE KINDS** (*"fix follow and folowing for
+>   Organization, Studio and Crew profiles should be available to all"*). It used
+>   to be `canFollow ? <FollowToggle/> : null`, so an organization ACCOUNT looking
+>   at any page saw nothing at all and had no way to know why. The chip is DRAWN
+>   for every visitor now and says why when the database would refuse the press
+>   (`cannotFollow` — "An organization does not follow"). ⚠ **On your OWN page,
+>   your own studio or your own crew it is not drawn at all**: a control that
+>   exists only to be disabled is noise, and there is nobody there to wonder.
+> * **3 · THE TYPE AND THE ID ARE ONE TOKEN — `ARTIST-000482`** (*"Id still needs
+>   to be placed like for eg. Artist-000123 together there should be no gap"*, then
+>   *"id one to be implemented for kinds of profiles"*). They shared a line since
+>   19 Sep — as the two ends of a `space-between` row, so the gap was whatever the
+>   column had spare and on a wide screen the number read as a second, unrelated
+>   eyebrow. `HeroId` carries the hyphen and the row no longer spreads. ⚠ **And
+>   `PublicPersonPage` was the one screen that never moved onto `HeroId` at all**
+>   — it set the number its own way (10.5/700/.3 in MUTED against the hero's
+>   10.5/800/1.1), which is the exact drift `HeroId` was extracted to end.
+> * **4 · YOUR OWN PAGE IS THE PROFILE PAGE** (*"when looking at your own profile
+>   from somewhere should also look same as profile page. that breaks a lot of
+>   times"*). Three real differences found by reading them side by side:
+>   `PublicPersonPage` printed the eyebrow from **`KIND_BADGE`** ("ARTIST") where
+>   Home and the Profile tab print **`KIND_WORD`** ("Artist") — `HERO_EYEBROW`
+>   uppercases in CSS, so the two LOOKED identical and a screen reader said two
+>   different things; the 19 Sep unification missed this screen, and **`KIND_BADGE`
+>   is deleted now** so it cannot drift again. A disabled Follow bell on your own
+>   page (gone). And **no way back**: the Profile tab's corner has carried the eye
+>   to your public page since 15 Sep with nothing in the other direction, so
+>   landing there from a row deep in the app left the back chip as the only exit.
+>   `PersonIcon` in the same corner chip is that door, on a person's, an
+>   organization's, a studio's and a crew's own public page.
+> * **5 · THE FLOATING FIGURES ARE GONE** (*"the red part in circle"* — "5 on your
+>   page" — *"similar figures need to be removed from all pages in the app inside
+>   the home tab for all profiles"*). `/my-classes`, `/my-events` and the Routines
+>   desk each drew a grey micro-line under the hero counting what the segment
+>   above ALREADY counted. ⚠ **What STAYS is the count inside a shelf head beside
+>   its heading** (`ManagedScreen`, `/classes`) — that is the prototype's own
+>   `DosShelfHead` (3446) and a different object.
+> * ⚠⚠ **6 · AND THE ONE THAT WAS NEARLY A DELETION — THE CANCEL DOOR (Rule 9).**
+>   The user: *"remove your conversation with dance os and subscription from just
+>   the home tab for studio and organization profiles as already being handled from
+>   settings."* The premise is true of an ARTIST's plan and was **not** true of a
+>   studio's: `/subscription` sent an organization straight back to the hub, the
+>   hub's card carries Subscribe and no cancel, and the strip on the studio's own
+>   home was **the only "Stop renewing" in the whole app**. Deleting it as asked
+>   would have made a studio's subscription impossible to cancel anywhere — the
+>   exact hole the 15 Sep collapse of the hub nearly opened, recorded in this file
+>   and avoided once already. So the strip MOVED to `/subscription`, one per studio
+>   with the studio's NAME as its heading, and Settings → Subscription now really
+>   does handle it. **A screen the user asks to remove is only removed once the
+>   thing it was the only door to has another one.** The conversation with DanceOS
+>   went too, and its `findSupportThreads` read with it — Help & support is that
+>   door for every kind of account; two reads left `/business/{id}` the same way.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
+>   124/124** (119 before) · **the whole e2e suite 57/57 in one run, 17.4 min on
+>   one worker**. ⚠ It took five runs, and **every red was an assertion of mine,
+>   none the product** — the four below plus one stale `/^\d{6}$/` that matched the
+>   account number when it was its own text node. ⚠ **Two of the five new shoot checks are MEASURED, and they
+>   are the only kind that could catch what they cover**: the Stats chip's vertical
+>   centre against the Followers figure's (nothing in the DOM says which row a chip
+>   landed in), and the account number's left edge against the type word's right
+>   edge (`ARTIST-000482` and `ARTIST     000482` are the same DOM). The third
+>   asserts the strip is **absent** from the studio's home and **present** on
+>   `/subscription` naming its studio, which is what stops the next move becoming a
+>   deletion. The e2e's three subscription reads and the admin-support Home read
+>   were re-cut to the new doors.
+> * ⚠ **AND THE FIRST CUT OF THE ID LOOKED RIGHT AND READ WRONG.** Putting the
+>   type word and `HeroId` side by side in a zero-gap flex row draws
+>   `ARTIST-000482` and is **two text nodes**, so the accessible text came out
+>   `Organization -003936` — a space nothing on screen has. **The e2e found it, not
+>   the eye**, and a measured pixel check would have passed. They are nested in ONE
+>   span now, so the text content is contiguous and a screen reader says what the
+>   screen shows; the shoot's check is on the TEXT rather than on the gap, because
+>   contiguity is the property that was actually wanted.
+> * ⚠ **AND A LOCATOR THAT WENT RED ON A PAGE THAT WAS RIGHT — THE SUBSTRING TRAP,
+>   AGAIN.** `getByRole("button", { name: "Follow" })` with a bare STRING is a
+>   case-insensitive SUBSTRING match, so the disabled bell's own reason — *"An
+>   organization does not follow"* — matched a locator asking for "Follow" and a
+>   `toHaveCount(0)` failed. The 15 Sep lesson (`getByLabel("Age")` finding
+>   "Everything you man**age**") in a new coat, and it says something about the
+>   product too: the bell had no business being on an organization read through
+>   `/person/{id}` at all, because that page is the admin's view of it and its
+>   public face with its own Follow is `/org/{id}` — the same reason the QR is not
+>   drawn there. Both fixed; the locators say `exact: true` now.
+> * ⚠ **AND ONE HARNESS FACT ABOUT NEXT'S ROUTER, worth keeping:** re-reading the
+>   SAME route after an action serves the App Router's own client cache of the RSC
+>   payload, so `/support` still showed "1 unread" a second after the thread was
+>   opened. The old assertion read HOME — a different route — and so always got a
+>   fresh render; moving it to `/support` exposed the cache. `reload()` is the
+>   answer, and the count in the database was right the whole time.
+> * ⚠ **AND FIVE PHANTOM FAILURES THAT WERE THE MACHINE, NOT THE PRODUCT.** A
+>   shoot run came back with the studio's disc upload answering **400** in five
+>   places — the shape of the 16 Sep storage-folder bug, and alarming for exactly
+>   that reason — immediately after a Playwright suite was killed mid-run against
+>   the same Supabase project. Run alone it was **124/124**. The 11 Sep lesson
+>   holds: *a red on a busy machine is not evidence until the thing has been run
+>   alone*, and the proof suite was deliberately NOT run beside the e2e for the
+>   same reason.
+>
+> ### THE BIO IS GONE, AND AN ASSISTANT STARTS WITH ATTENDANCE (20 Sep 2026) — ⚠ TWO MIGRATIONS APPLIED (Rule 9: one changes who may run a register)
 > Three decisions the user took when asked what was left: *"drop the about
 > column"*, *"yes assistant carry attendance by default"*, *"remove reviews and
 > ratings for now"* — then, narrowing the first themselves: *"about and bio for
@@ -5097,6 +5304,25 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THREE CHIPS IN THE FIGURES ROW, AN ID THAT IS ONE TOKEN, AND THE CANCEL DOOR
+  MOVED RATHER THAN DELETED — 20 Sep 2026, no step number — BUILT, no migration
+  ⚠ (Rule 9: the only Stop renewing in the app changed screens).** The user's UI
+  batch: the QR, Stats and a Follow BELL as three 44px chips at the right end of
+  the figures row (`IdentityHero` lost its `share`/`stats` props entirely); the
+  bell drawn for every visitor on all five kinds, saying why when the database
+  would refuse, and not drawn at all on your own page; the type and the account
+  number as ONE token (`ARTIST-000482`, nested in one span so a screen reader
+  says what the screen shows); your own public page made to match the Profile tab
+  (`KIND_BADGE` deleted, no disabled bell, a corner door back); the floating
+  counts off `/my-classes`, `/my-events` and Routines; and the DanceOS
+  conversation and the subscription off a studio's and an organization's Home.
+  ⚠ **The last one was nearly a deletion**: `/subscription` sent an organization
+  to the hub, the hub has no cancel, and the strip on the studio's home was the
+  app's only "Stop renewing" — so it MOVED there, one per studio with its name on
+  it, and Settings → Subscription now really does handle it. Deviation rows
+  C27–C31. `shoot-hero.js` **124/124** (119 before), two of the five new checks
+  measured. Detail at the top.
+
 - **TWO GRANTED POWERS, A NUMBER, A HISTORY — AND THE FIVE OWED THINGS PAID —
   20 Sep 2026, no step number ⚠ (Rule 9: both migrations touch who may run a
   studio) — TWO MIGRATIONS APPLIED (dry runs 20/20 and 10/10, both rolled back
@@ -8811,6 +9037,11 @@ Home. **Do not "restore parity" on these.**
 | C24 | The styles row and the links rail live on the Profile tab with their ＋ (10757, 10760), and the rank beside the figures (10720) | **The band is on HOME** (`HomeBand`): the two follow figures, each opening the Followers / Following list; the styles with their ＋; the links directly under them with theirs. The Profile tab shows all three and offers a control on none — and neither screen prints a rank | 19 Sep 2026, the user: *"Dance style for the page should also be editable only from the home tab. Remove rank from home and give social media tiles also on home and should be editable only from here … show follower following also on home it should be clickable with list … Social media Links right below Dance styles."* The four sheets MOVED, they were not copied: a style edited in two places is a style that disagrees with itself |
 | C25 | The prototype's Bookings screen is All · Classes · Events with "N confirmed" under the head (6113-6139); a desk's total sits in the head's row | **The count is inside each toggle and the total is over the LIST it counts** on Your classes and Your events, with no chip beside either heading (no Calendar, no Find events, no History on the calendar's hero) — and **Manage is the first segment for an artist** | 19 Sep 2026, the user's points 1–7. A total in a head row that also holds a door is a total nobody reads; under the segments it is the caption of the list beneath it |
 | C21 | The bottom bar on a studio's or a crew's own pages is the ENTITY's — Home · Inbox (C14, 18 Sep 2026) | **Home · Discover · Inbox.** Discover is a DOOR out of the entity, never a lit tab there | 19 Sep 2026, the user: *"studio and organizations can have Discover in navbar."* The organization ACCOUNT already had it on the main bar; a studio's own pages were the one place it was missing. What is refused is BOOKING, and that is refused where the button is drawn (R31), not by hiding the shelf |
+| C27 | The QR sits on the name's line (10688); C13 (18 Sep 2026) gave it and Stats a COLUMN at the hero row's right edge; Follow is a pill in the action row under the hero (10930) | **THREE 44px CHIPS AT THE RIGHT END OF THE FIGURES ROW — QR · Stats · a Follow BELL.** `PROFILE_CHIP` and `CHIP_ROW` in `profile-band.tsx`; `EntityBand` and `HomeBand` take a `chips` slot; **`IdentityHero` has no `share` or `stats` prop any more.** `FollowToggle` gained `variant="chip"` — same state, same action, same accessible name | 20 Sep 2026, the user: *"Follow button t be a bell with qr code and stats. should be placed in same row as follower following numbers on its right side"* (earlier: *"all 3 buttons in same row … with a bigger size to adjust"*). ⚠ A third chip in C13's column would have squeezed the name column again on a 360px phone — the bug C13 exists to stop — and the figures row had the width to spare, so the user's own placement is the correct one. ⚠ The bell is drawn for EVERY visitor (*"should be available to all"*) and says why when the database would refuse; on your OWN page, studio or crew it is not drawn at all |
+| C28 | The account number is a line under the eyebrow (18 Sep 2026); since 19 Sep it shares the eyebrow's LINE, at the far right of a `space-between` row | **ONE TOKEN: `ARTIST-000482`** — `HeroId` carries the hyphen, the row no longer spreads, and all five kinds read it (`PublicPersonPage` was still setting the number its own way) | 20 Sep 2026: *"Id still needs to be placed like for eg. Artist-000123 together there should be no gap in that on both profile and home"*, then *"id one to be implemented for kinds of profiles."* ⚠ A stranger reading an ARTIST still sees no number — `public_artist` hands back no `member_no` (20260919090000), so the data decides, not this row |
+| C29 | S_profiletab's own "This is you · Your record ›" is the only thing marking your own page, and the prototype has no door back | **A CORNER DOOR BACK FROM YOUR OWN PUBLIC PAGE** (`PersonIcon` in the same `cornerChip` the eye uses) — on a person's, an organization's, a studio's and a crew's | 20 Sep 2026, the user: *"when looking at your own profile from somewhere should also look same as profile page. that breaks a lot of times."* The eye has gone one way since 15 Sep and nothing came back, so landing on your own page from a row deep in the app left the back chip as the only exit — and after three hops that is not where you came from. Two other differences went in the same breath: `PublicPersonPage`'s eyebrow moved onto `KIND_WORD` (**`KIND_BADGE` is deleted**) and the disabled Follow bell on your own page is not drawn |
+| C30 | A desk's shelf head carries its count beside the heading (`DosShelfHead`, 3446) | **NO FLOATING COUNT UNDER A TOOL HERO** — `/my-classes`, `/my-events` and the Routines desk lost theirs; the counts INSIDE a shelf head stay | 20 Sep 2026, the user, circling "5 on your page": *"similar figures need to be removed from all pages in the app inside the home tab for all profiles."* The segments above already carried the same number, one row higher, in larger type — the 19 Sep move that put the total "over the list it counts" and the move that put counts into the toggles happened in the same breath, and together they made a duplicate |
+| C31 | The prototype has no subscription and no support desk | **NEITHER THE SUBSCRIPTION NOR THE DANCEOS CONVERSATION IS ON A STUDIO'S OR AN ORGANIZATION'S HOME.** The subscription is `/subscription` (Settings' own tile), one strip per studio with the studio's name on it; the conversation is Settings → Help & support | 20 Sep 2026, the user: *"remove your conversation with dance os and subscription from just the home tab for studio and organization profiles as already being handled from settings."* ⚠ **Rule 9.** The premise was true of an artist's plan and NOT of a studio's: `/subscription` sent an organization back to the hub, the hub has no cancel, and the strip on the studio's home was the only Stop renewing in the app. It MOVED rather than going, so the premise is true now. **A screen the user asks to remove is only removed once the thing it was the only door to has another one** |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -8830,6 +9061,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The chips, the ID and the moved cancel door, what they left (20 Sep 2026):** the Follow bell's **count is invisible** — it rides as `data-followers` for the suite and the figure beside it is the page's own Followers, so on a page whose count read fails the bell says nothing about how many; `cannotFollow` is a **`title` and an `aria-label`**, not a visible sentence, so an organization account presses nothing and reads nothing unless it hovers or uses a screen reader; **a stranger's bell links to `/login` with no `next=`**, so signing in to follow lands on Home rather than back on the page they were looking at. The chips row **wraps** on a very narrow screen because `FIGURE_ROW` has `flexWrap`, and three 44px chips plus two figures is about 300px — which is the honest behaviour and not the designed one. `/subscription` for an organization **lists every studio it owns with no paging**, which is fine at the 15-studio cap and would not be at fifty; it reads `why_not_public` once per studio, so N+1 round trips on that screen. And **nothing on a studio's home says where its subscription went** — the tile grid is the only hint, and Settings is two taps. ⚠ **`FollowToggle`'s `pill` branch has no caller left** — all five screens pass `variant="chip"` — so the prototype's own Follow button (10930) is dead code in this file; left standing deliberately rather than deleted in the same push as the change that orphaned it, but it is dead, and this repo's own rule is that a branch no screen renders is the same bug as a field no screen reads | S_profiletab 10688, 10930; 16935-16990 | a `next=` on the bell's sign-in; a visible reason; a batched `why_not_public` if a pilot organization ever has ten studios |
 | **The granted powers, the number and the history, what they left (20 Sep 2026):** the two powers are **standing and studio-wide** — "run the register on any class here", not on one class, which is what the per-class `class_people` grant is for; there is no screen that lists WHO holds a standing power across a studio's classes, and no audit line when one is given or taken (the toast is the only trace). **A grant dies with the seat** and is not restored if somebody is re-seated — deliberate, but nothing says so on the screen. **An organization's Event team can run every event the organization hosts**, with no per-event scoping, because there is no table that would hold one (E7's "YOU ARE HELPING WITH THIS ONE" is the same missing thing). **`person_associations.ended` shows a past seat only where a confirmed class proves it** — so somebody who was on a team for two years and taught under a colleague's name has nothing, and the row prints no dates either way. **A business's `member_no` is printed but never searched** — the people picker matches a person's name and number, and nothing matches a studio's. **The Bio column still exists and is still readable through the API**; it is only unwritable through the app, so an old paragraph sits on the row until somebody decides whether to drop the column | 18428-18433; S_profiletab 10834 | a per-studio powers list and an audit line; per-event rights with E7; a decision on dropping `about` |
 | **The team by profile type, what it left (20 Sep 2026):** there is **no e2e segment** for any of it (NEXT TO DO #0ae) and **no rolled-back dry run** for its migration (#0ac), so nothing checks that anon's executable set did not grow — the behaviour's cover is `rls-proof-org-team` (12/12), which found a real defect in the door on its first run. **A studio owner can be given only to somebody who is already on the organization's team** — there is no "make this person the owner of this studio" from the studio's own desk, and the studio's Team desk does not say that seat came from the organization; **relabelling away from Studio owner takes the seat back silently** (the row's word changes and nothing on the screen says a seat moved). **`assistant` has no powers of its own** — it is `staff`'s power set with a different name, so the Permissions block prints the same five lines for both; whether an assistant should hold attendance by default is a decision nobody has made. **A person's two new association groups are seats, not a history**: leaving a team removes the row, so a studio somebody taught at for two years disappears from their page the day they leave, while "Studios taught at" (published classes) keeps them. And **an organization's Event team carries no event powers** — it is a published label, exactly as R28 said, so somebody on it still cannot save or run an event | — (the prototype has one studio and no organization) | a proof, a segment, and a decision on each of the three |
 | **Memberships, what the slice left (19 Sep 2026):** a membership has **no expiry** — it is units, not months, so a pass bought today is still spendable next year (the user's four things named no date, and inventing one would change what people hold); **no refund path** — a `pending_payment` pass that is never paid simply stays unpaid and takes no place, and a paid pass cannot be handed back (a refund on a membership order is a decision about money nobody has made); **a membership is not a seat guarantee** — spending a unit books an ordinary seat under the ordinary capacity lock, so a full class refuses a pass exactly as it refuses a payment, and there is no members-only allocation; **no pause or transfer**; **the seller cannot see WHICH units a holder spent** from the holder's row (the class-wise list answers it from the other side); **`total_count` counts passes SOLD, never passes live**, so cancelling one does not put it back on sale; **a priced membership on an artist's page is bought from the profile, not from a class** — a class page offers only passes already held; and the **statement's source split is two rows** (Classes · Memberships) with no chips to filter by, which is the rest of the 28 Aug source-bar row | S_memberships 16846 | an expiry and a refund path are product decisions; the rest are their own slices |

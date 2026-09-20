@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { QRBlock } from "@/components/ui/QRBlock";
 import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import { PROFILE_CHIP } from "./profile-band";
 
 /* the page's own host, read the sanctioned way (no impure render access) */
 const subscribeNever = () => () => {};
@@ -38,23 +39,9 @@ export function ProfileShare({ path, name }: { path: string; name: string }) {
         type="button"
         aria-label="Share this profile — QR code"
         onClick={() => setOpen(true)}
-        style={{
-          marginLeft: "auto",
-          flexShrink: 0,
-          width: 38,
-          height: 38,
-          borderRadius: 19,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          background: "var(--text)",
-          color: "var(--solid)",
-          border: "none",
-          boxShadow: "0 4px 14px -6px rgba(0,0,0,.6)",
-        }}
+        style={PROFILE_CHIP}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M3 3h8v8H3zM5 5v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM13 13h3v3h-3zm5 0h3v3h-3zm-5 5h3v3h-3zm5 0h3v3h-3z" />
         </svg>
       </button>

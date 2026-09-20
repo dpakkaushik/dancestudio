@@ -260,15 +260,32 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await admin.getByRole("button", { name: "Send", exact: true }).click();
     await expect(admin.getByText("Your links are enough — we are looking now.")).toBeVisible();
 
-    // the organization reads it, and Home's badge says there is something to read
-    await org.goto("/");
-    await expect(org.getByRole("link", { name: /Read DanceOS's reply/ })).toBeVisible();
-    await org.getByRole("link", { name: /Read DanceOS's reply/ }).click();
+    /* ⚠ THE ORGANIZATION READS IT FROM SETTINGS, NOT FROM HOME (20 Sep 2026, the
+       user: "remove your conversation with dance os … from just the home tab for
+       studio and organization profiles as already being handled from settings").
+       Home carried a card and a read for this one row; Help & support is the one
+       door for every kind of account, and the unread count is on the row itself. */
+    await org.goto("/support");
+    /* ⚠ SCOPED TO #dos-main: the top bar's own bell is called "Notifications — 1
+       unread", so a bare /— 1 unread$/ is two elements and a strict-mode
+       violation. A shared sentence is not an identifier — the 20 Sep lesson,
+       met the same day in a new coat. */
+    const main = org.locator("#dos-main");
+    const thread = main.getByRole("link", { name: /^Open .* — 1 unread$/ });
+    await expect(thread).toBeVisible();
+    await thread.click();
     await expect(org.getByText("Your links are enough — we are looking now.")).toBeVisible();
-    // opening IS reading — the badge is gone
-    await org.goto("/");
-    await expect(org.getByRole("link", { name: /Read DanceOS's reply/ })).toHaveCount(0);
-    await expect(org.getByRole("link", { name: "Your conversation with DanceOS" })).toBeVisible();
+    /* opening IS reading — the badge is gone, and the row is still there.
+       ⚠ RELOAD, not goto (20 Sep 2026): the old assertion read HOME, a different
+       route, so it always got a fresh render. Coming back to the SAME route the
+       App Router serves its own client cache of the RSC payload, so the row is
+       drawn with the unread count it had a second ago and the check reads a
+       stale truth. This is a harness fact about Next's router, not a product
+       one — the count in the database is right either way. */
+    await org.goto("/support");
+    await org.reload();
+    await expect(main.getByRole("link", { name: /unread$/ })).toHaveCount(0);
+    await expect(main.getByRole("link", { name: /^Open / })).toBeVisible();
   });
 
   test("a rejection lands in the conversation, and in the audit log", async () => {

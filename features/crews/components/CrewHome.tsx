@@ -51,8 +51,6 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
           /* the crew's own number beside the word (20 Sep 2026) */
           eyebrowSub={crew.memberNo ? <HeroId>{memberNoWords(crew.memberNo)}</HeroId> : null}
           verified={false}
-          share={<ProfileShare path={`/crew/${crew.id}`} name={crew.name} />}
-          stats={<StatsChip href="/stats?tab=charts&seg=crew" />}
           meta={
             <>
               <span>{crew.city}</span>
@@ -102,7 +100,19 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
               nothing is said twice. NO LINKS ROW: `crews` has no `socials`
               column — a crew publishes an email and a number, not handles — so
               the row is not drawn rather than drawn empty. ── */}
-          <EntityBand figures={<Figure n={followers} label="Followers" testId="crew-followers" />} styles={[crew.style]} styleAria={(s) => `${s} — the crew's style`} />
+          <EntityBand
+            figures={<Figure n={followers} label="Followers" testId="crew-followers" />}
+            /* the chips at the row's right edge (20 Sep 2026). No Follow bell:
+               this is the crew's own home, and its own people cannot follow it. */
+            chips={
+              <>
+                <ProfileShare path={`/crew/${crew.id}`} name={crew.name} />
+                <StatsChip href="/stats?tab=charts&seg=crew" />
+              </>
+            }
+            styles={[crew.style]}
+            styleAria={(s) => `${s} — the crew's style`}
+          />
         </IdentityHero>
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC, margin: "12px 0" }}>

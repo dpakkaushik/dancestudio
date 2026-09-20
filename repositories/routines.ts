@@ -147,6 +147,86 @@ export async function findClassRoutines(supabase: SupabaseClient, classId: strin
     .map((r) => toRoutine(r.routines as RoutineRow));
 }
 
+/** a routine somebody LEARNED — the routine, and the class they danced it in */
+export interface LearnedRoutine extends Routine {
+  classId: string;
+  shareSlug: string;
+  classStyle: string;
+  classLevel: string;
+  tenantName: string | null;
+  /** how many of that class's sessions this person actually turned up to */
+  sessions: number;
+  lastOn: string | null;
+}
+
+/** ROUTINES YOU LEARNED (20 Sep 2026, the user: "routines you learned should
+ *  also be a seprate tab in routines section and should be visible to user
+ *  profiles as well in tools").
+ *
+ *  ⚠ NO MIGRATION, AND THE REASON IS THE RULE THIS FILE ALREADY KEEPS: a routine
+ *  you learned is not a new fact, it is two rows the app already has — an
+ *  `attendance` row saying you were in the room, and a `class_routines` row
+ *  saying what was taught there. Both are readable under the policies that
+ *  already exist: Step 10 admits you to your own check-ins, and
+ *  `20260919160000` lets everybody who can read the class read its routines.
+ *
+ *  ⚠ IT COUNTS ATTENDANCE, NOT BOOKINGS — the same rule the owner's side of the
+ *  desk keeps, and the one Step 25 set: a seat nobody marked is not a session
+ *  danced, so a class you booked and did not attend teaches you nothing here.
+ *  The screen says so. */
+export async function findRoutinesLearned(supabase: SupabaseClient, userId: string): Promise<LearnedRoutine[]> {
+  const { data: attended, error: aErr } = await supabase
+    .from("attendance")
+    .select("class_id, created_at")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(400);
+  if (aErr) {
+    throw new Error(`routines.learned(attendance) failed: ${aErr.message}`);
+  }
+  const rows = (attended ?? []) as Array<{ class_id: string; created_at: string }>;
+  if (rows.length === 0) return [];
+  /* how many times each class was actually danced, and when it last was */
+  const times = new Map<string, { n: number; last: string }>();
+  for (const r of rows) {
+    const at = times.get(r.class_id);
+    if (at) at.n += 1;
+    else times.set(r.class_id, { n: 1, last: r.created_at });
+  }
+  const classIds = [...times.keys()];
+  const { data, error } = await supabase
+    .from("class_routines")
+    .select("class_id, routines (id, title, style, level, song_title, song_url, song_is_file, video_url, status, created_at), classes (share_slug, style, level, businesses!classes_business_id_fkey (name))")
+    .in("class_id", classIds)
+    .is("deleted_at", null)
+    .limit(200);
+  if (error) {
+    throw new Error(`routines.learned failed: ${error.message}`);
+  }
+  type Row = {
+    class_id: string;
+    routines: RoutineRow | null;
+    classes: { share_slug: string; style: string; level: string; businesses: { name: string } | null } | null;
+  };
+  return ((data ?? []) as unknown as Row[])
+    .filter((r) => r.routines && r.classes)
+    .map((r) => {
+      const t = times.get(r.class_id);
+      return {
+        ...toRoutine(r.routines as RoutineRow),
+        classId: r.class_id,
+        shareSlug: (r.classes as NonNullable<Row["classes"]>).share_slug,
+        classStyle: (r.classes as NonNullable<Row["classes"]>).style,
+        classLevel: (r.classes as NonNullable<Row["classes"]>).level,
+        tenantName: (r.classes as NonNullable<Row["classes"]>).businesses?.name ?? null,
+        sessions: t?.n ?? 0,
+        lastOn: t?.last ?? null,
+      };
+    })
+    .sort((a, b) => (b.lastOn ?? "").localeCompare(a.lastOn ?? ""));
+}
+
 export interface RoutineInput {
   routineId?: string | null;
   title: string;

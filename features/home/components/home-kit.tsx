@@ -187,6 +187,13 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
     { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
     { name: DOS_TOOLS.crews.name, href: "/crews", k: "crews", c: DOS_TOOLS.crews.c },
     { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
+    /* ⚠ ROUTINES IS A USER'S TILE TOO (20 Sep 2026, the user: "routines you
+       learned … should be visible to user profiles as well in tools"). It was an
+       artist's, because MAKING one is an artist's tool — but the desk has two
+       sides now and a plain user opens it for the other one: what was taught in
+       a class they turned up to. The making side says whose tool it is rather
+       than offering a form the database would refuse. */
+    { name: DOS_TOOLS.routines.name, href: "/routines", k: "routines", c: DOS_TOOLS.routines.c },
   ];
   if (kind === "user") return person;
   /* an artist's page's desks — or the hub, which is where the page is made */
@@ -195,8 +202,17 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
     ...person,
     { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
     { name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c },
-    { name: DOS_TOOLS.routines.name, href: "/routines", k: "routines", c: DOS_TOOLS.routines.c },
-    { name: DOS_TOOLS.earn.name, href: "/earnings", k: "earn", c: DOS_TOOLS.earn.c },
+    /* ⚠ AN ARTIST'S EARNINGS TILE OPENS THEIR PAGE'S DESK (20 Sep 2026, the
+       user: "Earnings make sure to check all revenue sources mentioned for all
+       types of profiles according to there revenue sources"). It pointed at
+       `/earnings`, which is a PAYOUT LEDGER — what studios have paid them for
+       sessions taught — so everything their OWN page took (class fees, the
+       memberships they sell) was behind a door nothing on Home opened: you had
+       to go to `/business/{pageId}` and press its own Earnings tile. The two
+       tiles above already use `desk(...)` for exactly this reason. The payout
+       ledger is not lost: the page's desk carries **What studios pay you ›** to
+       it, which is where a teacher's own money belongs. */
+    { name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c },
     { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
     { name: DOS_TOOLS.assets.name, href: "/assets", k: "assets", c: DOS_TOOLS.assets.c },
     { name: DOS_TOOLS.media.name, href: "/profile", k: "media", c: DOS_TOOLS.media.c },

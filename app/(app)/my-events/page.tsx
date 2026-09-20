@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EventCard } from "@/features/events/components/EventCard";
 import { EvIcon, bookingWords, eventCodeOf, eventTimeWords, eventWhen } from "@/features/events/components/event-kit";
+import { SegmentedNav } from "@/features/shell/components/SegmentedNav";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -24,7 +25,6 @@ const SHOWS: Array<{ k: Show; label: string; aria: string }> = [
   { k: "spectator", label: "Spectator", aria: "Show the events you have a seat at" },
   { k: "assisting", label: "Assisting", aria: "Show the events you help run" },
 ];
-const countWord = (show: Show, n: number) => (show === "assisting" ? (n === 1 ? "event" : "events") : n === 1 ? "booking" : "bookings");
 
 function TicketRow({ t }: { t: MyEventBooking }) {
   const tint = EV_TINT[t.eventCat];
@@ -79,7 +79,6 @@ export default async function MyEventsPage({ searchParams }: { searchParams: Pro
   const entries = tickets.filter((t) => t.kind === "participant");
   const seats = tickets.filter((t) => t.kind === "spectator");
   const nOf = (k: Show) => (k === "participant" ? entries.length : k === "spectator" ? seats.length : assisting.length);
-  const count = nOf(show);
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
@@ -91,22 +90,15 @@ export default async function MyEventsPage({ searchParams }: { searchParams: Pro
           moved down onto the list it counts. The hero's own margin is the gap. */}
       <DeskHero tool="events" as="h1" margin="0 0 14px" />
 
-      <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 10 }}>
-        {SHOWS.map(({ k, label, aria }) => {
-          const on = show === k;
-          const n = nOf(k);
-          return (
-            <Link key={k} href={k === "participant" ? "/my-events" : `/my-events?show=${k}`} aria-label={`${aria} (${n})`} aria-current={on ? "page" : undefined} style={{ flex: 1, textAlign: "center", padding: "8px 2px", borderRadius: 9, fontSize: 11.5, fontWeight: 800, textDecoration: "none", background: on ? "var(--solid)" : "transparent", color: on ? INK : SUB, boxShadow: on ? "0 1px 4px rgba(0,0,0,.3)" : "none" }}>
-              {label} <span style={{ fontVariantNumeric: "tabular-nums", opacity: on ? 0.75 : 0.6 }}>{n}</span>
-            </Link>
-          );
-        })}
-      </div>
+      {/* the same optimistic segment as Your classes (20 Sep 2026) */}
+      <SegmentedNav
+        active={show}
+        segments={SHOWS.map(({ k, label, aria }) => ({ key: k, href: k === "participant" ? "/my-events" : `/my-events?show=${k}`, label, aria, n: nOf(k) }))}
+      />
 
-      {/* the total, over the list it counts (19 Sep 2026) */}
-      <div data-testid="events-total" style={{ fontSize: 10, fontWeight: 800, color: "var(--muted)", padding: "0 2px 8px" }}>
-        {count} {countWord(show, count)}
-      </div>
+      {/* ⚠ THE TOTAL IS GONE (20 Sep 2026, the user: "similar figures need to be
+          removed from all pages in the app"). The segment above already carries
+          the same count. */}
 
       {show === "participant" ? (
         entries.length ? entries.map((t) => <TicketRow key={t.id} t={t} />) : <Empty>No entries yet. A battle or a tournament you enter — solo, as a duet, or with a crew you lead — appears here.</Empty>

@@ -8,7 +8,7 @@ import { ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityMark, Group, TYPE, smallBox } from "@/features/profiles/components/profile-kit";
+import { EntityMark, Group, PersonIcon, TYPE, cornerChip, smallBox } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -102,10 +102,6 @@ export function CrewPublicPage({
           eyebrow="Crew"
           eyebrowSub={crew.memberNo ? <HeroId>{memberNoWords(crew.memberNo)}</HeroId> : null}
           verified={false}
-          share={<ProfileShare path={path} name={crew.name} />}
-          /* STATS IS THE CHIP UNDER THE QR (19 Sep 2026): since push 2 THIS crew's
-             figures and its place on the crew board, on a page of its own */
-          stats={<StatsChip href={`${path}/stats`} />}
           meta={
             <>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 800, color: INK }}>
@@ -125,34 +121,67 @@ export function CrewPublicPage({
           avatar={photoUrl(crew.photo)}
           avatarAlt={crew.name}
           shots={shots}
+          /* one press back to the crew's own home (20 Sep 2026) — its home
+             carries the eye to here, and nothing went the other way */
+          corner={
+            viewer === "leader" ? (
+              <Link href={`/crews/${crew.id}/manage`} aria-label="Manage this crew" style={cornerChip}>
+                <PersonIcon />
+              </Link>
+            ) : null
+          }
         >
           {/* ── THE SAME BAND HOME WEARS (20 Sep 2026). A crew follows nobody, so
               followers alone; `crews` has no `socials` column, so no links row —
               an empty rail is not a row. ── */}
           <EntityBand
             figures={<Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />}
+            /* the three chips at the row's right edge (20 Sep 2026) — the QR, the
+               crew board this crew is ranked on, and the Follow bell, drawn for
+               every viewer and saying why when a press would be refused */
+            chips={
+              <>
+                <ProfileShare path={path} name={crew.name} />
+                <StatsChip href={`${path}/stats`} />
+                {/* not drawn for the crew's own people — their block under the
+                    hero already says which they are */}
+                {viewer === "other" ? (
+                  <FollowToggle
+                    target={{ kind: "crew", id: crew.id }}
+                    initialFollowing={following}
+                    initialFollowers={followers}
+                    accent={RC}
+                    signedIn={signedIn}
+                    variant="chip"
+                    cannotFollow={canFollow ? null : "An organization does not follow"}
+                  />
+                ) : null}
+              </>
+            }
             styles={[crew.style]}
             styleAria={(s) => `${s} — the crew's style`}
           />
         </IdentityHero>
 
-        {/* ── what you can do here depends on who you are to the crew ── */}
-        <div style={{ marginTop: 12 }}>
-          {viewer === "leader" ? (
-            <Link href={`/crews/${crew.id}/manage`} style={smallBox(false, RC)}>
-              You lead this crew · Manage ›
-            </Link>
-          ) : viewer === "member" ? (
-            <div style={{ ...smallBox(false, RC), cursor: "default" }}>You are in this crew</div>
-          ) : canFollow ? (
-            <FollowToggle target={{ kind: "crew", id: crew.id }} initialFollowing={following} initialFollowers={followers} accent={RC} signedIn={signedIn} />
-          ) : null}
-        </div>
+        {/* ── what the crew's own people get here. ⚠ FOLLOW LEFT THIS BLOCK (20 Sep
+            2026) for the bell in the figures row, so a visitor sees nothing here
+            and goes straight to the buttons. ── */}
+        {viewer === "other" ? null : (
+          <div style={{ marginTop: 12 }}>
+            {viewer === "leader" ? (
+              <Link href={`/crews/${crew.id}/manage`} style={smallBox(false, RC)}>
+                You lead this crew · Manage ›
+              </Link>
+            ) : (
+              <div style={{ ...smallBox(false, RC), cursor: "default" }}>You are in this crew</div>
+            )}
+          </div>
+        )}
 
         {/* ── THE BUTTONS A CREW'S PAGE CARRIES (19 Sep 2026): Enquiry · Mail — the
             enquiry a celebration, a corporate show or a collaboration, answered by
             the leader from the crew's Inbox ── */}
-        <ActionRow marginTop={6}>
+        <ActionRow marginTop={viewer === "other" ? 12 : 6}>
           {viewer === "other" ? <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}

@@ -220,6 +220,29 @@ export function HowStudentsPaid({ month }: { month: MonthIncome }) {
   );
 }
 
+/** WHERE IT CAME FROM — ONE LIST, AND IT MATCHES WHAT THE ORDER SAYS (20 Sep
+ *  2026, the user: "Earnings make sure to check all revenue sources mentioned for
+ *  all types of profiles according to there revenue sources").
+ *
+ *  ⚠ An order names a class session, an EVENT or a membership
+ *  (`orders_subject_check`), and this screen knew about two of the three — so on
+ *  the ORGANIZATION's hosting row, whose every payment is a ticket or an entry,
+ *  100% of the money printed under a row headed **Classes**, on the very desk the
+ *  Events desk links to as "Ticket money ›". Three subjects, three rows, and
+ *  seats are what is left after the two named ones.
+ *
+ *  ⚠ It was also written TWICE — once for the screen and once for the CSV — so
+ *  the file and the card could disagree about the same month. One list, both. */
+export function sourceRows(m: MonthIncome): Array<[string, number]> {
+  return (
+    [
+      ["Classes", m.grossInr - m.membershipsInr - m.eventsInr],
+      ["Tickets & entries", m.eventsInr],
+      ["Memberships", m.membershipsInr],
+    ] as Array<[string, number]>
+  ).filter(([, v]) => v > 0);
+}
+
 /** A real statement, not a toast: the figures on screen, as a CSV the studio can
  *  hand to its accountant. The prototype's control fires a demo toast (18081);
  *  ours writes the file and then says so. */
@@ -230,8 +253,7 @@ function downloadStatement(tenantName: string, month: MonthIncome) {
     ["Month", month.label],
     [],
     ["WHERE IT CAME FROM", ""],
-    ["Classes", month.grossInr - month.membershipsInr],
-    ["Memberships", month.membershipsInr],
+    ...sourceRows(month),
     [],
     ["DEDUCTIONS", ""],
     ["Refunds", -month.refundedInr],
@@ -280,12 +302,7 @@ export function MonthStatements({
     <>
       {months.map((m) => {
         const net = m.grossInr - m.refundedInr;
-        /* TWO REAL SOURCES SINCE 19 Sep 2026 — memberships are money this
-           business took, and a row is drawn only for a source that took some */
-        const sources: Array<[string, number]> = [
-          ["Classes", m.grossInr - m.membershipsInr],
-          ["Memberships", m.membershipsInr],
-        ].filter(([, v]) => (v as number) > 0) as Array<[string, number]>;
+        const sources = sourceRows(m);
         const deductions: Array<[string, number]> = [["Refunds", m.refundedInr]];
         const max = Math.max(1, ...sources.map((s) => s[1]));
         const open = openKey === m.key;

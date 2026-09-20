@@ -13,16 +13,19 @@ const CARD = "var(--card)";
 const EL = "var(--el)";
 const MUTED = "var(--muted)";
 
-/** WHAT THIS STUDIO'S SUBSCRIPTION IS DOING — on the studio's own home
- *  (15 Sep 2026).
+/** WHAT A STUDIO'S SUBSCRIPTION IS DOING — the standing, the date, and the one
+ *  control (15 Sep 2026).
  *
- *  It used to be a second card under the studio's row on the hub, carrying the
- *  renewal date and Stop renewing. The user collapsed the hub to ONE card per
- *  studio ("we don't need separate cards after verification and subscription"),
- *  and the hub was the ONLY door to cancelling a studio's subscription —
- *  `/subscription` sends an organization straight back to it. So the detail
- *  moved here, to the page that card now opens, where there is room for it: the
- *  standing, the date, and the one control.
+ *  ⚠ IT HAS MOVED TWICE, AND BOTH MOVES WERE THE SAME RISK (Rule 9: money). It
+ *  began as a second card under the studio's row on the hub; the user collapsed
+ *  the hub to ONE card per studio (15 Sep), and since the hub was the only door
+ *  to cancelling — `/subscription` sent an organization straight back to it —
+ *  it moved to the studio's own home rather than being lost. On 20 Sep the user
+ *  asked for subscriptions to be off a studio's home "as already being handled
+ *  from settings", and that premise was true of an artist's plan and not of a
+ *  studio's, so it moved to `/subscription` — which Settings' Subscription tile
+ *  opens — and the premise is true now. **There is exactly one Stop renewing in
+ *  this app; it must always have a screen.**
  *
  *  Drawn for the OWNER only — a trainer neither pays nor cancels. */
 export function StudioSubscriptionStrip({
@@ -31,6 +34,7 @@ export function StudioSubscriptionStrip({
   verified,
   state,
   studioPrice,
+  heading,
 }: {
   tenantId: string;
   tenantName: string;
@@ -38,6 +42,9 @@ export function StudioSubscriptionStrip({
   verified: boolean;
   state: StudioSubscriptionState;
   studioPrice: PlanCatalogRow | null;
+  /** which studio this is, when several stack on one screen — on a page about
+   *  ONE studio the eyebrow says SUBSCRIPTION and the page says whose */
+  heading?: string;
 }) {
   const router = useRouter();
   const [confirm, setConfirm] = useState(false);
@@ -75,7 +82,7 @@ export function StudioSubscriptionStrip({
   return (
     <div data-testid="studio-subscription" style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: MUTED }}>SUBSCRIPTION</span>
+        <span style={{ fontSize: heading ? 12.5 : 9.5, fontWeight: 900, letterSpacing: heading ? 0 : 0.9, color: heading ? INK : MUTED, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{heading ?? "SUBSCRIPTION"}</span>
         <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 5, background: `${standing.tone}22`, color: standing.tone }}>
           {standing.word}
         </span>

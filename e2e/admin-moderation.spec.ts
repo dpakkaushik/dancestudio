@@ -231,7 +231,6 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     // under the row: the STUDIO's own review (11 Sep 2026) — a public link,
     // five photos, the ask, the admin's badge — and only then Subscribe
     await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");
-    await expect(owner.getByTestId("studio-subscription").getByRole("button", { name: /^Subscribe/ })).toHaveCount(0);
     const studioRows = (await (await fetch(`${supabaseUrl}/rest/v1/businesses?name=eq.${encodeURIComponent(studioName)}&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
     const studioId = studioRows[0]?.id as string;
     expect(studioId).toBeTruthy();
@@ -263,8 +262,9 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     const hubCard = owner.getByTestId("studio-card").filter({ hasText: studioName });
     await expect(hubCard.getByLabel("Verified")).toBeVisible();
     await expect(hubCard.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
-    await owner.goto(`/business/${studioId}`);
-    const strip = owner.getByTestId("studio-subscription");
+    /* the standing is on /subscription since 20 Sep 2026 — Settings' own tile */
+    await owner.goto("/subscription");
+    const strip = owner.getByTestId("studio-subscription").filter({ hasText: studioName });
     await expect(strip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     await expect(strip).toContainText("Each studio has its own subscription");
     await expect(strip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
@@ -281,8 +281,8 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     // and the studio is on Discover the moment its subscription is
     await owner.goto("/business");
     await expect(owner.getByTestId("studio-live")).toBeVisible();
-    await owner.goto(`/business/${studioId}`);
-    await expect(owner.getByTestId("studio-subscription")).toContainText("GRANTED");
+    await owner.goto("/subscription");
+    await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toContainText("GRANTED");
 
     // the studio is findable the way a dancer finds it, with nothing in between
     dancerId = await signUp(dancer, `mod-dancer-${stamp}@example.com`);

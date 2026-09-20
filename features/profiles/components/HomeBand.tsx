@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
@@ -13,7 +13,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedTenant } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
-import { FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
+import { CHIP_ROW, FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
 import { PlatformIcon, RoleBadge, Sheet, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
 
 /** THE BAND UNDER THE NAME ON HOME — and the ONE place these three are edited
@@ -58,6 +58,7 @@ function Arrows({ i, n, onMove }: { i: number; n: number; onMove: (dir: -1 | 1) 
 
 export function HomeBand({
   profile,
+  chips = null,
   followers,
   followingPeople,
   followingTenants,
@@ -65,6 +66,10 @@ export function HomeBand({
   followingCrews,
 }: {
   profile: Profile;
+  /** the QR and Stats chips, at the right end of the figures row (20 Sep 2026) —
+   *  they were a column in the hero until today; a Follow bell joins them on the
+   *  pages that have one, and your own Home is not one of them */
+  chips?: ReactNode;
   followers: PersonFollowRow[];
   followingPeople: PersonFollowRow[];
   followingTenants: FollowedTenant[];
@@ -147,6 +152,7 @@ export function HomeBand({
             <span style={figureLabel}>Following</span>
           </button>
         )}
+        {chips ? <div style={CHIP_ROW}>{chips}</div> : null}
       </div>
 
       {/* ── THE STYLES, AND THE ONE ＋ THAT CHANGES THEM (DosStyleRow 1767) ──

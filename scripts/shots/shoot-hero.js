@@ -191,18 +191,27 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await card.getByRole("link", { name: /open the studio/ }).click();
     await org.waitForURL(new RegExp(`/business/${studioId}$`));
     check(true, "hub: pressing the card opened the studio's home");
-    /* and the cancel door survived the collapse */
-    /* WAIT, not a one-shot look (19 Sep 2026): the studio home streams behind a
-       loading boundary now, so the URL changes before the page arrives */
-    await org.getByText("SUBSCRIPTION", { exact: true }).waitFor({ timeout: 15000 }).catch(() => {});
-    check(await org.getByText("SUBSCRIPTION", { exact: true }).isVisible(), "studio home: the subscription strip came here with it");
+    /* ⚠ AND THE CANCEL DOOR SURVIVED ITS SECOND MOVE (20 Sep 2026, the user:
+       "remove your conversation with dance os and subscription from just the home
+       tab for studio and organization profiles as already being handled from
+       settings"). It was on the hub until 15 Sep, on the studio's own home until
+       today, and it is on `/subscription` — Settings' own Subscription tile —
+       now. There is exactly ONE Stop renewing in this app; this check is what
+       stops a move from quietly becoming a deletion. */
+    check((await org.getByTestId("studio-subscription").count()) === 0, "studio home: NO subscription strip — it is Settings' Subscription tile now (20 Sep 2026)");
+    await org.goto(`${BASE}/subscription`);
+    const strip = org.getByTestId("studio-subscription").first();
+    await strip.waitFor({ timeout: 15000 }).catch(() => {});
+    check(await strip.isVisible(), "subscription: the studio's own strip is here, under Settings › Subscription");
+    check(await strip.getByText("EEE Dance Studio", { exact: true }).isVisible(), "subscription: and it NAMES the studio — an organization runs several, so the heading is which one");
     /* this studio's plan is a GRANT (₹0, set up above) and a grant does not
        renew — so the strip says so and offers no Stop renewing, which is the
        honest answer. The paid-mandate path that DOES offer it needs a real
        Cashfree authorisation, which no script can drive; `rls-proof-*` and the
        live sandbox cover that. */
-    check(await org.getByText("GRANTED", { exact: true }).isVisible(), "studio home: the strip names the standing (GRANTED)");
-    check((await org.getByRole("button", { name: /Stop .* renewing/ }).count()) === 0, "studio home: a grant offers no Stop renewing — there is nothing to stop");
+    check(await org.getByText("GRANTED", { exact: true }).isVisible(), "subscription: the strip names the standing (GRANTED)");
+    check((await org.getByRole("button", { name: /Stop .* renewing/ }).count()) === 0, "subscription: a grant offers no Stop renewing — there is nothing to stop");
+    await org.goto(`${BASE}/business/${studioId}`);
 
     /* the studio's own home: an empty header and the initials disc, and NOTHING
        on either of them to press (16 Sep 2026) */
@@ -210,7 +219,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     const hero = org.getByTestId("studio-hero");
     await hero.waitFor();
     check(await org.getByRole("heading", { name: "EEE Dance Studio", exact: true }).isVisible(), "studio home: the name is the heading");
-    check(await org.getByText("Studio", { exact: true }).first().isVisible(), "studio home: STUDIO over the name");
+    /* ⚠ THE WORD CARRIES THE NUMBER (20 Sep 2026, the user: "Id should be placed
+       like for eg. Artist-000123 together there should be no gap"). They are ONE
+       span now, not two flex siblings, so the exact text is "Studio-000123" —
+       which is also what a screen reader says, and was the reason for nesting
+       them: side by side they looked joined and read as two words with a space. */
+    check(await org.getByText(/^Studio(-\d{6})?$/).first().isVisible(), "studio home: STUDIO over the name, with the studio's number against it");
     check((await hero.locator("img").count()) === 0, "studio home: no picture anywhere yet → initials on the disc, no <img>");
     check((await disc(org).count()) === 1, "studio home: the disc is there");
     /* 16 Sep 2026, the user: "the update image option should be inside the edit profile" */
@@ -235,6 +249,16 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check(followersTop < styleTop, "studio home: the figures come BEFORE the styles, as on Home and the Profile tab");
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
+    /* ⚠ AND THE CHIPS ARE IN THE FIGURES ROW, NOT THE HERO'S RIGHT EDGE (20 Sep
+       2026, the user: "should be placed in same row as follower following numbers
+       on its right side"). Measured, because nothing about the DOM says which
+       row a chip is in: the Stats chip's vertical centre has to line up with the
+       Followers figure's, and it has to sit to its RIGHT. This is the only kind
+       of check that can catch the chips drifting back into their own column —
+       the same reason the style-tile size is measured rather than asserted. */
+    const figBox = await hero.getByTestId("studio-followers").evaluate((el) => el.getBoundingClientRect().toJSON());
+    const statsBox = await org.getByRole("link", { name: "Stats", exact: true }).evaluate((el) => el.getBoundingClientRect().toJSON());
+    check(Math.abs(figBox.top + figBox.height / 2 - (statsBox.top + statsBox.height / 2)) < 26 && statsBox.left > figBox.left, "studio home: the QR and Stats chips ride the FIGURES row, to the right of the numbers (20 Sep 2026)");
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
     check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
     check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
@@ -403,7 +427,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await discImgs(org)) === 1, "org home: the logo is on the disc");
     check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (an organization holds up to ten since 19 Sep 2026)");
     check((await org.getByLabel("Share this profile — QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
-    check(await org.getByText("Organization", { exact: true }).isVisible(), "org home: the role word under the sleeve");
+    check(await org.getByText(/^Organization(-\d{6})?$/).first().isVisible(), "org home: the role word, with the account number against it");
     check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed behind the pencil beside it");
     /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the DISC is the door to the public page (the eye left Home
        later the same day — the user: "clicking on the profile photo on home tab takes to profile so can remove
@@ -465,7 +489,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await rail(me).getAttribute("role")) === null, "user home: an empty header, so no swipe");
     check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled behind the disc");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
-    check(await me.getByText("User", { exact: true }).isVisible(), "user home: the role word");
+    check(await me.getByText(/^User(-\d{6})?$/).first().isVisible(), "user home: the role word, with the account number against it");
     check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: one eye in the corner, opening their person page");
     check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "user home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
     /* THE BAND ON HOME (19 Sep 2026): the two figures, the styles with their ＋,
@@ -474,6 +498,22 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 1, "user home: the styles are edited HERE and nowhere else");
     check((await me.getByRole("button", { name: "Add a link" }).count()) === 1, "user home: and the links, right below them");
     check((await me.getByRole("link", { name: /rank/i }).count()) === 0, "user home: no rank (19 Sep 2026, the user: 'Remove rank from home')");
+    /* the chips ride the figures row here too (20 Sep 2026) — measured, because
+       nothing in the DOM says which row a chip landed in */
+    const homeFig = await me.getByTestId("home-following").evaluate((el) => el.getBoundingClientRect().toJSON());
+    const homeStats = await me.getByRole("link", { name: "Stats", exact: true }).evaluate((el) => el.getBoundingClientRect().toJSON());
+    check(Math.abs(homeFig.top + homeFig.height / 2 - (homeStats.top + homeStats.height / 2)) < 26 && homeStats.left > homeFig.left, "user home: the QR and Stats chips ride the FIGURES row, to the right of the numbers (20 Sep 2026)");
+    /* ⚠ AND THE TYPE AND THE ID ARE ONE TOKEN — "User-000482", no gap (20 Sep
+       2026, the user: "Id should be placed like for eg. Artist-000123 together
+       there should be no gap in that on both profile and home"). They shared a
+       line already, as the two ends of a `space-between` row, so the gap between
+       them was whatever the column had spare. The check is on the TEXT rather
+       than on pixels, because the first cut put them side by side in a zero-gap
+       flex row — which looks joined and is two text nodes, so the accessible
+       text read "User -000482" with a space nothing on screen has. Contiguous
+       text is the property that was actually wanted. */
+    const eyebrowText = (await me.getByText(/^User(-\d{6})?$/).first().textContent()) || "";
+    check(/^User-\d{6}$/.test(eyebrowText.trim()), `user home: the type and the ID are ONE token with no gap — read "${eyebrowText.trim()}" (20 Sep 2026)`);
 
     /* ⚠ THE BAND IS ONE SIZE ON EVERY PROFILE (20 Sep 2026, the user: "check all
        profile pages look similar according to their Profile Type in terms of
@@ -564,7 +604,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
         body: JSON.stringify({ kind: "artist", user_id: userId, plan_key: "artist_monthly", price_inr: 0, period: "monthly", status: "active", current_period_start: today, current_period_end: until, granted: true, note: "Granted by shoot-hero.js — nothing charged", created_by: userId, updated_by: userId }),
       });
       await me.goto(`${BASE}/`);
-      await me.getByText("Artist", { exact: true }).first().waitFor();
+      await me.getByText(/^Artist(-\d{6})?$/).first().waitFor();
       check((await railImgs(me)) === 1, "artist home: the header picture is still there");
       await openPosters();
       check((await myPosters.getByLabel("Add picture").count()) === 1, "artist edit profile: the Add tile is back — an artist holds five");

@@ -6,8 +6,9 @@ import { useState, useTransition } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
 import { activateArtistPlanAction } from "@/features/settings/server-actions/plans";
+import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
-import type { Subscription } from "@/repositories/subscriptions";
+import type { StudioSubscriptionState, Subscription } from "@/repositories/subscriptions";
 import { BizPage, BizToast, bizBtn, bizCard, dateWords } from "./settings-kit";
 
 /** S_subscr (16935-16990) — DanceOS Pro · Artist, "one profile, more tools".
@@ -50,6 +51,7 @@ export function SubscriptionScreen({
   catalog,
   isOrg,
   studioPrice,
+  studios = [],
 }: {
   subscription: Subscription | null;
   /** the artist plans on offer, from the price list */
@@ -57,6 +59,10 @@ export function SubscriptionScreen({
   isOrg: boolean;
   /** for an organization: what one studio costs, or null when none is on offer */
   studioPrice: PlanCatalogRow | null;
+  /** ⚠ the organization's OWN studios, each with its standing and its control
+   *  (20 Sep 2026) — this screen used to hand an organization a door to the hub
+   *  and nothing else, and the hub has no cancel on it */
+  studios?: Array<{ id: string; name: string; verified: boolean; state: StudioSubscriptionState | null }>;
 }) {
   const router = useRouter();
   const offers = catalog.filter((p) => p.kind === "artist" && p.active);
@@ -98,15 +104,28 @@ export function SubscriptionScreen({
                 subscribed stays private — nothing in it is lost, it is just not on Discover yet.
               </>
             ) : (
-              "No studio plan is on offer right now — message DanceOS from Home."
+              "No studio plan is on offer right now — message DanceOS from Settings › Help & support."
             )}
           </div>
-          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 9, lineHeight: 1.5 }}>
-            You subscribe each studio from its row on <b>Your business</b>, where it also says exactly where each one stands.
-          </div>
         </div>
+
+        {/* ⚠ EVERY STUDIO, WITH ITS OWN CONTROL (20 Sep 2026) — the strip that
+            stood on each studio's own home, one per studio, here. This is the
+            only Stop renewing in the app, so it had to land somewhere before the
+            home lost it; Settings is where the user said subscriptions belong. */}
+        {studios.map((t) =>
+          t.state ? (
+            <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} verified={t.verified} state={t.state} studioPrice={studioPrice} heading={t.name} />
+          ) : null
+        )}
+        {studios.length === 0 ? (
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "2px 2px 10px" }}>
+            No studios yet. Open one from <b>Studios</b> and it appears here with its own subscription.
+          </div>
+        ) : null}
+
         <Link href="/business" style={bizBtn}>
-          Open Your business ›
+          Open Studios ›
         </Link>
         <BizToast msg={toast} />
       </BizPage>

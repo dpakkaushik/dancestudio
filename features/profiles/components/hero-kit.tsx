@@ -80,6 +80,11 @@ export const HeroDot = () => <span style={{ color: LINE }}>·</span>;
  *  `HOME_TYPE.micro` on the other — so the same number was set two ways on two
  *  screens that are supposed to look identical. Tabular figures so a six-digit
  *  number does not jitter between accounts. */
+/** ⚠ IT CARRIES ITS OWN HYPHEN AND SITS AGAINST THE TYPE (20 Sep 2026, the user:
+ *  "Id still needs to be placed like for eg. Artist-000123 together there should
+ *  be no gap in that on both profile and home"). The type word and the number
+ *  used to be the two ends of a `space-between` row — one line, but as far apart
+ *  as the column allowed. They are one token now: ARTIST-000482. */
 export function HeroId({ children }: { children: ReactNode }) {
   return (
     <span
@@ -91,7 +96,7 @@ export function HeroId({ children }: { children: ReactNode }) {
         fontVariantNumeric: "tabular-nums",
       }}
     >
-      {children}
+      -{children}
     </span>
   );
 }
@@ -103,8 +108,6 @@ export function IdentityHero({
   eyebrow,
   eyebrowSub = null,
   verified,
-  share = null,
-  stats = null,
   meta = null,
   styles = [],
   styleAria = (s) => s,
@@ -133,13 +136,14 @@ export function IdentityHero({
   eyebrowSub?: ReactNode;
   /** the tick is DanceOS's to give — set when a verification actually clears */
   verified: boolean;
-  /** the QR — the upper of the two chips stacked at the row's right edge (18 Sep
-   *  2026); null when there is no public page to share */
-  share?: ReactNode;
-  /** the Stats chip under the QR (18 Sep 2026, the user: "remove stats from tools
-   *  and place like a button similar to the qr code … QR above the Stats") — a
-   *  `StatsChip` pointing at this account's own board; null on a public page */
-  stats?: ReactNode;
+  /** ⚠ THE QR AND STATS CHIPS ARE NOT THE HERO'S ANY MORE (20 Sep 2026, the
+   *  user: "Follow button to be a bell with qr code and stats. should be placed
+   *  in same row as follower following numbers on its right side"). They were a
+   *  column at this row's right edge (C13, 18 Sep) and a third chip there would
+   *  have squeezed the name's column again — the very bug C13 exists to stop.
+   *  They are `EntityBand`'s `chips` now, at the right end of the figures row;
+   *  the props are gone rather than left unread, because a dead prop is a lie to
+   *  the next reader. */
   /** the line under the name — "24, New Delhi", or "Kothrud, Pune · 1 room" */
   meta?: ReactNode;
   /** the styles, as the app's one style tile */
@@ -219,24 +223,34 @@ export function IdentityHero({
 
           {/* what it is, its number, who it is, where — in that order, beside the picture */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* ⚠ THE TYPE AND THE ID SHARE ONE LINE (19 Sep 2026, the user:
-                "All profiles should have Profile Type with ID on right" — and,
-                asked whether they meant the whole block right-aligned: "In one
-                line besides profile pic"). So it is one row beside the picture:
-                what this account IS on the left, its account number pushed to
-                the right edge of the column. They were stacked until today,
-                which cost the column a line and left the number looking like a
-                second, quieter eyebrow rather than the account's own number. */}
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-              <span style={HERO_EYEBROW}>{eyebrow}</span>
-              {eyebrowSub ? <span style={{ flexShrink: 0 }}>{eyebrowSub}</span> : null}
+            {/* ⚠ THE TYPE AND THE ID ARE ONE TOKEN (19 Sep 2026: "All profiles
+                should have Profile Type with ID"; 20 Sep 2026, the user, looking
+                at what that produced: "Id still needs to be placed like for eg.
+                Artist-000123 together there should be no gap in that on both
+                profile and home"). They shared a line already — as the two ends
+                of a `space-between` row, so the gap between them was whatever
+                the column had spare, and on a wide screen the number read as a
+                second, unrelated eyebrow. ARTIST-000482 is one thing, so it is
+                set as one thing; `HeroId` carries the hyphen. */}
+            {/* ⚠ ONE SPAN, NOT TWO SIBLINGS. The first cut put them side by side
+                in a zero-gap flex row, which LOOKS like one token and is two text
+                nodes — so the accessible text came out "Organization -003936",
+                with a space nothing on screen has. Nested, the text content is
+                contiguous and a screen reader says what the screen shows. The
+                e2e read that space and is what found it. */}
+            <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap" }}>
+              <span style={HERO_EYEBROW}>
+                {eyebrow}
+                {eyebrowSub}
+              </span>
             </div>
             {/* ⚠ THE NAME IS NEVER CUT (18 Sep 2026, the user: "in some places full
                 name is getting hidden which should not happen"). It used to be one
                 line with an ellipsis, and it shared that line with the QR chip — so
                 a long name beside a 96px disc had about 200px to live in and lost
-                its end. The chips have their own column on the right now (QR above
-                Stats), and the name wraps onto a second line rather than truncating. `overflowWrap: anywhere`
+                its end. Nothing shares this line any more — the chips went to the
+                figures row (20 Sep 2026) — and the name wraps onto a second line
+                rather than truncating. `overflowWrap: anywhere`
                 is for the one-word name longer than the column, which is the only
                 case a wrap alone cannot handle. */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginTop: 6 }}>
@@ -265,17 +279,6 @@ export function IdentityHero({
             </div>
             {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
           </div>
-          {/* THE TWO CHIPS, STACKED ON THE RIGHT — the QR above Stats (18 Sep 2026, the
-              user: "place the stats and qr code buttons together on the right side of
-              the home tab, QR above the Stats"). Their own column at the row's edge,
-              so the name's column never shares a line with them and the two read as
-              one control: share this profile, see its record. */}
-          {share || stats ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-              {share}
-              {stats}
-            </div>
-          ) : null}
         </div>
         {styles.length ? (
           <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", marginTop: 12, alignItems: "center" }}>

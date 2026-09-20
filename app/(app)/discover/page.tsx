@@ -6,6 +6,7 @@ import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
 import { CityChip } from "@/features/discovery/components/CityChip";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
+import { DiscoverTabs } from "@/features/discovery/components/DiscoverTabs";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
 import { NearMeChip } from "@/features/discovery/components/NearMeChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
@@ -269,39 +270,13 @@ export default async function DiscoverPage({
   };
   const pageFoot: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", padding: "9px 14px", borderRadius: 999, border: `1.5px solid ${EL}`, background: "var(--card)" };
 
-  /* five section tabs (4571-4585): flex:1 tiles, the mark over a 10px word, the open one on the ink */
+  /* five section tabs (4571-4585): flex:1 tiles, the mark over a 10px word, the
+     open one on the ink — and pressed the moment they are tapped (20 Sep 2026) */
   const tabTiles = (
-    <div style={{ display: "flex", gap: 6, margin: "10px 0 4px" }}>
-      {TABS.map(([k, word, Icon]) => {
-        const on = tab === k;
-        return (
-          <Link
-            key={k}
-            href={`/discover?city=${encodeURIComponent(city)}&tab=${k}`}
-            aria-label={word}
-            aria-current={on ? "page" : undefined}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              textAlign: "center",
-              padding: "10px 2px 8px",
-              borderRadius: 14,
-              textDecoration: "none",
-              background: on ? "var(--text)" : "var(--card)",
-              color: on ? "var(--solid)" : SUB,
-              border: `1.5px solid ${on ? "var(--text)" : EL}`,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <Icon size={26} />
-            <div style={{ fontSize: 10, fontWeight: 800 }}>{word}</div>
-          </Link>
-        );
-      })}
-    </div>
+    <DiscoverTabs
+      active={tab}
+      tabs={TABS.map(([k, word, Icon]) => ({ key: k, word, href: `/discover?city=${encodeURIComponent(city)}&tab=${k}`, icon: <Icon size={26} /> }))}
+    />
   );
 
   return (
