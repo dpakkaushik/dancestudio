@@ -135,6 +135,17 @@
 >   should and never while somebody is tapping. **The happy path was re-run whole
 >   on that bundle: 19/19 in 11.8 min**, and `shoot-hero.js` 127/127 on the final
 >   one.
+> * ⚠⚠ **AND READING THE PUSHED PAGE FOUND ONE MORE — THE SCHEDULE BAR WAS
+>   INVISIBLE TO EVERY VISITOR.** The user said *"PLEASE CHECK FOR dEEPAK kAUSHIK
+>   PROFILE"*, so it was fetched from the deployment and read: the memberships
+>   block was there and **the Schedule bar was not, at all**. `person.runs` comes
+>   from `business_members`, and RLS admits that table to a business's OWN
+>   MEMBERS — so for anybody else it is empty and the white bar was never drawn.
+>   "Schedule is above Memberships" was true and nobody but the owner could see
+>   it. `artist_page_of` is a definer read that answers ANYBODY and returns only
+>   a **listed** page, and `/artist/{id}/schedule` is public, so an artist's page
+>   falls back to it. **A fix that is only visible to the person who reported it
+>   is half a fix, and the only way to know was to open the live page.**
 > * ⚠ **AND `SegmentedNav` ITSELF IS DELETED**, because all three of its callers
 >   became `SegmentedPanels` and a component nothing renders is the same lie as a
 >   field no screen reads. `useOptimisticNav` — the mechanic under it — stays, and

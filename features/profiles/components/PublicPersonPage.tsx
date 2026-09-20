@@ -221,7 +221,22 @@ export function PublicPersonPage({
           isMe={isMe}
           signedIn={signedIn}
           memberships={memberships}
-          scheduleHref={person.runs.length ? `/${person.runs[0].tenantType === "studio" ? "studio" : "artist"}/${person.runs[0].tenantId}/schedule` : null}
+          /* ⚠ AND A STRANGER GETS THE SCHEDULE TOO (20 Sep 2026, found by reading
+             this very page on the live site after the push). `runs` comes from
+             `business_members`, which RLS admits to a business's OWN MEMBERS —
+             so for anybody else it is empty and the white Schedule bar was never
+             drawn at all. On an ARTIST that is a real loss: `artist_page_of` is
+             a definer read that answers anybody and returns only a LISTED page,
+             and `/artist/{id}/schedule` is public, so the bar can be offered to
+             the person it is FOR. Without this, "Schedule is above Memberships"
+             was true and invisible to every visitor. */
+          scheduleHref={
+            person.runs.length
+              ? `/${person.runs[0].tenantType === "studio" ? "studio" : "artist"}/${person.runs[0].tenantId}/schedule`
+              : person.artistPageId
+                ? `/artist/${person.artistPageId}/schedule`
+                : null
+          }
           accent={RC}
         />
       </div>
