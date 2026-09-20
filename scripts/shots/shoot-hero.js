@@ -475,7 +475,22 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
     check((await discImgs(org)) === 1, "org home: the logo is on the disc");
     check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (an organization holds up to ten since 19 Sep 2026)");
-    check((await org.getByLabel("Share this profile — QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
+    /* ⚠ THE QR AND THE SHARE ARE TWO CHIPS NOW (21 Sep 2026, the user: "Seprate
+       current Qr Code from share option and share to directly send link of that
+       profile"). The QR's own name dropped "Share this profile — ", because the
+       chip beside it is what shares; this asserts BOTH, and asserts the old
+       combined name is gone, so nothing is left answering to two jobs. */
+    check((await org.getByLabel("QR code").count()) === 1, "org home: a QR — an organization has a page of its own (18 Sep 2026)");
+    check((await org.getByLabel("Share EEE Dance Company").count()) === 1, "org home: the Share chip beside it, which sends the link itself (21 Sep 2026)");
+    check((await org.getByLabel("Share this profile — QR code").count()) === 0, "org home: nothing answers to the old combined name");
+    /* THE ORDER THE USER GAVE: Follow bell · Stats · QR · Share. There is no bell
+       on your own home, so on this page it is Stats · QR · Share — measured by
+       LEFT EDGE rather than by DOM position, because the row is `flex` and a
+       re-order that only changed the markup would pass a DOM check and still
+       draw them in the old order. */
+    const chipX = async (label) => (await org.getByLabel(label).first().boundingBox())?.x ?? -1;
+    const [xStats, xQr, xShare] = [await chipX("Stats"), await chipX("QR code"), await chipX("Share EEE Dance Company")];
+    check(xStats > 0 && xStats < xQr && xQr < xShare, `org home: the chips read Stats · QR · Share, left to right (${xStats} < ${xQr} < ${xShare})`);
     check(await org.getByText(/^Organization(-\d{6})?$/).first().isVisible(), "org home: the role word, with the account number against it");
     /* ⚠ BOTH FIGURES, ON AN ORGANIZATION TOO (20 Sep 2026, the user: "Organization
        and Studio still dont have Following section in profile and home"). The

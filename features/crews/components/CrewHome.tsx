@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ToolGrid, ToolsHead, type Tile } from "@/features/home/components/home-kit";
+import { ToolGrid, ToolsPanel, type Tile } from "@/features/home/components/home-kit";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
-import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
@@ -106,8 +106,11 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
                this is the crew's own home, and its own people cannot follow it. */
             chips={
               <>
-                <ProfileShare path={`/crew/${crew.id}`} name={crew.name} />
+                {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026) — no bell on your
+                    own crew's home */}
                 <StatsChip href="/stats?tab=charts&seg=crew" />
+                <ProfileShare path={`/crew/${crew.id}`} name={crew.name} />
+                <ProfileLink path={`/crew/${crew.id}`} name={crew.name} />
               </>
             }
             styles={[crew.style]}
@@ -115,9 +118,10 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
           />
         </IdentityHero>
 
-        <div style={{ position: "relative", zIndex: 1, background: LILAC, margin: "12px 0" }}>
-          <ToolsHead kind="crew" />
-          <ToolGrid tiles={tiles} />
+        <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
+          <ToolsPanel kind="crew">
+            <ToolGrid tiles={tiles} />
+          </ToolsPanel>
         </div>
       </div>
     </div>

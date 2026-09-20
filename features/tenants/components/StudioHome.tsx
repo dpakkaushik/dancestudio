@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ToolGrid, ToolsHead, type Tile } from "@/features/home/components/home-kit";
-import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
+import { ToolGrid, ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
-import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, PROFILE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
 import { StudioLinksRow } from "./StudioLinksRow";
@@ -206,8 +206,10 @@ export function StudioHome({
                follow it (`set_follow` refuses a business you belong to). */
             chips={
               <>
-                <ProfileShare path={`/studio/${tenant.id}`} name={tenant.name} />
+                {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */}
                 <StatsChip href="/stats?tab=charts&seg=studio" />
+                <ProfileShare path={`/studio/${tenant.id}`} name={tenant.name} />
+                <ProfileLink path={`/studio/${tenant.id}`} name={tenant.name} />
               </>
             }
             styles={styles}
@@ -228,21 +230,7 @@ export function StudioHome({
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and
             event running in THIS studio's rooms today, one card each, in the
             order the day happens; a studio's doors are its own (7143-7150) ── */}
-        <TodayShelf
-          deck={deck}
-          emptyTitle="Nothing in your rooms today"
-          emptyBody="Every class and event running in this studio’s rooms shows up here on the day."
-          emptyActions={
-            <>
-              <Link href="/managed" style={PILL_LIGHT}>
-                See everything you manage
-              </Link>
-              <Link href={`/business/${tenant.id}/calendar`} aria-label="Open the studio calendar" style={PILL_DARK}>
-                Open the calendar
-              </Link>
-            </>
-          }
-        />
+        <TodayShelf deck={deck} />
 
         {/* ⚠ NO SUBSCRIPTION STRIP HERE (20 Sep 2026, the user: "remove your
             conversation with dance os and subscription from just the home tab for
@@ -255,9 +243,10 @@ export function StudioHome({
 
         {/* ── STUDIO TOOLS (7590-7620): the same tile language as Home's grid, and
             every door is THIS studio's ── */}
-        <div style={{ position: "relative", zIndex: 1, background: LILAC, marginBottom: 12 }}>
-          <ToolsHead kind="studio" />
-          <ToolGrid tiles={tiles} />
+        <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
+          <ToolsPanel kind="studio">
+            <ToolGrid tiles={tiles} />
+          </ToolsPanel>
         </div>
       </div>
     </div>

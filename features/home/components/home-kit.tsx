@@ -33,11 +33,43 @@ export const DosShelfHead = ({ children, right, pad = "0 16px 10px" }: { childre
  *  owner's word, 7616), and a studio's own home drew its own copy of the line. */
 export type ToolsKind = HomeKind | "studio" | "crew";
 export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", org: "Organization Tools", studio: "Studio Tools", crew: "Crew Tools" };
-export function ToolsHead({ kind, right }: { kind: ToolsKind; right?: ReactNode }) {
+export function ToolsHead({ kind }: { kind: ToolsKind }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0 7px" }}>
-      <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_DISPLAY }}>{TOOLS_HEADING[kind]}</span>
-      {right ? <span style={{ marginLeft: "auto", display: "inline-flex" }}>{right}</span> : null}
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px" }}>
+      {/* `currentColor`, not INK (21 Sep 2026) — the panel below inverts the
+          theme, so the heading takes its colour from whatever ground it is on
+          rather than from the page's own ink, which would vanish into it */}
+      <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: "currentColor", fontFamily: DOS_DISPLAY }}>{TOOLS_HEADING[kind]}</span>
+    </div>
+  );
+}
+
+/** THE TOOLS PANEL — ONE SQUIRCLE, INVERTED AGAINST THE THEME (21 Sep 2026).
+ *
+ *  The user: *"give the tools section on all profiles like squircle seprator and
+ *  make it look opposite according to the dark and light theme. make sure only
+ *  heading on top nothing else."*
+ *
+ *  Three things, and each is a real separation rather than decoration:
+ *  · **A SQUIRCLE.** The grid used to sit on the page's own ground with a 17px
+ *    line over it, so on a long Home the tools and whatever was above them ran
+ *    together — there was nothing to say where one section ended.
+ *  · **INVERTED.** `--text` and `--solid` are already the theme's own opposite
+ *    pair (near-black and near-white, swapped by `html.dark` / `html.light`), so
+ *    the panel is one declaration that follows the toggle by construction rather
+ *    than a second palette to keep in step. The tiles are opaque gradients of
+ *    their own colour, so what changes underneath them is the ground and the
+ *    gaps — which is the whole point: the colours read louder against it.
+ *  · **ONLY THE HEADING.** ⚠ The plan badge that sat on the head's right —
+ *    ARTIST PLAN ACTIVE / 🔒 PRO · UNLOCK, the prototype's own at 2500-2520 —
+ *    is GONE, and the `right` prop with it rather than left unread. Settings →
+ *    Subscription is the door to the plan, and has been since 19 Sep; the badge
+ *    was a second one on a line the user has now asked to hold one thing. */
+export function ToolsPanel({ kind, children }: { kind: ToolsKind; children: ReactNode }) {
+  return (
+    <div style={{ background: "var(--text)", color: "var(--solid)", borderRadius: 22, padding: "14px 14px 16px", margin: "12px 0", boxSizing: "border-box" }}>
+      <ToolsHead kind={kind} />
+      {children}
     </div>
   );
 }
@@ -227,7 +259,6 @@ export function BizSection({
   kind,
   pageId,
   eventsHostId = null,
-  plan = null,
   children,
 }: {
   kind: HomeKind;
@@ -235,28 +266,17 @@ export function BizSection({
   pageId: string | null;
   /** R15: the organization's own events host — the Events tile points at its desk */
   eventsHostId?: string | null;
-  /** the Artist plan's state — the badge on the head (2500-2520); null draws none (an organization) */
-  plan?: "active" | "locked" | null;
   children?: ReactNode;
 }) {
   const tiles = tilesFor(kind, pageId, eventsHostId);
-  /* the plan badge on the head (2500-2520); an organization has none */
-  const badge =
-    plan === "active" ? (
-      <Link href="/subscription" aria-label="Artist plan active" style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "rgba(236,72,153,.16)", color: "#EC4899", textDecoration: "none" }}>
-        ARTIST PLAN ACTIVE
-      </Link>
-    ) : plan === "locked" ? (
-      <Link href="/subscription" aria-label="Unlock the Artist plan" style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "var(--el)", color: "var(--sub)", textDecoration: "none" }}>
-        🔒 PRO · UNLOCK
-      </Link>
-    ) : null;
+  /* ⚠ THE `plan` PROP IS GONE, not left unread (21 Sep 2026) — the badge it
+     drew was the "nothing else" the user asked off this head, and a prop no
+     branch renders is the same lie as a field no screen reads. */
   return (
-    <div style={{ marginBottom: 12 }}>
-      <ToolsHead kind={kind} right={badge} />
+    <ToolsPanel kind={kind}>
       {children}
       <ToolGrid tiles={tiles} />
-    </div>
+    </ToolsPanel>
   );
 }
 

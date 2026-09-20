@@ -4,7 +4,7 @@ import { ActionRow, CallButton, MailButton } from "@/features/profiles/component
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
@@ -136,10 +136,9 @@ export function CrewPublicPage({
             /* the three chips at the row's right edge (20 Sep 2026) — the QR, the
                crew board this crew is ranked on, and the Follow bell, drawn for
                every viewer and saying why when a press would be refused */
+            /* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */
             chips={
               <>
-                <ProfileShare path={path} name={crew.name} />
-                <StatsChip href={`${path}/stats`} />
                 {/* not drawn for the crew's own people — their block under the
                     hero already says which they are */}
                 {viewer === "other" ? (
@@ -152,6 +151,9 @@ export function CrewPublicPage({
                     variant="chip"
                   />
                 ) : null}
+                <StatsChip href={`${path}/stats`} />
+                <ProfileShare path={path} name={crew.name} />
+                <ProfileLink path={path} name={crew.name} />
               </>
             }
             styles={[crew.style]}

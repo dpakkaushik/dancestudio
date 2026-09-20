@@ -12,7 +12,7 @@ import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repo
 import type { FollowedTenant } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { PersonBody } from "./PersonBody";
-import { ProfileShare } from "./ProfileShare";
+import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { ArtistPlan } from "@/repositories/plans";
@@ -67,6 +67,7 @@ export function MyProfilePage({
   business,
   businesses = [],
   memberships = [],
+  trainsAt = [],
   plan,
   isAdmin = false,
   gstVerified = false,
@@ -93,6 +94,10 @@ export function MyProfilePage({
    *  since 19 Sep and this one showed nothing, which is one of the five ways the
    *  two screens had drifted */
   memberships?: MembershipOnSale[];
+  /** ⚠ THE **TRAIN** GROUP, AND IT IS THIS SCREEN'S ALONE (21 Sep 2026) — a
+   *  booking is private, so where somebody has taken classes is drawn on their
+   *  own tab and never on the public page `PersonBody` also serves. */
+  trainsAt?: Tenant[];
   /** the Artist plan, for the settings sheet's switch */
   plan: ArtistPlan | null;
   /** a platform admin gets the verification queue as a row in the settings sheet */
@@ -243,8 +248,11 @@ export function MyProfilePage({
                your own profile, and you do not follow yourself. */
             chips={
               <>
-                <ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
+                {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026) — no bell here,
+                    because this screen is only ever your own */}
                 <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
+                <ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
+                <ProfileLink path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
               </>
             }
             /* an organization dances no style of its own — what it runs does */
@@ -282,6 +290,7 @@ export function MyProfilePage({
           isMe
           signedIn
           memberships={memberships}
+          trainsAt={trainsAt}
           scheduleHref={scheduleHref}
           accent={RC}
           /* an organization's only seats are the owner rows on its own studios,

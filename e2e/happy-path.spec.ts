@@ -568,7 +568,15 @@ test.describe.serial("DanceOS, end to end", () => {
     tenantId = owner.url().match(/\/business\/([0-9a-f-]+)$/)?.[1] ?? null;
     await expect(owner.getByRole("heading", { name: studioName, exact: true })).toBeVisible();
     await expect(owner.getByText("Studio Tools")).toBeVisible();
-    await expect(owner.getByText("Nothing in your rooms today")).toBeVisible();
+    /* ⚠ ONE EMPTY-DAY CARD FOR EVERY KIND OF HOME (21 Sep 2026, the user: "when
+       todays schedule blank just shouw card with Heading Nothing On Today's
+       Schedule, no bottons below"). It used to say three different sentences —
+       "Nothing in your rooms today" on a studio's, "Nothing on today" on a
+       person's and an organization's — over a row of pills. One heading now,
+       and the absence of the pills is asserted too, because a card that merely
+       stopped rendering them would read the same as one that kept them. */
+    await expect(owner.getByText("Nothing On Today’s Schedule")).toBeVisible();
+    await expect(owner.getByRole("link", { name: "See everything you manage" })).toHaveCount(0);
     /* ⚠ THE PICTURES MOVED OFF THE PENCIL (20 Sep 2026, the user: "edit profile
        for studio not consistent with how its done for Artist and users. for
        social media links, photos etc."). A studio's two pictures are changed
@@ -1341,10 +1349,21 @@ test.describe.serial("DanceOS, end to end", () => {
        Both are true of this trainer — they accepted the class in segment 1 AND
        that acceptance seated them as visiting faculty — so a bare locator for
        the studio's door is now a strict-mode violation rather than a check.
-       Assert what the slice actually promises: both groups, one door each. */
+       Assert what the slice actually promises: both groups, one door each.
+       ⚠ AND THE HEADINGS ARE THE USER'S FOUR COLUMNS SINCE 21 Sep 2026
+       ("Studios Should Have 3 Columns - Train Teach & Assist", plus their own
+       word for the fourth: Manage). "Studios taught at" split on the `kinds`
+       the read has always carried — this trainer is the class's ARTIST, so
+       **Teach** — and "Studios associated with" is **Manage**. ⚠ **Train** is
+       deliberately NOT here: it is where somebody has TAKEN classes, which is a
+       private booking, so it is drawn on their own tab and never on a stranger's
+       view of them. The check asserts its absence as well as the two that are
+       right, because a group that is only missing from this page by accident
+       would look exactly the same. */
     await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toHaveCount(2);
-    await expect(learner.getByText("Studios taught at")).toBeVisible();
-    await expect(learner.getByText("Studios associated with")).toBeVisible();
+    await expect(learner.getByText("Teach", { exact: true })).toBeVisible();
+    await expect(learner.getByText("Manage", { exact: true })).toBeVisible();
+    await expect(learner.getByText("Train", { exact: true })).toHaveCount(0);
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
     // following a person is one bit, and the count moves — as data on the toggle,
@@ -2223,7 +2242,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
     await owner.getByRole("button", { name: "Publish", exact: true }).click();
     const sheet = owner.getByRole("dialog", { name: "Publish this class?" });
-    await expect(sheet.getByText(/ROOM ALREADY BUSY/)).toBeVisible();
+    /* ⚠ FIFTEEN, NOT FIVE (21 Sep 2026) — and it is not a flake allowance, it is
+       what this press actually waits on. The Publish button asks the room BEFORE
+       it opens the sheet (`checkRoomClashAction`, F3), so the sheet does not
+       exist until a server action has been out and back; on a loaded machine
+       that round trip is the whole of the default five seconds, and the failure
+       reads as "no clash warning" when the DOM has no dialog in it at all. The
+       siblings that wait on a server re-render already have fifteen. */
+    await expect(sheet.getByText(/ROOM ALREADY BUSY/)).toBeVisible({ timeout: 15_000 });
     await expect(sheet.getByText(new RegExp(`Studio A already has ${classTitle} at`))).toBeVisible();
     await expect(sheet.getByText(/A room is never double-booked/)).toBeVisible();
     // the primary button no longer offers what the database would refuse
@@ -2251,8 +2277,15 @@ test.describe.serial("DanceOS, end to end", () => {
     // An organization is still ONE LOGIN; Owner and Team are labels on its public page.
     await owner.goto("/business/team");
     await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
-    await owner.getByRole("button", { name: "Add to the team" }).click();
-    await owner.getByRole("radio", { name: "Ask as owner" }).click();
+    /* ⚠ THE ORGANIZATION'S ADD CONTROL IS THE SHARED PILL ON TOP NOW, OPENING A
+       SHEET (21 Sep 2026, the user: "fix add team member for studio and
+       organization as well"). It read "＋ Add to the team" on a hand-rolled
+       div at the FOOT of the roster, opening a card that expanded in place —
+       the one Team desk the 20 Sep "＋ on top" pass missed. The words are the
+       studio desk's own now, which is what makes the two one control. */
+    await owner.getByRole("button", { name: "Add a team member" }).click();
+    const orgAdd = owner.getByRole("dialog", { name: "Add a team member" });
+    await orgAdd.getByRole("radio", { name: "Ask as owner" }).click();
     await owner.getByLabel("Search DanceOS for a dancer").fill(learnerName);
     await owner.getByRole("button", { name: `Ask ${learnerName} to be named an owner` }).click();
     // ASKED IS NOT JOINED: the desk says so, and counts one waiting
@@ -2486,7 +2519,10 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── 5. A SEAT IS NOT A CLASS TAUGHT — the user's answer 5. Two groups, two
     // different facts: where somebody is on the team, and where they have published.
     await trainer.goto(`/person/${learnerId}`);
-    await expect(trainer.getByText("Studios associated with", { exact: true })).toBeVisible({ timeout: 15_000 });
+    /* "Manage" since 21 Sep 2026 — the user's own word for the group that was
+       headed "Studios associated with"; the fact under it is unchanged (a SEAT
+       held, which is what this check is about) */
+    await expect(trainer.getByText("Manage", { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(trainer.getByRole("link", { name: new RegExp(`Open ${studioName}`) }).first()).toBeVisible();
 
     // ── 6. ⚠ AND MOVING THE LABEL AWAY PUTS BACK WHAT IT REPLACED (20260920140000).

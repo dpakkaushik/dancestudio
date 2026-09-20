@@ -14,7 +14,7 @@ import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/mem
 import { FollowToggle } from "./FollowToggle";
 import { EntityBand, Figure } from "./profile-band";
 import type { HeroShot } from "./HeroRail";
-import { ProfileShare } from "./ProfileShare";
+import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { TenantFollowersButton } from "./TenantFollowersButton";
 import { memberNoWords } from "@/types/profile";
@@ -197,10 +197,9 @@ export function PublicProfile({
                Follow that used to be a pill under the hero — and it is drawn for
                EVERY viewer now ("should be available to all"), saying why when
                the database would refuse the press rather than vanishing. */
+            /* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */
             chips={
               <>
-                <ProfileShare path={path} name={tenant.name} />
-                <StatsChip href={`/studio/${tenant.id}/stats`} />
                 {/* ⚠ NOT DRAWN FOR THE TEAM — this is their own studio, and a
                     control that exists only to be disabled is noise. Every other
                     visitor gets a live bell: an organization account may follow
@@ -216,6 +215,9 @@ export function PublicProfile({
                     variant="chip"
                   />
                 )}
+                <StatsChip href={`/studio/${tenant.id}/stats`} />
+                <ProfileShare path={path} name={tenant.name} />
+                <ProfileLink path={path} name={tenant.name} />
               </>
             }
             styles={profile.styles}

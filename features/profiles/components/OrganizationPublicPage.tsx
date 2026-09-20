@@ -5,7 +5,7 @@ import { EntityBand, Figure } from "@/features/profiles/components/profile-band"
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
-import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
@@ -155,10 +155,9 @@ export function OrganizationPublicPage({
             /* the three chips (20 Sep 2026) — the QR, the organization's own
                combined board (or, for a visitor, where each of its studios ranks),
                and the Follow bell, drawn for every viewer */
+            /* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */
             chips={
               <>
-                <ProfileShare path={`/org/${org.id}`} name={org.name} />
-                <StatsChip href={isMe ? "/business/stats" : `/org/${org.id}/stats`} />
                 {/* not drawn on your own page — you do not follow yourself */}
                 {isMe ? null : (
                   <FollowToggle
@@ -170,6 +169,9 @@ export function OrganizationPublicPage({
                     variant="chip"
                   />
                 )}
+                <StatsChip href={isMe ? "/business/stats" : `/org/${org.id}/stats`} />
+                <ProfileShare path={`/org/${org.id}`} name={org.name} />
+                <ProfileLink path={`/org/${org.id}`} name={org.name} />
               </>
             }
             socials={org.socials}

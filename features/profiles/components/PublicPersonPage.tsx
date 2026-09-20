@@ -12,7 +12,7 @@ import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/mem
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { PersonBody } from "./PersonBody";
-import { ProfileShare } from "./ProfileShare";
+import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { Group, PersonIcon, ROLE_RING, Row, cornerChip } from "./profile-kit";
@@ -175,18 +175,18 @@ export function PublicPersonPage({
                page has no QR: the page to share is `/org/{id}`, and this one is
                the admin's view of it — sharing a link that 404s for the reader is
                worse than offering no share at all. */
+            /* ⚠ FOLLOW · STATS · QR · SHARE, IN THAT ORDER (21 Sep 2026, the
+                user's own list). It is the order of how often a visitor reaches
+                for them, and it is the SAME on all five kinds and on both a
+                person's screens — which is the whole of "should look same as
+                profile page".
+                ⚠ NO BELL ON YOUR OWN PAGE — you do not follow yourself, and a
+                control drawn only to be disabled is worse than none.
+                ⚠ AND NEITHER QR NOR SHARE ON AN ORGANIZATION READ THROUGH THIS
+                PAGE: this is the admin's view of it and its public face is
+                /org/{id}, so a link shared from here 404s for the reader. */
             chips={
               <>
-                {kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
-                <StatsChip href={isMe ? "/stats" : `${path}/stats`} />
-                {/* ⚠ NO BELL ON YOUR OWN PAGE — you do not follow yourself, and a
-                    control drawn only to be disabled is worse than none. Your own
-                    page wears exactly the two chips the Profile tab wears, which
-                    is the whole of "should look same as profile page".
-                    ⚠ AND NONE ON AN ORGANIZATION READ THROUGH THIS PAGE, for the
-                    same reason the QR is not drawn: this is the admin's view of
-                    it, and its public face — with its own Follow — is /org/{id}.
-                    A bell here would follow a row nobody arrives at. */}
                 {isMe || kind === "org" ? null : (
                   <FollowToggle
                     target={{ kind: "person", id: profile.id }}
@@ -197,6 +197,9 @@ export function PublicPersonPage({
                     variant="chip"
                   />
                 )}
+                <StatsChip href={isMe ? "/stats" : `${path}/stats`} />
+                {kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
+                {kind === "org" ? null : <ProfileLink path={path} name={profile.fullName} />}
               </>
             }
             styles={profile.styles}

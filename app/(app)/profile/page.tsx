@@ -3,6 +3,7 @@ import { MyProfilePage } from "@/features/profiles/components/MyProfilePage";
 import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
+import { findStudiosAttended } from "@/repositories/enrollments";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicPerson } from "@/repositories/publicPerson";
@@ -33,7 +34,7 @@ export default async function ProfilePage() {
   }
   const role = person.profile.role;
   /* what reaches you left this page on 19 Sep 2026 — the bell's own screen carries it, once */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst, memberships] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst, memberships, trainsAt] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -55,6 +56,12 @@ export default async function ProfilePage() {
        of the five ways the two had drifted. A failed read is no block, never a
        profile that will not open. */
     person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
+    /* ⚠ TRAIN — WHERE THEY HAVE TAKEN CLASSES (21 Sep 2026, the user's Studios
+       columns). Read HERE and not on `/person/{id}`, on their own answer when
+       asked: a booking is private, so the group exists on your own tab and on
+       nobody else's view of you. An organization books nothing (R11), so it is
+       not asked. */
+    role === "org" ? Promise.resolve([]) : findStudiosAttended(supabase, user.id).catch(() => []),
   ]);
   /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user, five
      for an artist, ten for an organization (19 Sep 2026) — the same rule the
@@ -90,6 +97,7 @@ export default async function ProfilePage() {
       business={biz ?? null}
       businesses={businesses}
       memberships={memberships}
+      trainsAt={trainsAt}
       plan={plan}
       isAdmin={isAdmin}
       gstVerified={Boolean(gst.verifiedAt)}

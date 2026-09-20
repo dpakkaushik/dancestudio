@@ -2,7 +2,93 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
-> ### FOUR FORMS ON ONE SPEC, AND A STUDENT IS A CONSEQUENCE RATHER THAN A LEAD (21 Sep 2026, latest) — BUILT, no migration
+> ### FOUR COLUMNS OF STUDIOS, A SHARE THAT SHARES, AND A TOOLS PANEL THAT INVERTS THE THEME (21 Sep 2026, latest) — BUILT, no migration
+> The user, in one message: *"for User and Artist Profiles- Crews- should have 2
+> columns Leader & Member, Studios Should Have 3 Columns - Train Teach & Assist.
+> For all Home And profile Tab - Buttons in order- Follow Bell, Stats, Qr Code,
+> share Button. Seprate current Qr Code from share option and share to directly
+> send link of that profile. fix add team member for studio and organization as
+> well. give the tools section on all profiles like squircle seprator and make it
+> look opposite according to the dark and light theme. make sure only heading on
+> top nothing else. when todays schedule blank just shouw card with Heading
+> Nothing On Today's Schedule, no bottons below."* Two questions were put to them
+> first and both answered: Train is **your own profile only**, and the fourth
+> studio column is **their own word, "Manage"**.
+> * ⚠⚠ **1 · "STUDIOS TAUGHT AT" WAS ONE HEADING OVER TWO DIFFERENT FACTS, AND
+>   THE READ HAD ALWAYS KNOWN WHICH.** `person_teaches_at` returns a `kinds`
+>   column — `'Artist'`, `'Assistant'` or `'Artist · Assistant'` — and every
+>   screen printed it as a sub-line rather than splitting on it, so a studio
+>   where somebody is the ARTIST and one where they ASSIST somebody else sat
+>   under one word. **Teach** and **Assist** are that column, so this is a word
+>   the database already carried and **no migration**. ⚠ **A studio where
+>   somebody does BOTH is in BOTH groups, deliberately**: two true statements
+>   about one place, and picking one would make the other disappear.
+> * ⚠ **AND "TRAIN" IS THE ONE THAT CANNOT BE PUBLIC.** Where somebody has TAKEN
+>   classes is `findStudiosAttended` — off their own `class_bookings` — and a
+>   booking is admitted by RLS to the learner and the studio and nobody else. So
+>   it is read in `/profile`'s own page and passed to `PersonBody` as `trainsAt`;
+>   `/person/{id}` never passes it and the group is simply not drawn there.
+>   Publishing it would have handed a stranger the list of places somebody dances,
+>   which is a privacy decision rather than a placement fix. **The e2e asserts its
+>   ABSENCE on the public page as well as Teach and Manage being present**, because
+>   a group missing by accident looks exactly like one missing on purpose.
+> * **2 · A CREW YOU LEAD AND A CREW YOU DANCE IN ARE TWO GROUPS** — **Leader** ·
+>   **Member**, which is the prototype's own distinction (S_bizhub 2596: "one has
+>   a roster … to keep, and the other has a page you read") finally said on the
+>   profile too. One `CrewRow`, so the two groups cannot drift into two row
+>   designs.
+> * ⚠⚠ **3 · THE QR AND THE SHARE WERE ONE CHIP DOING TWO JOBS.** Its accessible
+>   name was literally *"Share this profile — QR code"*, which is a control that
+>   answers to two things — this file's own rule since 19 Sep. `ProfileLink` is
+>   the share: `navigator.share` where the browser has it (the OS sheet, which is
+>   what "directly send link" means on a phone), and a clipboard copy with a
+>   toast where it does not. The QR's name is **"QR code"** and the share's is
+>   **"Share {name}"**. ⚠ **The order is the user's on all eight surfaces** —
+>   Follow bell · Stats · QR · Share — the four public pages, the Profile tab and
+>   the three own-homes, where there is no bell because you do not follow
+>   yourself. **The shoot measures the LEFT EDGES rather than the DOM order**,
+>   because a re-order that only changed the markup would pass a DOM check and
+>   still draw them the old way.
+> * ⚠ **4 · THE ORGANIZATION'S TEAM DESK WAS THE ONE THE 20 Sep "＋ ON TOP" PASS
+>   MISSED.** Its control was a hand-rolled `div role="button"` reading "＋ Add to
+>   the team" at the **FOOT** of the roster, opening a card that expanded in
+>   place — so an organization with a real team scrolled past everybody to add
+>   somebody, and the app's two Team desks looked like two products. It is the
+>   shared `DeskAddButton` at the top and the same **sheet** a studio's raises,
+>   with `useCloseOnBack` so system back closes it; the words are the studio
+>   desk's own ("Add a team member"), which is what the user asked that desk to
+>   say on 20 Sep.
+> * ⚠⚠ **5 · THE TOOLS GRID SAT ON THE PAGE'S OWN GROUND, WITH NOTHING SAYING
+>   WHERE THE SECTION BEGAN.** `ToolsPanel` is a 22px squircle whose ground is
+>   **`var(--text)` on `var(--solid)`** — the theme's own opposite pair, swapped
+>   by `html.dark` / `html.light`, so "opposite according to the dark and light
+>   theme" is ONE declaration that follows the toggle by construction rather than
+>   a second palette to keep in step. The tiles are opaque gradients of their own
+>   colour, so what changes under them is the ground and the gaps, which is the
+>   point: the colours read louder against it. `ToolsHead` takes `currentColor`
+>   now, not `INK`, or the heading would vanish into the inverted panel.
+>   ⚠ **"ONLY HEADING ON TOP" COST A BADGE, AND IT IS DELETED RATHER THAN
+>   HIDDEN:** ARTIST PLAN ACTIVE / 🔒 PRO · UNLOCK (the prototype's own,
+>   2500-2520) sat on that head's right, and `ToolsHead`'s `right` prop and
+>   `BizSection`'s `plan` prop went with it. Settings → Subscription has been the
+>   door to the plan since 19 Sep, so nothing became unreachable — a prop no
+>   branch renders is the same lie as a field no screen reads.
+> * ⚠ **6 · THE EMPTY DAY IS A HEADING AND NOTHING ELSE**, on all four homes
+>   ("Nothing On Today's Schedule" — the user's own capitalisation). It used to
+>   carry a sentence and a row of pills, in **three** different wordings per kind
+>   of account; `emptyTitle`, `emptyBody`, `emptyActions`, `PILL_DARK`,
+>   `PILL_LIGHT` and Home's `canManage` are all deleted. ⚠ **WHAT IT COSTS, SAID
+>   PLAINLY: that pill was Home's ONLY door to `/managed`** (C18 took its tile on
+>   19 Sep), so it is now reachable by its address alone. It goes anyway because
+>   `/managed` is a **VIEW rather than a capability** — every class and event on
+>   it is already reached through the Classes and Events tiles and their desks —
+>   which is the test C31's cancel-door lesson sets. The other two pills led to
+>   /my-classes, the events desk and the studio list: all tiles on the grid
+>   directly below.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the e2e recorded
+>   below. Deviation rows R43, C33–C36.
+
+> ### FOUR FORMS ON ONE SPEC, AND A STUDENT IS A CONSEQUENCE RATHER THAN A LEAD (21 Sep 2026) — BUILT, no migration
 > The user: *"Create Crew form in crews should look similar to add class page.
 > same should be for new routine and new membership. Students section dont need
 > to track a lead should just simply be able to send invite to a new user from
@@ -5784,6 +5870,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **FOUR COLUMNS OF STUDIOS, A SHARE THAT SHARES, AND A TOOLS PANEL THAT INVERTS
+  THE THEME — 21 Sep 2026, no step number — BUILT, no migration.** The user's
+  seven asks, two of them answered by them first (Train is your own profile
+  only; the fourth studio column is called **Manage**). A person's associations
+  become **Train · Teach · Assist · Manage** and **Leader · Member** — no
+  migration, because `person_teaches_at` has carried the `kinds` word since
+  28 Aug and no screen ever split on it, and Train stays off the public page
+  because a booking is private. The QR stops being the share: `ProfileLink`
+  fires `navigator.share` or copies the link, and all eight identity surfaces
+  read **Follow bell · Stats · QR · Share**. The organization's Team desk gets
+  the shared ＋ pill on top and the studio desk's own sheet — the one desk the
+  20 Sep pass missed. `ToolsPanel` puts every tool grid in a squircle whose
+  ground is the theme's own inverse (`--text` over `--solid`), with the heading
+  alone on its head — the plan badge, `ToolsHead`'s `right` and `BizSection`'s
+  `plan` all deleted. And the empty day is one heading, "Nothing On Today's
+  Schedule", with the pills, their three wordings and `canManage` gone. ⚠ That
+  last one takes Home's only door to `/managed`, which is recorded rather than
+  hidden. Deviation rows R43, C33–C36.
 - **FOUR FORMS ON ONE SPEC, AND A STUDENT IS A CONSEQUENCE — 21 Sep 2026, no
   step number — BUILT, no migration.** The user's four asks. **(1)** Create crew,
   New routine and New membership now wear the Add class anatomy, because that
@@ -9568,6 +9672,11 @@ Home. **Do not "restore parity" on these.**
 | C29 | S_profiletab's own "This is you · Your record ›" is the only thing marking your own page, and the prototype has no door back | **A CORNER DOOR BACK FROM YOUR OWN PUBLIC PAGE** (`PersonIcon` in the same `cornerChip` the eye uses) — on a person's, an organization's, a studio's and a crew's | 20 Sep 2026, the user: *"when looking at your own profile from somewhere should also look same as profile page. that breaks a lot of times."* The eye has gone one way since 15 Sep and nothing came back, so landing on your own page from a row deep in the app left the back chip as the only exit — and after three hops that is not where you came from. Two other differences went in the same breath: `PublicPersonPage`'s eyebrow moved onto `KIND_WORD` (**`KIND_BADGE` is deleted**) and the disabled Follow bell on your own page is not drawn |
 | C30 | A desk's shelf head carries its count beside the heading (`DosShelfHead`, 3446) | **NO FLOATING COUNT UNDER A TOOL HERO** — `/my-classes`, `/my-events` and the Routines desk lost theirs; the counts INSIDE a shelf head stay | 20 Sep 2026, the user, circling "5 on your page": *"similar figures need to be removed from all pages in the app inside the home tab for all profiles."* The segments above already carried the same number, one row higher, in larger type — the 19 Sep move that put the total "over the list it counts" and the move that put counts into the toggles happened in the same breath, and together they made a duplicate |
 | C32 | The prototype's Profile tab (S_profiletab 10565-11400) and its public `publicEntity` render are ONE screen behind a flag, and this app built them as two components — `MyProfilePage` and `PublicPersonPage` — drawing the same person from the same read | **`PersonBody` and `EntityBand` are shared by both.** Everything under the hero — **Schedule, then what is on sale, then the associations** — is one component, and the Profile tab draws the band through `EntityBand` like the other four screens. What each keeps is only its own: the Follow bell, the Enquiry row and the report link on the public page; the Settings sheet, the follow sheets, the corner eye and an organization's studios on the tab. ⚠ SCHEDULE IS ALWAYS ABOVE MEMBERSHIPS, everywhere. ⚠ "Teaches at" and "Runs" are gone from the tab — the shared headings are **Studios taught at · Studios associated with · Artists associated with · Crews**, and an owner's seat on an unlisted studio is still reachable through the hub | 20 Sep 2026, the user's third report of it: *"FOR SOME REASON YOU ARE NOT ABLE TO FIX THE DIFFERENCE IN PROFILES. FIX IT PERMANENTLY."* Two components drawing one person is why it kept coming back — every fix had to be made twice and one was always missed. The five drifts are listed in `PersonBody`'s own comment |
+| R43 | A person's associations are three groups — Teaches at / Runs (the tab) or Studios taught at / Studios associated with / Crews (the public page), C32 having made them one set on 20 Sep 2026 | **FOUR COLUMNS OF STUDIOS AND TWO OF CREWS** (21 Sep 2026): **Train** (where they have TAKEN classes — `findStudiosAttended`, and their own tab ONLY, because a booking is private) · **Teach** (`kinds` includes Artist) · **Assist** (`kinds` includes Assistant) · **Manage** (the SEATS they hold, renamed from "Studios associated with"), then **Artists associated with**, then **Leader** and **Member** for the crews. ⚠ A studio where somebody teaches AND assists is in both groups | The user: *"Crews- should have 2 columns Leader & Member, Studios Should Have 3 Columns - Train Teach & Assist"*, and their own word for the fourth: *"fourth section to be called Manage"*. No migration — `person_teaches_at` has returned `kinds` since 28 Aug and every screen printed it as a sub-line instead of splitting on it. "Own profile only" for Train is their answer to a question put before a line was written |
+| C33 | The QR beside the name (10688) is the whole of sharing — `ProfileShare` drew it and its accessible name was *"Share this profile — QR code"* | **TWO CHIPS: `ProfileShare` is the QR ("QR code") and `ProfileLink` is the share ("Share {name}")**, which fires `navigator.share` where the browser has it and copies the link with a toast where it does not. The row reads **Follow bell · Stats · QR · Share** on all eight surfaces — four public pages, the Profile tab, and the three own-homes, which carry no bell | 21 Sep 2026, the user: *"Buttons in order- Follow Bell, Stats, Qr Code, share Button. Seprate current Qr Code from share option and share to directly send link of that profile."* One control answering to two jobs is the mistake this file has recorded since 19 Sep; the QR is what somebody holds up at a door, the share is what you send |
+| C34 | The tool grid sits on the page's own ground under a 17px heading, with the plan badge on that heading's right (BizSection 2497-2583, the badge at 2500-2520) | **`ToolsPanel` — a 22px squircle on `var(--text)` over `var(--solid)`, the theme's own inverse pair**, on all five homes; the head carries the heading and nothing else. ⚠ The plan badge is DELETED, and `ToolsHead`'s `right` prop and `BizSection`'s `plan` prop with it | 21 Sep 2026, the user: *"give the tools section on all profiles like squircle seprator and make it look opposite according to the dark and light theme. make sure only heading on top nothing else."* Settings → Subscription is the plan's door and has been since 19 Sep, so the badge was a second one on a line asked to hold one thing |
+| C35 | The empty day carries the page's own words and two pills — "See everything you manage", "See all bookings" / "Open events" / "Open the calendar" (7161-7181) | **A CARD WITH ONE HEADING: "Nothing On Today's Schedule"**, the same on all four homes. `emptyTitle`, `emptyBody`, `emptyActions`, `PILL_DARK`, `PILL_LIGHT` and Home's `canManage` are all deleted | 21 Sep 2026, the user: *"when todays schedule blank just shouw card with Heading Nothing On Today's Schedule, no bottons below."* ⚠ It cost Home's only door to `/managed` (C18 took its tile) — taken anyway because /managed is a VIEW, not a capability: every row on it is reached through the Classes and Events tiles and their desks, so nothing became impossible, which is the test C31 sets |
+| C36 | — (the prototype has one studio and no organization, so it has one team desk) | **BOTH TEAM DESKS ARE ONE CONTROL**: the shared `DeskAddButton` at the TOP reading **"Add a team member"**, opening a sheet with the labels over the people picker. The organization's was a hand-rolled `div role="button"` reading "＋ Add to the team" at the FOOT of the roster, opening a card in place | 21 Sep 2026, the user: *"fix add team member for studio and organization as well."* The organization's Team desk was the one the 20 Sep "＋ on top" pass missed, so the app's two Team desks looked and behaved like two products |
 | C31 | The prototype has no subscription and no support desk | **NEITHER THE SUBSCRIPTION NOR THE DANCEOS CONVERSATION IS ON A STUDIO'S OR AN ORGANIZATION'S HOME.** The subscription is `/subscription` (Settings' own tile), one strip per studio with the studio's name on it; the conversation is Settings → Help & support | 20 Sep 2026, the user: *"remove your conversation with dance os and subscription from just the home tab for studio and organization profiles as already being handled from settings."* ⚠ **Rule 9.** The premise was true of an artist's plan and NOT of a studio's: `/subscription` sent an organization back to the hub, the hub has no cancel, and the strip on the studio's home was the only Stop renewing in the app. It MOVED rather than going, so the premise is true now. **A screen the user asks to remove is only removed once the thing it was the only door to has another one** |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
@@ -9588,6 +9697,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The four columns, the share and the tools panel, what they left (21 Sep 2026):** **Train has no counterpart on a studio's side** — a studio cannot see "the people who train here" grouped this way; its Students desk is the list, and the two do not share a component. **Teach and Assist both count PUBLISHED classes**, so an artist who has been seated at a studio and not yet published there appears under Manage and in neither — which is correct and reads as an omission until you know. **The four groups are not collapsed when there are many**: a person on eight studios' teams gets eight rows under Manage with no paging or "see all". **`ProfileLink` cannot tell you whether the share landed** — `navigator.share` resolves the same way for send and for cancel, so no toast is shown on that path at all, and on the clipboard path a browser that refuses the write says "Could not copy the link" with no second way out (the QR chip beside it is that way, which is why the two are adjacent). **The inverted tools panel is `--text` over `--solid` and nothing adapts INSIDE it** — the tiles carry their own opaque gradients, which is fine, but anything else ever put in that panel has to remember it is on inverted ground (`BizSection`'s `children`, which is where Home draws its pending team invites, is the one live case and it inherits `color` correctly by luck rather than by declaration). And the empty-day card is one string with **no way for a page to say anything of its own** — a studio's day and an organization's read identically now | S_profiletab 11000-11060; 7161-7181; BizSection 2497-2583 | a shared "people who train here" if a studio asks; an explicit colour on anything new inside `ToolsPanel`; paging on a group when a pilot account outgrows one screen |
 | **The four forms on one spec, what it left (21 Sep 2026):** the kit covers the frame and NOT the fields, so a form still writes its own inputs — which is right, but it means the next new form has to remember to reach for `FORM_LABEL` rather than inventing a style (nothing enforces it). `FormConfirm` mounts `useCloseOnBack` on render, which is the hook's documented contract for a conditionally-mounted sheet, but it is a DIFFERENT call pattern from the `(cb, openFlag)` one three other screens use — two shapes for one job. **Neither `/routines/new` nor `/memberships/new` has an EDIT twin**: a routine is still remade rather than edited (`save_routine` takes an id and no screen passes one) and a membership is taken off sale rather than re-priced. And the crew form's step 2 is legitimately skippable, so its progress bar can read "half done" on a crew that is finished — honest, and it looks like a bug for a second | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit twin for each when somebody asks; one call shape for `useCloseOnBack` next time it is opened |
 | **The students desk, what it left (21 Sep 2026):** **the invite sends nothing itself** — it hands off to WhatsApp / SMS / mail, so there is no record that an invite was made, no "invited" state on the desk, and nothing to chase. A real send needs a verified Resend domain (the user's, #14) and a Twilio account with DLT registration (#18, a phase the user parked) — until both exist a Send button would be a door that does not open. **There is no way to add a walk-in any more**: `createLeadAction` survives with no caller, so putting the form back is one screen. **A student cannot be removed unless they are a walk-in** — attendance and passes are facts, and un-attending is not a thing a button can do, but a studio that wants somebody off its list has no way to do it. **No paging**: the reads cap at 4,000 attendance rows and 400 profiles, which is a year of a busy studio and not two. And the desk no longer shows **per-student progress against a membership** — that lives on the membership's own usage page, one screen away | S_people 17293, S_persondetail 17516 | a real send with #14 and #18; paging when a pilot studio outgrows one screen; a walk-in form if the user asks |
 | **The instant column, the organization that follows and the one profile body, what they left (20 Sep 2026):** the **studio's Following figure is its OWNER's**, so two studios of the same organization print the same number and nothing on the row says whose it is — the visible label is just "Following", and the Owner group further down is the only thing that explains it; an organization's **Following list on its own Home and Profile tab is the full sheet**, but its **public page prints the figure with no door** (a count is public, a list is not — the same rule a studio's Followers figure keeps); nothing anywhere lets an organization follow **from a studio's page as the studio** — it follows as itself, which is the only thing the column can hold. `SegmentedPanels` **replaces** the history entry rather than pushing, so back leaves the page instead of walking the segments — unchanged from `router.replace`, and deliberate, but it means a phone's back gesture never undoes a segment tap; the panels are **mounted one at a time**, so a scroll position inside one segment is lost on the way back to it. `PersonBody` is shared by the two person screens and **not by the studio, organization or crew pages**, which still draw their own associations — the same facts, four components, and the next drift will be there rather than here. And **no automated check asserts Schedule above Memberships**: the order is guaranteed by the single component rather than by a test, because setting an artist with a live membership up in the e2e is a bigger change to that story than the thing it would prove | S_profiletab 10905-10940; S_earn 18195 | a label naming whose Following a studio prints, if it confuses anybody; a shared body for the other three pages, when one of them is next opened |

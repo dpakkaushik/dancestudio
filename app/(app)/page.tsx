@@ -9,13 +9,13 @@ import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
-import { ProfileShare } from "@/features/profiles/components/ProfileShare";
+import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { headerMaxFor, photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_UI, GOLD, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { BizSection } from "@/features/home/components/home-kit";
-import { PILL_DARK, PILL_LIGHT, TodayShelf } from "@/features/home/components/TodayShelf";
+import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
@@ -169,9 +169,10 @@ export default async function HomePage() {
      so Home and the Profile tab cannot word it differently (19 Sep 2026) */
   const place = profile.city ?? "";
   const metaLine = heroMetaWords(profile.age, place);
-  /* Manage only appears if you actually run something (7135): the door to what you
-     manage, and offering it to somebody who manages nothing is a door onto an empty room */
-  const canManage = businesses.length > 0;
+  /* ⚠ `canManage` IS GONE (21 Sep 2026) — it decided whether the empty day
+     offered "See everything you manage" (7135: "offering it to somebody who
+     manages nothing is a door onto an empty room"), and the empty day offers
+     nothing at all now. Deleted rather than left computed and unread. */
   /* THE GRID FOR THIS KIND OF ACCOUNT (18 Sep 2026, the user's list for all four
      — `tilesFor` in home-kit carries it). An artist's grid opens the desks of the
      page they OWN (Team, Students); a user's and an organization's carry no
@@ -270,8 +271,10 @@ export default async function HomePage() {
                Home: you do not follow yourself. */
             chips={
               <>
-                <ProfileShare path={publicHref} name={profile.fullName} />
+                {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */}
                 <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
+                <ProfileShare path={publicHref} name={profile.fullName} />
+                <ProfileLink path={publicHref} name={profile.fullName} />
               </>
             }
             followers={followers}
@@ -312,50 +315,14 @@ export default async function HomePage() {
             live first — under the one shelf head, with both doors named. An organization
             still waiting on approval sees neither this nor the tools. ── */}
         {orgAwaitingApproval ? null : (
-          <TodayShelf
-            deck={deck}
-            emptyTitle="Nothing on today"
-            emptyBody={
-              isOrg
-                ? "Events you host today appear here. What runs in each studio’s rooms is on that studio’s own home."
-                : "Classes and events you book, assist on or run today all appear here."
-            }
-            /* both doors, when both apply (7176-7181) — the Manage TILE left the
-               grid on 19 Sep 2026 ("just need to remove manage as the tile in
-               tools, nothing else changes"), so this pill is Home's one door to
-               /managed again */
-            emptyActions={
-              <>
-                {canManage ? (
-                  <Link href="/managed" style={PILL_LIGHT}>
-                    See everything you manage
-                  </Link>
-                ) : null}
-                {isOrg ? (
-                  eventsHostId ? (
-                    <Link href={`/business/${eventsHostId}/events`} aria-label="Open the events desk" style={PILL_DARK}>
-                      Open events
-                    </Link>
-                  ) : (
-                    <Link href="/business" style={PILL_DARK}>
-                      Open your studios
-                    </Link>
-                  )
-                ) : (
-                  <Link href="/my-classes" style={PILL_DARK}>
-                    See all bookings
-                  </Link>
-                )}
-              </>
-            }
-          />
+          <TodayShelf deck={deck} />
         )}
 
         {/* ── run your business — the prototype's BizSection (7342-7344, 2497-2583). It is the
             sheet that covers the deck, so it is opaque and it is above. ── */}
         {orgAwaitingApproval ? null : (
           <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-            <BizSection kind={homeKind} pageId={pageId} eventsHostId={isOrg ? eventsHostId : null} plan={isOrg ? null : isArtist ? "active" : "locked"}>
+            <BizSection kind={homeKind} pageId={pageId} eventsHostId={isOrg ? eventsHostId : null}>
               {/* THE PAGE COULD NOT BE MADE (18 Sep 2026): the plan is live and Home just
                   tried to provision the page the artist tools run through, and the
                   database said no — a refusal Home swallows so it never fails on it.
