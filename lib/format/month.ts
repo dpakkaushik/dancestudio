@@ -108,3 +108,81 @@ export const monthsWindow = (nowIso: string, back: number, ahead: number): Calen
   for (let i = back; i >= -ahead; i--) keys.push(shiftMonthKey(current, i));
   return keys.map(calendarMonthOf);
 };
+
+// ── periods: day · week · month · year ──────────────────────────────────────
+// 21 Sep 2026, the user: "give day, week, month, year filters and toggles with
+// graphs". One vocabulary for the four, so the ledger, the chart and the URL all
+// name a bucket the same way — and all of it IST, because a studio's Tuesday is
+// a Tuesday in India (00:15 on the 1st here is the previous month in UTC, which
+// is the boundary `rls-proof-studio-income` check 4 plants a payment on).
+//
+// ⚠ A WEEK IS NAMED BY ITS MONDAY'S DAY KEY, not by an ISO week number. Week
+// numbering has its own year-boundary rules (week 1, week 53) that nothing in
+// this app needs, and a Monday is a date everybody can check against a calendar.
+
+export type Period = "day" | "week" | "month" | "year";
+
+export const PERIODS: ReadonlyArray<readonly [Period, string]> = [
+  ["day", "Day"],
+  ["week", "Week"],
+  ["month", "Month"],
+  ["year", "Year"],
+];
+
+/** how many buckets of each size the chart draws — enough to show a shape,
+ *  few enough to stay legible on a 430px phone */
+export const BUCKETS: Record<Period, number> = { day: 14, week: 12, month: 12, year: 5 };
+
+/** the Monday that begins the week a day falls in */
+export const weekStartOf = (dayKey: string): string => addDays(dayKey, -mondayIndexOf(dayKey));
+
+/** the bucket of this size that an instant falls in */
+export const bucketKeyOf = (iso: string, period: Period): string => {
+  if (period === "day") return dayKeyOf(iso);
+  if (period === "week") return weekStartOf(dayKeyOf(iso));
+  if (period === "year") return monthKeyOf(iso).slice(0, 4);
+  return monthKeyOf(iso);
+};
+
+/** the bucket `back` buckets before this one (0 = the same bucket) */
+export const shiftBucketKey = (key: string, period: Period, back: number): string => {
+  if (period === "day") return addDays(key, -back);
+  if (period === "week") return addDays(key, -back * 7);
+  if (period === "year") return String(Number(key) - back);
+  return shiftMonthKey(key, back);
+};
+
+/** the instant a bucket begins, as ISO — the lower bound of a range query */
+export const bucketStartIso = (key: string, period: Period): string => {
+  if (period === "day" || period === "week") return `${key}T00:00:00+05:30`;
+  if (period === "year") return `${key}-01-01T00:00:00+05:30`;
+  return `${key}-01T00:00:00+05:30`;
+};
+
+/** the buckets a chart shows: `n` of them, oldest first, ending with the one
+ *  `nowIso` falls in */
+export const bucketsWindow = (nowIso: string, period: Period, n: number): string[] => {
+  const current = bucketKeyOf(nowIso, period);
+  const keys: string[] = [];
+  for (let i = n - 1; i >= 0; i--) keys.push(shiftBucketKey(current, period, i));
+  return keys;
+};
+
+const dayWords = (dayKey: string) => `${dayNumberOf(dayKey)} ${monthShortOf(monthOfDay(dayKey))}`;
+
+/** what a bucket is called on the chart's axis — short, because fourteen of them
+ *  share a phone's width */
+export const bucketTickOf = (key: string, period: Period): string => {
+  if (period === "day") return String(dayNumberOf(key));
+  if (period === "week") return String(dayNumberOf(key));
+  if (period === "year") return key.slice(2);
+  return monthShortOf(key).slice(0, 1);
+};
+
+/** what a bucket is called in prose — the figure above the chart names it */
+export const bucketLabelOf = (key: string, period: Period): string => {
+  if (period === "day") return dayWords(key);
+  if (period === "week") return `${dayWords(key)} – ${dayWords(addDays(key, 6))}`;
+  if (period === "year") return key;
+  return monthRefOf(key).label;
+};

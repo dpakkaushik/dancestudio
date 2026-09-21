@@ -21,7 +21,20 @@ import {
  *  per studio and what each studio has settled — never a studio's P&L with your
  *  name on it. */
 
-export function MyEarnings({ data, monthLabel }: { data: MyEarningsData; monthLabel: string }) {
+export function MyEarnings({
+  data,
+  monthLabel = "",
+  summary = true,
+}: {
+  data: MyEarningsData;
+  monthLabel?: string;
+  /** ⚠ false when `EarningsScreen` is drawn above this (21 Sep 2026): the hero
+   *  and the money card are what that screen now says — and says of a PERIOD,
+   *  where this card printed a MONTH in its label over an ALL-TIME figure. What
+   *  stays is what is this component's own: the studio-by-studio count of what
+   *  you are owed, and who has actually paid you. */
+  summary?: boolean;
+}) {
   const [openRow, setOpenRow] = useState<string | null>(null);
 
   const rows: LedgerRow[] = data.studios.map((s, i) => ({
@@ -77,26 +90,30 @@ export function MyEarnings({ data, monthLabel }: { data: MyEarningsData; monthLa
         maxWidth: 430,
         margin: "0 auto",
         fontFamily: DOS_UI,
-        minHeight: "100vh",
-        padding: "8px 16px 40px",
+        minHeight: summary ? "100vh" : undefined,
+        padding: summary ? "8px 16px 40px" : 0,
         boxSizing: "border-box",
       }}
     >
-      <EarnHero title="Earnings" />
+      {summary ? (
+        <>
+          <EarnHero title="Earnings" />
 
-      <MoneyCard
-        label={`TEACHING · ${monthLabel.toUpperCase()}`}
-        amount={data.earnedTotal}
-        note="Paid by each studio on their own cycle — DanceOS records it, it does not move the money."
-        segments={data.studios
-          .filter((s) => s.earnedInr > 0)
-          .map((s, i) => ({ label: s.tenantName.split(" ")[0], value: s.earnedInr, colour: barColour(i) }))}
-        tiles={[
-          [money(data.paidTotal), "Settled", GREEN],
-          [money(data.dueTotal), "Awaiting studios", GOLD],
-          [String(data.studios.reduce((a, s) => a + s.sessions, 0)), "Sessions", RED],
-        ]}
-      />
+          <MoneyCard
+            label={`TEACHING · ${monthLabel.toUpperCase()}`}
+            amount={data.earnedTotal}
+            note="Paid by each studio on their own cycle — DanceOS records it, it does not move the money."
+            segments={data.studios
+              .filter((s) => s.earnedInr > 0)
+              .map((s, i) => ({ label: s.tenantName.split(" ")[0], value: s.earnedInr, colour: barColour(i) }))}
+            tiles={[
+              [money(data.paidTotal), "Settled", GREEN],
+              [money(data.dueTotal), "Awaiting studios", GOLD],
+              [String(data.studios.reduce((a, s) => a + s.sessions, 0)), "Sessions", RED],
+            ]}
+          />
+        </>
+      ) : null}
 
       {data.studios.length === 0 ? (
         <div

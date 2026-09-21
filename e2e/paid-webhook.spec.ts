@@ -294,9 +294,17 @@ test("cashfree webhook: bad signature rejected, capture books the seat, replay i
         `/auth/confirm?token_hash=${link.hashed_token}&type=${link.verification_type ?? "magiclink"}`
       );
       await page.waitForURL((url) => !url.pathname.startsWith("/auth"));
-      await page.goto(`/business/${tenant.id}/earnings`);
-      await expect(page.getByText(/^GROSS · [A-Z]+$/)).toBeVisible();
-      await expect(page.getByText("₹300", { exact: true }).first()).toBeVisible();
+      /* ⚠ RE-CUT 21 Sep 2026. This asked for the `GROSS · SEPTEMBER` card, which
+         the shared `EarningsScreen` replaced: the same money is REVENUE now, of
+         the period you are looking at rather than of the month whatever you
+         picked. The claim underneath was never the card — it was "the ₹300 this
+         webhook captured reaches the studio's earnings desk, and it says it came
+         by UPI" — so that is what is asserted, on the day it was captured.
+         HOW STUDENTS PAID is untouched: the method split is a fact nothing else
+         on the page carries. */
+      await page.goto(`/business/${tenant.id}/earnings?period=day`);
+      await expect(page.getByTestId("earn-revenue")).toHaveText("₹300");
+      await expect(page.getByTestId("earn-left")).toHaveText("₹300");
       await expect(page.getByText("UPI 100%")).toBeVisible();
     } finally {
       await page.close();

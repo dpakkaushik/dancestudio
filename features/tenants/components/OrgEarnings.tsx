@@ -46,7 +46,19 @@ function SourceRow({ name, sub, gross, monthGross, refunded, href, tint, doorLab
   );
 }
 
-export function OrgEarnings({ rows, monthName }: { rows: OrgStatsRow[]; monthName: string }) {
+export function OrgEarnings({
+  rows,
+  monthName,
+  summary = true,
+}: {
+  rows: OrgStatsRow[];
+  monthName: string;
+  /** ⚠ false when `EarningsScreen` is drawn above this (21 Sep 2026): the page
+   *  chrome and the GROSS card are what that screen now says — of a period, with
+   *  an expense side this page never had, and with the net between them. What
+   *  stays is this component's own cut: business by business. */
+  summary?: boolean;
+}) {
   const studios = rows.filter((r) => r.type === "studio");
   const host = rows.find((r) => r.type === "org") ?? null;
   const all = host ? [...studios, host] : studios;
@@ -56,22 +68,20 @@ export function OrgEarnings({ rows, monthName }: { rows: OrgStatsRow[]; monthNam
   const monthGross = sum((r) => r.monthGrossInr);
   const studioGross = studios.reduce((a, r) => a + r.grossInr, 0);
 
-  return (
-    <BizPage
-      title="Earnings · combined"
-      sub={`${studios.length} ${studios.length === 1 ? "studio" : "studios"}${host ? ` · ${host.events} ${host.events === 1 ? "event" : "events"}` : ""} · counted from captured payments`}
-      grad={dosToolPaint(DOS_TOOLS.earn.c)}
-    >
-      <MoneyCard
-        label="GROSS · STUDIOS AND EVENTS"
-        amount={gross}
-        note={`${money(monthGross)} so far in ${monthName} · ${money(refunded)} refunded · a refunded payment still came in, and is a deduction beneath`}
-        tiles={[
-          [money(studioGross), "classes, all studios", DOS_TOOLS.classes.c],
-          [money(host?.grossInr ?? 0), "tickets and entries", DOS_TOOLS.events.c],
-          [money(gross - refunded), "net of refunds", DOS_TOOLS.earn.c],
-        ]}
-      />
+  const body = (
+    <>
+      {summary ? (
+        <MoneyCard
+          label="GROSS · STUDIOS AND EVENTS"
+          amount={gross}
+          note={`${money(monthGross)} so far in ${monthName} · ${money(refunded)} refunded · a refunded payment still came in, and is a deduction beneath`}
+          tiles={[
+            [money(studioGross), "classes, all studios", DOS_TOOLS.classes.c],
+            [money(host?.grossInr ?? 0), "tickets and entries", DOS_TOOLS.events.c],
+            [money(gross - refunded), "net of refunds", DOS_TOOLS.earn.c],
+          ]}
+        />
+      ) : null}
 
       {studios.length === 0 && !host ? (
         <div style={{ ...bizCard, textAlign: "center", border: "1.5px dashed var(--el)", padding: "22px 16px" }}>
@@ -110,6 +120,17 @@ export function OrgEarnings({ rows, monthName }: { rows: OrgStatsRow[]; monthNam
           />
         </>
       ) : null}
+    </>
+  );
+
+  if (!summary) return body;
+  return (
+    <BizPage
+      title="Earnings · combined"
+      sub={`${studios.length} ${studios.length === 1 ? "studio" : "studios"}${host ? ` · ${host.events} ${host.events === 1 ? "event" : "events"}` : ""} · counted from captured payments`}
+      grad={dosToolPaint(DOS_TOOLS.earn.c)}
+    >
+      {body}
     </BizPage>
   );
 }

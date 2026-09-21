@@ -788,24 +788,45 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText(trainerName).first()).toBeVisible();
     await expect(owner.getByText("₹0", { exact: true }).first()).toBeVisible();
 
-    // ---- the income half of the same screen (Step 13b part 2b) --------------
-    // GROSS · {month} is counted from captured payments — none yet, so the card
-    // reads ₹0 and HOW STUDENTS PAID says so instead of drawing an empty bar.
-    // A past month's chip opens its statement, honestly empty for a new studio.
-    await expect(owner.getByText(/^GROSS · [A-Z]+$/)).toBeVisible();
+    /* ---- the income half of the same screen (Step 13b part 2b) --------------
+       ⚠ RE-CUT 21 Sep 2026 (the user: "lets fix earnings for all profile
+       types"). This asked for `GROSS · SEPTEMBER`, a card that labelled a MONTH
+       and whose period chips governed only the income half of the page — picking
+       a past month unmounted the whole expense side. The shared `EarningsScreen`
+       says the same money as REVENUE, of the period in the URL, with EXPENSES
+       beside it and the net between them, which no money screen here had ever
+       printed. So the claim asserted is the one underneath: a new studio has
+       taken nothing, so revenue, expenses and what is left are all ₹0, and the
+       four filters are there to choose a window with. */
+    await expect(owner.getByRole("heading", { level: 1, name: "Earnings" })).toBeVisible();
+    await expect(owner.getByTestId("earn-revenue")).toHaveText("₹0");
+    await expect(owner.getByTestId("earn-expenses")).toHaveText("₹0");
+    await expect(owner.getByTestId("earn-left")).toHaveText("₹0");
+    for (const p of ["Day", "Week", "Month", "Year"]) {
+      await expect(owner.getByRole("link", { name: p, exact: true })).toBeVisible();
+    }
+    // HOW STUDENTS PAID stays: the method split is a fact nothing else carries
     await expect(owner.getByText("HOW STUDENTS PAID")).toBeVisible();
     await expect(owner.getByText(/No payments yet this month/)).toBeVisible();
+    /* and the month chips keep their own job — opening a past month's STATEMENT,
+       with its deductions and its CSV, honestly empty for a new studio */
     await owner.getByRole("button", { name: lastMonthName(), exact: true }).click();
     await expect(owner.getByText("WHERE IT CAME FROM")).toBeVisible();
     await expect(owner.getByText("DEDUCTIONS")).toBeVisible();
     await expect(owner.getByText("Net settled")).toBeVisible();
     await expect(owner.getByText(/₹0 net · 0 payments/).first()).toBeVisible();
     await owner.getByRole("button", { name: "This month", exact: true }).click();
-    await expect(owner.getByText(/^GROSS · [A-Z]+$/)).toBeVisible();
+    await expect(owner.getByText("HOW STUDENTS PAID")).toBeVisible();
 
-    // the teaching side of the same screen, for the person who was asked
+    /* the teaching side, for the person who was asked — the SAME screen a studio
+       and an organization now get, with the four filters and the graph, and with
+       no Expenses block at all: a person employs nobody, so what is left IS what
+       came in, and the screen says that rather than drawing an empty half. */
     await trainer.goto("/earnings");
-    await expect(trainer.getByText(/Paid by each studio on their own cycle/)).toBeVisible();
+    await expect(trainer.getByRole("heading", { level: 1, name: "Earnings" })).toBeVisible();
+    await expect(trainer.getByTestId("earn-revenue")).toHaveText("₹0");
+    await expect(trainer.getByTestId("earn-expenses")).toHaveCount(0);
+    await expect(trainer.getByText(/DanceOS records it, it does not move the money/)).toBeVisible();
   });
 
   test("the class page, its share link, and a learner booking from it", async () => {

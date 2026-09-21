@@ -123,6 +123,7 @@ export function EarningsDesk({
   income,
   monthLabel,
   selfEarningsHref = null,
+  summary = true,
 }: {
   tenantId: string;
   tenantName: string;
@@ -133,6 +134,12 @@ export function EarningsDesk({
    *  page's desk, whose owner is the one person who has both kinds of money
    *  (20 Sep 2026) */
   selfEarningsHref?: string | null;
+  /** ⚠ false when `EarningsScreen` is drawn above this (21 Sep 2026): the hero
+   *  and the two summary cards are what that screen now says, of a PERIOD and
+   *  with the net between them. What stays is this desk's WORK — what you owe
+   *  person by person, what you have settled, recording a payment, and the past
+   *  months' statements with their CSV. */
+  summary?: boolean;
 }) {
   /* the prototype remembers its period across drill-ins (17880-17884) — here the
      desk stays mounted through the server actions' revalidation, so plain state
@@ -209,14 +216,22 @@ export function EarningsDesk({
         maxWidth: 430,
         margin: "0 auto",
         fontFamily: DOS_UI,
-        minHeight: "100vh",
-        padding: "8px 16px 40px",
+        minHeight: summary ? "100vh" : undefined,
+        padding: summary ? "8px 16px 40px" : 0,
         boxSizing: "border-box",
       }}
     >
-      <EarnHero title="Earnings" />
+      {summary ? <EarnHero title="Earnings" /> : null}
 
-      {/* period filter — This month is live, past months open their statement */}
+      {/* ⚠ THE OLD PERIOD CHIPS ARE THE HISTORY DOOR NOW (21 Sep 2026). They were
+          "This month" plus the three preceding month names, they lived in
+          component state so a period could not be shared, and — worse — picking
+          a past month UNMOUNTED the whole money-out half, so "August" showed
+          income only while "This month" showed income AND an all-time expense.
+          Day · Week · Month · Year live on `EarningsScreen` above, in the URL and
+          governing BOTH sides at once; what these still do is open a past
+          month's STATEMENT, with its deductions and its CSV, which is their own
+          job and nothing else's. */}
       <PeriodChips
         months={income.previous}
         view={eview}
@@ -238,8 +253,14 @@ export function EarningsDesk({
         />
       ) : (
         <>
-          {/* ── money in ── */}
-          <GrossCard income={income} />
+          {/* ── money in ──
+              ⚠ the GROSS card goes when `EarningsScreen` is above (21 Sep 2026):
+              it and the new Revenue block are the same money, and two cards
+              saying it — one of a month, one of the chosen period — is exactly
+              the kind of disagreement this slice exists to end. HOW STUDENTS
+              PAID stays: the method split is a fact nothing else on the page
+              carries. */}
+          {summary ? <GrossCard income={income} /> : null}
           <HowStudentsPaid month={income.current} />
 
           {/* ⚠ THE DOOR TO YOUR OWN PAYOUT LEDGER (20 Sep 2026). An artist's Home
@@ -269,19 +290,41 @@ export function EarningsDesk({
               both kinds and now says so; the SESSIONS column in the ledger below
               still says how many sessions each row is for, which is where that
               distinction belongs. */}
-          <MoneyCard
-            label={`WHAT YOU PAY YOUR PEOPLE · ${monthLabel.toUpperCase()}`}
-            amount={accrued}
-            note="Sessions your people have taught, and anything else you have paid them — a front-desk salary has no sessions behind it. You settle it by bank or UPI and record it here; DanceOS does not move this money."
-            segments={ledger.people
-              .filter((p) => p.owedInr + p.paidInr > 0)
-              .map((p, i) => ({ label: p.personName.split(" ")[0], value: p.owedInr + p.paidInr, colour: barColour(i) }))}
-            tiles={[
-              [money(ledger.paidTotal), "Settled", GREEN],
-              [money(ledger.inTransitTotal), "In transit", GOLD],
-              [money(ledger.owedTotal), "Owed", RED],
-            ]}
-          />
+          {/* ⚠ ITS MONTH LABEL WAS DECORATIVE — the figure under
+              `WHAT YOU PAY YOUR PEOPLE · SEPTEMBER` was ALL-TIME. With
+              `EarningsScreen` above, what a period cost is said there and said
+              truly, so this card is drawn only when it is the whole page. The
+              three tiles it carries — Settled · In transit · Owed — are STATES,
+              not a period, and they follow the ledger below into `WHAT YOU OWE`. */}
+          {summary ? (
+            <MoneyCard
+              label={`WHAT YOU PAY YOUR PEOPLE · ${monthLabel.toUpperCase()}`}
+              amount={accrued}
+              note="Sessions your people have taught, and anything else you have paid them — a front-desk salary has no sessions behind it. You settle it by bank or UPI and record it here; DanceOS does not move this money."
+              segments={ledger.people
+                .filter((p) => p.owedInr + p.paidInr > 0)
+                .map((p, i) => ({ label: p.personName.split(" ")[0], value: p.owedInr + p.paidInr, colour: barColour(i) }))}
+              tiles={[
+                [money(ledger.paidTotal), "Settled", GREEN],
+                [money(ledger.inTransitTotal), "In transit", GOLD],
+                [money(ledger.owedTotal), "Owed", RED],
+              ]}
+            />
+          ) : null}
+
+          {/* ⚠ THE PROMISE THAT MUST NOT GO WITH THE CARD (21 Sep 2026). The
+              sentence "DanceOS does not move this money" lived on the money-out
+              card above, and suppressing that card took it off the screen — the
+              e2e caught it, and it was right to: it is the most important thing
+              this desk says. A studio settles by bank or UPI and RECORDS it
+              here; the app has never moved a rupee of it (Step 13's own limit).
+              It belongs to the pay ledger rather than to a summary card, so it
+              is drawn here whichever way the page is composed. */}
+          {summary ? null : (
+            <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, margin: "2px 0 10px" }}>
+              Sessions your people have taught, and anything else you have paid them. You settle it by bank or UPI and record it here; DanceOS does not move this money.
+            </div>
+          )}
 
           {ledger.people.length === 0 ? (
             <div

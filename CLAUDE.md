@@ -2,6 +2,96 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
+> ### EARNINGS IS ONE SCREEN, WITH A PERIOD, A GRAPH, AND WHAT IS LEFT (21 Sep 2026, latest) — BUILT, no migration
+> The user: *"with assets just need price to be linked with expenses in earnings,
+> no separate association of asset is required. Now lets fix earnings for all
+> profile types. make sure to give day, week, month, year filters and toggles
+> with graphs. earnings should consist of Revenue with breakup and Expenses with
+> breakup. and what is left after that. figure it out for all types of profiles
+> and push to live."*
+> * ⚠⚠ **THERE WERE FOUR MONEY SCREENS AND NO TWO AGREED**, which a read of all
+>   of them established before a line was written. **Two printed a MONTH in the
+>   heading over an ALL-TIME figure** (`TEACHING · SEPTEMBER`,
+>   `WHAT YOU PAY YOUR PEOPLE · SEPTEMBER`). The studio desk's period chips
+>   governed only its INCOME half and **unmounted the expense half** when you
+>   picked a past month, so "August" showed income only while "This month" showed
+>   income and an all-time expense. **The two organization screens summed
+>   different sets** — `/business/earnings` counted its studios AND its events,
+>   `/business/stats` only its studios. And ⚠ **not one of the four ever
+>   subtracted what went out from what came in**, so *"what is left"* was a figure
+>   the app never printed.
+> * **SO IT IS ONE SCREEN NOW** (`EarningsScreen`), in the user's own order: the
+>   period, the shape of it, REVENUE with its breakup, EXPENSES with its breakup,
+>   and WHAT IS LEFT. A studio, an artist page, an organization and a person all
+>   render it; each fills the same contract with what it actually has.
+> * ⚠ **THE PERIOD IS IN THE URL** (`?period=day|week|month|year`), which none of
+>   the four had — a period was component state everywhere, so it could not be
+>   shared and was lost on every navigation. The BUCKET inside it is local,
+>   because tapping a column is reading rather than navigating, **and it is free:
+>   every bucket comes back in the same read**, so the chart and the figures are
+>   the same rows counted once and cannot disagree.
+> * ⚠ **AND THE BUCKET IS A PREFERENCE, NOT STATE — a bug the browser found.**
+>   Held in `useState`, switching Day → Year kept a DAY key selected, which is in
+>   no year's window, so **every figure read ₹0 while the chart beside it drew
+>   real bars**. It is honoured only while the current period has that bucket.
+> * **ASSETS ARE AN EXPENSE LINE, and nothing more** (the user: "no separate
+>   association of asset is required"). ⚠ A `₹0 (legacy)` asset adds NOTHING,
+>   which is right — kit you already owned is not money you spent — and the line
+>   says *"counted in the period it was added"*, because an asset has no purchase
+>   date and the screen must not imply one.
+> * ⚠ **AND ENQUIRY MONEY IS ON A LEDGER FOR THE FIRST TIME.** A celebration or a
+>   corporate show is recorded as received by the business
+>   (`record_enquiry_payment`, 28 Aug) and writes no `payments` row — so it has
+>   been **real money invisible on every earnings screen since**. The advance
+>   buckets when it was paid and the balance when the rest was, because they are
+>   two acts at two moments. Found by mapping the sources rather than by a
+>   complaint.
+> * **A PERSON'S EARNINGS HAVE NO EXPENSE HALF, and that is a fact rather than a
+>   gap**: they employ nobody, so what is left IS what came in, and the screen
+>   says so instead of drawing an empty block. ⚠ **And a plain USER has a door to
+>   it at last** — they had none, while a user seated as an ASSISTANT is paid
+>   through the same `payouts` rows, so somebody who had been paid could not see
+>   it.
+> * **WHAT THE OLD DESKS KEEP IS THEIR WORK**, not their summaries: what you owe
+>   person by person, what you have settled, recording a payment, the past
+>   months' statements and their CSV, HOW STUDENTS PAID, and an organization's
+>   business-by-business cut. ⚠ The month chips keep the one job that is theirs
+>   alone — opening a past month's STATEMENT.
+> * ⚠ **THE SUMS ARE STILL COUNTED IN TYPESCRIPT, and that is the checked
+>   choice**: this project's PostgREST has aggregates switched off (PGRST123),
+>   which is why `findTenantIncome` has summed here since 28 Aug. So the reads
+>   carry a 4,000-row **runaway guard, not a page size**, and the screen says
+>   *"Counting the latest 4,000 rows only"* rather than printing a total that
+>   looks finished. **One aggregate RPC is the right answer** — aggregating INSIDE
+>   a definer function is fine, which is what `my_org_stats()` does — and it is a
+>   migration, so it is the backlog's rather than this slice's.
+> * ⚠ **NO FEE, NO GST, NO TDS.** The prototype's S_earn prints all three; none
+>   exists here — there is no platform fee and no rate a studio has set — so
+>   "what is left" is revenue minus expenses and nothing else, and says so.
+>   Printing them at ₹0 would be a claim about money rather than a measurement.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · a new
+>   **`scripts/shots/shoot-earnings.js` 23/23**, which builds a real owner with a
+>   real captured payment, a real payout and two real assets and then **checks the
+>   arithmetic in the browser** — revenue ₹3,000, expenses ₹1,500 (the payout AND
+>   the asset), what is left ₹1,500, the ₹0 legacy asset adding nothing, the four
+>   filters, the fourteen day columns, the toggles, and a person's ₹1,000 with no
+>   expense block · **`shoot-hero.js` 155/155** · **the whole e2e suite 58/58 in
+>   6.5 min on one worker**.
+> * ⚠⚠ **AND THE ONE BUG THAT ONLY A BROWSER COULD FIND WAS A PROP.**
+>   `periodHref` was a `(p: Period) => string` builder passed from a server
+>   component — **typecheck green, lint green, `next build` green**, and then
+>   *"Functions cannot be passed directly to Client Components"* at runtime. Every
+>   one of these four pages is a server component, so a callback prop is not a
+>   thing it can hand over; it is a `basePath` string now. ⚠ The minified message
+>   was `React error #441` and said nothing: **a dev server is what turns a
+>   numbered React error into a sentence**, and it cost two minutes rather than
+>   two runs.
+> * ⚠ **AND I BROKE RULE 16 ON MYSELF**: a one-line `Set-Content` to swap a prop
+>   re-encoded `app/(app)/earnings/page.tsx` and mojibaked every em dash in it.
+>   Caught by sweeping the touched files for `â€`, and rewritten with the Write
+>   tool. **The rule has been in this file since 18 Sep and it still happened** —
+>   never round-trip a source file through PowerShell.
+
 > ### A BUSINESS OWNS THINGS, MEDIA IS OFF EVERY GRID, AND THE THREE TEAM DESKS ARE ONE PRODUCT AGAIN (21 Sep 2026, latest) — ✅ ONE MIGRATION APPLIED (dry run **23/23**, rolled back first)
 > The user, in one message: *"Fix assets for both artist, studio and
 > organization. Make sure to just add name type of asset and price/ Old asset.
@@ -5075,6 +5165,20 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **EARNINGS IS ONE SCREEN, WITH A PERIOD, A GRAPH, AND WHAT IS LEFT — 21 Sep
+  2026, no step number — BUILT, no migration.** Four money screens that agreed
+  on nothing became one `EarningsScreen` every profile type renders: Day · Week ·
+  Month · Year **in the URL**, a bar chart whose columns are buttons and whose
+  two series are toggles, REVENUE with its breakup, EXPENSES with its breakup,
+  and ⚠ **what is left — a figure none of the four ever printed**. Assets' price
+  is an expense line (a `₹0` legacy asset adds nothing); ⚠ **enquiry money
+  reaches a ledger for the first time**, having been real money invisible
+  everywhere since 28 Aug; a person has no expense half by construction and a
+  plain USER finally has a door to their own earnings. Deviation rows R46, C50.
+  **typecheck 0 · lint 0 · build green · a new `shoot-earnings.js` 23/23 that
+  checks the arithmetic in a browser · shoot-hero 155/155 · the whole e2e suite
+  58/58 in 6.5 min.** ⚠ The one bug only a browser could find was a callback
+  prop passed from a server component — green through typecheck, lint and build.
 - **A BUSINESS OWNS THINGS, MEDIA IS OFF EVERY GRID, AND THE THREE TEAM DESKS
   ARE ONE PRODUCT — 21 Sep 2026, no step number ⚠ (Rule 9: RLS) — ONE MIGRATION
   APPLIED (dry run 23/23 rolled back first).** Four asks in one message.
@@ -8991,6 +9095,8 @@ Home. **Do not "restore parity" on these.**
 | C43 | The prototype's light palette is `#ffffff` on `#111111` with neutral greys (DOS_PALETTE) | **A WARM LIGHT THEME AND THICKER OUTLINES.** `#faf8f5` ground, `#17150f` ink, every grey and both alpha veils cast warm — the complaint is HALATION, which is what pure white at phone brightness does to near-black glyphs. And "a bit thicker everywhere" is two changes: `--el` gained opacity, and **364 `1px solid` borders across 105 files became `1.5px`** (⚠ swept in Node with per-file assertions, Rule 16; `1px solid transparent` skipped as a layout spacer; the app was already mixed, with 85 borders at 1.5px). ⚠ **And the check written to prove it found a defect nobody asked about**: `--muted` in the DARK theme was 4.0:1, under AA, unchanged since the palette was written — `#7b7b7b` now. Both themes clear AA on all three tiers for the first time | 21 Sep 2026, the user: *"fix light mode to a warmer tone so it doesnt blur text and make outlines a bit thicker everywhere."* |
 | C44 | The prototype has ONE editor per profile (11364) and one kind of profile that owns pictures | **ALL FOUR EDIT SEGMENTS ARE IN THE SAME PLACE ON ALL FIVE KINDS.** A crew's picture and posters left `CrewEditSheet` for the ⊕ on its disc and the ⊕ on its rail (`CrewPictures.tsx` — `StudioPictures.tsx` with a crew's doors), which is where a user's, an artist's and a studio's have been since 20 Sep; a studio's dance styles left `BusinessEditSheet` for a ＋ on its band (`StudioStylesRow`), which is where a person's have been since 19 Sep. Every Edit sheet holds WORDS now. ⚠ **The shared parts were extracted rather than copied a third time**: `PlusIcon` into `profile-kit` (it was declared twice and a crew's was next) and the styles editor into `StylesSheet.tsx`, which knows about neither door and takes the floor's words from its caller, because the two RPCs refuse an empty list for different reasons. ⚠ The studio's Edit sheet still READS and SENDS `styles` unchanged — the RPC takes the whole profile and an omitted list empties a column it then refuses | 21 Sep 2026, the user: *"make sure all profile types have similar ways to edit the profile, the segments like social media, dance styles, pictures and posters. similar buttons style."* |
 | C40 | S_profiletab is ONE screen behind a flag (`publicEntity`), and this app built it as two components at two addresses — `/profile` and `/person/{id}` — both reading the same person from the same call (C32, 20 Sep, made them share `PersonBody` and left the two addresses standing) | **YOUR OWN PROFILE IS `/person/{id}`, AND `/org/{id}` FOR AN ORGANIZATION.** `/profile` is a redirect (carrying `?settings=1`, so the gear still opens the sheet) and `OwnProfileScreen` is the owner's version of the one address, taking the person the route already read so the merge costs no round trip. ⚠ **Two orderings are load-bearing**: the owner branch sits ABOVE `loadOrg`, because that read answers only for a PUBLIC organization and an unverified one would otherwise 404 on its own profile; and `ensureArtistPage` sits ABOVE the owner's early return, or your own visit silently stops provisioning your artist page. ⚠ The hero's `avatarHref` went too — it pointed at the page it is on, which is C37's loop in a quieter coat. **Not merged, deliberately:** Stats keeps its own page (the user's call), and `/business/{id}` is NOT folded into `/studio/{id}` — ten owner-only tiles on a visitor's front door is a different screen wearing one address | 21 Sep 2026, the user: *"how can you reduce the no. of pages per profile type without changing functionality of the app"*, then *"keep stats as a separate page and push to live"* |
+| R46 | The prototype's S_earn is a studio's money-in screen with month chips, a DanceOS fee, GST on the fee, TDS and bank settlements; this app grew four money screens that agreed on nothing | **ONE `EarningsScreen` FOR EVERY PROFILE TYPE**: Day · Week · Month · Year **in the URL**, a bar chart whose columns are buttons and whose two series are toggles, **REVENUE** with its breakup (Classes · Memberships · Tickets & entries · **Enquiries**), **EXPENSES** with its breakup (what you paid your people · Refunds · **Assets bought**), and **WHAT IS LEFT**. ⚠ A person has no expense half — they employ nobody — so what is left IS what came in, said rather than drawn empty. ⚠ **No fee, no GST on one, no TDS**: none exists here, and printing them at ₹0 would be a claim about money rather than a measurement | 21 Sep 2026, the user: *"lets fix earnings for all profile types … Revenue with breakup and Expenses with breakup. and what is left after that."* ⚠ Two of the four screens labelled a MONTH over an ALL-TIME figure; the studio desk's chips unmounted its expense half; the two organization screens summed different sets; and **none of the four ever subtracted what went out from what came in** |
+| C50 | An asset's value lives on the Assets desk as `INVENTORY · ₹X total` (R45, the same day) | **AN ASSET'S PRICE IS AN EXPENSE LINE IN EARNINGS**, and nothing else — no association to a class, a room or anything. ⚠ A `₹0 (legacy)` asset adds NOTHING, which is the point of that value: kit you already owned is not money you spent. ⚠ It falls in the period it was ADDED, because an asset has no purchase date, and the line says so rather than implying one | 21 Sep 2026, the user: *"with assets just need price to be linked with expenses in earnings, no separate association of asset is required"* |
 | R45 | The prototype's S_assets (16791) is a studio's inventory on a localStorage array, and this app drew the tile over "nothing here yet" (18 Sep) — an ORGANIZATION never had the tile | **ONE ASSETS DESK FOR A STUDIO, AN ARTIST PAGE AND AN ORGANIZATION'S HOSTING ROW** (`/business/{id}/assets`), because all three are `businesses`. An asset is the user's own three things — a name, a TYPE from the prototype's closed fourteen, and a value — with ⚠ **`value_inr = 0` MEANING "one we already had"**, printed `₹0 (legacy)`: the prototype's own `₹ (0 = old)`, and no second control, because two ways to say one thing can disagree. The OWNER's alone, at the ceiling too (`is_business_owner` is the only SELECT policy). `/assets` is a redirect (Rule 14) | 21 Sep 2026, the user: *"Fix assets for both artist, studio and organization. Make sure to just add name type of asset and price/ Old asset."* ⚠ **No photo**, though the prototype's form has one — "just" is the user's word, and a picture is a storage folder, a policy and a cropper for a field nobody asked for |
 | C48 | The Media desk (15 Sep 2026) is a studio's two pictures as a page, and an artist's Media tile opens the Profile tab | **NO MEDIA TILE ON ANY GRID.** ⚠ The routes and `StudioMediaDesk` STAY (Rule 14) and `shoot-hero` still drives `/business/{id}/media` by URL, so the desk cannot rot behind the removed tile | 21 Sep 2026, the user: *"Remove media from all tool in all profiles."* Since 20–21 Sep the disc's ⊕ and the posters' ⊕ ARE the picture editor on every home and on the Profile tab (C26, C44), so the tile was a third door to a job whose controls already sit on the picture |
 | C49 | The prototype has one studio and therefore one Team screen | **ONE TEAM DESK, THREE KINDS OF PROFILE** — the CHROME is shared and each desk's own FEATURES are not. Levelled: the shared `DeskAddButton` at the top reading "Add a team member" in a `biz-kit` sheet (the crew's was a hand-rolled DASHED control at the FOOT reading "＋ Add member", opening a card in place); `DeskHero as="h1"` with a sub-line naming the business (⚠ the studio's was a hand-COPY with the title as a `<div>`, so that page had **no `<h1>` at all** while the other two render `<h1>Team</h1>`); the shared sheet styles and `SheetHandle` (⚠ the studio's local copy had dropped `animation: SHEET_ANIMATION`, so its sheets appeared while the others slid up); the `PeoplePicker`'s own clothes (the studio overrode all four, including `PINK`, which is cyan); and a 36px squircle face. ⚠ **Left standing and said**: on a studio's desk the face cannot be a link to `/person/{id}` — the ROW is the manage control — so the door is in the member sheet. **Not levelled, deliberately**: the studio's grouped roster, permissions block and Pay pill; the other two's stat strips; the three ways a role is changed | 21 Sep 2026, the user: *"Fix Team pages for all kinds of profile types."* An audit of the three found seventeen differences. ⚠ The crew's add control is C36 one desk further on — the organization's was corrected the day before and the crew's was missed, which is what happens when a fix goes to the desk that was complained about rather than to every desk sharing the job |
@@ -9025,6 +9131,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **Earnings, what the one screen left (21 Sep 2026):** ⚠ **the sums are still counted in TypeScript** behind a 4,000-row runaway guard — ONE aggregate RPC is the right answer (aggregating inside a definer function is fine; only the PostgREST path is closed) and it is a migration, so a very busy studio's YEAR view is the first thing that would go `complete: false`. **`MAX_PAYOUTS = 60` and the other caps in `repositories/payouts.ts` still truncate silently**, with no `complete` flag of their own, so the OLD desk's Settled/Owed tiles can be short where the new screen's are not. **The chart has no y-axis and no value labels** — a column's numbers are in its `aria-label` and in the figures below it, which is legible on a phone and is not a chart you could read a precise figure off. **A bucket with no money is an empty column**, so a long quiet stretch looks like a broken chart rather than a quiet one. ⚠ **`/business/stats` was NOT touched** and still sums studios only where `/business/earnings` sums studios and events — the two organization screens still disagree, now with a third (correct) figure beside them. **Subscription money a studio PAYS DanceOS is still not an expense** — it is on the person's invoice ledger only. And **enquiry money is counted from `enquiry_quotes` regardless of the enquiry's own status**, so a quote marked paid on an enquiry later marked lost still counts, which is what "recorded as received" means and may not be what a studio expects | S_earn 17877-18205 | the aggregate RPC when migrations are being written anyway; a `complete` flag on the payout caps; `/business/stats` aligned next time it is opened |
 | **Assets, media and the Team desks, what they left (21 Sep 2026):** ⚠ **an asset has no PHOTO**, though the prototype's form does (16802-16810) — "just name type of asset and price" is the user's word, and it is a bucket, a policy and a cropper away. **No depreciation, no purchase date, no serial number, no room it lives in, no "who has it"** — the four fields are the whole record, and an inventory that cannot say WHERE a thing is will be the first thing a real studio asks for. **The total is every live asset at full value**, so a studio that bought a floor in 2016 reads its 2016 price for ever; `₹0 (legacy)` is the only nod to age. ⚠ **A trainer is redirected off the desk with no sentence** — the Earnings desk does the same, so it is consistent and it is still a silent bounce. ⚠ **No `.ps1` proof**: the dry run covered it 23/23 and the e2e drives it, but `run-proofs.ps1` globs `rls-proof-*.ps1` and there is no `rls-proof-assets.ps1`, so nothing re-checks the policy as regression cover. **Media**: the desk is now reachable only by URL, so if the user ever wants it back it is one tile — and until then `shoot-hero` is the only thing that opens it. **Team**: the three role vocabularies are still three unrelated sources (`types/staff.ts`, `OrgTeamDesk`'s local consts, `types/crew.ts`) with three colour scales, and Owner is a different amber in each; the three ways to change a role are still three widgets; `StaffDesk` still carries the dead `addBy` const and its unreachable email form, kept deliberately (#0a4) so the door can be reopened | S_assets 16791; settings 18428-18435 | a `rls-proof-assets.ps1` next time the proofs are opened; a room or a holder on an asset when a studio asks; one role vocabulary if the desks are ever opened together again |
 | **The place control, the corners and a studio's memberships, what they left (21 Sep 2026):** ⚠ **Near me is still a browser prompt with no memory** — turn it on, leave Discover, come back, and it is off, because the point lives only in the URL; the chip says "Near me · {city}" while it is on, which is the whole of the feedback. **A `near=` left in the URL on a tab that is not Studios does nothing and is not shown** — harmless, and it means a tab switch can silently drop it when a city is then picked. **The lead row is one row**: a second non-city idea (say "Everywhere") would need `CitySelect` to take a list, and the `allowNone` path is still separate from it — two mechanisms for "not a city" in one control. ⚠ **A STUDIO'S MEMBERSHIPS ARE THE OWNER'S ALONE** — a trainer pressing the tile is redirected to the studio's home with no sentence, where the Earnings desk at least has the same rule; and **an ARTIST who also owns a studio now has two addresses**, their page's on `/memberships` and each studio's on its own home, which is right and is one more thing to know. **Nothing lists a person's memberships across several studios they own** — that was what "the first business you own" was pretending to do. ⚠ **No proof or e2e covers the `?business=` refusal path** (a pointer at somebody else's studio): it is asserted by reading, by `save_membership`'s own owner check, and by nothing that runs. And **`rls-proof-memberships.ps1` does not know about the new address**, because it drives the RPCs rather than the screens | S_memberships 16846; 4507-4530 | a remembered Near me if anybody asks; a sentence for a trainer; a check on the pointer path next time the memberships proof is opened |
 | **The QR, the switcher, the warm light and the edit segments, what they left (21 Sep 2026):** ⚠ **the QR encoder's proof cannot decode**, because `BarcodeDetector` is absent from Chromium on Windows and there is no decoder in `node_modules` — four of its twelve checks are independent (published generator tables, the spec's worked example, the BCH remainder) and three only prove the matrix is self-consistent, so **a rule misread the same way in the writer and the reader would pass**; the standing answer is the PNG it writes and a phone. It is **level M and versions 1–10 only** (213 bytes), which covers every string this app encodes and throws rather than drawing an unreadable code for anything longer, and there is **no logo-in-the-middle** and no rounding, on purpose. **`qr-proof.js` is not in `run-proofs.ps1`** — that globs `rls-proof-*.ps1` and this is neither a `.ps1` nor about RLS, so it must be run by hand. ⚠ **The switcher chip shows initials, never the photo** — `AppChrome`'s switcher rows carry no picture path, and adding one is a read on every page. **Log out is now two presses** (open the menu, press it) where it was two before as well (gear, press), so nothing regressed, but there is no confirm on it and never was. ⚠ **The warm ground is one colour for both `--bg` and `--solid`**, so a sheet still separates from the page by its border alone rather than by lifting off it — the same as before, and the obvious next move if the light theme is revisited. **The 1.5px sweep did not touch literal-coloured borders** (`1px solid #…`, `1px solid rgba(…)`) — only `var(--…)` and `${…}` forms, which is 364 of 364 matched, but a future literal border will be thinner than its neighbours and nothing checks that. ⚠ **A crew's styles are still ONE value in its Edit sheet**, correctly — a crew has a single style, not a list — so the ＋ pattern applies to four kinds, not five; and **a crew has no links row at all** because `crews` has no `socials` column, which is a schema decision, not an omission | 21 Sep 2026 | a decoder, or a phone, for the QR; a photo on the switcher rows if the initials ever confuse; `--solid` lifted off `--bg` if the light theme is revisited |

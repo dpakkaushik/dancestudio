@@ -239,7 +239,15 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
        than offering a form the database would refuse. */
     { name: DOS_TOOLS.routines.name, href: "/routines", k: "routines", c: DOS_TOOLS.routines.c },
   ];
-  if (kind === "user") return person;
+  /* ⚠ A PLAIN USER HAS EARNINGS TOO (21 Sep 2026, the user: "lets fix earnings
+     for all profile types"). Their 18 Sep list had no Earnings tile, and the
+     reasoning held while only an artist was ever paid — but a plain user seated
+     as an ASSISTANT on a class is paid through the same `payouts` rows, and the
+     one door left to `/earnings` was a link buried on an artist page's own desk.
+     So somebody who has been paid had no way to see it. An ARTIST does not get
+     this tile: theirs points at their page's desk, and the page's desk carries
+     "What studios pay you ›" to this same ledger. */
+  if (kind === "user") return [...person, { name: DOS_TOOLS.earn.name, href: "/earnings", k: "earn", c: DOS_TOOLS.earn.c }];
   /* an artist's page's desks — or the hub, which is where the page is made */
   const desk = (path: string) => (pageId ? `/business/${pageId}/${path}` : "/business");
   return [
