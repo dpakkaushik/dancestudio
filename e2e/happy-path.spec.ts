@@ -478,6 +478,19 @@ test.describe.serial("DanceOS, end to end", () => {
     /* the form wrote a real http(s) address from what was typed */
     expect(studioRows[0]?.socials?.[0]?.url).toBe("https://instagram.com/e2estudio");
 
+    /* ⚠ AND WHERE IT STANDS IS ON THE STUDIO'S OWN HOME, NOT ONLY ON THE HUB
+       (21 Sep 2026, the user: "give door to verification and subscription for
+       studio"). Verification moved to the hub on 15 Sep and the subscription
+       strip left this home on 20 Sep, which put the pair that decides whether a
+       studio is on Discover AT ALL two screens up from the studio. Asserted
+       while the request is UNDER REVIEW, which is the state that has nothing to
+       fill in and therefore the one most likely to be drawn empty. */
+    await owner.goto(`/business/${studioId}`);
+    await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Under review");
+    await expect(owner.getByTestId("studio-subscription")).toBeVisible();
+    /* and a door to the refunds, which no tile on this grid has ever named */
+    await expect(owner.getByRole("link", { name: "Refunds", exact: true })).toHaveAttribute("href", `/business/${studioId}/refunds`);
+
     // ---- the admin reads the STUDIO's link and photos in the queue, and says yes
     await admin.goto("/admin/verifications");
     await expect(admin.locator("#dos-main").getByText("Verification queue", { exact: true })).toBeVisible();
@@ -508,9 +521,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(studioStrip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     await expect(studioStrip).toContainText("Each studio has its own subscription");
     await expect(studioStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
-    // and the studio's own home no longer carries it
+    /* ⚠ AND THE STUDIO'S OWN HOME CARRIES IT TOO, WITH THE REAL BUTTON ON IT
+       (21 Sep 2026). This assertion said `toHaveCount(0)` from 20 Sep, when C31
+       took the strip off at the user's word; they reversed that a day later,
+       because /subscription is the LIST view and this is the studio. ⚠ The
+       verification strip is GONE here now the badge is on — the same rule the
+       hub follows at line 500, so the two screens cannot disagree about it. */
     await owner.goto(`/business/${studioId}`);
-    await expect(owner.getByTestId("studio-subscription")).toHaveCount(0);
+    const homeStrip = owner.getByTestId("studio-subscription");
+    await expect(homeStrip).toContainText("NOT LIVE");
+    await expect(homeStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
+    await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
     await admin.goto(`/admin/businesses?q=${encodeURIComponent(studioName)}`);
     const studioCard = admin.getByTestId("admin-business").filter({ hasText: studioName });
     await expect(studioCard).toContainText("NO SUBSCRIPTION");
@@ -1551,47 +1572,46 @@ test.describe.serial("DanceOS, end to end", () => {
     }
   });
 
-  test("everything you manage: one list over every business you run", async () => {
-    // ---- parity slice: S_managed ----
-    // The Home deck offers the door only to somebody who runs something; behind it
-    // is one list of every class and event of every business they belong to, the
-    // row being the session's own card with its desk behind it.
-    /* ⚠ THE DOOR IS NOT ON THE SHELF HEAD ANY MORE (18 Sep 2026, the user:
-       "remove all blue buttons besides Todays schedule"). That cyan Manage link
-       was the only blue thing on either Home; it survives on the empty day's
-       pill, so this segment gets in by address. */
+  test("/managed is an address, not a page — and its rows are reached through the desks", async () => {
+    /* ⚠⚠ S_managed IS GONE (21 Sep 2026, the user's answer when asked whether it
+       still earned a door: *"No need for it"*).
+       It was one list over everything a person runs. What made it redundant was
+       the year before the decision, not the decision: the Classes and Events
+       tiles on every grid open the same rows through the desks that can actually
+       ACT on them, so it had become a view of a view. Its tile went on 19 Sep and
+       its last pill on 21 Sep, leaving it reachable only by typing the address.
+       ⚠ THE ADDRESS STAYS AND REDIRECTS (Rule 14): a link handed out is a
+       promise, and the installed TWA reopens on the last URL it showed. So this
+       segment asserts the promise is kept and that what the screen used to list
+       is still reachable — which is the only thing that made removing it safe. */
     await owner.goto("/");
     await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toHaveCount(0);
-    /* and no Manage TILE either (19 Sep 2026, the user: "just need to remove
-       manage as the tile in tools, nothing else changes") */
     await expect(owner.getByRole("link", { name: "Manage", exact: true })).toHaveCount(0);
+
+    /* ⚠ AN ORGANIZATION LANDS ON ITS STUDIOS, a person on their register. The
+       story's `owner` IS the organization, and getting this pair the wrong way
+       round is how a redirect ends up somewhere true-looking and wrong. */
     await owner.goto("/managed");
-    await owner.waitForURL(/\/managed$/);
-    // the class the story published and both events it created are here, whatever their status
-    // (a class tile headlines its STYLE; the title lives in the row's Manage link)
-    await expect(owner.getByRole("link", { name: `Manage ${classTitle}` })).toBeVisible();
+    await owner.waitForURL(/\/business$/);
+    await learner.goto("/managed");
+    await learner.waitForURL(/\/my-classes\?show=manage$/);
+
+    /* ── AND THE ROWS IT USED TO CARRY ARE STILL THERE, through the desks. This
+       is the half that matters: removing a view is only safe while everything on
+       it has another way in. ── */
+    await owner.goto(`/business/${tenantId}/classes`);
+    await expect(owner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
+    /* ⚠ and its DESK is one press from the row — the **Roster** pill. This read
+       `Manage ${classTitle}` on its first cut, which was S_managed's OWN row
+       name: I asserted the deleted screen's vocabulary against the screen that
+       replaced it. The register has never used that word — a row is the app's
+       one class tile plus the pills its status allows. */
+    await owner.getByRole("link", { name: "Roster", exact: true }).first().click();
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes\/[0-9a-f-]+\/roster$/);
+    // both events the story made are on the organization's own events desk
+    await owner.goto(`/business/${eventsHostId}/events`);
     await expect(owner.getByText(eventTitle, { exact: true }).first()).toBeVisible();
     await expect(owner.getByText(battleTitle, { exact: true }).first()).toBeVisible();
-    const all = Number((await owner.getByTestId("managed-count").innerText()).split(" ")[0]);
-    expect(all).toBeGreaterThanOrEqual(3);
-    // the control narrows the list — and it is the URL, so the narrowed list has an address
-    await owner.getByRole("link", { name: "Show events only" }).click();
-    await owner.waitForURL(/\/managed\?kind=event$/);
-    await expect(owner.getByTestId("managed-class")).toHaveCount(0);
-    await expect(owner.getByRole("link", { name: `Manage ${classTitle}` })).toHaveCount(0);
-    await expect(owner.getByText(eventTitle, { exact: true }).first()).toBeVisible();
-    await owner.getByRole("link", { name: "Show classes only" }).click();
-    await owner.waitForURL(/\/managed\?kind=class$/);
-    await expect(owner.getByTestId("managed-event")).toHaveCount(0);
-    await expect(owner.getByRole("link", { name: `Manage ${classTitle}` })).toBeVisible();
-    // pressing a class row opens its desk, not its public page
-    await owner.getByRole("link", { name: `Manage ${classTitle}` }).click();
-    await owner.waitForURL(/\/business\/[0-9a-f-]+\/classes\/[0-9a-f-]+\/roster$/);
-    // and the learner, who runs nothing, is not offered the door — the room is
-    // still honest if they type the address
-    await learner.goto("/managed");
-    await expect(learner.getByText("Nothing here yet")).toBeVisible();
-    await expect(learner.getByRole("link", { name: "Set up a business" })).toBeVisible();
   });
 
   test("the Profile tab: who you are, in your own words, and what a stranger reads of it", async () => {

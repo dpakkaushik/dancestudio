@@ -11,6 +11,8 @@ import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
+import { StudioSubscriptionStrip } from "./StudioSubscriptionStrip";
+import { StudioVerificationStrip } from "./StudioVerificationStrip";
 import { StudioLinksRow } from "./StudioLinksRow";
 import { StudioStylesRow } from "./StudioStylesRow";
 import { StudioPicturesButton, StudioPostersButton } from "./StudioPictures";
@@ -19,6 +21,9 @@ import type { ProofPhoto } from "@/lib/media/proof";
 import type { DeckItem } from "@/types/home";
 import type { PublicTenant } from "@/types/publicProfile";
 import type { Tenant } from "@/types/tenant";
+import type { PlanCatalogRow } from "@/repositories/plans";
+import type { StudioSubscriptionState } from "@/repositories/subscriptions";
+import type { StudioVerificationState } from "@/repositories/studioVerification";
 
 /** ONE STUDIO'S OWN HOME (14 Sep 2026) — what a studio row on the hub opens.
  *
@@ -70,6 +75,7 @@ export function StudioHome({
   followers = 0,
   followingN = null,
   tiles,
+  standing = null,
 }: {
   tenant: Tenant;
   photo: string | null;
@@ -85,6 +91,16 @@ export function StudioHome({
    *  has nothing to follow with of its own; null draws no figure */
   followingN?: number | null;
   tiles: Tile[];
+  /** ⚠ WHERE THIS STUDIO STANDS WITH DANCEOS (21 Sep 2026) — the owner's alone,
+   *  and null for everybody else, because a trainer can neither file a
+   *  verification nor move a mandate. */
+  standing?: {
+    /** the owner's own id — the folder a verification photo goes into */
+    orgId: string;
+    verification: StudioVerificationState | null;
+    subscription: StudioSubscriptionState | null;
+    studioPrice: PlanCatalogRow | null;
+  } | null;
 }) {
   /* ⚠ GOLD, BECAUSE IT IS A STUDIO (20 Sep 2026, the user's colour list) — it
      was `gradientOf(tenant.name)`, a hash, so this screen and the studio's own
@@ -291,14 +307,53 @@ export function StudioHome({
             order the day happens; a studio's doors are its own (7143-7150) ── */}
         <TodayShelf deck={deck} />
 
-        {/* ⚠ NO SUBSCRIPTION STRIP HERE (20 Sep 2026, the user: "remove your
-            conversation with dance os and subscription from just the home tab for
-            studio and organization profiles as already being handled from
-            settings"). It is on `/subscription` now — Settings' own Subscription
-            tile — with one strip per studio, so the premise behind the ask is
-            true rather than nearly true. ⚠ It was NOT simply deleted: this was
-            the only Stop renewing in the app, and deleting it would have made a
-            studio's subscription impossible to cancel anywhere (Rule 9). */}
+        {/* ⚠⚠ WHERE THIS STUDIO STANDS — VERIFICATION AND SUBSCRIPTION, BACK ON
+            THE STUDIO'S OWN HOME (21 Sep 2026, the user: "give door to
+            verification and subscription for studio").
+            ⚠ THIS REVERSES TWO EARLIER CUTS, both made at the user's word too:
+            verification moved to the hub on 15 Sep when one card per studio
+            collapsed three strips into one, and the subscription strip left here
+            on 20 Sep ("already being handled from settings"). The audit asked
+            whether that was worth it, because the state deciding whether a studio
+            is on Discover AT ALL had ended up two screens up — and this is the
+            answer. They are the REAL controls, not links to them: the form that
+            files the request, and the button that starts or stops the mandate.
+            The hub and `/subscription` keep theirs, which are the LIST views —
+            and `/subscription` remains the only place an ORGANIZATION reaches
+            every studio's mandate at once, so nothing became unreachable. */}
+        {standing ? (
+          <div style={{ position: "relative", zIndex: 1, marginBottom: 12 }}>
+            {standing.verification && !tenant.verifiedAt ? (
+              <StudioVerificationStrip tenant={tenant} orgId={standing.orgId} state={standing.verification} />
+            ) : null}
+            {standing.subscription ? (
+              <StudioSubscriptionStrip
+                tenantId={tenant.id}
+                tenantName={tenant.name}
+                verified={Boolean(tenant.verifiedAt)}
+                state={standing.subscription}
+                studioPrice={standing.studioPrice}
+              />
+            ) : null}
+            {/* ── AND A DOOR TO THE REFUNDS (21 Sep 2026, the user: "Give option
+                for refund"). `/business/{id}/refunds` has existed since 29 Aug
+                and was linked from NOWHERE on a studio's home: the only doors
+                were an organization's events desk and a Settings tile that
+                guessed which business you meant. ⚠ The Earnings screen's own
+                Refunds line is not one — a line worth nothing is dropped, so a
+                studio with no refund yet had no way in at all. The pill is the
+                events desk's own shape, and settling is still gated where it
+                always was (the owner, or a confirmed refunds job). */}
+            <Link
+              href={`/business/${tenant.id}/refunds`}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)", color: INK, textDecoration: "none", fontSize: 12.5, fontWeight: 800 }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 14 }}>↩</span>
+              <span style={{ flex: 1, minWidth: 0 }}>Refunds</span>
+              <span aria-hidden="true" style={{ color: "var(--sub)" }}>›</span>
+            </Link>
+          </div>
+        ) : null}
 
         {/* ── STUDIO TOOLS (7590-7620): the same tile language as Home's grid, and
             every door is THIS studio's ── */}

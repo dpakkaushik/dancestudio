@@ -10,7 +10,9 @@ import { findStudioDeck } from "@/repositories/home";
 import { findPublicStudioTeam, findPublicTenant } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { countRoomsByTenants } from "@/repositories/rooms";
-import { findStudioProofPhotos } from "@/repositories/studioVerification";
+import { findPlanCatalog, pickPlan } from "@/repositories/plans";
+import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
+import { findStudioProofPhotos, findStudioVerificationStates, type StudioVerificationState } from "@/repositories/studioVerification";
 import { findMyMemberships } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the deck's one
@@ -90,6 +92,29 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
   const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
   const ownerCounts = ownerUserId ? await findPersonFollowerCounts(supabase, [ownerUserId]).catch(() => new Map()) : new Map();
 
+  /* ⚠⚠ WHERE THIS STUDIO STANDS, ON THIS STUDIO'S OWN HOME (21 Sep 2026, the
+     user: "give door to verification and subscription for studio").
+     ⚠ THIS REVERSES TWO EARLIER CUTS AT THEIR WORD, and both were made at their
+     word too: verification moved to the hub on 15 Sep when one card per studio
+     collapsed three strips into one, and the subscription strip left this home on
+     20 Sep ("already being handled from settings"). The audit's question was
+     whether that was worth it, because the state deciding whether a studio is on
+     Discover AT ALL had ended up two screens up — and the answer is no. They are
+     the REAL controls, not links to them: the form that files the request and the
+     button that starts or stops the mandate, about THIS studio, where the studio
+     is. The hub and `/subscription` keep theirs, which are the LIST views.
+     ⚠ Owner-only, and read only for an owner — a trainer cannot file a
+     verification or move a mandate, so they are not asked for either. */
+  const [vStates, subStates, plans] = isOwner
+    ? await Promise.all([
+        findStudioVerificationStates(supabase, [{ id: tenantId, verifiedAt: tenant.verifiedAt ?? null }]).catch(
+          () => ({}) as Record<string, StudioVerificationState>
+        ),
+        findMyStudioSubscriptions(supabase, [tenantId]).catch(() => ({}) as Record<string, StudioSubscriptionState>),
+        findPlanCatalog(supabase).catch(() => []),
+      ])
+    : [{} as Record<string, StudioVerificationState>, {} as Record<string, StudioSubscriptionState>, []];
+
   /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, their list for all four
      kinds of account — deviation row R18): Classes · Calendar · Team · Students ·
      Earnings · Memberships · Assets · Rooms. Earnings is the owner's (the desk is
@@ -105,7 +130,14 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     { name: DOS_TOOLS.classes.name, href: desk("classes"), k: "classesmod", c: DOS_TOOLS.classes.c },
     { name: DOS_TOOLS.calendar.name, href: desk("calendar"), k: "calendar", c: DOS_TOOLS.calendar.c },
     { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
-    { name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c },
+    /* ⚠ AND THE STUDENTS TILE IS NOT DRAWN FOR A SEAT THAT MAY NOT READ THEM
+       (21 Sep 2026, the user's *"No"* on whether a visiting teacher or an
+       assistant should see a studio's students). The desk redirects those two
+       now, so the tile has to agree with it — otherwise it is the Memberships
+       and Assets bug of two hours ago, made again in the same file. */
+    ...(memberRole === "visiting_faculty" || memberRole === "assistant"
+      ? []
+      : ([{ name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c }] as Tile[])),
     ...(isOwner ? [{ name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c } as Tile] : []),
     /* ⚠ MEMBERSHIPS AND ASSETS ARE THE OWNER'S TOO, AND THEIR TILES NOW SAY SO
        (21 Sep 2026). Both desks redirect a non-owner back to this very home —
@@ -145,6 +177,16 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       followers={followerCounts.get(tenantId) ?? 0}
       followingN={ownerUserId ? (ownerCounts.get(ownerUserId)?.following ?? null) : null}
       tiles={tiles}
+      standing={
+        isOwner
+          ? {
+              orgId: user.id,
+              verification: vStates[tenantId] ?? null,
+              subscription: subStates[tenantId] ?? null,
+              studioPrice: pickPlan(plans, "studio"),
+            }
+          : null
+      }
     />
   );
 }

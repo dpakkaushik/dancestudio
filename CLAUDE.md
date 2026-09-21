@@ -2,7 +2,124 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
-> ### EVERY TILE ON EVERY HOME, PRESSED — EIGHT DOORS THAT WERE NOT DOORS (21 Sep 2026, latest) — BUILT, no migration
+> ### FIVE ANSWERS — A STUDIO'S STANDING COMES BACK TO ITS OWN HOME, A REFUNDS DOOR, AND A PAGE THAT IS NOW AN ADDRESS (21 Sep 2026, latest) — BUILT, no migration
+> The user, answering the five decisions the tile audit handed back: *"1. give
+> door to verification and subscription for studio 2. Give option for refund.
+> 3 No 4. No 5. No need for it."*
+> * ⚠⚠ **1 · VERIFICATION AND THE SUBSCRIPTION ARE ON THE STUDIO'S OWN HOME
+>   AGAIN, AND THIS REVERSES TWO CUTS MADE AT THE USER'S OWN WORD.** Verification
+>   moved to the hub on 15 Sep when one card per studio collapsed three strips
+>   into one; the subscription strip left this home on 20 Sep (*"already being
+>   handled from settings"*, row C31). Both were right about what they said and
+>   wrong about where it left things: **the state that decides whether a studio is
+>   on Discover AT ALL had ended up two screens up from the studio**, and C31's
+>   premise was true of an ARTIST's plan, which really is one thing in Settings,
+>   while a studio's is one mandate per studio. ⚠ They are the **REAL CONTROLS,
+>   not links to them** — the form that files the request and the button that
+>   starts or stops the mandate, about THIS studio, where the studio is. The hub
+>   and `/subscription` keep theirs, which are the LIST views.
+> * ⚠ **AND THEY ARE THE OWNER'S, SO A TRAINER DOES NOT EVEN PAY FOR THE READS.**
+>   A trainer can neither file a verification nor move a mandate, so the three
+>   reads behind the block (`findStudioVerificationStates`, `findMyStudioSubscriptions`,
+>   `findPlanCatalog`) are not made on their visit at all — the branch returns
+>   empties. **A door that would be refused is not offered** is the same rule the
+>   tile grid learned two hours earlier; this is it one level up, at the read.
+> * **2 · A REFUNDS DOOR, BECAUSE NOTHING NAMED THE MONEY GOING BACK OUT.**
+>   `/business/{id}/refunds` has existed since the settings slice (29 Aug) and the
+>   only way in was the class page's own Refunds tab — **per class**, so a studio
+>   with a queue across four classes had to visit four pages to find it. It sits
+>   in the standing block rather than the grid on purpose: it is about this
+>   studio's money, like the two strips above it, not a desk of its own.
+> * ⚠⚠ **3 · "NO" — AN ORGANIZATION DOES NOT SELL MEMBERSHIPS, AND THERE WAS
+>   NOTHING TO BUILD.** The tile is not on its grid and `my_memberships()` is
+>   scoped to the caller. **Said plainly rather than left implied: the DATABASE
+>   does not refuse it** — `save_membership` admits the owner of any business and
+>   an organization owns its hosting row (R15), so a direct RPC call could still
+>   make one. A type refusal belongs in the next migration that touches
+>   memberships; **recorded rather than slipped in**, because it is a rule change
+>   and not a fix, and this file's own standing rule is that the list goes in
+>   front of the user before `db push`.
+> * ⚠⚠ **4 · "NO" — A VISITING TEACHER AND AN ASSISTANT DO NOT SEE A STUDIO'S
+>   STUDENTS, AND THE DESK WAS MEMBERSHIP-ONLY.** So ANY seat read the whole
+>   roster: every student's name, **their phone number**, and what they hold. ⚠
+>   **The app's own permissions sheet never claimed that** — `MEMBER_POWER_NOTE`
+>   gives the students desk to `staff` ("Sees the students desk") and to `trainer`
+>   ("sees its students") and says of `visiting_faculty` only *"Teaches the class
+>   they accepted, and runs the register on that one only"*. The SHEET an owner
+>   reads before handing out a seat and the CODE disagreed, **and the sheet was
+>   right**, which is why this is a gate rather than a new rule. The desk
+>   redirects those two now **and the tile is not drawn**, because a tile whose
+>   desk bounces you is the Memberships-and-Assets bug of the same morning made
+>   again in the same file.
+> * ⚠ **AND IT IS A PRESENTATION GATE, SAID ON THE PAGE.** The rows underneath are
+>   ordinary RLS-bounded reads that admit every member, so a determined seat can
+>   still reach them through the API. Narrowing that is a policy change on `leads`
+>   and `attendance`, not a redirect, and it is not this slice. What changes today
+>   is that the app stops handing it over.
+> * ⚠ **5 · "NO NEED FOR IT" — `/managed` IS AN ADDRESS NOW, NOT A PAGE.** It was
+>   S_managed (6332-6378), one list over everything a person runs. What made it
+>   redundant is not this decision but the year before it: the Classes and Events
+>   tiles on every grid open the same rows through the desks that can **act** on
+>   them, so it had become a view of a view. Its last door went earlier today with
+>   the empty-day pills, and no grid had named it since 19 Sep — so it was already
+>   reachable only by typing the address, which is the state the user was asked
+>   about. ⚠ **A REDIRECT AND NOT A 404** (Rule 14 — the installed TWA reopens on
+>   the last URL it showed): an organization's is the HUB, `/business` — every
+>   studio it owns, each with its desks behind it, which is what "everything you
+>   manage" means for one — and everybody else's register is their classes, so
+>   `/my-classes?show=manage`. ⚠ **NOT the organization's events desk**, which was
+>   the first instinct: that address needs the hosting row's id and
+>   `my_org_business()` MAKES that row on first ask, so the redirect would have
+>   been a WRITE.
+> * ⚠ **AND `ManagedScreen`, `repositories/managed.ts`, `types/managed.ts` AND
+>   `rls-proof-managed.ps1` ARE DELETED RATHER THAN LEFT STANDING.** This repo's
+>   own rule is that a branch nobody renders is where a defect hides — **the dead
+>   "Where you stand with DanceOS ›" link found hours earlier today had survived
+>   in exactly that way**, pointing at a card deleted on 11 Sep. Every read those
+>   files made is an ordinary one some desk still makes.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-tiles.js`
+>   63/63** (60 before — the three new ones assert the two strips and the Refunds
+>   door on a studio that is unverified and unsubscribed, which is the state both
+>   strips exist for) · **`shoot-hero.js` 155/155** · **`shoot-earnings.js` 24/24**
+>   · **the whole suite 47 passed / 1 failed / 10 did not run in 12.6 min, then
+>   the happy path alone 20/20 in 12.9 min — so every one of the 58 is green
+>   across the two runs and the ONLY file changed between them is the spec's
+>   locator.** Its `/managed` segment asserts the redirect at both ends (an
+>   organization lands on `/business`, a person on `/my-classes?show=manage`) and
+>   then that the rows it used to list are still reachable, which is the only
+>   thing that made removing a view safe.
+> * ⚠ **AND THE ONE RED IN THAT RUN WAS MY OWN LOCATOR, ASSERTING THE DELETED
+>   SCREEN'S VOCABULARY AGAINST THE SCREEN THAT REPLACED IT.** The new segment
+>   looked for a link called **"Manage {class}"** on the studio's register —
+>   `Manage ›` was **S_managed's own row name**, and the register has never used
+>   that word: a row there is the app's one class tile plus the pills its status
+>   allows (`Open {class}`, then **Roster**). ⚠ It is the same mistake as the
+>   20 Sep lesson from the other side — *when a control is deleted, grep for its
+>   ACCESSIBLE NAME* — here a control was deleted and I kept writing tests in its
+>   words. **The replacement screen's vocabulary is the one to read.**
+> * ⚠ **AND THE FIRST SUITE RUN'S RED WAS A STALE ASSERTION OF MINE, WHICH IS
+>   EXACTLY THE RIGHT KIND.** `happy-path:513` read
+>   `expect(getByTestId("studio-subscription")).toHaveCount(0)` on the studio's
+>   own home — **written on 20 Sep to prove C31's removal**, and the user reversed
+>   that a day later. The test was describing a decision, so when the decision
+>   changed the test was the thing that had to. It asserts the strip's PRESENCE
+>   now, with NOT LIVE and the real Subscribe button on it, and **a second
+>   assertion was added where there was none**: the verification strip on the
+>   studio's own home while the request is UNDER REVIEW — the state with nothing
+>   to fill in, and therefore the one most likely to be drawn empty.
+> * ⚠⚠ **AND I FINALLY APPLIED THE LESSON THIS FILE RECORDED THIS MORNING, ONE RUN
+>   LATE.** The first run's failure detail was gone before I read it, because the
+>   background runner keeps only the reporter's TAIL — the same thing that cost a
+>   run hours earlier and was written down as costing one. The re-runs pipe the
+>   whole reporter to a FILE and grep that, which is how `happy-path:513` was
+>   identified in one run instead of two. **`--reporter=line` into a file, always.**
+> * ⚠ **AND THE SECOND RED WAS THE MACHINE, FOR THE FIFTH TIME TODAY.**
+>   `admin-moderation:200` failed in the same run and **passed alone in 1.1 min**
+>   on the same tree, having shared the machine with a build, two shoot scripts
+>   and the suite. Re-run before believing a red; and note which half of a
+>   two-red run was real, because one of these was and one was not.
+
+> ### EVERY TILE ON EVERY HOME, PRESSED — EIGHT DOORS THAT WERE NOT DOORS (21 Sep 2026) — BUILT, no migration
 > The user: *"Check for all functions on home tab for all profile types and see
 > whether they are working as intended … please let me know if any gaps let me
 > help you with that. fix regular ones on your own."* So: an audit of all four
@@ -4490,10 +4607,25 @@ summary; the report has the evidence.
 ```
    then push `main` and read it back off the deployment.
 
-0al. **⚠ FIVE HOME-TAB DECISIONS THAT ARE THE USER'S, HANDED BACK 21 Sep 2026**
-   (their own words: *"please let me know if any gaps let me help you with
-   that"*). Every one was found by the four-grid audit; none is a bug, and each
-   would be a change to what the product IS rather than a fix:
+0al. **~~FIVE HOME-TAB DECISIONS THAT ARE THE USER'S~~ — ✅ ALL FIVE ANSWERED AND
+   BUILT 21 Sep 2026** (*"1. give door to verification and subscription for studio
+   2. Give option for refund. 3 No 4. No 5. No need for it."*): the two strips and
+   a Refunds door are on the studio's own home (row C51), an organization sells no
+   memberships, a visiting teacher and an assistant no longer see a studio's
+   students (row R44), and `/managed` is a redirect (row C52). **What each answer
+   LEAVES is recorded in the parity backlog**, and two are worth naming here:
+   * ⚠ **THE ORGANIZATION-MEMBERSHIP RULE IS THE APP'S, NOT THE DATABASE'S.**
+     `save_membership` still admits the owner of any business with no type check,
+     so a direct RPC call by an organization could make one — nothing can BUY it
+     (the hosting row is `unlisted` for ever) and no screen offers it, but the
+     refusal belongs in SQL. **A `p_business_id` type check is one clause in the
+     next migration that touches memberships**; it is not its own migration,
+     because the list goes in front of the user before every `db push`.
+   * ⚠ **INVOICES STILL HAS NO DOOR ON A STUDIO'S HOME.** The ask was Refunds and
+     that is what was built; `/business/{id}/invoices` is the other half of the
+     same question (that studio's money, admitting any MEMBER) and is still
+     reachable only from Settings, where it points at a business you OWN.
+   The five as they went to the user, kept for the record:
    * **A studio's own home has no door to its VERIFICATION or its SUBSCRIPTION.**
      Both were deliberately removed — verification on 15 Sep when one card per
      studio collapsed the hub, the subscription strip on 20 Sep at the user's
@@ -5306,6 +5438,28 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **FIVE ANSWERS — A STUDIO'S STANDING COMES BACK TO ITS OWN HOME, A REFUNDS
+  DOOR, AND A PAGE THAT IS NOW AN ADDRESS — 21 Sep 2026, no step number — BUILT,
+  no migration.** The five decisions the tile audit handed back, answered:
+  *"1. give door to verification and subscription for studio 2. Give option for
+  refund. 3 No 4. No 5. No need for it."* ⚠ **(1) reverses two cuts made at the
+  user's own word** — verification to the hub on 15 Sep, the subscription to
+  Settings on 20 Sep (C31) — because what those left is the state deciding
+  whether a studio is on Discover AT ALL sitting two screens up from the studio;
+  they are back as the REAL controls, owner-only, and a trainer does not even pay
+  for the reads. **(2)** a Refunds door beside them, `/business/{id}/refunds`
+  having been reachable only through one class's own tab since 29 Aug. **(3)** an
+  organization sells no memberships — nothing to build, and ⚠ said out loud that
+  the DATABASE still does not refuse it (`save_membership` has no type check), so
+  the clause is owed to the next memberships migration. ⚠ **(4)** a visiting
+  teacher and an assistant no longer read a studio's whole roster with its phone
+  numbers — **the permissions sheet an owner reads had never claimed they could**,
+  so the sheet was right and the code was wrong; a presentation gate, said on the
+  page. **(5)** `/managed` is a redirect (Rule 14), and `ManagedScreen`, its
+  repository, its types and its proof are deleted, because a branch nobody
+  renders is where a defect hides. Deviation rows C51, C52, R44 amended.
+  **`shoot-tiles.js` 63/63 · `shoot-hero.js` 155/155 · `shoot-earnings.js` 24/24.**
 
 - **EVERY TILE ON EVERY HOME, PRESSED — 21 Sep 2026, no step number — BUILT, no
   migration.** The user asked for an audit of all four grids. Mechanically clean
@@ -9210,7 +9364,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R37 | A studio's team is Faculty · Visiting faculty · Staff, and an artist page calls its `staff` seat "Assistant" on the screen alone (19 Sep 2026, R34) | **`assistant` IS THE FIFTH `member_role`**, so a studio hands out Faculty · Visiting faculty · **Assistant** · Other team member and an artist page Faculty · Assistant · Other team member — and `staff` is called **"Other team member"** everywhere. A studio's public page gained an **Assistants** group. A person's own page gained **Studios associated with** and **Artists associated with** off the new `person_associations` — the SEATS they hold, which is a different fact from "Studios taught at" (published classes): somebody asked onto a team who has not taught yet is associated and teaches at nothing. ⚠ `staff` is never returned by either read | 20 Sep 2026, the user's list B, C and E. The old model could not say both "Assistants" and "Other team members" on one studio, because one word was doing both jobs |
 
 | R43 | New routine is a card that expands inside S_choreos (17129) and New membership one inside S_memberships (16846); Create crew is `crewFormOnly`'s own page with a blue sleeve (9545) — three different shapes, none of them S_classform's | **ALL FOUR "ADD SOMETHING" FORMS WEAR ONE ANATOMY** — `components/ui/FormPage`, which IS S_classform's (15108-15650): a ← heading, a step bar, one label tier, a fixed bottom bar whose button names the missing answer, and a confirm sheet with a summary card. `/routines/new` and `/memberships/new` are pages now; each re-checks its own gate on the server. ⚠ **`ClassForm` moved onto the kit too** — the screen the others are matched to is not allowed to be the one that drifts | 21 Sep 2026, the user: *"Create Crew form in crews should look similar to add class page. same should be for new routine and new membership."* The prototype has one studio and three unrelated add-flows; this app has four and they had drifted apart exactly the way `linkChip` and the figure row did before |
-| R44 | S_people (17293) is a student POOL a studio curates, and this app built it as the leads pipeline — five stages, a funnel, a trial class, a per-lead sheet (Step 12) | **A STUDENT IS A CONSEQUENCE**: checked in here, or holding a pass this business sold, or a walk-in the desk typed in (`repositories/students.ts`). No stages, no funnel, no trial. The only manual act is an INVITE, and it is a hand-off — the number or address opens the studio's own WhatsApp, SMS app or mail client with the link written, because there is no SMS provider and Resend reaches nobody but the account owner. ⚠ `leads` rows, columns and both write doors are KEPT (#0a4's precedent); `LeadsDesk.tsx` is deleted | 21 Sep 2026, the user: *"Students section dont need to track a lead should just simply be able to send invite to a new user from here through mobile no. or email. rest all students are added automatically when they attend a class or take a membership."* ⚠ **Attendance, not bookings** — their own answer when asked, and Step 25's standing rule |
+| R44 | S_people (17293) is a student POOL a studio curates, and this app built it as the leads pipeline — five stages, a funnel, a trial class, a per-lead sheet (Step 12) | **A STUDENT IS A CONSEQUENCE**: checked in here, or holding a pass this business sold, or a walk-in the desk typed in (`repositories/students.ts`). No stages, no funnel, no trial. The only manual act is an INVITE, and it is a hand-off — the number or address opens the studio's own WhatsApp, SMS app or mail client with the link written, because there is no SMS provider and Resend reaches nobody but the account owner. ⚠ `leads` rows, columns and both write doors are KEPT (#0a4's precedent); `LeadsDesk.tsx` is deleted. ⚠⚠ **AND NOT EVERY SEAT SEES IT** (later the same day, the user's *"No"*): the desk was membership-only, so a visiting teacher and an assistant read the whole roster — every name, **every phone number**, and what each person holds — while `MEMBER_POWER_NOTE`, the sheet an owner reads before handing out a seat, gives the students desk to `staff` and `trainer` alone. The sheet was right and the code was wrong; both the desk and its tile refuse those two now. ⚠ It is a PRESENTATION gate: the reads underneath admit every member, so narrowing it properly is a policy change on `leads` and `attendance` | 21 Sep 2026, the user: *"Students section dont need to track a lead should just simply be able to send invite to a new user from here through mobile no. or email. rest all students are added automatically when they attend a class or take a membership."* ⚠ **Attendance, not bookings** — their own answer when asked, and Step 25's standing rule |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -9278,7 +9432,9 @@ Home. **Do not "restore parity" on these.**
 | C34 | The tool grid sits on the page's own ground under a 17px heading, with the plan badge on that heading's right (BizSection 2497-2583, the badge at 2500-2520) | **`ToolsPanel` — a 22px squircle that reads as the OPPOSITE theme**, on all five homes; the head carries the heading and nothing else. ⚠ **It was two colours (`var(--text)` over `var(--solid)`) until 21 Sep**, when C39 found that only works for opaque tiles; it stands on the shared `InvertedPanel` now, which swaps the whole palette. ⚠ The plan badge is DELETED, and `ToolsHead`'s `right` prop and `BizSection`'s `plan` prop with it | 21 Sep 2026, the user: *"give the tools section on all profiles like squircle seprator and make it look opposite according to the dark and light theme. make sure only heading on top nothing else."* Settings → Subscription is the plan's door and has been since 19 Sep, so the badge was a second one on a line asked to hold one thing |
 | C35 | The empty day carries the page's own words and two pills — "See everything you manage", "See all bookings" / "Open events" / "Open the calendar" (7161-7181) | **A CARD WITH ONE HEADING: "Nothing On Today's Schedule"**, the same on all four homes. `emptyTitle`, `emptyBody`, `emptyActions`, `PILL_DARK`, `PILL_LIGHT` and Home's `canManage` are all deleted | 21 Sep 2026, the user: *"when todays schedule blank just shouw card with Heading Nothing On Today's Schedule, no bottons below."* ⚠ It cost Home's only door to `/managed` (C18 took its tile) — taken anyway because /managed is a VIEW, not a capability: every row on it is reached through the Classes and Events tiles and their desks, so nothing became impossible, which is the test C31 sets |
 | C36 | — (the prototype has one studio and no organization, so it has one team desk) | **BOTH TEAM DESKS ARE ONE CONTROL**: the shared `DeskAddButton` at the TOP reading **"Add a team member"**, opening a sheet with the labels over the people picker. The organization's was a hand-rolled `div role="button"` reading "＋ Add to the team" at the FOOT of the roster, opening a card in place | 21 Sep 2026, the user: *"fix add team member for studio and organization as well."* The organization's Team desk was the one the 20 Sep "＋ on top" pass missed, so the app's two Team desks looked and behaved like two products |
-| C31 | The prototype has no subscription and no support desk | **NEITHER THE SUBSCRIPTION NOR THE DANCEOS CONVERSATION IS ON A STUDIO'S OR AN ORGANIZATION'S HOME.** The subscription is `/subscription` (Settings' own tile), one strip per studio with the studio's name on it; the conversation is Settings → Help & support | 20 Sep 2026, the user: *"remove your conversation with dance os and subscription from just the home tab for studio and organization profiles as already being handled from settings."* ⚠ **Rule 9.** The premise was true of an artist's plan and NOT of a studio's: `/subscription` sent an organization back to the hub, the hub has no cancel, and the strip on the studio's home was the only Stop renewing in the app. It MOVED rather than going, so the premise is true now. **A screen the user asks to remove is only removed once the thing it was the only door to has another one** |
+| C31 | The prototype has no subscription and no support desk | **NEITHER THE SUBSCRIPTION NOR THE DANCEOS CONVERSATION IS ON A STUDIO'S OR AN ORGANIZATION'S HOME.** The subscription is `/subscription` (Settings' own tile), one strip per studio with the studio's name on it; the conversation is Settings → Help & support | 20 Sep 2026, the user: *"remove your conversation with dance os and subscription from just the home tab for studio and organization profiles as already being handled from settings."* ⚠ **Rule 9.** The premise was true of an artist's plan and NOT of a studio's: `/subscription` sent an organization back to the hub, the hub has no cancel, and the strip on the studio's home was the only Stop renewing in the app. It MOVED rather than going, so the premise is true now. **A screen the user asks to remove is only removed once the thing it was the only door to has another one** ⚠ **The SUBSCRIPTION half is SUPERSEDED BY C51 (21 Sep 2026) on the user's own later word** — it is back on the studio's own home, one day later; the DanceOS conversation half stands |
+| C51 | C31 (20 Sep) took the subscription strip off a studio's home, and the 15 Sep hub re-cut took verification off it — each at the user's own word, and both left the studio's standing two screens up from the studio | **A STUDIO'S VERIFICATION AND ITS SUBSCRIPTION ARE ON ITS OWN HOME, AS THE REAL CONTROLS**: the form that files the request and the button that starts or stops the mandate, plus a **Refunds** door beside them. ⚠ **Rule 9** — this is the pair that decides whether a studio is on Discover AT ALL, and C31's premise was true of an ARTIST's plan (one thing, in Settings) and not of a studio's (one mandate per studio). Owner-only, and **read only for an owner**: a trainer can move neither, so the three reads behind the block are not made on their visit. The hub and `/subscription` keep theirs, which are the LIST views; Refunds was per-class until now, so a queue spread over four classes took four pages to find | 21 Sep 2026, the user: *"1. give door to verification and subscription for studio 2. Give option for refund"* — answering a question the tile audit raised, which was whether those two cuts had been worth it |
+| C52 | S_managed (6332-6378) is one list over everything a person runs, and this app built it at `/managed` with a proof of its own | **`/managed` IS AN ADDRESS, NOT A PAGE** — an organization runs EVENTS so it redirects to `/business`, everybody else's register is their classes so `/my-classes?show=manage`. ⚠ A REDIRECT and not a 404 (Rule 14). What made it redundant is the year before the decision: the Classes and Events tiles open the same rows through desks that can **act** on them. Its last door went with the empty-day pills (C35) hours earlier and no grid had named it since 19 Sep, so it was already reachable only by typing the address. ⚠ `ManagedScreen`, `repositories/managed.ts`, `types/managed.ts` and `rls-proof-managed.ps1` are **deleted**, because a branch nobody renders is where a defect hides — the dead "Where you stand with DanceOS ›" link found the same day had survived in exactly that way | 21 Sep 2026, the user: *"5. No need for it"* |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -9298,6 +9454,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The five answers, what they left (21 Sep 2026):** ⚠ **the organization-membership refusal is the APP's and not the database's** — `save_membership` takes any business whose owner is asking, so the SQL type check is owed to the next memberships migration (#0al). ⚠ **INVOICES still has no door on a studio's home**, only Refunds: it is the same shape of money and the same "any MEMBER may read it" ceiling, and Settings' row points at a business you OWN, so an organization's second studio's ledger is unreachable from anywhere but the URL. **The verification and subscription strips are the owner's, and a trainer gets no sentence** — the block is simply absent, like the Earnings tile, so a trainer cannot tell whether the studio is unverified or whether they are just not allowed to see. ⚠ **The students gate is presentation only**: `leads` and `attendance` admit every member at the ceiling, so a visiting teacher with an API client still reads the roster and its phone numbers — closing that is a policy change on two tables, and the desk says so in its own comment. **`/managed` redirects an organization to the HUB rather than its events desk**, deliberately — that address needs the hosting row's id and `my_org_business()` provisions the row on first ask, so the redirect would be a write; the cost is that an organization typing `/managed` lands one tap from its events rather than on them | S_managed 6332-6378; settings 16428-16435 | the type check with the next memberships migration; an Invoices door when the user says which half they meant; a policy change if the roster ceiling ever matters |
 | **Earnings, what the one screen left (21 Sep 2026, trimmed the same day):** ⚠ **the sums are still counted in TypeScript** behind a 4,000-row runaway guard — ONE aggregate RPC is the right answer (aggregating inside a definer function is fine; only the PostgREST path is closed) and it is a migration, so a very busy studio's YEAR view is the first thing that would go `complete: false`. **The chart has no y-axis and no value labels** — a column's numbers are in its `aria-label` and in the figures below it, which is legible on a phone and is not a chart you could read a precise figure off. **A bucket with no money is an empty column**, so a long quiet stretch looks like a broken chart rather than a quiet one. **An ARTIST PLAN is not counted as an expense anywhere** — `subscriptions.business_id` is null for one, so it cannot be attributed to a business; it stays on the person's invoice ledger. And **enquiry money is counted from `enquiry_quotes` regardless of the enquiry's own status**, so a quote marked paid on an enquiry later marked lost still counts, which is what "recorded as received" means and may not be what a studio expects — ⚠ **the user's call, left alone on their word** along with GST and TDS. ~~`MAX_PAYOUTS = 60` truncates silently~~ and ~~subscription money is not an expense~~ are **both CLOSED the same day**; ~~`/business/stats` disagrees with `/business/earnings`~~ was **NOT a disagreement** — that page says *"Studios · combined"* and **GROSS · ALL STUDIOS** with the event money in its own card below, so the two answer different questions and each says which | S_earn 17877-18205 | the aggregate RPC when migrations are being written anyway; GST, TDS and the enquiry rule are the user's |
 | **Assets, media and the Team desks, what they left (21 Sep 2026):** ⚠ **an asset has no PHOTO**, though the prototype's form does (16802-16810) — "just name type of asset and price" is the user's word, and it is a bucket, a policy and a cropper away. **No depreciation, no purchase date, no serial number, no room it lives in, no "who has it"** — the four fields are the whole record, and an inventory that cannot say WHERE a thing is will be the first thing a real studio asks for. **The total is every live asset at full value**, so a studio that bought a floor in 2016 reads its 2016 price for ever; `₹0 (legacy)` is the only nod to age. ⚠ **A trainer is redirected off the desk with no sentence** — the Earnings desk does the same, so it is consistent and it is still a silent bounce. ⚠ **No `.ps1` proof**: the dry run covered it 23/23 and the e2e drives it, but `run-proofs.ps1` globs `rls-proof-*.ps1` and there is no `rls-proof-assets.ps1`, so nothing re-checks the policy as regression cover. **Media**: the desk is now reachable only by URL, so if the user ever wants it back it is one tile — and until then `shoot-hero` is the only thing that opens it. **Team**: the three role vocabularies are still three unrelated sources (`types/staff.ts`, `OrgTeamDesk`'s local consts, `types/crew.ts`) with three colour scales, and Owner is a different amber in each; the three ways to change a role are still three widgets; `StaffDesk` still carries the dead `addBy` const and its unreachable email form, kept deliberately (#0a4) so the door can be reopened | S_assets 16791; settings 18428-18435 | a `rls-proof-assets.ps1` next time the proofs are opened; a room or a holder on an asset when a studio asks; one role vocabulary if the desks are ever opened together again |
 | **The place control, the corners and a studio's memberships, what they left (21 Sep 2026):** ⚠ **Near me is still a browser prompt with no memory** — turn it on, leave Discover, come back, and it is off, because the point lives only in the URL; the chip says "Near me · {city}" while it is on, which is the whole of the feedback. **A `near=` left in the URL on a tab that is not Studios does nothing and is not shown** — harmless, and it means a tab switch can silently drop it when a city is then picked. **The lead row is one row**: a second non-city idea (say "Everywhere") would need `CitySelect` to take a list, and the `allowNone` path is still separate from it — two mechanisms for "not a city" in one control. ⚠ **A STUDIO'S MEMBERSHIPS ARE THE OWNER'S ALONE** — a trainer pressing the tile is redirected to the studio's home with no sentence, where the Earnings desk at least has the same rule; and **an ARTIST who also owns a studio now has two addresses**, their page's on `/memberships` and each studio's on its own home, which is right and is one more thing to know. **Nothing lists a person's memberships across several studios they own** — that was what "the first business you own" was pretending to do. ⚠ **No proof or e2e covers the `?business=` refusal path** (a pointer at somebody else's studio): it is asserted by reading, by `save_membership`'s own owner check, and by nothing that runs. And **`rls-proof-memberships.ps1` does not know about the new address**, because it drives the RPCs rather than the screens | S_memberships 16846; 4507-4530 | a remembered Near me if anybody asks; a sentence for a trainer; a check on the pointer path next time the memberships proof is opened |

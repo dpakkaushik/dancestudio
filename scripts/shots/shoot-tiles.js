@@ -157,6 +157,20 @@ async function pressEveryTile(page, who, expectedNames) {
       .map((a) => ({ name: (a.textContent || "").trim(), href: a.getAttribute("href") }))
       .filter((t) => t.href && t.href.includes("/business/") && t.name));
     console.log(`\n── studio home: ${[...new Set(stiles.map((t) => t.name))].join(" · ")}`);
+    /* ⚠ WHERE THIS STUDIO STANDS, ON THIS STUDIO'S OWN HOME (21 Sep 2026, the
+       user: "give door to verification and subscription for studio" and "give
+       option for refund"). Asserted rather than inferred from the link list,
+       because these are the two states that decide whether the studio is on
+       Discover AT ALL and they had drifted two screens up — verification to the
+       hub on 15 Sep, the subscription to Settings on 20 Sep. This studio is
+       unverified and unsubscribed, which is the state both strips exist for. */
+    const shome = await p3.locator("body").innerText().catch(() => "");
+    check(shome.includes("Get this studio verified"), "studio · the VERIFICATION form is on its own home, not two screens up");
+    check(shome.includes("SUBSCRIPTION") && shome.includes("NOT LIVE"), "studio · and its SUBSCRIPTION standing beside it");
+    check(
+      stiles.some((t) => t.href === `/business/${studio.id}/refunds`),
+      "studio · and a door to Refunds — money going back out, which no tile named"
+    );
     for (const want of ["Classes", "Calendar", "Team", "Students", "Earnings", "Memberships", "Assets", "Rooms"]) {
       const t = stiles.find((x) => x.name === want);
       if (!t) { check(false, `studio · has a ${want} tile`); continue; }
