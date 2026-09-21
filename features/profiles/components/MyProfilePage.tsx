@@ -198,13 +198,13 @@ export function MyProfilePage({
           }
           avatar={face}
           avatarAlt={profile.fullName}
-          /* ── THE DISC IS THE DOOR TO THE PAGE (19 Sep 2026, the user: "clicking
-             on profile photo on any home tab should take to the profile page for
-             that user"). One address per kind, the same one the eye and the QR
-             carry — so every way into a profile lands on the same page. ── */
-          avatarHref={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`}
-          /* the corner's eye is "Public view"; the disc names the page it opens */
-          avatarLabel="Open your public page"
+          /* ⚠ THE DISC IS NO LONGER A DOOR ON THIS SCREEN (21 Sep 2026). It
+             carried "Open your public page" from 19 Sep, and that page is THIS
+             page now — `/profile` is a redirect here, so the link pointed at the
+             address it was already standing on. A control that goes where you
+             already are is the same dead thing as a tile that opens nothing.
+             ⚠ HOME'S disc still carries it, and must: Home is a different screen
+             and the profile is a real destination from there. */
           /* both pictures are changed in Edit profile (16 Sep 2026) — the
              pencil below, not a ＋ on the disc and a ✕ on each header square */
           shots={shots}
@@ -408,10 +408,14 @@ export function MyProfilePage({
            replace left `?settings=1` standing one entry back, so back re-opened
            Settings and closing it again landed on a second, identical /profile:
            the "page keeps looping" the user reported. A deep link with nothing
-           behind it is the one case that has to replace instead. */
+           behind it is the one case that has to replace instead.
+           ⚠ AND THE FALLBACK IS THIS PAGE'S OWN ADDRESS SINCE 21 Sep 2026, not
+           `/profile` — that is a redirect now, so replacing with it would have
+           sent a deep-linked Settings close on a round trip back to the page it
+           was already standing on. */
         onClose={() => {
           if (window.history.length > 1) router.back();
-          else router.replace("/profile");
+          else router.replace(isOrg ? `/org/${profile.id}` : `/person/${profile.id}`);
         }}
         role={profile.role}
         /* EDIT PROFILE IS ITS FIRST OPTION (19 Sep 2026) */

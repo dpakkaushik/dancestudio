@@ -724,7 +724,13 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       check((await discImgs(me)) === 1 && (await railImgs(me)) === 1, "profile tab: the same disc and header");
       check((await me.getByLabel("Change your photo").count()) === 0 && (await me.getByLabel(/^Remove photo/).count()) === 0, "profile tab: and the same bare hero — no ＋, no ✕");
       /* 19 Sep 2026: the disc is a door here too, and there is no rank beside the figures */
-      check((await me.getByRole("link", { name: "Open your public page", exact: true }).getAttribute("href")) === `/person/${userId}`, "profile tab: the disc opens your own public page");
+      /* ⚠ RE-CUT 21 Sep 2026 — the claim it was making no longer exists to be made.
+     `/profile` is a redirect to `/person/{me}` now, so this screen IS your public
+     address and the disc's old "Open your public page" pointed at the page it was
+     standing on. What must still be true is the pair: your own profile really is
+     served at `/person/{you}`, and the disc is not a door to nowhere. */
+  check(me.url().includes(`/person/${userId}`), "profile tab: /profile is this address now — one page per subject");
+  check((await me.getByRole("link", { name: "Open your public page", exact: true }).count()) === 0, "profile tab: and the disc is no longer a door to the page you are on");
       check((await me.getByText(/rank$/).count()) === 0, "profile tab: no rank (19 Sep 2026, the user: 'remove rank from profile tab')");
       /* and no editing at all: the pencil went into Settings and the styles and
          links kept their rows and lost their ＋ (19 Sep 2026) */
@@ -737,18 +743,33 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
          asserted — the corner gone AND the disc still opening it — because
          removing a door is only safe while the other one is there. */
       check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 0, "profile tab: NO corner — the disc opens your public page and the Share chip sends it");
-      /* the person's own PUBLIC view is what a visitor sees, and nothing else */
+      /* ⚠⚠ RE-CUT 21 Sep 2026, AND IT RECORDS A REAL LOSS RATHER THAN A MOVED
+         LOCATOR. `/person/{me}` used to draw the PUBLIC component with `isMe` —
+         your page without the owner's extras, which is as close to "what a
+         visitor sees" as this app ever offered. Your own profile is served at
+         that address now, so that preview does not exist any more: there is ONE
+         screen per subject and, for you, it is the owner's.
+         What is asserted instead is the thing the merge must not have broken —
+         the address really is your profile, it really is the OWNER's version
+         (the Settings door is on it), and it still carries no corner, which is
+         C37's rule. If a real visitor-preview is ever wanted back it is a
+         parameter on this page, not the second page that just went. */
       await me.goto(`${BASE}/person/${userId}`);
-      await me.getByTestId("person-hero").waitFor();
-      /* "This is you · Your record" is gone (19 Sep 2026): no Follow on your own page, and Stats is the chip */
-      check((await me.getByRole("button", { name: "Follow" }).count()) === 0 && (await me.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === "/stats", "public view of yourself: no Follow, and the Stats chip opens your own record");
-      check((await me.getByLabel("Change your photo").count()) === 0, "public view of yourself: no photo control — it is the view a visitor gets");
+      await me.getByTestId("my-hero").waitFor();
+      /* ⚠ `exact: true`, AND IT IS NOT PEDANTRY (21 Sep 2026) — a bare string is
+         a case-insensitive SUBSTRING match, and this screen's own figure buttons
+         are named "3 followers" and "0 following", both of which contain
+         "Follow". Without it this check reads the owner's own figures as a
+         Follow bell and fails on a page that is right. Same trap as 20 Sep's
+         "An organization does not follow", in a new coat. */
+      check((await me.getByRole("button", { name: "Follow", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === "/stats", "your own page at /person/{you}: no Follow bell, and the Stats chip opens your own record");
+      check((await me.getByTestId("my-followers").count()) === 1, "your own page at /person/{you}: it is the OWNER's version — the figures open your own lists");
       /* ⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026, the user: "no top right
          button required on profile pages"). This is the OTHER end of the loop:
          C29 put a "Your profile" door here on 20 Sep, and with Home's eye
          pointing in it cycled two screens for ever. Both names are asserted
          absent, because the corner has worn each of them. */
-      check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "public view of yourself: NO corner at all — the back chip is how you leave a page you drilled into");
+      check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "your own page at /person/{you}: NO corner at all — the back chip is how you leave a page you drilled into");
     } else {
       console.log("HEADER  the picture did not land in 25 s — is migration 20260915090000 on the database?");
       fail += 1;

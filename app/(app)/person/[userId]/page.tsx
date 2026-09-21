@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
+import { OwnProfileScreen } from "@/features/profiles/components/OwnProfileScreen";
 import { PublicPersonPage } from "@/features/profiles/components/PublicPersonPage";
 import { headerMaxFor } from "@/lib/media/photo";
 import { kindOf } from "@/types/profile";
@@ -64,9 +65,36 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
   }
   const isMe = Boolean(user) && user!.id === userId;
   const isOrg = person.profile.role === "org";
-  if (isOrg && !isMe && !(user && (await amIPlatformAdmin(supabase)))) {
-    /* an organization's public face is its own page now (18 Sep 2026) */
+  if (isOrg && !(user && !isMe && (await amIPlatformAdmin(supabase)))) {
+    /* an organization's public face is its own page (18 Sep 2026) — and since
+       21 Sep its OWN profile is there too, so the organization itself comes here
+       only to be sent on. A platform admin still reads this address: it is the
+       evidence behind a verification, which /org/{id} deliberately is not. */
     redirect(`/org/${userId}`);
+  }
+  /* ⚠ AN ARTIST'S PAGE IS MADE HERE TOO, NOT ONLY ON HOME (19 Sep 2026, the user:
+     "some artist profiles don't have enquiry button on profile"). The page every
+     ask hangs off was provisioned by Home alone, so anybody who took the plan and
+     then landed on their own profile — or was VISITED before they next opened
+     Home — had no page, and the Enquiry button was silently not drawn. Their own
+     visit makes it; a refusal is swallowed, exactly as Home swallows it, because
+     a profile must never fail to render over this.
+     ⚠ IT MOVED ABOVE THE OWNER BRANCH ON 21 Sep 2026 and that is not tidying:
+     the owner now returns early, so leaving this below would have made your own
+     visit stop provisioning the page — silently, and only findable by an artist
+     whose Enquiry button never appeared. */
+  if (isMe && person.isArtist && !person.artistPageId) {
+    const made = await ensureArtistPage(supabase, person.profile, await findMyTeams(supabase).catch(() => []));
+    if (made) redirect(`/person/${userId}`);
+  }
+  /* ⚠ YOUR OWN PROFILE IS THIS ADDRESS NOW (21 Sep 2026, the user: "reduce the
+     no. of pages per profile type without changing functionality"). `/profile`
+     used to be a second screen drawing this same person from this same read;
+     it is a redirect to here, and the owner's version is what renders — so the
+     three public-path reads below are not made for you at all, because
+     `OwnProfileScreen` asks its own fourteen. */
+  if (isMe) {
+    return <OwnProfileScreen userId={userId} loaded={person} />;
   }
   /* ⚠ AN ORGANIZATION FOLLOWS SINCE 20 Sep 2026
      (`20260920180000_an_organization_follows`), so the VIEWER's kind no longer
@@ -84,18 +112,6 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
        behind them — bought from this page, exactly as a studio's are from its */
     person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId) : Promise.resolve([]),
   ]);
-
-  /* ⚠ AN ARTIST'S PAGE IS MADE HERE TOO, NOT ONLY ON HOME (19 Sep 2026, the user:
-     "some artist profiles don't have enquiry button on profile"). The page every
-     ask hangs off was provisioned by Home alone, so anybody who took the plan and
-     then landed on their own profile — or was VISITED before they next opened
-     Home — had no page, and the Enquiry button was silently not drawn. Their own
-     visit makes it; a refusal is swallowed, exactly as Home swallows it, because
-     a profile must never fail to render over this. */
-  if (isMe && person.isArtist && !person.artistPageId) {
-    const made = await ensureArtistPage(supabase, person.profile, await findMyTeams(supabase).catch(() => []));
-    if (made) redirect(`/person/${userId}`);
-  }
 
   return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} />;
 }

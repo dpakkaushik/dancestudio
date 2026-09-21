@@ -1,6 +1,64 @@
-do# CLAUDE.md — DanceOS
+# CLAUDE.md — DanceOS
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
+
+> ### YOUR OWN PROFILE IS ITS OWN ADDRESS — ONE SCREEN FEWER PER PROFILE TYPE (21 Sep 2026, latest) — BUILT, no migration
+> The user: *"how can you reduce the no. of pages per profile type without
+> changing functionality of the app."* Then, on the plan: *"keep stats as a
+> separate page and push to live."*
+> * ⚠⚠ **1 · `/profile` AND `/person/{me}` WERE TWO ADDRESSES FOR ONE PERSON,
+>   FROM ONE READ.** Both called `findPublicPerson` on the same id; the first drew
+>   `MyProfilePage` and the second `PublicPersonPage`. That is the 20 Sep C32 bill
+>   one level up: C32 made the two SCREENS share `PersonBody` so a heading could
+>   not drift, and left the two ADDRESSES standing — so the app still had two
+>   doors to one person, and the corner that looped on 21 Sep was a symptom of
+>   exactly that. **`/profile` is a redirect now**, carrying `?settings=1` through
+>   so the gear still opens the sheet, and **`/person/{me}` renders the owner's
+>   screen**. One address per person, whoever is looking.
+> * **`features/profiles/components/OwnProfileScreen.tsx` is where the owner's
+>   fourteen reads went** — they were inline in `/profile/page.tsx`, which is why
+>   a redirect could not simply be pointed at the other route. It is a server
+>   component taking the person already read (`loaded`), so **the merge costs no
+>   round trip**: the page reads the person once and hands it over.
+> * ⚠ **AND AN ORGANIZATION'S OWN PROFILE IS `/org/{id}` FOR THE SAME REASON**,
+>   with one ordering that is load-bearing: the owner branch sits **before**
+>   `loadOrg`, because that read is `public_organization` — a definer read that
+>   answers only for a PUBLIC organization. Below it, an unverified organization
+>   would have got `notFound()` **on its own profile**, which is the worst
+>   possible place to meet a visibility rule.
+> * ⚠⚠ **AND `ensureArtistPage` HAD TO MOVE ABOVE THE OWNER'S EARLY RETURN.** It
+>   provisions the page every ask hangs off and has sat on `/person/{id}` since
+>   19 Sep precisely because Home alone was not enough. The owner now returns
+>   early — so leaving it below would have made **your own visit stop provisioning
+>   your artist page**, silently, findable only by an artist whose Enquiry button
+>   never appeared. Moved in the same edit as the return, not after a run found it.
+> * **AND THE DISC STOPPED POINTING AT THE PAGE IT IS ON.** `MyProfilePage` passed
+>   `avatarHref` to the hero — the door to your public page, which is now this
+>   page. A control that navigates to where you already are is the C37 loop in a
+>   quieter coat, so it is gone rather than re-aimed.
+> * ⚠ **WHAT THIS DELIBERATELY DOES NOT MERGE, AND WHY — the user's own call.**
+>   Stats stays its own page (*"keep stats as a separate page"*). `/business/{id}`
+>   is NOT merged into `/studio/{id}`: ten owner-only tiles on a visitor's front
+>   door is a different screen wearing the same address, which is the thing this
+>   slice exists to stop rather than to spread.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
+>   143/143** · **the happy path 19/19 in 12.0 min**, plus the other seven specs
+>   green in the full run before it.
+> * ⚠⚠ **AND THE TWO REDS WERE BOTH STALE ASSERTIONS OF MINE, AND THE SECOND ONE
+>   IS THE LESSON.** (1) `happy-path:1321` asked for `person-hero` on the
+>   trainer's own page, which now renders `my-hero`. Fair. (2) `happy-path:1552`
+>   asked for a link named **"Open your public page"** — a control I had deleted
+>   in that same edit — and **my sweep after the first red missed it because I
+>   grepped for the TEST ID and the URL rather than for the ACCESSIBLE NAME of
+>   the thing I removed.** It cost a second twelve-minute run. **When a control is
+>   deleted, the first grep is its accessible name**, which is what every locator
+>   in this suite is actually written against. The 20 Sep "diff the accessible
+>   names against HEAD" lesson, met from the other direction.
+> * ⚠ **AND `shoot-hero` MET THE SUBSTRING TRAP FOR THE THIRD TIME IN THIS REPO:**
+>   `getByRole("button", { name: "Follow" })` matched the owner screen's own
+>   **"3 followers"** and **"0 following"** figure buttons, because a bare string
+>   is a case-insensitive SUBSTRING match. `exact: true`. The rule is written down
+>   twice already and was still worth a fourth line.
 
 > ### A SECTION THAT READS AS THE OPPOSITE THEME — AND WHY TWO COLOURS WERE NOT ENOUGH (21 Sep 2026, latest) — BUILT, no migration
 > The user: *"give similar dark and light opposite theme like tools on the
@@ -4541,6 +4599,24 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **YOUR OWN PROFILE IS ITS OWN ADDRESS — 21 Sep 2026, no step number — BUILT,
+  no migration.** The user: *"how can you reduce the no. of pages per profile
+  type without changing functionality of the app"*, then *"keep stats as a
+  separate page."* `/profile` and `/person/{me}` were two addresses for one
+  person from one read — C32's bill one level up, and the loop C37 had just cut
+  was a symptom of it. `/profile` is a redirect now (carrying `?settings=1`),
+  `OwnProfileScreen` holds the owner's fourteen reads and takes the person the
+  route already read, and an organization's own profile is `/org/{id}`. Two
+  orderings are load-bearing and are written down: the owner branch above
+  `loadOrg` (or an unverified organization 404s on its own profile), and
+  `ensureArtistPage` above the owner's early return (or your own visit stops
+  provisioning your artist page, silently). Deviation row C40. **typecheck 0 ·
+  lint 0 · build green · `shoot-hero.js` 143/143 · the happy path 19/19 in
+  12.0 min.** ⚠ Both reds on the way were stale assertions of mine, and the
+  second cost a whole run because my sweep grepped for the test id rather than
+  for the **accessible name of the control I had deleted** — which is what every
+  locator in the suite is written against.
+
 - **A SECTION THAT READS AS THE OPPOSITE THEME — 21 Sep 2026, no step number —
   BUILT, no migration.** The user asked Discover's shelf for the treatment the
   tools grid got, and the tools panel could not carry it: it painted two colours,
@@ -8376,6 +8452,7 @@ Home. **Do not "restore parity" on these.**
 | C37 | C2 (15 Sep) made every home's corner an EYE to its public page, and C29 (20 Sep) put a corner on the public page pointing back | ⚠ **A CORNER EXISTS ON A HOME AND POINTS AT THE PROFILE TAB; NO PROFILE SURFACE HAS ONE** — not `/person`, `/org`, `/studio`, `/crew`, and not `/profile` either. The two controls pointed at each other, so the corner cycled two screens for ever — on a person's home, a studio's and a crew's alike. The public page is reached by the **Share chip** on any home, and by the **disc** on the Profile tab, whose name is already "Open your public page" | 21 Sep 2026, the user: *"the top right button on all home tabs should just take to the user profile right now its looping between student record and profile from that top right section"*, *"no top right button required on profile pages"*, and then *"i guess profile tab and profile page are the same thing?"* — which is what took the tab's eye as well. **This supersedes C29, which was a real fix for a real complaint and created a worse one**: a door added to answer "there is no way back" must be checked against the door that brought you |
 | C38 | The action row (Enquiry · Call · Mail · Location) is the public page's alone — C32 (20 Sep) lists it among the things each screen keeps for itself | **THE SAME ROW SITS ABOVE THE SCHEDULE ON EVERY SURFACE THAT DRAWS A PROFILE** — Home, the Profile tab, a studio's home and a crew's home — in the same order, from the same fields, with Enquiry drawn and DISABLED with its reason | 21 Sep 2026, the user: *"buttons above schedule should also be visible on the home tab in the same way as profile"*, then *"check for all types of profiles"*. ⚠ The Profile tab was included though only Home was named: leaving it out would have made the tab the one person-surface without the row, which is the drift C32 exists to end. A plain user's row is still not drawn at all, because they have no business for an ask to land on |
 | C39 | Discover's shelf sits on the page's own ground under a 15px head (S_discover 4787-4806) | **THE SHELF WEARS THE TOOLS PANEL'S SQUIRCLE, INVERTED AGAINST THE THEME** — the head, the cards, the pager and the empty state, on every one of the five tabs. ⚠ **And the panel had to change to carry it.** A tool tile is an opaque gradient and survives any ground; every card on Discover stands on `--card` — an ALPHA veil tuned for the page — and prints its name in `--text`, **which is the exact token the two-colour panel used as its ground**. Dropped in as it was, every studio, artist, crew, class and event card would have been 1:1 against the panel: invisible, in both themes. `components/ui/InvertedPanel.tsx` swaps the WHOLE palette for its subtree (`--solid --card --el --text --sub --muted`), so every component that reads `lib/design/tokens` is correct inside with no change of its own — and `ToolsPanel` stands on it too, rather than keeping a second copy of the idea. ⚠ **A second half, because CSS could not reach it:** `useDosDark` asks the `<html>` class so a class tile can walk a style's colour toward the ink it will sit on, and the html class does not change inside a panel — so the panel flips that answer through a React context, once, for every component that ever reads it. | 21 Sep 2026, the user: *"give similar dark and light opposite theme like tools on the discover tab for section under the follwed by you section."* |
+| C40 | S_profiletab is ONE screen behind a flag (`publicEntity`), and this app built it as two components at two addresses — `/profile` and `/person/{id}` — both reading the same person from the same call (C32, 20 Sep, made them share `PersonBody` and left the two addresses standing) | **YOUR OWN PROFILE IS `/person/{id}`, AND `/org/{id}` FOR AN ORGANIZATION.** `/profile` is a redirect (carrying `?settings=1`, so the gear still opens the sheet) and `OwnProfileScreen` is the owner's version of the one address, taking the person the route already read so the merge costs no round trip. ⚠ **Two orderings are load-bearing**: the owner branch sits ABOVE `loadOrg`, because that read answers only for a PUBLIC organization and an unverified one would otherwise 404 on its own profile; and `ensureArtistPage` sits ABOVE the owner's early return, or your own visit silently stops provisioning your artist page. ⚠ The hero's `avatarHref` went too — it pointed at the page it is on, which is C37's loop in a quieter coat. **Not merged, deliberately:** Stats keeps its own page (the user's call), and `/business/{id}` is NOT folded into `/studio/{id}` — ten owner-only tiles on a visitor's front door is a different screen wearing one address | 21 Sep 2026, the user: *"how can you reduce the no. of pages per profile type without changing functionality of the app"*, then *"keep stats as a separate page and push to live"* |
 | C29 | S_profiletab's own "This is you · Your record ›" is the only thing marking your own page, and the prototype has no door back | ~~**A CORNER DOOR BACK FROM YOUR OWN PUBLIC PAGE**~~ **— SUPERSEDED BY C37 (21 Sep 2026): it made a two-screen loop with the eye that opened the page.** Kept as the record of why it existed (`PersonIcon` in the same `cornerChip` the eye uses) — on a person's, an organization's, a studio's and a crew's | 20 Sep 2026, the user: *"when looking at your own profile from somewhere should also look same as profile page. that breaks a lot of times."* The eye has gone one way since 15 Sep and nothing came back, so landing on your own page from a row deep in the app left the back chip as the only exit — and after three hops that is not where you came from. Two other differences went in the same breath: `PublicPersonPage`'s eyebrow moved onto `KIND_WORD` (**`KIND_BADGE` is deleted**) and the disabled Follow bell on your own page is not drawn |
 | C30 | A desk's shelf head carries its count beside the heading (`DosShelfHead`, 3446) | **NO FLOATING COUNT UNDER A TOOL HERO** — `/my-classes`, `/my-events` and the Routines desk lost theirs; the counts INSIDE a shelf head stay | 20 Sep 2026, the user, circling "5 on your page": *"similar figures need to be removed from all pages in the app inside the home tab for all profiles."* The segments above already carried the same number, one row higher, in larger type — the 19 Sep move that put the total "over the list it counts" and the move that put counts into the toggles happened in the same breath, and together they made a duplicate |
 | C32 | The prototype's Profile tab (S_profiletab 10565-11400) and its public `publicEntity` render are ONE screen behind a flag, and this app built them as two components — `MyProfilePage` and `PublicPersonPage` — drawing the same person from the same read | **`PersonBody` and `EntityBand` are shared by both.** Everything under the hero — **Schedule, then what is on sale, then the associations** — is one component, and the Profile tab draws the band through `EntityBand` like the other four screens. What each keeps is only its own: the Follow bell, the Enquiry row and the report link on the public page; the Settings sheet, the follow sheets, the corner eye and an organization's studios on the tab. ⚠ SCHEDULE IS ALWAYS ABOVE MEMBERSHIPS, everywhere. ⚠ "Teaches at" and "Runs" are gone from the tab — the shared headings are **Studios taught at · Studios associated with · Artists associated with · Crews**, and an owner's seat on an unlisted studio is still reachable through the hub | 20 Sep 2026, the user's third report of it: *"FOR SOME REASON YOU ARE NOT ABLE TO FIX THE DIFFERENCE IN PROFILES. FIX IT PERMANENTLY."* Two components drawing one person is why it kept coming back — every fix had to be made twice and one was always missed. The five drifts are listed in `PersonBody`'s own comment |

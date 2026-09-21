@@ -1433,15 +1433,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto(`/crew/${crewId}`);
     await trainer.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
     await trainer.waitForURL(/\/person\/[0-9a-f-]+$/);
-    /* "This is you · Your record ›" is GONE (19 Sep 2026, the user: "remove This is
-       your record … from profile page"): your own page offers no Follow, and the
-       Stats chip beside the QR opens your own record */
-    await expect(trainer.getByTestId("person-hero")).toBeVisible();
+    /* ⚠⚠ RE-CUT 21 Sep 2026, AND IT IS A REAL CHANGE RATHER THAN A MOVED
+       LOCATOR. `/person/{me}` drew the PUBLIC component with `isMe` until today —
+       your page minus the owner's extras. Your own profile is served at that
+       address now (`/profile` is a redirect to it), so the hero here is the
+       OWNER's, `my-hero`, and that preview of "what a visitor sees" no longer
+       exists as a screen. What must still hold is asserted instead: the door off
+       the crew roster lands on the person, it is your own version, and the two
+       things 19 Sep took off it are still off — no Follow on yourself, and Stats
+       opens your own record.
+       ⚠ `exact: true` on Follow is load-bearing: the owner's figure buttons are
+       named "N followers" and "N following", and a bare string matches by
+       SUBSTRING. */
+    await expect(trainer.getByTestId("my-hero")).toBeVisible();
     await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", "/stats");
     await expect(trainer.getByRole("button", { name: "Follow", exact: true })).toHaveCount(0);
-    // ⚠ and the public view of yourself offers NO photo control (16 Sep 2026):
-    // this page is what the eye in the tab bar opens, so it is what a visitor
-    // sees and nothing else
+    // ⚠ and no photo control here either (16 Sep 2026): a picture is changed
+    // behind the disc on HOME, and this screen only ever shows it
     await expect(trainer.getByLabel("Change your photo")).toHaveCount(0);
     /* ⚠ THE PICTURES ARE BEHIND THE DISC ON HOME NOW (19 Sep 2026, the user:
        "Profile Pic and Top bar Photo column only editable from home tab and
@@ -1571,7 +1579,15 @@ test.describe.serial("DanceOS, end to end", () => {
        both halves are checked. */
     await expect(trainer.getByRole("button", { name: "Edit profile", exact: true })).toHaveCount(0);
     await expect(trainer.getByRole("link", { name: "Public view" })).toHaveCount(0);
-    await expect(trainer.getByRole("link", { name: "Open your public page", exact: true })).toBeVisible();
+    /* ⚠ RE-CUT 21 Sep 2026 — WRITTEN THIS MORNING AND ALREADY STALE, which is the
+       point worth keeping. When the corner's eye came off, this line was added to
+       prove the door it replaced still existed: the disc, named "Open your public
+       page". The profile merge later the same day made THIS page that address, so
+       the disc pointed at what it was standing on and the link went. The claim
+       underneath survives the control that carried it — you can still reach your
+       public address, because you are on it — and that is what is asserted. */
+    await expect(trainer.getByRole("link", { name: "Open your public page", exact: true })).toHaveCount(0);
+    await expect(trainer).toHaveURL(/\/person\/[0-9a-f-]+$/);
     // Edit profile: a date of birth, from Settings.
     // ⚠ NO BIO SINCE 20 Sep 2026 (the user: "Remove bio from all profiles") — the
     // field is off both Edit sheets and `BioBlock` is deleted. The sheet is

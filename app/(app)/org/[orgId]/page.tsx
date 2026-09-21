@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { OrganizationPublicPage } from "@/features/profiles/components/OrganizationPublicPage";
+import { OwnProfileScreen } from "@/features/profiles/components/OwnProfileScreen";
 import { dayKeyOf } from "@/lib/format/month";
 import { HEADER_MAX_ORG } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -37,15 +38,24 @@ export default async function OrganizationPage({ params }: { params: Promise<{ o
   if (!UUID_RE.test(orgId)) {
     notFound();
   }
-  const org = await loadOrg(orgId);
-  if (!org) {
-    notFound();
-  }
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const isMe = Boolean(user) && user!.id === orgId;
+  /* ⚠ THE OWNER BRANCH COMES BEFORE THE PUBLIC READ, AND THAT ORDER IS THE WHOLE
+     POINT (21 Sep 2026). An organization's own profile lives here now — `/profile`
+     is a redirect to it — and `findPublicOrganization` is a DEFINER read that
+     answers only for a PUBLIC organization. Read it first and every organization
+     that is not verified yet would have got `notFound()` on its OWN profile,
+     which is precisely the account most likely to be looking at it. */
+  if (isMe) {
+    return <OwnProfileScreen userId={orgId} />;
+  }
+  const org = await loadOrg(orgId);
+  if (!org) {
+    notFound();
+  }
   const today = dayKeyOf(stampNowIso());
   /* ⚠ THE VIEWER'S OWN PROFILE IS NO LONGER READ HERE (20 Sep 2026). It was
      fetched for one reason — "an organization viewer follows nothing", so the
