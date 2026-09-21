@@ -71,6 +71,11 @@ export interface TenantPayLedger {
   paidTotal: number;
   inTransitTotal: number;
   payouts: PayoutRecord[];
+  /** ⚠ false when one of this read's four guards was filled (21 Sep 2026): the
+   *  totals above are then SHORT, and the desk says so rather than printing a
+   *  figure that looks finished — the rule the income side has followed since
+   *  28 Aug and this half did not. */
+  complete: boolean;
 }
 
 /** One studio's line on a teacher's own earnings screen — the prototype's

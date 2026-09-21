@@ -89,7 +89,7 @@ export async function findBusinessEarnings(
   if (businessIds.length === 0) return assemble(period, keys, [], [], true);
   const fromDay = from.slice(0, 10);
 
-  const [payments, refunds, payouts, assets, quotes] = await Promise.all([
+  const [payments, refunds, payouts, assets, quotes, subs] = await Promise.all([
     /* what students paid — the three subjects an order can name (the CHECK
        `orders_subject_check`), so Classes is the residual once the other two
        are taken out, exactly as `findTenantIncome` reads it.
@@ -146,9 +146,29 @@ export async function findBusinessEarnings(
       .in("business_id", businessIds)
       .is("deleted_at", null)
       .limit(MAX_ROWS),
+    /* ⚠ WHAT THE STUDIO PAYS DANCEOS IS AN EXPENSE, and it had never appeared on
+       any ledger (21 Sep 2026). A studio is ₹1,200 a month and the row is real —
+       but `payments.business_id` is NULL for a subscription payment
+       (`20260912140000` writes it that way), so it is reached through the
+       SUBSCRIPTION, which is the thing that knows which studio it is for. Hence
+       `!inner`: the filter is on the embedded row, so a payment whose
+       subscription is not one of these businesses' is not returned at all.
+       ⚠ An ARTIST plan is deliberately NOT here: `subscriptions.business_id` is
+       null for one, because it belongs to the PERSON rather than to their page —
+       so it cannot be attributed to a business, and guessing would be worse than
+       leaving it on their own invoice ledger where it already is. */
+    supabase
+      .from("payments")
+      .select("amount_inr, created_at, subscriptions!inner (business_id)")
+      .in("kind", ["subscription_auth", "subscription_charge"])
+      .eq("status", "captured")
+      .is("deleted_at", null)
+      .in("subscriptions.business_id", businessIds)
+      .gte("created_at", from)
+      .limit(MAX_ROWS),
   ]);
 
-  for (const r of [payments, refunds, payouts, assets, quotes]) {
+  for (const r of [payments, refunds, payouts, assets, quotes, subs]) {
     if (r.error) throw r.error;
   }
   const complete =
@@ -156,7 +176,8 @@ export async function findBusinessEarnings(
     (refunds.data?.length ?? 0) < MAX_ROWS &&
     (payouts.data?.length ?? 0) < MAX_ROWS &&
     (assets.data?.length ?? 0) < MAX_ROWS &&
-    (quotes.data?.length ?? 0) < MAX_ROWS;
+    (quotes.data?.length ?? 0) < MAX_ROWS &&
+    (subs.data?.length ?? 0) < MAX_ROWS;
 
   const classes: Bucketed = new Map();
   const memberships: Bucketed = new Map();
@@ -165,6 +186,7 @@ export async function findBusinessEarnings(
   const pay: Bucketed = new Map();
   const refunded: Bucketed = new Map();
   const bought: Bucketed = new Map();
+  const plan: Bucketed = new Map();
 
   /* ⚠ PostgREST TYPES A TO-ONE EMBED AS AN ARRAY though it returns an object —
      so the subject is read through a normaliser rather than cast past the
@@ -207,6 +229,10 @@ export async function findBusinessEarnings(
     if (q.full_paid_at) add(enquiries, bucketKeyOf(q.full_paid_at, period), Math.max(0, q.cost_inr - q.advance_inr));
   }
 
+  for (const s of (subs.data ?? []) as Array<{ amount_inr: number; created_at: string }>) {
+    add(plan, bucketKeyOf(s.created_at, period), s.amount_inr);
+  }
+
   const one = businessIds.length === 1 ? businessIds[0] : null;
   return assemble(
     period,
@@ -221,6 +247,7 @@ export async function findBusinessEarnings(
       { key: "pay", label: "What you paid your people", by: pay, href: one ? `/business/${one}/earnings` : undefined },
       { key: "refunds", label: "Refunds", by: refunded, href: one ? `/business/${one}/refunds` : undefined },
       { key: "assets", label: "Assets bought", by: bought, note: "counted in the period it was added", href: one ? `/business/${one}/assets` : undefined },
+      { key: "plan", label: "DanceOS subscription", by: plan, note: "what this studio pays to be on Discover", href: "/subscription" },
     ],
     complete
   );

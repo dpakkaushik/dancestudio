@@ -93,6 +93,23 @@ async function rest(method, pathname, body) {
       business_id: businessId, name: `Earn Mirrors ${stamp}`, category: "Mirrors", value_inr: 0,
       created_by: userId, updated_by: userId,
     });
+    /* ⚠ WHAT THE STUDIO PAYS DANCEOS — ₹1,200 for the studio plan. The payment
+       row carries NO business_id (that is how `20260912140000` writes one), so
+       the earnings read has to reach it through the SUBSCRIPTION, with an
+       embedded `!inner` filter. A query shaped like that fails at RUNTIME, never
+       at compile — PostgREST answers 300 for an ambiguous embed and 400 for a
+       bad filter — so it is driven here rather than trusted. */
+    const [sub] = await rest("POST", "/rest/v1/subscriptions", {
+      kind: "studio", user_id: userId, business_id: businessId, plan_key: "studio_monthly",
+      price_inr: 1200, period: "monthly", status: "active", granted: false,
+      current_period_start: today, current_period_end: today,
+      created_by: userId, updated_by: userId,
+    });
+    await rest("POST", "/rest/v1/payments", {
+      subscription_id: sub.id, user_id: userId, amount_inr: 1200, status: "captured",
+      kind: "subscription_charge", method: "upi", provider: "cashfree",
+      provider_payment_id: `earnsub_${stamp}`, created_by: userId, updated_by: userId,
+    });
 
     const page = await b.newPage({ viewport: { width: 420, height: 1000 } });
     page.on("pageerror", (e) => { console.log("PAGEERROR " + e.message); bad++; });
@@ -122,15 +139,17 @@ async function rest(method, pathname, body) {
     const rev = (await page.getByTestId("earn-revenue").innerText()).trim();
     const exp = (await page.getByTestId("earn-expenses").innerText()).trim();
     const left = (await page.getByTestId("earn-left").innerText()).trim();
+    /* ₹1,000 payout + ₹500 asset + ₹1,200 DanceOS subscription = ₹2,700 out */
     check(rev === rupees(3000), `studio · REVENUE reads ${rupees(3000)} (read ${rev})`);
-    check(exp === rupees(1500), `studio · EXPENSES reads ${rupees(1500)} — the payout AND the asset (read ${exp})`);
-    check(left === rupees(1500), `studio · WHAT IS LEFT is revenue − expenses (read ${left})`);
+    check(exp === rupees(2700), `studio · EXPENSES reads ${rupees(2700)} — the payout, the asset AND the subscription (read ${exp})`);
+    check(left === rupees(300), `studio · WHAT IS LEFT is revenue − expenses (read ${left})`);
 
     const lines = await page.getByTestId("earn-line").allInnerTexts();
     const joined = lines.join(" | ");
     check(/Classes/.test(joined), "studio · the revenue breakup names Classes");
     check(/What you paid your people/.test(joined), "studio · the expense breakup names what you paid your people");
     check(/Assets bought/.test(joined), "studio · and Assets bought — the price linked to expenses (21 Sep)");
+    check(/DanceOS subscription/.test(joined), "studio · and the DanceOS subscription — what it pays to be on Discover, an expense no ledger had ever shown");
     check(!/Earn Mirrors/.test(joined) && /₹500/.test(joined), "studio · the ₹0 legacy asset adds nothing — only the ₹500 one is counted");
 
     // the four period filters are links, so the period is in the URL
@@ -141,7 +160,7 @@ async function rest(method, pathname, body) {
     await page.waitForURL(/period=year/, { timeout: 15000 });
     check(/period=year/.test(page.url()), "studio · picking a period puts it in the URL — shareable, and it survives a navigation");
     const yearLeft = (await page.getByTestId("earn-left").innerText()).trim();
-    check(yearLeft === rupees(1500), `studio · and a wider window still nets the same money (read ${yearLeft})`);
+    check(yearLeft === rupees(300), `studio · and a wider window still nets the same money (read ${yearLeft})`);
 
     // the chart: one column per bucket, and the toggles
     await page.goto(`${BASE}/business/${businessId}/earnings?period=day`, { waitUntil: "networkidle" });
@@ -163,7 +182,7 @@ async function rest(method, pathname, body) {
     await page.goto(`${BASE}/business/earnings?period=day`, { waitUntil: "networkidle" });
     await page.getByRole("heading", { level: 1, name: "Earnings" }).waitFor({ timeout: 20000 });
     const orgLeft = (await page.getByTestId("earn-left").innerText()).trim();
-    check(orgLeft === rupees(1500), `org · combined nets the same ${rupees(1500)} (read ${orgLeft})`);
+    check(orgLeft === rupees(300), `org · combined nets the same ${rupees(300)} (read ${orgLeft})`);
     check((await page.getByTestId("earn-expenses").count()) === 1, "org · and it HAS an expense side, which it never had before 21 Sep");
 
     // ───────────────── a person's own ─────────────────

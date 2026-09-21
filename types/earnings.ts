@@ -48,6 +48,7 @@ export const EARNING_TINT: Record<string, string> = {
   pay: "#9A3412",
   refunds: "#F87171",
   assets: "#64748B",
+  plan: "#A855F7",
 };
 
 /** one column of the chart — already bucketed, oldest first */

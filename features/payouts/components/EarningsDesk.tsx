@@ -326,6 +326,13 @@ export function EarningsDesk({
             </div>
           )}
 
+          {/* the pay ledger's own guards, reported the way the income side's are */}
+          {ledger.complete ? null : (
+            <div role="status" style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "12px 14px", fontSize: 11, color: GOLD, lineHeight: 1.5, marginBottom: 10 }}>
+              Counting the most recent rows only — these pay totals are not the whole history.
+            </div>
+          )}
+
           {ledger.people.length === 0 ? (
             <div
               style={{

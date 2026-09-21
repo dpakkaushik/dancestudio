@@ -28,7 +28,13 @@ const accrualCutoff = (claimDeletedAt: string | null, nowIso: string): string =>
 const MAX_CLAIMS = 500;
 const MAX_SESSIONS = 2000;
 const MAX_LINES = 4000;
-const MAX_PAYOUTS = 60;
+/** ⚠ WAS 60, AND 60 IS A PAGE SIZE PRETENDING TO BE A GUARD (21 Sep 2026).
+ *  `paidTotal` and `inTransitTotal` are SUMMED off this read, so a studio that
+ *  had recorded a 61st payment got a "Settled" figure that was quietly short —
+ *  and unlike the income side's 4,000 there was no `complete` flag to say so.
+ *  The card states ONE total, so a partial sum is a wrong number rather than a
+ *  short list (the 28 Aug rule). It is a real guard now, and it is reported. */
+const MAX_PAYOUTS = 4000;
 
 interface ClaimRow {
   id: string;
@@ -212,6 +218,15 @@ export async function findTenantPayLedger(
       .filter((p) => p.status !== "done")
       .reduce((a, p) => a + p.amountInr, 0),
     payouts,
+    /* ⚠ REPORTED, LIKE THE INCOME SIDE'S (21 Sep 2026). Four reads here are
+       capped and none of them said so, while `findTenantIncome` has surfaced
+       `complete` since 28 Aug — so a studio big enough to fill a guard read a
+       short total on this half and a warned one on the other. */
+    complete:
+      (claimsRes.data?.length ?? 0) < MAX_CLAIMS &&
+      (sessionsRes.data?.length ?? 0) < MAX_SESSIONS &&
+      (linesRes.data?.length ?? 0) < MAX_LINES &&
+      (payoutsRes.data?.length ?? 0) < MAX_PAYOUTS,
   };
 }
 
