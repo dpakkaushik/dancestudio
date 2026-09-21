@@ -225,7 +225,17 @@ export function StudioHome({
             chips={
               <>
                 {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */}
-                <StatsChip href="/stats?tab=charts&seg=studio" />
+                {/* ⚠ THIS STUDIO'S BOARD, NOT THE PERSON'S (21 Sep 2026). It pointed
+                at `/stats?tab=charts&seg=studio`, which is the PERSON's stats
+                screen (`findMyStats`, `findMyPlace(…, "dancer")`) opened on the
+                studios leaderboard — not this studio's figures, and not scoped
+                to this studio at all: `seg` only picks which chart to draw. So
+                the chip on a studio's own home answered a question about YOU.
+                `/studio/{id}/stats` is the page built for exactly this on
+                19 Sep (R29) and nothing had ever opened it from here. The
+                organization's chip has pointed at its own board all along, which
+                is what made the difference visible. */}
+            <StatsChip href={`/studio/${tenant.id}/stats`} />
                 <ProfileShare path={`/studio/${tenant.id}`} name={tenant.name} />
                 <ProfileLink path={`/studio/${tenant.id}`} name={tenant.name} />
               </>

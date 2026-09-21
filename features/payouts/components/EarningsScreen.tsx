@@ -161,12 +161,24 @@ export function EarningsScreen({
         {selected ? bucketLabelOf(selected, report.period).toUpperCase() : ""}
       </div>
 
+      {/* ⚠ A PERSON IS NOT A SELLER, AND THE EMPTY STATE SAID THEY WERE
+          (21 Sep 2026, found auditing my own screen from this morning). A person
+          has exactly ONE possible revenue line — "Paid by studios" — and a line
+          worth nothing is dropped, so EVERY brand-new user read *"When somebody
+          books a class, takes a membership or buys a ticket…"* about a business
+          they do not have, a few pixels above `MyEarnings`' own correct sentence
+          saying the opposite. `noExpenses` already knew a person is different;
+          this half did not. */}
       <Breakup
         title="REVENUE"
         lines={here.revenue}
         total={revenue}
         tone="#22C55E"
-        empty="Nothing came in this time. When somebody books a class, takes a membership or buys a ticket, it shows up here — each source on its own."
+        empty={
+          noExpenses
+            ? "Nothing yet. Once a studio puts you on a class and it runs, what you have earned shows up here."
+            : "Nothing came in this time. When somebody books a class, takes a membership or buys a ticket, it shows up here — each source on its own."
+        }
       />
 
       {noExpenses ? null : (

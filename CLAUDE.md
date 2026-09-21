@@ -2,6 +2,92 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
+> ### EVERY TILE ON EVERY HOME, PRESSED — EIGHT DOORS THAT WERE NOT DOORS (21 Sep 2026, latest) — BUILT, no migration
+> The user: *"Check for all functions on home tab for all profile types and see
+> whether they are working as intended … please let me know if any gaps let me
+> help you with that. fix regular ones on your own."* So: an audit of all four
+> grids, the regular gaps fixed, and the decisions handed back.
+> * **THE MECHANICAL ANSWER FIRST, AND IT WAS CLEAN.** Every tile target route
+>   exists, and ⚠ **`NotBuiltYet` has no caller left anywhere in the app** —
+>   assets and memberships were the last two shrugs, both closed earlier today.
+>   A new **`scripts/shots/shoot-tiles.js`** makes a fresh, EMPTY account of each
+>   kind and **presses every tile**, recording the status, the landing path and
+>   the `<h1>`: **60/60**. Empty is the state most likely to be broken and least
+>   likely to be clicked in development, which is why the probe uses it.
+> * ⚠⚠ **1 · A PLAIN USER HAD NO MEMBERSHIPS DOOR, AND THEY ARE WHO A MEMBERSHIP
+>   IS FOR.** `my_memberships()` is scoped to `auth.uid()` with no artist check
+>   and `why_no_membership` refuses only somebody on the seller's own team — a
+>   user is precisely the intended buyer. The tile was on the ARTIST's list
+>   alone. Three edges, all real: the buy toast says **"find it under
+>   Memberships"** and there was no such thing on their Home; the progress bar
+>   that is the whole point of a pass was unreachable; and ⚠ **a pass left at
+>   `pending_payment` when the Cashfree window closed could not be paid for**,
+>   because the "Pay ₹X" button that resumes it exists only on that screen.
+> * ⚠⚠ **2 · A STUDIO'S STATS CHIP OPENED THE PERSON'S LEADERBOARD.**
+>   `/stats?tab=charts&seg=studio` is `findMyStats` / `findMyPlace(…, "dancer")`
+>   — YOUR record, on the studios board — so the chip on a studio's own home
+>   answered a question about you, and `seg` only picks which chart to draw.
+>   `/studio/{id}/stats` was built for exactly this on 19 Sep (R29) and **nothing
+>   had ever opened it.** The organization's chip has pointed at its own board all
+>   along, which is what made the difference findable.
+> * ⚠ **3 · MEMBERSHIPS AND ASSETS TILES WERE DRAWN FOR NON-OWNERS AND SILENTLY
+>   BOUNCED.** Both desks redirect a non-owner back to the home they pressed from;
+>   Earnings, on the line between them, has been `...(isOwner ? […] : [])` since
+>   18 Sep. **A door that would be refused is not offered.**
+> * ⚠⚠ **4 · "CREATE CLASS" WAS OFFERED TO EVERY MEMBER.** Creating became the
+>   owner's alone on 18 Sep — *"Until today a trainer could"* — and the pill went
+>   on being drawn for Faculty, a visiting teacher, an assistant and the front
+>   desk, each of whom opened a two-step form and was refused at Save.
+>   ⚠ `why_no_class` cannot catch it and never could: it asks about the BUSINESS
+>   (its type, its artist's plan), never about who is asking.
+> * ⚠ **5 · THE WHOLE ROOMS EDITOR WAS DRAWN FOR SEATS RLS REFUSES.**
+>   `RoomsManager` took no role at all, so the ＋, the ✕ and every amenity toggle
+>   were live for anybody on the team while the two policies on `rooms` admit an
+>   owner or a trainer. The fields are read-only and the controls are gone for
+>   the rest, with one line saying whose they are.
+> * ⚠⚠ **6 · SETTINGS' PAYMENTS, INVOICES AND REFUNDS ADDRESSED A BUSINESS YOU DO
+>   NOT OWN.** `OwnProfileScreen` picked `businesses[0]` — the first business you
+>   are on the TEAM of — so a person who teaches somewhere and owns nothing had
+>   those three rows pointing at **somebody else's studio**. ⚠ Not merely a
+>   bounced link: `/business/{id}/invoices` admits any MEMBER, so it opened that
+>   studio's invoice ledger. **It is the "first business you own" bug in its third
+>   costume** — the memberships desk was rebuilt this morning to kill exactly this
+>   shape, and this instance was one read away from it the whole time. The read is
+>   `findMyMemberships` now, so the pick can be owner-only; ⚠ `scheduleHref` keeps
+>   the old rule ON PURPOSE, because a schedule is a public page and pointing at
+>   one you teach at is a reasonable thing for your own Schedule button to do.
+> * **7 · AND MY OWN BUG FROM THIS MORNING.** `/earnings` printed a SELLER's empty
+>   state to a person — *"When somebody books a class, takes a membership or buys
+>   a ticket…"* — a few pixels above `MyEarnings`' own correct sentence saying the
+>   opposite. A person has exactly one possible revenue line and a line worth
+>   nothing is dropped, so EVERY brand-new user read it. `noExpenses` already knew
+>   a person is different; the revenue half did not.
+> * **8 · A DEAD DOOR**, "Where you stand with DanceOS ›" → `/`, pointing at
+>   Home's standing card that was deleted on 11 Sep. ⚠ Unreachable today because
+>   the gate returns null for every organization — **which is exactly why it
+>   survived: a branch nobody renders is where a broken promise hides.**
+> * ⚠⚠ **AND ONE REPORTED DEFECT WAS NOT ONE, WHICH CHECKING IS WHAT SHOWED.** The
+>   audit said `MEMBER_POWERS` wrongly tells an owner that a trainer cannot
+>   "Create and edit classes", citing `20260819080000`'s `member_role in
+>   ('owner','trainer')`. That definition was **superseded on 18 Sep** by
+>   `is_business_owner` — so the permissions sheet is RIGHT and the BUTTON was
+>   wrong. **Reading a superseded migration is how a correct line gets
+>   "fixed"**, and the check is what turned defect 4 from "assistants see a
+>   refused button" into "every member does".
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-tiles.js`
+>   60/60** · **`shoot-hero.js` 155/155** · **`shoot-earnings.js` 24/24** ·
+>   the happy path **20/20** · **the whole e2e suite 58/58 in 18.3 min** on one
+>   worker, no red at any point.
+> * ⚠ **AND A RED ON THE WAY THAT WAS THE MACHINE, FOR THE FOURTH TIME TODAY.**
+>   A whole-suite run lost the Profile-tab segment and hid nine behind it; the
+>   same spec then ran **20/20** on the rebuilt tree with the fixes IN. ⚠ The
+>   background runner keeps only the reporter's tail, so **the failure's detail
+>   was gone by the time I read it** — the re-run was the only way to learn
+>   anything. Three builds, three probes and a suite had been sharing this
+>   machine; the run that finally passed took 18.3 min against 6.2 earlier in the
+>   day, which is the tell. **A red on a busy machine is not evidence** (11 Sep),
+>   and a red whose message you cannot read is not even a lead.
+
 > ### EARNINGS IS ONE SCREEN, WITH A PERIOD, A GRAPH, AND WHAT IS LEFT (21 Sep 2026, latest) — BUILT, no migration
 > The user: *"with assets just need price to be linked with expenses in earnings,
 > no separate association of asset is required. Now lets fix earnings for all
@@ -4404,6 +4490,35 @@ summary; the report has the evidence.
 ```
    then push `main` and read it back off the deployment.
 
+0al. **⚠ FIVE HOME-TAB DECISIONS THAT ARE THE USER'S, HANDED BACK 21 Sep 2026**
+   (their own words: *"please let me know if any gaps let me help you with
+   that"*). Every one was found by the four-grid audit; none is a bug, and each
+   would be a change to what the product IS rather than a fix:
+   * **A studio's own home has no door to its VERIFICATION or its SUBSCRIPTION.**
+     Both were deliberately removed — verification on 15 Sep when one card per
+     studio collapsed the hub, the subscription strip on 20 Sep at the user's
+     *"remove … subscription from just the home tab for studio and organization
+     profiles as already being handled from settings"*. ⚠ The consequence is that
+     the state deciding whether a studio is on Discover **at all** now lives two
+     screens up. One strip back is one line; it is the user's call.
+   * **A studio's own home has no door to its REFUNDS or its INVOICES**, though
+     `/business/{id}/refunds` and `/business/{id}/invoices` both exist and are
+     that studio's money. On the grid, on the Earnings desk (where
+     `selfEarningsHref` sets the precedent), or left in Settings?
+   * **CAN AN ORGANIZATION SELL MEMBERSHIPS?** `save_membership` admits a business
+     OWNER with **no type check**, and an organization owns its hosting row — so
+     the capability exists. But that row is `unlisted` for ever, so nothing could
+     ever be bought. ⚠ It half-exists: either give it a real surface (an org-wide
+     pass across its studios) or have the database refuse it outright.
+   * **SHOULD A VISITING TEACHER OR AN ASSISTANT SEE A STUDIO'S STUDENTS?**
+     `/business/{id}/students` is membership-only, so they read the whole roster
+     with phone numbers — while `MEMBER_POWER_NOTE` claims students for `staff`
+     and `trainer` and says nothing of the kind for those two. The app's own
+     permissions text and its code disagree; which is right is a privacy call.
+   * **`/managed` HAS NO DOOR AT ALL** since the empty-day card landed on 21 Sep.
+     Nothing became impossible — every row on it is reachable through the Classes
+     and Events tiles — but it is now a view you can only type your way to.
+
 0aj. **THE PAGE COUNT — ROUNDS 2 AND 3, THE ONE PART OF THE 21 Sep BATCH NOT
    BUILT.** The user asked twice: *"can we further reduce the no. of pages per
    profile type without affecting the functionality of the app?"* and then
@@ -5192,6 +5307,23 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **EVERY TILE ON EVERY HOME, PRESSED — 21 Sep 2026, no step number — BUILT, no
+  migration.** The user asked for an audit of all four grids. Mechanically clean
+  — every route exists and ⚠ `NotBuiltYet` has no caller left in the app — and a
+  new `scripts/shots/shoot-tiles.js` presses every tile as a fresh EMPTY account
+  of each kind (60/60). Eight real gaps fixed: ⚠ **a plain user had no
+  Memberships door** though they are who a pass is for, and an unpaid pass was
+  unrecoverable; ⚠ **a studio's Stats chip opened the PERSON's leaderboard**
+  while `/studio/{id}/stats` had never been opened by anything; **Memberships and
+  Assets tiles bounced non-owners silently**; ⚠ **"Create class" was offered to
+  every member** though creating became the owner's alone on 18 Sep; **the whole
+  Rooms editor** was drawn for seats RLS refuses; ⚠ **Settings' money rows
+  addressed a business you do not own** — the "first business you own" bug in its
+  third costume, and `/invoices` admits any member so it opened that studio's
+  ledger; a person read a **seller's empty state** on their own earnings; and a
+  **dead door** to a card deleted on 11 Sep. ⚠ **One reported defect was not one**
+  — the audit cited a superseded migration, and checking turned it into a worse
+  bug one line away. Five decisions handed back to the user (NEXT TO DO #0al).
 - **EARNINGS IS ONE SCREEN, WITH A PERIOD, A GRAPH, AND WHAT IS LEFT — 21 Sep
   2026, no step number — BUILT, no migration.** Four money screens that agreed
   on nothing became one `EarningsScreen` every profile type renders: Day · Week ·

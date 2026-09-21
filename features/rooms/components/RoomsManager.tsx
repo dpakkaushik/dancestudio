@@ -24,11 +24,16 @@ export function RoomsManager({
   tenantName,
   tenantWhere,
   rooms,
+  canEdit = true,
 }: {
   tenantId: string;
   tenantName: string;
   tenantWhere: string;
   rooms: Room[];
+  /** ⚠ may this seat WRITE a room — owner or trainer, which is what the two
+   *  policies on `rooms` admit. Without it the whole editor was drawn for
+   *  everybody and every press was refused (21 Sep 2026). */
+  canEdit?: boolean;
 }) {
   const [amenFor, setAmenFor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,7 +115,19 @@ export function RoomsManager({
         <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Rooms</div>
       </div>
 
+      {/* ⚠ AND ONLY FOR SOMEBODY WHO MAY ACTUALLY EDIT ONE (21 Sep 2026). Rooms
+          are written by an OWNER or a TRAINER — "rooms are plain studio config,
+          not a seat ledger" — and this desk had no role at all, so a visiting
+          teacher, an assistant and the front desk were shown the ＋, the delete
+          ✕ and every amenity toggle, and each press came back an RLS refusal
+          with nothing said. A door that would be refused is not offered. */}
+      {!canEdit ? (
+        <div role="status" style={{ ...card, fontSize: 12, color: "var(--sub)", lineHeight: 1.5, marginBottom: 12 }}>
+          These are the studio&rsquo;s rooms. Changing them is the owner&rsquo;s and the faculty&rsquo;s.
+        </div>
+      ) : null}
       {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026, the user's list 14) */}
+      {canEdit ? (
       <DeskAddButton
         label="Add room"
         onClick={() =>
@@ -125,6 +142,7 @@ export function RoomsManager({
           )
         }
       />
+      ) : null}
 
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -147,6 +165,7 @@ export function RoomsManager({
                     setDraft({ id: r.id, name: e.target.value, capacity: editing ? draft.capacity : r.capacity })
                   }
                   onBlur={() => commit(r)}
+                  readOnly={!canEdit}
                   style={{
                     flex: 2,
                     minWidth: 0,
@@ -173,6 +192,7 @@ export function RoomsManager({
                     })
                   }
                   onBlur={() => commit(r)}
+                  readOnly={!canEdit}
                   style={{
                     width: 52,
                     background: "transparent",
@@ -186,7 +206,7 @@ export function RoomsManager({
                     fontFamily: "inherit",
                   }}
                 />
-                {rooms.length > 1 && (
+                {canEdit && rooms.length > 1 && (
                   <span
                     role="button"
                     tabIndex={0}
@@ -254,7 +274,7 @@ export function RoomsManager({
                         onKeyDown={dosKey}
                         key={a}
                         aria-pressed={on}
-                        onClick={() => toggleAmenity(r, a)}
+                        onClick={() => canEdit && toggleAmenity(r, a)}
                         style={{
                           fontSize: 11,
                           fontWeight: 700,

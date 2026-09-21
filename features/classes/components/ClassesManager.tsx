@@ -283,6 +283,7 @@ export function ClassesManager({
   publishState = {},
   embedded = false,
   whyNoClass = null,
+  canCreate = true,
 }: {
   tenantId: string;
   classes: DanceClass[];
@@ -308,6 +309,10 @@ export function ClassesManager({
    *  sentence, so an artist whose plan has lapsed reads why BEFORE filling a
    *  form the trigger would refuse on Publish. */
   whyNoClass?: string | null;
+  /** ⚠ is the caller the OWNER — the only seat `create_class_with_session`
+   *  admits since 18 Sep 2026. `whyNoClass` answers a different question (can
+   *  THIS BUSINESS carry a class at all) and cannot stand in for it. */
+  canCreate?: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<ClassStatus>("published");
@@ -393,7 +398,19 @@ export function ClassesManager({
             (why_no_class; the `why_no_event` shape the events desk has worn
             since 14 Sep). A closed door that says why beats a form that is
             refused at the end. */}
-        {whyNoClass ? (
+        {/* ⚠ AND IT IS THE OWNER'S (21 Sep 2026). `create_class_with_session`
+            became the owner's alone on 18 Sep — "Until today a trainer could" —
+            and this button went on being drawn for EVERY member, so Faculty, a
+            visiting teacher, an assistant and the front desk all got a pill that
+            opens a two-step form and is refused at Save. `why_no_class` cannot
+            catch it: it asks about the BUSINESS (its type, its artist's plan),
+            never about who is asking. Same rule as the sentence beside it — a
+            closed door that says why beats a form that is refused at the end. */}
+        {!canCreate ? (
+          <div role="status" data-testid="why-no-class" style={{ ...bizBtn, cursor: "default", background: EL, color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, padding: "12px 16px", marginBottom: 12 }}>
+            Only the owner of this studio creates its classes. You can run the registers you have been given.
+          </div>
+        ) : whyNoClass ? (
           <div role="status" data-testid="why-no-class" style={{ ...bizBtn, cursor: "default", background: EL, color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, padding: "12px 16px", marginBottom: 12 }}>
             {whyNoClass}
           </div>

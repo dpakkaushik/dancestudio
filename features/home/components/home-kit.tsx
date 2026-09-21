@@ -247,7 +247,24 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
      So somebody who has been paid had no way to see it. An ARTIST does not get
      this tile: theirs points at their page's desk, and the page's desk carries
      "What studios pay you ›" to this same ledger. */
-  if (kind === "user") return [...person, { name: DOS_TOOLS.earn.name, href: "/earnings", k: "earn", c: DOS_TOOLS.earn.c }];
+  /* ⚠⚠ AND A MEMBERSHIPS TILE, BECAUSE A USER IS WHO A MEMBERSHIP IS FOR
+     (21 Sep 2026). `my_memberships()` is scoped to `auth.uid()` with no artist
+     check, and `why_no_membership` refuses only somebody on the seller's own
+     team — a plain user is precisely the intended buyer. They had no door to it:
+     the tile was on the ARTIST's list alone, so a pass they had bought was
+     reachable only by typing the address. Three edges to that, all real: the
+     buy toast says **"find it under Memberships"** and there was no such thing
+     on their Home; the progress bar that is the whole point of a pass was
+     unreachable; and ⚠ a pass left at `pending_payment` when the Cashfree window
+     closed could NOT be paid for, because the "Pay ₹X" button to resume it
+     exists only on that screen. */
+  if (kind === "user") {
+    return [
+      ...person,
+      { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
+      { name: DOS_TOOLS.earn.name, href: "/earnings", k: "earn", c: DOS_TOOLS.earn.c },
+    ];
+  }
   /* an artist's page's desks — or the hub, which is where the page is made */
   const desk = (path: string) => (pageId ? `/business/${pageId}/${path}` : "/business");
   return [

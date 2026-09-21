@@ -107,8 +107,19 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     { name: DOS_TOOLS.team.name, href: desk("staff"), k: "team", c: DOS_TOOLS.team.c },
     { name: DOS_TOOLS.students.name, href: desk("students"), k: "students", c: DOS_TOOLS.students.c },
     ...(isOwner ? [{ name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c } as Tile] : []),
-    { name: DOS_TOOLS.memberships.name, href: desk("memberships"), k: "memberships", c: DOS_TOOLS.memberships.c },
-    { name: DOS_TOOLS.assets.name, href: desk("assets"), k: "assets", c: DOS_TOOLS.assets.c },
+    /* ⚠ MEMBERSHIPS AND ASSETS ARE THE OWNER'S TOO, AND THEIR TILES NOW SAY SO
+       (21 Sep 2026). Both desks redirect a non-owner back to this very home —
+       `save_membership` and `save_asset` admit the owner alone — so a Faculty
+       member pressed a tile and landed back where they started with no
+       explanation. **A door that would be refused is not offered**, which is
+       exactly what the Earnings line above has done since 18 Sep; these two were
+       drawn unconditionally right beside it. */
+    ...(isOwner
+      ? ([
+          { name: DOS_TOOLS.memberships.name, href: desk("memberships"), k: "memberships", c: DOS_TOOLS.memberships.c },
+          { name: DOS_TOOLS.assets.name, href: desk("assets"), k: "assets", c: DOS_TOOLS.assets.c },
+        ] as Tile[])
+      : []),
     { name: DOS_TOOLS.rooms.name, href: desk("rooms"), k: "rooms", c: DOS_TOOLS.rooms.c },
     /* ⚠ NO MEDIA TILE (21 Sep 2026, the user: "remove media from all tool in all
        profiles"). The Media desk was the studio's two pictures as a page — and

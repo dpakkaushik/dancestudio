@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/enrollments";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the register's
    LIVE filter is arithmetic over the moment the page was served */
@@ -44,6 +44,10 @@ export default async function TenantClassesPage({
     redirect("/my-classes?show=manage");
   }
 
+  /* ⚠ creating a class is the OWNER's since 18 Sep 2026 — `whyNoClass` asks
+     whether this BUSINESS may carry one, never whether YOU may make one, so the
+     seat has to be read separately or every member gets a refused button */
+  const myRole = await findMyMembershipRole(supabase, tenantId);
   const classes = await findClassesByTenant(supabase, tenantId);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
   const [counts, state, artists, whyNoClass] = await Promise.all([
@@ -63,6 +67,7 @@ export default async function TenantClassesPage({
       artists={Object.fromEntries(artists)}
       publishState={Object.fromEntries(state)}
       whyNoClass={whyNoClass}
+      canCreate={myRole === "owner"}
       nowIso={stampNowIso()}
     />
   );

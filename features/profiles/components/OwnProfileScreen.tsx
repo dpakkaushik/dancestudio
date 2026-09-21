@@ -9,7 +9,7 @@ import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicPerson, type PublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships } from "@/repositories/tenants";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findMyGst } from "@/repositories/gst";
 import { kindOf } from "@/types/profile";
@@ -47,7 +47,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
   }
   const role = person.profile.role;
   /* what reaches you left this page on 19 Sep 2026 — the bell's own screen carries it, once */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, tenants, plan, isAdmin, gst, memberships, trainsAt, eventsHostId] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, isAdmin, gst, memberships, trainsAt, eventsHostId] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -57,7 +57,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
        real rows rather than being withheld. */
     findMyFollowedOrganizations(supabase),
     findMyFollowedCrews(supabase),
-    findMyTenants(supabase),
+    findMyMemberships(supabase),
     findMyArtistPlan(supabase),
     amIPlatformAdmin(supabase),
     /* the Settings sheet's GST row says verified or not (11 Sep 2026); only an
@@ -89,9 +89,22 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      one of its BUSINESSES — it is unlisted for ever, has no rooms and no public
      page. It is filtered out here so "Your studios" counts studios and the
      Schedule button never points at a page that does not exist. */
-  const businesses = tenants.filter((t) => t.type !== "org");
-  const biz = businesses.find((t) => t.type === "artist_page") ?? businesses[0];
-  const scheduleHref = biz ? `/${biz.type === "studio" ? "studio" : "artist"}/${biz.id}/schedule` : null;
+  const businesses = seats.filter((m) => m.tenant.type !== "org").map((m) => m.tenant);
+  /* ⚠⚠ THE DESK SETTINGS POINTS AT MUST BE ONE YOU OWN (21 Sep 2026). This was
+     `businesses[0]` — the first business you are on the TEAM of — so a person
+     who teaches somewhere and owns nothing had Settings' Payments, Invoices and
+     Refunds addressing SOMEBODY ELSE'S STUDIO. Not merely a bounced link:
+     `/business/{id}/invoices` admits any member, so it opened that studio's
+     invoice ledger. It is the "first business you own" bug in its third
+     costume — the memberships desk was rebuilt on 21 Sep to kill exactly this
+     shape, and this instance was one read away from it the whole time.
+     ⚠ `scheduleHref` keeps the OLD rule on purpose: a schedule is a PUBLIC page
+     and pointing at one you teach at is a reasonable thing for your profile's
+     Schedule button to do, where addressing its money is not. */
+  const owned = seats.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
+  const biz = owned.find((t) => t.type === "artist_page") ?? owned[0] ?? null;
+  const schedBiz = businesses.find((t) => t.type === "artist_page") ?? businesses[0];
+  const scheduleHref = schedBiz ? `/${schedBiz.type === "studio" ? "studio" : "artist"}/${schedBiz.id}/schedule` : null;
 
   return (
     <MyProfilePage

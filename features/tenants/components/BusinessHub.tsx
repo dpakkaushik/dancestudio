@@ -439,9 +439,16 @@ export function BusinessHub({
               >
                 <div style={{ fontSize: 12.5, fontWeight: 900, color: INK }}>＋ Add studio</div>
                 <div style={{ fontSize: 11, color: SUB, marginTop: 4, lineHeight: 1.5 }}>{gateShut}</div>
-                <Link href="/" style={{ display: "inline-block", fontSize: 11, fontWeight: 800, color: ACCENT, marginTop: 7, textDecoration: "none" }}>
-                  Where you stand with DanceOS ›
-                </Link>
+                {/* ⚠ THE DOOR WENT WITH THE SCREEN IT OPENED (21 Sep 2026). This
+                    said "Where you stand with DanceOS ›" and pointed at `/` —
+                    Home's standing card, which was DELETED on 11 Sep once the
+                    tick alone became the verified state. A link to a card that
+                    no longer exists lands you on an ordinary Home with nothing
+                    to see. Unreachable today, because the gate returns null for
+                    every organization — which is exactly why it survived: a
+                    branch nobody renders is where a broken promise hides. The
+                    sentence above already says what is wrong; Settings carries
+                    the conversation with DanceOS. */}
               </div>
             ) : (
               <DeskAddButton label="Add studio" onClick={() => setSheetOpen(true)} />

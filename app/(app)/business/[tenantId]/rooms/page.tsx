@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRoomsByTenant } from "@/repositories/rooms";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
 export default async function TenantRoomsPage({
   params,
@@ -25,13 +25,22 @@ export default async function TenantRoomsPage({
     redirect("/business");
   }
 
-  const rooms = await findRoomsByTenant(supabase, tenantId);
+  /* ⚠ EVERY MEMBER READS THE ROOMS, AN OWNER OR A TRAINER EDITS THEM — which is
+     what the two policies on `rooms` admit ("rooms are plain studio config, not
+     a seat ledger"). Until 21 Sep the desk took no role at all, so the ＋, the ✕
+     and every amenity toggle were drawn for a visiting teacher, an assistant and
+     the front desk, and each press came back an RLS refusal in silence. */
+  const [rooms, myRole] = await Promise.all([
+    findRoomsByTenant(supabase, tenantId),
+    findMyMembershipRole(supabase, tenantId),
+  ]);
   return (
     <RoomsManager
       tenantId={tenantId}
       tenantName={tenant.name}
       tenantWhere={[tenant.area, tenant.city].filter(Boolean).join(", ") || "Your studio"}
       rooms={rooms}
+      canEdit={myRole === "owner" || myRole === "trainer"}
     />
   );
 }
