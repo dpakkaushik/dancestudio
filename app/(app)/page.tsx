@@ -355,7 +355,8 @@ export default async function HomePage() {
             the same reason it sees no deck and no tools. ── */}
         {orgAwaitingApproval ? null : (
           <>
-            <ActionRow marginTop={12}>
+            {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
+            <ActionRow>
               {asksGoHere ? (
                 <EnquiryButton
                   tenantId={asksGoHere}

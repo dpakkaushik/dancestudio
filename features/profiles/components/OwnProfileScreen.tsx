@@ -10,8 +10,6 @@ import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicPerson, type PublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyMemberships } from "@/repositories/tenants";
-import { amIPlatformAdmin } from "@/repositories/admin";
-import { findMyGst } from "@/repositories/gst";
 import { kindOf } from "@/types/profile";
 
 /** YOUR OWN PROFILE, WHEREVER ITS ADDRESS IS (21 Sep 2026).
@@ -47,7 +45,12 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
   }
   const role = person.profile.role;
   /* what reaches you left this page on 19 Sep 2026 — the bell's own screen carries it, once */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, isAdmin, gst, memberships, trainsAt, eventsHostId] = await Promise.all([
+  /* ⚠ `amIPlatformAdmin` AND `findMyGst` LEFT THIS LIST (21 Sep 2026). They were
+     read here for the Settings sheet's Admin-panel and GST tiles, and the sheet
+     is the chrome's now — so the layout reads them once for every page instead
+     of this page reading them for one. Two fewer reads here, and the two they
+     replaced in the layout ride a batch that was already being awaited. */
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, trainsAt, eventsHostId] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -59,10 +62,6 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
     findMyFollowedCrews(supabase),
     findMyMemberships(supabase),
     findMyArtistPlan(supabase),
-    amIPlatformAdmin(supabase),
-    /* the Settings sheet's GST row says verified or not (11 Sep 2026); only an
-       organization has the row, so only an organization is asked about it */
-    role === "org" ? findMyGst(supabase, person.profile.id) : Promise.resolve({ gstin: null, verifiedAt: null }),
     /* ⚠ WHAT YOU SELL, ON YOUR OWN TAB TOO (20 Sep 2026). /person/{id} has drawn
        an artist's live memberships since 19 Sep and this screen drew none, so an
        artist saw one thing on their public page and another on their own — one
@@ -90,19 +89,18 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      page. It is filtered out here so "Your studios" counts studios and the
      Schedule button never points at a page that does not exist. */
   const businesses = seats.filter((m) => m.tenant.type !== "org").map((m) => m.tenant);
-  /* ⚠⚠ THE DESK SETTINGS POINTS AT MUST BE ONE YOU OWN (21 Sep 2026). This was
-     `businesses[0]` — the first business you are on the TEAM of — so a person
-     who teaches somewhere and owns nothing had Settings' Payments, Invoices and
-     Refunds addressing SOMEBODY ELSE'S STUDIO. Not merely a bounced link:
-     `/business/{id}/invoices` admits any member, so it opened that studio's
-     invoice ledger. It is the "first business you own" bug in its third
-     costume — the memberships desk was rebuilt on 21 Sep to kill exactly this
-     shape, and this instance was one read away from it the whole time.
+  /* ⚠ THE "WHICH BUSINESS" PICK LEFT THIS PAGE WITH SETTINGS (21 Sep 2026), and
+     it is worth keeping the record of what it was: it read `businesses[0]` —
+     the first business you are on the TEAM of — so a person who teaches
+     somewhere and owns nothing had Settings' Payments, Invoices and Refunds
+     addressing SOMEBODY ELSE'S STUDIO, and `/business/{id}/invoices` admits any
+     member, so it opened that studio's ledger. Narrowing it to `owned[0]` fixed
+     that and left a smaller version of the same shape (an organization owns its
+     studios AND its hosting row). The layout asks the question properly now:
+     the artist page you OWN, or nothing.
      ⚠ `scheduleHref` keeps the OLD rule on purpose: a schedule is a PUBLIC page
      and pointing at one you teach at is a reasonable thing for your profile's
      Schedule button to do, where addressing its money is not. */
-  const owned = seats.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
-  const biz = owned.find((t) => t.type === "artist_page") ?? owned[0] ?? null;
   const schedBiz = businesses.find((t) => t.type === "artist_page") ?? businesses[0];
   const scheduleHref = schedBiz ? `/${schedBiz.type === "studio" ? "studio" : "artist"}/${schedBiz.id}/schedule` : null;
 
@@ -117,14 +115,11 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       followingOrgs={followingOrgs}
       followingCrews={followingCrews}
       scheduleHref={scheduleHref}
-      business={biz ?? null}
       businesses={businesses}
       memberships={memberships}
       trainsAt={trainsAt}
       eventsHostId={eventsHostId}
       plan={plan}
-      isAdmin={isAdmin}
-      gstVerified={Boolean(gst.verifiedAt)}
     />
   );
 }

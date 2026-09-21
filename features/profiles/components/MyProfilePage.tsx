@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { CARD, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -16,7 +15,6 @@ import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
-import { SettingsSheet } from "@/features/settings/components/SettingsSheet";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -66,14 +64,11 @@ export function MyProfilePage({
   followingOrgs = [],
   followingCrews = [],
   scheduleHref,
-  business,
   businesses = [],
   memberships = [],
   trainsAt = [],
   eventsHostId = null,
   plan,
-  isAdmin = false,
-  gstVerified = false,
 }: {
   person: PublicPerson;
   /** THE HEADER PICTURES (15 Sep 2026): the person's own, in their order */
@@ -89,8 +84,6 @@ export function MyProfilePage({
   followingOrgs?: FollowedOrganization[];
   followingCrews?: FollowedCrew[];
   scheduleHref: string | null;
-  /** the first business this person runs, for the rows that live on its desk */
-  business: Tenant | null;
   /** every business this account runs — an ORGANIZATION's studios, under one hood (8 Sep 2026) */
   businesses?: Tenant[];
   /** what this artist has ON SALE (20 Sep 2026) — the public page has shown it
@@ -104,15 +97,12 @@ export function MyProfilePage({
   /** an ORGANIZATION's own event-hosting row (R15) — where an enquiry to it
    *  lands, and the one id the button row needs that `person` cannot carry */
   eventsHostId?: string | null;
-  /** the Artist plan, for the settings sheet's switch */
+  /** the Artist plan — the KIND this screen draws is the plan's answer as much
+   *  as the role's. ⚠ `isAdmin`, `gstVerified` and `business` left this page
+   *  with the Settings sheet on 21 Sep 2026: they were its props and nothing
+   *  else on the screen read them, so they are the chrome's now. */
   plan: ArtistPlan | null;
-  /** a platform admin gets the verification queue as a row in the settings sheet */
-  isAdmin?: boolean;
-  /** an organization's GST number — the settings sheet's GST row says whether
-   *  it is verified (11 Sep 2026); false for anybody who is not one */
-  gstVerified?: boolean;
 }) {
-  const router = useRouter();
   const { profile } = person;
   /* the KIND is the plan's answer as much as the role's: an artist while the plan is live */
   const kind = kindOf(profile.role, Boolean(plan?.active));
@@ -144,10 +134,9 @@ export function MyProfilePage({
   const asksGoHere = isOrg ? eventsHostId : isArtist ? person.artistPageId : null;
 
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
-  /* the gear arrives as ?settings=1 (prototype 19263). The sheet is a PLACE, so
-      the address is its open state — a state seeded at mount would never see the
-      gear, because the gear links to the page it is already on. */
-  const settingsOpen = useSearchParams().get("settings") === "1";
+  /* ⚠ `?settings=1` is not read here any more (21 Sep 2026) — the chrome reads
+     it, because the chrome is what renders the sheet now and the gear is on
+     every screen rather than only on this one. */
   const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
   /* ⚠ NO TOAST ON THIS PAGE ANY MORE (19 Sep 2026): every sheet that had
      something to say moved to Home, and the Settings sheet carries its own */
@@ -304,7 +293,8 @@ export function MyProfilePage({
             reported three times (C32). One row, three places, from the same
             fields. ⚠ Enquiry is drawn and disabled with its reason, as on your
             own public page. ── */}
-        <ActionRow marginTop={12}>
+        {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
+        <ActionRow>
           {asksGoHere ? (
             <EnquiryButton
               tenantId={asksGoHere}
@@ -400,31 +390,18 @@ export function MyProfilePage({
         </Sheet>
       ) : null}
 
-      <SettingsSheet
-        open={settingsOpen}
-        /* THE SHEET'S HISTORY ENTRY IS THE GEAR'S OWN (19 Sep 2026): the gear
-           PUSHES `/profile?settings=1`, so closing is one step BACK — the same
-           step the system gesture takes — and never a replace over it. The
-           replace left `?settings=1` standing one entry back, so back re-opened
-           Settings and closing it again landed on a second, identical /profile:
-           the "page keeps looping" the user reported. A deep link with nothing
-           behind it is the one case that has to replace instead.
-           ⚠ AND THE FALLBACK IS THIS PAGE'S OWN ADDRESS SINCE 21 Sep 2026, not
-           `/profile` — that is a redirect now, so replacing with it would have
-           sent a deep-linked Settings close on a round trip back to the page it
-           was already standing on. */
-        onClose={() => {
-          if (window.history.length > 1) router.back();
-          else router.replace(isOrg ? `/org/${profile.id}` : `/person/${profile.id}`);
-        }}
-        role={profile.role}
-        /* EDIT PROFILE IS ITS FIRST OPTION (19 Sep 2026) */
-        profile={profile}
-        isAdmin={isAdmin}
-        gstVerified={gstVerified}
-        business={business}
-        plan={plan}
-      />
+      {/* ⚠⚠ THE SETTINGS SHEET IS NOT RENDERED HERE ANY MORE (21 Sep 2026, the
+          user: "settings are seprate for each profile type according to which
+          profile you are in"). It lived on this ONE page, opened by
+          `?settings=1`, and that is precisely why it could only ever be the
+          settings of the person whose profile tab it is: a page cannot be about
+          a profile it is not. `AppChrome` renders it now — the chrome knows
+          from the pathname which profile you are acting as, and its gear is on
+          every screen — so a studio gets a studio's settings and this page gets
+          out of the way. The history rule the comment here used to carry moved
+          with it, unchanged: the gear PUSHES `?settings=1` and closing is one
+          step back, because a replace left the parameter standing one entry
+          behind and back re-opened the sheet (the loop the user reported). */}
 
     </div>
   );

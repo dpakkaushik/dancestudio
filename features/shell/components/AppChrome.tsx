@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { signOutAction } from "@/features/auth/server-actions/auth";
+import { SettingsSheet, type SettingsProfile } from "@/features/settings/components/SettingsSheet";
 import { DOS_UI, INK, RED } from "@/lib/design/tokens";
+import type { ArtistPlan } from "@/repositories/plans";
+import type { Profile, ProfileRole } from "@/types/profile";
+import type { Tenant } from "@/types/tenant";
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round
@@ -268,11 +272,30 @@ const chipStyle: React.CSSProperties = {
 
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 
+/** WHAT SETTINGS NEEDS, FOR EVERY PROFILE THIS ACCOUNT CAN BE (21 Sep 2026).
+ *  Read once per render of the signed-in group and handed over whole, because
+ *  the sheet is per-profile now and the chrome is the only thing that knows,
+ *  from the pathname, which profile you are acting as. */
+export interface ChromeSettings {
+  profile: Profile | null;
+  role: ProfileRole;
+  plan: ArtistPlan | null;
+  isAdmin: boolean;
+  gstVerified: boolean;
+  /** ⚠ the artist page this account OWNS, or null — never a business it is
+   *  merely on the team of, and never an arbitrary pick among the ones it owns */
+  ownBusiness: Tenant | null;
+  /** every studio this account is on the team of, so the sheet can be THAT
+   *  studio's while you are inside it */
+  studios: Tenant[];
+}
+
 export function AppChrome({
   children,
   unread = 0,
   adminOnly = false,
   switcher = [],
+  settings = null,
 }: {
   children: ReactNode;
   /** what the bell says — counted server-side for this render */
@@ -281,9 +304,12 @@ export function AppChrome({
   adminOnly?: boolean;
   /** the homes this account can go to — its own, its studios, the crews it leads (18 Sep 2026) */
   switcher?: SwitcherItem[];
+  /** the material behind the gear; null for an account with no profile at all */
+  settings?: ChromeSettings | null;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const search = useSearchParams();
   const activeTab = TAB_SET.find((t) => t.href === pathname)?.label ?? null;
   const isTab = activeTab !== null;
   /* a studio's or a crew's own pages wear the entity's bar and the mark */
@@ -323,6 +349,59 @@ export function AppChrome({
      have drilled into — it is your own account, which is the profile you are
      acting as. A `me` row always exists, so this is only null for an admin. */
   const hereItem = switcher.find(isHere) ?? switcher.find((s) => s.kind === "me") ?? switcher[0] ?? null;
+
+  /* ══ SETTINGS, FOR THE PROFILE YOU ARE IN (21 Sep 2026, the user: "settings
+     are seprate for each profile type according to which profile you are in").
+     ⚠ `hereItem` is the whole answer and it already existed — it is what the
+     switcher marks HERE, and its prefix match means a studio's DESKS count as
+     being in that studio, not just its home. So the sheet's subject is decided
+     by the same reading as the switcher's, and the two can never disagree about
+     which profile you are in.
+     ⚠ A studio the switcher names but `settings.studios` does not is a studio
+     whose row failed to read; falling back to the account's own settings is
+     better than a sheet with nothing in it. ══ */
+  const activeSettings: SettingsProfile | null = !settings
+    ? null
+    : (() => {
+        const mine: SettingsProfile = {
+          kind: "me",
+          profile: settings.profile,
+          role: settings.role,
+          plan: settings.plan,
+          gstVerified: settings.gstVerified,
+          business: settings.ownBusiness,
+        };
+        if (!hereItem) return mine;
+        if (hereItem.kind === "studio") {
+          const tenant = settings.studios.find((t) => t.id === hereItem.key);
+          return tenant ? { kind: "studio", tenant } : mine;
+        }
+        if (hereItem.kind === "crew") return { kind: "crew", crew: { id: hereItem.key, name: hereItem.label } };
+        return mine;
+      })();
+  /* THE GEAR'S OWN HISTORY ENTRY (the rule moved here with the sheet, 19 Sep
+     2026): it PUSHES `?settings=1` onto the page you are standing on, so closing
+     is one step BACK — the same step the system gesture takes. A replace left
+     the parameter standing one entry behind, so back re-opened the sheet and
+     closing it again landed on a second, identical page: the "page keeps
+     looping" that was reported. A deep link with nothing behind it is the one
+     case that must replace instead. */
+  const settingsOpen = search.get("settings") === "1";
+  const openSettings = () => {
+    const q = new URLSearchParams(search.toString());
+    q.set("settings", "1");
+    router.push(`${pathname}?${q.toString()}`);
+  };
+  const closeSettings = () => {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+    const q = new URLSearchParams(search.toString());
+    q.delete("settings");
+    const rest = q.toString();
+    router.replace(rest ? `${pathname}?${rest}` : pathname);
+  };
   /* ⚠ THE "MANAGING {STUDIO}" STRIP IS GONE (18 Sep 2026, the user: "remove the
      blue bar which shows exit studio from all pages"). It was asked about once
      before, on 16 Sep, and kept on the DESKS with the argument that a tool hero
@@ -394,23 +473,60 @@ export function AppChrome({
           borderBottom: "1.5px solid var(--hdr-line)",
         }}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: showMark ? 9 : 4, minWidth: 0, flex: 1 }}>
-          {showMark ? (
-            <>
-              {/* ⚠ THE MARK IS A MARK AGAIN (21 Sep 2026). It carried the profile
-                  switcher from 18 Sep — the user's own placement then — and the
-                  same user has now asked for the switcher to be "constant like
-                  settings". It cannot be both: the mark is drawn on the four
-                  tabs and the two entity homes and NOWHERE ELSE, so on every
-                  drill page the switcher simply did not exist. Constant beats
-                  where-it-started, so it moved to the chip group on the right,
-                  beside the gear, on every screen — and the mark stops being a
-                  door rather than becoming a second one. */}
+        <span style={{ display: "flex", alignItems: "center", gap: showMark ? 9 : 6, minWidth: 0, flex: 1 }}>
+          {/* ⚠⚠ THE SWITCHER IS INSIDE THE MARK AGAIN, AND THE MARK IS ON EVERY
+              SCREEN (21 Sep 2026, the user: "Profile switcher should be inside
+              the dance os logo and should remain constant everywhere").
+              This is the third placement and the first one that satisfies both
+              halves of what has been asked. 18 Sep put the switcher on the mark
+              — but the mark was drawn on the four tabs and the two entity homes
+              and nowhere else, so on every desk and drill page there was no
+              switcher at all. 21 Sep answered "constant" by moving the control
+              to a chip beside the gear and giving the mark back its own job
+              (C42) — which made it constant and took it OFF the logo.
+              ⚠ The resolution is not to move the control a third time but to
+              move the MARK: it is drawn on every screen now, so the logo can be
+              the switcher AND the switcher can be everywhere. On a drill page it
+              sits BEFORE the back chip rather than replacing it — a control that
+              is the way out must not be spent on a control that is the way
+              sideways.
+              ⚠ It wears a DOT in the active profile's own colour, because that
+              is the one thing the chip did that a brand mark cannot: answer
+              "which profile am I?" without being opened. */}
+          {adminOnly ? (
+            <DosMark size={30} />
+          ) : (
+            <button
+              type="button"
+              aria-label={hereItem ? `Switch profile — you are in ${hereItem.label}` : "Switch profile"}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setOpenFor(menuOpen ? null : pathname)}
+              style={{ position: "relative", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", padding: 0, marginLeft: -2, cursor: "pointer", fontFamily: "inherit", lineHeight: 0 }}
+            >
               <DosMark size={30} />
-              <span style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI }}>
-                Dance<span style={{ color: "#EC4899" }}>OS</span>
-              </span>
-            </>
+              {hereItem ? (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    right: -1,
+                    bottom: -1,
+                    width: 11,
+                    height: 11,
+                    borderRadius: 6,
+                    background: SWITCH_TINT[hereItem.kind],
+                    border: "2px solid var(--hdr-bg)",
+                    boxSizing: "border-box",
+                  }}
+                />
+              ) : null}
+            </button>
+          )}
+          {showMark ? (
+            <span style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI }}>
+              Dance<span style={{ color: "#EC4899" }}>OS</span>
+            </span>
           ) : (
             <>
               <span
@@ -432,7 +548,9 @@ export function AppChrome({
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  marginLeft: -4,
+                  /* ⚠ no negative inset any more (21 Sep 2026): the mark sits
+                     before this chip on every drill page now, so pulling the
+                     chip left would tuck it under the logo. */
                   borderRadius: 16,
                   background: "var(--card)",
                 }}
@@ -507,38 +625,16 @@ export function AppChrome({
               </svg>
             )}
           </span>
-          {/* ⚠ THE PROFILE SWITCHER, CONSTANT, BESIDE THE GEAR (21 Sep 2026, the
-              user: "make profile switcher constant like settings"). It wears the
-              INITIALS of the profile you are in, in that kind's own colour, so
-              the chip answers "which profile am I?" at a glance on every screen
-              and opens the list of the others — which is what a switcher is for
-              and what a mark on six screens could never do.
-              ⚠ It is drawn even for somebody with ONE profile, because Log out
-              lives in this menu now and must be reachable from everywhere. */}
-          {adminOnly ? null : (
-            <button
-              type="button"
-              aria-label={hereItem ? `Switch profile — you are in ${hereItem.label}` : "Switch profile"}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setOpenFor(menuOpen ? null : pathname)}
-              style={{
-                ...chipStyle,
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-                fontFamily: "inherit",
-                background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--card)",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 900,
-              }}
-            >
-              {hereItem ? initialsOf(hereItem.label) : "··"}
-            </button>
-          )}
-          {/* the gear opens the Settings sheet on the Profile tab (prototype 19263);
-              an admin-only account has no Profile tab, so its one control is the way out */}
+          {/* ⚠ THE SWITCHER CHIP IS GONE FROM HERE (21 Sep 2026, later the same
+              day): the control is inside the DanceOS mark on the left, which is
+              now drawn on every screen. It lived here for a few hours because
+              that was the only way to make it constant while the mark was
+              drawn on six screens; moving the mark is the better answer, and
+              two switchers would be one too many. Its one virtue — saying which
+              profile you are in without being opened — moved with it, as the
+              tinted dot on the mark. */}
+          {/* the gear opens Settings for THE PROFILE YOU ARE IN (21 Sep 2026);
+              an admin-only account has no profile at all, so its one control is the way out */}
           {adminOnly ? (
             <form action={signOutAction} style={{ display: "contents" }}>
               <button type="submit" aria-label="Sign out" style={{ ...chipStyle, width: "auto", padding: "0 13px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", color: INK, border: "none" }}>
@@ -546,15 +642,26 @@ export function AppChrome({
               </button>
             </form>
           ) : (
-          <Link href="/profile?settings=1" aria-label="Settings" style={{ ...chipStyle, textDecoration: "none" }}>
+          /* ⚠ A BUTTON, NOT A LINK TO `/profile?settings=1` (21 Sep 2026). The
+             gear used to navigate to ONE page and let that page open the sheet,
+             which is why Settings could only ever be that page's subject. It
+             opens the sheet over whatever you are looking at now, so the sheet
+             is the studio's while you are in a studio. */
+          <button type="button" onClick={openSettings} aria-label="Settings" aria-expanded={settingsOpen} style={{ ...chipStyle, border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3.2" />
               <path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" />
             </svg>
-          </Link>
+          </button>
           )}
         </span>
       </div>
+
+      {/* ── SETTINGS, FOR THE PROFILE YOU ARE IN (21 Sep 2026). Rendered by the
+          chrome rather than by a page, which is the whole reason it can be
+          per-profile; `?settings=1` on the current address is its open state, so
+          it is a PLACE the system back gesture closes. ── */}
+      {activeSettings ? <SettingsSheet open={settingsOpen} onClose={closeSettings} active={activeSettings} isAdmin={settings?.isAdmin ?? false} /> : null}
 
       {/* ── THE PROFILE SWITCHER, dropped from the mark (18 Sep 2026). Portalled: the
           top bar is a transformed element, so a fixed backdrop drawn inside it would

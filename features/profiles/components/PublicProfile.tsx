@@ -251,7 +251,9 @@ export function PublicProfile({
         {/* ── THE BUTTONS A STUDIO'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail ·
             Location — ONE BLOCK with Follow above them (the user, later that day:
             "all buttons placed together properly"); the Bio follows the block ── */}
-        <ActionRow marginTop={isMember ? 6 : 12}>
+        {/* ⚠ 0 for a visitor (the hero's own 14px bottom padding IS the gap,
+            21 Sep 2026), 6 for the team — whose row follows the strip above. */}
+        <ActionRow marginTop={isMember ? 6 : 0}>
           {asksGoHere ? (
             <EnquiryButton
               tenantId={tenant.id}

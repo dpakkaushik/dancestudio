@@ -146,7 +146,8 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
             words (#0u). ⚠ Call is the LEADER'S SWITCH, exactly as on the page —
             `crew_contacts`' own SELECT policy IS the switch, so a number that
             reaches nobody is not drawn here either. ── */}
-        <ActionRow marginTop={12}>
+        {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
+        <ActionRow>
           <EnquiryButton
             tenantId={crew.id}
             crewId={crew.id}

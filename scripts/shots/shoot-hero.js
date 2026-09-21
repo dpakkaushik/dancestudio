@@ -619,8 +619,19 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.goto(`${BASE}/profile?settings=1`);
     const orgSettings = org.getByRole("dialog", { name: "Settings" });
     await orgSettings.waitFor();
-    check((await orgSettings.getByRole("button", { name: "Edit profile" }).count()) === 1, "settings: Edit profile is the first option (19 Sep 2026)");
-    await orgSettings.getByRole("button", { name: "Edit profile" }).click();
+    /* ⚠ THE SHEET'S CONTENT ARRIVES WITH HYDRATION ON A DEEP LINK (21 Sep 2026).
+       Until today `?settings=1` was read on the SERVER by the page that rendered
+       the sheet, so the tiles were in the first HTML and a one-shot count was
+       safe. The sheet is the CHROME's now — a client component reading
+       `useSearchParams()`, which is what lets the gear open the right profile's
+       settings on every screen — so a fresh goto paints the dialog and fills it
+       a tick later. Wait for the tile, then count it. (The same shape as the
+       live QR probe's lesson: a click on a server-rendered page is not a click
+       until React has claimed the button.) */
+    const orgEdit = orgSettings.getByRole("button", { name: "Edit profile", exact: true });
+    await orgEdit.waitFor();
+    check((await orgEdit.count()) === 1, "settings: Edit profile is the first option (19 Sep 2026)");
+    await orgEdit.click();
     const orgSheet = org.getByRole("dialog", { name: "Edit profile" });
     await orgSheet.waitFor();
     /* exact: getByLabel is a case-insensitive SUBSTRING match, so a bare "Age"

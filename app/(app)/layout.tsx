@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { AppChrome, type SwitcherItem } from "@/features/shell/components/AppChrome";
+import { AppChrome, type ChromeSettings, type SwitcherItem } from "@/features/shell/components/AppChrome";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findMyLedCrews } from "@/repositories/crews";
+import { findMyGst } from "@/repositories/gst";
 import { findMyUnreadCount } from "@/repositories/notifications";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
@@ -41,18 +42,27 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [profile, unread, memberships, ledCrews, plan] = await Promise.all([
+  const [profile, unread, memberships, ledCrews, plan, isAdmin] = await Promise.all([
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     user ? findMyUnreadCount(supabase).catch(() => 0) : Promise.resolve(0),
     user ? findMyMemberships(supabase).catch(() => []) : Promise.resolve([]),
     /* an organization leads no crew (guard_person_only) — an empty answer costs nothing */
     user ? findMyLedCrews(supabase).catch(() => []) : Promise.resolve([]),
     user ? findMyArtistPlan(supabase).catch(() => null) : Promise.resolve(null),
+    /* ⚠ ASKED ON EVERY PAGE NOW (21 Sep 2026), where it used to be asked only
+       when there was no profile. Settings carries the Admin panel tile and
+       Settings is in the chrome, so the answer is needed wherever the gear is —
+       which is everywhere. It rides this batch, so it costs no extra round
+       trip, and `is_platform_admin()` is a definer test on one indexed row. */
+    user ? amIPlatformAdmin(supabase).catch(() => false) : Promise.resolve(false),
   ]);
   /* a platform admin with no profile is ADMIN ONLY (9 Sep 2026): the chrome draws
      no tab bar and no bell for it — every tab needs a profile, and the queue is
      its whole app. */
-  const adminOnly = Boolean(user) && !profile && (await amIPlatformAdmin(supabase));
+  const adminOnly = Boolean(user) && !profile && isAdmin;
+  /* the GST tile's badge, and ONLY an organization has one to read (11 Sep 2026)
+     — a person pays nothing for this line */
+  const gst = profile?.role === "org" ? await findMyGst(supabase, profile.id).catch(() => ({ gstin: null, verifiedAt: null })) : null;
 
   const switcher: SwitcherItem[] = [];
   if (profile) {
@@ -67,8 +77,32 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     }
   }
 
+  /* ⚠⚠ WHAT THE GEAR OPENS, FOR THE PROFILE YOU ARE IN (21 Sep 2026, the user:
+     "settings are seprate for each profile type according to which profile you
+     are in"). The sheet used to be rendered by `MyProfilePage` alone, so it was
+     structurally incapable of being about anything but that person; the chrome
+     renders it now and picks the subject from the pathname.
+     ⚠ `ownBusiness` is the artist page this account OWNS — not `businesses[0]`
+     (the first business it is on the TEAM of, which pointed Settings' money at
+     somebody else's studio and was fixed this morning), and not `owned[0]`
+     either: an organization owns its studios AND its hosting row, so that was
+     an arbitrary pick between two different answers. An organization's own
+     money IS the account's — `/invoices` lists what IT paid — and each studio's
+     money is in that studio's own Settings, which is the whole of ask 2. */
+  const settings: ChromeSettings | null = profile
+    ? {
+        profile,
+        role: profile.role,
+        plan,
+        isAdmin,
+        gstVerified: Boolean(gst?.verifiedAt),
+        ownBusiness: memberships.find((m) => m.memberRole === "owner" && m.tenant.type === "artist_page")?.tenant ?? null,
+        studios: memberships.filter((m) => m.tenant.type === "studio").map((m) => m.tenant),
+      }
+    : null;
+
   return (
-    <AppChrome unread={adminOnly ? 0 : unread} adminOnly={adminOnly} switcher={switcher}>
+    <AppChrome unread={adminOnly ? 0 : unread} adminOnly={adminOnly} switcher={switcher} settings={settings}>
       {children}
     </AppChrome>
   );

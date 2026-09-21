@@ -115,33 +115,50 @@ function Tile({ icon, children, href, onClick, badge, ariaLabel, pressed, disabl
   );
 }
 
+/** WHICH PROFILE THIS SHEET IS FOR (21 Sep 2026, the user: "settings are
+ *  seprate for each profile type according to which profile you are in").
+ *
+ *  ⚠ THIS SHEET COULD NOT HAVE BEEN PER-PROFILE BEFORE, and the reason is
+ *  structural rather than a matter of which tiles it drew: it was rendered by
+ *  ONE PAGE — `MyProfilePage`, on `?settings=1` — so the only profile it could
+ *  ever be about was the person whose profile tab it was on. It is rendered by
+ *  the CHROME now, which knows from the pathname which profile you are acting
+ *  as, and the gear is on every screen. */
+export type SettingsProfile =
+  | {
+      kind: "me";
+      /** THE ACCOUNT ITSELF, so Edit profile can be Settings' first option
+       *  (19 Sep 2026). A chrome with no profile row to hand draws no tile
+       *  rather than opening an empty form. */
+      profile: Profile | null;
+      role: ProfileRole;
+      /** the Artist plan, when one has been taken */
+      plan: ArtistPlan | null;
+      /** whether the organization's GST number is verified — the tile's badge
+       *  says which (11 Sep 2026). False for everybody who is not one. */
+      gstVerified: boolean;
+      /** ⚠ THE ARTIST PAGE THIS PERSON OWNS, or null — never "the first
+       *  business you are on the team of", and no longer "the first one you
+       *  own" either. An organization owns studios AND its hosting row, so
+       *  `owned[0]` was an arbitrary pick between them; an organization's own
+       *  money is the account's (`/invoices` lists what IT paid), and each
+       *  studio's money is in that studio's own Settings. */
+      business: Tenant | null;
+    }
+  | { kind: "studio"; tenant: Tenant }
+  | { kind: "crew"; crew: { id: string; name: string } };
+
 export function SettingsSheet({
   open,
   onClose,
-  role,
-  profile = null,
+  active,
   isAdmin = false,
-  gstVerified = false,
-  business,
-  plan,
 }: {
   open: boolean;
   onClose: () => void;
-  role: ProfileRole;
-  /** THE ACCOUNT ITSELF, so Edit profile can be Settings' first option (19 Sep
-   *  2026, the user: "Editing profile should be shifted to settings and should be
-   *  the top option"). A screen that has no profile row to hand simply does not
-   *  draw the tile rather than opening an empty form. */
-  profile?: Profile | null;
+  active: SettingsProfile;
   /** a platform admin gets the panel as a tile; nobody else sees it exists */
   isAdmin?: boolean;
-  /** whether the organization's GST number is verified — the GST tile's badge
-   *  says which (11 Sep 2026). False for everybody who is not an organization. */
-  gstVerified?: boolean;
-  /** the first business this person runs, for the tiles that live on its desk */
-  business: Tenant | null;
-  /** the Artist plan, when one has been taken */
-  plan: ArtistPlan | null;
 }) {
   const router = useRouter();
   /* LEAVING THE SHEET FOR A DESK (19 Sep 2026): the sheet's open state is the
@@ -166,9 +183,20 @@ export function SettingsSheet({
   };
   if (!open) return null;
 
+  /* ── WHAT THIS PROFILE IS, in the three shapes the sheet has to draw ── */
+  const me = active.kind === "me" ? active : null;
+  const studio = active.kind === "studio" ? active.tenant : null;
+  /* the business whose SETTINGS these are: a person's own artist page, or the
+     studio you are in. A crew is not a business and has neither. */
+  const biz: Tenant | null = studio ?? me?.business ?? null;
+  const profile = me?.profile ?? null;
+  const role: ProfileRole = me?.role ?? "user";
+  const plan = me?.plan ?? null;
+  const gstVerified = me?.gstVerified ?? false;
+
   /* the prototype's "dancer" is the KIND user — a person with no live plan; an
      artist (the plan) or an organization gets the business desk's money tiles */
-  const isDancer = role === "user" && !plan?.active;
+  const isDancer = Boolean(me) && role === "user" && !plan?.active;
   const artistOn = Boolean(plan?.active);
   /* the tile is the plan's switch (8855): off → the plan page; on → end it */
   const flipArtist = () => {
@@ -188,21 +216,26 @@ export function SettingsSheet({
   };
 
   /* ENQUIRIES YOU ACCEPT — null on the record means every type the kind allows (9010) */
-  const enqAll = business ? enquiryTypesFor(business.type) : [];
-  const enqOn = (k: string) => !business?.enquiryTypes || business.enquiryTypes.includes(k);
+  const enqAll = biz ? enquiryTypesFor(biz.type) : [];
+  const enqOn = (k: string) => !biz?.enquiryTypes || biz.enquiryTypes.includes(k);
   const flipEnq = (k: string) => {
-    if (!business) return;
+    if (!biz) return;
     const next = enqAll.map((t) => t.k).filter((kk) => (kk === k ? !enqOn(kk) : enqOn(kk)));
     start(async () => {
-      const out = await updateTenantProfileAction({ tenantId: business.id, foundedYear: business.foundedYear, phone: business.phone, socials: business.socials, enquiryTypes: next.length === enqAll.length ? null : next, accepts: business.accepts });
+      const out = await updateTenantProfileAction({ tenantId: biz.id, foundedYear: biz.foundedYear, phone: biz.phone, socials: biz.socials, enquiryTypes: next.length === enqAll.length ? null : next, accepts: biz.accepts });
       if (out.error) return fire(out.error);
       router.refresh();
     });
   };
   const enqCount = enqAll.filter((t) => enqOn(t.k)).length;
 
-  const desk = business ? `/business/${business.id}` : null;
-  const personal = isDancer || !desk;
+  const desk = biz ? `/business/${biz.id}` : null;
+  /* a person with no page of their own reads their OWN money screens; a studio
+     always reads its desk's, which is the whole point of ask 2 */
+  const personal = !studio && (isDancer || !desk);
+  /* the sheet says whose settings these are, because it is no longer always
+     yours — the switcher's dot answers the same question one control away */
+  const whose = studio ? studio.name : active.kind === "crew" ? active.crew.name : (profile?.fullName ?? null);
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600, fontFamily: DOS_UI }}>
@@ -210,13 +243,65 @@ export function SettingsSheet({
         <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
         <div style={{ borderRadius: 18, padding: "14px 16px 13px", background: "linear-gradient(135deg,#64748B,#0EA5E9)", color: "#fff", marginBottom: 4 }}>
           <div style={{ fontSize: 19, fontWeight: 900 }}>Settings</div>
+          {/* ⚠ WHOSE (21 Sep 2026). While this sheet could only ever be your own
+              it needed no label; now that the gear opens the settings of the
+              profile you are IN, a sheet that does not say which one is a sheet
+              you can change the wrong thing from. */}
+          {whose ? <div style={{ fontSize: 11, opacity: 0.9, marginTop: 2 }}>{whose}</div> : null}
         </div>
+
+        {/* ══ A STUDIO'S OWN SETTINGS (21 Sep 2026, the user: "Studio-Invoices
+            subscription and refunds to be managed from settings", and their
+            answer that verification moves here too).
+            ⚠ ALL FOUR LEFT THE STUDIO'S HOME FOR THIS BLOCK, and that reverses
+            what the same user asked for yesterday — the standing block I put on
+            the studio's home this morning (C51). Their later word wins, and the
+            reversal is total rather than partial on purpose: two doors to a
+            studio's subscription is what C31 removed and what C51 re-created,
+            and this file has recorded the cost of that shape twice.
+            ⚠ Verification is the one FORM on the list, so it has a page of its
+            own (`/business/{id}/verification`) — a tile opens something. ══ */}
+        {studio ? (
+          <>
+            <div style={head}>THIS STUDIO</div>
+            <div style={grid}>
+              <Tile icon={ICONS.gst("#0EA5E9")} href={`${desk}/verification`} onNavigate={go} badge={<span style={badgeStyle(Boolean(studio.verifiedAt))}>{studio.verifiedAt ? "verified" : "not yet"}</span>}>
+                Verification
+              </Tile>
+              <Tile icon={ICONS.subscription("#F59E0B")} href="/subscription" onNavigate={go}>
+                Subscription
+              </Tile>
+              <Tile icon={ICONS.invoices("#3B82F6")} href={`${desk}/invoices`} onNavigate={go}>
+                Invoices
+              </Tile>
+              <Tile icon={ICONS.refunds("#F97316")} href={`${desk}/refunds`} onNavigate={go}>
+                Refunds
+              </Tile>
+              <Tile icon={ICONS.payments("#22C55E")} href={`${desk}/payments`} onNavigate={go}>
+                Payments
+              </Tile>
+              <Tile icon={ICONS.enquiries("#8B5CF6")} onClick={() => setEnqOpen(true)} badge={<span style={badgeStyle(enqCount > 0)}>{enqCount} of {enqAll.length}</span>}>
+                Enquiry types
+              </Tile>
+            </div>
+          </>
+        ) : null}
+
+        {/* ── A CREW HAS NO SETTINGS OF ITS OWN, and says so rather than drawing
+            an empty section: its name, picture, city, style and number are the
+            pencil on its own home, and it takes no money. Only the ACCOUNT
+            block below is its. ── */}
+        {active.kind === "crew" ? (
+          <div style={{ fontSize: 11.5, color: SUB, fontWeight: 700, padding: "12px 2px 2px", lineHeight: 1.5 }}>
+            {active.crew.name} is edited from its own home — the pencil beside its picture. A crew takes no money, so it has nothing here.
+          </div>
+        ) : null}
 
         {/* ── YOU: Edit profile, first (19 Sep 2026). The pencil left Home's
             hero and the Profile tab's corner for this tile, so there is one
             door to the form rather than three. The PICTURES are not behind it
             — they are behind the disc on Home. ── */}
-        {profile ? (
+        {me && profile ? (
           <>
             <div style={head}>YOU</div>
             <div style={grid}>
@@ -228,6 +313,8 @@ export function SettingsSheet({
         ) : null}
 
         {/* ── YOUR PLAN: the Artist tools switch (a person), the plan's page (whoever holds one) ── */}
+        {me ? (
+        <>
         <div style={head}>YOUR PLAN</div>
         <div style={grid}>
           {role !== "org" ? (
@@ -262,8 +349,9 @@ export function SettingsSheet({
           </Tile>
         </div>
 
-        {/* ── BUSINESS: what the page you run accepts ── */}
-        {business ? (
+        {/* ── BUSINESS: what the ARTIST PAGE you own accepts. A studio's is in
+            THIS STUDIO above, so the block is not drawn twice. ── */}
+        {biz ? (
           <>
             <div style={head}>BUSINESS</div>
             <div style={grid}>
@@ -273,8 +361,12 @@ export function SettingsSheet({
             </div>
           </>
         ) : null}
+        </>
+        ) : null}
 
-        {/* ── ACCOUNT ── */}
+        {/* ── ACCOUNT — the one block every profile carries, because signing out,
+            the language, the privacy page and the conversation with DanceOS are
+            the ACCOUNT's rather than any one profile's ── */}
         <div style={head}>ACCOUNT</div>
         <div style={grid}>
           <Tile icon={ICONS.language("#06B6D4")} onClick={() => fire("English — more languages are coming")}>
@@ -306,13 +398,13 @@ export function SettingsSheet({
         ) : null}
 
         {/* ── ENQUIRIES YOU ACCEPT (9000-9030) ── */}
-        {enqOpen && business ? (
+        {enqOpen && biz ? (
           <div onClick={() => setEnqOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.66)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 940 }}>
             <div role="dialog" aria-modal="true" aria-label="Enquiry types" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", color: INK, borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
               <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
               <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: MUTED }}>ENQUIRIES YOU ACCEPT</div>
               <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>Enquiry types</div>
-              <div style={{ fontSize: 11, color: SUB, marginBottom: 12 }}>Only the types you switch on appear when someone taps Enquiry on {business.name}&apos;s profile.</div>
+              <div style={{ fontSize: 11, color: SUB, marginBottom: 12 }}>Only the types you switch on appear when someone taps Enquiry on {biz.name}&apos;s profile.</div>
               {enqAll.map((t) => {
                 const on = enqOn(t.k);
                 return (

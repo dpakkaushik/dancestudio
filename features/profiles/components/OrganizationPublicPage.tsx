@@ -173,7 +173,8 @@ export function OrganizationPublicPage({
 
         {/* ── THE BUTTONS AN ORGANIZATION'S PAGE CARRIES (19 Sep 2026): Enquiry · Call ·
             Mail · Location — one block; Follow is the bell in the row above ── */}
-        <ActionRow marginTop={12}>
+        {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
+        <ActionRow>
           {asksGoHere ? (
             <EnquiryButton
               tenantId={org.hostBusinessId as string}

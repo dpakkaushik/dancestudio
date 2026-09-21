@@ -136,6 +136,32 @@ async function pressEveryTile(page, who, expectedNames) {
     await signIn(p3, org);
     await pressEveryTile(p3, "org", ["Events", "Studios", "Calendar", "Team", "Earnings", "Assets"]);
 
+    /* ⚠ AN ORGANIZATION SELLS NO MEMBERSHIPS, AND THE DESK SAYS SO BY URL
+       (22 Sep 2026, the user: "membership not required for organization"). No
+       grid has ever drawn that tile for one, so the only way in was to type it —
+       and the desk admitted the owner of any business they are on, which
+       includes an organization's own hosting row (R15). Asserted at BOTH ends,
+       the way every redirect in this repo is: the hosting row's id is read off
+       the Events tile, which is the one door that names it. */
+    await p3.goto(`${BASE}/`);
+    const eventsHref = await p3.getByRole("link", { name: "Events", exact: true }).first().getAttribute("href");
+    const hostId = (eventsHref || "").split("/")[2] || "";
+    check(/^[0-9a-f-]{36}$/.test(hostId), `org: the Events tile names the hosting row (${eventsHref})`);
+    if (hostId) {
+      await p3.goto(`${BASE}/business/${hostId}/memberships`);
+      /* ⚠ WAIT FOR THE URL, NEVER READ IT ONCE (the 19 Sep lesson, met again).
+         Every signed-in desk streams behind a `loading.tsx`, and once a boundary
+         streams a server `redirect()` goes out as a **200 with a client-side
+         hop** — so the events desk is already painted while the address bar
+         still says /memberships for another tick. Four specs went red on
+         `expect(status).toBe(404)` for this same reason in September. */
+      const landed = await p3
+        .waitForURL(`**/business/${hostId}/events`, { timeout: 15_000 })
+        .then(() => true)
+        .catch(() => false);
+      check(landed, `org: the memberships desk redirects to its events (${new URL(p3.url()).pathname})`);
+    }
+
     // ── 4. and a STUDIO's own home, under that organization
     const [studio] = await rest("POST", "/rest/v1/businesses", {
       type: "studio", name: `Tiles Studio ${stamp}`, area: "Kothrud", city: "Pune",
@@ -157,20 +183,42 @@ async function pressEveryTile(page, who, expectedNames) {
       .map((a) => ({ name: (a.textContent || "").trim(), href: a.getAttribute("href") }))
       .filter((t) => t.href && t.href.includes("/business/") && t.name));
     console.log(`\n── studio home: ${[...new Set(stiles.map((t) => t.name))].join(" · ")}`);
-    /* ⚠ WHERE THIS STUDIO STANDS, ON THIS STUDIO'S OWN HOME (21 Sep 2026, the
-       user: "give door to verification and subscription for studio" and "give
-       option for refund"). Asserted rather than inferred from the link list,
-       because these are the two states that decide whether the studio is on
-       Discover AT ALL and they had drifted two screens up — verification to the
-       hub on 15 Sep, the subscription to Settings on 20 Sep. This studio is
-       unverified and unsubscribed, which is the state both strips exist for. */
+    /* ⚠⚠ WHERE THIS STUDIO STANDS IS IN ITS OWN SETTINGS (21 Sep 2026, the user:
+       "Studio-Invoices subscription and refunds to be managed from settings" and
+       "settings are seprate for each profile type according to which profile you
+       are in"). This block asserted the same four ON THE HOME a few hours
+       earlier; the same user moved them, so it asserts the move at BOTH ends —
+       gone from the home, present in the sheet — because a check that only
+       looks at the new place cannot tell you the old one was cleared.
+       ⚠ The sheet is the CHROME's now, which is the whole reason it can be a
+       studio's: it used to be rendered by the person's own profile page. */
     const shome = await p3.locator("body").innerText().catch(() => "");
-    check(shome.includes("Get this studio verified"), "studio · the VERIFICATION form is on its own home, not two screens up");
-    check(shome.includes("SUBSCRIPTION") && shome.includes("NOT LIVE"), "studio · and its SUBSCRIPTION standing beside it");
+    check(!shome.includes("Get this studio verified"), "studio · the verification form has LEFT its home for Settings");
+    check(!shome.includes("NOT LIVE"), "studio · and the subscription standing with it");
     check(
-      stiles.some((t) => t.href === `/business/${studio.id}/refunds`),
-      "studio · and a door to Refunds — money going back out, which no tile named"
+      !stiles.some((t) => t.href === `/business/${studio.id}/refunds`),
+      "studio · and the Refunds door — one place per subject, never two"
     );
+    /* THE GEAR, ON A STUDIO'S OWN PAGE, OPENS THE STUDIO'S SETTINGS */
+    await p3.getByRole("button", { name: "Settings", exact: true }).click();
+    const sheet = p3.getByRole("dialog", { name: "Settings" });
+    await sheet.waitFor({ state: "visible", timeout: 15_000 });
+    const sTxt = await sheet.innerText();
+    check(sTxt.includes("THIS STUDIO"), "studio · Settings is THE STUDIO'S — the block is headed THIS STUDIO");
+    check(sTxt.includes(studio.name), "studio · and it says whose settings these are");
+    for (const want of ["Verification", "Subscription", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
+      check(sTxt.includes(want), `studio · Settings carries ${want}`);
+    }
+    /* ⚠ and NOT the person's own plan switch — that is the account's, and a
+       sheet that mixed the two is the "which profile am I changing?" bug */
+    check(!sTxt.includes("Artist tools"), "studio · and NOT the account's own plan switch");
+    check(sTxt.includes("ACCOUNT"), "studio · while ACCOUNT stays, because signing out is the account's");
+    /* the verification form has a page of its own, and it is the owner's */
+    const vres = await p3.goto(`${BASE}/business/${studio.id}/verification`, { waitUntil: "domcontentloaded" });
+    await p3.waitForTimeout(800);
+    const vTxt = await p3.locator("body").innerText().catch(() => "");
+    check((vres ? vres.status() : 0) < 400 && vTxt.includes("Get this studio verified"), "studio · and Verification has a page, with the real form on it");
+    await p3.goto(`${BASE}/business/${studio.id}`, { waitUntil: "networkidle" });
     for (const want of ["Classes", "Calendar", "Team", "Students", "Earnings", "Memberships", "Assets", "Rooms"]) {
       const t = stiles.find((x) => x.name === want);
       if (!t) { check(false, `studio · has a ${want} tile`); continue; }
@@ -181,6 +229,31 @@ async function pressEveryTile(page, who, expectedNames) {
       const blank = body.replace(/\s+/g, "").length < 40;
       check((res ? res.status() : 0) < 400 && !blank, `studio · ${want} -> ${landed}${blank ? " ⚠ BLANK" : ""}`);
     }
+
+    /* ⚠⚠ THE SWITCHER IS INSIDE THE MARK, AND BOTH IT AND THE GEAR ARE ON A
+       DRILL PAGE (21 Sep 2026, the user: "Profile switcher should be inside the
+       dance os logo and should remain constant everywhere").
+       ⚠ Asserted on a DESK on purpose — that is the half that has been wrong
+       twice. When the switcher lived on the mark (18 Sep) the mark was drawn on
+       six screens, so a desk had no switcher; when it moved to a chip to be
+       constant (21 Sep) it was no longer on the logo. The mark is drawn
+       everywhere now, so a desk must carry both controls AND its back chip. */
+    await p3.goto(`${BASE}/business/${studio.id}/rooms`, { waitUntil: "networkidle" });
+    const drill = await p3.evaluate(() => ({
+      switcher: document.querySelectorAll('[aria-haspopup="menu"]').length,
+      gear: [...document.querySelectorAll("button")].filter((b) => b.getAttribute("aria-label") === "Settings").length,
+      back: [...document.querySelectorAll('[aria-label="Go back"]')].length,
+    }));
+    check(drill.switcher === 1, `drill page · the switcher is here, once (${drill.switcher})`);
+    check(drill.gear === 1, `drill page · and the gear (${drill.gear})`);
+    check(drill.back === 1, `drill page · and the back chip is NOT what the mark replaced (${drill.back})`);
+    await p3.getByRole("button", { name: /^Switch profile/ }).click();
+    const menu = p3.getByRole("menu", { name: "Your profiles" });
+    await menu.waitFor({ state: "visible", timeout: 15_000 });
+    const mTxt = await menu.innerText();
+    check(mTxt.includes("HERE") && mTxt.includes(studio.name), "drill page · and it opens on the studio you are in, marked HERE");
+    check(mTxt.includes("Log out"), "drill page · with Log out, reachable from anywhere");
+    await p3.keyboard.press("Escape").catch(() => {});
     await p3.close();
   } catch (e) {
     console.log("\nTHREW: " + e.message);

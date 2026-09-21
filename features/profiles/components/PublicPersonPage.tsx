@@ -207,7 +207,8 @@ export function PublicPersonPage({
             off for artist page by default but should have option to make it
             available"). A user's page carries none — the row is simply not drawn.
             One block; Follow is the bell in the figures row above. ── */}
-        <ActionRow marginTop={12}>
+        {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
+        <ActionRow>
           {asksGoHere ? (
             <EnquiryButton
               tenantId={person.artistPageId as string}

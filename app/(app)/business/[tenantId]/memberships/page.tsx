@@ -49,6 +49,24 @@ export default async function StudioMembershipsPage({ params }: { params: Promis
   if (seat.memberRole !== "owner") {
     redirect(`/business/${tenantId}`);
   }
+  /* ⚠⚠ AND AN ORGANIZATION SELLS NO MEMBERSHIPS (22 Sep 2026, the user:
+     "membership not required for organization" — the same answer they gave the
+     tile audit a day earlier). No grid has ever drawn this tile for one, so the
+     ask is not about the grid: it is about THIS address, which admits the owner
+     of any business they are on — and an organization OWNS its hosting row
+     (R15). So an organization could type its way here and file a membership
+     **nothing could ever buy**, because that row is `unlisted` for ever.
+     The redirect is its events desk, which is what `type = 'org'` means on
+     every other per-studio route (`/business/{id}` has sent one there since
+     15 Sep), so the shape is the one already in this app rather than a new one.
+     ⚠ THIS IS A PRESENTATION GATE: `save_membership` still admits the owner of
+     ANY business with no type check, so a direct RPC call can still make one.
+     That clause is owed to the next migration that touches memberships (NEXT TO
+     DO #0al) — it is a rule change, and this file's standing rule is that the
+     list goes in front of the user before `db push`. */
+  if (seat.tenant.type === "org") {
+    redirect(`/business/${tenantId}/events`);
+  }
   const selling = await findBusinessMemberships(supabase, tenantId).catch(() => []);
   return <MembershipsScreen passes={[]} selling={selling} canSell business={{ id: tenantId, name: seat.tenant.name }} />;
 }

@@ -478,18 +478,38 @@ test.describe.serial("DanceOS, end to end", () => {
     /* the form wrote a real http(s) address from what was typed */
     expect(studioRows[0]?.socials?.[0]?.url).toBe("https://instagram.com/e2estudio");
 
-    /* ⚠ AND WHERE IT STANDS IS ON THE STUDIO'S OWN HOME, NOT ONLY ON THE HUB
-       (21 Sep 2026, the user: "give door to verification and subscription for
-       studio"). Verification moved to the hub on 15 Sep and the subscription
-       strip left this home on 20 Sep, which put the pair that decides whether a
-       studio is on Discover AT ALL two screens up from the studio. Asserted
-       while the request is UNDER REVIEW, which is the state that has nothing to
-       fill in and therefore the one most likely to be drawn empty. */
+    /* ⚠⚠ AND WHERE IT STANDS IS IN THE STUDIO'S OWN SETTINGS (21 Sep 2026, the
+       user: "Studio-Invoices subscription and refunds to be managed from
+       settings"). This block asserted the same three on the studio's HOME a few
+       hours earlier, at the same user's word; it asserts the move at BOTH ends,
+       because a check that only looks at the new place cannot tell you the old
+       one was cleared — and this pair has now been in three places, so a check
+       that does not clear behind itself is how a fourth copy appears.
+       ⚠ THE SHEET IS THE CHROME'S, which is the whole reason it can be a
+       studio's at all: it was rendered by the person's own profile page, so the
+       only profile it could ever be about was theirs. Asserted while the request
+       is UNDER REVIEW — the state with nothing to fill in, and so the one most
+       likely to be drawn empty. */
     await owner.goto(`/business/${studioId}`);
+    await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
+    await expect(owner.getByTestId("studio-subscription")).toHaveCount(0);
+    await owner.getByRole("button", { name: "Settings", exact: true }).click();
+    const studioSettings = owner.getByRole("dialog", { name: "Settings" });
+    await expect(studioSettings).toBeVisible();
+    await expect(studioSettings).toContainText("THIS STUDIO");
+    /* it says WHOSE settings these are, because it is no longer always yours */
+    await expect(studioSettings).toContainText(studioName);
+    /* and the four the user named, plus the two that were already the studio's */
+    for (const tile of ["Verification", "Subscription", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
+      await expect(studioSettings.getByText(tile, { exact: true })).toBeVisible();
+    }
+    /* ⚠ and NOT the account's own plan switch — a sheet that mixes the two is
+       the "which profile am I changing?" bug this ask exists to end */
+    await expect(studioSettings.getByText("Artist tools", { exact: true })).toHaveCount(0);
+    await owner.keyboard.press("Escape").catch(() => {});
+    /* the one tile that is a FORM has a page, and it carries the real form */
+    await owner.goto(`/business/${studioId}/verification`);
     await expect(owner.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Under review");
-    await expect(owner.getByTestId("studio-subscription")).toBeVisible();
-    /* and a door to the refunds, which no tile on this grid has ever named */
-    await expect(owner.getByRole("link", { name: "Refunds", exact: true })).toHaveAttribute("href", `/business/${studioId}/refunds`);
 
     // ---- the admin reads the STUDIO's link and photos in the queue, and says yes
     await admin.goto("/admin/verifications");
@@ -521,17 +541,24 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(studioStrip.getByText("NOT LIVE", { exact: true })).toBeVisible();
     await expect(studioStrip).toContainText("Each studio has its own subscription");
     await expect(studioStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
-    /* ⚠ AND THE STUDIO'S OWN HOME CARRIES IT TOO, WITH THE REAL BUTTON ON IT
-       (21 Sep 2026). This assertion said `toHaveCount(0)` from 20 Sep, when C31
-       took the strip off at the user's word; they reversed that a day later,
-       because /subscription is the LIST view and this is the studio. ⚠ The
-       verification strip is GONE here now the badge is on — the same rule the
-       hub follows at line 500, so the two screens cannot disagree about it. */
+    /* ⚠⚠ AND THE STUDIO'S OWN HOME CARRIES NEITHER STRIP — the third and final
+       reading of one question (21 Sep 2026). This assertion has now said
+       `toHaveCount(0)` (20 Sep, C31), then `toContainText("NOT LIVE")` (21 Sep,
+       C51, a few hours ago), and says count-0 again on the same user's later
+       word: the standing is in the studio's own Settings, which is the first
+       home for it that is per-profile. ⚠ It is asserted HERE as well as at the
+       block above because this is the point in the story where the badge is on
+       and the mandate is not — the exact state a strip would be drawn for. */
     await owner.goto(`/business/${studioId}`);
-    const homeStrip = owner.getByTestId("studio-subscription");
-    await expect(homeStrip).toContainText("NOT LIVE");
-    await expect(homeStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
+    await expect(owner.getByTestId("studio-subscription")).toHaveCount(0);
     await expect(owner.getByTestId("studio-verification")).toHaveCount(0);
+    /* and Settings, opened from the STUDIO, is where it went — badged verified
+       now, which is the state the tile's own badge reads */
+    await owner.getByRole("button", { name: "Settings", exact: true }).click();
+    const afterBadge = owner.getByRole("dialog", { name: "Settings" });
+    await expect(afterBadge.getByText("Verification", { exact: true })).toBeVisible();
+    await expect(afterBadge).toContainText("verified");
+    await owner.keyboard.press("Escape").catch(() => {});
     await admin.goto(`/admin/businesses?q=${encodeURIComponent(studioName)}`);
     const studioCard = admin.getByTestId("admin-business").filter({ hasText: studioName });
     await expect(studioCard).toContainText("NO SUBSCRIPTION");
@@ -1726,9 +1753,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto("/profile");
 
     // ---- the gear, and what is behind it (S_profiletab 11402-11440) ----
-    // The top bar carries the settings gear on every screen; on the Profile tab
-    // it opens the sheet rather than just landing on the tab (19263).
-    await trainer.getByRole("link", { name: "Settings", exact: true }).click();
+    // ⚠ A BUTTON, NOT A LINK (21 Sep 2026): the gear used to navigate to
+    // `/profile?settings=1` and let THAT page open the sheet, which is exactly
+    // why Settings could only ever be about that person. It opens the sheet over
+    // whatever you are looking at now, so a studio gets a studio's settings.
+    await trainer.getByRole("button", { name: "Settings", exact: true }).click();
     const settings = trainer.getByRole("dialog", { name: "Settings" });
     await expect(settings).toBeVisible();
     await expect(settings.getByText("YOUR PLAN")).toBeVisible();

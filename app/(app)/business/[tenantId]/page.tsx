@@ -10,9 +10,7 @@ import { findStudioDeck } from "@/repositories/home";
 import { findPublicStudioTeam, findPublicTenant } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { countRoomsByTenants } from "@/repositories/rooms";
-import { findPlanCatalog, pickPlan } from "@/repositories/plans";
-import { findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
-import { findStudioProofPhotos, findStudioVerificationStates, type StudioVerificationState } from "@/repositories/studioVerification";
+import { findStudioProofPhotos } from "@/repositories/studioVerification";
 import { findMyMemberships } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the deck's one
@@ -92,28 +90,15 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
   const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
   const ownerCounts = ownerUserId ? await findPersonFollowerCounts(supabase, [ownerUserId]).catch(() => new Map()) : new Map();
 
-  /* ⚠⚠ WHERE THIS STUDIO STANDS, ON THIS STUDIO'S OWN HOME (21 Sep 2026, the
-     user: "give door to verification and subscription for studio").
-     ⚠ THIS REVERSES TWO EARLIER CUTS AT THEIR WORD, and both were made at their
-     word too: verification moved to the hub on 15 Sep when one card per studio
-     collapsed three strips into one, and the subscription strip left this home on
-     20 Sep ("already being handled from settings"). The audit's question was
-     whether that was worth it, because the state deciding whether a studio is on
-     Discover AT ALL had ended up two screens up — and the answer is no. They are
-     the REAL controls, not links to them: the form that files the request and the
-     button that starts or stops the mandate, about THIS studio, where the studio
-     is. The hub and `/subscription` keep theirs, which are the LIST views.
-     ⚠ Owner-only, and read only for an owner — a trainer cannot file a
-     verification or move a mandate, so they are not asked for either. */
-  const [vStates, subStates, plans] = isOwner
-    ? await Promise.all([
-        findStudioVerificationStates(supabase, [{ id: tenantId, verifiedAt: tenant.verifiedAt ?? null }]).catch(
-          () => ({}) as Record<string, StudioVerificationState>
-        ),
-        findMyStudioSubscriptions(supabase, [tenantId]).catch(() => ({}) as Record<string, StudioSubscriptionState>),
-        findPlanCatalog(supabase).catch(() => []),
-      ])
-    : [{} as Record<string, StudioVerificationState>, {} as Record<string, StudioSubscriptionState>, []];
+  /* ⚠⚠ THE THREE STANDING READS ARE GONE FROM THIS ROUTE (21 Sep 2026, the
+     user: "Studio-Invoices subscription and refunds to be managed from
+     settings"). They landed here this morning to feed the block on the studio's
+     home, and that block is four tiles in the studio's own Settings now — so
+     `findStudioVerificationStates` is read by `/business/{id}/verification`,
+     `findMyStudioSubscriptions` and `findPlanCatalog` by `/subscription`, and
+     each is read by the page that shows it rather than by the page you pass
+     through on the way. A studio's home is one read-set lighter for every
+     visit by its owner. */
 
   /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, their list for all four
      kinds of account — deviation row R18): Classes · Calendar · Team · Students ·
@@ -177,16 +162,6 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       followers={followerCounts.get(tenantId) ?? 0}
       followingN={ownerUserId ? (ownerCounts.get(ownerUserId)?.following ?? null) : null}
       tiles={tiles}
-      standing={
-        isOwner
-          ? {
-              orgId: user.id,
-              verification: vStates[tenantId] ?? null,
-              subscription: subStates[tenantId] ?? null,
-              studioPrice: pickPlan(plans, "studio"),
-            }
-          : null
-      }
     />
   );
 }
