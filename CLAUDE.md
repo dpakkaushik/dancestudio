@@ -100,6 +100,20 @@
 >   with **no page error**, which is what proves the `open` fix · **`shoot-org.js`
 >   green** including four new Discover checks · **the whole e2e suite 57/57 in
 >   6.5 min on one worker**, first run, no red at any point.
+> * **PUSHED AND LIVE (`46f980e`), read back off the deployment:** the merged
+>   control **6/6** against the live host (the row order, no Near me chip left
+>   standing, the radius filter saying "Within 5 km", and no Near me row on a
+>   shelf that is not measured) and **`stranger-smoke.ps1` 11/11**.
+>   ⚠⚠ **AND THE GITHUB → VERCEL WEBHOOK DID NOT FIRE.** `origin/main` carried
+>   `46f980e` and **nine minutes later Vercel had no deployment for it at all** —
+>   its newest was still this morning's `8e7dba7`, while every push earlier the
+>   same day had built within a minute. Triggered by hand through the API
+>   (`POST /v13/deployments` with the project's `repoId` and the sha, read from
+>   `/v9/projects/dancestudio`), READY in 40 s. **A green push is not a
+>   deployment**: read the deployment list for the SHA you just pushed rather
+>   than waiting on a smoke check to go green, because a stale bundle and a
+>   missing feature look identical from outside. If it recurs, the GitHub app's
+>   webhook on the repo is the thing to look at.
 > * ⚠ **AND THE FIRST PROBE READ A FOUR-HOUR-OLD BUNDLE.** It reported the merged
 >   control missing and a Near me chip still present — because a `next start`
 >   from this morning's push verification **was still holding :3100**, so my own
