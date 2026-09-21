@@ -213,6 +213,13 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
       { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
       { name: DOS_TOOLS.team.name, href: "/business/team", k: "team", c: DOS_TOOLS.team.c },
       { name: DOS_TOOLS.earn.name, href: "/business/earnings", k: "earn", c: DOS_TOOLS.earn.c },
+      /* ⚠ AN ORGANIZATION HAS ASSETS TOO (21 Sep 2026, the user: "fix assets for
+         both artist, studio and organization"). It never had the tile — the
+         18 Sep list gave Assets to an artist and a studio only — and an
+         organization owns things a studio does not: a van, a PA that travels
+         between its studios. They hang off its own hosting row, which is the one
+         business an organization owns. */
+      ...(eventsHostId ? [{ name: DOS_TOOLS.assets.name, href: `/business/${eventsHostId}/assets`, k: "assets", c: DOS_TOOLS.assets.c } as Tile] : []),
       /* ⚠ NO MANAGE TILE (19 Sep 2026, the user: "just need to remove manage as
          the tile in tools, nothing else changes") — /managed still exists and
          Home's empty day still offers it; it is simply not a tile */
@@ -251,7 +258,11 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
        it, which is where a teacher's own money belongs. */
     { name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c },
     { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
-    { name: DOS_TOOLS.assets.name, href: "/assets", k: "assets", c: DOS_TOOLS.assets.c },
+    /* ⚠ AN ARTIST'S ASSETS ARE THEIR PAGE'S (21 Sep 2026), like their Team,
+       Students and Earnings tiles above — it pointed at `/assets`, a person-level
+       address for a thing that belongs to a BUSINESS. `/assets` redirects here
+       (Rule 14: an address handed out is a promise). */
+    { name: DOS_TOOLS.assets.name, href: desk("assets"), k: "assets", c: DOS_TOOLS.assets.c },
     /* ⚠ NO MEDIA TILE (21 Sep 2026, the user: "remove media from all tool in all
        profiles"). It opened the Profile tab, because an artist's pictures are
        edited there — and since 20-21 Sep the disc's ⊕ and the posters' ⊕ ARE

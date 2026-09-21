@@ -1,16 +1,42 @@
-import { NotBuiltYet } from "@/features/shell/components/NotBuiltYet";
+import { notFound, redirect } from "next/navigation";
+import { AssetsDesk } from "@/features/assets/components/AssetsDesk";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { findBusinessAssets } from "@/repositories/assets";
+import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
 
-/** /business/{tenantId}/assets — the Assets tile on a studio's home (18 Sep
- *  2026). The prototype's S_assets (16791): the studio's inventory and its
- *  value — sound, floors, mirrors, equipment. Go back lands on the studio's home. */
-export default async function StudioAssetsPage({ params }: { params: Promise<{ tenantId: string }> }) {
+/** /business/{tenantId}/assets — ONE DESK FOR ALL THREE KINDS (21 Sep 2026, the
+ *  user: "Fix assets for both artist, studio and organization").
+ *
+ *  A studio's, an artist page's, and an organization's own hosting row all pass
+ *  through here, because all three are `businesses` and assets hang off a
+ *  business. It replaces the prototype's "nothing here yet", which the tile has
+ *  opened since 18 Sep — and an ORGANIZATION never had the tile at all.
+ *
+ *  ⚠ THE OWNER'S, and the database says so too (`is_business_owner` in the only
+ *  SELECT policy on `assets`). Inventory and what it is worth is the Earnings
+ *  desk's kind of fact, not the register's: a trainer has no business reading
+ *  what the floor cost. So this is a presentation gate over a REAL one, not
+ *  instead of one. */
+export default async function BusinessAssetsPage({ params }: { params: Promise<{ tenantId: string }> }) {
   const { tenantId } = await params;
-  return (
-    <NotBuiltYet
-      tool="assets"
-      what="This studio’s inventory and what it is worth — sound, floors, mirrors, equipment."
-      back={`/business/${tenantId}`}
-      backLabel="Back to the studio"
-    />
-  );
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+  /* MEMBERSHIP IS THE SPINE — `findMyTeams` says `user_id = auth.uid()` out loud,
+     so this asks whether THIS person is on THIS business rather than whether the
+     row happens to be readable (RLS is a ceiling, not a scope) */
+  const teams = await findMyTeams(supabase).catch(() => []);
+  const seat = teams.find((m) => m.tenant.id === tenantId);
+  if (!seat) {
+    notFound();
+  }
+  if (seat.memberRole !== "owner") {
+    redirect(`/business/${tenantId}`);
+  }
+  const assets = await findBusinessAssets(supabase, tenantId).catch(() => []);
+  return <AssetsDesk businessId={tenantId} businessName={seat.tenant.name} assets={assets} />;
 }

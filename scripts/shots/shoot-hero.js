@@ -271,6 +271,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        tile was a third door to a job whose controls sit on the pictures. The
        ROUTE stays (Rule 14) and is driven further down this file. */
     check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 0, "studio home: NO Media tile — the pictures are edited on the pictures (21 Sep 2026)");
+    check((await org.getByRole("link", { name: "Assets", exact: true }).getAttribute("href")) === `/business/${studioId}/assets`, "studio home: the Assets tile opens THIS studio's desk");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
     /* ⚠ AND THE CHIPS ARE IN THE FIGURES ROW, NOT THE HERO'S RIGHT EDGE (20 Sep
        2026, the user: "should be placed in same row as follower following numbers
