@@ -1,4 +1,4 @@
-# CLAUDE.md — DanceOS
+do# CLAUDE.md — DanceOS
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
@@ -54,8 +54,15 @@
 >   class tile's headline — the JS-theme one — at the same. typecheck, lint and
 >   `next build` were all green while the bug would have been shipping, which is
 >   the whole reason this script exists.
-> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-invert.js`
->   10/10** · **`shoot-hero.js` 142/142** · the e2e recorded below.
+> * **Verified, and PUSHED AND LIVE (`bd6b7ac`):** typecheck 0 · lint 0 ·
+>   `next build` green · **`shoot-invert.js` 10/10 against `:3100` AND 10/10
+>   against the deployment**, the same numbers in both themes · **`shoot-hero.js`
+>   142/142** · **the whole e2e suite 57/57 in one run, 16.8 min on one worker**,
+>   collected as 57, no red at any point. ⚠ **The push went at 26/57 on the user's
+>   word** — the precedent this file records three times — and it was safer than
+>   usual: no migration, and the one thing that could catch this bug is a real
+>   browser, which `shoot-invert.js` had already been through. The Discover
+>   segment landed green twenty minutes later.
 >   ⚠ **One shoot run came back 136/6 and I did not capture which six**; the Maps
 >   demo key had just hit its daily quota again (#0a3) and two shoots had run back
 >   to back. Two later runs were 142/142. Recorded as UNEXPLAINED rather than
