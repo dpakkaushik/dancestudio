@@ -55,12 +55,18 @@ export function MembershipsScreen({
   passes,
   selling,
   canSell,
+  business = null,
 }: {
   /** what this person HOLDS */
   passes: MyPass[];
   /** what their studio or artist page SELLS — empty for a plain user */
   selling: MembershipWithUsage[];
   canSell: boolean;
+  /** ⚠ ONE BUSINESS'S DESK (21 Sep 2026): set when this is a STUDIO's own
+   *  Memberships tile rather than a person's. Then there is nothing to switch
+   *  to — a studio holds no passes, because a business is not a person
+   *  (`guard_person_only`) — so the segments go and the page says whose it is. */
+  business?: { id: string; name: string } | null;
   /* ⚠ NO `sellerId` / `sellerName` ANY MORE (21 Sep 2026): the form left this
      desk for `/memberships/new`, which resolves whose membership it is on the
      server rather than taking it from a prop. A dead prop is a lie. */
@@ -72,6 +78,8 @@ export function MembershipsScreen({
      somebody who only holds passes has no Manage side to open, so they land on
      Booked — which is the only segment they have. */
   const [seg, setSeg] = useState<"mine" | "selling">(canSell ? "selling" : "mine");
+  /* a studio's desk has one side, so the switch is not drawn and cannot be reached */
+  const side = business ? "selling" : seg;
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const fire = (m: string) => {
@@ -100,9 +108,13 @@ export function MembershipsScreen({
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 40px", boxSizing: "border-box" }}>
-      <DeskHero tool="memberships" as="h1" margin="0 0 10px" />
+      <DeskHero tool="memberships" as="h1" margin={business ? "0 0 4px" : "0 0 10px"} />
 
-      {canSell ? (
+      {/* a studio's desk says whose it is: an organization runs several, and the
+          tool hero names the TOOL and nothing that names the studio */}
+      {business ? <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px" }}>What {business.name} sells</div> : null}
+
+      {canSell && !business ? (
         <div role="group" aria-label="Show" style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 12 }}>
           {/* BOOKED · MANAGE (19 Sep 2026, the user: "membership columns should be
               Booked and Manage") — the same two sides, in the words the Classes
@@ -118,7 +130,7 @@ export function MembershipsScreen({
         </div>
       ) : null}
 
-      {seg === "mine" ? (
+      {side === "mine" ? (
         <>
           {passes.map((p) => (
             <div key={p.passId} style={card} data-testid="my-pass">
@@ -158,8 +170,13 @@ export function MembershipsScreen({
               new routine and new membership"). It expanded inside this desk,
               which is why it looked nothing like Add class. `/memberships/new`
               wears the shared `FormPage` anatomy and resolves WHOSE membership
-              it is on the server, the same way this desk does. */}
-          <DeskAddButton label="New membership" href="/memberships/new" />
+              it is on the server, the same way this desk does.
+              ⚠ A STUDIO'S DESK NAMES ITSELF IN THE LINK (21 Sep 2026): the page
+              resolves and re-authorizes that id, so the id in the URL decides
+              nothing on its own — but without it a studio owner filling this
+              form would be making a membership for whichever business happened
+              to come back first. */}
+          <DeskAddButton label="New membership" href={business ? `/memberships/new?business=${business.id}` : "/memberships/new"} />
 
           {selling.map((m) => (
             <Link key={m.id} href={`/memberships/${m.id}`} aria-label={`Open ${m.name}`} style={{ ...card, display: "block", textDecoration: "none", color: INK }} data-testid="selling-membership">
@@ -188,7 +205,20 @@ export function MembershipsScreen({
               </div>
             </Link>
           ))}
-          {selling.length === 0 && !open ? (
+          {/* ⚠⚠ `&& !open` USED TO BE HERE, AND IT WAS TWO BUGS (found 21 Sep 2026
+              by a PAGEERROR on the studio's brand-new desk, which is empty by
+              definition). `open` is not a variable in this file — it resolved to
+              `window.open`, a function and therefore truthy, so `!open` was
+              ALWAYS false and this empty state could never be drawn: a seller
+              with nothing on sale got cards, no words, nothing. And on the
+              SERVER there is no `window`, so the identifier was undefined and
+              the server render of this component threw — React #419, "the server
+              could not finish this Suspense boundary", recovered by re-rendering
+              on the client, which is why it looked fine and only a page-error
+              listener ever saw it. It is a leftover from when the form expanded
+              inside this desk behind an `open` flag (21 Sep, the form left for
+              `/memberships/new` and took the state with it). */}
+          {selling.length === 0 ? (
             <div style={{ ...card, textAlign: "center", fontSize: 12, color: SUB, border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
               Nothing on sale yet. A membership is four things — a name, how many classes or hours, a price, and how many you will sell.
             </div>

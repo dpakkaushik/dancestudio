@@ -4,12 +4,11 @@ import { ClassTile } from "@/features/classes/components/ClassTile";
 import { CrewCard } from "@/features/crews/components/CrewCard";
 import { CrewI } from "@/features/crews/components/crew-kit";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
-import { CityChip } from "@/features/discovery/components/CityChip";
 import { CompactCard } from "@/features/discovery/components/CompactCard";
 import { DiscoverFilters } from "@/features/discovery/components/DiscoverFilters";
 import { DiscoverTabs } from "@/features/discovery/components/DiscoverTabs";
 import { FollowedShelf, type FollowedTile } from "@/features/discovery/components/FollowedShelf";
-import { NearMeChip } from "@/features/discovery/components/NearMeChip";
+import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, EventI, StudioI } from "@/features/discovery/components/discover-kit";
 import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
@@ -300,20 +299,19 @@ export default async function DiscoverPage({
     >
       {/* THE TOP OF DISCOVER (4501-4531): a small word saying what this is, the title set large, THE PLACE ONCE */}
       <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>DISCOVER</div>
-      {/* ⚠ WHERE YOU ARE, ON ONE LINE (18 Sep 2026, the user: "place near me
-          alongside Location drop down, adjust in the best way"). The two controls
-          answer the SAME question — measure from this city, or measure from me —
-          so they belong side by side rather than stacked, and Near me sat on a
-          row of its own only because the map toggle used to keep it company.
-          The title takes the line above and the pair takes the one under it, at
-          the right, because a 27px display heading and two chips cannot share a
-          line on a 430px phone without the heading losing words. */}
+      {/* ⚠ WHERE YOU ARE, IN ONE CONTROL (21 Sep 2026, the user: "merge near me
+          and city filter on discover"). 18 Sep put the two chips on one line
+          because they answer the same question — measure from this city, or
+          measure from me — and one line was still one control too many: Near me
+          was never independent of the city, it only moves the point inside it.
+          One chip now, printing the answer and opening on Near me then the
+          cities. The title keeps the line above it, because a 27px display
+          heading and a chip cannot share a line on a 430px phone without the
+          heading losing words. */}
       <div style={{ marginTop: 5, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 27, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1, lineHeight: 1.05, color: INK }}>Dance near you</span>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 8, minWidth: 0, flexWrap: "wrap" }}>
-          {/* Near me first: it is the one that CHANGES what the city chip means */}
-          {wantsBusinesses ? <NearMeChip on={near !== null} params={{ city, tab, ...filtersToParams(filters) }} /> : null}
-          <CityChip city={city || "Anywhere"} cities={cities.map((c) => c.city)} tab={tab} extra={filtersToParams(filters)} />
+          <PlaceChip city={city} cities={cities.map((c) => c.city)} tab={tab} extra={filtersToParams(filters)} near={near !== null} offerNearMe={wantsBusinesses} />
         </div>
       </div>
 

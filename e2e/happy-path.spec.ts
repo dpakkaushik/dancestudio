@@ -1103,6 +1103,14 @@ test.describe.serial("DanceOS, end to end", () => {
     // the crew's HOME (18 Sep 2026): the hero, the Team and Events tiles, the crew's own bar
     await expect(learner.getByTestId("crew-hero")).toBeVisible();
     await expect(learner.getByRole("navigation", { name: "Crew" }).getByRole("link", { name: "Inbox" })).toBeVisible();
+    /* ⚠ AND THE CORNER OPENS **THIS CREW'S** PUBLIC PAGE (21 Sep 2026, the user:
+       "studio and crew pages on home tab should have option to view their
+       profile pages currently taking to organizations page and user/artist
+       page"). It pointed at the Profile tab for a few hours this morning, which
+       on a crew's home is the PERSON who leads it — true, and nothing to do with
+       the crew. Both ends asserted, so the thing it replaced cannot live on. */
+    await expect(learner.getByRole("link", { name: "Public view", exact: true })).toHaveAttribute("href", `/crew/${crewId}`);
+    await expect(learner.getByRole("link", { name: "Your profile", exact: true })).toHaveCount(0);
     await learner.getByRole("link", { name: "Team", exact: true }).click();
     await learner.waitForURL(/\/crews\/[0-9a-f-]+\/manage\/team$/);
     // ASKED IS NOT JOINED: the desk says the trainer has not answered, and counts one member
@@ -1989,16 +1997,34 @@ test.describe.serial("DanceOS, end to end", () => {
     // for class and student wise with progress bar for completion."
     const passName = `E2E Pass ${stamp}`;
 
+    /* ⚠⚠ A STUDIO'S MEMBERSHIPS ARE ON THE STUDIO'S OWN HOME (21 Sep 2026, the
+       user: "fix memberships for studio"), and this segment is re-cut to reach
+       them the way a studio owner does — by pressing the tile. Until today that
+       tile opened the prototype's "nothing here yet": the desk landed on 19 Sep
+       at `/memberships` and nobody came back for the tile, so for two days the
+       feature was live one address away from the only door to it. The other half
+       is why this had to be an ADDRESS rather than a redirect: `/memberships`
+       sold from "the first business you own", so an organization's second studio
+       could not be reached at all. */
+    await owner.goto(`/business/${tenantId}`);
+    await owner.getByRole("link", { name: "Memberships", exact: true }).click();
+    await owner.waitForURL(new RegExp(`/business/${tenantId}/memberships$`));
+    await expect(owner.getByRole("heading", { name: "Memberships" })).toBeVisible();
+    // the desk says WHOSE it is — an organization runs several studios
+    await expect(owner.getByText(`What ${studioName} sells`)).toBeVisible();
+    // and it is not the shrug it used to be
+    await expect(owner.getByText("Class packs and plans this studio sells")).toHaveCount(0);
+
     // ── FOUR FIELDS AND NOTHING ELSE. It is free on purpose: a free membership
     // is granted on the press, which is the only way a browser test can hold a
     // real pass — a priced one opens Cashfree's own window.
-    await owner.goto("/memberships");
-    await expect(owner.getByRole("heading", { name: "Memberships" })).toBeVisible();
     /* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026) and wears the Add class anatomy,
        so the desk's button is a LINK and the four fields are split across the
-       two steps the class form splits its own across. Still four fields. */
+       two steps the class form splits its own across. Still four fields — and
+       the link NAMES the studio, because the form used to be filled from one
+       desk and saved against whichever business came back first. */
     await owner.getByRole("link", { name: "New membership" }).click();
-    await owner.waitForURL(/\/memberships\/new$/);
+    await owner.waitForURL(new RegExp(`/memberships/new\\?business=${tenantId}$`));
     await expect(owner.getByRole("button", { name: "Name the membership first" })).toBeVisible();
     await owner.getByLabel("Membership name").fill(passName);
     await owner.getByLabel("How many classes").fill("2");
@@ -2007,7 +2033,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("Total memberships").fill("5");
     await owner.getByRole("button", { name: "Put it on sale" }).click();
     await owner.getByRole("dialog", { name: "Put this on sale?" }).getByRole("button", { name: "Put it on sale" }).click();
-    await owner.waitForURL(/\/memberships$/, { timeout: 20_000 });
+    /* back to the desk that SENT them — it pushed `/memberships` whatever opened
+       it, so a studio owner landed on a page that no longer lists what they made */
+    await owner.waitForURL(new RegExp(`/business/${tenantId}/memberships$`), { timeout: 20_000 });
     const card = owner.getByRole("link", { name: `Open ${passName}` });
     await expect(card).toBeVisible({ timeout: 15_000 });
 
@@ -2051,10 +2079,16 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── THE SELLER TRACKS IT, per class and per student (the user's own words).
     // Nothing has been spent yet, so the honest answer is one holder at nothing
     // used — a figure and the list behind it being the same number (Step 25).
-    await owner.goto("/memberships");
-    /* the seller's two segments, in the user's own words */
-    await expect(owner.getByRole("button", { name: /^Booked/ })).toBeVisible();
-    await expect(owner.getByRole("button", { name: /^Manage/ })).toBeVisible();
+    await owner.goto(`/business/${tenantId}/memberships`);
+    /* ⚠ ONE SIDE, NOT TWO (21 Sep 2026): Booked · Manage are the two sides a
+       PERSON has — what they hold and what they sell. A studio holds no passes,
+       because a business is not a person (`guard_person_only`), so its own desk
+       is the selling side alone and the switch is not drawn at all. ⚠ Nothing in
+       this story sees BOTH segments any more: they belong to an artist, who
+       holds passes and sells from their own page, and this story's artist sells
+       no membership. Said out loud rather than left as a silent gap. */
+    await expect(owner.getByRole("button", { name: /^Booked/ })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: /^Manage/ })).toHaveCount(0);
     await card.click();
     await owner.waitForURL(/\/memberships\/[0-9a-f-]+$/);
     await expect(owner.getByRole("heading", { name: passName })).toBeVisible();

@@ -280,14 +280,19 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
     check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
     check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
-    /* ⚠ THE CORNER OPENS THE PROFILE TAB, AND THE EYE IS GONE (21 Sep 2026, the
-       user: "the top right button on all home tabs should just take to the user
-       profile right now its looping"). The eye opened `/studio/{id}`, whose own
-       corner opened this page again — a two-screen loop. Both ends are asserted:
-       the new door, and the absence of the old one, because a check that only
-       looks for what was added lets what it replaced live on. */
-    check((await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === "/profile", "studio home: the corner opens the Profile tab (21 Sep 2026)");
-    check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "studio home: no eye — the loop's first end is cut");
+    /* ⚠⚠ THE CORNER OPENS **THIS STUDIO'S** PUBLIC PAGE (21 Sep 2026, the user:
+       "studio and crew pages on home tab should have option to view their
+       profile pages currently taking to organizations page and user/artist
+       page"). Written twice in one day, and the second is the correction: the
+       morning's cut pointed every home's corner at the Profile tab to end a
+       two-screen loop, and on a studio's home that door opens the ORGANIZATION
+       behind it — true, and nothing to do with this studio. The loop is still
+       cut, because a profile page has no corner at all; what changed is that a
+       corner goes to the public face of the thing you are standing on. Both ends
+       asserted, because a check that only looks for what was added lets what it
+       replaced live on. */
+    check((await org.getByRole("link", { name: "Public view", exact: true }).getAttribute("href")) === `/studio/${studioId}`, "studio home: the corner opens THIS studio's public page (21 Sep 2026)");
+    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 0, "studio home: and not the organization behind it");
     /* AND THE BUTTONS ABOVE THE SCHEDULE, the row its public page carries */
     check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 1, "studio home: Enquiry is drawn and disabled with its reason, as on your own page");
     /* ⚠ THE DISC IS THE PICTURE, NOT A THIRD DOOR (20 Sep 2026). It opened the
@@ -303,6 +308,23 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     const studioBar = org.getByRole("navigation", { name: "Studio" });
     check((await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 && (await studioBar.getByRole("link").count()) === 3, "studio bar: Home · Discover · Inbox — three (19 Sep 2026)");
     await shot("studio-initials");
+
+    /* ⚠⚠ THE MEMBERSHIPS TILE OPENS A DESK, NOT A SHRUG (21 Sep 2026, the user:
+       "fix memberships for studio"). The tile was drawn on 18 Sep over the
+       prototype's "nothing here yet" because no desk existed; the desk landed on
+       19 Sep at `/memberships` and nobody came back for the tile — so a studio
+       owner pressing it was told the feature does not exist while it was live
+       one address away. Driven from the tile, because the tile is what was
+       broken. */
+    check((await org.getByRole("link", { name: "Memberships", exact: true }).getAttribute("href")) === `/business/${studioId}/memberships`, "studio home: the Memberships tile opens THIS studio's desk (21 Sep 2026)");
+    await org.goto(`${BASE}/business/${studioId}/memberships`);
+    await org.getByRole("heading", { name: "Memberships" }).waitFor({ timeout: 15000 });
+    check((await org.getByText("Class packs and plans this studio sells").count()) === 0, "studio memberships: not the 'nothing here yet' shrug any more");
+    check((await org.getByText(/^What .* sells$/).count()) === 1, "studio memberships: the desk says WHOSE it is — an organization runs several");
+    /* a studio holds no passes (a business is not a person), so one side, no switch */
+    check((await org.getByRole("button", { name: /^Booked/ }).count()) === 0, "studio memberships: no Booked side — a studio holds no pass");
+    check((await org.getByRole("link", { name: "New membership" }).getAttribute("href")) === `/memberships/new?business=${studioId}`, "studio memberships: the form is told WHICH studio, rather than taking the first one owned");
+    await org.goto(`${BASE}/business/${studioId}`);
 
     /* ⚠ AND IT IS OFF THE DESKS TOO NOW (18 Sep 2026, the user: "remove the blue
        bar which shows exit studio from all pages"). It was kept there on 16 Sep

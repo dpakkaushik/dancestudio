@@ -33,7 +33,18 @@ const STEPS = ["What it is", "Price & how many"] as const;
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
-export function MembershipForm({ sellerId, sellerName }: { sellerId: string; sellerName: string }) {
+export function MembershipForm({
+  sellerId,
+  sellerName,
+  backTo = "/memberships",
+}: {
+  sellerId: string;
+  sellerName: string;
+  /** ⚠ the desk that sent you (21 Sep 2026): a studio's own, or a person's.
+   *  It pushed `/memberships` whatever opened it, so a studio owner saving a
+   *  membership landed on a page that no longer lists it. */
+  backTo?: string;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [pending, start] = useTransition();
@@ -76,7 +87,7 @@ export function MembershipForm({ sellerId, sellerName }: { sellerId: string; sel
       setConfirm(false);
       if (out.error) return fire(out.error);
       fire("🎟 Membership on sale");
-      setTimeout(() => router.push("/memberships"), 600);
+      setTimeout(() => router.push(backTo), 600);
     });
   };
 

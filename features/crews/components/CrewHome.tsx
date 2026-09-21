@@ -6,7 +6,7 @@ import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { PersonIcon, cornerChip } from "@/features/profiles/components/profile-kit";
+import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
@@ -88,22 +88,27 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
              Edit sheet — the shape the same user had removed from a STUDIO on
              20 Sep. The disc opens the picture and its ⊕ changes it; the rail's
              ⊕ opens the posters. ⚠ The disc STOPPED opening the crew's public
-             page: that page is the Share chip in the band, and a disc that
-             navigates is not a disc you can edit from. */
+             page: that page is the eye in the corner and the Share chip in the
+             band, and a disc that navigates is not a disc you can edit from. */
           avatar={photoUrl(crew.photo)}
           avatarSlot={<CrewPicturesButton crewId={crew.id} crewName={crew.name} grad={CREW_GRAD} avatar={photoUrl(crew.photo)} canEdit />}
           avatarAlt={crew.name}
           shots={shots}
           headerEdit={<CrewPostersButton crewId={crew.id} crewName={crew.name} photos={header} />}
-          /* ⚠ THE EYE IS GONE, AND THE CORNER IS THE ONE DOOR EVERY HOME CARRIES
-             (21 Sep 2026): it opened `/crew/{id}`, whose own corner opened this
-             page again — the same two-screen loop. The crew's public page is the
-             Share chip in the figures row. */
+          /* ⚠⚠ THE EYE IS BACK, ONTO THIS CREW'S OWN PAGE (21 Sep 2026, the user:
+             "studio and crew pages on home tab should have option to view their
+             profile pages currently taking to organizations page and user/artist
+             page"). Cutting the C37 loop this morning pointed this corner at the
+             Profile tab, which on a crew's home is the PERSON who leads it —
+             true, and nothing to do with the crew. A corner goes to the public
+             face of the thing you are standing on; a profile page has no corner,
+             so nothing cycles, and the switcher beside the gear is the way back
+             to you from anywhere. */
           corner={
             <>
               <CrewEditButton crew={crew} />
-              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
-                <PersonIcon />
+              <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
               </Link>
             </>
           }

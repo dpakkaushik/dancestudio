@@ -121,8 +121,19 @@ const rest = async (method, url, body) => {
   check((await page.getByRole("application", { name: /on the map/i }).count()) === 0, "Discover: no map, even when the old view=map is in the URL");
   check((await page.getByRole("link", { name: "Show as a list" }).count()) === 0, "Discover: and no List toggle");
   await page.goto(`${BASE}/discover?city=Pune&tab=studios`, { waitUntil: "networkidle" });
-  check((await page.getByRole("link", { name: "Show on a map" }).count()) === 0, "Discover: no Map toggle beside Near me");
-  check((await page.getByRole("button", { name: /Near me/ }).count()) === 1, "Discover: Near me is still there, on its own");
+  check((await page.getByRole("link", { name: "Show on a map" }).count()) === 0, "Discover: no Map toggle beside the place chip");
+  /* ⚠ ONE CONTROL, NOT TWO (21 Sep 2026, the user: "merge near me and city
+     filter on discover"). Near me was its own chip beside the city and was never
+     independent of it — it only moves the point INSIDE the city. So the check is
+     that the merged chip exists, offers Near me as a row, and that no separate
+     Near me button is left standing beside it. */
+  const place = page.getByLabel("Where to look");
+  check((await place.count()) === 1, "Discover: ONE place control — where the list is measured from");
+  check((await place.locator('option[value="__near__"]').count()) === 1, "Discover: Near me is a row on it, on the studios tab");
+  check((await page.getByRole("button", { name: /Near me/ }).count()) === 0, "Discover: and no separate Near me chip beside it");
+  /* and it is offered only where it does something — the radius search is Studios' */
+  await page.goto(`${BASE}/discover?city=Pune&tab=crews`, { waitUntil: "networkidle" });
+  check((await page.getByLabel("Where to look").locator('option[value="__near__"]').count()) === 0, "Discover: no Near me row on a shelf that is not measured");
 
   await browser.close();
 

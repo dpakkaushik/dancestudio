@@ -127,7 +127,14 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
     ["eve", "Evening", filters.when === "evening", () => go({ ...filters, when: filters.when === "evening" ? "any" : "evening" })],
     ...(isEv
       ? ([["battle", "Battles", battlesOn, () => go({ ...filters, cats: battlesOn ? [] : ["battle"] })]] as Array<[string, string, boolean, () => void]>)
-      : ([["near", "Near me", filters.dist === "5", () => go({ ...filters, dist: filters.dist === "5" ? "any" : "5" })]] as Array<[string, string, boolean, () => void]>)),
+      /* ⚠ "WITHIN 5 KM", NOT "NEAR ME" (21 Sep 2026). This chip is a RADIUS —
+         `dist === "5"` — and it was called Near me while the chip one row above
+         was ALSO called Near me and meant something else entirely: where the
+         distance is measured FROM. Two controls, one name, one screen, since
+         18 Sep. Merging the origin into the place chip (the user: "merge near me
+         and city filter on discover") is only half the answer while a second
+         thing is still wearing its words; this half costs one string. */
+      : ([["near", "Within 5 km", filters.dist === "5", () => go({ ...filters, dist: filters.dist === "5" ? "any" : "5" })]] as Array<[string, string, boolean, () => void]>)),
   ];
 
   /* the sheet's chips apply live (4844-4849); "Show results" only closes it (4874) */

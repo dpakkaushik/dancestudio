@@ -8,7 +8,7 @@ import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
-import { PROFILE_RING, PersonIcon, cornerChip } from "@/features/profiles/components/profile-kit";
+import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { StudioLinksRow } from "./StudioLinksRow";
@@ -162,21 +162,29 @@ export function StudioHome({
              a new picture goes into the owner's folder in the private bucket */
           headerEdit={ownerId ? <StudioPostersButton tenantId={tenant.id} tenantName={tenant.name} ownerId={ownerId} photos={header} /> : null}
           /* the corner (10613, 15 Sep 2026): the owner's pencil — About, Since,
-             the number, the links, the pin — and, since 21 Sep, the one door
-             every home's corner carries.
-             ⚠ THE EYE IS GONE FROM HERE (the user: "the top right button on all
-             home tabs should just take to the user profile"). It opened
-             `/studio/{id}`, whose own corner opened this page again — the same
-             two-screen loop Home had, and the reason the user could not tell
-             which screen they were on. The studio's public page is reached from
-             the Share chip in the figures row, which is what shares it anyway. */
+             the number, the links, the pin — over the eye onto THIS STUDIO'S
+             public page.
+             ⚠⚠ THE EYE IS BACK, AND IT IS A CORRECTION OF MY OWN (21 Sep 2026,
+             the user: "studio and crew pages on home tab should have option to
+             view their profile pages currently taking to organizations page and
+             user/artist page"). Cutting the C37 loop this morning replaced this
+             corner with the ONE door every home carries — the Profile tab — and
+             on a studio's home that door opens the person or the ORGANIZATION
+             behind it, which is not this studio and is two taps away from
+             anything about it. The loop it cut was real; the answer to it was
+             not "every corner goes to the same place", it was "a corner goes to
+             the public face of the thing you are standing on". A profile page
+             has no corner (C37), so this still cannot cycle: home → the studio's
+             page → the back chip. And nothing is lost at the other end — the
+             profile switcher beside the gear is on every screen since this
+             morning, and its own row is the way back to you. */
           corner={
             <>
               {/* the pencil edits the WORDS now — the pictures are the two ⊕
                   controls on this hero (20 Sep 2026) */}
               {editable ? <BusinessEditButton tenant={editable} corner /> : null}
-              <Link href="/profile" aria-label="Your profile" style={cornerChip}>
-                <PersonIcon />
+              <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
               </Link>
             </>
           }
