@@ -179,7 +179,9 @@ if ($artistId -and $plain) {
 # ---- 10. the tables behind all of it are still shut ------------------------
 $shut = $true
 $detail = @()
-foreach ($t in @("business_members", "membership_passes", "payments", "leads", "class_bookings")) {
+# assets joined the list on 21 Sep 2026: what a business owns and what it is
+# worth is the OWNER's, and anon is refused at the GRANT rather than by a policy
+foreach ($t in @("business_members", "membership_passes", "payments", "leads", "class_bookings", "assets")) {
   try {
     $r = Invoke-WebRequest -Uri "$base/rest/v1/$t`?select=*&limit=1" -Headers $anonH -UseBasicParsing
     $body = [string]$r.Content
@@ -190,7 +192,7 @@ foreach ($t in @("business_members", "membership_passes", "payments", "leads", "
     if ($code -ne 401 -and $code -ne 403 -and $code -ne 404) { $shut = $false; $detail += "$t -> $code" }
   }
 }
-Check 10 "A stranger reads no row of business_members, membership_passes, payments, leads or class_bookings" $shut ($detail -join "; ")
+Check 10 "A stranger reads no row of business_members, membership_passes, payments, leads, class_bookings or assets" $shut ($detail -join "; ")
 
 # ---- 11. !! AND A FRONT-DESK SEAT IS NOT PUBLIC, AT THE CEILING TOO ---------
 # !! `organization_members` is DELIBERATELY readable by a stranger for a public
