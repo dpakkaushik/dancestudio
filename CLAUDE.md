@@ -2,105 +2,65 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE CORNER THAT LOOPED, AND THE BUTTONS ABOVE THE SCHEDULE (21 Sep 2026, latest) — BUILT, no migration
-> The user: *"the top right button on all home tabs should just take to the user
-> profile right now its looping between student record and profile from that top
-> right section which it should not. no top right button required on profile
-> pages. Plus buttons above schedule should also be visible on the home tab in the
-> same way as profile."* Then: *"check for all types of profiles."*
-> * ⚠⚠ **1 · THE LOOP WAS REAL, IT WAS TWO OF MY OWN CONTROLS FACING EACH OTHER,
->   AND IT EXISTED ON ALL THREE HOMES.** Home's corner carried the EYE to
->   `/person/{me}` (15 Sep, C2); **C29 (20 Sep) then put a corner THERE opening
->   `/profile`** — to fix a real complaint, that the eye went one way and nothing
->   came back — **and `/profile`'s own eye opens `/person/{me}` again.** So the
->   corner cycled two screens for ever: press it four times and you are where you
->   started. ⚠ **The same shape on the other two:** a studio's home → eye →
->   `/studio/{id}` → "Manage this studio" → the studio's home; a crew's home →
->   eye → `/crew/{id}` → "Manage this crew" → the crew's home. The user's "student
->   record" is what a person page reached from Home reads as.
->   **Cut at BOTH ends, which is the only way a cycle of two ends:** every home's
->   corner opens **the Profile tab** and nothing else (one direction, one door —
->   and the tab has needed a door since C16 took its slot in the bar on 19 Sep),
->   and **a profile page has no corner at all**. The back chip is how you leave a
->   page you drilled into.
-> * ⚠ **AND NOTHING WAS ORPHANED BY REMOVING FIVE CORNERS — CHECKED RATHER THAN
->   ASSUMED.** A studio's member keeps **"You are on this team · Manage ›"** and a
->   crew's leader **"You lead this crew · Manage ›"**, both drawn under the hero
->   and both naming what they open, which a glyph in a corner never did. The
->   public page itself is reached from every home by the **Share chip**, and from
->   the Profile tab by its **DISC**, whose accessible name is already "Open your
->   public page" (C19, 19 Sep).
-> * ⚠⚠ **AND THE PROFILE TAB'S EYE WENT TOO, ON THE USER'S OWN QUESTION.** Asked
->   *"i guess profile tab and profile page are the same thing?"* — they are two
->   screens with two audiences, and since C32 (20 Sep) they draw the SAME
->   component below the hero, which is why they read as one thing. Under that
->   reading "no top right button required on profile pages" covers `/profile`
->   too, and it is safe for the C31 reason: **the disc above it was already that
->   door and says so in plainer words than a glyph called "Public view"**, so the
->   eye was a second door to one address on a screen that also had a third. The
->   rule is one sentence with no exception now: **a corner exists on a HOME and
->   points at the Profile tab; no profile surface has one.** The shoot asserts
->   both halves — the corner gone AND the disc still opening the page — because
->   removing a door is only safe while the other one is there.
-> * **2 · THE BUTTONS ABOVE THE SCHEDULE, ON EVERY SURFACE THAT DRAWS A PROFILE.**
->   The public page runs band → **Enquiry · Call · Mail · Location** → Schedule;
->   Home's schedule is "Today's schedule", so the row sits directly above it, in
->   the same order, from the same fields. **No new read anywhere**: `profile`
->   already carries the number, the address, the Call switch and the pin, Home
->   already had `pageId` and `eventsHostId`, and a studio's and a crew's rows
->   carry their own.
->   ⚠ **AND THE PROFILE TAB GOT IT TOO, though the user named Home.** They asked
->   for Home to match the profile page; adding it to Home alone would have left
->   the TAB as the only one of the three person surfaces without it — which is
->   exactly the difference they have now reported three times (C32). One row,
->   three places.
-> * ⚠ **ENQUIRY IS DRAWN AND DISABLED WITH ITS REASON, and that is the user's own
->   precedent** (20 Sep: *"Viewing your own profile should show same buttons which
->   you see on discover"*). `ActionRow` is a grid sized by **how many cells it is
->   given**, so dropping the button does not merely drop it — it re-lays out Call,
->   Mail and Location beside it, and the row would be a different SHAPE from the
->   page it is meant to match. Its accessible NAME becomes the reason, so a
->   locator asking for the live button cannot match the dead one.
-> * ⚠ **A PLAIN USER'S ROW IS NOT DRAWN AT ALL**, which is what their public page
->   does ("user — nothing", the 19 Sep list): `send_enquiry` names a BUSINESS or a
->   crew and never a person, so a user has no artist page for an ask to land on —
->   and a dead Enquiry with nowhere to go would be worse than none. An
->   organization's goes to its **hosting row** (R15), not an artist page, which is
->   the one id `findPublicPerson` cannot carry: the Profile tab's route reads it
->   and hands it over, the same id Home already asked for.
-> * ⚠ **AND A STUDIO'S PIN COMES OFF THE OWNER'S READ.** `Tenant` carries no
->   `lat`/`lng` — only `PublicTenant` does, and a studio's home has that as
->   `editable`, which is null for a trainer. So an owner gets the exact pin and a
->   trainer the name-and-place query, which still opens Maps; and the
->   `locationSetAt` guard is the public page's own, because a studio sitting on
->   its city's centroid has not placed itself and a pin there would be a lie
->   (11 Sep).
-> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
->   142/142** (131 before — the eleven new ones drive every corner and every new
->   row from a real browser, on a user, an artist, an organization, a studio and a
->   crew) · **the e2e 48 passed in the whole-suite run and the happy path 19/19
->   alone in 11.6 min — all 57 green across the two runs, and the ONLY file
->   changed between them is the spec.** ⚠ **Each of the three re-cut shoot checks
->   asserts the ABSENCE of the old control as well as the presence of the new
->   one** — a check that only looks for what was added lets what it replaced live
->   on, which is how the corner came to exist twice in the first place.
-> * ⚠ **AND THE ONE RED WAS MINE, AND I HAD TALKED MYSELF PAST IT ONCE ALREADY.**
->   Mid-slice I wrote that `happy-path:1566` — which asked the Profile tab for its
->   "Public view" eye — was "still true", because at that moment it was. An hour
->   later the user's own question took that eye out and I did not re-cut the line;
->   the suite then hid **8 segments** behind it. Re-cut to the claim it was really
->   making — the eye is GONE **and** the disc ("Open your public page") is there —
->   so the next removal of that door fails rather than passing quietly. **A note
->   that an assertion is still true is only true until the same session changes
->   the screen; the sweep for stale locators belongs AFTER the last edit, not
->   beside the edit that prompted it.**
-> * ⚠ **AND THIS SECTION IS ONE PAGE NOW, ON THE USER'S WORD** (*"keep its one
->   page only"*) — Rule 13's own wording, finally kept. **1,410 lines of stacked
->   20–21 Sep blocks are gone**; what survives is the Progress tracker's one entry
->   per push and the deviation rows (R41–R44, C32–C38), which hold the decisions
->   and the reasons. **What it costs, said plainly: the "what went wrong on the
->   way" detail for those days is not recoverable from this file** — it is in the
->   git history of this file and nowhere else.
+> ### A SECTION THAT READS AS THE OPPOSITE THEME — AND WHY TWO COLOURS WERE NOT ENOUGH (21 Sep 2026, latest) — BUILT, no migration
+> The user: *"give similar dark and light opposite theme like tools on the
+> discover tab for section under the follwed by you section."* One sentence, and
+> the honest build is three files rather than one line — because the panel the
+> tools grid wears **could not carry what Discover puts in it**, and reading the
+> tokens is what said so before anything was written.
+> * ⚠⚠ **1 · THE TWO-COLOUR PANEL WOULD HAVE MADE EVERY CARD ON DISCOVER
+>   INVISIBLE, IN BOTH THEMES.** `ToolsPanel` painted itself
+>   `background: var(--text); color: var(--solid)` — correct for a grid of tool
+>   tiles, which are **opaque gradients of their own colour** and survive any
+>   ground. Every card on Discover is the opposite shape: its ground is
+>   `var(--card)`, an **ALPHA veil** (7% white on the dark page, 4.5% black on the
+>   light one) tuned for the ground the page itself paints, and its name prints in
+>   `var(--text)` — **the very token the panel used as its GROUND**. So the veil
+>   would have vanished into the panel and the ink would have matched it exactly:
+>   **1:1 contrast, by construction, not by bad luck.** This is not a measurement,
+>   it is an identity — the same variable on both sides — and it is exactly the
+>   backlog row written on 21 Sep that said "anything else ever put in that panel
+>   has to remember it is on inverted ground". The very next thing put in one was.
+> * **SO THE PANEL SWAPS THE PALETTE, NOT TWO COLOURS.** `.dos-invert` in
+>   `globals.css` redeclares `--solid --card --el --text --sub --muted` to the
+>   **other theme's own values** for its subtree, under each `html.dark` /
+>   `html.light`. Inside a panel the tokens mean what they have always meant, for
+>   the other theme — so **every component that reads `lib/design/tokens` is
+>   correct in there with no change of its own**: the shelf head, the count, five
+>   kinds of card, the pager and the dashed empty state were all left untouched.
+>   ⚠ `--bg` is deliberately NOT swapped: that is the body's, and nothing inside a
+>   panel has business reading it.
+> * ⚠⚠ **2 · AND CSS COULD NOT REACH THE SECOND HALF.** `useDosDark` does not read
+>   a variable, it reads the **`<html>` class**, so the class tile can walk a
+>   style's colour toward the ink it will sit on — and the html class does not
+>   change inside a panel. On the Classes tab the headline would therefore have
+>   been contrast-walked against the ground it is NOT on. `InvertedPanel` says so
+>   through a React context and `useDosDark` flips there, **once, for every
+>   component that ever reads it**, rather than one prop at one call site. Found by
+>   grepping for who reads the theme in JS rather than by looking at the screen:
+>   exactly one place, `poster.tsx`, and one consumer, `ClassTile`.
+> * **3 · AND `ToolsPanel` MOVED ONTO IT IN THE SAME BREATH**, rather than keeping
+>   a second copy of the idea — this repo's own recurring bill (`linkChip` declared
+>   twice, the figure row written out three times, three copies of the identity
+>   band). ⚠ It changes Home very slightly and on purpose: the old literal grounded
+>   itself in `#fafafa` / `#111111` and the swap uses `#ffffff` / `#0a0a0a`, which
+>   is the other theme's real page surface rather than its ink.
+> * ⚠ **THE CHECK IS MEASURED, BECAUSE NOTHING TYPED CAN SEE CONTRAST.**
+>   `scripts/shots/shoot-invert.js` (new, no account needed — Discover is public)
+>   **composites the real painted colours in the browser** — every background from
+>   the node up to `<body>`, alpha by alpha — and computes WCAG contrast in BOTH
+>   themes: **10/10**, the panel's ground proven to be the page's opposite, the
+>   shelf count at 6.79:1 and 7.85:1, a card's name at 17.17:1 and 16.48:1, and the
+>   class tile's headline — the JS-theme one — at the same. typecheck, lint and
+>   `next build` were all green while the bug would have been shipping, which is
+>   the whole reason this script exists.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-invert.js`
+>   10/10** · **`shoot-hero.js` 142/142** · the e2e recorded below.
+>   ⚠ **One shoot run came back 136/6 and I did not capture which six**; the Maps
+>   demo key had just hit its daily quota again (#0a3) and two shoots had run back
+>   to back. Two later runs were 142/142. Recorded as UNEXPLAINED rather than
+>   waved away — the 11 Sep rule is that a red on a busy machine is not evidence,
+>   and the converse is that a green after one is not proof either.
 
 ## LAST SESSION (19 Sep 2026) — history
 
@@ -4574,6 +4534,23 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A SECTION THAT READS AS THE OPPOSITE THEME — 21 Sep 2026, no step number —
+  BUILT, no migration.** The user asked Discover's shelf for the treatment the
+  tools grid got, and the tools panel could not carry it: it painted two colours,
+  which works for opaque tiles and would have made **every card on Discover
+  invisible in both themes** — a card's ground is `--card`, an alpha veil, and its
+  ink is `--text`, the exact token that panel used as its ground, so 1:1 by
+  construction. `components/ui/InvertedPanel.tsx` swaps the **whole palette** for
+  its subtree instead, so every component that reads the tokens is right inside it
+  untouched; `ToolsPanel` moved onto it rather than keeping a second copy. ⚠ And
+  CSS could not reach the second half: `useDosDark` reads the `<html>` class, not
+  a variable, so the panel flips it through a React context — one place
+  (`poster.tsx`), one consumer (`ClassTile`), found by grepping for who reads the
+  theme in JS. New `scripts/shots/shoot-invert.js` composites the real painted
+  colours in a browser and measures WCAG contrast in both themes, **10/10**,
+  because typecheck, lint and `next build` were all green while the bug would have
+  shipped. Deviation row C39; C34 amended; the 21 Sep backlog row it closes is
+  marked. Detail at the top.
 - **THE CORNER THAT LOOPED, AND THE BUTTONS ABOVE THE SCHEDULE — 21 Sep 2026, no
   step number — BUILT, no migration.** The user reported the top-right control
   "looping between student record and profile", and they were right: C2 (15 Sep)
@@ -8391,12 +8368,13 @@ Home. **Do not "restore parity" on these.**
 | C28 | The account number is a line under the eyebrow (18 Sep 2026); since 19 Sep it shares the eyebrow's LINE, at the far right of a `space-between` row | **ONE TOKEN: `ARTIST-000482`** — `HeroId` carries the hyphen, the row no longer spreads, and all five kinds read it (`PublicPersonPage` was still setting the number its own way) | 20 Sep 2026: *"Id still needs to be placed like for eg. Artist-000123 together there should be no gap in that on both profile and home"*, then *"id one to be implemented for kinds of profiles."* ⚠ A stranger reading an ARTIST still sees no number — `public_artist` hands back no `member_no` (20260919090000), so the data decides, not this row |
 | C37 | C2 (15 Sep) made every home's corner an EYE to its public page, and C29 (20 Sep) put a corner on the public page pointing back | ⚠ **A CORNER EXISTS ON A HOME AND POINTS AT THE PROFILE TAB; NO PROFILE SURFACE HAS ONE** — not `/person`, `/org`, `/studio`, `/crew`, and not `/profile` either. The two controls pointed at each other, so the corner cycled two screens for ever — on a person's home, a studio's and a crew's alike. The public page is reached by the **Share chip** on any home, and by the **disc** on the Profile tab, whose name is already "Open your public page" | 21 Sep 2026, the user: *"the top right button on all home tabs should just take to the user profile right now its looping between student record and profile from that top right section"*, *"no top right button required on profile pages"*, and then *"i guess profile tab and profile page are the same thing?"* — which is what took the tab's eye as well. **This supersedes C29, which was a real fix for a real complaint and created a worse one**: a door added to answer "there is no way back" must be checked against the door that brought you |
 | C38 | The action row (Enquiry · Call · Mail · Location) is the public page's alone — C32 (20 Sep) lists it among the things each screen keeps for itself | **THE SAME ROW SITS ABOVE THE SCHEDULE ON EVERY SURFACE THAT DRAWS A PROFILE** — Home, the Profile tab, a studio's home and a crew's home — in the same order, from the same fields, with Enquiry drawn and DISABLED with its reason | 21 Sep 2026, the user: *"buttons above schedule should also be visible on the home tab in the same way as profile"*, then *"check for all types of profiles"*. ⚠ The Profile tab was included though only Home was named: leaving it out would have made the tab the one person-surface without the row, which is the drift C32 exists to end. A plain user's row is still not drawn at all, because they have no business for an ask to land on |
+| C39 | Discover's shelf sits on the page's own ground under a 15px head (S_discover 4787-4806) | **THE SHELF WEARS THE TOOLS PANEL'S SQUIRCLE, INVERTED AGAINST THE THEME** — the head, the cards, the pager and the empty state, on every one of the five tabs. ⚠ **And the panel had to change to carry it.** A tool tile is an opaque gradient and survives any ground; every card on Discover stands on `--card` — an ALPHA veil tuned for the page — and prints its name in `--text`, **which is the exact token the two-colour panel used as its ground**. Dropped in as it was, every studio, artist, crew, class and event card would have been 1:1 against the panel: invisible, in both themes. `components/ui/InvertedPanel.tsx` swaps the WHOLE palette for its subtree (`--solid --card --el --text --sub --muted`), so every component that reads `lib/design/tokens` is correct inside with no change of its own — and `ToolsPanel` stands on it too, rather than keeping a second copy of the idea. ⚠ **A second half, because CSS could not reach it:** `useDosDark` asks the `<html>` class so a class tile can walk a style's colour toward the ink it will sit on, and the html class does not change inside a panel — so the panel flips that answer through a React context, once, for every component that ever reads it. | 21 Sep 2026, the user: *"give similar dark and light opposite theme like tools on the discover tab for section under the follwed by you section."* |
 | C29 | S_profiletab's own "This is you · Your record ›" is the only thing marking your own page, and the prototype has no door back | ~~**A CORNER DOOR BACK FROM YOUR OWN PUBLIC PAGE**~~ **— SUPERSEDED BY C37 (21 Sep 2026): it made a two-screen loop with the eye that opened the page.** Kept as the record of why it existed (`PersonIcon` in the same `cornerChip` the eye uses) — on a person's, an organization's, a studio's and a crew's | 20 Sep 2026, the user: *"when looking at your own profile from somewhere should also look same as profile page. that breaks a lot of times."* The eye has gone one way since 15 Sep and nothing came back, so landing on your own page from a row deep in the app left the back chip as the only exit — and after three hops that is not where you came from. Two other differences went in the same breath: `PublicPersonPage`'s eyebrow moved onto `KIND_WORD` (**`KIND_BADGE` is deleted**) and the disabled Follow bell on your own page is not drawn |
 | C30 | A desk's shelf head carries its count beside the heading (`DosShelfHead`, 3446) | **NO FLOATING COUNT UNDER A TOOL HERO** — `/my-classes`, `/my-events` and the Routines desk lost theirs; the counts INSIDE a shelf head stay | 20 Sep 2026, the user, circling "5 on your page": *"similar figures need to be removed from all pages in the app inside the home tab for all profiles."* The segments above already carried the same number, one row higher, in larger type — the 19 Sep move that put the total "over the list it counts" and the move that put counts into the toggles happened in the same breath, and together they made a duplicate |
 | C32 | The prototype's Profile tab (S_profiletab 10565-11400) and its public `publicEntity` render are ONE screen behind a flag, and this app built them as two components — `MyProfilePage` and `PublicPersonPage` — drawing the same person from the same read | **`PersonBody` and `EntityBand` are shared by both.** Everything under the hero — **Schedule, then what is on sale, then the associations** — is one component, and the Profile tab draws the band through `EntityBand` like the other four screens. What each keeps is only its own: the Follow bell, the Enquiry row and the report link on the public page; the Settings sheet, the follow sheets, the corner eye and an organization's studios on the tab. ⚠ SCHEDULE IS ALWAYS ABOVE MEMBERSHIPS, everywhere. ⚠ "Teaches at" and "Runs" are gone from the tab — the shared headings are **Studios taught at · Studios associated with · Artists associated with · Crews**, and an owner's seat on an unlisted studio is still reachable through the hub | 20 Sep 2026, the user's third report of it: *"FOR SOME REASON YOU ARE NOT ABLE TO FIX THE DIFFERENCE IN PROFILES. FIX IT PERMANENTLY."* Two components drawing one person is why it kept coming back — every fix had to be made twice and one was always missed. The five drifts are listed in `PersonBody`'s own comment |
 | R43 | A person's associations are three groups — Teaches at / Runs (the tab) or Studios taught at / Studios associated with / Crews (the public page), C32 having made them one set on 20 Sep 2026 | **FOUR COLUMNS OF STUDIOS AND TWO OF CREWS** (21 Sep 2026): **Train** (where they have TAKEN classes — `findStudiosAttended`, and their own tab ONLY, because a booking is private) · **Teach** (`kinds` includes Artist) · **Assist** (`kinds` includes Assistant) · **Manage** (the SEATS they hold, renamed from "Studios associated with"), then **Artists associated with**, then **Leader** and **Member** for the crews. ⚠ A studio where somebody teaches AND assists is in both groups | The user: *"Crews- should have 2 columns Leader & Member, Studios Should Have 3 Columns - Train Teach & Assist"*, and their own word for the fourth: *"fourth section to be called Manage"*. No migration — `person_teaches_at` has returned `kinds` since 28 Aug and every screen printed it as a sub-line instead of splitting on it. "Own profile only" for Train is their answer to a question put before a line was written |
 | C33 | The QR beside the name (10688) is the whole of sharing — `ProfileShare` drew it and its accessible name was *"Share this profile — QR code"* | **TWO CHIPS: `ProfileShare` is the QR ("QR code") and `ProfileLink` is the share ("Share {name}")**, which fires `navigator.share` where the browser has it and copies the link with a toast where it does not. The row reads **Follow bell · Stats · QR · Share** on all eight surfaces — four public pages, the Profile tab, and the three own-homes, which carry no bell | 21 Sep 2026, the user: *"Buttons in order- Follow Bell, Stats, Qr Code, share Button. Seprate current Qr Code from share option and share to directly send link of that profile."* One control answering to two jobs is the mistake this file has recorded since 19 Sep; the QR is what somebody holds up at a door, the share is what you send |
-| C34 | The tool grid sits on the page's own ground under a 17px heading, with the plan badge on that heading's right (BizSection 2497-2583, the badge at 2500-2520) | **`ToolsPanel` — a 22px squircle on `var(--text)` over `var(--solid)`, the theme's own inverse pair**, on all five homes; the head carries the heading and nothing else. ⚠ The plan badge is DELETED, and `ToolsHead`'s `right` prop and `BizSection`'s `plan` prop with it | 21 Sep 2026, the user: *"give the tools section on all profiles like squircle seprator and make it look opposite according to the dark and light theme. make sure only heading on top nothing else."* Settings → Subscription is the plan's door and has been since 19 Sep, so the badge was a second one on a line asked to hold one thing |
+| C34 | The tool grid sits on the page's own ground under a 17px heading, with the plan badge on that heading's right (BizSection 2497-2583, the badge at 2500-2520) | **`ToolsPanel` — a 22px squircle that reads as the OPPOSITE theme**, on all five homes; the head carries the heading and nothing else. ⚠ **It was two colours (`var(--text)` over `var(--solid)`) until 21 Sep**, when C39 found that only works for opaque tiles; it stands on the shared `InvertedPanel` now, which swaps the whole palette. ⚠ The plan badge is DELETED, and `ToolsHead`'s `right` prop and `BizSection`'s `plan` prop with it | 21 Sep 2026, the user: *"give the tools section on all profiles like squircle seprator and make it look opposite according to the dark and light theme. make sure only heading on top nothing else."* Settings → Subscription is the plan's door and has been since 19 Sep, so the badge was a second one on a line asked to hold one thing |
 | C35 | The empty day carries the page's own words and two pills — "See everything you manage", "See all bookings" / "Open events" / "Open the calendar" (7161-7181) | **A CARD WITH ONE HEADING: "Nothing On Today's Schedule"**, the same on all four homes. `emptyTitle`, `emptyBody`, `emptyActions`, `PILL_DARK`, `PILL_LIGHT` and Home's `canManage` are all deleted | 21 Sep 2026, the user: *"when todays schedule blank just shouw card with Heading Nothing On Today's Schedule, no bottons below."* ⚠ It cost Home's only door to `/managed` (C18 took its tile) — taken anyway because /managed is a VIEW, not a capability: every row on it is reached through the Classes and Events tiles and their desks, so nothing became impossible, which is the test C31 sets |
 | C36 | — (the prototype has one studio and no organization, so it has one team desk) | **BOTH TEAM DESKS ARE ONE CONTROL**: the shared `DeskAddButton` at the TOP reading **"Add a team member"**, opening a sheet with the labels over the people picker. The organization's was a hand-rolled `div role="button"` reading "＋ Add to the team" at the FOOT of the roster, opening a card in place | 21 Sep 2026, the user: *"fix add team member for studio and organization as well."* The organization's Team desk was the one the 20 Sep "＋ on top" pass missed, so the app's two Team desks looked and behaved like two products |
 | C31 | The prototype has no subscription and no support desk | **NEITHER THE SUBSCRIPTION NOR THE DANCEOS CONVERSATION IS ON A STUDIO'S OR AN ORGANIZATION'S HOME.** The subscription is `/subscription` (Settings' own tile), one strip per studio with the studio's name on it; the conversation is Settings → Help & support | 20 Sep 2026, the user: *"remove your conversation with dance os and subscription from just the home tab for studio and organization profiles as already being handled from settings."* ⚠ **Rule 9.** The premise was true of an artist's plan and NOT of a studio's: `/subscription` sent an organization back to the hub, the hub has no cancel, and the strip on the studio's home was the only Stop renewing in the app. It MOVED rather than going, so the premise is true now. **A screen the user asks to remove is only removed once the thing it was the only door to has another one** |
@@ -8420,7 +8398,8 @@ nothing to lift.
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
 | **The corner and the button row, what they left (21 Sep 2026):** ⚠ **the door to your own public page is now the DISC on the Profile tab and the Share chip, and neither looks like a door** — the disc reads as a picture, so somebody who wants "what does a stranger see" has to know the disc opens it; the words are right (`Open your public page`) and the affordance is not. **The corner is the same door on every home, so on a STUDIO's home it opens the person's own Profile tab rather than anything about the studio** — which is what "the user profile" says, and is a little odd two taps inside a studio; the profile switcher on the mark is the other way out. **Enquiry is disabled by a `title` and an `aria-label`**, not a visible sentence, so somebody who presses it reads nothing unless they hover or use a screen reader — the same gap the Follow bell's `cannotFollow` has. **A trainer on a studio's home gets the name-and-place Location query rather than the pin**, because `Tenant` carries no lat/lng and only the owner's `editable` read does; the button still opens Maps, and closing it means widening a read for one button. And the row is drawn on a studio's home **for every member**, so a front-desk seat sees Call and Mail to the studio's own number and address — harmless, and not the same as what a visitor sees | S_profiletab 10875-10940; 19313-19396 | one line if `/profile`'s eye should go; a visible reason when the bell's is done; a wider read if a trainer's pin ever matters |
-| **The four columns, the share and the tools panel, what they left (21 Sep 2026):** **Train has no counterpart on a studio's side** — a studio cannot see "the people who train here" grouped this way; its Students desk is the list, and the two do not share a component. **Teach and Assist both count PUBLISHED classes**, so an artist who has been seated at a studio and not yet published there appears under Manage and in neither — which is correct and reads as an omission until you know. **The four groups are not collapsed when there are many**: a person on eight studios' teams gets eight rows under Manage with no paging or "see all". **`ProfileLink` cannot tell you whether the share landed** — `navigator.share` resolves the same way for send and for cancel, so no toast is shown on that path at all, and on the clipboard path a browser that refuses the write says "Could not copy the link" with no second way out (the QR chip beside it is that way, which is why the two are adjacent). **The inverted tools panel is `--text` over `--solid` and nothing adapts INSIDE it** — the tiles carry their own opaque gradients, which is fine, but anything else ever put in that panel has to remember it is on inverted ground (`BizSection`'s `children`, which is where Home draws its pending team invites, is the one live case and it inherits `color` correctly by luck rather than by declaration). And the empty-day card is one string with **no way for a page to say anything of its own** — a studio's day and an organization's read identically now | S_profiletab 11000-11060; 7161-7181; BizSection 2497-2583 | a shared "people who train here" if a studio asks; an explicit colour on anything new inside `ToolsPanel`; paging on a group when a pilot account outgrows one screen |
+| **The inverted panel, what it left (21 Sep 2026):** **it does not NEST** — the provider says `true` outright rather than toggling, because a panel inside a panel would read as the page again and no screen wants that; put one in the other and the inner subtree is simply wrong, silently. **`--bg` is deliberately not swapped**, so anything inside that reads the BODY's background (nothing does today) would get the page's. **Only two sections use it** — Home's tool grid and Discover's shelf — so the treatment the user has now asked for twice is still absent from every other long screen (the desks, the Inbox, Stats). **`scripts/shots/shoot-invert.js` measures the studios tab and a class tile in both themes**, which is the pair that covers the two failure modes (an alpha veil, and a component that reads the theme in JS) — it does NOT measure the artists, crews or events cards, which are the same `--card`/`--text` shape and therefore covered by construction rather than by a check. And ⚠ **the panel changes what "opposite" means on Home very slightly**: the old literal grounded itself in `#fafafa`/`#111111` and the swapped palette uses `#ffffff`/`#0a0a0a`, which is the other theme's real page surface | — (the prototype has no inverted section) | a nesting guard if a second panel is ever wanted inside one; the other desks when the user asks |
+| **The four columns, the share and the tools panel, what they left (21 Sep 2026):** **Train has no counterpart on a studio's side** — a studio cannot see "the people who train here" grouped this way; its Students desk is the list, and the two do not share a component. **Teach and Assist both count PUBLISHED classes**, so an artist who has been seated at a studio and not yet published there appears under Manage and in neither — which is correct and reads as an omission until you know. **The four groups are not collapsed when there are many**: a person on eight studios' teams gets eight rows under Manage with no paging or "see all". **`ProfileLink` cannot tell you whether the share landed** — `navigator.share` resolves the same way for send and for cancel, so no toast is shown on that path at all, and on the clipboard path a browser that refuses the write says "Could not copy the link" with no second way out (the QR chip beside it is that way, which is why the two are adjacent). ~~**The inverted tools panel is `--text` over `--solid` and nothing adapts INSIDE it**~~ — **CLOSED 21 Sep 2026 by `InvertedPanel`**, and it was not theoretical: the very next thing put in a panel (Discover's shelf) would have been invisible in both themes, because a card's ground is `--card` (an alpha veil) and its ink is `--text` — the same token the two-colour panel used as its GROUND, so 1:1. The panel swaps the whole palette for its subtree now, and flips `useDosDark` through a context for the one component that reads the theme in JS rather than a variable. And the empty-day card is one string with **no way for a page to say anything of its own** — a studio's day and an organization's read identically now | S_profiletab 11000-11060; 7161-7181; BizSection 2497-2583 | a shared "people who train here" if a studio asks; an explicit colour on anything new inside `ToolsPanel`; paging on a group when a pilot account outgrows one screen |
 | **The four forms on one spec, what it left (21 Sep 2026):** the kit covers the frame and NOT the fields, so a form still writes its own inputs — which is right, but it means the next new form has to remember to reach for `FORM_LABEL` rather than inventing a style (nothing enforces it). `FormConfirm` mounts `useCloseOnBack` on render, which is the hook's documented contract for a conditionally-mounted sheet, but it is a DIFFERENT call pattern from the `(cb, openFlag)` one three other screens use — two shapes for one job. **Neither `/routines/new` nor `/memberships/new` has an EDIT twin**: a routine is still remade rather than edited (`save_routine` takes an id and no screen passes one) and a membership is taken off sale rather than re-priced. And the crew form's step 2 is legitimately skippable, so its progress bar can read "half done" on a crew that is finished — honest, and it looks like a bug for a second | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit twin for each when somebody asks; one call shape for `useCloseOnBack` next time it is opened |
 | **The students desk, what it left (21 Sep 2026):** **the invite sends nothing itself** — it hands off to WhatsApp / SMS / mail, so there is no record that an invite was made, no "invited" state on the desk, and nothing to chase. A real send needs a verified Resend domain (the user's, #14) and a Twilio account with DLT registration (#18, a phase the user parked) — until both exist a Send button would be a door that does not open. **There is no way to add a walk-in any more**: `createLeadAction` survives with no caller, so putting the form back is one screen. **A student cannot be removed unless they are a walk-in** — attendance and passes are facts, and un-attending is not a thing a button can do, but a studio that wants somebody off its list has no way to do it. **No paging**: the reads cap at 4,000 attendance rows and 400 profiles, which is a year of a busy studio and not two. And the desk no longer shows **per-student progress against a membership** — that lives on the membership's own usage page, one screen away | S_people 17293, S_persondetail 17516 | a real send with #14 and #18; paging when a pilot studio outgrows one screen; a walk-in form if the user asks |
 | **The instant column, the organization that follows and the one profile body, what they left (20 Sep 2026):** the **studio's Following figure is its OWNER's**, so two studios of the same organization print the same number and nothing on the row says whose it is — the visible label is just "Following", and the Owner group further down is the only thing that explains it; an organization's **Following list on its own Home and Profile tab is the full sheet**, but its **public page prints the figure with no door** (a count is public, a list is not — the same rule a studio's Followers figure keeps); nothing anywhere lets an organization follow **from a studio's page as the studio** — it follows as itself, which is the only thing the column can hold. `SegmentedPanels` **replaces** the history entry rather than pushing, so back leaves the page instead of walking the segments — unchanged from `router.replace`, and deliberate, but it means a phone's back gesture never undoes a segment tap; the panels are **mounted one at a time**, so a scroll position inside one segment is lost on the way back to it. `PersonBody` is shared by the two person screens and **not by the studio, organization or crew pages**, which still draw their own associations — the same facts, four components, and the next drift will be there rather than here. And **no automated check asserts Schedule above Memberships**: the order is guaranteed by the single component rather than by a test, because setting an artist with a live membership up in the e2e is a bigger change to that story than the thing it would prove | S_profiletab 10905-10940; S_earn 18195 | a label naming whose Following a studio prints, if it confuses anybody; a shared body for the other three pages, when one of them is next opened |

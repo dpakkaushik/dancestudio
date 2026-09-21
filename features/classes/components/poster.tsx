@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
+import { useInvertedGround } from "@/components/ui/InvertedPanel";
+
 /** The poster kit, lifted from the prototype's shared module (DanceOSApp.jsx:6478-6592
  *  + 128-148 + 3196-3218): every class has a drawn poster — three designs, picked from
  *  the class's own name so it is the same design every time you see it — and the
@@ -21,7 +23,16 @@ const subscribeToHtmlClass = (onChange: () => void): (() => void) => {
 };
 const readIsDark = () => document.documentElement.className !== "light";
 const readServerIsDark = () => true;
-export const useDosDark = (): boolean => useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
+/** ⚠ AND THE GROUND IS NOT ALWAYS THE PAGE'S (21 Sep 2026). Inside an
+ *  `InvertedPanel` the palette is swapped for the opposite theme while the html
+ *  class is unchanged — so the html class alone would walk the style's colour
+ *  toward the ink of the ground this tile is NOT on. The panel says so through a
+ *  context and the answer flips here, once, for every caller. */
+export const useDosDark = (): boolean => {
+  const inverted = useInvertedGround();
+  const dark = useSyncExternalStore(subscribeToHtmlClass, readIsDark, readServerIsDark);
+  return inverted ? !dark : dark;
+};
 
 export const DOS_POSTERS: Array<[string, string]> = [
   ["bold", "Bold"],

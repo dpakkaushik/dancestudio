@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { CrewI, dosToolPaint } from "@/features/crews/components/crew-kit";
 import { EventI } from "@/features/discovery/components/discover-kit";
 import { StudioI } from "@/features/shell/components/shell-glyphs";
@@ -64,14 +65,18 @@ export function ToolsHead({ kind }: { kind: ToolsKind }) {
  *    ARTIST PLAN ACTIVE / 🔒 PRO · UNLOCK, the prototype's own at 2500-2520 —
  *    is GONE, and the `right` prop with it rather than left unread. Settings →
  *    Subscription is the door to the plan, and has been since 19 Sep; the badge
- *    was a second one on a line the user has now asked to hold one thing. */
+ *    was a second one on a line the user has now asked to hold one thing.
+ *
+ *  ⚠ **AND IT STANDS ON `InvertedPanel` SINCE 21 Sep 2026, rather than carrying
+ *    its own two colours.** The literal here said `background: var(--text)` and
+ *    nothing more, which is right ONLY for opaque tiles — the moment the user
+ *    asked for the same treatment on Discover's shelf it turned out to hide every
+ *    card in the app. The panel swaps the whole palette now, so both sections are
+ *    one declaration rather than two copies drifting apart, which is this repo's
+ *    own recurring bill (`linkChip` declared twice, the figure row written out
+ *    three times, three copies of the identity band). */
 export function ToolsPanel({ kind, children }: { kind: ToolsKind; children: ReactNode }) {
-  return (
-    <div style={{ background: "var(--text)", color: "var(--solid)", borderRadius: 22, padding: "14px 14px 16px", margin: "12px 0", boxSizing: "border-box" }}>
-      <ToolsHead kind={kind} />
-      {children}
-    </div>
-  );
+  return <InvertedPanel head={<ToolsHead kind={kind} />}>{children}</InvertedPanel>;
 }
 
 /* ── the tool glyphs (2510-2530) ── */

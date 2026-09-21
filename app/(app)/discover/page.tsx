@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { CrewCard } from "@/features/crews/components/CrewCard";
 import { CrewI } from "@/features/crews/components/crew-kit";
@@ -322,13 +323,26 @@ export default async function DiscoverPage({
       {/* "Followed by you" (FollowedRow 4112, mounted 4767) — Studios and Artists, for a signed-in person */}
       {wantsFollows ? <FollowedShelf rows={followedTiles} /> : null}
 
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 0 10px" }}>
-        <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>{shelfHead}</div>
-        <div style={{ fontSize: 11, fontWeight: 800, color: SUB }} data-testid="shelf-count">
-          {shelfCount} in {city}
-        </div>
-      </div>
-
+      {/* ⚠ THE SHELF STANDS ON ITS OWN INVERTED GROUND (21 Sep 2026, the user:
+          "give similar dark and light opposite theme like tools on the discover
+          tab for section under the followed by you section"). The same squircle
+          the tool grids wear — and NOT the same two colours, which is the whole
+          finding: a tool tile is an opaque gradient and survives any ground,
+          while every card down here stands on `--card` (an alpha veil) and
+          prints in `--text`, so a two-colour panel would have hidden the lot.
+          `InvertedPanel` swaps the palette instead, and the head, the cards, the
+          pager and the empty state below need no change of their own — they read
+          the same tokens they always did, which now mean the other theme. */}
+      <InvertedPanel
+        head={
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "0 0 10px" }}>
+            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: DOS_DISPLAY, letterSpacing: -0.3 }}>{shelfHead}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: SUB }} data-testid="shelf-count">
+              {shelfCount} in {city}
+            </div>
+          </div>
+        }
+      >
       {tab === "classes" &&
         classes.map((c) => {
           const filled = c.session ? counts.get(c.session.id) ?? 0 : 0;
@@ -451,6 +465,7 @@ export default async function DiscoverPage({
           )}
         </div>
       )}
+      </InvertedPanel>
     </div>
   );
 }

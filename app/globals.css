@@ -102,6 +102,46 @@ html.light {
   --tab-rest: rgba(0, 0, 0, 0.45);
 }
 
+/* ── A SECTION THAT READS AS THE OPPOSITE THEME (21 Sep 2026).
+   The user asked the tools grid to "look opposite according to the dark and light
+   theme", and then for the same treatment on Discover's shelf.
+
+   ⚠ THE FIRST CUT PAINTED TWO COLOURS AND THAT ONLY WORKS FOR OPAQUE TILES.
+   `background: var(--text); color: var(--solid)` is right for the tool grid,
+   whose tiles are opaque gradients of their own colour — and it would have made
+   every card on Discover INVISIBLE. Every card in this app stands on `--card`
+   and `--el`, which are ALPHA veils (7% white on the dark page, 4.5% black on
+   the light one) tuned for the ground the page itself paints, and prints its
+   text in `--text`. Lay one on an inverted panel and the veil disappears into
+   the panel while the text matches it exactly: near-white on near-white in dark,
+   near-black on near-black in light.
+
+   So the panel swaps THE WHOLE PALETTE for its subtree rather than two colours.
+   Inside it the tokens mean what they have always meant — just for the other
+   theme — and every component that reads lib/design/tokens is correct in here
+   with no change at all. `--bg` is deliberately NOT swapped: that is the body's,
+   and nothing inside a panel has any business reading it. */
+html.dark .dos-invert {
+  --solid: #ffffff;
+  --card: rgba(0, 0, 0, 0.045);
+  --el: rgba(0, 0, 0, 0.09);
+  --text: #111111;
+  --sub: #5b5b5b;
+  --muted: #8a8a8a;
+}
+html.light .dos-invert {
+  --solid: #0a0a0a;
+  --card: rgba(255, 255, 255, 0.07);
+  --el: rgba(255, 255, 255, 0.13);
+  --text: #fafafa;
+  --sub: #a3a3a3;
+  --muted: #707070;
+}
+.dos-invert {
+  background: var(--solid);
+  color: var(--text);
+}
+
 /* ── The phone's own furniture — safe-area insets + top-bar height, published once
    (prototype 19194-19199). Zero on desktop; real on notched phones via viewport-fit=cover. */
 :root {
