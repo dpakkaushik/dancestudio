@@ -20,7 +20,7 @@ import { DeskAddButton } from "@/features/settings/components/settings-kit";
  *  students are on the routine's own page, where there is room to say what they
  *  mean. */
 
-const card: CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
+const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 
 export function RoutinesDesk({
   routines,
@@ -99,7 +99,7 @@ export function RoutinesDesk({
           desk keeps only the door to it. */}
       <DeskAddButton label="New routine" href="/routines/new" />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
         <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>
           ⌕
         </span>
@@ -132,14 +132,14 @@ function LearnedRow({ r }: { r: LearnedRoutine }) {
   const songHref = r.songUrl ? (r.songIsFile ? photoUrl(r.songUrl) : r.songUrl) : null;
   const chip = (label: string, href: string | null, tint: string) =>
     href ? (
-      <a key={label} href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${label.startsWith("♪") ? "song" : "video"} for ${r.title}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "48%", padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <a key={label} href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${label.startsWith("♪") ? "song" : "video"} for ${r.title}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "48%", padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1.5px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {label}
       </a>
     ) : null;
   const when = r.lastOn ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date(r.lastOn)) : null;
   return (
     <Link href={`/c/${r.shareSlug}`} aria-label={`Open the class ${r.title} was taught in`} style={{ ...card, display: "flex", gap: 11, alignItems: "center", textDecoration: "none", color: INK }}>
-      <span aria-hidden="true" style={{ flexShrink: 0, width: 38, height: 38, borderRadius: 12, background: `${col}22`, border: `1px solid ${col}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+      <span aria-hidden="true" style={{ flexShrink: 0, width: 38, height: 38, borderRadius: 12, background: `${col}22`, border: `1.5px solid ${col}55`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
         ♪
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
@@ -168,7 +168,7 @@ function RoutineRow({ r }: { r: RoutineWithUsage }) {
   const songHref = r.songUrl ? (r.songIsFile ? photoUrl(r.songUrl) : r.songUrl) : null;
   const chip = (label: string, href: string | null, tint: string) =>
     href ? (
-      <a key={label} href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${label.startsWith("♪") ? "song" : "video"} for ${r.title}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "48%", padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <a key={label} href={href} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} aria-label={`Open the ${label.startsWith("♪") ? "song" : "video"} for ${r.title}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "48%", padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1.5px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {label}
       </a>
     ) : null;

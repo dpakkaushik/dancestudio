@@ -181,7 +181,24 @@ export function Sheet({ label, onClose, children, maxHeight = "80vh" }: { label:
 /** THE CORNER CHIP (10613): the 36px blurred-glass square the hero's top-right
  *  controls wear — Edit, Public view — on the Profile tab, on Home and on a
  *  studio's own home alike (15 Sep 2026). */
-export const cornerChip: CSSProperties = { width: 36, height: 36, borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,.42)", color: "#fff", border: "1px solid rgba(255,255,255,.28)", textDecoration: "none", padding: 0, fontFamily: "inherit" };
+/** A ⊕, THE WAY INSTAGRAM MARKS "ADD" ON AN AVATAR (20 Sep 2026, the user's own
+ *  comparison): *"edit button for photos should be a plus sign how it is for
+ *  instagram."* It marks the picture control on every profile's disc and on
+ *  every posters rail.
+ *  ⚠ IT LIVES HERE BECAUSE IT WAS ABOUT TO BE WRITTEN A THIRD TIME (21 Sep
+ *  2026). `PicturesSheet` and `StudioPictures` each had their own copy, and a
+ *  crew's was next — which is this repo's own recurring bill (`linkChip`
+ *  declared twice, the figure row written out three times, three copies of the
+ *  identity band). One glyph, one file, four callers. */
+export function PlusIcon({ light = false }: { light?: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={light ? "#fff" : "var(--text)"} strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export const cornerChip: CSSProperties = { width: 36, height: 36, borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,.42)", color: "#fff", border: "1.5px solid rgba(255,255,255,.28)", textDecoration: "none", padding: 0, fontFamily: "inherit" };
 
 export const PencilIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></svg>
@@ -304,7 +321,7 @@ export function Group({ title, n, children }: { title: string; n: number; childr
         <span style={{ ...TYPE.shelf, color: "var(--text)" }}>{title}</span>
         <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{n}</span>
       </div>
-      <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "2px 11px" }}>{children}</div>
+      <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "2px 11px" }}>{children}</div>
     </div>
   );
 }
@@ -351,7 +368,7 @@ export const smallBox = (on: boolean, accent: string): CSSProperties => ({
   whiteSpace: "nowrap",
   background: "var(--card)",
   color: "var(--text)",
-  border: `1px solid ${on ? accent : "var(--el)"}`,
+  border: `1.5px solid ${on ? accent : "var(--el)"}`,
   boxShadow: on ? `0 0 0 1px ${accent}55` : "none",
   width: "100%",
   fontFamily: "inherit",

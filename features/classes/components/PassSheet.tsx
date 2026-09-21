@@ -165,7 +165,7 @@ export function PassSheet({ posterItem, posterK, col, title, styleName, levelWor
               padding: "11px 6px",
               borderRadius: 999,
               background: "var(--card)",
-              border: "1px solid var(--el)",
+              border: "1.5px solid var(--el)",
               fontWeight: 800,
               fontSize: 11.5,
               cursor: "pointer",

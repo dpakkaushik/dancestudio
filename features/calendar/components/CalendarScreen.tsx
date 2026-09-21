@@ -493,7 +493,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
           background: LILAC,
           margin: "0 -16px",
           padding: "8px 16px 6px",
-          borderBottom: `1px solid ${LINE}`,
+          borderBottom: `1.5px solid ${LINE}`,
         }}
       >
         {/* a public schedule draws no hero (9065) — it is somebody's page, not
@@ -582,7 +582,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
                     right: 0,
                     zIndex: 60,
                     background: "var(--solid)",
-                    border: `1px solid ${LINE}`,
+                    border: `1.5px solid ${LINE}`,
                     borderRadius: 12,
                     padding: 6,
                     boxShadow: "0 10px 28px rgba(0,0,0,.4)",
@@ -725,7 +725,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
                       borderRadius: 999,
                       cursor: "pointer",
                       background: on ? meta.tint : CARD,
-                      border: `1px solid ${on ? meta.tint : LINE}`,
+                      border: `1.5px solid ${on ? meta.tint : LINE}`,
                       transition: "background .15s",
                       userSelect: "none",
                     }}
@@ -758,7 +758,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
               alignItems: "center",
               gap: 3,
               background: CARD,
-              border: `1px solid ${LINE}`,
+              border: `1.5px solid ${LINE}`,
               borderRadius: 12,
               padding: "5px 7px 5px 5px",
             }}
@@ -788,7 +788,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
               aria-label="Jump to today"
               onKeyDown={pressKey(() => jumpTo(todayKey))}
               onClick={() => jumpTo(todayKey)}
-              style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 999, cursor: "pointer", border: `1px solid ${LINE}`, color: SUB }}
+              style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 999, cursor: "pointer", border: `1.5px solid ${LINE}`, color: SUB }}
             >
               Today
             </span>
@@ -826,7 +826,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
                   top: "calc(100% + 6px)",
                   zIndex: 140,
                   background: "var(--solid)",
-                  border: `1px solid ${LINE}`,
+                  border: `1.5px solid ${LINE}`,
                   borderRadius: 16,
                   padding: "10px 9px 9px",
                   boxShadow: "0 18px 46px rgba(0,0,0,.55)",
@@ -903,7 +903,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
                         <div style={{ width: 52, textAlign: "right", paddingRight: 8, fontSize: 10, color: MUTED, paddingTop: 4, flexShrink: 0 }}>
                           {hourLabel(h)}
                         </div>
-                        <div style={{ flex: 1, padding: "0 0 3px", minWidth: 0, borderTop: `1px solid ${LINE}` }}>{ev.map(card)}</div>
+                        <div style={{ flex: 1, padding: "0 0 3px", minWidth: 0, borderTop: `1.5px solid ${LINE}` }}>{ev.map(card)}</div>
                       </div>
                     );
                   })}
@@ -985,7 +985,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
                   padding: "11px 16px",
                   borderRadius: 14,
                   background: "var(--solid)",
-                  border: `1px solid ${LINE}`,
+                  border: `1.5px solid ${LINE}`,
                   boxShadow: "0 8px 24px rgba(0,0,0,.35)",
                   fontSize: 13,
                   fontWeight: 700,

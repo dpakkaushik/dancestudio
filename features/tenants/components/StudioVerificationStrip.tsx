@@ -121,7 +121,7 @@ function WhySheet({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      <div style={{ background: LILAC, border: `1px solid ${EL}`, borderRadius: 13, padding: "11px 13px" }}>
+      <div style={{ background: LILAC, border: `1.5px solid ${EL}`, borderRadius: 13, padding: "11px 13px" }}>
         <b style={{ fontSize: 11.5, color: INK, display: "block", marginBottom: 7 }}>What happens next</b>
         {/* the numbers are drawn, not left to list markers — the app's reset
             strips those, and four steps without their numbers read as prose */}
@@ -243,7 +243,7 @@ export function StudioVerificationStrip({
         data-testid="studio-verification"
         role="status"
         aria-label="Studio verification: Verified"
-        style={{ display: "flex", alignItems: "center", gap: 8, margin: "-4px 0 0", padding: "9px 12px", background: CARD, border: `1px solid ${EL}`, borderTop: "none" }}
+        style={{ display: "flex", alignItems: "center", gap: 8, margin: "-4px 0 0", padding: "9px 12px", background: CARD, border: `1.5px solid ${EL}`, borderTop: "none" }}
       >
         <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: `${GREEN}22`, color: GREEN }}>VERIFIED STUDIO</span>
         <span style={{ fontSize: 10.5, color: SUB }}>DanceOS checked it on {dateWords(state.verifiedAt)}.</span>
@@ -258,7 +258,7 @@ export function StudioVerificationStrip({
         data-testid="studio-verification"
         role="status"
         aria-label="Studio verification: Under review"
-        style={{ margin: "-4px 0 0", padding: "11px 12px 12px", background: CARD, border: `1px solid ${EL}`, borderTop: "none" }}
+        style={{ margin: "-4px 0 0", padding: "11px 12px 12px", background: CARD, border: `1.5px solid ${EL}`, borderTop: "none" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
           <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: `${AMBER}22`, color: AMBER }}>UNDER REVIEW</span>
@@ -269,7 +269,7 @@ export function StudioVerificationStrip({
         </div>
         <Link
           href={state.requestId ? `/support?request=${state.requestId}` : "/support"}
-          style={{ ...pill, marginTop: 10, background: LILAC, border: `1px solid ${EL}`, color: INK }}
+          style={{ ...pill, marginTop: 10, background: LILAC, border: `1.5px solid ${EL}`, color: INK }}
         >
           Message DanceOS
         </Link>
@@ -284,7 +284,7 @@ export function StudioVerificationStrip({
       data-testid="studio-verification"
       role="status"
       aria-label={`Studio verification: ${turnedDown ? "Not approved" : "Not verified"}`}
-      style={{ margin: "-4px 0 0", padding: "11px 12px 13px", background: CARD, border: `1px solid ${EL}`, borderTop: "none" }}
+      style={{ margin: "-4px 0 0", padding: "11px 12px 13px", background: CARD, border: `1.5px solid ${EL}`, borderTop: "none" }}
     >
       {/* ── the title, and the reasoning one tap away ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
@@ -307,7 +307,7 @@ export function StudioVerificationStrip({
       ) : null}
 
       {/* ── BLOCK 1: the links, each behind its own mark ── */}
-      <div style={{ marginTop: 12, padding: "10px 11px 4px", borderRadius: 13, background: LILAC, border: `1px solid ${EL}` }}>
+      <div style={{ marginTop: 12, padding: "10px 11px 4px", borderRadius: 13, background: LILAC, border: `1.5px solid ${EL}` }}>
         <div style={blockHead}>
           <span>SOCIAL LINKS</span>
           <span style={{ color: typedLinks > 0 ? GREEN : AMBER, letterSpacing: 0 }}>{typedLinks > 0 ? `✓ ${typedLinks}` : "at least one"}</span>
@@ -334,7 +334,7 @@ export function StudioVerificationStrip({
                 minWidth: 0,
                 boxSizing: "border-box",
                 background: "var(--bg)",
-                border: `1px solid ${EL}`,
+                border: `1.5px solid ${EL}`,
                 borderRadius: 10,
                 padding: "9px 10px",
                 fontSize: 12,
@@ -347,7 +347,7 @@ export function StudioVerificationStrip({
       </div>
 
       {/* ── BLOCK 2: the photos ── */}
-      <div style={{ marginTop: 10, padding: "10px 11px 11px", borderRadius: 13, background: LILAC, border: `1px solid ${EL}` }}>
+      <div style={{ marginTop: 10, padding: "10px 11px 11px", borderRadius: 13, background: LILAC, border: `1.5px solid ${EL}` }}>
         {/* no count here — the strip below carries its own, and two counters
             for one thing is one too many */}
         <div style={blockHead}>

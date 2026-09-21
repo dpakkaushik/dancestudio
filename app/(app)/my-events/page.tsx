@@ -32,7 +32,7 @@ function TicketRow({ t }: { t: MyEventBooking }) {
     <Link
       href={`/e/${t.eventShareSlug}`}
       aria-label={`Open ${t.eventTitle}`}
-      style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${tint}`, borderRadius: 16, padding: "11px 13px", marginBottom: 8, textDecoration: "none", color: INK }}
+      style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${tint}`, borderRadius: 16, padding: "11px 13px", marginBottom: 8, textDecoration: "none", color: INK }}
     >
       <span style={{ width: 34, height: 34, borderRadius: 11, flexShrink: 0, background: `${tint}1f`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
         <EvIcon cat={t.eventCat} size={18} color={tint} />

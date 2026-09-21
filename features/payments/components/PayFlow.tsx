@@ -244,7 +244,7 @@ export function PayFlow({
               borderRadius: 999,
               marginTop: 6,
               background: "var(--card)",
-              border: "1px solid var(--el)",
+              border: "1.5px solid var(--el)",
               fontWeight: 700,
               fontSize: 13.5,
               cursor: "pointer",
@@ -269,7 +269,7 @@ export function PayFlow({
       >
         {grabber}
         {header(isFree ? "Confirm — no payment" : "Confirm payment")}
-        <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "11px 13px", marginBottom: 12 }}>
+        <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "11px 13px", marginBottom: 12 }}>
           {[
             ["Session", isFree ? "Free" : priceText],
             ["Paying with", isFree ? "—" : "UPI · Cards · Netbanking"],
@@ -284,7 +284,7 @@ export function PayFlow({
               display: "flex",
               justifyContent: "space-between",
               alignItems: "baseline",
-              borderTop: "1px solid var(--el)",
+              borderTop: "1.5px solid var(--el)",
               marginTop: 6,
               paddingTop: 8,
             }}
@@ -309,7 +309,7 @@ export function PayFlow({
               padding: "13px",
               borderRadius: 999,
               background: "var(--card)",
-              border: "1px solid var(--el)",
+              border: "1.5px solid var(--el)",
               fontWeight: 700,
               fontSize: 13.5,
               cursor: "pointer",

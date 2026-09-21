@@ -70,7 +70,7 @@ const round: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   cursor: "pointer",
-  border: "1px solid rgba(255,255,255,.22)",
+  border: "1.5px solid rgba(255,255,255,.22)",
   background: "rgba(255,255,255,.12)",
   color: "#fff",
   fontSize: 16,

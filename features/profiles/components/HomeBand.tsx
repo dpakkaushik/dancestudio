@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
+import { dosStyleColor } from "@/lib/constants/styles";
 import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
 import { CARD, INK, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -14,6 +14,7 @@ import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repo
 import type { FollowedTenant } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
 import { CHIP_ROW, FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
+import { StylesSheet } from "./StylesSheet";
 import { PlatformIcon, RoleBadge, Sheet, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
 
 /** THE BAND UNDER THE NAME ON HOME — and the ONE place these three are edited
@@ -191,36 +192,18 @@ export function HomeBand({
         <button type="button" aria-label="Add a link" onClick={() => setLinksOpen(true)} style={{ ...chip, background: "transparent", border: "1px dashed var(--el)", fontSize: 12, fontWeight: 800, color: SUB }}>＋ Add link</button>
       </div>
 
-      {/* ── Add a dance style (11217) ── */}
+      {/* ── Add a dance style (11217) — the sheet itself moved into
+          `StylesSheet.tsx` on 21 Sep 2026, when a STUDIO needed the same one.
+          Everything specific to a person stays here: the door it writes through
+          and the sentence under the last style. ── */}
       {stylesOpen ? (
-        <Sheet label="Add a dance style" onClose={() => setStylesOpen(false)} maxHeight="78vh">
-          <b style={{ fontSize: 16 }}>＋ Add a dance style</b>
-          <div style={{ fontSize: 12, color: SUB, margin: "4px 0 6px" }}>Reorder with ↑↓ — this is the order shown on your profile.</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {styleList.map((s, i, arr) => (
-              <div key={s} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 14, background: CARD, border: `1px solid ${LINE}` }}>
-                <Arrows i={i} n={arr.length} onMove={(dir) => save({ styles: move(arr, i, dir) }, "Order saved")} />
-                <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 6, background: dosStyleColor(s), flexShrink: 0 }} />
-                <b style={{ flex: 1, fontSize: 13.5, color: INK }}>{s}</b>
-                <button type="button" aria-label={arr.length === 1 ? `${s} is your last style — add another first` : `Remove ${s}`} disabled={arr.length === 1} title={arr.length === 1 ? "A user names at least one style" : undefined} onClick={() => save({ styles: arr.filter((x) => x !== s) }, `${s} removed from your styles`)} style={{ opacity: arr.length === 1 ? 0.35 : 1, fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", flexShrink: 0, background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
-              </div>
-            ))}
-          </div>
-          {DOS_STYLE_NAMES.some((s) => !styleList.includes(s)) ? (
-            <>
-              <div style={fieldLabel}>Add more styles</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {DOS_STYLE_NAMES.filter((s) => !styleList.includes(s)).map((s) => (
-                  <button type="button" key={s} disabled={pending || styleList.length >= 12} aria-label={`Add ${s}`} onClick={() => save({ styles: [...styleList, s] }, `✓ ${s} added to your styles`)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "6px 13px 6px 6px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
-                    <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 5, background: dosStyleColor(s) }} />
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
-          <button type="button" onClick={() => setStylesOpen(false)} style={{ ...sheetBtn(true), width: "100%", marginTop: 14 }}>Done</button>
-        </Sheet>
+        <StylesSheet
+          styles={styleList}
+          pending={pending}
+          lastWords="A user names at least one style"
+          onSave={(next, said) => save({ styles: next }, said)}
+          onClose={() => setStylesOpen(false)}
+        />
       ) : null}
 
       {/* ── Add a social link (11161) ── */}
@@ -230,7 +213,7 @@ export function HomeBand({
           <div style={{ fontSize: 12, color: SUB, margin: "4px 0 12px" }}>Drag order with ↑↓ · tap a platform below to add it.</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {socials.map((l, i, arr) => (
-              <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 14, background: CARD, border: `1px solid ${LINE}` }}>
+              <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 14, background: CARD, border: `1.5px solid ${LINE}` }}>
                 <Arrows i={i} n={arr.length} onMove={(dir) => save({ socials: move(arr, i, dir) }, "Order saved")} />
                 <PlatformIcon label={l.platform} size={24} />
                 <button type="button" onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
@@ -249,7 +232,7 @@ export function HomeBand({
               <div style={fieldLabel}>Add a platform</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {PLATFORMS.filter((p) => !socials.find((l) => l.platform === p)).map((p) => (
-                  <button type="button" key={p} aria-label={`Add ${p}`} onClick={() => setLinkEditor({ platform: p, url: "", isNew: true })} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "7px 13px 7px 7px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
+                  <button type="button" key={p} aria-label={`Add ${p}`} onClick={() => setLinkEditor({ platform: p, url: "", isNew: true })} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "7px 13px 7px 7px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1.5px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
                     <PlatformIcon label={p} size={20} />
                     {p}
                   </button>
@@ -326,7 +309,7 @@ export function HomeBand({
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {shownFollowRows.map((r) => (
-              <Link key={r.key} href={r.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, background: `${r.tint}12`, border: `1px solid ${r.tint}30`, color: INK, textDecoration: "none" }}>
+              <Link key={r.key} href={r.href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 16, background: `${r.tint}12`, border: `1.5px solid ${r.tint}30`, color: INK, textDecoration: "none" }}>
                 <span style={{ position: "relative", flexShrink: 0 }}>
                   <span style={{ width: 46, height: 46, borderRadius: 23, display: "flex", overflow: "hidden", background: `linear-gradient(135deg,${r.tint},${r.tint}88)`, alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17 }}>
                     {r.face ? <Image src={r.face} alt="" width={46} height={46} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : r.initials}
@@ -346,7 +329,7 @@ export function HomeBand({
       ) : null}
 
       {toast ? (
-        <div role="status" style={{ position: "fixed", left: "50%", bottom: "calc(90px + var(--dos-safe-bottom, 0px))", transform: "translateX(-50%)", zIndex: 800, background: "var(--solid)", border: "1px solid #0EA5E9", borderRadius: 999, padding: "9px 16px", fontSize: 12, fontWeight: 800, color: INK, boxShadow: "0 8px 24px rgba(0,0,0,.35)" }}>
+        <div role="status" style={{ position: "fixed", left: "50%", bottom: "calc(90px + var(--dos-safe-bottom, 0px))", transform: "translateX(-50%)", zIndex: 800, background: "var(--solid)", border: "1.5px solid #0EA5E9", borderRadius: 999, padding: "9px 16px", fontSize: 12, fontWeight: 800, color: INK, boxShadow: "0 8px 24px rgba(0,0,0,.35)" }}>
           {toast}
         </div>
       ) : null}

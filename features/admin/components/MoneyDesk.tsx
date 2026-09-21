@@ -26,7 +26,7 @@ function Fig({ n, label, tone, href }: { n: string | number; label: string; tone
       <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: MUTED, marginTop: 4, lineHeight: 1.3 }}>{label}</span>
     </>
   );
-  const style: React.CSSProperties = { background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
+  const style: React.CSSProperties = { background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
   return href ? <Link href={href} style={style}>{body}</Link> : <div style={style}>{body}</div>;
 }
 
@@ -45,7 +45,7 @@ function Pills({ tab, options, param, current }: { tab: MoneyTab; options: Array
         <Link
           key={k}
           href={`/admin/payments?tab=${tab}${k === "all" ? "" : `&${param}=${k}`}`}
-          style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: current === k ? "var(--text)" : CARD, color: current === k ? "var(--solid)" : SUB, border: `1px solid ${current === k ? "var(--text)" : EL}`, whiteSpace: "nowrap" }}
+          style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: current === k ? "var(--text)" : CARD, color: current === k ? "var(--solid)" : SUB, border: `1.5px solid ${current === k ? "var(--text)" : EL}`, whiteSpace: "nowrap" }}
         >
           {label}
         </Link>
@@ -136,7 +136,7 @@ export function MoneyDesk({
       </Grid>
 
       {summary.webhooksStuck > 0 ? (
-        <div style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 14, padding: "10px 12px", marginTop: 8 }}>
+        <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 14, padding: "10px 12px", marginTop: 8 }}>
           <b style={{ fontSize: 12 }}>{summary.webhooksStuck} webhook delivery{summary.webhooksStuck === 1 ? "" : "s"} never finished</b>
           <div style={{ fontSize: 10.5, color: SUB, marginTop: 2, lineHeight: 1.5 }}>
             The delivery arrived and its work did not complete, so a payment on this page may be missing or behind. This is
@@ -189,7 +189,7 @@ export function MoneyDesk({
                 const st = PAYMENT_STATUS[p.status] ?? { word: p.status.toUpperCase(), tone: MUTED };
                 const isPlan = p.kind !== "order";
                 return (
-                  <div key={p.id} data-testid="admin-payment" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
+                  <div key={p.id} data-testid="admin-payment" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                       <b style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{exact(p.amountInr)}</b>
                       <Chip word={st.word} tone={st.tone} />
@@ -240,7 +240,7 @@ export function MoneyDesk({
                 /* a week is where "waiting" becomes "ignored" */
                 const late = r.waitingDays >= 7;
                 return (
-                  <div key={r.id} data-testid="admin-refund" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${late ? "#EF4444" : st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
+                  <div key={r.id} data-testid="admin-refund" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${late ? "#EF4444" : st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                       <b style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{exact(r.amountInr)}</b>
                       <Chip word={st.word} tone={st.tone} />
@@ -260,7 +260,7 @@ export function MoneyDesk({
                     ) : null}
                     {r.tenantName ? (
                       <div style={{ marginTop: 8 }}>
-                        <Link href={`/admin/businesses?q=${encodeURIComponent(r.tenantName)}`} style={{ display: "inline-flex", alignItems: "center", height: 30, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, textDecoration: "none", border: `1px solid ${EL}`, background: CARD, color: INK }}>
+                        <Link href={`/admin/businesses?q=${encodeURIComponent(r.tenantName)}`} style={{ display: "inline-flex", alignItems: "center", height: 30, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, textDecoration: "none", border: `1.5px solid ${EL}`, background: CARD, color: INK }}>
                           Open the business
                         </Link>
                       </div>
@@ -270,7 +270,7 @@ export function MoneyDesk({
               })}
             </div>
           )}
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
             This desk watches; it does not decide. A refund is the studio&apos;s to settle, on the class it was for — which is
             what keeps DanceOS out of the middle of it. What an admin can do from here is see who has been waiting too
             long, and go and ask.
@@ -299,7 +299,7 @@ export function MoneyDesk({
               {payouts.map((p) => {
                 const st = PAYOUT_STATUS[p.status] ?? { word: p.status.toUpperCase(), tone: MUTED };
                 return (
-                  <div key={p.id} data-testid="admin-payout" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
+                  <div key={p.id} data-testid="admin-payout" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                       <b style={{ fontSize: 14, fontVariantNumeric: "tabular-nums" }}>{exact(p.amountInr)}</b>
                       <Chip word={st.word} tone={st.tone} />
@@ -316,7 +316,7 @@ export function MoneyDesk({
               })}
             </div>
           )}
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
             DanceOS does not move this money — a business pays its own trainers and records it here, which is why every
             row is a fact rather than an instruction. Platform payouts are deliberately unwired.
           </div>

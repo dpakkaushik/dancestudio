@@ -90,7 +90,7 @@ export function NearMeChip({ on, params }: { on: boolean; params: Record<string,
           whiteSpace: "nowrap",
           background: on ? "var(--text)" : CARD,
           color: on ? "var(--solid)" : SUB,
-          border: `1px solid ${on ? "var(--text)" : EL}`,
+          border: `1.5px solid ${on ? "var(--text)" : EL}`,
         }}
       >
         ◎ {busy ? "Finding you…" : on ? "Near me · on" : "Near me"}

@@ -46,7 +46,7 @@ const KIND_ORDER: SearchKind[] = ["studio", "artist", "crew", "event", "person"]
 const KEYFRAMES = "@keyframes dosPop{0%{transform:scale(1)}35%{transform:scale(1.08)}65%{transform:scale(.97)}100%{transform:scale(1)}}@keyframes dosSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}";
 
 /* the sheet's chip and row (4834-4842) — module-level, so they are not remade on every render */
-const chip = (on: boolean): React.CSSProperties => ({ padding: "9px 13px", borderRadius: 11, cursor: "pointer", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", boxSizing: "border-box", WebkitTapHighlightColor: "transparent", background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : "var(--text)", border: `1px solid ${on ? "var(--text)" : "var(--el)"}` });
+const chip = (on: boolean): React.CSSProperties => ({ padding: "9px 13px", borderRadius: 11, cursor: "pointer", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", boxSizing: "border-box", WebkitTapHighlightColor: "transparent", background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : "var(--text)", border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` });
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
@@ -66,7 +66,7 @@ export function DosStyleTile({ label, color, on, tap, aria, small }: { label: st
       aria-label={aria ?? label}
       aria-pressed={on === undefined ? undefined : Boolean(on)}
       onClick={tap}
-      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxSizing: "border-box", background: toolPaint(color), border: `1px solid ${color}`, borderRadius: 10, padding: small ? "6px 11px" : "7px 13px", cursor: tap ? "pointer" : "default", WebkitTapHighlightColor: "transparent", transition: "box-shadow .15s", boxShadow: on ? `0 0 0 2px var(--bg), 0 0 0 3.5px ${color}` : "0 1px 3px rgba(0,0,0,.22)" }}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxSizing: "border-box", background: toolPaint(color), border: `1.5px solid ${color}`, borderRadius: 10, padding: small ? "6px 11px" : "7px 13px", cursor: tap ? "pointer" : "default", WebkitTapHighlightColor: "transparent", transition: "box-shadow .15s", boxShadow: on ? `0 0 0 2px var(--bg), 0 0 0 3.5px ${color}` : "0 1px 3px rgba(0,0,0,.22)" }}
     >
       <span style={{ fontSize: small ? 11.5 : 12.5, fontWeight: 800, letterSpacing: -0.2, fontFamily: DOS_DISPLAY, lineHeight: 1.1, whiteSpace: "nowrap", color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,.25)" }}>
         {label}
@@ -161,7 +161,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
           onBlur={() => setTimeout(() => setSearchOn(false), 180)}
           placeholder="Search"
           autoComplete="off"
-          style={{ width: "100%", boxSizing: "border-box", background: "var(--card)", border: "1px solid var(--el)", borderRadius: 14, padding: "13px 40px 13px 16px", color: "var(--text)", fontSize: 13.5, outline: "none", fontFamily: "inherit" }}
+          style={{ width: "100%", boxSizing: "border-box", background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, padding: "13px 40px 13px 16px", color: "var(--text)", fontSize: 13.5, outline: "none", fontFamily: "inherit" }}
         />
         {q ? (
           <span role="button" tabIndex={0} aria-label="Clear search" onKeyDown={pressKey(() => setQ(""))} onClick={() => setQ("")} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", color: "var(--sub)", cursor: "pointer", fontWeight: 800, fontSize: 13 }}>
@@ -169,7 +169,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
           </span>
         ) : null}
         {searchOn && term.length >= 2 ? (
-          <div role="listbox" aria-label="Search results" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 400, background: "var(--solid)", border: "1px solid var(--el)", borderRadius: 16, maxHeight: 340, overflowY: "auto", boxShadow: "0 14px 40px rgba(0,0,0,.5)" }}>
+          <div role="listbox" aria-label="Search results" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 400, background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 16, maxHeight: 340, overflowY: "auto", boxShadow: "0 14px 40px rgba(0,0,0,.5)" }}>
             {searching && hits.length === 0 ? <div style={{ padding: "18px 14px", fontSize: 12.5, color: "var(--sub)", textAlign: "center" }}>Searching…</div> : null}
             {!searching && hits.length === 0 ? <div style={{ padding: "18px 14px", fontSize: 12.5, color: "var(--sub)", textAlign: "center" }}>No matches anywhere on DanceOS.</div> : null}
             {KIND_ORDER.filter((k) => hits.some((h) => h.kind === k)).map((k) => (
@@ -236,7 +236,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
           onKeyDown={pressKey(() => setOpen(true))}
           aria-label="All filters"
           onClick={() => setOpen(true)}
-          style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: onN ? "var(--text)" : "var(--card)", color: onN ? "var(--solid)" : "var(--text)", border: `1px solid ${onN ? "var(--text)" : "var(--el)"}` }}
+          style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: onN ? "var(--text)" : "var(--card)", color: onN ? "var(--solid)" : "var(--text)", border: `1.5px solid ${onN ? "var(--text)" : "var(--el)"}` }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <path d="M4 7h16M7 12h10M10 17h4" />
@@ -244,7 +244,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
           Filters{onN ? ` · ${onN}` : ""}
         </div>
         {quick.map(([k, label, on, fn]) => (
-          <div role="button" tabIndex={0} onKeyDown={pressKey(fn)} key={k} aria-label={label} aria-pressed={on} onClick={fn} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 32, padding: "0 13px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: on ? "var(--text)" : "transparent", color: on ? "var(--solid)" : "var(--sub)", border: `1px solid ${on ? "var(--text)" : "var(--el)"}` }}>
+          <div role="button" tabIndex={0} onKeyDown={pressKey(fn)} key={k} aria-label={label} aria-pressed={on} onClick={fn} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", height: 32, padding: "0 13px", borderRadius: 16, cursor: "pointer", fontWeight: 800, fontSize: 11.5, boxSizing: "border-box", background: on ? "var(--text)" : "transparent", color: on ? "var(--solid)" : "var(--sub)", border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}` }}>
             {label}
           </div>
         ))}
@@ -257,7 +257,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
 
       {/* the events tab's own box (S_eventslist 13551): title, style or organiser */}
       {isEv ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
             <circle cx="11" cy="11" r="6.5" />
             <path d="m16 16 4 4" />

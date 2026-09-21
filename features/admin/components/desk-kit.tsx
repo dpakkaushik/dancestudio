@@ -84,7 +84,7 @@ export function StatStrip({ figs, cols = 3 }: { figs: StatFig[]; cols?: 2 | 3 | 
             <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: MUTED, marginTop: 4, lineHeight: 1.3 }}>{f.label}</span>
           </>
         );
-        const style: React.CSSProperties = { background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
+        const style: React.CSSProperties = { background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
         return f.href ? (
           <Link key={f.label} href={f.href} style={style}>
             {body}
@@ -147,13 +147,13 @@ export function SearchBar({ action, q, placeholder, keep = {} }: { action: strin
         defaultValue={q}
         placeholder={placeholder}
         aria-label={placeholder}
-        style={{ flex: 1, minWidth: 0, height: 38, boxSizing: "border-box", background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "0 12px", fontSize: 12.5, color: INK, fontFamily: "inherit" }}
+        style={{ flex: 1, minWidth: 0, height: 38, boxSizing: "border-box", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "0 12px", fontSize: 12.5, color: INK, fontFamily: "inherit" }}
       />
       <button type="submit" style={{ height: 38, padding: "0 14px", borderRadius: 12, border: "none", background: "var(--text)", color: "var(--solid)", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>
         Find
       </button>
       {q ? (
-        <Link href={`${action}${qs({ ...keep })}`} aria-label="Clear the search" style={{ height: 38, padding: "0 12px", borderRadius: 12, border: `1px solid ${EL}`, background: CARD, color: SUB, fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+        <Link href={`${action}${qs({ ...keep })}`} aria-label="Clear the search" style={{ height: 38, padding: "0 12px", borderRadius: 12, border: `1.5px solid ${EL}`, background: CARD, color: SUB, fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
           ×
         </Link>
       ) : null}
@@ -172,11 +172,11 @@ export function Pager({ base, page, total, size = PAGE_SIZE, keep = {} }: { base
   const to = Math.min(total, page * size);
   const link = (p: number, label: string, enabled: boolean) =>
     enabled ? (
-      <Link href={`${base}${qs({ ...keep, page: p })}`} style={{ height: 34, padding: "0 13px", borderRadius: 10, border: `1px solid ${EL}`, background: CARD, color: INK, fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+      <Link href={`${base}${qs({ ...keep, page: p })}`} style={{ height: 34, padding: "0 13px", borderRadius: 10, border: `1.5px solid ${EL}`, background: CARD, color: INK, fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
         {label}
       </Link>
     ) : (
-      <span aria-disabled="true" style={{ height: 34, padding: "0 13px", borderRadius: 10, border: `1px solid ${EL}`, background: CARD, color: MUTED, fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", opacity: 0.5 }}>
+      <span aria-disabled="true" style={{ height: 34, padding: "0 13px", borderRadius: 10, border: `1.5px solid ${EL}`, background: CARD, color: MUTED, fontSize: 11.5, fontWeight: 800, display: "inline-flex", alignItems: "center", opacity: 0.5 }}>
         {label}
       </span>
     );

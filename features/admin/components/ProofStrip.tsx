@@ -45,7 +45,7 @@ export function ProofStrip({ photos, orgName }: { photos: ProofPhoto[]; orgName:
             type="button"
             onClick={() => setOpen(null)}
             aria-label="Close this photo"
-            style={{ display: "block", width: "100%", padding: 0, border: `1px solid ${EL}`, borderRadius: 12, overflow: "hidden", background: EL, cursor: "zoom-out" }}
+            style={{ display: "block", width: "100%", padding: 0, border: `1.5px solid ${EL}`, borderRadius: 12, overflow: "hidden", background: EL, cursor: "zoom-out" }}
           >
             {shown.url ? (
               <Image src={shown.url} alt={`${orgName}'s space`} width={396} height={297} style={{ width: "100%", height: "auto", display: "block" }} unoptimized />
@@ -63,7 +63,7 @@ export function ProofStrip({ photos, orgName }: { photos: ProofPhoto[]; orgName:
             type="button"
             onClick={() => setOpen(open === p.path ? null : p.path)}
             aria-label={`Open photo ${i + 1} of ${orgName}'s space`}
-            style={{ position: "relative", aspectRatio: "1 / 1", padding: 0, borderRadius: 9, overflow: "hidden", border: `1px solid ${open === p.path ? "var(--text)" : EL}`, background: EL, cursor: "zoom-in" }}
+            style={{ position: "relative", aspectRatio: "1 / 1", padding: 0, borderRadius: 9, overflow: "hidden", border: `1.5px solid ${open === p.path ? "var(--text)" : EL}`, background: EL, cursor: "zoom-in" }}
           >
             {p.url ? (
               <Image src={p.url} alt="" fill sizes="70px" style={{ objectFit: "cover" }} unoptimized />

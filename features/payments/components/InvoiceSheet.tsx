@@ -88,7 +88,7 @@ export function InvoiceSheet({ title, whenText, whereText, enrollmentId, amountI
               justifyContent: "space-between",
               gap: 12,
               padding: "7px 0",
-              borderBottom: "1px solid var(--el)",
+              borderBottom: "1.5px solid var(--el)",
               fontSize: 12.5,
             }}
           >
@@ -114,7 +114,7 @@ export function InvoiceSheet({ title, whenText, whereText, enrollmentId, amountI
               padding: "12px",
               borderRadius: 999,
               background: "var(--card)",
-              border: "1px solid var(--el)",
+              border: "1.5px solid var(--el)",
               fontWeight: 800,
               fontSize: 12.5,
               cursor: "pointer",

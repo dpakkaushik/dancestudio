@@ -123,7 +123,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
               <a
                 href={`tel:${tel}`}
                 aria-label={`Call ${who}`}
-                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 800, fontSize: 13, color: "var(--text)", textDecoration: "none" }}
+                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 13, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 800, fontSize: 13, color: "var(--text)", textDecoration: "none" }}
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 5.5 5.5l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A16 16 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z" />
@@ -147,7 +147,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
             aria-label={mine ? "Change the stage" : undefined}
             onKeyDown={mine ? pressKey(() => setStOpen((v) => !v)) : undefined}
             onClick={mine ? () => setStOpen((v) => !v) : undefined}
-            style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1px solid var(--el)", borderRadius: 12, padding: "11px 12px", cursor: mine ? "pointer" : "default" }}
+            style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "11px 12px", cursor: mine ? "pointer" : "default" }}
           >
             <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>STATUS</span>
             <span data-testid="enquiry-stage" style={{ flex: 1, fontSize: 12.5, fontWeight: 900, color: tint }}>
@@ -156,7 +156,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
             {mine ? <span style={{ fontSize: 11, color: "var(--sub)" }}>▾</span> : null}
           </div>
           {stOpen ? (
-            <div style={{ position: "absolute", top: "calc(100% + 5px)", left: 0, right: 0, zIndex: 60, background: "var(--solid)", border: "1px solid var(--el)", borderRadius: 12, padding: 5, boxShadow: "0 10px 26px rgba(0,0,0,.45)" }}>
+            <div style={{ position: "absolute", top: "calc(100% + 5px)", left: 0, right: 0, zIndex: 60, background: "var(--solid)", border: "1.5px solid var(--el)", borderRadius: 12, padding: 5, boxShadow: "0 10px 26px rgba(0,0,0,.45)" }}>
               {ENQ_STAGES.map((s: EnquiryStatus) => (
                 <div
                   key={s}
@@ -183,7 +183,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
         <Surface tint={tint}>
           <Eyebrow tint={tint}>{mine ? "WHAT THEY ASKED FOR" : "WHAT YOU ASKED FOR"}</Eyebrow>
           {rows.map(([k, v], i) => (
-            <div key={`${k}·${i}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "6px 0", borderBottom: i === rows.length - 1 ? "none" : "1px solid var(--el)", fontSize: 11.5 }}>
+            <div key={`${k}·${i}`} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "6px 0", borderBottom: i === rows.length - 1 ? "none" : "1.5px solid var(--el)", fontSize: 11.5 }}>
               <span style={{ color: "var(--sub)" }}>{k}</span>
               <b style={{ textAlign: "right", fontFamily: /date|perform|session|panel|judges/i.test(k) ? DOS_MONO : DOS_UI, fontWeight: 700 }}>{v}</b>
             </div>
@@ -212,7 +212,7 @@ export function EnquiryDetail({ enquiry: e, mine, nowIso }: { enquiry: Enquiry; 
                         : "Waiting on an answer";
               const c2 = q.advancePaidAt || q.fullPaidAt || q.status === "accepted" ? "#22C55E" : q.status === "declined" ? "#F87171" : dead ? "var(--muted)" : "#F59E0B";
               return (
-                <div key={q.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--el)", opacity: dead ? 0.55 : 1 }}>
+                <div key={q.id} style={{ padding: "8px 0", borderBottom: "1.5px solid var(--el)", opacity: dead ? 0.55 : 1 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                     <span style={{ fontSize: 9, fontWeight: 900, color: "var(--muted)", fontFamily: DOS_MONO }}>#{q.n}</span>
                     <Figure size={13}>{money(q.costInr)}</Figure>

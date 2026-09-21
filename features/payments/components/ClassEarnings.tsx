@@ -29,7 +29,7 @@ function Line({ label, value, tint }: { label: string; value: string; tint: stri
         alignItems: "center",
         gap: 10,
         padding: "10px 0",
-        borderBottom: "1px solid var(--el)",
+        borderBottom: "1.5px solid var(--el)",
       }}
     >
       <span style={{ width: 8, height: 8, borderRadius: 4, background: tint, flexShrink: 0 }} />
@@ -68,7 +68,7 @@ export function ClassEarnings({
       <div
         style={{
           background: "var(--card)",
-          border: "1px solid var(--el)",
+          border: "1.5px solid var(--el)",
           borderLeft: `4px solid ${styleColor}`,
           borderRadius: 18,
           padding: "14px 15px",

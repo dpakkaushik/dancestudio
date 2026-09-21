@@ -67,7 +67,7 @@ function Face({ name, photo }: { name: string; photo: string | null }) {
 function PersonRow({ p, actionWord, actionColor, label, onPick }: { p: Hit; actionWord: string; actionColor: string; label: string; onPick: () => void }) {
   const sub = [KIND_WORD[kindOf(p.role, p.isArtist)], p.city].filter(Boolean).join(" · ");
   return (
-    <div role="button" tabIndex={0} aria-label={label} onKeyDown={pressKey(onPick)} onClick={onPick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", cursor: "pointer", borderBottom: "1px solid var(--el)" }}>
+    <div role="button" tabIndex={0} aria-label={label} onKeyDown={pressKey(onPick)} onClick={onPick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", cursor: "pointer", borderBottom: "1.5px solid var(--el)" }}>
       <Face name={p.fullName} photo={photoUrl(p.avatarPath)} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>{p.fullName}</span>

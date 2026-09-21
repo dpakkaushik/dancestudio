@@ -27,7 +27,7 @@ import type { MembershipOnSale } from "@/repositories/memberships";
  *  being paid with, then one Pay button. A free one says "no payment" in the
  *  same sheet rather than pretending there is a step. */
 
-const row: CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid var(--el)" };
+const row: CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1.5px solid var(--el)" };
 const sheetBackdrop: CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 700 };
 const sheetBody: CSSProperties = { background: "var(--solid)", color: INK, borderRadius: "24px 24px 0 0", padding: "16px 16px 30px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" };
 
@@ -89,7 +89,7 @@ export function MembershipsOnSale({
     });
 
   return (
-    <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginTop: 10 }} data-testid="memberships-on-sale">
+    <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginTop: 10 }} data-testid="memberships-on-sale">
       <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: accent, marginBottom: 6 }}>MEMBERSHIPS</div>
       {memberships.map((m) => (
         <div key={m.id} style={row}>
@@ -142,7 +142,7 @@ export function MembershipsOnSale({
             <div style={{ fontSize: 11.5, color: SUB, marginTop: 2 }}>
               {paying.name} · {businessName}
             </div>
-            <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "11px 13px", margin: "12px 0" }}>
+            <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "11px 13px", margin: "12px 0" }}>
               {[
                 ["Worth", paying.unit === "hours" ? `${paying.units} hours` : `${paying.units} classes`],
                 ["Paying with", paying.priceInr === 0 ? "—" : "UPI · Cards · Netbanking"],
@@ -152,13 +152,13 @@ export function MembershipsOnSale({
                   <b style={{ textAlign: "right" }}>{v}</b>
                 </div>
               ))}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderTop: "1px solid var(--el)", marginTop: 6, paddingTop: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderTop: "1.5px solid var(--el)", marginTop: 6, paddingTop: 8 }}>
                 <span style={{ fontSize: 12.5, color: SUB }}>Total</span>
                 <b style={{ fontSize: 17, fontWeight: 900 }}>{paying.priceInr === 0 ? "Free" : rupees(paying.priceInr)}</b>
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" disabled={pending} onClick={() => setPaying(null)} style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", color: INK, fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+              <button type="button" disabled={pending} onClick={() => setPaying(null)} style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", color: INK, fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
                 Cancel
               </button>
               <button type="button" disabled={pending} onClick={() => take(paying)} style={{ flex: 1.4, padding: 13, borderRadius: 999, background: accent, border: "none", color: "#fff", fontWeight: 900, fontSize: 13, cursor: pending ? "wait" : "pointer", fontFamily: "inherit" }}>

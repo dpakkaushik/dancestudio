@@ -27,8 +27,8 @@ import type { MembershipWithUsage, MyPass } from "@/repositories/memberships";
  *  THE FOUR THINGS AND NOTHING ELSE (the user's own list): a name, classes or
  *  hours with how many, a price, and how many may be sold. */
 
-const card: CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
-const btn = (on: boolean): CSSProperties => ({ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, cursor: "pointer", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", border: on ? "none" : "1px solid var(--el)", background: on ? INK : "var(--card)", color: on ? LILAC : INK });
+const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
+const btn = (on: boolean): CSSProperties => ({ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, cursor: "pointer", fontWeight: 900, fontSize: 12.5, fontFamily: "inherit", border: on ? "none" : "1.5px solid var(--el)", background: on ? INK : "var(--card)", color: on ? LILAC : INK });
 
 /** HOW FAR THROUGH — the one thing a membership is for (the user: "progress bar
  *  for completion"). Drawn from two real numbers, never a stored percentage. */

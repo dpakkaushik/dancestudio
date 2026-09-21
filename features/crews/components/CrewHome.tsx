@@ -15,6 +15,7 @@ import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { CREW_GRAD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
 import { CrewEditButton } from "./CrewEditSheet";
+import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
 
 /** A CREW'S OWN HOME (18 Sep 2026, the user: "crews managed by you should take to
  *  Crew home tab with Teams and events to manage the section"). What a crew you
@@ -80,19 +81,27 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
              other profile: figures → styles → links (the hero's own styles row
              renders BEFORE its children) */
           styles={[]}
+          /* ⚠ THE DISC AND THE POSTERS ARE CONTROLS HERE NOW (21 Sep 2026, the
+             user: "make sure all profile types have similar ways to edit the
+             profile, the segments like social media, dance styles, pictures and
+             posters"). A crew was the last kind still editing both inside its
+             Edit sheet — the shape the same user had removed from a STUDIO on
+             20 Sep. The disc opens the picture and its ⊕ changes it; the rail's
+             ⊕ opens the posters. ⚠ The disc STOPPED opening the crew's public
+             page: that page is the Share chip in the band, and a disc that
+             navigates is not a disc you can edit from. */
           avatar={photoUrl(crew.photo)}
+          avatarSlot={<CrewPicturesButton crewId={crew.id} crewName={crew.name} grad={CREW_GRAD} avatar={photoUrl(crew.photo)} canEdit />}
           avatarAlt={crew.name}
-          /* the disc opens the crew's own public page (19 Sep 2026) */
-          avatarHref={`/crew/${crew.id}`}
-          avatarLabel="Open the crew's public page"
           shots={shots}
+          headerEdit={<CrewPostersButton crewId={crew.id} crewName={crew.name} photos={header} />}
           /* ⚠ THE EYE IS GONE, AND THE CORNER IS THE ONE DOOR EVERY HOME CARRIES
              (21 Sep 2026): it opened `/crew/{id}`, whose own corner opened this
              page again — the same two-screen loop. The crew's public page is the
              Share chip in the figures row. */
           corner={
             <>
-              <CrewEditButton crew={crew} header={header} />
+              <CrewEditButton crew={crew} />
               <Link href="/profile" aria-label="Your profile" style={cornerChip}>
                 <PersonIcon />
               </Link>

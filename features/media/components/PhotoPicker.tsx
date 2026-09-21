@@ -251,7 +251,7 @@ export function PhotoPicker({
     fontSize: 10.5,
     fontWeight: 800,
     fontFamily: DOS_UI,
-    border: `1px solid ${onLight ? "rgba(255,255,255,.5)" : LINE}`,
+    border: `1.5px solid ${onLight ? "rgba(255,255,255,.5)" : LINE}`,
     background: onLight ? "rgba(255,255,255,.2)" : "var(--card)",
     color: onLight ? "#fff" : INK,
     opacity: busy ? 0.6 : 1,

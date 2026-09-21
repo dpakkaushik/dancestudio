@@ -242,7 +242,7 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
             </div>
           </div>
           {step > 0 ? (
-            <button type="button" onClick={() => setStep(0)} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", color: "var(--text)", cursor: "pointer", fontFamily: "inherit" }}>
+            <button type="button" onClick={() => setStep(0)} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", color: "var(--text)", cursor: "pointer", fontFamily: "inherit" }}>
               ‹ Back
             </button>
           ) : null}
@@ -624,7 +624,7 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
 
             {/* AND IT SAYS WHAT IS MISSING (16178) */}
             {blockers.length > 0 ? (
-              <div style={{ background: "rgba(248,113,113,.10)", border: "1px solid rgba(248,113,113,.35)", borderRadius: 14, padding: "12px 13px", marginTop: 18 }}>
+              <div style={{ background: "rgba(248,113,113,.10)", border: "1.5px solid rgba(248,113,113,.35)", borderRadius: 14, padding: "12px 13px", marginTop: 18 }}>
                 <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.6, color: "#F87171", marginBottom: 7 }}>BEFORE THIS CAN GO ON DISCOVER</div>
                 {blockers.map((b, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginTop: i ? 6 : 0 }}>
@@ -636,7 +636,7 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
             ) : null}
             {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginTop: 10 }}>{error}</div> : null}
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <button type="button" onClick={() => setConfirm("draft")} style={{ flex: 1, textAlign: "center", padding: 15, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 800, fontSize: 13.5, cursor: "pointer", color: "var(--text)", fontFamily: "inherit" }}>
+              <button type="button" onClick={() => setConfirm("draft")} style={{ flex: 1, textAlign: "center", padding: 15, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 800, fontSize: 13.5, cursor: "pointer", color: "var(--text)", fontFamily: "inherit" }}>
                 Save draft
               </button>
               <button type="button" aria-disabled={!canPublish} onClick={() => (canPublish ? setConfirm("publish") : fire(blockers[0] ?? "Finish the details first"))} style={{ flex: 1.3, textAlign: "center", padding: 15, borderRadius: 999, background: canPublish ? "var(--text)" : "var(--el)", color: canPublish ? "var(--solid)" : "var(--muted)", fontWeight: 900, fontSize: 14.5, cursor: canPublish ? "pointer" : "default", border: "none", fontFamily: "inherit" }}>
@@ -654,7 +654,7 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
             <b style={{ fontSize: 17 }}>{confirm === "publish" ? "Publish this event?" : "Save as draft?"}</b>
             <div style={{ fontSize: 11.5, color: "var(--sub)", margin: "4px 0 12px" }}>{confirm === "publish" ? "Check the details — this goes live immediately." : "Saved privately. You can publish it any time."}</div>
             <div style={{ background: "var(--card)", borderRadius: 16, padding: "12px 13px", textAlign: "left", marginBottom: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10, marginBottom: 8, borderBottom: "1px solid var(--el)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 10, marginBottom: 8, borderBottom: "1.5px solid var(--el)" }}>
                 <span style={{ width: 36, height: 36, borderRadius: 12, flexShrink: 0, background: `${col}1e`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <EvIcon cat={cat as EventCat} size={18} color={col} />
                 </span>
@@ -685,7 +685,7 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
               ))}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--text)", fontFamily: "inherit" }}>
+              <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", color: "var(--text)", fontFamily: "inherit" }}>
                 Back
               </button>
               <button type="button" disabled={busy} onClick={() => void submit(confirm === "publish")} style={{ flex: 1.3, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: busy ? "wait" : "pointer", border: "none", fontFamily: "inherit" }}>

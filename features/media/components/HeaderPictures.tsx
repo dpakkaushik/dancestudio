@@ -47,7 +47,12 @@ export function HeaderPictures({
 }: {
   draft: HeaderDraft;
   tiles: GridTile[];
-  kind: "studio" | "person";
+  /** ⚠ only `"studio"` branches — it alone draws the 5-of-10 counter, because a
+   *  studio's posters ARE the evidence an admin checked. `"crew"` joined the
+   *  union on 21 Sep 2026 rather than a crew being passed `"person"`: the only
+   *  thing a wrong word here costs is the next reader, and there is no reason
+   *  to make them work out that a crew is a person. */
+  kind: "studio" | "person" | "crew";
   canWrite: boolean;
   /** the Add tile's accessible name — "Add photos of your space" for a studio,
    *  "Add picture" for a person. Both are pressed by name in the harness. */

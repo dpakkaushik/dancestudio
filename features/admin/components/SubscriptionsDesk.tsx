@@ -12,7 +12,7 @@ import { agoWords } from "@/types/notification";
 const CARD = "var(--card)";
 const EL = "var(--el)";
 const MUTED = "var(--muted)";
-const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${EL}`, background: CARD, color: INK };
+const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${EL}`, background: CARD, color: INK };
 
 const STATUS: Record<SubscriptionStatus, { word: string; tone: string }> = {
   pending_auth: { word: "NOT AUTHORISED", tone: "#F59E0B" },
@@ -72,7 +72,7 @@ export function SubscriptionsDesk({ rows, status, nowIso }: { rows: AdminSubscri
 
       <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto", scrollbarWidth: "none" }}>
         {FILTERS.map(([k, label]) => (
-          <Link key={k} href={`/admin/subscriptions?status=${k}`} style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: status === k ? "var(--text)" : CARD, color: status === k ? "var(--solid)" : SUB, border: `1px solid ${status === k ? "var(--text)" : EL}`, whiteSpace: "nowrap" }}>
+          <Link key={k} href={`/admin/subscriptions?status=${k}`} style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: status === k ? "var(--text)" : CARD, color: status === k ? "var(--solid)" : SUB, border: `1.5px solid ${status === k ? "var(--text)" : EL}`, whiteSpace: "nowrap" }}>
             {label}
           </Link>
         ))}
@@ -86,7 +86,7 @@ export function SubscriptionsDesk({ rows, status, nowIso }: { rows: AdminSubscri
             const st = STATUS[s.status];
             const who = s.kind === "studio" ? `${s.tenantName ?? "a studio"} · ${s.userName}` : s.userName;
             return (
-              <div key={s.id} data-testid="admin-subscription" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
+              <div key={s.id} data-testid="admin-subscription" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${st.tone}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                   <b style={{ fontSize: 13 }}>{who}</b>
                   <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: s.kind === "studio" ? "#DBEAFE" : "#FCE7F3", color: s.kind === "studio" ? "#1D4ED8" : "#BE185D" }}>
@@ -111,7 +111,7 @@ export function SubscriptionsDesk({ rows, status, nowIso }: { rows: AdminSubscri
                   ending === s.id ? (
                     <div style={{ marginTop: 9 }}>
                       <label htmlFor={`end-${s.id}`} style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>WHY — THEY READ THIS</label>
-                      <textarea id={`end-${s.id}`} value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} placeholder="Why it is ending now, in a sentence." style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }} />
+                      <textarea id={`end-${s.id}`} value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} placeholder="Why it is ending now, in a sentence." style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }} />
                       <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                         <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => end(s)} style={{ ...btn, background: "#EF4444", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm ending ${who}'s subscription`}>
                           {pending ? "Ending…" : "End it now"}
@@ -141,7 +141,7 @@ export function SubscriptionsDesk({ rows, status, nowIso }: { rows: AdminSubscri
         </div>
       )}
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         Renewals are raised by Cashfree on the mandate with a day&apos;s notice; a failed one is retried and the owner has
         three days of grace before the studio comes off Discover. A cancellation by the customer keeps what they paid
         for. Comp a period on Businesses or Accounts; change what a plan costs on Plans.

@@ -108,7 +108,7 @@ export function HeaderGrid({
               borderRadius: 11,
               overflow: "hidden",
               background: "var(--el)",
-              border: t.failed ? "1.5px solid #F87171" : `1px solid ${LINE}`,
+              border: t.failed ? "1.5px solid #F87171" : `1.5px solid ${LINE}`,
             }}
           >
             <button

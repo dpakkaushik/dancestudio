@@ -91,7 +91,7 @@ export const linkChip: CSSProperties = {
   cursor: "pointer",
   whiteSpace: "nowrap",
   background: "var(--card)",
-  border: "1px solid var(--el)",
+  border: "1.5px solid var(--el)",
   fontFamily: "inherit",
   color: INK,
 };

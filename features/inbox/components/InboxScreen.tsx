@@ -78,7 +78,7 @@ const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite:
 const REQ_TINT = "#8B5CF6";
 
 const Row = ({ children, c, testId }: { children: React.ReactNode; c: string; testId?: string }) => (
-  <div data-testid={testId} style={{ background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
+  <div data-testid={testId} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
 );
 
 const pillBtn = (on: boolean): React.CSSProperties => ({
@@ -95,7 +95,7 @@ const pillBtn = (on: boolean): React.CSSProperties => ({
   whiteSpace: "nowrap",
   background: on ? "var(--text)" : "var(--card)",
   color: on ? "var(--solid)" : "var(--sub)",
-  border: `1px solid ${on ? "var(--text)" : "var(--el)"}`,
+  border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
   transition: "background .16s",
 });
 
@@ -378,7 +378,7 @@ export function InboxScreen({
                   {it.note && it.note !== it.who ? <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.note}</div> : null}
                 </>
               );
-              const style: React.CSSProperties = { display: "block", background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${it.tint}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, cursor: "pointer", color: "var(--text)", textDecoration: "none" };
+              const style: React.CSSProperties = { display: "block", background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${it.tint}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, cursor: "pointer", color: "var(--text)", textDecoration: "none" };
               return it.href ? (
                 <Link key={it.key} href={it.href} aria-label={`Open the ${it.what} from ${it.who}`} style={style}>
                   {body}
@@ -401,7 +401,7 @@ export function InboxScreen({
                   ["out", "Sent", requestsOut.length],
                 ] as Array<["in" | "out", string, number]>
               ).map(([k, l, n]) => (
-                <div key={k} role="button" tabIndex={0} aria-pressed={rqSide === k} aria-label={`${l} requests`} onKeyDown={pressKey(() => setRqSide(k))} onClick={() => setRqSide(k)} style={{ flex: 1, textAlign: "center", padding: "9px 6px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: rqSide === k ? "var(--text)" : "var(--card)", color: rqSide === k ? "var(--solid)" : "var(--sub)", border: "1px solid var(--el)" }}>
+                <div key={k} role="button" tabIndex={0} aria-pressed={rqSide === k} aria-label={`${l} requests`} onKeyDown={pressKey(() => setRqSide(k))} onClick={() => setRqSide(k)} style={{ flex: 1, textAlign: "center", padding: "9px 6px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: rqSide === k ? "var(--text)" : "var(--card)", color: rqSide === k ? "var(--solid)" : "var(--sub)", border: "1.5px solid var(--el)" }}>
                   {l}
                   {n > 0 ? <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 900, padding: "1px 6px", borderRadius: 999, fontFamily: DOS_MONO, background: rqSide === k ? "var(--solid)" : REQ_TINT, color: rqSide === k ? "var(--text)" : "#fff" }}>{n}</span> : null}
                 </div>
@@ -441,20 +441,20 @@ export function InboxScreen({
               <>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 8 }}>
                   {tiles.map(([v, l, s2, c2]) => (
-                    <div key={l} style={{ background: "var(--card)", border: "1px solid var(--el)", borderTop: `3px solid ${c2}`, borderRadius: 14, padding: "10px 9px" }}>
+                    <div key={l} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderTop: `3px solid ${c2}`, borderRadius: 14, padding: "10px 9px" }}>
                       <div style={{ fontFamily: DOS_MONO, fontSize: 16, fontWeight: 600, letterSpacing: -0.4 }}>{v}</div>
                       <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{l}</div>
                       <div style={{ fontSize: 9.5, color: c2, fontWeight: 700, marginTop: 2, fontFamily: DOS_MONO }}>{s2}</div>
                     </div>
                   ))}
                 </div>
-                <div role="button" tabIndex={0} aria-expanded={brkOpen} onKeyDown={pressKey(() => setBrkOpen((v) => !v))} onClick={() => setBrkOpen((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1px solid var(--el)", borderRadius: 12, padding: "10px 12px", marginBottom: 10, cursor: "pointer" }}>
+                <div role="button" tabIndex={0} aria-expanded={brkOpen} onKeyDown={pressKey(() => setBrkOpen((v) => !v))} onClick={() => setBrkOpen((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "10px 12px", marginBottom: 10, cursor: "pointer" }}>
                   <span style={{ fontSize: 11.5, fontWeight: 800, flex: 1 }}>Pipeline breakup</span>
                   <span style={{ fontFamily: DOS_MONO, fontSize: 10, color: "var(--muted)" }}>{moneyShort(sum(side))} total</span>
                   <span style={{ color: "var(--muted)", fontSize: 12, transform: brkOpen ? "rotate(90deg)" : "none", transition: "transform .16s", display: "inline-block" }}>›</span>
                 </div>
                 {brkOpen ? (
-                  <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 14, padding: "12px 13px", marginBottom: 10 }}>
+                  <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, padding: "12px 13px", marginBottom: 10 }}>
                     <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", marginBottom: 8 }}>BY TYPE</div>
                     {byType.map((x) => {
                       const mx = Math.max(...byType.map((y) => sum(y.rows)), 1);
@@ -478,7 +478,7 @@ export function InboxScreen({
                       const rows = side.filter((e) => st(e) === s2);
                       if (!rows.length) return null;
                       return (
-                        <div key={s2} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "4px 0", fontSize: 11.5, borderBottom: "1px solid var(--el)" }}>
+                        <div key={s2} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "4px 0", fontSize: 11.5, borderBottom: "1.5px solid var(--el)" }}>
                           <span style={{ color: "var(--sub)" }}>{ENQ_STAGE_WORD[s2]}</span>
                           <span>
                             <span style={{ fontFamily: DOS_MONO, color: "var(--muted)", marginRight: 8 }}>{rows.length}</span>
@@ -500,7 +500,7 @@ export function InboxScreen({
                     const on = enqType === k;
                     const c = k === "all" ? "#8B5CF6" : ENQ_TINT[k as EnquiryTypeKey];
                     return (
-                      <span key={k} role="button" tabIndex={0} aria-pressed={on} onKeyDown={pressKey(() => setEnqType(k as "all" | EnquiryTypeKey))} onClick={() => setEnqType(k as "all" | EnquiryTypeKey)} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", borderRadius: 999, cursor: "pointer", fontSize: 10.5, fontWeight: 800, background: on ? c : "var(--card)", color: on ? "#08060C" : "var(--sub)", border: `1px solid ${on ? c : "var(--el)"}` }}>
+                      <span key={k} role="button" tabIndex={0} aria-pressed={on} onKeyDown={pressKey(() => setEnqType(k as "all" | EnquiryTypeKey))} onClick={() => setEnqType(k as "all" | EnquiryTypeKey)} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 11px", borderRadius: 999, cursor: "pointer", fontSize: 10.5, fontWeight: 800, background: on ? c : "var(--card)", color: on ? "#08060C" : "var(--sub)", border: `1.5px solid ${on ? c : "var(--el)"}` }}>
                         {ic ? <EnqIcon k={ic} size={12} color={on ? "#08060C" : c} sw={2} /> : null}
                         {l}
                         <span style={{ fontFamily: DOS_MONO, fontSize: 9.5, fontWeight: 600, opacity: 0.8 }}>{n}</span>
@@ -510,7 +510,7 @@ export function InboxScreen({
                 </div>
                 <div style={{ display: "flex", gap: 5, marginBottom: 10, overflowX: "auto", scrollbarWidth: "none" }}>
                   {([["all", "Any stage"] as const, ...ENQ_STAGES.map((s) => [s, ENQ_STAGE_WORD[s]] as const)]).map(([k, l]) => (
-                    <span key={k} role="button" tabIndex={0} aria-pressed={enqSt === k} onKeyDown={pressKey(() => setEnqSt(k as "all" | EnquiryStatus))} onClick={() => setEnqSt(k as "all" | EnquiryStatus)} style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: enqSt === k ? "var(--text)" : "var(--card)", color: enqSt === k ? "var(--solid)" : "var(--sub)", border: `1px solid ${enqSt === k ? "var(--text)" : "var(--el)"}` }}>
+                    <span key={k} role="button" tabIndex={0} aria-pressed={enqSt === k} onKeyDown={pressKey(() => setEnqSt(k as "all" | EnquiryStatus))} onClick={() => setEnqSt(k as "all" | EnquiryStatus)} style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: enqSt === k ? "var(--text)" : "var(--card)", color: enqSt === k ? "var(--solid)" : "var(--sub)", border: `1.5px solid ${enqSt === k ? "var(--text)" : "var(--el)"}` }}>
                       {l}
                     </span>
                   ))}
@@ -529,12 +529,12 @@ export function InboxScreen({
                   const who = enqSide === "out" ? e.tenantName : e.fromName;
                   const value = enquiryValueInr(e);
                   return (
-                    <Link key={e.id} href={`/inbox/enquiries/${e.id}`} aria-label={`${label} enquiry ${enqSide === "out" ? "to" : "from"} ${who}`} style={{ display: "block", background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, color: "var(--text)", textDecoration: "none" }}>
+                    <Link key={e.id} href={`/inbox/enquiries/${e.id}`} aria-label={`${label} enquiry ${enqSide === "out" ? "to" : "from"} ${who}`} style={{ display: "block", background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, color: "var(--text)", textDecoration: "none" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{ width: 34, height: 34, borderRadius: 11, background: `linear-gradient(135deg,${tc},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>{initialsOf(who)}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 900 }}>{who}</div>
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 3, padding: "3px 9px", borderRadius: 999, background: `${tc}1e`, border: `1px solid ${tc}55` }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 3, padding: "3px 9px", borderRadius: 999, background: `${tc}1e`, border: `1.5px solid ${tc}55` }}>
                             <EnqIcon k={e.typeKey} size={14} color={tc} sw={2} />
                             <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, color: tc, textTransform: "uppercase" }}>{label}</span>
                           </div>

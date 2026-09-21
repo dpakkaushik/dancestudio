@@ -43,7 +43,7 @@ export function CompactCard({
   verified?: boolean;
 }) {
   return (
-    <Link href={href} aria-label={ariaLabel} style={{ minWidth: 0, background: "var(--card)", border: "1px solid var(--el)", borderRadius: 18, padding: 11, display: "flex", flexDirection: "column", gap: 7, color: INK, textDecoration: "none" }}>
+    <Link href={href} aria-label={ariaLabel} style={{ minWidth: 0, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 18, padding: 11, display: "flex", flexDirection: "column", gap: 7, color: INK, textDecoration: "none" }}>
       <div style={{ position: "relative", width: "100%", paddingTop: "100%", borderRadius: 14, overflow: "hidden", background: `linear-gradient(150deg,${grad[0]},${grad[1]})`, boxShadow: "0 6px 16px -8px rgba(0,0,0,.6)" }}>
         {photo ? (
           <Image src={photo} alt="" fill sizes="(max-width: 430px) 45vw, 190px" style={{ objectFit: "cover" }} />

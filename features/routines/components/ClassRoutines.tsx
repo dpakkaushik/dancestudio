@@ -19,8 +19,8 @@ import type { Routine } from "@/repositories/routines";
  *  this is the class's confirmed artist or the business's owner; everybody who
  *  can read the class reads the song and the video. */
 
-const box: CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--el)" };
-const chipLink = (tint: string): CSSProperties => ({ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap" });
+const box: CSSProperties = { display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)" };
+const chipLink = (tint: string): CSSProperties => ({ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, background: `${tint}1c`, border: `1.5px solid ${tint}44`, color: tint, fontSize: 9.5, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap" });
 
 export function ClassRoutines({
   classId,

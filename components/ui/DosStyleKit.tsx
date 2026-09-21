@@ -121,8 +121,8 @@ export function DosStylePicker({
       </div>
 
       {open ? (
-        <div role="listbox" aria-label={`${ariaLabel} options`} style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 14, marginTop: 8, overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderBottom: "1px solid var(--el)" }}>
+        <div role="listbox" aria-label={`${ariaLabel} options`} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, marginTop: 8, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderBottom: "1.5px solid var(--el)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="6.5" />
               <path d="m20 20-3.8-3.8" />
@@ -150,7 +150,7 @@ export function DosStylePicker({
                 aria-label={DOS_ALL_STYLES}
                 onKeyDown={pressKey(() => pick(DOS_ALL_STYLES))}
                 onClick={() => pick(DOS_ALL_STYLES)}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", borderBottom: "1px solid var(--el)", background: isAll ? "var(--el)" : "transparent" }}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", cursor: "pointer", borderBottom: "1.5px solid var(--el)", background: isAll ? "var(--el)" : "transparent" }}
               >
                 <span style={{ width: 28, height: 28, borderRadius: 14, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: isAll ? "var(--text)" : "var(--el)", color: isAll ? "var(--solid)" : "var(--sub)" }}>
                   <StarGlyph size={15} />

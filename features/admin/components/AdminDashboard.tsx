@@ -23,7 +23,7 @@ function Fig({ n, label, href, tone }: { n: string | number; label: string; href
       <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: MUTED, marginTop: 4, lineHeight: 1.3 }}>{label}</span>
     </>
   );
-  const style: React.CSSProperties = { background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
+  const style: React.CSSProperties = { background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
   return href ? <Link href={href} style={style}>{body}</Link> : <div style={style}>{body}</div>;
 }
 
@@ -75,7 +75,7 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
       </Grid>
 
       {w.stuckWebhooks > 0 ? (
-        <div style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 14, padding: "10px 12px", marginTop: 8 }}>
+        <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 14, padding: "10px 12px", marginTop: 8 }}>
           <b style={{ fontSize: 12 }}>{w.stuckWebhooks} payment webhook{w.stuckWebhooks === 1 ? "" : "s"} never finished</b>
           <div style={{ fontSize: 10.5, color: SUB, marginTop: 2, lineHeight: 1.5 }}>
             A delivery arrived and its work did not complete. Money screens may be behind until it is replayed.
@@ -135,7 +135,7 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         </div>
       ) : null}
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         Every figure here is a door where there is somewhere to go. Every payment, refund and payout has a screen of its
         own on <Link href="/admin/payments" style={{ color: INK, fontWeight: 800 }}>Money</Link> — read-only, because
         settling a refund belongs to the studio whose class it was. Every decision you make is recorded in{" "}

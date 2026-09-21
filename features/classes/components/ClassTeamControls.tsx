@@ -22,7 +22,7 @@ const pill = (on: boolean, col: string): React.CSSProperties => ({
   padding: "5px 10px",
   borderRadius: 999,
   cursor: "pointer",
-  border: `1px solid ${on ? col : "var(--el)"}`,
+  border: `1.5px solid ${on ? col : "var(--el)"}`,
   background: on ? `${col}22` : "var(--card)",
   color: on ? col : "var(--sub)",
   fontFamily: "inherit",

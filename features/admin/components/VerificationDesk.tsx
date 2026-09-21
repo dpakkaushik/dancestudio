@@ -37,7 +37,7 @@ function Links({ socials }: { socials: SocialLink[] }) {
         const href = safeHref(l.url);
         if (!href) return null;
         return (
-          <a key={`${l.platform}-${l.url}`} href={href} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: `${tint}18`, border: `1px solid ${tint}55`, color: INK, textDecoration: "none", fontSize: 11.5, fontWeight: 800 }}>
+          <a key={`${l.platform}-${l.url}`} href={href} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, background: `${tint}18`, border: `1.5px solid ${tint}55`, color: INK, textDecoration: "none", fontSize: 11.5, fontWeight: 800 }}>
             <span style={{ color: tint }}>{l.platform}</span>
             <span style={{ color: SUB, fontWeight: 600 }}>{handleOf(l.url)}</span>
             <span aria-hidden="true" style={{ color: SUB }}>↗</span>
@@ -209,7 +209,7 @@ export function VerificationDesk({
           requests.map((r) => {
             const s = subjectOf(r);
             return (
-              <div key={r.id} data-testid="verification-request" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 16, padding: "12px 13px", marginBottom: 10 }}>
+              <div key={r.id} data-testid="verification-request" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 16, padding: "12px 13px", marginBottom: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                   <Face name={s.name} path={null} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -228,7 +228,7 @@ export function VerificationDesk({
                 </div>
                 {rejecting === s.id ? (
                   <div style={{ marginTop: 10 }}>
-                    <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="Why not — the owner reads this" aria-label="Reason for rejecting" style={{ width: "100%", boxSizing: "border-box", background: EL, border: `1px solid ${EL}`, borderRadius: 12, padding: "10px 12px", color: INK, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+                    <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="Why not — the owner reads this" aria-label="Reason for rejecting" style={{ width: "100%", boxSizing: "border-box", background: EL, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "10px 12px", color: INK, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                       <button type="button" disabled={pending} onClick={() => answer(r, false, note.trim())} style={{ ...pill, background: "#EF4444", color: "#fff" }}>
                         {pending ? "Saving…" : "Reject"}
@@ -262,7 +262,7 @@ export function VerificationDesk({
           requests.map((r) => {
             const s = subjectOf(r);
             return (
-              <div key={r.id} data-testid="verification-rejected" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 16, padding: "11px 13px", marginBottom: 8 }}>
+              <div key={r.id} data-testid="verification-rejected" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 16, padding: "11px 13px", marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                   <Face name={s.name} path={null} size={38} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -293,7 +293,7 @@ export function VerificationDesk({
           <EmptyLine>{q ? "No verified studio matches that." : "No studio is verified yet."}</EmptyLine>
         ) : (
           studios.map((s) => (
-            <div key={s.id} data-testid="verification-studio" style={{ display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #22C55E", borderRadius: 16, padding: "10px 13px", marginBottom: 8 }}>
+            <div key={s.id} data-testid="verification-studio" style={{ display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #22C55E", borderRadius: 16, padding: "10px 13px", marginBottom: 8 }}>
               <Face name={s.name} path={s.photoPath} size={36} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>

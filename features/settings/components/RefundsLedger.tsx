@@ -130,7 +130,7 @@ export function RefundsLedger({ rows, side, canSettle = false, focusClassId = nu
               <div style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, color: TONE[r.status] }}>{WORD[r.status]}</div>
             </div>
           </div>
-          {r.reason || r.decisionNote ? <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--el)" }}>{r.reason ?? r.decisionNote}</div> : null}
+          {r.reason || r.decisionNote ? <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1.5px solid var(--el)" }}>{r.reason ?? r.decisionNote}</div> : null}
           {canSettle && r.status === "requested" ? (
             <div style={{ display: "flex", gap: 7, marginTop: 9 }}>
               <button type="button" disabled={pending} onClick={() => decide(r.id, "approve", "Approved — processing")} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 800, padding: 9, borderRadius: 999, cursor: "pointer", background: "#22C55E22", color: "#22C55E", border: "none", fontFamily: "inherit" }}>

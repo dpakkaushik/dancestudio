@@ -414,7 +414,7 @@ export function OnboardingForm({
           <div style={{ fontSize: 11.5, color: "#7E7492", animation: "dosRise .5s .4s ease both" }}>your styles — already dancing</div>
         </>
       )}
-      <div style={{ fontSize: 12.5, color: "#B7AECB", marginTop: 22, background: "rgba(255,255,255,.05)", border: "1px solid #241B33", borderRadius: 14, padding: "11px 14px", lineHeight: 1.55, animation: "dosRise .5s .5s ease both", textAlign: "left" }}>
+      <div style={{ fontSize: 12.5, color: "#B7AECB", marginTop: 22, background: "rgba(255,255,255,.05)", border: "1.5px solid #241B33", borderRadius: 14, padding: "11px 14px", lineHeight: 1.55, animation: "dosRise .5s .5s ease both", textAlign: "left" }}>
         {isOrg ? (
           <>
             🏢 <b style={{ color: "#F5F2FA" }}>Open your first studio from Home</b> — then show DanceOS its space: a public link and 5–10 photos, and an admin gives it the badge. Subscribe a verified studio and it is on Discover. Putting on <b style={{ color: "#F5F2FA" }}>events</b> needs your GST number, which you add on Home in a minute.

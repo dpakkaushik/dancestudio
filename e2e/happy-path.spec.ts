@@ -1675,8 +1675,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(settings.getByRole("link", { name: /Notifications/ })).toHaveCount(0);
     await expect(settings.getByRole("link", { name: /Help & support/ })).toHaveAttribute("href", "/support");
     await expect(settings.getByRole("link", { name: /Message DanceOS/ })).toHaveCount(0);
-    // and Log out is here, where the prototype keeps it
-    await expect(settings.getByRole("button", { name: /Log out/ })).toBeVisible();
+    /* ⚠ AND LOG OUT IS NOT HERE ANY MORE (21 Sep 2026, the user: "shift log out
+       from setting to profile switcher"). Both halves are asserted, because a
+       check that only looks for the new place lets the old one live on: it is
+       GONE from Settings, and it is in the switcher — which is the chip beside
+       the gear on every screen, so the way out is one tap from anywhere rather
+       than two taps inside the Profile tab. */
+    await expect(settings.getByRole("button", { name: /Log out/ })).toHaveCount(0);
     /* Enquiry types is the prototype's own sheet (9000-9030). Since 18 Sep 2026 the
        trainer OWNS an artist page — Home provisioned it the moment their plan was
        live — and the Profile tab configures THAT business first. An artist takes
@@ -1691,6 +1696,20 @@ test.describe.serial("DanceOS, end to end", () => {
     expect(trainer.url()).not.toContain(tenantId);
     await expect(trainer.getByRole("heading", { name: "Payments & verification" })).toBeVisible();
     await expect(trainer.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();
+    /* ⚠ AND THIS IS A DRILL PAGE, WHICH IS THE POINT (21 Sep 2026, the user:
+       "make profile switcher constant like settings"). The switcher lived on the
+       DanceOS mark from 18 Sep, and the mark is drawn on four tabs and two
+       entity homes — so on a desk like this one there was no switcher at all,
+       while the gear was right there. It is a chip beside the gear now, on every
+       screen, and Log out is the last row of the menu it opens. */
+    const switcherChip = trainer.getByRole("button", { name: /^Switch profile/ });
+    await expect(switcherChip).toBeVisible();
+    await switcherChip.click();
+    const profiles = trainer.getByRole("menu", { name: "Your profiles" });
+    await expect(profiles).toBeVisible();
+    await expect(profiles.getByRole("menuitem", { name: /Log out/ })).toBeVisible();
+    /* the menu closes on its scrim or on a navigation, never on Escape — and the
+       next line navigates anyway, which is what takes it down */
     // on the STUDIO's desk the trainer is not the owner — the switches are drawn but refuse to move
     await trainer.goto(`/business/${tenantId}/payments`);
     await expect(trainer.getByText("ACCEPTED FROM STUDENTS")).toBeVisible();

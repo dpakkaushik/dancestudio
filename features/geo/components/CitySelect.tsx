@@ -91,7 +91,7 @@ export function CitySelect({
 
   if (variant === "chip") {
     return (
-      <span style={{ position: "relative", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 17, background: CARD, border: `1px solid ${EL}`, fontSize: 12.5, fontWeight: 800, color: INK, cursor: "pointer", maxWidth: 170, boxSizing: "border-box" }}>
+      <span style={{ position: "relative", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 17, background: CARD, border: `1.5px solid ${EL}`, fontSize: 12.5, fontWeight: 800, color: INK, cursor: "pointer", maxWidth: 170, boxSizing: "border-box" }}>
         <DosPinIcon size={13} color="var(--sub)" />
         <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value ?? placeholder}</span>
         <span aria-hidden="true" style={{ color: MUTED, fontSize: 10 }}>
@@ -105,7 +105,7 @@ export function CitySelect({
   return (
     <div>
       {label ? <div style={{ fontSize: 12, color: SUB, marginBottom: 6 }}>{label}</div> : null}
-      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px", boxSizing: "border-box", opacity: disabled ? 0.7 : 1 }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "9px 11px", boxSizing: "border-box", opacity: disabled ? 0.7 : 1 }}>
         <DosPinIcon size={13} color="var(--sub)" />
         <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 800, color: value ? INK : MUTED, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value ?? placeholder}</span>
         {source === "address" && value ? <span style={{ flexShrink: 0, fontSize: 10, color: MUTED }}>from the address</span> : null}

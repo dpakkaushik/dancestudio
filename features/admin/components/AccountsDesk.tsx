@@ -32,7 +32,7 @@ function Face({ name, path }: { name: string; path: string | null }) {
 }
 
 const chip: React.CSSProperties = { fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, whiteSpace: "nowrap" };
-const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${EL}`, background: CARD, color: INK };
+const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${EL}`, background: CARD, color: INK };
 
 /** ACCOUNTS (10 Sep 2026; subscriptions added 9 Sep 2026 for R14). Every live
  *  account, searchable, with what it holds and what an admin can do about it:
@@ -169,7 +169,7 @@ export function AccountsDesk({
             const suspended = Boolean(a.suspendedAt);
             const sub = a.role === "org" ? (standing[a.id] ?? null) : null;
             return (
-              <div key={a.id} data-testid="admin-account" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${suspended ? "#EF4444" : a.isAdmin ? "#7C3AED" : a.role === "org" ? "#3B82F6" : EL}`, borderRadius: 16, padding: "11px 12px" }}>
+              <div key={a.id} data-testid="admin-account" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${suspended ? "#EF4444" : a.isAdmin ? "#7C3AED" : a.role === "org" ? "#3B82F6" : EL}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                   <Face name={a.fullName} path={a.avatarPath} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -222,7 +222,7 @@ export function AccountsDesk({
                       rows={2}
                       maxLength={300}
                       placeholder="What they did, in a sentence."
-                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
                     />
                     <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                       <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => suspend(a)} style={{ ...btn, background: "#EF4444", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm suspending ${a.fullName}`}>
@@ -241,7 +241,7 @@ export function AccountsDesk({
                           type="button"
                           onClick={() => setMonths(m)}
                           aria-pressed={months === m}
-                          style={{ ...btn, background: months === m ? "var(--text)" : CARD, color: months === m ? "var(--solid)" : SUB, border: `1px solid ${months === m ? "var(--text)" : EL}` }}
+                          style={{ ...btn, background: months === m ? "var(--text)" : CARD, color: months === m ? "var(--solid)" : SUB, border: `1.5px solid ${months === m ? "var(--text)" : EL}` }}
                         >
                           {m === 12 ? "1 year" : `${m} month${m === 1 ? "" : "s"}`}
                         </button>
@@ -253,7 +253,7 @@ export function AccountsDesk({
                       onChange={(e) => setReason(e.target.value)}
                       maxLength={300}
                       placeholder="A note for the log (optional)"
-                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit" }}
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit" }}
                     />
                     <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                       <button type="button" disabled={pending} onClick={() => grant(a)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Confirm the Artist plan for ${a.fullName}`}>
@@ -273,7 +273,7 @@ export function AccountsDesk({
                       onChange={(e) => setSubject(e.target.value)}
                       maxLength={140}
                       placeholder="Subject"
-                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", marginBottom: 6 }}
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", marginBottom: 6 }}
                     />
                     <textarea
                       aria-label={`Message to ${a.fullName}`}
@@ -282,7 +282,7 @@ export function AccountsDesk({
                       rows={3}
                       maxLength={4000}
                       placeholder="Anything they need to get set up."
-                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
                     />
                     <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                       <button type="button" disabled={pending || !subject.trim() || !body.trim()} onClick={() => write(a)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none", opacity: subject.trim() && body.trim() ? 1 : 0.5 }}>
@@ -326,7 +326,7 @@ export function AccountsDesk({
 
       <Pager base={base} page={page} total={total} keep={{ tab, q: q || null }} />
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         Suspending unlists every studio the account owns and tells them why. Lifting it puts a verified organization&apos;s
         studios back. Deleting an account is not offered here — it erases a person&apos;s whole history, and
         <span className="mono"> scripts/remove-accounts.js</span> exists for when that is really what you mean.

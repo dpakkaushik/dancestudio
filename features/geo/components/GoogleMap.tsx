@@ -351,7 +351,7 @@ export function GoogleMapPicker({
 
   return (
     <div>
-      <div style={{ position: "relative", height, borderRadius: 16, overflow: "hidden", border: `1px solid ${EL}`, background: "#0b1220" }}>
+      <div style={{ position: "relative", height, borderRadius: 16, overflow: "hidden", border: `1.5px solid ${EL}`, background: "#0b1220" }}>
         <div ref={box} role="application" aria-label={label} style={{ position: "absolute", inset: 0 }} />
 
         {showPin ? (

@@ -114,7 +114,7 @@ export function AdminSupportDesk({
               key={t.id}
               href={`${base}/${t.id}`}
               aria-label={`Open ${t.subject}${t.unread > 0 ? ` — ${t.unread} unread` : ""}`}
-              style={{ display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${t.unread > 0 ? "#F59E0B" : t.status === "closed" ? EL : "#22C55E"}`, borderRadius: 16, padding: "11px 12px", textDecoration: "none", color: INK }}
+              style={{ display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${t.unread > 0 ? "#F59E0B" : t.status === "closed" ? EL : "#22C55E"}`, borderRadius: 16, padding: "11px 12px", textDecoration: "none", color: INK }}
             >
               <Face name={t.accountName} path={t.accountAvatarPath} />
               <span style={{ flex: 1, minWidth: 0 }}>

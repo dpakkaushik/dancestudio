@@ -25,7 +25,7 @@ import type { Routine, RoutineClass, RoutineStudent } from "@/repositories/routi
  *   · DANCERS — the people who CHECKED IN, not the people who booked (Step 25's
  *     rule: a booking nobody marked is not a session danced). */
 
-const card: CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
+const card: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 
 function Sec({ label, col, children }: { label: string; col: string; children: ReactNode }) {
   return (
@@ -47,7 +47,7 @@ export function RoutinePage({ routine, classes, students }: { routine: Routine; 
   const sessions = classes.reduce((n, c) => n + c.sessions, 0);
 
   const media = (icon: string, label: string, title: string, href: string | null, badge: string, tint: string) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--el)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)" }}>
       <span aria-hidden="true" style={{ width: 30, height: 30, flexShrink: 0, borderRadius: 10, background: `${tint}1c`, color: tint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
         {icon}
       </span>
@@ -98,7 +98,7 @@ export function RoutinePage({ routine, classes, students }: { routine: Routine; 
           <div style={{ fontSize: 11.5, color: SUB, padding: "6px 0" }}>Not on a class yet. Open a class you take and add it there.</div>
         ) : (
           classes.map((c) => (
-            <Link key={c.classId} href={`/c/${c.shareSlug}`} aria-label={`Open ${c.style} · ${DOS_LEVEL_LABEL[c.level]}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--el)", fontSize: 11.5, textDecoration: "none", color: INK }}>
+            <Link key={c.classId} href={`/c/${c.shareSlug}`} aria-label={`Open ${c.style} · ${DOS_LEVEL_LABEL[c.level]}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)", fontSize: 11.5, textDecoration: "none", color: INK }}>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: "block", fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {c.style} · {DOS_LEVEL_LABEL[c.level]}
@@ -123,7 +123,7 @@ export function RoutinePage({ routine, classes, students }: { routine: Routine; 
           students.map((s) => {
             const face = photoUrl(s.avatarPath);
             return (
-              <Link key={s.userId} href={`/person/${s.userId}`} aria-label={`Open ${s.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--el)", textDecoration: "none", color: INK }}>
+              <Link key={s.userId} href={`/person/${s.userId}`} aria-label={`Open ${s.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)", textDecoration: "none", color: INK }}>
                 <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, overflow: "hidden", background: `linear-gradient(135deg,${col},#7C3AED)`, color: "#fff", fontSize: 10.5, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {face ? <Image src={face} alt="" width={30} height={30} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : s.name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}
                 </span>
@@ -149,7 +149,7 @@ export function RoutinePage({ routine, classes, students }: { routine: Routine; 
             {routine.title} · on {classes.length} {classes.length === 1 ? "class" : "classes"}. The classes keep running; the routine comes off them.
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={() => setConfirm(false)} style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: INK }}>
+            <button type="button" onClick={() => setConfirm(false)} style={{ flex: 1, padding: 13, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: INK }}>
               Keep it
             </button>
             <button
@@ -173,7 +173,7 @@ export function RoutinePage({ routine, classes, students }: { routine: Routine; 
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setConfirm(true)} style={{ width: "100%", padding: 13, borderRadius: 999, background: "rgba(239,68,68,.14)", color: "#F87171", border: "1px solid rgba(239,68,68,.3)", fontWeight: 900, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+        <button type="button" onClick={() => setConfirm(true)} style={{ width: "100%", padding: 13, borderRadius: 999, background: "rgba(239,68,68,.14)", color: "#F87171", border: "1.5px solid rgba(239,68,68,.3)", fontWeight: 900, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
           Delete
         </button>
       )}

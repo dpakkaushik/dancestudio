@@ -12,6 +12,7 @@ import { PROFILE_RING, PersonIcon, cornerChip } from "@/features/profiles/compon
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { StudioLinksRow } from "./StudioLinksRow";
+import { StudioStylesRow } from "./StudioStylesRow";
 import { StudioPicturesButton, StudioPostersButton } from "./StudioPictures";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ProofPhoto } from "@/lib/media/proof";
@@ -221,17 +222,18 @@ export function StudioHome({
                 <ProfileLink path={`/studio/${tenant.id}`} name={tenant.name} />
               </>
             }
-            styles={styles}
-            styleAria={(s) => `${s} — a style this studio teaches`}
-            /* ⚠ THE LINKS ROW IS THE EDITABLE ONE (20 Sep 2026) — `EntityBand`'s
-               own `socials` draws a read-only rail, and a person's Home has had
-               a ＋ beside theirs since 19 Sep. Passed as CHILDREN with the
-               band's `socials` left empty, so the row lands where it always did
-               (under the styles) and is the same chips at the same size. */
+            /* ⚠ BOTH ROWS ARE THE EDITABLE ONES NOW (styles 21 Sep 2026, links
+               20 Sep). `EntityBand`'s own `styles` and `socials` draw read-only
+               rails, and a person's Home has had a ＋ beside each since 19 Sep —
+               so both are passed as CHILDREN with the band's own left empty, and
+               they land exactly where they always did, at the same size, with a
+               control on each. */
+            styles={[]}
             socials={[]}
           >
             {/* the studio's own row carries every field the door takes, so no
                 cast is needed and a missing one would be a compile error */}
+            <StudioStylesRow tenant={tenant} canEdit={Boolean(editable)} isStudio={tenant.type === "studio"} fallback={styles} />
             <StudioLinksRow tenant={tenant} canEdit={Boolean(editable)} />
           </EntityBand>
         </IdentityHero>

@@ -20,7 +20,7 @@ const since = (iso: string) =>
  *  (PeoplePicker rows, DanceOSApp.jsx:649-654). */
 function Row({ r }: { r: RosterEntry }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: `1px solid ${EL}` }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: `1.5px solid ${EL}` }}>
       <div
         style={{
           width: 32,

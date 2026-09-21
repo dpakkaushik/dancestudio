@@ -288,7 +288,7 @@ export function StatsScreen({
               ).map(([k, n, h]) => {
                 const c = SIDE_TINT[k];
                 return (
-                  <div key={k} aria-label={`${SIDE_CARD[k]} — ${n} sessions, ${hoursWords(h)}`} style={{ position: "relative", overflow: "hidden", background: `${c}12`, border: `1px solid ${c}55`, borderRadius: 14, padding: "12px 11px 13px" }}>
+                  <div key={k} aria-label={`${SIDE_CARD[k]} — ${n} sessions, ${hoursWords(h)}`} style={{ position: "relative", overflow: "hidden", background: `${c}12`, border: `1.5px solid ${c}55`, borderRadius: 14, padding: "12px 11px 13px" }}>
                     <span aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 3, background: c }} />
                     <div style={{ ...figure, fontSize: 23, fontWeight: 900, lineHeight: 1, color: c }} data-testid={`stat-${k}`}>
                       {n}
@@ -302,11 +302,11 @@ export function StatsScreen({
 
             {/* TWO COLUMNS (10050): a name and a number do not need a whole line */}
             {small.length > 0 ? (
-              <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "4px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14 }}>
+              <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "4px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14 }}>
                 {small.map(([l, v, c, rowsFor]) => {
                   const isOpen = open === l;
                   return (
-                    <div key={l} style={{ gridColumn: isOpen ? "1 / -1" : "auto", borderBottom: `1px solid ${LINE}` }}>
+                    <div key={l} style={{ gridColumn: isOpen ? "1 / -1" : "auto", borderBottom: `1.5px solid ${LINE}` }}>
                       <div role="button" tabIndex={0} aria-label={`${l} — ${v}, open the list`} aria-expanded={isOpen} onKeyDown={pressKey(() => setOpen(isOpen ? null : l))} onClick={() => setOpen(isOpen ? null : l)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 0", cursor: "pointer" }}>
                         <span style={{ width: 7, height: 7, borderRadius: 4, background: c, flexShrink: 0 }} />
                         <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: 700, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</span>
@@ -316,7 +316,7 @@ export function StatsScreen({
                       {isOpen ? (
                         <div style={{ padding: "0 0 10px" }}>
                           {rowsFor.map(([k, sub], i) => (
-                            <div key={k} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: `1px solid ${LINE}` }}>
+                            <div key={k} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: `1.5px solid ${LINE}` }}>
                               <span style={{ ...figure, fontSize: 10, color: MUTED, width: 18, flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
                               <span style={{ flex: 1, minWidth: 0 }}>
                                 <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{k}</span>
@@ -373,7 +373,7 @@ export function StatsScreen({
                     const c = SIDE_TINT[k];
                     const n = bySide(k).length;
                     return (
-                      <span key={k} role="button" tabIndex={0} aria-label={`${SIDE_PAST[k]} — ${n}`} aria-pressed={on} onKeyDown={pressKey(() => setCvSide(k))} onClick={() => setCvSide(k)} style={{ flex: 1, position: "relative", overflow: "hidden", textAlign: "left", padding: "10px 11px 9px", borderRadius: 14, cursor: "pointer", boxSizing: "border-box", background: on ? `${c}1a` : CARD, border: `1px solid ${on ? c : LINE}`, transition: "background .15s" }}>
+                      <span key={k} role="button" tabIndex={0} aria-label={`${SIDE_PAST[k]} — ${n}`} aria-pressed={on} onKeyDown={pressKey(() => setCvSide(k))} onClick={() => setCvSide(k)} style={{ flex: 1, position: "relative", overflow: "hidden", textAlign: "left", padding: "10px 11px 9px", borderRadius: 14, cursor: "pointer", boxSizing: "border-box", background: on ? `${c}1a` : CARD, border: `1.5px solid ${on ? c : LINE}`, transition: "background .15s" }}>
                         <span aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 3, background: on ? c : "transparent" }} />
                         <span style={{ display: "block", fontSize: 19, fontWeight: 900, lineHeight: 1, letterSpacing: -0.5, fontFamily: DOS_DISPLAY, fontVariantNumeric: "tabular-nums", color: on ? c : INK }}>{n}</span>
                         <span style={{ display: "block", ...micro, color: on ? c : MUTED, marginTop: 4 }}>{SIDE_PAST[k]}</span>
@@ -383,7 +383,7 @@ export function StatsScreen({
                 </div>
 
                 {/* WHAT IT LOOKS LIKE OVER TIME (10248): the three sides stacked against the calendar */}
-                <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "12px 13px 10px", marginBottom: 12 }}>
+                <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "12px 13px 10px", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <span style={{ ...micro, color: MUTED }}>SESSIONS · {grainLabel.toUpperCase()}</span>
                     <span style={{ marginLeft: "auto", display: "inline-flex", gap: 2, background: LINE, borderRadius: 10, padding: 2 }}>
@@ -467,13 +467,13 @@ export function StatsScreen({
                     ))}
                   </span>
                 </div>
-                <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "6px 14px 10px" }}>
+                <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "6px 14px 10px" }}>
                   {groups.length === 0 ? <div style={{ fontSize: 11.5, color: MUTED, padding: "10px 0" }}>Nothing on this side of the floor yet.</div> : null}
                   {groups.map((r, i) => {
                     const c = dim === "style" ? dosStyleColor(r.key) : "#5AC8FA";
                     const v = r[sortKey === "key" ? "sessions" : sortKey];
                     return (
-                      <div key={r.key} style={{ padding: "9px 0", borderBottom: i === groups.length - 1 ? "none" : `1px solid ${LINE}` }}>
+                      <div key={r.key} style={{ padding: "9px 0", borderBottom: i === groups.length - 1 ? "none" : `1.5px solid ${LINE}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                           <span style={{ width: 16, fontSize: 10, fontWeight: 800, color: MUTED, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{i + 1}</span>
                           {dim === "style" ? <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 5, background: c, flexShrink: 0 }} /> : null}
@@ -508,7 +508,7 @@ export function StatsScreen({
               ).map(([k, l]) => {
                 const on = side === k;
                 return (
-                  <span key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={l} onKeyDown={pressKey(() => setSide(k))} onClick={() => setSide(k)} style={{ flexShrink: 0, padding: "7px 13px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1px solid ${on ? INK : LINE}` }}>
+                  <span key={k} role="button" tabIndex={0} aria-pressed={on} aria-label={l} onKeyDown={pressKey(() => setSide(k))} onClick={() => setSide(k)} style={{ flexShrink: 0, padding: "7px 13px", borderRadius: 999, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1.5px solid ${on ? INK : LINE}` }}>
                     {l}
                   </span>
                 );
@@ -541,7 +541,7 @@ export function StatsScreen({
                     const word = e.side === "hosting" ? "Teach" : e.side === "assisting" ? "Assist" : "Train";
                     const tint = e.side === "hosting" ? SIDE_TINT.conducted : e.side === "assisting" ? SIDE_TINT.assisted : SIDE_TINT.attended;
                     return (
-                      <Link key={`${e.sessionId}-${e.side}`} href={`/c/${e.shareSlug}`} aria-label={`Open ${e.title}`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
+                      <Link key={`${e.sessionId}-${e.side}`} href={`/c/${e.shareSlug}`} aria-label={`Open ${e.title}`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
                         <span style={{ width: 3, alignSelf: "stretch", borderRadius: 2, background: c, flexShrink: 0 }} />
                         <span style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</span>
@@ -587,7 +587,7 @@ export function StatsScreen({
                         <span style={{ ...micro, color: SIDE_TINT[r.side], flexShrink: 0 }}>{SIDE_VERB[r.side]}</span>
                       </>
                     );
-                    const style: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" };
+                    const style: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" };
                     return r.shareSlug ? (
                       <Link key={`${r.sessionId}-${r.side}`} href={`/c/${r.shareSlug}`} aria-label={`Open ${r.title}`} style={style}>
                         {body}
@@ -621,7 +621,7 @@ export function StatsScreen({
                 full-page loads through window.location, one history entry each, and the
                 city is the one dropdown every city field in the app is now) */}
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <select aria-label="Metric" value={metric} onChange={(e) => router.replace(chartHref({ metric: e.target.value as ChartMetric }), { scroll: false })} style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, padding: "10px 10px", color: INK, fontSize: 11.5, fontWeight: 700, outline: "none", appearance: "none", fontFamily: "inherit" }}>
+              <select aria-label="Metric" value={metric} onChange={(e) => router.replace(chartHref({ metric: e.target.value as ChartMetric }), { scroll: false })} style={{ flex: 1, minWidth: 0, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 12, padding: "10px 10px", color: INK, fontSize: 11.5, fontWeight: 700, outline: "none", appearance: "none", fontFamily: "inherit" }}>
                 {CHART_METRICS.map((m) => (
                   <option key={m.k} value={m.k}>
                     🏅 {m.label}
@@ -647,11 +647,11 @@ export function StatsScreen({
             ) : null}
 
             {/* HOW POINTS WORK (9660) — and what it does not count, said here */}
-            <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 10 }}>
+            <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 10 }}>
               <div style={{ ...micro, letterSpacing: 1, color: MUTED }}>How points work</div>
               <div style={{ marginTop: 8 }}>
                 {(isCrew ? CREW_POINT_RULES : POINT_RULES).map(([k, v, c]) => (
-                  <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${LINE}` }}>
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: `1.5px solid ${LINE}` }}>
                     <span style={{ fontSize: 12, color: SUB }}>{k}</span>
                     <span style={{ fontSize: 11, fontWeight: 900, padding: "3px 10px", borderRadius: 999, background: `${c}1a`, color: c }}>{v}</span>
                   </div>
@@ -664,7 +664,7 @@ export function StatsScreen({
 
             {/* the pinned "you" row (9674-9683): one person on record — where YOU stand on this board */}
             {peopleBoard && boardPlace ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", marginBottom: 6, borderRadius: 14, background: "linear-gradient(120deg,#7C3AED22,#EC489922)", border: `1px solid ${LINE}` }} aria-label={`You — place ${boardPlace.place} of ${boardPlace.population}`}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", marginBottom: 6, borderRadius: 14, background: "linear-gradient(120deg,#7C3AED22,#EC489922)", border: `1.5px solid ${LINE}` }} aria-label={`You — place ${boardPlace.place} of ${boardPlace.population}`}>
                 <span style={{ width: 30, fontSize: 20, fontWeight: 900, textAlign: "center", fontFamily: DOS_DISPLAY, background: "linear-gradient(120deg,#7C3AED,#EC4899)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>#{boardPlace.place}</span>
                 <span style={{ width: 40, height: 40, borderRadius: 20, flexShrink: 0, background: "linear-gradient(135deg,#7C3AED,#EC4899)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 15 }}>{initialsOf(name)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -701,7 +701,7 @@ export function StatsScreen({
                         : `${r.attended} danced · ${hoursWords(r.hours)}`;
                 const top3 = r.place <= 3;
                 return (
-                  <Link key={`${r.kind}-${r.id}`} href={href} aria-label={`${r.name} — place ${r.place} of ${r.population}`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
+                  <Link key={`${r.kind}-${r.id}`} href={href} aria-label={`${r.name} — place ${r.place} of ${r.population}`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
                     {/* top-3 numerals in the charts' own gradient (9693-9694) */}
                     <span style={{ ...figure, fontSize: top3 ? 24 : 17, fontFamily: DOS_DISPLAY, fontWeight: 900, width: 30, textAlign: "center", flexShrink: 0, background: top3 ? "linear-gradient(120deg,#7C3AED,#EC4899)" : "none", WebkitBackgroundClip: top3 ? "text" : undefined, backgroundClip: top3 ? "text" : undefined, color: top3 ? "transparent" : MUTED }}>{r.place}</span>
                     <span style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${dosStyleColor(r.style ?? "Hip-Hop")},#7C3AED)`, color: "#fff", fontSize: 13, fontWeight: 900, fontFamily: DOS_DISPLAY }}>

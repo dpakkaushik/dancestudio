@@ -38,7 +38,7 @@ export function AdminShell({ badges = {}, children }: { badges?: AdminBadges; ch
           <Link
             href="/admin"
             aria-label="All desks"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 30, padding: "0 11px 0 8px", borderRadius: 999, background: CARD, border: `1px solid ${EL}`, color: SUB, fontSize: 11, fontWeight: 800, textDecoration: "none", flexShrink: 0 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 30, padding: "0 11px 0 8px", borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, color: SUB, fontSize: 11, fontWeight: 800, textDecoration: "none", flexShrink: 0 }}
           >
             <span aria-hidden="true" style={{ display: "inline-flex", color: SUB }}>
               <AdminGlyph k="overview" size={14} />

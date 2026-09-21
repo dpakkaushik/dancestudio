@@ -9,7 +9,7 @@ import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
-import { Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
+import { PlusIcon, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
 
@@ -188,7 +188,7 @@ export function StudioPicturesButton({
           type="button"
           aria-label="Change profile picture"
           onClick={() => setEditing(true)}
-          style={{ position: "absolute", right: -4, bottom: -4, width: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--card)", border: "1px solid var(--el)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+          style={{ position: "absolute", right: -4, bottom: -4, width: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--card)", border: "1.5px solid var(--el)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
         >
           <PlusIcon />
         </button>
@@ -218,7 +218,7 @@ export function StudioPostersButton({ tenantId, tenantName, ownerId, photos = []
         type="button"
         aria-label="Edit posters"
         onClick={() => setOpen(true)}
-        style={{ width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", background: "rgba(10,10,10,.55)", border: "1px solid rgba(255,255,255,.35)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+        style={{ width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", background: "rgba(10,10,10,.55)", border: "1.5px solid rgba(255,255,255,.35)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
       >
         <PlusIcon light />
       </button>
@@ -227,12 +227,5 @@ export function StudioPostersButton({ tenantId, tenantName, ownerId, photos = []
   );
 }
 
-/** a ⊕, the way Instagram marks "add" on an avatar (20 Sep 2026, the user's own
- *  comparison) — the same glyph a person's two controls wear */
-function PlusIcon({ light = false }: { light?: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={light ? "#fff" : "var(--text)"} strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
+/* the ⊕ moved into `profile-kit` on 21 Sep, when a crew's controls were about to
+   declare it a third time */

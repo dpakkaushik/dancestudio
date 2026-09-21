@@ -39,7 +39,7 @@ export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: Nea
         borderRadius: 20,
         overflow: "hidden",
         background: CARD,
-        border: `1px solid ${EL}`,
+        border: `1.5px solid ${EL}`,
         marginBottom: 12,
         color: INK,
         textDecoration: "none",

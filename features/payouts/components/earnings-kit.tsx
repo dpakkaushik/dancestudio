@@ -17,7 +17,7 @@ export const money = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}
 
 export const bizCard: CSSProperties = {
   background: CARD,
-  border: `1px solid ${LINE}`,
+  border: `1.5px solid ${LINE}`,
   borderRadius: 18,
   padding: "13px 14px",
   marginBottom: 10,
@@ -185,7 +185,7 @@ export function MoneyCard({
     <div
       style={{
         background: CARD,
-        border: `1px solid ${LINE}`,
+        border: `1.5px solid ${LINE}`,
         borderLeft: `4px solid ${GREEN}`,
         borderRadius: 18,
         padding: "14px 15px",
@@ -243,7 +243,7 @@ export function LedgerBlock({
     <div
       style={{
         background: CARD,
-        border: `1px solid ${LINE}`,
+        border: `1.5px solid ${LINE}`,
         borderRadius: 16,
         padding: "12px 14px",
         marginBottom: 10,
@@ -291,7 +291,7 @@ export function LedgerBlock({
               </div>
             </div>
             {open ? (
-              <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1px solid ${LINE}` }}>
+              <div style={{ marginTop: 11, paddingTop: 10, borderTop: `1.5px solid ${LINE}` }}>
                 <div
                   style={{
                     fontSize: 9,
@@ -315,7 +315,7 @@ export function LedgerBlock({
                         gap: 8,
                         fontSize: 11.5,
                         padding: "4px 0",
-                        borderBottom: `1px solid ${LINE}`,
+                        borderBottom: `1.5px solid ${LINE}`,
                       }}
                     >
                       <span
@@ -375,7 +375,7 @@ export function SettlementRow({
       }
       style={{
         background: CARD,
-        border: `1px solid ${LINE}`,
+        border: `1.5px solid ${LINE}`,
         borderLeft: `3px solid ${colour}`,
         borderRadius: 14,
         padding: "11px 13px",

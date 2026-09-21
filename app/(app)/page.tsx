@@ -391,7 +391,7 @@ export default async function HomePage() {
                   database said no — a refusal Home swallows so it never fails on it.
                   Said in one sentence rather than left as tiles that open the hub. */}
               {isArtist && !pageId ? (
-                <div role="status" style={{ background: CARD, border: `1px solid ${GOLD}66`, borderLeft: `3px solid ${GOLD}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>
+                <div role="status" style={{ background: CARD, border: `1.5px solid ${GOLD}66`, borderLeft: `3px solid ${GOLD}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>
                   <span style={{ display: "block", fontSize: 12.5, fontWeight: 900, color: INK }}>Your artist page is still being set up</span>
                   <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
                     Team, Students and Earnings run through it. It could not be made just now — open Home again in a moment, and if this stays, message DanceOS from Settings.
@@ -407,7 +407,7 @@ export default async function HomePage() {
                   style={{
                     display: "block",
                     background: CARD,
-                    border: `1px solid ${GOLD}66`,
+                    border: `1.5px solid ${GOLD}66`,
                     borderLeft: `3px solid ${GOLD}`,
                     borderRadius: 16,
                     padding: "13px 14px",

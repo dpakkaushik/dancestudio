@@ -134,7 +134,7 @@ export function StudioLinksRow({ tenant, canEdit }: { tenant: StudioLinkTarget; 
           <div style={{ fontSize: 12, color: SUB, margin: "4px 0 12px" }}>Reorder with ↑↓ · tap a platform below to add it.</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {socials.map((l, i, arr) => (
-              <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 14, background: CARD, border: `1px solid ${LINE}` }}>
+              <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 14, background: CARD, border: `1.5px solid ${LINE}` }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
                   <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)} style={{ fontSize: 10, cursor: i === 0 ? "default" : "pointer", color: i === 0 ? "var(--el)" : "var(--sub)", lineHeight: 1, background: "none", border: "none", padding: 0 }}>▲</button>
                   <button type="button" aria-label="Move down" disabled={i === arr.length - 1} onClick={() => move(i, 1)} style={{ fontSize: 10, cursor: i === arr.length - 1 ? "default" : "pointer", color: i === arr.length - 1 ? "var(--el)" : "var(--sub)", lineHeight: 1, background: "none", border: "none", padding: 0 }}>▼</button>
@@ -153,7 +153,7 @@ export function StudioLinksRow({ tenant, canEdit }: { tenant: StudioLinkTarget; 
               <div style={fieldLabel}>Add a platform</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {PLATFORMS.filter((p) => !socials.find((l) => l.platform === p)).map((p) => (
-                  <button type="button" key={p} aria-label={`Add ${p}`} onClick={() => setEditor({ platform: p, url: "", isNew: true })} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "7px 13px 7px 7px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
+                  <button type="button" key={p} aria-label={`Add ${p}`} onClick={() => setEditor({ platform: p, url: "", isNew: true })} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "7px 13px 7px 7px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1.5px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
                     <PlatformIcon label={p} size={20} />
                     {p}
                   </button>
@@ -219,7 +219,7 @@ export function StudioLinksRow({ tenant, canEdit }: { tenant: StudioLinkTarget; 
       ) : null}
 
       {toast ? (
-        <div role="status" style={{ position: "fixed", left: "50%", bottom: "calc(90px + var(--dos-safe-bottom, 0px))", transform: "translateX(-50%)", zIndex: 800, background: "var(--solid)", border: "1px solid #0EA5E9", borderRadius: 999, padding: "9px 16px", fontSize: 12, fontWeight: 800, color: INK, boxShadow: "0 8px 24px rgba(0,0,0,.35)" }}>
+        <div role="status" style={{ position: "fixed", left: "50%", bottom: "calc(90px + var(--dos-safe-bottom, 0px))", transform: "translateX(-50%)", zIndex: 800, background: "var(--solid)", border: "1.5px solid #0EA5E9", borderRadius: 999, padding: "9px 16px", fontSize: 12, fontWeight: 800, color: INK, boxShadow: "0 8px 24px rgba(0,0,0,.35)" }}>
           {toast}
         </div>
       ) : null}

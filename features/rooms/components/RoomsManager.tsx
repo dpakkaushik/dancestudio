@@ -176,7 +176,7 @@ export function RoomsManager({
                   style={{
                     width: 52,
                     background: "transparent",
-                    border: "1px solid var(--card)",
+                    border: "1.5px solid var(--card)",
                     borderRadius: 8,
                     outline: "none",
                     color: "var(--text)",
@@ -242,7 +242,7 @@ export function RoomsManager({
                     gap: 6,
                     marginTop: 8,
                     paddingTop: 8,
-                    borderTop: "1px solid var(--card)",
+                    borderTop: "1.5px solid var(--card)",
                   }}
                 >
                   {DOS_AMENITIES.map((a) => {
@@ -263,7 +263,7 @@ export function RoomsManager({
                           cursor: "pointer",
                           background: on ? "var(--text)" : "var(--card)",
                           color: on ? "var(--solid)" : "var(--sub)",
-                          border: `1px solid ${on ? "var(--text)" : "var(--el)"}`,
+                          border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
                         }}
                       >
                         {a}

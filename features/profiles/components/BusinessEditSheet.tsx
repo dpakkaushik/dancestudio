@@ -6,8 +6,9 @@ import { Portal } from "@/components/ui/Portal";
 import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
 import { setTenantLocationAction } from "@/features/geo/server-actions/location";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
-import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
-import { CARD, INK, LINE, MUTED, SUB } from "@/lib/design/tokens";
+/* the style registry left with the styles block on 21 Sep — the value is still
+   carried through this sheet's save, it is just not edited here any more */
+import { CARD, INK, LINE, SUB } from "@/lib/design/tokens";
 import type { PublicTenant } from "@/types/publicProfile";
 import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
@@ -75,7 +76,11 @@ export function BusinessEditSheet({
      from the studio's PUBLISHED classes, so a studio with none showed none —
      and a brand-new studio always has none. Its own field now, and the database
      refuses a studio that ends up with an empty list. */
-  const [styles, setStyles] = useState<string[]>(tenant.styles);
+  /* ⚠ READ AND SENT, NEVER SET — the styles are edited on the studio's own band
+     since 21 Sep, and this sheet carries the value through untouched because
+     `update_business_profile` takes the whole profile and an omitted list would
+     empty a column the same RPC then refuses. */
+  const [styles] = useState<string[]>(tenant.styles);
   const [err, setErr] = useState<string | null>(null);
   const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -111,9 +116,14 @@ export function BusinessEditSheet({
   const save = () =>
     start(async () => {
       setErr(null);
-      /* say the rule before asking the database to refuse it */
+      /* ⚠ SAY THE RULE BEFORE THE DATABASE REFUSES IT — AND SAY WHERE TO FIX IT
+         (21 Sep 2026). `update_business_profile` refuses a studio with no style,
+         and since the styles moved to the band this sheet cannot add one — so
+         the old message would have been a dead end for the twelve studios that
+         predate the rule: change the phone, press Save, be told about styles,
+         and find nothing here that sets one. It names the control now. */
       if (isStudio && styles.length === 0) {
-        setErr("A studio says at least one dance style — it is what Discover files it under.");
+        setErr("This studio has no dance style yet, and the save needs one — add it with the ＋ beside the styles on the studio's home.");
         return;
       }
       const yr = founded ? Number(founded) : null;
@@ -216,51 +226,19 @@ export function BusinessEditSheet({
       <div style={fieldLabel}>Email</div>
       <input aria-label="Email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@studio.example" style={fieldInput} />
 
-      {/* ── THE DANCE STYLES (19 Sep 2026) — the app's one style registry, as the
-          tiles every other style row draws. A studio may not end up with none:
-          the last one's Remove is disabled and says why, the way the last header
-          picture's ✕ does. ── */}
-      <div style={{ ...fieldLabel, marginTop: 6 }}>Dance styles</div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-        {styles.map((s) => {
-          const last = isStudio && styles.length === 1;
-          return (
-            <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 8px 6px 11px", borderRadius: 999, background: CARD, border: `1px solid ${LINE}` }}>
-              <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 5, background: dosStyleColor(s) }} />
-              <span style={{ fontSize: 12, fontWeight: 800, color: INK }}>{s}</span>
-              <button
-                type="button"
-                disabled={last}
-                title={last ? "A studio says at least one dance style" : undefined}
-                aria-label={last ? `${s} is the studio's last style — add another first` : `Remove ${s}`}
-                onClick={() => setStyles((x) => x.filter((y) => y !== s))}
-                style={{ background: "none", border: "none", color: last ? MUTED : "#F87171", fontSize: 14, cursor: last ? "default" : "pointer", fontFamily: "inherit", opacity: last ? 0.5 : 1, padding: 0 }}
-              >
-                ×
-              </button>
-            </span>
-          );
-        })}
-        {styles.length === 0 ? <span style={{ fontSize: 12, color: isStudio ? "#F87171" : SUB }}>{isStudio ? "Name at least one — it is what Discover files this studio under." : "None yet."}</span> : null}
-      </div>
-      {styles.length < 12 ? (
-        <select
-          aria-label="Add a dance style"
-          value=""
-          onChange={(e) => {
-            const s = e.target.value;
-            if (s) setStyles((x) => (x.includes(s) ? x : [...x, s]));
-          }}
-          style={fieldInput}
-        >
-          <option value="">＋ Add a dance style…</option>
-          {DOS_STYLE_NAMES.filter((s) => !styles.includes(s)).map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      ) : null}
+      {/* ⚠ THE DANCE STYLES LEFT THIS SHEET TOO (21 Sep 2026, the user: "make
+          sure all profile types have similar ways to edit the profile, the
+          segments like social media, dance styles, pictures and posters"). They
+          were the last of the four segments still edited here — a row of chips
+          and a `<select>` — while a person's have been a ＋ on the band since
+          19 Sep and this studio's LINKS moved out on 20 Sep for exactly this
+          reason. `StudioStylesRow` on the studio's own home is where they are,
+          and it uses the same editor a person's ＋ opens.
+          ⚠ THE VALUE IS STILL SENT BY THIS SHEET, UNCHANGED, because
+          `update_business_profile` takes the whole profile and a save that
+          omitted it would empty a column the same RPC then refuses. Taking a
+          field off a form must never silently delete what it held — the 16 Sep
+          lesson, and the reason `styles` is still read into state above. */}
 
 ﻿      {/* ⚠ THE LINKS LEFT THIS SHEET (20 Sep 2026, the user: "edit profile for
           studio not consistent with how its done for Artist and users. for
@@ -328,11 +306,11 @@ export function BusinessEditButton({
   return (
     <>
       {corner ? (
-        <button type="button" aria-label="Edit studio" onClick={() => setOpen(true)} style={{ ...cornerChip, border: "1px solid rgba(255,255,255,.28)" }}>
+        <button type="button" aria-label="Edit studio" onClick={() => setOpen(true)} style={{ ...cornerChip, border: "1.5px solid rgba(255,255,255,.28)" }}>
           <PencilIcon />
         </button>
       ) : (
-        <button type="button" aria-label="Edit business" onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, cursor: "pointer", fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", background: CARD, color: INK, border: `1px solid ${LINE}`, fontFamily: "inherit" }}>
+        <button type="button" aria-label="Edit business" onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, cursor: "pointer", fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", background: CARD, color: INK, border: `1.5px solid ${LINE}`, fontFamily: "inherit" }}>
           Edit
         </button>
       )}

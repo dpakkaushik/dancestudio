@@ -80,7 +80,7 @@ export function StudioSubscriptionStrip({
     });
 
   return (
-    <div data-testid="studio-subscription" style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 12 }}>
+    <div data-testid="studio-subscription" style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <span style={{ fontSize: heading ? 12.5 : 9.5, fontWeight: 900, letterSpacing: heading ? 0 : 0.9, color: heading ? INK : MUTED, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{heading ?? "SUBSCRIPTION"}</span>
         <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 5, background: `${standing.tone}22`, color: standing.tone }}>
@@ -106,7 +106,7 @@ export function StudioSubscriptionStrip({
               <button type="button" disabled={pending} onClick={stop} style={{ padding: "7px 12px", borderRadius: 999, border: "none", fontFamily: "inherit", fontSize: 11.5, fontWeight: 900, cursor: "pointer", background: "#EF4444", color: "#fff" }}>
                 {pending ? "…" : "Yes, stop"}
               </button>
-              <button type="button" onClick={() => setConfirm(false)} style={{ padding: "7px 12px", borderRadius: 999, fontFamily: "inherit", fontSize: 11.5, fontWeight: 900, cursor: "pointer", background: LILAC, border: `1px solid ${EL}`, color: INK }}>
+              <button type="button" onClick={() => setConfirm(false)} style={{ padding: "7px 12px", borderRadius: 999, fontFamily: "inherit", fontSize: 11.5, fontWeight: 900, cursor: "pointer", background: LILAC, border: `1.5px solid ${EL}`, color: INK }}>
                 Keep
               </button>
             </>

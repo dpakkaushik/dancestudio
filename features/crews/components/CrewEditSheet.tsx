@@ -6,21 +6,17 @@ import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { Portal } from "@/components/ui/Portal";
 import { updateCrewAction } from "@/features/crews/server-actions/crews";
 import { CityPicker } from "@/features/geo/components/CityPicker";
-import { commitHeaderDraft, commitWords, crewPorts } from "@/features/media/commitHeaderDraft";
-import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderPictures";
-import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
-import { PhotoPicker } from "@/features/media/components/PhotoPicker";
-import { useHeaderDraft } from "@/features/media/headerDraft";
 import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { MUTED } from "@/lib/design/tokens";
-import { HEADER_MAX_CREW } from "@/lib/media/photo";
-import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Crew } from "@/types/crew";
 
 /** EDIT CREW (19 Sep 2026) — the leader's one editor for the crew, the same
  *  shape as Edit profile and the studio's Edit sheet (the prototype has ONE
- *  editor per profile, 11364): the name, the photo, the header pictures, the
- *  city, the style, and the address the Mail button on the crew's page dials.
+ *  editor per profile, 11364): the name, the city, the style, the number and
+ *  the address the Mail button on the crew's page dials.
+ *  ⚠ THE PICTURES LEFT ON 21 Sep 2026 for the ⊕ on the disc and the ⊕ on the
+ *  rail (`CrewPictures.tsx`), which is where every other profile's have been
+ *  since 20 Sep. This sheet holds WORDS now, like the other three.
  *  Until today a crew's name, city and style were edited on the desk and its
  *  photo from a picker on the home; the pencil on the crew's home opens THIS.
  *
@@ -29,7 +25,7 @@ import type { Crew } from "@/types/crew";
  *  The DISC is the one thing written immediately, deliberately — changing it
  *  REPLACES rather than destroys. Five header pictures at most ("Artist and
  *  Crews — 5"), no floor: a crew may hold none. */
-export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; header?: HeaderPhoto[]; onClose: () => void }) {
+export function CrewEditSheet({ crew, onClose }: { crew: Crew; onClose: () => void }) {
   const router = useRouter();
   const [name, setName] = useState(crew.name);
   const [city, setCity] = useState<string | null>(crew.city);
@@ -40,13 +36,6 @@ export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; head
   const [phonePublic, setPhonePublic] = useState(crew.phonePublic);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const draft = useHeaderDraft({
-    initial: header.map((h) => ({ id: h.id, path: h.path, url: h.url, signed: h.signed })),
-    min: 0,
-    max: HEADER_MAX_CREW,
-  });
-  const tiles = headerTiles(draft, crew.name);
-  const [lightbox, setLightbox] = useState<number | null>(null);
 
   /** the words first, then the pictures, one refresh at the end — see
    *  BusinessEditSheet for why the order is deliberate */
@@ -60,15 +49,6 @@ export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; head
         setErr(out.error);
         return;
       }
-      if (draft.dirty) {
-        const result = await commitHeaderDraft(draft.items, crewPorts(crew.id));
-        draft.applyCommit(result);
-        if (result.failures.length > 0) {
-          setErr(commitWords(result, draft.changeCount));
-          router.refresh();
-          return;
-        }
-      }
       onClose();
       router.refresh();
     });
@@ -80,10 +60,13 @@ export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; head
         <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit crew</b>
         <div style={fieldLabel}>Name</div>
         <input aria-label="Name" value={name} maxLength={64} onChange={(e) => setName(e.target.value)} style={fieldInput} />
-        <div style={fieldLabel}>Update photo</div>
-        <PhotoPicker owner={{ kind: "crew", id: crew.id }} hasPhoto={Boolean(crew.photo)} label="Change the crew photo" />
-        <div style={fieldLabel}>Update header</div>
-        <HeaderPictures draft={draft} tiles={tiles} kind="person" canWrite addLabel="Add picture" onOpen={setLightbox} busy={pending} />
+        {/* ⚠ NO PICTURES HERE ANY MORE (21 Sep 2026, the user: "make sure all
+            profile types have similar ways to edit the profile, the segments
+            like social media, dance styles, pictures and posters"). "Update
+            photo" and "Update header" sat between Name and City; they are the
+            ⊕ on the disc and the ⊕ on the rail now, on the crew's own home,
+            which is where a user's, an artist's and a studio's have been since
+            20 Sep. This sheet holds WORDS, like every other one. */}
         <div style={fieldLabel}>City</div>
         <CityPicker value={city} onChange={(c) => setCity(c)} label="" />
         <div style={fieldLabel}>Style</div>
@@ -113,25 +96,23 @@ export function CrewEditSheet({ crew, header = [], onClose }: { crew: Crew; head
             Cancel
           </button>
           <button type="button" disabled={pending} onClick={save} style={sheetBtn(true)}>
-            {pending ? "Saving…" : draft.dirty ? `Save · ${draft.changeCount} ${draft.changeCount === 1 ? "picture change" : "picture changes"}` : "Save"}
+            {pending ? "Saving…" : "Save"}
           </button>
         </div>
       </Sheet>
-      {/* a SIBLING of the sheet — see PhotoLightbox's header for why */}
-      {lightbox !== null ? <PhotoLightbox shots={tiles.map((t) => ({ key: t.key, src: t.url, alt: t.alt, signed: t.signed }))} index={lightbox} onIndex={setLightbox} onClose={() => setLightbox(null)} label={crew.name} /> : null}
     </Portal>
   );
 }
 
 /** The pencil on the crew home's corner and the sheet behind it, in one client island. */
-export function CrewEditButton({ crew, header = [] }: { crew: Crew; header?: HeaderPhoto[] }) {
+export function CrewEditButton({ crew }: { crew: Crew }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" aria-label="Edit crew" onClick={() => setOpen(true)} style={cornerChip}>
         <PencilIcon />
       </button>
-      {open ? <CrewEditSheet crew={crew} header={header} onClose={() => setOpen(false)} /> : null}
+      {open ? <CrewEditSheet crew={crew} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }

@@ -67,7 +67,7 @@ function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
 /* one section shape for the whole page — prototype DSecTint (11545-11551) */
 function Sec({ icon, label, col, children }: { icon: ReactNode; label: string; col: string; children: ReactNode }) {
   return (
-    <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderLeft: `3px solid ${col}55`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, textAlign: "left" }}>
+    <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `3px solid ${col}55`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, textAlign: "left" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         {icon}
         <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--sub)" }}>{label}</span>
@@ -107,7 +107,7 @@ const ghostBtn: React.CSSProperties = {
   padding: "13px",
   borderRadius: 999,
   background: "var(--card)",
-  border: "1px solid var(--el)",
+  border: "1.5px solid var(--el)",
   fontWeight: 700,
   fontSize: 13.5,
   cursor: "pointer",
@@ -366,7 +366,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
         {/* a ticket you hold: the same block as a class booking (BookingActions compact, 12956) */}
         {held && !isMember && !done
           ? mine.map((b) => (
-              <div key={b.id} data-testid="held-booking" style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
+              <div key={b.id} data-testid="held-booking" style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
                   <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.kind === "spectator" ? "You’re booked" : "You’re entered"}</span>
@@ -375,7 +375,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                 <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>
                   {bookingWords(b)} · {b.amountInr > 0 ? `paid ₹${b.amountInr.toLocaleString("en-IN")}` : "free"} · see it under My classes.
                 </div>
-                <div style={{ display: "flex", alignItems: "stretch", marginTop: 10, border: "1px solid var(--el)", borderRadius: 999, overflow: "hidden", background: "var(--solid)" }}>
+                <div style={{ display: "flex", alignItems: "stretch", marginTop: 10, border: "1.5px solid var(--el)", borderRadius: 999, overflow: "hidden", background: "var(--solid)" }}>
                   <span role="button" tabIndex={0} onKeyDown={dosKey} aria-label={b.kind === "spectator" ? "Cancel ticket" : "Withdraw entry"} onClick={() => setCancelAsk(b)} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 6px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", color: "#F87171" }}>
                     {b.kind === "spectator" ? "Cancel ticket" : "Withdraw entry"}
                   </span>
@@ -472,7 +472,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
           label="VENUE"
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 11, padding: "2px 0 2px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg,${col}55,${col}22)`, border: `1px solid ${col}44`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg,${col}55,${col}22)`, border: `1.5px solid ${col}44`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 20V9l8-5 8 5v11" />
                 <path d="M9 20v-6h6v6" />
@@ -636,9 +636,9 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
 
       {/* ── ROOM FOR THE ONE THING YOU CAN PRESS — the booking bar (13236-13330) ── */}
       {showBar ? (
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", padding: "12px 16px 22px", zIndex: 400, background: "var(--solid)", borderTop: "1px solid var(--el)", boxShadow: "0 -6px 22px rgba(0,0,0,.28)" }}>
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", padding: "12px 16px 22px", zIndex: 400, background: "var(--solid)", borderTop: "1.5px solid var(--el)", boxShadow: "0 -6px 22px rgba(0,0,0,.28)" }}>
           {done ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
               <span style={{ width: 32, height: 32, borderRadius: 16, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                   <path d="m5 12.5 4.5 4.5L19 7.5" />
@@ -670,12 +670,12 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                be able to book any class or event"). `guard_person_only` has
                refused an organization an event booking since 8 Sep; the bar
                says it now instead of letting the press be refused. */
-            <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)" }}>
+            <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
               <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
               <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{NO_BOOKING_FOR_AN_ORGANIZATION}</div>
             </div>
           ) : allGone && !canEnter ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "rgba(239,68,68,.12)", border: "1px solid rgba(239,68,68,.4)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "rgba(239,68,68,.12)", border: "1.5px solid rgba(239,68,68,.4)" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="1.9" strokeLinecap="round" style={{ flexShrink: 0 }} aria-hidden="true">
                 <circle cx="12" cy="12" r="8.5" />
                 <path d="m8.5 8.5 7 7M15.5 8.5l-7 7" />
@@ -751,7 +751,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
 
       {/* a draft has no bookings — editing it is the only move (the class page's own footer) */}
       {canManage && isDraft ? (
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 400, maxWidth: 430, margin: "0 auto", background: "var(--solid)", borderTop: "1px solid var(--el)", padding: "12px 16px 26px", boxShadow: "0 -6px 20px rgba(0,0,0,.32)" }}>
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 400, maxWidth: 430, margin: "0 auto", background: "var(--solid)", borderTop: "1.5px solid var(--el)", padding: "12px 16px 26px", boxShadow: "0 -6px 20px rgba(0,0,0,.32)" }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", marginBottom: 8, fontFamily: DOS_UI }}>YOUR DRAFT · PUBLISH TO OPEN BOOKINGS</div>
           <Link href={`/business/${ev.tenantId}/events/${ev.id}/edit`} style={{ display: "block", textAlign: "center", padding: "13px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13, cursor: "pointer", textDecoration: "none" }}>
             Edit event
@@ -869,7 +869,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
             {bookMode === "audience" ? (
               <>
                 <div style={eyebrow}>How many</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1px solid var(--el)", borderRadius: 14, padding: "9px 12px", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 14, padding: "9px 12px", marginBottom: 12 }}>
                   {(
                     [
                       ["-", -1],
@@ -927,7 +927,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
             <b style={{ fontSize: 16.5 }}>{dueNow > 0 ? "How are you paying?" : bookMode === "participant" ? "Confirm your entry" : "Confirm your booking"}</b>
             <div style={{ fontSize: 12, color: "var(--sub)", margin: "4px 0 14px", lineHeight: 1.5 }}>{whatFor}</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "12px 14px", borderRadius: 14, background: "var(--card)", border: "1px solid var(--el)", marginBottom: dueNow > 0 ? 12 : 14 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "12px 14px", borderRadius: 14, background: "var(--card)", border: "1.5px solid var(--el)", marginBottom: dueNow > 0 ? 12 : 14 }}>
               <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, color: "var(--sub)" }}>Total</span>
               <span style={{ fontSize: 20, fontWeight: 900, fontFamily: DOS_MONO, fontVariantNumeric: "tabular-nums", color: dueNow > 0 ? "var(--text)" : "#4ADE80" }}>{dueNow > 0 ? `₹${dueNow.toLocaleString("en-IN")}` : "Free"}</span>
             </div>

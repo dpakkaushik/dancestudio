@@ -95,7 +95,7 @@ export function PeriodChips({
               flexShrink: 0,
               background: on ? "var(--text)" : "var(--card)",
               color: on ? "var(--solid)" : "var(--sub)",
-              border: `1px solid ${LINE}`,
+              border: `1.5px solid ${LINE}`,
             }}
           >
             {chip.label}
@@ -172,7 +172,7 @@ export function HowStudentsPaid({ month }: { month: MonthIncome }) {
       <div
         style={{
           background: CARD,
-          border: `1px solid ${LINE}`,
+          border: `1.5px solid ${LINE}`,
           borderRadius: 16,
           padding: "12px 14px",
           marginBottom: 10,
@@ -375,7 +375,7 @@ export function MonthStatements({
                       justifyContent: "space-between",
                       fontSize: 11.5,
                       padding: "3px 0",
-                      borderBottom: `1px solid ${CARD}`,
+                      borderBottom: `1.5px solid ${CARD}`,
                     }}
                   >
                     <span style={{ color: SUB }}>{k}</span>

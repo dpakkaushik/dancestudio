@@ -39,7 +39,7 @@ export function Surface({
     <div
       style={{
         background: "var(--card)",
-        border: "1px solid var(--el)",
+        border: "1.5px solid var(--el)",
         ...(tint ? { borderLeft: `4px solid ${tint}` } : {}),
         borderRadius: 18,
         padding: pad ?? "14px 15px",

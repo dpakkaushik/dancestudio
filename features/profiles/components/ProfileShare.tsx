@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { QRBlock } from "@/components/ui/QRBlock";
-import { DOS_DISPLAY, DOS_UI, PINK } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { PROFILE_CHIP } from "./profile-band";
 
@@ -10,8 +10,6 @@ import { PROFILE_CHIP } from "./profile-band";
 const subscribeNever = () => () => {};
 const readHost = () => `${window.location.protocol}//${window.location.host}`;
 const readServerHost = () => "";
-
-const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
 /** ⚠ THE QR IS THE QR, AND SHARE IS ITS OWN BUTTON (21 Sep 2026).
  *
@@ -24,25 +22,21 @@ const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mon
  *
  *  So this is the QR alone now (the prototype's own 10688-10697: "what it
  *  shares is the thing it is next to"), and `ProfileLink` below is the share —
- *  one press, the phone's own share sheet, no sheet of ours in between. The
- *  QR sheet keeps Copy link, because somebody looking at a code on a laptop
- *  still needs the text. */
+ *  one press, the phone's own share sheet, no sheet of ours in between.
+ *
+ *  ⚠ **AND THE SHEET IS THE CODE AND NOTHING ELSE SINCE 21 Sep 2026**, on the
+ *  user's *"qr code button should just open qr not link on all profiles."* It
+ *  had kept the printed link and a Copy button — which was the first cut's own
+ *  reasoning ("somebody on a laptop still needs the text") and is the same
+ *  mistake one step smaller: a sheet reached by pressing a QR, most of which is
+ *  not the QR. Copying is `ProfileLink`'s job, it is the chip directly beside
+ *  this one, and it falls back to the clipboard on exactly the laptop that
+ *  argument was about. ⚠ Nothing became unreachable, which is the test C31 sets. */
 export function ProfileShare({ path, name }: { path: string; name: string }) {
   const [open, setOpen] = useState(false);
-  const [done, setDone] = useState(false);
   const origin = useSyncExternalStore(subscribeNever, readHost, readServerHost);
   useCloseOnBack(() => setOpen(false), open);
   const link = `${origin}${path}`;
-
-  const copy = () => {
-    try {
-      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(link);
-    } catch {
-      /* clipboard blocked — the link is still on screen */
-    }
-    setDone(true);
-    setTimeout(() => setDone(false), 1800);
-  };
 
   return (
     <>
@@ -88,64 +82,30 @@ export function ProfileShare({ path, name }: { path: string; name: string }) {
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 14px" }} />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{name}</b>
-            <div style={{ fontSize: 12, color: "var(--sub)", margin: "4px 0 14px" }}>
-              Scan to open this profile, or pass the link on.
+            <div style={{ fontSize: 12, color: "var(--sub)", margin: "4px 0 16px" }}>
+              Point a camera at this to open the profile.
             </div>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-              <QRBlock code={link} size={168} label={`Profile code for ${name}`} />
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <QRBlock code={link} size={232} label={`Profile code for ${name}`} />
             </div>
-            <div
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
               style={{
-                fontFamily: DOS_MONO,
-                fontSize: 12,
+                width: "100%",
+                padding: 13,
+                borderRadius: 999,
                 background: "var(--card)",
-                border: "1px solid var(--el)",
-                borderRadius: 12,
-                padding: "10px 12px",
-                wordBreak: "break-all",
-                marginBottom: 12,
+                border: "1.5px solid var(--el)",
+                color: "var(--text)",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                fontFamily: "inherit",
               }}
             >
-              {link.replace(/^https?:\/\//, "")}
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                type="button"
-                onClick={copy}
-                style={{
-                  flex: 1.4,
-                  padding: 13,
-                  borderRadius: 999,
-                  background: done ? "#22C55E" : PINK,
-                  color: "#fff",
-                  fontWeight: 900,
-                  fontSize: 13.5,
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                {done ? "Copied ✓" : "Copy link"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                style={{
-                  flex: 1,
-                  padding: 13,
-                  borderRadius: 999,
-                  background: "var(--card)",
-                  border: "1px solid var(--el)",
-                  color: "var(--text)",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                Done
-              </button>
-            </div>
+              Done
+            </button>
           </div>
         </div>
       ) : null}

@@ -60,7 +60,7 @@ const inp: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   background: EL,
-  border: `1px solid ${EL}`,
+  border: `1.5px solid ${EL}`,
   borderRadius: 12,
   padding: "11px 12px",
   color: INK,
@@ -212,7 +212,7 @@ export function BusinessHub({
   const cardStyle = (own: boolean): React.CSSProperties => ({
     position: "relative",
     background: CARD,
-    border: `1px solid ${EL}`,
+    border: `1.5px solid ${EL}`,
     borderLeft: `4px solid ${own ? ACCENT : EL}`,
     borderRadius: 16,
     padding: "12px 13px",
@@ -307,7 +307,7 @@ export function BusinessHub({
       <div key={t.id} data-testid="studio-card" style={cardStyle(true)}>
         {openLink(`/business/${t.id}`, `${t.name} — open the studio`)}
         {identity(t, true, live ? (
-          <span data-testid="studio-live" style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "#DCFCE722", color: "#22C55E", border: "1px solid #22C55E55" }}>
+          <span data-testid="studio-live" style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "#DCFCE722", color: "#22C55E", border: "1.5px solid #22C55E55" }}>
             LIVE
           </span>
         ) : null)}
@@ -347,7 +347,7 @@ export function BusinessHub({
             <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: SUB, lineHeight: 1.45 }}>
               Not on the map yet — {t.city ? `Discover measures from the middle of ${t.city}` : "Discover cannot say how far away it is"}.
             </span>
-            <Link href={publicProfilePath(t)} aria-label={`Put ${t.name} on the map`} style={{ ...pill, flexShrink: 0, padding: "6px 11px", background: LILAC, border: `1px solid ${EL}`, color: INK, display: "inline-flex", alignItems: "center" }}>
+            <Link href={publicProfilePath(t)} aria-label={`Put ${t.name} on the map`} style={{ ...pill, flexShrink: 0, padding: "6px 11px", background: LILAC, border: `1.5px solid ${EL}`, color: INK, display: "inline-flex", alignItems: "center" }}>
               Put it on the map
             </Link>
           </div>
@@ -629,7 +629,7 @@ export function BusinessHub({
                   <div style={{ fontSize: 12, color: SUB, margin: "14px 0 6px" }}>Dance styles — at least one</div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                     {styles.map((s) => (
-                      <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 8px 6px 11px", borderRadius: 999, background: CARD, border: `1px solid ${EL}` }}>
+                      <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 8px 6px 11px", borderRadius: 999, background: CARD, border: `1.5px solid ${EL}` }}>
                         <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 5, background: dosStyleColor(s) }} />
                         <span style={{ fontSize: 12, fontWeight: 800 }}>{s}</span>
                         <span role="button" tabIndex={0} onKeyDown={dosKey} aria-label={`Remove ${s}`} onClick={() => setStyles((x) => x.filter((y) => y !== s))} style={{ fontSize: 13, color: "#F87171", cursor: "pointer" }}>

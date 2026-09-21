@@ -13,7 +13,7 @@ import { CountLine, DeskHero, Pager, StatStrip } from "./desk-kit";
 const CARD = "var(--card)";
 const EL = "var(--el)";
 const MUTED = "var(--muted)";
-const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${EL}`, background: CARD, color: INK };
+const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${EL}`, background: CARD, color: INK };
 
 /** The closed list of reasons, in the words a person would use. */
 export const REASON_WORDS: Record<ReportReason, string> = {
@@ -141,7 +141,7 @@ export function ReportsQueue({
           {reports.map((r) => {
             const isOpen = r.status === "open";
             return (
-              <div key={r.id} data-testid="report-card" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${isOpen ? (r.others > 0 ? "#EF4444" : "#F59E0B") : r.status === "actioned" ? "#22C55E" : MUTED}`, borderRadius: 16, padding: "11px 12px" }}>
+              <div key={r.id} data-testid="report-card" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${isOpen ? (r.others > 0 ? "#EF4444" : "#F59E0B") : r.status === "actioned" ? "#22C55E" : MUTED}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                   <b style={{ fontSize: 13 }}>{REASON_WORDS[r.reason]}</b>
                   {r.others > 0 ? (
@@ -184,7 +184,7 @@ export function ReportsQueue({
                             type="button"
                             onClick={() => setActioned(v)}
                             aria-pressed={actioned === v}
-                            style={{ ...btn, background: actioned === v ? "var(--text)" : CARD, color: actioned === v ? "var(--solid)" : SUB, border: `1px solid ${actioned === v ? "var(--text)" : EL}` }}
+                            style={{ ...btn, background: actioned === v ? "var(--text)" : CARD, color: actioned === v ? "var(--solid)" : SUB, border: `1.5px solid ${actioned === v ? "var(--text)" : EL}` }}
                           >
                             {v ? "We acted on it" : "No problem found"}
                           </button>
@@ -200,7 +200,7 @@ export function ReportsQueue({
                         rows={2}
                         maxLength={500}
                         placeholder={actioned ? "What you did about it." : "Why there is no problem here."}
-                        style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
+                        style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
                       />
                       <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                         <button type="button" disabled={pending} onClick={() => answer(r)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Send the answer for ${r.subjectLabel ?? "this report"}`}>

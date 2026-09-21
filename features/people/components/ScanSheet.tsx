@@ -160,7 +160,7 @@ export function ScanSheet({ onClose, onCode, busy = false, error = null }: { onC
             </button>
           </div>
           {pasteErr ? <div style={{ fontSize: 11, color: "#F87171", marginTop: 8 }}>{pasteErr}</div> : null}
-          <button type="button" onClick={onClose} style={{ marginTop: 14, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", color: "var(--text)", fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "1px solid var(--el)", fontFamily: "inherit", width: "100%" }}>
+          <button type="button" onClick={onClose} style={{ marginTop: 14, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", color: "var(--text)", fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "1.5px solid var(--el)", fontFamily: "inherit", width: "100%" }}>
             Cancel
           </button>
         </div>

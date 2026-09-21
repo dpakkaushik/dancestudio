@@ -9,7 +9,7 @@ import type { PlanCatalogRow } from "@/repositories/plans";
 const CARD = "var(--card)";
 const EL = "var(--el)";
 const MUTED = "var(--muted)";
-const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${EL}`, background: CARD, color: INK };
+const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${EL}`, background: CARD, color: INK };
 
 const KIND_WORDS: Record<PlanCatalogRow["kind"], { who: string; what: string; tone: string }> = {
   artist: { who: "a user", what: "unlocks the artist tools and one artist page", tone: "#EC4899" },
@@ -70,7 +70,7 @@ export function PlansDesk({ plans }: { plans: PlanCatalogRow[] }) {
           const words = KIND_WORDS[p.kind];
           const isEditing = editing === p.key;
           return (
-            <div key={p.key} data-testid="plan-row" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${p.active ? words.tone : MUTED}`, borderRadius: 16, padding: "11px 12px", opacity: p.active ? 1 : 0.75 }}>
+            <div key={p.key} data-testid="plan-row" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${p.active ? words.tone : MUTED}`, borderRadius: 16, padding: "11px 12px", opacity: p.active ? 1 : 0.75 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                 <b style={{ fontSize: 13 }}>{p.label}</b>
                 <span style={{ fontSize: 9.5, fontWeight: 900, padding: "2px 6px", borderRadius: 5, background: "var(--el)", color: SUB, textTransform: "uppercase" }}>{p.period}</span>
@@ -93,7 +93,7 @@ export function PlansDesk({ plans }: { plans: PlanCatalogRow[] }) {
                     inputMode="numeric"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "9px 10px", fontSize: 15, fontWeight: 800, color: INK, fontFamily: "inherit", fontVariantNumeric: "tabular-nums" }}
+                    style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "9px 10px", fontSize: 15, fontWeight: 800, color: INK, fontFamily: "inherit", fontVariantNumeric: "tabular-nums" }}
                   />
                   <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                     <button type="button" disabled={pending} onClick={() => save(p, p.active)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Save the price of ${p.label}`}>
@@ -121,7 +121,7 @@ export function PlansDesk({ plans }: { plans: PlanCatalogRow[] }) {
         })}
       </div>
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         A price of ₹0 makes a plan free: the Subscribe button grants the period without a payment. Anything above zero is
         paid through Cashfree — the amount is read from this list when the order opens, never from the screen.
         Comping somebody a period is on Businesses (a studio) or Accounts (a user), and is a separate, audited decision.

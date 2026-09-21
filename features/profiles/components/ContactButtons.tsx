@@ -11,7 +11,7 @@ import { mapsHref } from "./profile-kit";
  *  place to hand off to. Enquiry keeps its own island (`EnquiryButton`) because
  *  it opens a sheet. */
 
-const box: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", overflow: "hidden", whiteSpace: "nowrap", background: CARD, color: INK, border: `1px solid ${LINE}`, textDecoration: "none" };
+const box: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", overflow: "hidden", whiteSpace: "nowrap", background: CARD, color: INK, border: `1.5px solid ${LINE}`, textDecoration: "none" };
 const glyph: CSSProperties = { flexShrink: 0, lineHeight: 0, color: SUB };
 
 /** Call — a real tel: hand-off to the number on record (10879); drawn only when

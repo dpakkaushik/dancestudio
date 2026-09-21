@@ -75,7 +75,7 @@ export const dosToolPaint = (c: string) => `linear-gradient(135deg,${c} 0%, ${c}
 /** bizCard / bizBtn (2918-2920) — the desk's card and its one primary pill */
 export const bizCard: CSSProperties = {
   background: "var(--card)",
-  border: "1px solid var(--el)",
+  border: "1.5px solid var(--el)",
   borderRadius: 16,
   padding: "13px 14px",
   marginBottom: 10,

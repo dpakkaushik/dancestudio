@@ -94,7 +94,7 @@ export function SupportThreads({
 
         {!isAdmin && canOpen ? (
           composing ? (
-            <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 14 }}>
+            <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 16, padding: "12px 13px", marginBottom: 14 }}>
               <b style={{ fontSize: 13.5 }}>Write to DanceOS</b>
               <div style={{ fontSize: 11, color: SUB, margin: "3px 0 9px" }}>
                 {requestId
@@ -107,7 +107,7 @@ export function SupportThreads({
                 onChange={(e) => setSubject(e.target.value)}
                 maxLength={140}
                 placeholder="What is it about?"
-                style={{ width: "100%", boxSizing: "border-box", background: LILAC, border: `1px solid ${EL}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: INK, fontFamily: "inherit", marginBottom: 8 }}
+                style={{ width: "100%", boxSizing: "border-box", background: LILAC, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: INK, fontFamily: "inherit", marginBottom: 8 }}
               />
               <textarea
                 aria-label="Message"
@@ -116,13 +116,13 @@ export function SupportThreads({
                 maxLength={4000}
                 rows={4}
                 placeholder="Tell us what you need."
-                style={{ width: "100%", boxSizing: "border-box", background: LILAC, border: `1px solid ${EL}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: INK, fontFamily: "inherit", resize: "vertical", lineHeight: 1.55 }}
+                style={{ width: "100%", boxSizing: "border-box", background: LILAC, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "10px 12px", fontSize: 13, color: INK, fontFamily: "inherit", resize: "vertical", lineHeight: 1.55 }}
               />
               <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
                 <button type="button" disabled={pending || !subject.trim() || !body.trim()} onClick={open} style={{ flex: 1, height: 40, borderRadius: 12, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 900, fontSize: 12.5, background: subject.trim() && body.trim() ? "var(--text)" : EL, color: subject.trim() && body.trim() ? "var(--solid)" : SUB }}>
                   {pending ? "Sending…" : "Send"}
                 </button>
-                <button type="button" onClick={() => setComposing(false)} style={{ height: 40, padding: "0 14px", borderRadius: 12, background: LILAC, border: `1px solid ${EL}`, color: SUB, cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12 }}>
+                <button type="button" onClick={() => setComposing(false)} style={{ height: 40, padding: "0 14px", borderRadius: 12, background: LILAC, border: `1.5px solid ${EL}`, color: SUB, cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12 }}>
                   Cancel
                 </button>
               </div>
@@ -148,7 +148,7 @@ export function SupportThreads({
                 key={t.id}
                 href={`${root}/${t.id}`}
                 aria-label={`Open ${t.subject}${t.unread > 0 ? ` — ${t.unread} unread` : ""}`}
-                style={{ display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${t.unread > 0 ? "#F59E0B" : t.status === "closed" ? EL : "#22C55E"}`, borderRadius: 16, padding: "11px 12px", textDecoration: "none", color: INK }}
+                style={{ display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${t.unread > 0 ? "#F59E0B" : t.status === "closed" ? EL : "#22C55E"}`, borderRadius: 16, padding: "11px 12px", textDecoration: "none", color: INK }}
               >
                 {isAdmin ? <Face name={t.accountName} path={t.accountAvatarPath} /> : null}
                 <span style={{ flex: 1, minWidth: 0 }}>

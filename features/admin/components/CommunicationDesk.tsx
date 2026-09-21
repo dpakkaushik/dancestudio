@@ -19,7 +19,7 @@ function Fig({ n, label, tone, href }: { n: string | number; label: string; tone
       <span style={{ display: "block", fontSize: 10, fontWeight: 700, color: MUTED, marginTop: 4, lineHeight: 1.3 }}>{label}</span>
     </>
   );
-  const style: React.CSSProperties = { background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
+  const style: React.CSSProperties = { background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 12px", textDecoration: "none", display: "block", minWidth: 0 };
   return href ? <Link href={href} style={style}>{body}</Link> : <div style={style}>{body}</div>;
 }
 
@@ -126,7 +126,7 @@ export function CommunicationDesk({
                 /* the bar is the share opened, not the volume: a tall bar nobody
                    opens is the thing this screen exists to make obvious */
                 return (
-                  <div key={k.kind} style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
+                  <div key={k.kind} style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
                       <b style={{ fontSize: 12, color: INK, flex: 1, minWidth: 0 }}>{KIND_WORDS[k.kind] ?? k.kind}</b>
                       <span style={{ fontSize: 11, fontWeight: 800, color: SUB, fontVariantNumeric: "tabular-nums" }}>{k.n}</span>
@@ -152,7 +152,7 @@ export function CommunicationDesk({
           <Link
             key={k}
             href={`/admin/communication${k === "all" ? "" : `?kind=${k}`}`}
-            style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: kind === k ? "var(--text)" : CARD, color: kind === k ? "var(--solid)" : SUB, border: `1px solid ${kind === k ? "var(--text)" : EL}`, whiteSpace: "nowrap" }}
+            style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: kind === k ? "var(--text)" : CARD, color: kind === k ? "var(--solid)" : SUB, border: `1.5px solid ${kind === k ? "var(--text)" : EL}`, whiteSpace: "nowrap" }}
           >
             {k === "all" ? "All" : KIND_WORDS[k] ?? k}
           </Link>
@@ -166,7 +166,7 @@ export function CommunicationDesk({
           {recent.map((n) => {
             const tint = KIND_TINT[n.kind] ?? "#64748B";
             return (
-              <div key={n.id} data-testid="admin-notification" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${tint}`, borderRadius: 14, padding: "10px 12px", opacity: n.readAt ? 1 : 0.96 }}>
+              <div key={n.id} data-testid="admin-notification" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${tint}`, borderRadius: 14, padding: "10px 12px", opacity: n.readAt ? 1 : 0.96 }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
                   <b style={{ fontSize: 12.5, color: INK }}>{n.title}</b>
                   <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, background: `${tint}22`, color: tint }}>{(KIND_WORDS[n.kind] ?? n.kind).toUpperCase()}</span>
@@ -183,7 +183,7 @@ export function CommunicationDesk({
         </div>
       )}
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         Everything here is IN-APP. DanceOS sends no email or SMS of its own yet — the only mail is Supabase&apos;s
         sign-in mail — so there is no delivery to report and nothing is being hidden behind a zero. Answering a
         conversation happens on <Link href="/admin/support" style={{ color: INK, fontWeight: 800 }}>Support</Link>.

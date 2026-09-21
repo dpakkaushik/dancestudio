@@ -12,7 +12,7 @@ import { MUTED, SUB } from "@/lib/design/tokens";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Profile } from "@/types/profile";
 import { ProfileDisc } from "./HeroRail";
-import { Sheet, sheetBtn } from "./profile-kit";
+import { PlusIcon, Sheet, sheetBtn } from "./profile-kit";
 
 /** THE TWO PICTURES, AND THE TWO CONTROLS THAT CHANGE THEM.
  *
@@ -200,7 +200,7 @@ export function PicturesButton({
           display: "grid",
           placeItems: "center",
           background: "var(--card)",
-          border: "1px solid var(--el)",
+          border: "1.5px solid var(--el)",
           cursor: "pointer",
           padding: 0,
           fontFamily: "inherit",
@@ -250,7 +250,7 @@ export function HeaderEditButton({
           display: "grid",
           placeItems: "center",
           background: "rgba(10,10,10,.55)",
-          border: "1px solid rgba(255,255,255,.35)",
+          border: "1.5px solid rgba(255,255,255,.35)",
           cursor: "pointer",
           padding: 0,
           fontFamily: "inherit",
@@ -275,10 +275,6 @@ export function HeaderEditButton({
  *  reading. Both controls keep their accessible NAMES, so every locator and
  *  every screen reader still says what the button does rather than what it looks
  *  like — the glyph is decoration, the name is the control. */
-function PlusIcon({ light = false }: { light?: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={light ? "#fff" : "var(--text)"} strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
+/* the glyph itself moved into `profile-kit` on 21 Sep, when a crew's controls
+   were about to declare it a third time; the reasoning above is still this
+   control's, and is why the NAME rather than the glyph is what anything reads */

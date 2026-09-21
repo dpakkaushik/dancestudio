@@ -125,7 +125,7 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
           const isOpen = open === s.k;
           const un = s.items.filter((i) => !i.readAt).length;
           return (
-            <div key={s.k} style={{ background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${s.tint}`, borderRadius: 18, marginBottom: 9, overflow: "hidden" }}>
+            <div key={s.k} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${s.tint}`, borderRadius: 18, marginBottom: 9, overflow: "hidden" }}>
               <div role="button" tabIndex={0} aria-expanded={isOpen} aria-label={`${s.label} — ${s.items.length} ${s.items.length === 1 ? "update" : "updates"}`} onKeyDown={pressKey(() => setOpen(isOpen ? null : s.k))} onClick={() => setOpen(isOpen ? null : s.k)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 13px", cursor: "pointer" }}>
                 <span style={{ width: 34, height: 34, borderRadius: 12, flexShrink: 0, background: `${s.tint}1e`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: DOS_MONO, fontSize: 12.5, fontWeight: 600, color: s.tint }}>{s.items.length}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -185,7 +185,7 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
             {NOTIF_KINDS.map((k) => {
               const on = draft.kinds[k.k] !== false;
               return (
-                <div role="button" tabIndex={0} key={k.k} aria-pressed={on} aria-label={k.label} onKeyDown={pressKey(() => setDraft({ ...draft, kinds: { ...draft.kinds, [k.k]: !on } }))} onClick={() => setDraft({ ...draft, kinds: { ...draft.kinds, [k.k]: !on } })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderBottom: "1px solid var(--el)", cursor: "pointer" }}>
+                <div role="button" tabIndex={0} key={k.k} aria-pressed={on} aria-label={k.label} onKeyDown={pressKey(() => setDraft({ ...draft, kinds: { ...draft.kinds, [k.k]: !on } }))} onClick={() => setDraft({ ...draft, kinds: { ...draft.kinds, [k.k]: !on } })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderBottom: "1.5px solid var(--el)", cursor: "pointer" }}>
                   <span style={{ width: 8, height: 8, borderRadius: 4, background: k.tint, flexShrink: 0 }} />
                   <span style={{ flex: 1, fontSize: 12.5, fontWeight: 800 }}>{k.label}</span>
                   <span style={{ width: 42, height: 24, borderRadius: 12, flexShrink: 0, background: on ? k.tint : "var(--el)", position: "relative" }}>
@@ -204,7 +204,7 @@ export function NotificationsScreen({ notifications, prefs, nowIso }: { notifica
             ).map(([k, l]) => {
               const on = draft[k];
               return (
-                <div role="button" tabIndex={0} key={k} aria-pressed={on} aria-label={l} onKeyDown={pressKey(() => setDraft({ ...draft, [k]: !on }))} onClick={() => setDraft({ ...draft, [k]: !on })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderBottom: "1px solid var(--el)", cursor: "pointer" }}>
+                <div role="button" tabIndex={0} key={k} aria-pressed={on} aria-label={l} onKeyDown={pressKey(() => setDraft({ ...draft, [k]: !on }))} onClick={() => setDraft({ ...draft, [k]: !on })} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderBottom: "1.5px solid var(--el)", cursor: "pointer" }}>
                   <span style={{ flex: 1, fontSize: 12.5, fontWeight: 800 }}>{l}</span>
                   <span style={{ width: 42, height: 24, borderRadius: 12, flexShrink: 0, background: on ? "#22C55E" : "var(--el)", position: "relative" }}>
                     <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .15s" }} />

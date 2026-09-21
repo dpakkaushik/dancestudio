@@ -326,7 +326,7 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
     borderRadius: 11,
     cursor: ready ? "pointer" : "default",
     background: on ? "var(--el)" : "var(--card)",
-    border: `1px solid ${on ? "var(--text)" : "var(--el)"}`,
+    border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
     color: on ? "var(--text)" : "var(--sub)",
     opacity: ready ? 1 : 0.5,
     fontFamily: "inherit",
@@ -407,7 +407,7 @@ function Stage({ file, frame, onCancel, onUse }: { file: File; frame: CropFrame;
           type="button"
           onClick={onCancel}
           aria-label="Cancel cropping"
-          style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", color: "var(--text)", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}
+          style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", color: "var(--text)", fontWeight: 700, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit" }}
         >
           Cancel
         </button>

@@ -47,7 +47,7 @@ const lineOf = (r: ChartRow): string =>
 function StandingCard({ s, segment, accent }: { s: Standing; segment: ChartSegment; accent: string }) {
   const r = s.row;
   return (
-    <div style={{ background: CARD, border: `1px solid ${LINE}`, borderLeft: `4px solid ${accent}`, borderRadius: 16, padding: "12px 14px", marginBottom: 8 }} data-testid="standing-card">
+    <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderLeft: `4px solid ${accent}`, borderRadius: 16, padding: "12px 14px", marginBottom: 8 }} data-testid="standing-card">
       <div style={{ ...micro, color: MUTED }}>{s.scope}</div>
       {r ? (
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
@@ -123,7 +123,7 @@ export function EntityStatsPage({
           <div style={{ ...micro, color: MUTED, marginBottom: 8 }}>The record</div>
           <div style={{ display: "flex", gap: 8 }}>
             {sides.map(([label, n, h, col]) => (
-              <div key={label} style={{ flex: 1, background: CARD, border: `1px solid ${LINE}`, borderTop: `3px solid ${col}`, borderRadius: 14, padding: "10px 8px", textAlign: "center" }}>
+              <div key={label} style={{ flex: 1, background: CARD, border: `1.5px solid ${LINE}`, borderTop: `3px solid ${col}`, borderRadius: 14, padding: "10px 8px", textAlign: "center" }}>
                 <div style={{ ...figure, fontSize: 18, fontFamily: DOS_DISPLAY, fontWeight: 900 }}>{n}</div>
                 <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: SUB, marginTop: 2 }}>{label}</div>
                 <div style={{ fontSize: 9.5, color: MUTED, marginTop: 3 }}>{hoursWords(h)}</div>
@@ -149,7 +149,7 @@ export function EntityStatsPage({
           <div style={{ ...micro, color: MUTED, marginBottom: 8 }}>Its studios on the board</div>
           {studios.length === 0 ? <div style={{ fontSize: 12, color: SUB }}>No studio on Discover yet, so nothing is ranked.</div> : null}
           {studios.map((s) => (
-            <Link key={s.id} href={`/studio/${s.id}/stats`} aria-label={`${s.name} — its record and rank`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
+            <Link key={s.id} href={`/studio/${s.id}/stats`} aria-label={`${s.name} — its record and rank`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
               <span style={{ ...figure, fontSize: 17, fontFamily: DOS_DISPLAY, fontWeight: 900, width: 34, textAlign: "center", flexShrink: 0, color: s.row ? INK : MUTED }}>{s.row ? `#${s.row.place}` : "—"}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
@@ -167,7 +167,7 @@ export function EntityStatsPage({
         </div>
       ) : null}
 
-      <div style={{ position: "relative", marginTop: 18, background: CARD, border: `1px solid ${LINE}`, borderRadius: 16, padding: "12px 14px" }}>
+      <div style={{ position: "relative", marginTop: 18, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "12px 14px" }}>
         <div style={{ ...micro, color: MUTED, marginBottom: 6 }}>How points work</div>
         {rules.map(([what, pts, col]) => (
           <div key={what} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12 }}>

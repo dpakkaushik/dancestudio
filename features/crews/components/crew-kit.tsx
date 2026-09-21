@@ -27,7 +27,7 @@ export const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
 };
 
 /* the desk's shared card and button (bizCard / bizBtn) */
-export const bizCard: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
+export const bizCard: React.CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 export const bizBtn: React.CSSProperties = { textAlign: "center", padding: "12px", borderRadius: 14, border: "1.5px dashed var(--el)", color: "var(--sub)", fontWeight: 800, fontSize: 12.5, cursor: "pointer" };
 
 /** the initials tile every crew wears until photos arrive (16336-16340) */

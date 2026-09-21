@@ -470,7 +470,7 @@ export function ClassForm({
                             setVenueRooms([]);
                             setRoomId(null);
                           }}
-                          style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}
+                          style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1.5px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}
                         >
                           Change
                         </button>
@@ -565,7 +565,7 @@ export function ClassForm({
                     ) : (
                       <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#F59E0B" }}>Will be asked</span>
                     )}
-                    <button type="button" aria-label="Pick somebody else to take this class" onClick={() => setTeacher(null)} style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                    <button type="button" aria-label="Pick somebody else to take this class" onClick={() => setTeacher(null)} style={{ fontSize: 11, fontWeight: 800, color: SUB, background: "transparent", border: `1.5px solid ${EL}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit" }}>
                       Change
                     </button>
                   </div>
@@ -627,7 +627,7 @@ export function ClassForm({
                 aria-checked={on}
                 aria-label={word}
                 onClick={() => set(!on)}
-                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "11px 12px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", color: INK }}
+                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "11px 12px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", color: INK }}
               >
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{word}</span>
@@ -755,12 +755,12 @@ export function ClassForm({
             {(() => {
               const styleColor = dosStyleColor(style);
               return (
-                <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1px solid ${EL}` }}>
+                <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1.5px solid ${EL}` }}>
                   <div style={{ background: `${styleColor}40`, padding: "9px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11.5, fontWeight: 800 }}>🕒 {startTime}–{endTime} · {date}</span>
                   </div>
                   <div style={{ background: `${styleColor}22`, padding: "9px 10px", display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 9, background: CARD, border: `1px solid ${styleColor}55`, borderRadius: 999, padding: "4px 14px 4px 5px" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 9, background: CARD, border: `1.5px solid ${styleColor}55`, borderRadius: 999, padding: "4px 14px 4px 5px" }}>
                       <span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 6, background: styleColor, display: "inline-block" }} />
                       <span style={{ fontSize: 15, fontWeight: 800, color: styleColor }}>{style}</span>
                     </span>

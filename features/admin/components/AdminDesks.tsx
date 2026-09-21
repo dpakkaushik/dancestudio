@@ -24,7 +24,7 @@ function DeskBlock({ desk, waiting }: { desk: AdminDesk; waiting: number }) {
         flexDirection: "column",
         gap: 9,
         background: CARD,
-        border: `1px solid ${EL}`,
+        border: `1.5px solid ${EL}`,
         borderRadius: 18,
         padding: "12px 12px 11px",
         textDecoration: "none",
@@ -104,7 +104,7 @@ export function AdminDesksScreen({ pulse, badges = {}, nowIso }: { pulse: Pulse;
       {/* the one thing that is not a desk, because it is not work somebody does
           — it is something being WRONG, and it should not wait behind a block */}
       {w.stuckWebhooks > 0 ? (
-        <div style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 14, padding: "10px 12px", marginTop: 10 }}>
+        <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #EF4444", borderRadius: 14, padding: "10px 12px", marginTop: 10 }}>
           <b style={{ fontSize: 12 }}>{w.stuckWebhooks} payment webhook{w.stuckWebhooks === 1 ? "" : "s"} never finished</b>
           <div style={{ fontSize: 10.5, color: SUB, marginTop: 2, lineHeight: 1.5 }}>
             A delivery arrived and its work did not complete. Money screens may be behind until it is replayed.
@@ -112,7 +112,7 @@ export function AdminDesksScreen({ pulse, badges = {}, nowIso }: { pulse: Pulse;
         </div>
       ) : null}
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 18, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         Every decision you make is recorded in{" "}
         <Link href="/admin/audit" style={{ color: INK, fontWeight: 800 }}>the audit log</Link>. The platform in figures is on{" "}
         <Link href="/admin/dashboard" style={{ color: INK, fontWeight: 800 }}>Dashboard</Link>.

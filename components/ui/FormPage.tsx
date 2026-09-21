@@ -157,7 +157,7 @@ export function FormPage({
 /** the sticky action bar, gesture-inset aware (15568-15582) */
 export function FormBar({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 310, boxSizing: "border-box", background: "var(--solid)", borderTop: `1px solid ${EL}`, padding: "12px 16px calc(14px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
+    <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 310, boxSizing: "border-box", background: "var(--solid)", borderTop: `1.5px solid ${EL}`, padding: "12px 16px calc(14px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
       {children}
     </div>
   );
@@ -169,7 +169,7 @@ export function FormBar({ children }: { children: React.ReactNode }) {
 export function FormNote({ blockers, children }: { blockers?: string[]; children?: React.ReactNode }) {
   if (!blockers?.length && !children) return null;
   return (
-    <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "12px 13px", margin: "16px 0 4px", fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
+    <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "12px 13px", margin: "16px 0 4px", fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>
       {blockers?.length ? blockers.map((b) => <div key={b}>· {b}</div>) : children}
     </div>
   );
@@ -232,7 +232,7 @@ export function FormConfirm({
  *  which is what the class form's calendar card is underneath its own colours */
 export function FormSummary({ tint, head, children }: { tint: string; head: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1px solid ${EL}` }}>
+    <div style={{ borderRadius: 14, overflow: "hidden", background: CARD, border: `1.5px solid ${EL}` }}>
       <div style={{ background: `${tint}40`, padding: "9px 10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>{head}</div>
       <div style={{ padding: "10px 12px" }}>{children}</div>
     </div>

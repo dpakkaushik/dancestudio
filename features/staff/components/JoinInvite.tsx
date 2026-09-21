@@ -42,7 +42,7 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
       <div
         style={{
           background: "var(--card)",
-          border: "1px solid var(--el)",
+          border: "1.5px solid var(--el)",
           borderRadius: 16,
           padding: "18px 16px",
           textAlign: "center",
@@ -125,7 +125,7 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
       <div
         style={{
           background: "var(--card)",
-          border: `1px solid ${GOLD}66`,
+          border: `1.5px solid ${GOLD}66`,
           borderLeft: `3px solid ${GOLD}`,
           borderRadius: 16,
           padding: "13px 14px",
@@ -151,7 +151,7 @@ export function JoinInvite({ code, preview }: { code: string; preview: InvitePre
               padding: "11px",
               borderRadius: 999,
               background: "var(--solid)",
-              border: "1px solid var(--el)",
+              border: "1.5px solid var(--el)",
               fontWeight: 800,
               fontSize: 12,
               cursor: "pointer",

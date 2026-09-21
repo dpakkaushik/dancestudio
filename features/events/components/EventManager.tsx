@@ -41,7 +41,7 @@ const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mon
 const BLUE = "#3B82F6";
 
 /* bizCard / bizBtn (2918-2920) */
-const bizCard: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
+const bizCard: React.CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 };
 const bizBtn: React.CSSProperties = { textAlign: "center", padding: "13px", borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: "pointer", marginBottom: 10, WebkitTapHighlightColor: "transparent", border: "none", fontFamily: "inherit", width: "100%" };
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", fontFamily: DOS_UI };
 
@@ -248,7 +248,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
                 ))}
               </div>
               {/* the two bars: who is coming to dance, and who is coming to watch */}
-              <div style={{ marginTop: 12, paddingTop: 11, borderTop: "1px solid var(--el)" }}>
+              <div style={{ marginTop: 12, paddingTop: 11, borderTop: "1.5px solid var(--el)" }}>
                 {(
                   [
                     [isShow ? "Performers" : "Participants", participants.length, entryCap, col],
@@ -275,7 +275,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
               </div>
               {/* AND WHAT IS ON THE TABLE */}
               {prizePool > 0 ? (
-                <div style={{ marginTop: 11, paddingTop: 11, borderTop: "1px solid var(--el)" }}>
+                <div style={{ marginTop: 11, paddingTop: 11, borderTop: "1.5px solid var(--el)" }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: "var(--muted)", textTransform: "uppercase" }}>Prize money</span>
                     <span style={{ marginLeft: "auto", fontSize: 15, fontWeight: 900, fontFamily: DOS_DISPLAY, color: GOLD }}>₹{prizePool.toLocaleString("en-IN")}</span>
@@ -283,7 +283,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
                   <div style={{ display: "flex", gap: 7 }}>
                     {ev.prizes.map((amt, pi) =>
                       amt > 0 ? (
-                        <div key={pi} style={{ flex: 1, textAlign: "center", background: pi === 0 ? "rgba(245,158,11,.14)" : "var(--el)", border: `1px solid ${pi === 0 ? "rgba(245,158,11,.45)" : "transparent"}`, borderRadius: 12, padding: "9px 3px" }}>
+                        <div key={pi} style={{ flex: 1, textAlign: "center", background: pi === 0 ? "rgba(245,158,11,.14)" : "var(--el)", border: `1.5px solid ${pi === 0 ? "rgba(245,158,11,.45)" : "transparent"}`, borderRadius: 12, padding: "9px 3px" }}>
                           <div style={{ fontSize: 13, fontWeight: 900, fontFamily: DOS_MONO, color: pi === 0 ? GOLD : "var(--text)" }}>₹{amt.toLocaleString("en-IN")}</div>
                           <div style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: "var(--sub)", marginTop: 2 }}>{["1st", "2nd", "3rd"][pi] ?? `${pi + 1}th`}</div>
                         </div>
@@ -292,7 +292,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
                   </div>
                 </div>
               ) : null}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 11, paddingTop: 11, borderTop: "1px solid var(--el)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 11, paddingTop: 11, borderTop: "1.5px solid var(--el)" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true">
                   <path d="M12 21s-6.5-5.7-6.5-10A6.5 6.5 0 0 1 12 4.5 6.5 6.5 0 0 1 18.5 11c0 4.3-6.5 10-6.5 10z" />
                   <circle cx="12" cy="10.8" r="2.3" />

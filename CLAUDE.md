@@ -2,6 +2,148 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
+> ### A QR THAT IS A QR, A SWITCHER THAT IS ALWAYS THERE, A WARMER LIGHT, AND THE LAST FOUR EDIT SEGMENTS MOVED (21 Sep 2026, latest) — BUILT, no migration
+> The user, in one message: *"make sure all profile types have similar ways to
+> edit the profile, the segments like social media, dance styles, pictures and
+> posters. similar buttons style. … shift log out from setting to profile
+> switcher and make profile switcher constant like settings. qr code button
+> should just open qr not link on all profiles code should look better as well.
+> fix light mode to a warmer tone so it doesnt blur text and make outlines a bit
+> thicker everywhere."*
+> * ⚠⚠ **1 · THE QR WAS NEVER A QR. IT WAS A HASH PATTERN.** `QRBlock` drew the
+>   prototype's own `dosHash` + `QRBlock` (6388, 6460): three finder squares and a
+>   field of modules derived from a hash of the string — so it LOOKED like a code
+>   and encoded nothing, and had never scanned in any build of this app. ⚠ **That
+>   is why the app's own Scan sheet could not read a DanceOS profile**: the people
+>   picker gained a camera on 19 Sep and the one thing it exists to read was
+>   decoration (backlog R27, open since). So "should look better" is answered by
+>   making it real. `lib/qr/encode.ts` is a byte-mode, level-M, version 1–10
+>   encoder — **written here rather than taken as a dependency**, on this repo's
+>   own precedent (the map was hand-rolled because "this machine's pnpm store has
+>   broken once already", and it has since needed `--force` to relink 469
+>   packages): a few hundred lines of fixed arithmetic with no runtime beats a
+>   supply-chain edge on the one screen whose whole job is to be trusted by a
+>   stranger's camera.
+> * ⚠⚠ **AND THE PROOF IS HONEST ABOUT WHAT IT CANNOT DO.** The obvious check is
+>   to decode it with `BarcodeDetector` — the very API the Scan sheet uses.
+>   **That API does not exist in Chromium on Windows**, probed rather than
+>   assumed, which is the same gap that gives the Scan sheet its "this browser
+>   cannot" branch; and there is no decoder in `node_modules`. So
+>   `scripts/qr-proof.js` splits its twelve checks in two and says so at the top:
+>   **four are independent** — the generator polynomials for 7/10/13/16/18 EC
+>   codewords against the published alpha-exponent table, the bit stream for
+>   "HELLO WORLD" against the spec's own worked example, the pad codewords, and
+>   every mask's format block leaving a zero BCH remainder — and **three are
+>   self-consistent**, reading the matrix back out, which catches an asymmetric
+>   slip and **cannot** catch a rule misread the same way twice. The twelfth
+>   writes a PNG, because the ground truth is a camera. **A code that "passes"
+>   and does not scan is worse than the drawing it replaced**, so the file says
+>   which half of its own proof is worth what.
+> * **AND THE SHEET IS THE CODE AND NOTHING ELSE**, which is the user's actual
+>   sentence. It had kept a printed link and a Copy button — the first cut's own
+>   reasoning ("somebody on a laptop still needs the text") and the same mistake
+>   one step smaller: a sheet reached by pressing a QR, most of which was not the
+>   QR. Copying is `ProfileLink`'s job, one chip to the left, and it falls back to
+>   the clipboard on exactly the laptop that argument was about. ⚠ **Nothing is
+>   drawn prettier at the camera's expense**: no rounded modules (every pixel of
+>   rounding is contrast off a corner a reader samples), a real 4-module quiet
+>   zone, and **contiguous dark modules merged into one rect**, which removes the
+>   sub-pixel seams between neighbours and is the one change that is better to
+>   look at AND better to scan.
+> * ⚠ **AND TWO CALL SITES DREW CODES NOBODY COULD SCAN.** A profile link is a
+>   version-5 square, so the students invite at **72px** was 1.6 pixels a module
+>   while its own line said *"They scan it"* — it is 132 now. Home's deck draws
+>   one at 54px and that one STAYS: it is the button that opens the pass sheet,
+>   where the same code is 168 and scannable. `data-qr-scannable` says which it
+>   is, and the shoot asserts it.
+> * ⚠⚠ **2 · LOG OUT MOVED, AND THE SWITCHER HAD TO BECOME CONSTANT FOR IT TO BE
+>   SAFE.** The switcher lived on the DanceOS mark (18 Sep, the user's placement
+>   then), and **the mark is drawn on four tabs and two entity homes and nowhere
+>   else** — so on every desk and every drill page there was no switcher at all,
+>   while the gear was right there. It is a chip beside the gear now, on every
+>   screen, wearing the INITIALS of the profile you are in, in that kind's own
+>   colour; the mark is a mark again. **Constant beats where-it-started**, and
+>   putting Log out in a menu that only existed on six screens would have been
+>   the opposite of what was asked.
+> * ⚠⚠ **3 · THE LIGHT THEME IS WARM, AND THE COMPLAINT WAS HALATION.** Pure
+>   `#ffffff` at phone brightness blooms into near-black glyphs and the text reads
+>   soft — which is exactly *"so it doesnt blur text"*, and is what every
+>   long-form reader answers by taking the ground a few points off white. The page
+>   is `#faf8f5`, the ink `#17150f`, and **every grey on it is warm**, because one
+>   neutral grey on a warm ground is the thing that looks dirty; the `--card` and
+>   `--el` veils are cast in the same brown-black, so a card is a quieter version
+>   of the page rather than a different paper.
+> * ⚠ **"OUTLINES A BIT THICKER EVERYWHERE" IS TWO CHANGES, AND ONE OF THEM IS
+>   364 FILES' WORTH.** `--el` gained opacity (an outline that is more present
+>   reads thicker before a pixel is added), and then **every `1px solid` in the
+>   app became `1.5px solid` — 364 of them across 105 files.** ⚠ Rule 16: done in
+>   **Node**, reading and writing UTF-8 bytes, with a per-file assertion that the
+>   1.5px count rose by exactly the 1px count, that none survived, that the file
+>   did not shrink, and that the length moved by exactly two characters per hit —
+>   nothing written if any of that failed. `1px solid transparent` is skipped on
+>   purpose (a layout spacer). Afterwards: 0 mojibake, 387 ⚠ and 2,723 em dashes
+>   intact. **The app was already mixed** — 85 borders were 1.5px before this —
+>   so the sweep also ended an inconsistency nobody had named.
+> * ⚠ **AND THE CONTRAST CHECK FOUND A DEFECT THE USER DID NOT ASK ABOUT.**
+>   `shoot-invert.js` now injects a node per tier and composites the real painted
+>   colours, and on its first run **`--muted` in the DARK theme measured 4.0:1** —
+>   under the 4.5 that 11px text needs, on a token that labels small things all
+>   over the app, and unchanged since the palette was written. It is `#7b7b7b`
+>   now (4.68:1). **Said plainly because it is not what was asked**: the ask was
+>   about light mode, this is the same defect one line away, and the visible cost
+>   is that dark mode's quietest tier is a shade lighter. Light reads
+>   17.22 / 7.31 / 4.67; dark 18.97 / 7.85 / 4.68 — **both themes clear AA on all
+>   three tiers for the first time.**
+> * ⚠⚠ **4 · THE FOUR EDIT SEGMENTS, AND A CREW WAS THE LAST ONE DOING IT THE OLD
+>   WAY.** Since 20 Sep a user, an artist and a studio change their picture with
+>   the ⊕ on the disc and their posters with the ⊕ on the rail; **a crew had both
+>   inside its Edit sheet**, as fields called "Update photo" and "Update header"
+>   between Name and City — the exact shape the same user had removed from a
+>   studio a day earlier. `CrewPictures.tsx` is `StudioPictures.tsx` with a crew's
+>   doors, and the sheet holds words now. ⚠ **And a STUDIO's dance styles were the
+>   last segment of the four still in a sheet** — a `<select>` and a row of chips —
+>   while its links moved to its band on 20 Sep and a person's styles have been a
+>   ＋ there since 19 Sep. `StudioStylesRow` is that ＋.
+> * ⚠ **AND THE SHARED PARTS WERE EXTRACTED RATHER THAN COPIED A THIRD TIME**,
+>   which is this repo's own recurring bill (`linkChip` declared twice, the figure
+>   row written out three times, three copies of the identity band). `PlusIcon`
+>   was defined in `PicturesSheet` AND `StudioPictures` and a crew's was about to
+>   be the third — it is in `profile-kit` now, one glyph, four callers. The styles
+>   editor was about to be written twice — it is `StylesSheet.tsx`, and a person
+>   passes `updateMyProfileAction` while a studio passes
+>   `updateTenantProfileAction`; the sheet knows about neither, and **the floor is
+>   the caller's words**, because `update_my_profile` and `update_business_profile`
+>   refuse an empty list for different reasons.
+> * ⚠ **AND TAKING THE STYLES OFF THE EDIT SHEET WOULD HAVE MADE A DEAD END.**
+>   The sheet still guards `isStudio && styles.length === 0` before the database
+>   does — right, and its message named a field that is no longer on that screen.
+>   For the twelve studios that predate the styles rule it would have read: change
+>   the phone, press Save, be told about styles, find nothing here that sets one.
+>   It names the control now. ⚠ The value is still READ and SENT unchanged, because
+>   the RPC takes the whole profile and an omitted list empties a column it then
+>   refuses — the 16 Sep destroy-on-cancel lesson, in a quieter coat. And the
+>   band falls back to the styles derived from published classes while the field
+>   is empty, which is the public page's own rule: without it those twelve homes
+>   would go from naming their styles to naming none, and that reads as data lost.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`qr-proof.js`
+>   12/12** · **`shoot-invert.js` 16/16** (10 before — the six new ones are the
+>   three tiers in each theme) · **`shoot-hero.js` 149/149** (143 before — the six
+>   new ones drive the QR sheet from a real browser and assert the printed link
+>   and Copy link are GONE as well as the code being real) · **the whole e2e suite
+>   57/57 TWICE — 17.2 min over the QR and switcher half, then 17.8 min over the
+>   whole batch**, both collected as 57, no red at any point in either.
+> * ⚠ **AND THE ONE RED IN THE SHOOT WAS MY ASSERTION MEASURING THE PORT.** I
+>   asserted the profile QR is 37 modules — true on the deployment, and **33
+>   against `:3100`**, because the encoder picks the smallest version that fits
+>   and `localhost:3100` is fourteen characters shorter than the live host. The
+>   check asserts the claim underneath it now: a legal QR size that must have
+>   grown with the data, where the square it replaced was a fixed 13×13 whatever
+>   you gave it.
+> * ⚠ **AND A JSX COMMENT INSIDE A TERNARY BRANCH IS A PARSE ERROR** — two
+>   children in one parenthesised expression. It took AppChrome down to eight
+>   syntax errors in one edit, which typecheck named immediately. Comments about a
+>   ternary go above it.
+
 > ### YOUR OWN PROFILE IS ITS OWN ADDRESS — ONE SCREEN FEWER PER PROFILE TYPE (21 Sep 2026, latest) — BUILT, no migration
 > The user: *"how can you reduce the no. of pages per profile type without
 > changing functionality of the app."* Then, on the plan: *"keep stats as a
@@ -3836,6 +3978,31 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0aj. **THE PAGE COUNT — ROUNDS 2 AND 3, THE ONE PART OF THE 21 Sep BATCH NOT
+   BUILT.** The user asked twice: *"can we further reduce the no. of pages per
+   profile type without affecting the functionality of the app?"* and then
+   *"can we further reduce the no. of pages?"* Round 1 landed (`/profile` is a
+   redirect; your own profile is `/person/{id}` or `/org/{id}` — deviation row
+   C40) and Stats stays its own page **by the user's explicit instruction**
+   (*"keep stats as a separate page"*). What is left, each independent:
+   * **Schedule as a segment of the public page** rather than `/…/schedule` —
+     −1 for an artist and −1 for a studio. ⚠ Rule 14: the route stays and
+     redirects, because a schedule link is a thing studios hand out.
+   * **`/crews/{id}/manage` folded into `/crew/{id}`**, the way a person's own
+     profile now renders on their public address — −1 for a crew. The owner
+     branch goes ABOVE the public read, for the same reason it does on
+     `/org/{id}`: that read answers only for a live crew.
+   * **The two stats addresses per kind collapsed** — `/stats` beside
+     `/person/{id}/stats`, and `/business/stats` beside `/org/{id}/stats` —
+     which is C40's shape again: two addresses drawing one subject. ⚠ This does
+     NOT contradict "keep stats as a separate page": it stays separate, it stops
+     being separate TWICE.
+   ⚠ **What I will NOT merge, and why, so it is not re-proposed**: `/business/{id}`
+   into `/studio/{id}`. A studio's own home is ten owner-only tiles and a
+   visitor's front door is a public page; putting both behind one address is a
+   different screen wearing one URL, which is the thing C40 exists to stop rather
+   than to spread. The honest end state is **3 · 3 · 3 · 3 · 2**.
+
 0ah. **~~AN ORGANIZATION CANNOT FOLLOW ANYTHING~~ — ✅ APPLIED 20 Sep 2026**
    (`20260920180000_an_organization_follows`), on the user's answer to a question
    put before a line was written. Dry run **19/19 rolled back**, `db-push -DryRun`
@@ -4598,6 +4765,28 @@ pan-India. The prototype's `__DOS*` localStorage shapes are the source material
 for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
+
+- **A QR THAT IS A QR, A CONSTANT SWITCHER, A WARMER LIGHT, AND THE LAST FOUR
+  EDIT SEGMENTS MOVED — 21 Sep 2026, no step number — BUILT, no migration.**
+  Four asks in one message. **(1)** The QR was never a QR — `dosHash` drew a
+  pattern that encoded nothing, which is why the Scan sheet built on 19 Sep
+  could never read a DanceOS profile (R27, closed). `lib/qr/encode.ts` is a real
+  encoder, in-repo rather than a dependency, and `qr-proof.js` says out loud
+  which half of its own proof is independent and which is only self-consistent,
+  because `BarcodeDetector` does not exist in Chromium on Windows. The sheet is
+  the code alone now. **(2)** Log out moved into the profile switcher — which
+  forced the switcher to become constant, since the mark it lived on is drawn on
+  six screens; it is a chip beside the gear now, wearing the initials of the
+  profile you are in. **(3)** The light theme is warm (`#faf8f5` / `#17150f`,
+  warm greys and warm veils) because the complaint is halation, and 364 `1px`
+  borders across 105 files became `1.5px` in a Node sweep with per-file
+  assertions. ⚠ The contrast check written for that found `--muted` in the DARK
+  theme at 4.0:1, under AA and unasked-about — fixed and stated. **(4)** A
+  crew's pictures left its Edit sheet for its disc and rail, and a studio's
+  styles left its Edit sheet for its band; `PlusIcon` and the styles editor were
+  extracted rather than written a third time. Deviation rows C41–C44. **qr-proof
+  12/12 · shoot-invert 16/16 · shoot-hero 149/149 · the whole e2e suite 57/57
+  twice**, once over the QR and switcher half and once over the whole batch.
 
 - **YOUR OWN PROFILE IS ITS OWN ADDRESS — 21 Sep 2026, no step number — BUILT,
   no migration.** The user: *"how can you reduce the no. of pages per profile
@@ -8386,7 +8575,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R24 | R3 / R22: an artist's public face is the `artist_page` business at `/artist/{id}`, and search found them twice — the page under Artists, themselves under People | **An artist's public face is their PROFILE** (18 Sep 2026): a person with a live Artist plan is readable signed out — through `public_artist(uuid)`, the public columns only, since `20260919090000` (the row-level policy of `20260918175000` lived one day; a signed-in reader still gets the row, Step 1); `/artist/{id}` redirects to `/person/{owner}`; search lists them ONCE, under Artists, as the person, and People is the users without a plan; Discover's Artists tab lists people with a live plan (`discover_artists`, INVOKER); the Enquiry on their profile goes to the page behind them (`artist_page_of`); a stranger reads an artist's record, teaches-at and follower COUNT and an empty answer for anybody else. The `artist_page` row stays what it is underneath — the business their classes, team, students and money hang off — never a destination. Follows of the page became follows of the person | 18 Sep 2026, the user: *"Should only come as their profile as artist, no separate page required."* ⚠ Rule 9: what a stranger reads about an artist is name, city, styles, About, picture, links, the tick and the number they chose to publish — ~~and, for one day, their age and account number~~ (the 18 Sep policy admitted the whole row; said in the list, and on the user's *"fix all"* the next day `20260919090000` replaced the policy with `public_artist`, which carries neither). A plain user's profile stays signed-in only |
 | R25 | S_profiletab's action row is Follow · Call · Enquiry on every public entity (10875-10888), the figures under the name (10683), Stats · Schedule as two white bars (10905), and Faculty / Crews / Teaches at / Runs as the groups (11000-11060); R9 said an organization is neither followed nor asked | **Every public page reads the same way, and what each kind carries is the USER'S LIST** (19 Sep 2026): under the hero, **Follow · Following** for all five kinds — **with the live COUNT on the button and the action row directly under it, the Bio after, since later that day** (the user: "Follow Following count on Profile Pages and all buttons placed together properly") — — a crew (`follows.crew_id`) and a PUBLIC organization (`set_person_follow`) included, though an organization ACCOUNT still follows nobody (R11) — then the **Bio** (About, the links), then the **buttons**: an organization and a studio Enquiry · Call · Mail · Location; an artist and a crew Enquiry · Mail; a user none. **Call is off an artist's page.** Mail is a new `contact_email` the owner publishes from their Edit sheet. Location is Maps by name and place. **No figures on any public page**; Stats is the chip beside the QR (your record, or the board they stand on). The **associations**: organization → Studios, Events; studio → Owner · Faculty · Visiting faculty (`public_studio_team`); artist → Studios taught at · Crews; crew → Crew leader · Crew members · Battle record; user → Crews. Gone: Runs, a plain user's Teaches at, the record grid, "This is you · Your record ›" | 19 Sep 2026, the user's message A–I (the top block quotes it). ⚠ Rule 9: a listed studio's team is a stranger's to read by name and picture now; a public organization's and a crew's follower COUNT too. ~~⚠ "Owner — one of the users added from team in organizations" is NOT built~~ — **built in push 2 (19 Sep 2026, row R28; waits on the apply)**; and **Call is a SWITCH on an artist's and a crew's page since push 2** (off by default — the user's answer 2: "Call is off for artist page by default but should have option to make it available on profile and same for crew") |
 | R26 | One header rail per profile (15 Sep 2026): a user one picture, an artist ten, a studio its 5–10 verification photos, an organization none ("not a place"), a crew one photo and no header | **Header pictures by KIND** (19 Sep 2026): organization **10** (new), studio **10**, artist **5** (was 10 — nothing deleted; the page shows five), crew **5** (new — `crew_header_photos`, the leader's, in `crews/{id}/`), user **1**. `headerMaxFor(kind)`; the database keeps the same caps (`add_my_header_photo`, `add_crew_header_photo`) | The user: *"Poster on all profiles should be swipeable with limits — Organization & Studio 10, Artist and Crews 5, User 1."* |
-| R27 | The people search is a NAME field with initials on every hit and up to eight rows (the crew desk's add panel, 16413-16447: "Type a name to find them") | **Three ways in, one panel** (19 Sep 2026): the field matches a name OR the digits of a person's PUBLISHED number; before a term is typed, RECENTLY ASKED — the last three people this account put on a class or a crew; a **Scan** button reads a `/person/{id}` link's QR through the browser's `BarcodeDetector` or takes the link pasted; every hit wears the person's picture; **five rows at most**. ⚠ The QR the app draws on a profile is not yet a real code (`QRBlock` is a hash pattern), so Scan reads a real QR of the link made anywhere, and phone-to-phone scanning waits on an encoder (NEXT TO DO #0r) | 19 Sep 2026, the user: *"when adding a person from any page in the app should have option to search name, mobile no., scan with a drop down with max 5 options with their profile pics, with max 3 suggestions according to history."* |
+| R27 | The people search is a NAME field with initials on every hit and up to eight rows (the crew desk's add panel, 16413-16447: "Type a name to find them") | **Three ways in, one panel** (19 Sep 2026): the field matches a name OR the digits of a person's PUBLISHED number; before a term is typed, RECENTLY ASKED — the last three people this account put on a class or a crew; a **Scan** button reads a `/person/{id}` link's QR through the browser's `BarcodeDetector` or takes the link pasted; every hit wears the person's picture; **five rows at most**. ~~⚠ The QR the app draws on a profile is not yet a real code~~ **— CLOSED 21 Sep 2026: `lib/qr/encode.ts` makes it one**, so phone-to-phone scanning between two DanceOS users works wherever the reading phone has a barcode API (Chrome on Android). ⚠ What is still true is the OTHER half, and it is the browser's: `BarcodeDetector` does not exist in Chromium on Windows or in Safari, so on those the Scan sheet still offers only the paste-the-link field — which it says in one line rather than failing | 19 Sep 2026, the user: *"when adding a person from any page in the app should have option to search name, mobile no., scan with a drop down with max 5 options with their profile pics, with max 3 suggestions according to history."* |
 | R28 | A studio account IS a person; the prototype has no organization and nobody to name on one; R9 / R12 made an organization ONE LOGIN with nothing at its level | **An organization NAMES people on its public page** (push 2, 19 Sep 2026): `organization_members` — a user or an artist, asked from the Team desk (`/business/team`, the tile that opened NotBuiltYet) and CONFIRMED from their Inbox like every roster here; `owner \| member` are LABELS — `/org/{id}` prints **Owner** and **Team** above Studios — and give nobody a login to the organization or a seat on a studio's team; a private organization's team reaches nobody (`public_organization_team`, definer, answers for a PUBLIC organization only) | The user: *"You add a user or artist in Team section for organization to label them as owner."* One login stays the rule (8 Sep 2026); what the page shows is a claim about a person, so they are asked. ⚠ Rule 9: a public organization's confirmed team is a stranger's to read by name and picture |
 | R29 | Stats is your own record (S_profiletab historyOnly) and the boards (chartsOnly); C9 made the chip on somebody else's page open the BOARD they stand on | **The Stats chip on somebody else's page opens THEIR page** (push 2): `/person\|studio\|org\|crew/{id}/stats` — `EntityStatsPage`: a person's three sides (`person_dance_stats`), WHERE THEY STAND nationally and in their city off `entity_chart_row` (place + population, "not on this board yet" rather than "#0"), an organization's a row per listed studio; a stranger gets a public artist's, a listed studio's, a live crew's and a public organization's, and is sent to sign in for a plain user's. Your own chip still opens `/stats` | The user: *"stats page on any profile should show all stats for that particular profile and rankings as well."* ⚠ Rule 9: the board row a stranger reads is exactly the shape `dance_chart` has handed signed-in readers since Step 25 — a name, a place, some counts — for the three public kinds only |
 | R30 | The prototype's S_memberships (16846) is class packs and plans on a studio's own settings, with no artist selling anything and nothing linking a pack to a seat | **A MEMBERSHIP IS FOUR THINGS AND ANYBODY WHO TEACHES MAY SELL ONE** (19 Sep 2026): a name, classes **or** hours, a price and how many exist — sold by a STUDIO or by an ARTIST from their own page, bought by a person from the public page, held in the Memberships tool, and SPENT by booking a seat with it (`book_with_membership`, one locked RPC; a cancelled seat puts the unit back). A class decides whose pass it takes with two switches on its own form, printed in its Policy block. Usage is counted both ways — per class and per student — never stored | The user: *"Memberships can be created by just 4 things … Users should be able to buy from Studio and Artist Profile Pages … Artist should be able to create and track usage of memberships they have created and memberships they have purchased … track memberships usage for class and student wise with progress bar for completion."* The prototype has one studio and no artist who sells, so there was nothing to lift for half of it. ⚠ Rule 9: a priced membership rides the SAME Cashfree order, webhook and applier a class seat does — the amount is the pass's, never the client's, and the applier was split out of the catalog rather than re-typed |
@@ -8452,6 +8641,10 @@ Home. **Do not "restore parity" on these.**
 | C37 | C2 (15 Sep) made every home's corner an EYE to its public page, and C29 (20 Sep) put a corner on the public page pointing back | ⚠ **A CORNER EXISTS ON A HOME AND POINTS AT THE PROFILE TAB; NO PROFILE SURFACE HAS ONE** — not `/person`, `/org`, `/studio`, `/crew`, and not `/profile` either. The two controls pointed at each other, so the corner cycled two screens for ever — on a person's home, a studio's and a crew's alike. The public page is reached by the **Share chip** on any home, and by the **disc** on the Profile tab, whose name is already "Open your public page" | 21 Sep 2026, the user: *"the top right button on all home tabs should just take to the user profile right now its looping between student record and profile from that top right section"*, *"no top right button required on profile pages"*, and then *"i guess profile tab and profile page are the same thing?"* — which is what took the tab's eye as well. **This supersedes C29, which was a real fix for a real complaint and created a worse one**: a door added to answer "there is no way back" must be checked against the door that brought you |
 | C38 | The action row (Enquiry · Call · Mail · Location) is the public page's alone — C32 (20 Sep) lists it among the things each screen keeps for itself | **THE SAME ROW SITS ABOVE THE SCHEDULE ON EVERY SURFACE THAT DRAWS A PROFILE** — Home, the Profile tab, a studio's home and a crew's home — in the same order, from the same fields, with Enquiry drawn and DISABLED with its reason | 21 Sep 2026, the user: *"buttons above schedule should also be visible on the home tab in the same way as profile"*, then *"check for all types of profiles"*. ⚠ The Profile tab was included though only Home was named: leaving it out would have made the tab the one person-surface without the row, which is the drift C32 exists to end. A plain user's row is still not drawn at all, because they have no business for an ask to land on |
 | C39 | Discover's shelf sits on the page's own ground under a 15px head (S_discover 4787-4806) | **THE SHELF WEARS THE TOOLS PANEL'S SQUIRCLE, INVERTED AGAINST THE THEME** — the head, the cards, the pager and the empty state, on every one of the five tabs. ⚠ **And the panel had to change to carry it.** A tool tile is an opaque gradient and survives any ground; every card on Discover stands on `--card` — an ALPHA veil tuned for the page — and prints its name in `--text`, **which is the exact token the two-colour panel used as its ground**. Dropped in as it was, every studio, artist, crew, class and event card would have been 1:1 against the panel: invisible, in both themes. `components/ui/InvertedPanel.tsx` swaps the WHOLE palette for its subtree (`--solid --card --el --text --sub --muted`), so every component that reads `lib/design/tokens` is correct inside with no change of its own — and `ToolsPanel` stands on it too, rather than keeping a second copy of the idea. ⚠ **A second half, because CSS could not reach it:** `useDosDark` asks the `<html>` class so a class tile can walk a style's colour toward the ink it will sit on, and the html class does not change inside a panel — so the panel flips that answer through a React context, once, for every component that ever reads it. | 21 Sep 2026, the user: *"give similar dark and light opposite theme like tools on the discover tab for section under the follwed by you section."* |
+| C41 | The prototype's `QRBlock` (6460) draws a pattern from `dosHash` (6388) — three finder squares and a field of modules derived from the string, which its own comment called "a code that LOOKS like the one on the door scanner", with "real scanning arrives with the camera work later" | **A REAL QR CODE.** `lib/qr/encode.ts` — byte mode, level M, versions 1–10, written in-repo rather than taken as a dependency (the same reasoning that hand-rolled the map). ⚠ The camera work arrived on 19 Sep (the Scan sheet) and this stayed a drawing, so **the one thing that sheet exists to read was decoration** — backlog R27, closed. ⚠ **And the sheet is the code alone**: the printed link and Copy link are gone, because copying is the Share chip one place to the left. No rounded modules — every pixel of rounding is contrast off a corner a reader samples — but a real 4-module quiet zone and contiguous modules merged into one rect, which is better to look at AND better to scan. `data-qr-scannable` says when a square is drawn too small for a camera; the students invite grew from 72 to 132 because its own line says "they scan it", and Home's 54px thumbnail stays, because it is the button that opens the scannable one | 21 Sep 2026, the user: *"qr code button should just open qr not link on all profiles code should look better as well."* |
+| C42 | C15 (18 Sep 2026): the DanceOS mark drops the profile switcher, "drawn wherever the mark is: the four tabs and the entity homes"; Log out is the last row of the Settings sheet (11416) | **THE SWITCHER IS A CHIP BESIDE THE GEAR, ON EVERY SCREEN, AND LOG OUT IS THE LAST ROW OF ITS MENU.** It wears the initials of the profile you are in, in that kind's colour, so it also answers "which profile am I?" everywhere; the mark is a mark again. ⚠ This supersedes C15's placement on the user's own later words — the two cannot both hold, because the mark exists on six screens and "constant like settings" means all of them. ⚠ Moving Log out is WHY the switcher had to become constant: the way out must not live in a menu that only exists on six screens. The menu opens for somebody with one profile for the same reason | 21 Sep 2026, the user: *"shift log out from setting to profile switcher and make profile switcher constant like settings."* |
+| C43 | The prototype's light palette is `#ffffff` on `#111111` with neutral greys (DOS_PALETTE) | **A WARM LIGHT THEME AND THICKER OUTLINES.** `#faf8f5` ground, `#17150f` ink, every grey and both alpha veils cast warm — the complaint is HALATION, which is what pure white at phone brightness does to near-black glyphs. And "a bit thicker everywhere" is two changes: `--el` gained opacity, and **364 `1px solid` borders across 105 files became `1.5px`** (⚠ swept in Node with per-file assertions, Rule 16; `1px solid transparent` skipped as a layout spacer; the app was already mixed, with 85 borders at 1.5px). ⚠ **And the check written to prove it found a defect nobody asked about**: `--muted` in the DARK theme was 4.0:1, under AA, unchanged since the palette was written — `#7b7b7b` now. Both themes clear AA on all three tiers for the first time | 21 Sep 2026, the user: *"fix light mode to a warmer tone so it doesnt blur text and make outlines a bit thicker everywhere."* |
+| C44 | The prototype has ONE editor per profile (11364) and one kind of profile that owns pictures | **ALL FOUR EDIT SEGMENTS ARE IN THE SAME PLACE ON ALL FIVE KINDS.** A crew's picture and posters left `CrewEditSheet` for the ⊕ on its disc and the ⊕ on its rail (`CrewPictures.tsx` — `StudioPictures.tsx` with a crew's doors), which is where a user's, an artist's and a studio's have been since 20 Sep; a studio's dance styles left `BusinessEditSheet` for a ＋ on its band (`StudioStylesRow`), which is where a person's have been since 19 Sep. Every Edit sheet holds WORDS now. ⚠ **The shared parts were extracted rather than copied a third time**: `PlusIcon` into `profile-kit` (it was declared twice and a crew's was next) and the styles editor into `StylesSheet.tsx`, which knows about neither door and takes the floor's words from its caller, because the two RPCs refuse an empty list for different reasons. ⚠ The studio's Edit sheet still READS and SENDS `styles` unchanged — the RPC takes the whole profile and an omitted list empties a column it then refuses | 21 Sep 2026, the user: *"make sure all profile types have similar ways to edit the profile, the segments like social media, dance styles, pictures and posters. similar buttons style."* |
 | C40 | S_profiletab is ONE screen behind a flag (`publicEntity`), and this app built it as two components at two addresses — `/profile` and `/person/{id}` — both reading the same person from the same call (C32, 20 Sep, made them share `PersonBody` and left the two addresses standing) | **YOUR OWN PROFILE IS `/person/{id}`, AND `/org/{id}` FOR AN ORGANIZATION.** `/profile` is a redirect (carrying `?settings=1`, so the gear still opens the sheet) and `OwnProfileScreen` is the owner's version of the one address, taking the person the route already read so the merge costs no round trip. ⚠ **Two orderings are load-bearing**: the owner branch sits ABOVE `loadOrg`, because that read answers only for a PUBLIC organization and an unverified one would otherwise 404 on its own profile; and `ensureArtistPage` sits ABOVE the owner's early return, or your own visit silently stops provisioning your artist page. ⚠ The hero's `avatarHref` went too — it pointed at the page it is on, which is C37's loop in a quieter coat. **Not merged, deliberately:** Stats keeps its own page (the user's call), and `/business/{id}` is NOT folded into `/studio/{id}` — ten owner-only tiles on a visitor's front door is a different screen wearing one address | 21 Sep 2026, the user: *"how can you reduce the no. of pages per profile type without changing functionality of the app"*, then *"keep stats as a separate page and push to live"* |
 | C29 | S_profiletab's own "This is you · Your record ›" is the only thing marking your own page, and the prototype has no door back | ~~**A CORNER DOOR BACK FROM YOUR OWN PUBLIC PAGE**~~ **— SUPERSEDED BY C37 (21 Sep 2026): it made a two-screen loop with the eye that opened the page.** Kept as the record of why it existed (`PersonIcon` in the same `cornerChip` the eye uses) — on a person's, an organization's, a studio's and a crew's | 20 Sep 2026, the user: *"when looking at your own profile from somewhere should also look same as profile page. that breaks a lot of times."* The eye has gone one way since 15 Sep and nothing came back, so landing on your own page from a row deep in the app left the back chip as the only exit — and after three hops that is not where you came from. Two other differences went in the same breath: `PublicPersonPage`'s eyebrow moved onto `KIND_WORD` (**`KIND_BADGE` is deleted**) and the disabled Follow bell on your own page is not drawn |
 | C30 | A desk's shelf head carries its count beside the heading (`DosShelfHead`, 3446) | **NO FLOATING COUNT UNDER A TOOL HERO** — `/my-classes`, `/my-events` and the Routines desk lost theirs; the counts INSIDE a shelf head stay | 20 Sep 2026, the user, circling "5 on your page": *"similar figures need to be removed from all pages in the app inside the home tab for all profiles."* The segments above already carried the same number, one row higher, in larger type — the 19 Sep move that put the total "over the list it counts" and the move that put counts into the toggles happened in the same breath, and together they made a duplicate |
@@ -8481,6 +8674,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **The QR, the switcher, the warm light and the edit segments, what they left (21 Sep 2026):** ⚠ **the QR encoder's proof cannot decode**, because `BarcodeDetector` is absent from Chromium on Windows and there is no decoder in `node_modules` — four of its twelve checks are independent (published generator tables, the spec's worked example, the BCH remainder) and three only prove the matrix is self-consistent, so **a rule misread the same way in the writer and the reader would pass**; the standing answer is the PNG it writes and a phone. It is **level M and versions 1–10 only** (213 bytes), which covers every string this app encodes and throws rather than drawing an unreadable code for anything longer, and there is **no logo-in-the-middle** and no rounding, on purpose. **`qr-proof.js` is not in `run-proofs.ps1`** — that globs `rls-proof-*.ps1` and this is neither a `.ps1` nor about RLS, so it must be run by hand. ⚠ **The switcher chip shows initials, never the photo** — `AppChrome`'s switcher rows carry no picture path, and adding one is a read on every page. **Log out is now two presses** (open the menu, press it) where it was two before as well (gear, press), so nothing regressed, but there is no confirm on it and never was. ⚠ **The warm ground is one colour for both `--bg` and `--solid`**, so a sheet still separates from the page by its border alone rather than by lifting off it — the same as before, and the obvious next move if the light theme is revisited. **The 1.5px sweep did not touch literal-coloured borders** (`1px solid #…`, `1px solid rgba(…)`) — only `var(--…)` and `${…}` forms, which is 364 of 364 matched, but a future literal border will be thinner than its neighbours and nothing checks that. ⚠ **A crew's styles are still ONE value in its Edit sheet**, correctly — a crew has a single style, not a list — so the ＋ pattern applies to four kinds, not five; and **a crew has no links row at all** because `crews` has no `socials` column, which is a schema decision, not an omission | 21 Sep 2026 | a decoder, or a phone, for the QR; a photo on the switcher rows if the initials ever confuse; `--solid` lifted off `--bg` if the light theme is revisited |
 | **The corner and the button row, what they left (21 Sep 2026):** ⚠ **the door to your own public page is now the DISC on the Profile tab and the Share chip, and neither looks like a door** — the disc reads as a picture, so somebody who wants "what does a stranger see" has to know the disc opens it; the words are right (`Open your public page`) and the affordance is not. **The corner is the same door on every home, so on a STUDIO's home it opens the person's own Profile tab rather than anything about the studio** — which is what "the user profile" says, and is a little odd two taps inside a studio; the profile switcher on the mark is the other way out. **Enquiry is disabled by a `title` and an `aria-label`**, not a visible sentence, so somebody who presses it reads nothing unless they hover or use a screen reader — the same gap the Follow bell's `cannotFollow` has. **A trainer on a studio's home gets the name-and-place Location query rather than the pin**, because `Tenant` carries no lat/lng and only the owner's `editable` read does; the button still opens Maps, and closing it means widening a read for one button. And the row is drawn on a studio's home **for every member**, so a front-desk seat sees Call and Mail to the studio's own number and address — harmless, and not the same as what a visitor sees | S_profiletab 10875-10940; 19313-19396 | one line if `/profile`'s eye should go; a visible reason when the bell's is done; a wider read if a trainer's pin ever matters |
 | **The inverted panel, what it left (21 Sep 2026):** **it does not NEST** — the provider says `true` outright rather than toggling, because a panel inside a panel would read as the page again and no screen wants that; put one in the other and the inner subtree is simply wrong, silently. **`--bg` is deliberately not swapped**, so anything inside that reads the BODY's background (nothing does today) would get the page's. **Only two sections use it** — Home's tool grid and Discover's shelf — so the treatment the user has now asked for twice is still absent from every other long screen (the desks, the Inbox, Stats). **`scripts/shots/shoot-invert.js` measures the studios tab and a class tile in both themes**, which is the pair that covers the two failure modes (an alpha veil, and a component that reads the theme in JS) — it does NOT measure the artists, crews or events cards, which are the same `--card`/`--text` shape and therefore covered by construction rather than by a check. And ⚠ **the panel changes what "opposite" means on Home very slightly**: the old literal grounded itself in `#fafafa`/`#111111` and the swapped palette uses `#ffffff`/`#0a0a0a`, which is the other theme's real page surface | — (the prototype has no inverted section) | a nesting guard if a second panel is ever wanted inside one; the other desks when the user asks |
 | **The four columns, the share and the tools panel, what they left (21 Sep 2026):** **Train has no counterpart on a studio's side** — a studio cannot see "the people who train here" grouped this way; its Students desk is the list, and the two do not share a component. **Teach and Assist both count PUBLISHED classes**, so an artist who has been seated at a studio and not yet published there appears under Manage and in neither — which is correct and reads as an omission until you know. **The four groups are not collapsed when there are many**: a person on eight studios' teams gets eight rows under Manage with no paging or "see all". **`ProfileLink` cannot tell you whether the share landed** — `navigator.share` resolves the same way for send and for cancel, so no toast is shown on that path at all, and on the clipboard path a browser that refuses the write says "Could not copy the link" with no second way out (the QR chip beside it is that way, which is why the two are adjacent). ~~**The inverted tools panel is `--text` over `--solid` and nothing adapts INSIDE it**~~ — **CLOSED 21 Sep 2026 by `InvertedPanel`**, and it was not theoretical: the very next thing put in a panel (Discover's shelf) would have been invisible in both themes, because a card's ground is `--card` (an alpha veil) and its ink is `--text` — the same token the two-colour panel used as its GROUND, so 1:1. The panel swaps the whole palette for its subtree now, and flips `useDosDark` through a context for the one component that reads the theme in JS rather than a variable. And the empty-day card is one string with **no way for a page to say anything of its own** — a studio's day and an organization's read identically now | S_profiletab 11000-11060; 7161-7181; BizSection 2497-2583 | a shared "people who train here" if a studio asks; an explicit colour on anything new inside `ToolsPanel`; paging on a group when a pilot account outgrows one screen |

@@ -244,7 +244,7 @@ export function EventsDesk({
                 : confirm.kind === "publish" ? "Check the details — this goes live immediately." : confirm.kind === "complete" ? "The page shows the final register instead of a booking bar." : "It comes off Discover until you publish again."}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
+              <button type="button" onClick={() => setConfirm(null)} style={{ flex: 1, textAlign: "center", padding: 13, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 700, fontSize: 13, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
                 {confirm.kind === "delete" ? "Keep it" : "Cancel"}
               </button>
               <button

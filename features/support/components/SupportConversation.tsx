@@ -89,7 +89,7 @@ export function SupportConversation({
         </div>
 
         {thread.kind === "verification" && thread.requestId ? (
-          <Link href={isAdmin ? "/admin/verifications" : "/business"} style={{ display: "block", background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 14, padding: "10px 12px", marginBottom: 12, textDecoration: "none", color: INK }}>
+          <Link href={isAdmin ? "/admin/verifications" : "/business"} style={{ display: "block", background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 14, padding: "10px 12px", marginBottom: 12, textDecoration: "none", color: INK }}>
             <div style={{ fontSize: 11.5, fontWeight: 800 }}>This is about a verification decision</div>
             <div style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>{isAdmin ? "Open the verification queue ›" : "See where your organization stands ›"}</div>
           </Link>
@@ -101,7 +101,7 @@ export function SupportConversation({
             const mine = m.fromAdmin === isAdmin;
             return (
               <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
-                <div style={{ maxWidth: "84%", borderRadius: 16, padding: "9px 12px", background: mine ? "var(--text)" : CARD, color: mine ? "var(--solid)" : INK, border: mine ? "none" : `1px solid ${EL}` }}>
+                <div style={{ maxWidth: "84%", borderRadius: 16, padding: "9px 12px", background: mine ? "var(--text)" : CARD, color: mine ? "var(--solid)" : INK, border: mine ? "none" : `1.5px solid ${EL}` }}>
                   <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, opacity: 0.7, marginBottom: 3 }}>
                     {m.fromAdmin ? "DANCEOS" : isAdmin ? thread.accountName.toUpperCase() : "YOU"}
                   </div>
@@ -116,7 +116,7 @@ export function SupportConversation({
 
         {/* ── the reply box ── */}
         {closed && !isAdmin ? (
-          <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "11px 13px", marginBottom: 12 }}>
+          <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 13px", marginBottom: 12 }}>
             <div style={{ fontSize: 12, color: SUB, lineHeight: 1.55 }}>
               DanceOS closed this conversation. Write again below and it reopens.
             </div>
@@ -132,7 +132,7 @@ export function SupportConversation({
           maxLength={4000}
           rows={4}
           placeholder={isAdmin ? `Reply to ${thread.accountName}…` : "Write to DanceOS…"}
-          style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "11px 12px", fontSize: 13, color: INK, fontFamily: "inherit", resize: "vertical", lineHeight: 1.55 }}
+          style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 12px", fontSize: 13, color: INK, fontFamily: "inherit", resize: "vertical", lineHeight: 1.55 }}
         />
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
           <button
@@ -148,12 +148,12 @@ export function SupportConversation({
               type="button"
               disabled={pending}
               onClick={() => setStatus(closed ? "open" : "closed")}
-              style={{ height: 42, padding: "0 14px", borderRadius: 12, background: CARD, border: `1px solid ${EL}`, color: INK, cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12 }}
+              style={{ height: 42, padding: "0 14px", borderRadius: 12, background: CARD, border: `1.5px solid ${EL}`, color: INK, cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12 }}
             >
               {closed ? "Reopen" : "Close"}
             </button>
           ) : null}
-          <Link href={back} style={{ height: 42, padding: "0 14px", borderRadius: 12, background: CARD, border: `1px solid ${EL}`, color: INK, textDecoration: "none", display: "inline-flex", alignItems: "center", fontWeight: 800, fontSize: 12 }}>
+          <Link href={back} style={{ height: 42, padding: "0 14px", borderRadius: 12, background: CARD, border: `1.5px solid ${EL}`, color: INK, textDecoration: "none", display: "inline-flex", alignItems: "center", fontWeight: 800, fontSize: 12 }}>
             All conversations
           </Link>
         </div>

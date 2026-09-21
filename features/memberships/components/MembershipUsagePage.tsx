@@ -17,7 +17,7 @@ import { ProgressBar } from "./MembershipsScreen";
  *  figures at the top are the seller's: how many went of how many were offered,
  *  what came in, and how much of what was sold has been danced. */
 
-const card = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 } as const;
+const card = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 10 } as const;
 const unitWord = (unit: "classes" | "hours", n: number) => (unit === "hours" ? `${n} ${n === 1 ? "hour" : "hours"}` : `${n} ${n === 1 ? "class" : "classes"}`);
 
 export function MembershipUsagePage({ membership, holders, classes }: { membership: MembershipWithUsage; holders: MembershipHolder[]; classes: MembershipClassUse[] }) {
@@ -57,7 +57,7 @@ export function MembershipUsagePage({ membership, holders, classes }: { membersh
           <div style={{ fontSize: 11.5, color: SUB, padding: "6px 0", lineHeight: 1.5 }}>Nobody has spent one on a class yet. A class takes a membership only while its own toggle is on — the class form, and the Policy on its page.</div>
         ) : (
           classes.map((c) => (
-            <Link key={c.classId} href={`/c/${c.shareSlug}`} aria-label={`Open ${c.style} · ${DOS_LEVEL_LABEL[c.level] ?? c.level}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--el)", fontSize: 11.5, textDecoration: "none", color: INK }}>
+            <Link key={c.classId} href={`/c/${c.shareSlug}`} aria-label={`Open ${c.style} · ${DOS_LEVEL_LABEL[c.level] ?? c.level}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)", fontSize: 11.5, textDecoration: "none", color: INK }}>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: "block", fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {c.style} · {DOS_LEVEL_LABEL[c.level] ?? c.level}
@@ -84,7 +84,7 @@ export function MembershipUsagePage({ membership, holders, classes }: { membersh
           holders.map((h) => {
             const face = photoUrl(h.avatarPath);
             return (
-              <div key={h.passId} style={{ padding: "9px 0", borderBottom: "1px solid var(--el)" }} data-testid="membership-holder">
+              <div key={h.passId} style={{ padding: "9px 0", borderBottom: "1.5px solid var(--el)" }} data-testid="membership-holder">
                 <Link href={`/person/${h.userId}`} aria-label={`Open ${h.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: INK }}>
                   <span aria-hidden="true" style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, overflow: "hidden", background: "linear-gradient(135deg,#B45309,#7C3AED)", color: "#fff", fontSize: 10.5, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {face ? <Image src={face} alt="" width={30} height={30} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : h.name.split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase()}

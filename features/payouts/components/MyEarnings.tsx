@@ -102,7 +102,7 @@ export function MyEarnings({ data, monthLabel }: { data: MyEarningsData; monthLa
         <div
           style={{
             background: CARD,
-            border: `1px solid ${LINE}`,
+            border: `1.5px solid ${LINE}`,
             borderRadius: 16,
             padding: "16px 15px",
             fontSize: 12.5,

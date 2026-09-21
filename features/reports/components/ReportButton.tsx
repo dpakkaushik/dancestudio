@@ -121,7 +121,7 @@ export function ReportButton({
   }
 
   return (
-    <div style={{ margin: "16px", background: CARD, border: `1px solid ${EL}`, borderRadius: 16, padding: "12px 13px" }}>
+    <div style={{ margin: "16px", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 16, padding: "12px 13px" }}>
       <b style={{ fontSize: 13 }}>Report {subjectName}</b>
       <div style={{ fontSize: 11, color: SUB, margin: "3px 0 10px", lineHeight: 1.5 }}>
         A DanceOS admin reads every report and tells you what they did about it. Nobody is told who reported them.
@@ -134,7 +134,7 @@ export function ReportButton({
             type="button"
             onClick={() => setReason(key)}
             aria-pressed={reason === key}
-            style={{ textAlign: "left", padding: "9px 11px", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: reason === key ? 800 : 600, background: reason === key ? "var(--text)" : "var(--bg)", color: reason === key ? "var(--solid)" : INK, border: `1px solid ${reason === key ? "var(--text)" : EL}` }}
+            style={{ textAlign: "left", padding: "9px 11px", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: reason === key ? 800 : 600, background: reason === key ? "var(--text)" : "var(--bg)", color: reason === key ? "var(--solid)" : INK, border: `1.5px solid ${reason === key ? "var(--text)" : EL}` }}
           >
             {label}
           </button>
@@ -153,7 +153,7 @@ export function ReportButton({
             rows={3}
             maxLength={1000}
             placeholder="What should the admin look at?"
-            style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 11, padding: "9px 11px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }}
+            style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 11, padding: "9px 11px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical", lineHeight: 1.5 }}
           />
         </>
       ) : null}
@@ -172,7 +172,7 @@ export function ReportButton({
         <button
           type="button"
           onClick={() => { setOpen(false); setReason(null); setNote(""); setError(null); }}
-          style={{ height: 38, padding: "0 14px", borderRadius: 11, background: "var(--bg)", border: `1px solid ${EL}`, color: SUB, cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12 }}
+          style={{ height: 38, padding: "0 14px", borderRadius: 11, background: "var(--bg)", border: `1.5px solid ${EL}`, color: SUB, cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12 }}
         >
           Cancel
         </button>

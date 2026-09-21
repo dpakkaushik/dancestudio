@@ -111,7 +111,7 @@ function Sec({ icon, label, col, children }: { icon: ReactNode; label: string; c
     <div
       style={{
         background: "var(--card)",
-        border: "1px solid var(--el)",
+        border: "1.5px solid var(--el)",
         borderLeft: `3px solid ${col}55`,
         borderRadius: 16,
         padding: "12px 14px",
@@ -421,7 +421,7 @@ export function ClassDetail({
           be paid back. ── */}
       {(done || assisting) && (
         <div style={{ padding: "14px 16px 0", position: "relative", zIndex: 1, background: "var(--bg)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16, background: "var(--card)", border: `1px solid ${done ? "var(--el)" : col + "55"}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 14px", borderRadius: 16, background: "var(--card)", border: `1.5px solid ${done ? "var(--el)" : col + "55"}` }}>
             <span style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, background: done ? "var(--el)" : `${col}22` }}>
               {done ? (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" strokeWidth="2.4" strokeLinecap="round">
@@ -461,7 +461,7 @@ export function ClassDetail({
           style={{
             borderRadius: 20,
             overflow: "hidden",
-            border: "1px solid var(--el)",
+            border: "1.5px solid var(--el)",
             borderTop: `3px solid ${col}`,
             background: "var(--card)",
             boxShadow: "0 1px 3px rgba(0,0,0,.25)",
@@ -637,14 +637,14 @@ export function ClassDetail({
                   class is theirs, so there is nobody to change (18 Sep 2026) */}
               {isOwner && !done && c.tenantType === "studio" ? (
                 <div style={{ display: "flex", alignItems: "center", marginTop: 4, minWidth: 0 }}>
-                  <Link href={`/business/${c.tenantId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: col, padding: "2px 7px", borderRadius: 999, border: `1px solid ${col}66`, textDecoration: "none" }}>
+                  <Link href={`/business/${c.tenantId}/classes/${c.id}/edit`} aria-label="Change the artist taking this class" style={{ marginLeft: "auto", flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: col, padding: "2px 7px", borderRadius: 999, border: `1.5px solid ${col}66`, textDecoration: "none" }}>
                     Change
                   </Link>
                 </div>
               ) : null}
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px 8px", borderTop: `1px solid ${col}33` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px 8px", borderTop: `1.5px solid ${col}33` }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {done ? (
                 <div style={{ fontSize: 11, fontWeight: 800, color: "var(--sub)" }}>{filled} attended</div>
@@ -684,7 +684,7 @@ export function ClassDetail({
                 padding: "4px 10px",
                 borderRadius: 9,
                 background: `${col}1a`,
-                border: `1px solid ${col}44`,
+                border: `1.5px solid ${col}44`,
                 color: isFree ? "#4ADE80" : "var(--text)",
                 fontVariantNumeric: "tabular-nums",
                 letterSpacing: -0.2,
@@ -775,7 +775,7 @@ export function ClassDetail({
           <div
             style={{
               background: "var(--card)",
-              border: `1px solid ${GOLD}66`,
+              border: `1.5px solid ${GOLD}66`,
               borderLeft: `3px solid ${GOLD}`,
               borderRadius: 16,
               padding: "12px 14px",
@@ -815,7 +815,7 @@ export function ClassDetail({
                   padding: "10px",
                   borderRadius: 999,
                   background: "var(--solid)",
-                  border: "1px solid var(--el)",
+                  border: "1.5px solid var(--el)",
                   fontWeight: 800,
                   fontSize: 12,
                   cursor: "pointer",
@@ -853,7 +853,7 @@ export function ClassDetail({
             pill — the invoice and the cancel-and-refund are two halves of one
             subject. Waitlist rows keep their simple leave button. ── */}
         {mine && !isMember && !done && booked && (
-          <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
+          <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: GREEN, flexShrink: 0 }} />
               <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -870,7 +870,7 @@ export function ClassDetail({
                 display: "flex",
                 alignItems: "stretch",
                 marginTop: 10,
-                border: "1px solid var(--el)",
+                border: "1.5px solid var(--el)",
                 borderRadius: 999,
                 overflow: "hidden",
                 background: "var(--solid)",
@@ -923,7 +923,7 @@ export function ClassDetail({
           </div>
         )}
         {mine && !isMember && !done && !booked && (
-          <div style={{ background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
+          <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "12px", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: GOLD, flexShrink: 0 }} />
               <span style={{ fontSize: 12.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -948,7 +948,7 @@ export function ClassDetail({
                   cursor: "pointer",
                   color: "#F87171",
                   background: "var(--solid)",
-                  border: "1px solid var(--el)",
+                  border: "1.5px solid var(--el)",
                   borderRadius: 999,
                 }}
               >
@@ -1008,7 +1008,7 @@ export function ClassDetail({
           const absent = register.rows.filter((r) => !r.checkedIn);
           const chip = (r: (typeof register.rows)[number], on: boolean) => (
             <Link key={r.enrollmentId} href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--el)", borderRadius: 999, padding: "3px 11px 3px 3px", color: on ? "var(--text)" : "var(--sub)", textDecoration: "none", opacity: on ? 1 : 0.6 }}>
-              <span style={{ width: 22, height: 22, borderRadius: 7, overflow: "hidden", background: on ? "linear-gradient(135deg,#22C55E,#0D9488)" : "var(--card)", border: on ? "none" : "1px solid var(--el)", display: "flex", alignItems: "center", justifyContent: "center", color: on ? "#fff" : "var(--sub)", fontSize: 8.5, fontWeight: 900 }}>
+              <span style={{ width: 22, height: 22, borderRadius: 7, overflow: "hidden", background: on ? "linear-gradient(135deg,#22C55E,#0D9488)" : "var(--card)", border: on ? "none" : "1.5px solid var(--el)", display: "flex", alignItems: "center", justifyContent: "center", color: on ? "#fff" : "var(--sub)", fontSize: 8.5, fontWeight: 900 }}>
                 {photoUrl(r.avatarPath) ? <Image src={photoUrl(r.avatarPath)!} alt="" width={22} height={22} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(r.learnerName)}
               </span>
               <span style={{ fontSize: 11, fontWeight: 800 }}>{r.learnerName}</span>
@@ -1057,7 +1057,7 @@ export function ClassDetail({
               gap: 10,
               paddingBottom: 9,
               marginBottom: 9,
-              borderBottom: "1px solid var(--el)",
+              borderBottom: "1.5px solid var(--el)",
             }}
           >
             <Link href={placeHref} aria-label={`Open ${placeName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
@@ -1112,7 +1112,7 @@ export function ClassDetail({
                 fontWeight: 800,
                 color: col,
                 cursor: "pointer",
-                border: `1px solid ${col}44`,
+                border: `1.5px solid ${col}44`,
                 borderRadius: 999,
                 padding: "5px 11px",
                 textDecoration: "none",
@@ -1227,7 +1227,7 @@ export function ClassDetail({
                 not from the form (18 Sep 2026) */}
             {canAddAssistant ? <AddAssistant classId={c.id} col={col} exclude={claims.filter((cl) => cl.status !== "rejected").map((cl) => cl.userId)} /> : null}
             {assisting ? (
-              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--el)" }}>
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 8, paddingTop: 8, borderTop: "1.5px solid var(--el)" }}>
                 You are assisting on this class{canAtt || canRef ? ` — you hold ${[canAtt ? "attendance" : null, canRef ? "refunds" : null].filter(Boolean).join(" and ")}.` : "."}
               </div>
             ) : null}
@@ -1304,7 +1304,7 @@ export function ClassDetail({
                 alignItems: "center",
                 gap: 10,
                 background: sessionPhase === "live" ? "rgba(34,197,94,.10)" : "var(--card)",
-                border: `1px solid ${sessionPhase === "live" ? "rgba(34,197,94,.32)" : "var(--el)"}`,
+                border: `1.5px solid ${sessionPhase === "live" ? "rgba(34,197,94,.32)" : "var(--el)"}`,
                 borderRadius: 16,
                 padding: "11px 13px",
                 marginBottom: 10,
@@ -1363,7 +1363,7 @@ export function ClassDetail({
                 {register.waitlist.map((w, i) => (
                   <div
                     key={w.enrollmentId}
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--el)" }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1.5px solid var(--el)" }}
                   >
                     <span style={{ width: 22, fontSize: 11, fontWeight: 900, color: "var(--muted)", fontFamily: DOS_MONO }}>
                       #{i + 1}
@@ -1399,7 +1399,7 @@ export function ClassDetail({
                         color: soldOut ? "var(--muted)" : "#22C55E",
                         cursor: "pointer",
                         flexShrink: 0,
-                        border: `1px solid ${soldOut ? "var(--el)" : "#22C55E55"}`,
+                        border: `1.5px solid ${soldOut ? "var(--el)" : "#22C55E55"}`,
                         borderRadius: 999,
                         padding: "4px 10px",
                         opacity: opPending === w.enrollmentId ? 0.5 : 1,
@@ -1454,7 +1454,7 @@ export function ClassDetail({
                     alignItems: "center",
                     gap: 10,
                     padding: "7px 0",
-                    borderBottom: i === register.rows.length - 1 ? "none" : "1px solid var(--el)",
+                    borderBottom: i === register.rows.length - 1 ? "none" : "1.5px solid var(--el)",
                   }}
                 >
                   <Link href={`/person/${r.userId}`} aria-label={`Open ${r.learnerName}`} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0, color: "var(--text)", textDecoration: "none" }}>
@@ -1551,7 +1551,7 @@ export function ClassDetail({
             padding: "12px 16px 22px",
             zIndex: 400,
             background: "var(--solid)",
-            borderTop: "1px solid var(--el)",
+            borderTop: "1.5px solid var(--el)",
             boxShadow: "0 -6px 22px rgba(0,0,0,.28)",
           }}
         >
@@ -1579,7 +1579,7 @@ export function ClassDetail({
             /* AN ORGANIZATION DOES NOT BOOK (19 Sep 2026). It reads the page —
                this is its own studio's class as often as not — and the bar says
                what the database would say if the button were pressed. */
-            <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)" }}>
+            <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
               <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
               <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{NO_BOOKING_FOR_AN_ORGANIZATION}</div>
             </div>
@@ -1592,7 +1592,7 @@ export function ClassDetail({
                 padding: "13px 14px",
                 borderRadius: 16,
                 background: "rgba(239,68,68,.12)",
-                border: "1px solid rgba(239,68,68,.4)",
+                border: "1.5px solid rgba(239,68,68,.4)",
               }}
             >
               <svg
@@ -1648,7 +1648,7 @@ export function ClassDetail({
                     disabled={passPending !== null}
                     aria-label={`Use ${p.membershipName}`}
                     onClick={() => spendPass(p)}
-                    style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", borderRadius: 14, background: `${col}18`, border: `1px solid ${col}55`, cursor: passPending ? "wait" : "pointer", fontFamily: DOS_UI, color: "var(--text)", textAlign: "left" }}
+                    style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 13px", borderRadius: 14, background: `${col}18`, border: `1.5px solid ${col}55`, cursor: passPending ? "wait" : "pointer", fontFamily: DOS_UI, color: "var(--text)", textAlign: "left" }}
                   >
                     <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🎟</span>
                     <span style={{ flex: 1, minWidth: 0 }}>
@@ -1757,7 +1757,7 @@ export function ClassDetail({
             maxWidth: 430,
             margin: "0 auto",
             background: "var(--solid)",
-            borderTop: "1px solid var(--el)",
+            borderTop: "1.5px solid var(--el)",
             padding: "12px 16px 26px",
             boxShadow: "0 -6px 20px rgba(0,0,0,.32)",
           }}
@@ -1844,7 +1844,7 @@ export function ClassDetail({
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               {c.poster && c.poster !== "none" ? (
-                <button type="button" disabled={posterBusy} onClick={() => void setPoster("none", "Poster removed")} style={{ flex: 1, textAlign: "center", padding: 12, borderRadius: 999, background: "var(--card)", border: "1px solid var(--el)", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", color: "var(--text)" }}>
+                <button type="button" disabled={posterBusy} onClick={() => void setPoster("none", "Poster removed")} style={{ flex: 1, textAlign: "center", padding: 12, borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", fontWeight: 800, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", color: "var(--text)" }}>
                   Remove
                 </button>
               ) : null}

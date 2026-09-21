@@ -176,7 +176,7 @@ export function SubscriptionScreen({
                   <button type="button" disabled={pending} onClick={() => cancel(live)} style={{ ...bizBtn, flex: 1, width: "auto", background: "#EF4444" }}>
                     {pending ? "Cancelling…" : "Yes, stop renewing"}
                   </button>
-                  <button type="button" onClick={() => setConfirmCancel(false)} style={{ ...bizBtn, flex: 1, width: "auto", background: "var(--card)", color: "var(--text)", border: "1px solid var(--el)" }}>
+                  <button type="button" onClick={() => setConfirmCancel(false)} style={{ ...bizBtn, flex: 1, width: "auto", background: "var(--card)", color: "var(--text)", border: "1.5px solid var(--el)" }}>
                     Keep it
                   </button>
                 </div>
@@ -217,7 +217,7 @@ export function SubscriptionScreen({
           </div>
           <div style={bizCard}>
             {FEATURES.map(([ic, t, s2], i) => (
-              <div key={t} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 0", borderBottom: i === FEATURES.length - 1 ? "none" : "1px solid var(--el)" }}>
+              <div key={t} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 0", borderBottom: i === FEATURES.length - 1 ? "none" : "1.5px solid var(--el)" }}>
                 <span style={{ fontSize: 17, flexShrink: 0 }}>{ic}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 800 }}>{t}</div>

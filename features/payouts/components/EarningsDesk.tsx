@@ -250,7 +250,7 @@ export function EarningsDesk({
               standing. Drawn for a page's owner only: a studio's owner is paid by
               nobody. */}
           {selfEarningsHref ? (
-            <Link href={selfEarningsHref} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", borderRadius: 16, background: "var(--card)", border: "1px solid var(--el)", color: INK, textDecoration: "none", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
+            <Link href={selfEarningsHref} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)", color: INK, textDecoration: "none", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
               <span aria-hidden="true" style={{ fontSize: 14 }}>↩</span>
               <span style={{ flex: 1, minWidth: 0 }}>What studios pay you</span>
               <span aria-hidden="true" style={{ color: "var(--sub)" }}>›</span>
@@ -287,7 +287,7 @@ export function EarningsDesk({
             <div
               style={{
                 background: CARD,
-                border: `1px solid ${LINE}`,
+                border: `1.5px solid ${LINE}`,
                 borderRadius: 16,
                 padding: "16px 15px",
                 fontSize: 12.5,
@@ -321,7 +321,7 @@ export function EarningsDesk({
                           flex: 1,
                           background: person.owedInr > 0 ? GREEN : CARD,
                           color: person.owedInr > 0 ? "#fff" : SUB,
-                          border: `1px solid ${person.owedInr > 0 ? GREEN : LINE}`,
+                          border: `1.5px solid ${person.owedInr > 0 ? GREEN : LINE}`,
                           borderRadius: 999,
                           padding: "11px 14px",
                           fontSize: 13,
@@ -519,7 +519,7 @@ export function EarningsDesk({
                   fontFamily: "inherit",
                   background: openPayoutRow.status === s ? INK : CARD,
                   color: openPayoutRow.status === s ? LILAC : SUB,
-                  border: `1px solid ${LINE}`,
+                  border: `1.5px solid ${LINE}`,
                 }}
               >
                 {PAYOUT_STATUS_LABEL[s]}

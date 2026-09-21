@@ -8,10 +8,10 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
  *  pill every row on those pages is made of (bizCard 2915, bizBtn 2920), and
  *  the verified tick (DosVerified 1499). */
 
-export const bizCard: CSSProperties = { background: "var(--card)", border: "1px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 9 };
+export const bizCard: CSSProperties = { background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "13px 14px", marginBottom: 9 };
 export const bizBtn: CSSProperties = { textAlign: "center", padding: 13, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 13.5, cursor: "pointer", border: "none", fontFamily: "inherit", width: "100%", textDecoration: "none", display: "block" };
-export const ghostBtn: CSSProperties = { ...bizBtn, background: "var(--card)", color: "var(--text)", border: "1px solid var(--el)", fontWeight: 800 };
-export const chip = (on: boolean): CSSProperties => ({ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : "var(--sub)", border: "1px solid var(--el)", fontFamily: "inherit", whiteSpace: "nowrap" });
+export const ghostBtn: CSSProperties = { ...bizBtn, background: "var(--card)", color: "var(--text)", border: "1.5px solid var(--el)", fontWeight: 800 };
+export const chip = (on: boolean): CSSProperties => ({ flexShrink: 0, padding: "7px 12px", borderRadius: 999, cursor: "pointer", fontSize: 11, fontWeight: 800, background: on ? "var(--text)" : "var(--card)", color: on ? "var(--solid)" : "var(--sub)", border: "1.5px solid var(--el)", fontFamily: "inherit", whiteSpace: "nowrap" });
 /* `--sub`, not `--muted` (16 Sep 2026): the same legibility fix the Edit
    sheets' field labels got, so the Media desk's own headings are not a
    different grey from the sheet that edits the same two pictures */

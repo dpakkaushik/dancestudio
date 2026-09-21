@@ -72,7 +72,7 @@ export function RefundQueue({
         cursor: busy ? "wait" : "pointer",
         background: `${colour}1a`,
         color: colour,
-        border: `1px solid ${colour}55`,
+        border: `1.5px solid ${colour}55`,
       }}
     >
       {label}
@@ -159,7 +159,7 @@ export function RefundQueue({
         <div style={{ fontSize: 11.5, color: SUB }}>Nothing to refund for this class right now.</div>
       ) : (
         refunds.map((r) => (
-          <div key={r.id} style={{ padding: "9px 0", borderBottom: "1px solid var(--el)" }}>
+          <div key={r.id} style={{ padding: "9px 0", borderBottom: "1.5px solid var(--el)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div

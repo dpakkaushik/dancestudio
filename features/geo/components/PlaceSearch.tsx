@@ -26,7 +26,7 @@ const field: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   background: "var(--bg)",
-  border: `1px solid ${EL}`,
+  border: `1.5px solid ${EL}`,
   borderRadius: 12,
   padding: "10px 11px",
   fontSize: 13,
@@ -193,7 +193,7 @@ export function PlaceSearch({
               role="option"
               aria-selected="false"
               onClick={() => void choose(s)}
-              style={{ textAlign: "left", background: CARD, border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", cursor: "pointer", fontFamily: "inherit", lineHeight: 1.35 }}
+              style={{ textAlign: "left", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", cursor: "pointer", fontFamily: "inherit", lineHeight: 1.35 }}
             >
               <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, color: INK }}>{s.main}</span>
               {s.secondary ? <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 1 }}>{s.secondary}</span> : null}

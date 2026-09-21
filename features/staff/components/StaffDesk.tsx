@@ -414,7 +414,7 @@ export function StaffDesk({
                         type="button"
                         aria-label={`Pay ${m.name}`}
                         onClick={() => { setOpenMember(m); setPay({ amount: "", method: "upi", status: "done", note: "" }); setPayOpen(true); }}
-                        style={{ fontSize: 11.5, fontWeight: 900, padding: "7px 13px", borderRadius: 999, border: `1px solid ${DOS_TOOLS.team.c}55`, background: `${DOS_TOOLS.team.c}14`, color: DOS_TOOLS.team.c, cursor: "pointer", fontFamily: "inherit" }}
+                        style={{ fontSize: 11.5, fontWeight: 900, padding: "7px 13px", borderRadius: 999, border: `1.5px solid ${DOS_TOOLS.team.c}55`, background: `${DOS_TOOLS.team.c}14`, color: DOS_TOOLS.team.c, cursor: "pointer", fontFamily: "inherit" }}
                       >
                         Pay
                       </button>
@@ -553,7 +553,7 @@ export function StaffDesk({
                       cursor: "pointer",
                       background: on ? "var(--text)" : CARD,
                       color: on ? "var(--solid)" : SUB,
-                      border: `1px solid ${on ? "var(--text)" : EL}`,
+                      border: `1.5px solid ${on ? "var(--text)" : EL}`,
                     }}
                   >
                     {word}
@@ -679,7 +679,7 @@ export function StaffDesk({
             <div
               style={{
                 background: CARD,
-                border: `1px solid ${EL}`,
+                border: `1.5px solid ${EL}`,
                 borderRadius: 12,
                 padding: "10px 12px",
                 fontSize: 11,
@@ -716,7 +716,7 @@ export function StaffDesk({
                   padding: "12px",
                   borderRadius: 999,
                   background: CARD,
-                  border: `1px solid ${EL}`,
+                  border: `1.5px solid ${EL}`,
                   fontWeight: 800,
                   fontSize: 12.5,
                   cursor: "pointer",
@@ -805,7 +805,7 @@ export function StaffDesk({
                       cursor: "pointer",
                       background: on ? "var(--text)" : CARD,
                       color: on ? "var(--solid)" : SUB,
-                      border: `1px solid ${on ? "var(--text)" : EL}`,
+                      border: `1.5px solid ${on ? "var(--text)" : EL}`,
                     }}
                   >
                     {word}
@@ -836,7 +836,7 @@ export function StaffDesk({
                 ).map(([key, title, why]) => {
                   const on = key === "attendance" ? openMember.canAttendance : openMember.canRefunds;
                   return (
-                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1px solid ${EL}` }}>
+                    <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1.5px solid ${EL}` }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 800 }}>{title}</div>
                         <div style={{ fontSize: 11, color: SUB, marginTop: 1 }}>{why}</div>
@@ -897,7 +897,7 @@ export function StaffDesk({
                   </span>
                 </div>
                 {paidTo(openMember.userId).slice(0, 6).map((p) => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1px solid ${EL}` }}>
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1.5px solid ${EL}` }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 12, fontWeight: 800 }}>{rupees(p.amountInr)}</span>
                       <span style={{ display: "block", fontSize: 10, color: SUB, marginTop: 1 }}>
@@ -945,7 +945,7 @@ export function StaffDesk({
                   padding: "12px",
                   borderRadius: 999,
                   background: CARD,
-                  border: `1px solid ${EL}`,
+                  border: `1.5px solid ${EL}`,
                   fontWeight: 800,
                   fontSize: 12.5,
                   cursor: "pointer",
@@ -1008,7 +1008,7 @@ export function StaffDesk({
               {PAY_METHODS.map(([k, word]) => {
                 const on = pay.method === k;
                 return (
-                  <button key={k} type="button" aria-pressed={on} aria-label={word} onClick={() => setPay({ ...pay, method: k })} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, cursor: "pointer", background: on ? "var(--text)" : CARD, color: on ? "var(--solid)" : SUB, border: `1px solid ${on ? "var(--text)" : EL}`, fontFamily: "inherit" }}>
+                  <button key={k} type="button" aria-pressed={on} aria-label={word} onClick={() => setPay({ ...pay, method: k })} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, cursor: "pointer", background: on ? "var(--text)" : CARD, color: on ? "var(--solid)" : SUB, border: `1.5px solid ${on ? "var(--text)" : EL}`, fontFamily: "inherit" }}>
                     {word}
                   </button>
                 );
@@ -1020,7 +1020,7 @@ export function StaffDesk({
               {PAY_STATES.map(([k, word]) => {
                 const on = pay.status === k;
                 return (
-                  <button key={k} type="button" aria-pressed={on} aria-label={word} onClick={() => setPay({ ...pay, status: k })} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, cursor: "pointer", background: on ? "var(--text)" : CARD, color: on ? "var(--solid)" : SUB, border: `1px solid ${on ? "var(--text)" : EL}`, fontFamily: "inherit" }}>
+                  <button key={k} type="button" aria-pressed={on} aria-label={word} onClick={() => setPay({ ...pay, status: k })} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, cursor: "pointer", background: on ? "var(--text)" : CARD, color: on ? "var(--solid)" : SUB, border: `1.5px solid ${on ? "var(--text)" : EL}`, fontFamily: "inherit" }}>
                     {word}
                   </button>
                 );
@@ -1038,7 +1038,7 @@ export function StaffDesk({
             />
 
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <button type="button" onClick={() => setPayOpen(false)} style={{ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, background: CARD, border: `1px solid ${EL}`, fontWeight: 800, fontSize: 12.5, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
+              <button type="button" onClick={() => setPayOpen(false)} style={{ flex: 1, textAlign: "center", padding: "12px", borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, fontWeight: 800, fontSize: 12.5, cursor: "pointer", color: INK, fontFamily: "inherit" }}>
                 Cancel
               </button>
               <button

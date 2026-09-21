@@ -500,6 +500,41 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     const chipX = async (label) => (await org.getByLabel(label).first().boundingBox())?.x ?? -1;
     const [xStats, xQr, xShare] = [await chipX("Stats"), await chipX("QR code"), await chipX("Share EEE Dance Company")];
     check(xStats > 0 && xStats < xQr && xQr < xShare, `org home: the chips read Stats · QR · Share, left to right (${xStats} < ${xQr} < ${xShare})`);
+    /* ⚠ THE QR IS A REAL CODE NOW, AND THE SHEET IS ONLY THE CODE (21 Sep 2026,
+       the user: "qr code button should just open qr not link on all profiles
+       code should look better as well"). Both halves are asserted here because
+       only a browser can: the square was a HASH pattern until today — it looked
+       like a code and encoded nothing, which is why the app's own Scan sheet
+       could never read a DanceOS profile (backlog R27). `data-qr-modules` is the
+       version the encoder chose, and `data-qr-scannable` is whether it is drawn
+       big enough for a camera; a profile link is a version-5 square (37
+       modules) on the deployment and a version-4 one (33) against `:3100`,
+       because the encoder picks the SMALLEST version the data fits in and
+       `localhost:3100` is fourteen characters shorter than the live host.
+       ⚠ So the exact version is deliberately NOT asserted — the first cut of
+       this check said 37 and went red against `:3100`, which was the assertion
+       measuring the PORT. What is asserted is the claim underneath it: a legal
+       QR size (21 + 4k), and one big enough that it must have grown with the
+       data — the square it replaced was a fixed 13×13 whatever you gave it.
+       And the printed link and the Copy button are asserted GONE,
+       because a check that only looks for what was added lets what it replaced
+       live on — this file's own recurring lesson. */
+    await org.getByLabel("QR code").first().click();
+    const qrSheet = org.getByRole("dialog", { name: /^Share / });
+    await qrSheet.waitFor({ state: "visible", timeout: 15000 });
+    const qrSvg = qrSheet.locator("svg[data-qr-modules]");
+    check((await qrSvg.count()) === 1, "org QR sheet: one code square, and it came out of the encoder");
+    const qrModules = Number(await qrSvg.getAttribute("data-qr-modules"));
+    check(qrModules >= 29 && qrModules <= 45 && (qrModules - 21) % 4 === 0, `org QR sheet: a real QR size, sized to the link rather than fixed (drew ${qrModules}; the old square was always 13)`);
+    check((await qrSvg.getAttribute("data-qr-scannable")) === "yes", "org QR sheet: drawn big enough for a camera to resolve a module");
+    check((await qrSvg.locator("rect").count()) > 40, "org QR sheet: real modules, not three drawn eyes and a hash field");
+    check((await qrSheet.getByRole("button", { name: "Copy link" }).count()) === 0, "org QR sheet: no Copy link — the chip beside it is the share (21 Sep 2026)");
+    check((await qrSheet.getByText(/vercel\.app|localhost:/).count()) === 0, "org QR sheet: the link is not printed — the button opens a QR, not a link");
+    /* the one thing no assertion settles: "should look better" is a thing to
+       look at, so it is shot on its own rather than buried in a full-page grab */
+    await qrSvg.screenshot({ path: path.join(OUT, "hero-qr-code.png") });
+    await qrSheet.getByRole("button", { name: "Done" }).click();
+    await qrSheet.waitFor({ state: "hidden", timeout: 15000 });
     check(await org.getByText(/^Organization(-\d{6})?$/).first().isVisible(), "org home: the role word, with the account number against it");
     /* ⚠ BOTH FIGURES, ON AN ORGANIZATION TOO (20 Sep 2026, the user: "Organization
        and Studio still dont have Following section in profile and home"). The

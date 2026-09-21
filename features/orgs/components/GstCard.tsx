@@ -86,9 +86,9 @@ export function GstCard({
         errand: once it is behind you the screen says so and stops asking. ── */
   if (done && !changing) {
     return (
-      <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 18, padding: "16px 16px 17px" }}>
+      <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 18, padding: "16px 16px 17px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span role="status" aria-label="GST number: verified" style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: GREEN, border: `1px solid ${GREEN}`, borderRadius: 999, padding: "2px 8px" }}>
+          <span role="status" aria-label="GST number: verified" style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: GREEN, border: `1.5px solid ${GREEN}`, borderRadius: 999, padding: "2px 8px" }}>
             VERIFIED
           </span>
           <span style={{ fontSize: 11, color: SUB }}>on {dateWords(done)}</span>
@@ -112,9 +112,9 @@ export function GstCard({
   }
 
   return (
-    <div style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 18, padding: "16px 16px 17px" }}>
+    <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 18, padding: "16px 16px 17px" }}>
       {cameForEvents ? (
-        <div role="status" aria-label="Why you are here" style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "10px 12px", borderRadius: 13, background: "rgba(245,158,11,.10)", border: "1px solid rgba(245,158,11,.35)", marginBottom: 14 }}>
+        <div role="status" aria-label="Why you are here" style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "10px 12px", borderRadius: 13, background: "rgba(245,158,11,.10)", border: "1.5px solid rgba(245,158,11,.35)", marginBottom: 14 }}>
           <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1.2 }}>🎟</span>
           <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: INK, lineHeight: 1.5 }}>
             <b>Events need this first.</b> It is how DanceOS knows the business behind the ticket. Add it once and the events desk opens.
@@ -146,7 +146,7 @@ export function GstCard({
           width: "100%",
           boxSizing: "border-box",
           background: "var(--bg)",
-          border: `1px solid ${err ? RED : EL}`,
+          border: `1.5px solid ${err ? RED : EL}`,
           borderRadius: 13,
           padding: "13px 14px",
           fontSize: 17,

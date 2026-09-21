@@ -116,7 +116,7 @@ export function StudentsDesk({
 
       <DeskAddButton label="Invite a student" onClick={() => setInvite(true)} />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px", margin: "11px 0 10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "9px 11px", margin: "11px 0 10px" }}>
         <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>⌕</span>
         <input aria-label="Search students" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or number…" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: INK, fontSize: 12.5, fontFamily: "inherit", textTransform: "none" }} />
       </div>
@@ -139,7 +139,7 @@ export function StudentsDesk({
           s.sources.length === 1 && s.sources[0] === "added" ? "added by you" : null,
         ].filter(Boolean);
         return (
-          <div key={key} style={{ background: CARD, border: `1px solid ${EL}`, borderRadius: 14, padding: "11px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 }}>
+          <div key={key} style={{ background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14, padding: "11px 12px", marginBottom: 8, display: "flex", alignItems: "center", gap: 11 }}>
             {/* the face and the name are a door to the person, where there IS a
                 person — a walk-in has no profile to open, and does not pretend */}
             {s.userId ? (
@@ -293,8 +293,13 @@ function InviteSheet({
         </div>
 
         {/* the same invite for somebody standing in front of you */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, padding: "12px", background: CARD, border: `1px solid ${EL}`, borderRadius: 14 }}>
-          <QRBlock code={inviteUrl} size={72} label="Invite link" />
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, padding: "12px", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14 }}>
+          {/* ⚠ 132, not 72: the line beside it says "they scan it", and since
+              21 Sep this is a REAL code — an invite URL is a version-5 code at
+              37 modules, so 72px gave it 1.6 pixels a module and no phone would
+              have read it. A control that says what it does has to be able to
+              do it. */}
+          <QRBlock code={inviteUrl} size={132} label="Invite link" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)" }}>OR IN PERSON</div>
             <div style={{ fontSize: 11, color: SUB, margin: "3px 0 8px", lineHeight: 1.45 }}>They scan it, or you send the link.</div>

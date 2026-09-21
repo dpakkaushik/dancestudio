@@ -50,7 +50,13 @@ const PROBE = (sel) => {
   for (const theme of ["dark", "light"]) {
     await page.goto(`${BASE}/discover?tab=studios`, { waitUntil: "domcontentloaded" });
     await page.evaluate((t) => { document.documentElement.className = t; }, theme);
-    await page.waitForTimeout(400);
+    /* ⚠ WAIT FOR THE PANEL, NOT FOR A CLOCK. A fixed 400 ms passed against a warm
+       server and failed the FIRST dark pass against a cold one, where `next start`
+       was still compiling /discover — which reads as "the shelf is not in a panel"
+       and is really "the page has not rendered". A red that depends on whether
+       something else ran first is not evidence (the 11 Sep rule). */
+    await page.waitForSelector(".dos-invert", { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(200);
 
     const panel = await page.evaluate(PROBE, ".dos-invert");
     if (!panel) { check(false, `[${theme}] the shelf sits in an inverted panel`); continue; }
@@ -91,6 +97,40 @@ const PROBE = (sel) => {
     const tile = await page.evaluate(PROBE, '[data-testid="class-tile-style"], a[href^="/c/"]');
     if (tile) check(tile.ratio >= 3, `[${theme}] a class tile's headline is readable on the panel`, `${tile.ratio}:1 ${tile.ink} on ${tile.ground}`);
     else console.log(`  ..     [${theme}] no class in this city to measure`);
+  }
+
+  /* ── THE PAGE'S OWN THREE TIERS, ON THE WARM GROUND (21 Sep 2026) ──────────
+     The user: "fix light mode to a warmer tone so it doesnt blur text". A warmer
+     ground is only an improvement if the text on it measures at least as well as
+     it did on white, and nothing typed can tell you that — the tokens are three
+     greys and the ground is a fourth colour.
+     ⚠ The probes are INJECTED rather than hunted for, because what is being
+     measured is the TOKEN against the page, not whichever component happens to
+     use it today: a node per tier, coloured by the variable, composited by the
+     same walk up the tree. `--muted` is the one to watch — it was 3.45:1 on
+     white, under the 4.5 that 11px text needs, and it is used for small labels
+     all over the app. */
+  for (const theme of ["dark", "light"]) {
+    await page.goto(`${BASE}/discover?tab=studios`, { waitUntil: "domcontentloaded" });
+    await page.evaluate((t) => { document.documentElement.className = t; }, theme);
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      for (const tier of ["text", "sub", "muted"]) {
+        const s = document.createElement("span");
+        s.id = `dos-probe-${tier}`;
+        s.style.color = `var(--${tier})`;
+        s.textContent = "Ag";
+        document.body.appendChild(s);
+      }
+    });
+    const floor = { text: 7, sub: 4.5, muted: 4.5 };
+    for (const tier of ["text", "sub", "muted"]) {
+      const r = await page.evaluate(PROBE, `#dos-probe-${tier}`);
+      check(r && r.ratio >= floor[tier], `[${theme}] --${tier} on the page reads at ${floor[tier]}:1 or better`, r ? `${r.ratio}:1 ${r.ink} on ${r.ground}` : "not found");
+    }
+    await page.evaluate(() => {
+      for (const tier of ["text", "sub", "muted"]) document.getElementById(`dos-probe-${tier}`)?.remove();
+    });
   }
 
   await browser.close();

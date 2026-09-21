@@ -99,7 +99,7 @@ export function EnquiryButton({
     whiteSpace: "nowrap",
     background: "var(--card)",
     color: "var(--text)",
-    border: "1px solid var(--el)",
+    border: "1.5px solid var(--el)",
     width: "100%",
     fontFamily: "inherit",
     textDecoration: "none",
@@ -304,7 +304,7 @@ export function EnquirySheet({
                 tabIndex={0}
                 onKeyDown={pressKey(() => pickType(x))}
                 onClick={() => pickType(x)}
-                style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${x.c}`, borderRadius: 14, padding: "12px 13px", marginBottom: 8, cursor: "pointer" }}
+                style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${x.c}`, borderRadius: 14, padding: "12px 13px", marginBottom: 8, cursor: "pointer" }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 900 }}>{x.label}</div>

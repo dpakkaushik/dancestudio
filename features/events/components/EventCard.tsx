@@ -132,7 +132,7 @@ export function EventCard({ event: e, href, compact = false, host = null }: { ev
   const style: React.CSSProperties = {
     display: "block",
     background: "var(--card)",
-    border: "1px solid var(--el)",
+    border: "1.5px solid var(--el)",
     borderRadius: 18,
     overflow: "hidden",
     marginBottom: 9,

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
-import { signOutAction } from "@/features/auth/server-actions/auth";
 import { EditProfileSheet } from "@/features/profiles/components/EditProfileSheet";
 import { endArtistPlanAction, updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
@@ -42,7 +41,7 @@ import { dateWords } from "./settings-kit";
  *  an organization's one-time errand (11 Sep 2026). */
 
 const grid: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 };
-const tile: CSSProperties = { background: "var(--card)", borderRadius: 16, padding: "13px 12px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, cursor: "pointer", width: "100%", textAlign: "left", border: "1px solid var(--el)", fontFamily: "inherit", color: INK, textDecoration: "none", boxSizing: "border-box", minHeight: 86 };
+const tile: CSSProperties = { background: "var(--card)", borderRadius: 16, padding: "13px 12px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, cursor: "pointer", width: "100%", textAlign: "left", border: "1.5px solid var(--el)", fontFamily: "inherit", color: INK, textDecoration: "none", boxSizing: "border-box", minHeight: 86 };
 const head: CSSProperties = { fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: MUTED, margin: "14px 0 8px" };
 const label: CSSProperties = { fontSize: 12.5, fontWeight: 900, lineHeight: 1.2 };
 const badgeStyle = (on: boolean): CSSProperties => ({ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.5, padding: "2px 7px", borderRadius: 999, background: on ? "rgba(34,197,94,.16)" : "var(--el)", color: on ? "#22C55E" : SUB, whiteSpace: "nowrap" });
@@ -294,11 +293,11 @@ export function SettingsSheet({
             </Tile>
           ) : null}
         </div>
-        <form action={signOutAction} style={{ ...grid, marginTop: 4 }}>
-          <Tile icon={ICONS.logout(RED)} danger>
-            ↪ Log out
-          </Tile>
-        </form>
+        {/* ⚠ LOG OUT IS NOT HERE ANY MORE (21 Sep 2026, the user: "shift log out
+            from setting to profile switcher"). It is the last row of the profile
+            switcher, which is the chip beside the gear on EVERY screen — so the
+            way out went from being two taps inside the Profile tab to one tap
+            from anywhere. Nothing is orphaned, which is the test C31 sets. */}
 
         {/* EDIT PROFILE — portalled to the document root, so it opens OVER this
             sheet rather than inside its scroll (the 16 Sep stacking lesson) */}
@@ -317,7 +316,7 @@ export function SettingsSheet({
               {enqAll.map((t) => {
                 const on = enqOn(t.k);
                 return (
-                  <button type="button" key={t.k} role="switch" aria-checked={on} aria-label={t.label} disabled={pending} onClick={() => flipEnq(t.k)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderBottom: "1px solid var(--el)", cursor: "pointer", width: "100%", background: "none", border: "none", borderBottomStyle: "solid", fontFamily: "inherit", color: INK, textAlign: "left" }}>
+                  <button type="button" key={t.k} role="switch" aria-checked={on} aria-label={t.label} disabled={pending} onClick={() => flipEnq(t.k)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderBottom: "1.5px solid var(--el)", cursor: "pointer", width: "100%", background: "none", border: "none", borderBottomStyle: "solid", fontFamily: "inherit", color: INK, textAlign: "left" }}>
                     <span style={{ width: 8, height: 8, borderRadius: 4, background: t.c, flexShrink: 0 }} />
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{t.label}</span>

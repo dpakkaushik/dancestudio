@@ -17,7 +17,7 @@ const MUTED = "var(--muted)";
  *  nothing to remove afterwards. */
 export function DeskNeedsMigration({ what }: { what: string }) {
   return (
-    <div style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 14, padding: "11px 13px", margin: "0 0 12px" }}>
+    <div style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: "4px solid #F59E0B", borderRadius: 14, padding: "11px 13px", margin: "0 0 12px" }}>
       <b style={{ fontSize: 12, color: INK }}>{what} is waiting on a migration</b>
       <div style={{ fontSize: 10.5, color: SUB, marginTop: 3, lineHeight: 1.55 }}>
         Everything on this screen is built and nothing is wrong — the database simply does not have the functions it reads

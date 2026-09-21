@@ -257,7 +257,7 @@ function ConfirmSheet({
               padding: "13px",
               borderRadius: 999,
               background: CARD,
-              border: `1px solid ${EL}`,
+              border: `1.5px solid ${EL}`,
               color: INK,
               fontWeight: 700,
               fontSize: 13,

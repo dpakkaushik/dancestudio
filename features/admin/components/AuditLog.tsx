@@ -53,11 +53,11 @@ export function AuditLog({ entries, nowIso, filter }: { entries: AuditEntry[]; n
 
       {kinds.length > 1 || filter ? (
         <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", marginBottom: 12 }}>
-          <Link href="/admin/audit" style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: filter ? CARD : "var(--text)", color: filter ? SUB : "var(--solid)", border: `1px solid ${filter ? EL : "var(--text)"}` }}>
+          <Link href="/admin/audit" style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", background: filter ? CARD : "var(--text)", color: filter ? SUB : "var(--solid)", border: `1.5px solid ${filter ? EL : "var(--text)"}` }}>
             Everything
           </Link>
           {kinds.map((k) => (
-            <Link key={k} href={`/admin/audit?action=${encodeURIComponent(k)}`} style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", background: filter === k ? "var(--text)" : CARD, color: filter === k ? "var(--solid)" : SUB, border: `1px solid ${filter === k ? "var(--text)" : EL}` }}>
+            <Link key={k} href={`/admin/audit?action=${encodeURIComponent(k)}`} style={{ flex: "0 0 auto", padding: "6px 11px", borderRadius: 999, fontSize: 11, fontWeight: 800, textDecoration: "none", whiteSpace: "nowrap", background: filter === k ? "var(--text)" : CARD, color: filter === k ? "var(--solid)" : SUB, border: `1.5px solid ${filter === k ? "var(--text)" : EL}` }}>
               {k}
             </Link>
           ))}
@@ -76,7 +76,7 @@ export function AuditLog({ entries, nowIso, filter }: { entries: AuditEntry[]; n
             const a = ACTIONS[e.action] ?? { says: e.action, tone: MUTED };
             const who = e.actorEmail ?? "an admin";
             return (
-              <div key={e.id} data-testid="audit-entry" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${a.tone}`, borderRadius: 14, padding: "10px 12px" }}>
+              <div key={e.id} data-testid="audit-entry" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${a.tone}`, borderRadius: 14, padding: "10px 12px" }}>
                 <div style={{ fontSize: 12.5, lineHeight: 1.5 }}>
                   <b>{who}</b> <span style={{ color: a.tone, fontWeight: 800 }}>{a.says}</span>{" "}
                   <b>{e.subjectLabel || "an account"}</b>
@@ -95,7 +95,7 @@ export function AuditLog({ entries, nowIso, filter }: { entries: AuditEntry[]; n
         </div>
       )}
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         This log cannot be edited or deleted by anybody, including you and the service role. A database trigger refuses
         both. The newest 100 decisions are shown.
       </div>

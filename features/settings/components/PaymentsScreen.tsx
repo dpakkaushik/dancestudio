@@ -226,7 +226,7 @@ export function PaymentsScreen({ side, methods, tenant = null, canEdit = false }
               {ACCEPT_ROWS.map(([k, l]) => {
                 const on = tenant.accepts[k];
                 return (
-                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid var(--el)" }}>
+                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: "1.5px solid var(--el)" }}>
                     <span style={{ fontSize: 12.5 }}>{l}</span>
                     <button type="button" role="switch" aria-checked={on} aria-label={l} disabled={pending} onClick={() => flip(k)} style={{ width: 38, height: 22, borderRadius: 11, background: on ? "#22C55E" : "var(--el)", position: "relative", cursor: "pointer", border: "none", padding: 0, flexShrink: 0 }}>
                       <span style={{ position: "absolute", top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: 8, background: "#fff", transition: "left .15s" }} />

@@ -70,10 +70,23 @@ html.dark {
   --bg: #0a0a0a;
   --solid: #0a0a0a;
   --card: rgba(255, 255, 255, 0.07);
-  --el: rgba(255, 255, 255, 0.13);
+  /* ⚠ 0.18, not 0.13 (21 Sep 2026): "make outlines a bit thicker everywhere"
+     is answered in two places, and this is the half that costs nothing — an
+     outline that is more present reads thicker before a single pixel is added.
+     The other half is the width, swept from 1px to 1.5px across the app. */
+  --el: rgba(255, 255, 255, 0.18);
   --text: #fafafa;
   --sub: #a3a3a3;
-  --muted: #707070;
+  /* ⚠ #7B7B7B, NOT #707070 (21 Sep 2026) — AND THE USER DID NOT ASK FOR THIS,
+     so it is said plainly. They asked to fix the LIGHT theme, and the contrast
+     check written to prove that fix measured the dark one on the way past:
+     `--muted` was **4.0:1** on this ground, under the 4.5 that 11px text needs,
+     and it labels small things all over the app. It is the same defect the ask
+     is about, one line from where the ask landed, so it is fixed rather than
+     left for the check to keep reporting. 4.53:1 now. ⚠ The visible cost is
+     real and small: the quietest tier in dark mode is a shade lighter than it
+     was, which narrows the step down from `--sub`. */
+  --muted: #7b7b7b;
   /* shell chrome (prototype 19171-19172, 19249-19251, 19308-19312, 19381) */
   --hdr-bg: rgba(10, 10, 10, 0.72);
   --hdr-line: rgba(255, 255, 255, 0.12);
@@ -84,22 +97,38 @@ html.dark {
   --chip-line: rgba(255, 255, 255, 0.09);
   --tab-rest: rgba(255, 255, 255, 0.62);
 }
+/* ⚠ THE LIGHT THEME IS WARM (21 Sep 2026, the user: "fix light mode to a warmer
+   tone so it doesnt blur text and make outlines a bit thicker everywhere").
+   They are describing HALATION: pure #ffffff at phone brightness blooms into
+   near-black glyphs and the text reads soft — an effect every long-form reader
+   app answers the same way, by taking the ground a few points off white and
+   warming it. So the page is #faf8f5 and the ink #17150f, and every grey on it
+   is warm rather than neutral, because ONE neutral grey on a warm ground is the
+   thing that looks dirty.
+   ⚠ AND THE VEILS ARE WARM TOO. `--card` and `--el` are alpha over the ground;
+   a neutral black veil on a warm page reads green-grey. They are cast in the
+   same brown-black, so a card is a quieter version of the page rather than a
+   different paper.
+   Measured, not judged — `scripts/shots/shoot-invert.js` injects a node per tier
+   and composites the real painted colours: the ink, `--sub`, and `--muted`,
+   which clears 4.5:1 here for the first time (it was 3.45:1 on white, under what
+   11px text needs, and it labels small things all over the app). */
 html.light {
-  --bg: #ffffff;
-  --solid: #ffffff;
-  --card: rgba(0, 0, 0, 0.045);
-  --el: rgba(0, 0, 0, 0.09);
-  --text: #111111;
-  --sub: #5b5b5b;
-  --muted: #8a8a8a;
-  --hdr-bg: rgba(255, 255, 255, 0.8);
-  --hdr-line: rgba(0, 0, 0, 0.08);
-  --nav-bg: rgba(255, 255, 255, 0.45);
-  --nav-line: rgba(0, 0, 0, 0.07);
-  --nav-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --chip-bg: rgba(17, 17, 17, 0.055);
-  --chip-line: rgba(17, 17, 17, 0.05);
-  --tab-rest: rgba(0, 0, 0, 0.45);
+  --bg: #faf8f5;
+  --solid: #faf8f5;
+  --card: rgba(61, 44, 22, 0.055);
+  --el: rgba(61, 44, 22, 0.16);
+  --text: #17150f;
+  --sub: #57524a;
+  --muted: #776f63;
+  --hdr-bg: rgba(250, 248, 245, 0.82);
+  --hdr-line: rgba(61, 44, 22, 0.12);
+  --nav-bg: rgba(250, 248, 245, 0.48);
+  --nav-line: rgba(61, 44, 22, 0.11);
+  --nav-shadow: 0 8px 24px rgba(61, 44, 22, 0.12);
+  --chip-bg: rgba(61, 44, 22, 0.06);
+  --chip-line: rgba(61, 44, 22, 0.09);
+  --tab-rest: rgba(23, 21, 15, 0.5);
 }
 
 /* ── A SECTION THAT READS AS THE OPPOSITE THEME (21 Sep 2026).
@@ -121,21 +150,26 @@ html.light {
    theme — and every component that reads lib/design/tokens is correct in here
    with no change at all. `--bg` is deliberately NOT swapped: that is the body's,
    and nothing inside a panel has any business reading it. */
+/* ⚠ THESE TWO MIRROR THE PALETTES ABOVE AND MUST MOVE WITH THEM. A panel shows
+   the OTHER theme, so the light values here are the warm ones (21 Sep 2026) and
+   the dark ones carry the same 0.18 outline. If a future change edits `html.light`
+   and not this block, a card inside a panel is a different paper from the same
+   card outside one — which is precisely the drift the panel was built to avoid. */
 html.dark .dos-invert {
-  --solid: #ffffff;
-  --card: rgba(0, 0, 0, 0.045);
-  --el: rgba(0, 0, 0, 0.09);
-  --text: #111111;
-  --sub: #5b5b5b;
-  --muted: #8a8a8a;
+  --solid: #faf8f5;
+  --card: rgba(61, 44, 22, 0.055);
+  --el: rgba(61, 44, 22, 0.16);
+  --text: #17150f;
+  --sub: #57524a;
+  --muted: #776f63;
 }
 html.light .dos-invert {
   --solid: #0a0a0a;
   --card: rgba(255, 255, 255, 0.07);
-  --el: rgba(255, 255, 255, 0.13);
+  --el: rgba(255, 255, 255, 0.18);
   --text: #fafafa;
   --sub: #a3a3a3;
-  --muted: #707070;
+  --muted: #7b7b7b;
 }
 .dos-invert {
   background: var(--solid);

@@ -299,7 +299,7 @@ export function ToolGrid({ tiles }: { tiles: Tile[] }) {
           aria-label={t.name}
           style={{
             background: dosToolPaint(t.c),
-            border: `1px solid ${t.c}`,
+            border: `1.5px solid ${t.c}`,
             borderRadius: 16,
             padding: "9px 11px",
             minHeight: 58,

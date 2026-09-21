@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useId, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Portal } from "@/components/ui/Portal";
 import { signOutAction } from "@/features/auth/server-actions/auth";
-import { DOS_UI, INK } from "@/lib/design/tokens";
+import { DOS_UI, INK, RED } from "@/lib/design/tokens";
 
 /** App shell lifted from the prototype's root (DanceOSApp.jsx:19171-19397): the
  *  fixed top bar (wordmark on a tab, back chip + title on a drill page, round
@@ -263,7 +263,7 @@ const chipStyle: React.CSSProperties = {
   justifyContent: "center",
   position: "relative",
   background: "var(--chip-bg)",
-  border: "1px solid var(--chip-line)",
+  border: "1.5px solid var(--chip-line)",
 };
 
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -318,6 +318,11 @@ export function AppChrome({
     const root = item.kind === "crew" ? item.href.replace(/\/manage$/, "") : item.href;
     return pathname === root || pathname.startsWith(`${root}/`);
   };
+  /* WHICH PROFILE THE CHIP WEARS (21 Sep 2026). On a studio's or a crew's own
+     pages it is that one; everywhere else — a tab, a desk, a public page you
+     have drilled into — it is your own account, which is the profile you are
+     acting as. A `me` row always exists, so this is only null for an admin. */
+  const hereItem = switcher.find(isHere) ?? switcher.find((s) => s.kind === "me") ?? switcher[0] ?? null;
   /* ⚠ THE "MANAGING {STUDIO}" STRIP IS GONE (18 Sep 2026, the user: "remove the
      blue bar which shows exit studio from all pages"). It was asked about once
      before, on 16 Sep, and kept on the DESKS with the argument that a tool hero
@@ -386,31 +391,22 @@ export function AppChrome({
           background: "var(--hdr-bg)",
           backdropFilter: "blur(18px) saturate(1.4)",
           WebkitBackdropFilter: "blur(18px) saturate(1.4)",
-          borderBottom: "1px solid var(--hdr-line)",
+          borderBottom: "1.5px solid var(--hdr-line)",
         }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: showMark ? 9 : 4, minWidth: 0, flex: 1 }}>
           {showMark ? (
             <>
-              {/* THE MARK OPENS THE PROFILE SWITCHER (18 Sep 2026) — a real button, so
-                  the list of homes is one press away wherever the mark is drawn */}
-              {switcher.length > 0 && !adminOnly ? (
-                <button
-                  type="button"
-                  aria-label="Switch profile"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  onClick={() => setOpenFor(menuOpen ? null : pathname)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  <DosMark size={30} />
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: menuOpen ? "rotate(180deg)" : "none", transition: "transform .16s" }}>
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-              ) : (
-                <DosMark size={30} />
-              )}
+              {/* ⚠ THE MARK IS A MARK AGAIN (21 Sep 2026). It carried the profile
+                  switcher from 18 Sep — the user's own placement then — and the
+                  same user has now asked for the switcher to be "constant like
+                  settings". It cannot be both: the mark is drawn on the four
+                  tabs and the two entity homes and NOWHERE ELSE, so on every
+                  drill page the switcher simply did not exist. Constant beats
+                  where-it-started, so it moved to the chip group on the right,
+                  beside the gear, on every screen — and the mark stops being a
+                  door rather than becoming a second one. */}
+              <DosMark size={30} />
               <span style={{ fontSize: 19, fontWeight: 900, letterSpacing: -0.3, color: INK, fontFamily: DOS_UI }}>
                 Dance<span style={{ color: "#EC4899" }}>OS</span>
               </span>
@@ -474,7 +470,7 @@ export function AppChrome({
               <path d="M10.5 19a2 2 0 0 0 3 0" />
             </svg>
             {unread > 0 ? (
-              <span data-testid="bell-badge" style={{ position: "absolute", top: -2, right: -2, minWidth: 14, height: 14, borderRadius: 7, padding: "0 3.5px", background: "#EC4899", color: "#fff", fontSize: 8.5, fontWeight: 900, lineHeight: "14px", textAlign: "center", fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', border: `2px solid ${theme === "dark" ? "#0A0A0A" : "#FFFFFF"}`, boxSizing: "border-box" }}>
+              <span data-testid="bell-badge" style={{ position: "absolute", top: -2, right: -2, minWidth: 14, height: 14, borderRadius: 7, padding: "0 3.5px", background: "#EC4899", color: "#fff", fontSize: 8.5, fontWeight: 900, lineHeight: "14px", textAlign: "center", fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', border: `2px solid ${theme === "dark" ? "#0A0A0A" : "#FAF8F5"}`, boxSizing: "border-box" }}>
                 {unread > 9 ? "9+" : unread}
               </span>
             ) : null}
@@ -493,17 +489,54 @@ export function AppChrome({
             }}
             style={chipStyle}
           >
+            {/* ⚠ the light-theme hexes on this pair — and on the bell badge's ring
+                above — are the light PAGE, not brand colours, so they moved with
+                it on 21 Sep: the ring is the header's own ground (#FAF8F5) and
+                the moon is the page's ink (#17150F). They are literals because
+                the pair is chosen from JS by theme rather than by a variable,
+                which is exactly why a palette change has to come looking for
+                them. */}
             {theme === "dark" ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" strokeWidth="1.9" strokeLinecap="round">
                 <circle cx="12" cy="12" r="4" />
                 <path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8" />
               </svg>
             ) : (
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#111111" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#17150F" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z" />
               </svg>
             )}
           </span>
+          {/* ⚠ THE PROFILE SWITCHER, CONSTANT, BESIDE THE GEAR (21 Sep 2026, the
+              user: "make profile switcher constant like settings"). It wears the
+              INITIALS of the profile you are in, in that kind's own colour, so
+              the chip answers "which profile am I?" at a glance on every screen
+              and opens the list of the others — which is what a switcher is for
+              and what a mark on six screens could never do.
+              ⚠ It is drawn even for somebody with ONE profile, because Log out
+              lives in this menu now and must be reachable from everywhere. */}
+          {adminOnly ? null : (
+            <button
+              type="button"
+              aria-label={hereItem ? `Switch profile — you are in ${hereItem.label}` : "Switch profile"}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setOpenFor(menuOpen ? null : pathname)}
+              style={{
+                ...chipStyle,
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                fontFamily: "inherit",
+                background: hereItem ? `linear-gradient(135deg,${SWITCH_TINT[hereItem.kind]},${SWITCH_TINT[hereItem.kind]}88)` : "var(--card)",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 900,
+              }}
+            >
+              {hereItem ? initialsOf(hereItem.label) : "··"}
+            </button>
+          )}
           {/* the gear opens the Settings sheet on the Profile tab (prototype 19263);
               an admin-only account has no Profile tab, so its one control is the way out */}
           {adminOnly ? (
@@ -527,7 +560,7 @@ export function AppChrome({
           top bar is a transformed element, so a fixed backdrop drawn inside it would
           cover the bar and nothing else. The one you are on is marked; every row is
           a door, and a navigation closes the menu by changing the pathname. ── */}
-      {menuOpen && switcher.length > 0 ? (
+      {menuOpen && !adminOnly ? (
         <Portal>
           <div onClick={() => setOpenFor(null)} style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,.28)" }} />
           <div
@@ -535,7 +568,7 @@ export function AppChrome({
             aria-label="Your profiles"
             style={{ position: "fixed", top: "calc(var(--dos-top) + 6px)", left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, boxSizing: "border-box", padding: "0 12px", zIndex: 710, pointerEvents: "none", fontFamily: DOS_UI }}
           >
-            <div style={{ pointerEvents: "auto", width: 300, maxWidth: "100%", background: "var(--solid)", color: "var(--text)", border: "1px solid var(--el)", borderRadius: 18, boxShadow: "0 18px 48px rgba(0,0,0,.45)", padding: 6, animation: "dosSheetUp .18s ease" }}>
+            <div style={{ pointerEvents: "auto", width: 300, maxWidth: "100%", background: "var(--solid)", color: "var(--text)", border: "1.5px solid var(--el)", borderRadius: 18, boxShadow: "0 18px 48px rgba(0,0,0,.45)", padding: 6, animation: "dosSheetUp .18s ease" }}>
               <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--muted)", padding: "8px 10px 6px" }}>SWITCH PROFILE</div>
               {switcher.map((item) => {
                 const here = isHere(item);
@@ -561,6 +594,29 @@ export function AppChrome({
                   </Link>
                 );
               })}
+              {/* ⚠ LOG OUT LIVES HERE NOW (21 Sep 2026, the user: "shift log out
+                  from setting to profile switcher"). It is the right home for
+                  it: this menu is the one place in the app that is ABOUT which
+                  account you are, so ending the session is the last thing on
+                  that list rather than the last thing on a list of settings.
+                  ⚠ And it is why the menu opens for somebody with a single
+                  profile, and why the chip is drawn on every screen — the way
+                  out must not be reachable only from the Profile tab. */}
+              <div style={{ height: 1, background: "var(--el)", margin: "6px 10px" }} />
+              <form action={signOutAction} style={{ display: "block" }}>
+                <button
+                  type="submit"
+                  role="menuitem"
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 13, width: "100%", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", color: RED, textAlign: "left" }}
+                >
+                  <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${RED}1f` }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5" />
+                    </svg>
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 900 }}>Log out</span>
+                </button>
+              </form>
             </div>
           </div>
         </Portal>
@@ -599,7 +655,7 @@ export function AppChrome({
             padding: "8px 10px",
             borderRadius: 999,
             gap: 4,
-            border: "1px solid var(--nav-line)",
+            border: "1.5px solid var(--nav-line)",
             boxShadow: "var(--nav-shadow)",
           }}
         >

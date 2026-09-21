@@ -185,7 +185,7 @@ export function LocationPicker({
     boxSizing: "border-box",
     height: 40,
     borderRadius: 12,
-    border: solid ? "none" : `1px solid ${EL}`,
+    border: solid ? "none" : `1.5px solid ${EL}`,
     background: solid ? "var(--text)" : CARD,
     color: solid ? "var(--solid)" : INK,
     fontSize: 12.5,
@@ -219,7 +219,7 @@ export function LocationPicker({
 
       {/* what the point resolved to — shown as soon as there is one */}
       {placed || busy === "address" ? (
-        <div style={{ marginTop: armed ? 8 : 0, background: CARD, border: `1px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
+        <div style={{ marginTop: armed ? 8 : 0, background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "9px 11px" }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED }}>THE PIN IS ON</div>
           <div style={{ fontSize: 11.5, color: INK, marginTop: 3, lineHeight: 1.45 }}>
             {busy === "address"

@@ -20,7 +20,7 @@ const EL = "var(--el)";
 const MUTED = "var(--muted)";
 const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 const chip: React.CSSProperties = { fontSize: 9, fontWeight: 900, letterSpacing: 0.5, padding: "2px 6px", borderRadius: 5, whiteSpace: "nowrap" };
-const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${EL}`, background: CARD, color: INK };
+const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", border: `1.5px solid ${EL}`, background: CARD, color: INK };
 
 function Mark({ name, path }: { name: string; path: string | null }) {
   const src = photoUrl(path);
@@ -167,7 +167,7 @@ export function BusinessesDesk({
             const blockedFromListing = !live && b.type === "studio" && (!b.verifiedAt || !(b.subStatus && ["active", "past_due", "canceled"].includes(b.subStatus)));
             const subLive = b.type === "studio" && b.subStatus !== null && ["active", "past_due", "canceled"].includes(b.subStatus);
             return (
-              <div key={b.id} data-testid="admin-business" style={{ background: CARD, border: `1px solid ${EL}`, borderLeft: `4px solid ${live ? "#22C55E" : "#F59E0B"}`, borderRadius: 16, padding: "11px 12px" }}>
+              <div key={b.id} data-testid="admin-business" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${live ? "#22C55E" : "#F59E0B"}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                   <Mark name={b.name} path={b.photoPath} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -218,12 +218,12 @@ export function BusinessesDesk({
                     <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>HOW LONG</div>
                     <div style={{ display: "flex", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
                       {[1, 3, 6, 12].map((m) => (
-                        <button key={m} type="button" onClick={() => setMonths(m)} aria-pressed={months === m} style={{ ...btn, background: months === m ? "var(--text)" : CARD, color: months === m ? "var(--solid)" : SUB, border: `1px solid ${months === m ? "var(--text)" : EL}` }}>
+                        <button key={m} type="button" onClick={() => setMonths(m)} aria-pressed={months === m} style={{ ...btn, background: months === m ? "var(--text)" : CARD, color: months === m ? "var(--solid)" : SUB, border: `1.5px solid ${months === m ? "var(--text)" : EL}` }}>
                           {m === 12 ? "1 year" : `${m} month${m === 1 ? "" : "s"}`}
                         </button>
                       ))}
                     </div>
-                    <input aria-label={`Note on ${b.name}'s subscription`} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="A note for the log (optional)" style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit" }} />
+                    <input aria-label={`Note on ${b.name}'s subscription`} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="A note for the log (optional)" style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit" }} />
                     <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                       <button type="button" disabled={pending} onClick={() => grant(b)} style={{ ...btn, background: "var(--text)", color: "var(--solid)", border: "none" }} aria-label={`Confirm granting ${b.name} a subscription`}>
                         {pending ? "Granting…" : "Grant it"}
@@ -237,7 +237,7 @@ export function BusinessesDesk({
                 ) : ending === b.id ? (
                   <div style={{ marginTop: 9 }}>
                     <label htmlFor={`endsub-${b.id}`} style={{ display: "block", fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 5 }}>WHY — THE OWNER READS THIS</label>
-                    <textarea id={`endsub-${b.id}`} value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} placeholder="Why it is ending now, in a sentence." style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }} />
+                    <textarea id={`endsub-${b.id}`} value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} placeholder="Why it is ending now, in a sentence." style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }} />
                     <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                       <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => endSub(b)} style={{ ...btn, background: "#EF4444", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm ending ${b.name}'s subscription`}>
                         {pending ? "Ending…" : "End it now"}
@@ -258,7 +258,7 @@ export function BusinessesDesk({
                       rows={2}
                       maxLength={500}
                       placeholder="What is wrong with it, in a sentence."
-                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
+                      style={{ width: "100%", boxSizing: "border-box", background: "var(--bg)", border: `1.5px solid ${EL}`, borderRadius: 10, padding: "8px 10px", fontSize: 12, color: INK, fontFamily: "inherit", resize: "vertical" }}
                     />
                     <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
                       <button type="button" disabled={pending || reason.trim().length < 3} onClick={() => move(b, "unlisted", reason.trim())} style={{ ...btn, background: "#EF4444", color: "#fff", border: "none", opacity: reason.trim().length < 3 ? 0.5 : 1 }} aria-label={`Confirm taking ${b.name} off Discover`}>
@@ -305,7 +305,7 @@ export function BusinessesDesk({
 
       <Pager base={base} page={page} total={total} keep={{ tab, q: q || null }} />
 
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1px solid ${EL}`, paddingTop: 12 }}>
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
         Taking one business off Discover leaves the rest of its organization alone — that is what this screen is for.
         Revoking the organization&apos;s verification, on the Verifications screen, unlists every studio it runs.
       </div>

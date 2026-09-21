@@ -111,6 +111,13 @@ function BookingStrip({
           onClick={onCode}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", lineHeight: 0, flexShrink: 0 }}
         >
+          {/* ⚠ 54px is a THUMBNAIL, and deliberately so: an entry code is a
+              version-1 square, so this is under two pixels a module and no
+              camera will read it — but nobody points one at this. It is the
+              control that OPENS the pass sheet, where the same code is drawn at
+              168 and is scannable. The one place the small square would be a
+              lie is the students invite, whose own line says "they scan it";
+              that one grew instead. */}
           <QRBlock code={code} size={54} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -126,7 +133,7 @@ function BookingStrip({
       </div>
       {onInvoice && onCancel ? (
         /* one bordered pill, two segments, a hairline between — merged, and both visible */
-        <div style={{ display: "flex", alignItems: "stretch", marginTop: 10, border: `1px solid ${LINE}`, borderRadius: 999, overflow: "hidden", background: "var(--solid)" }}>
+        <div style={{ display: "flex", alignItems: "stretch", marginTop: 10, border: `1.5px solid ${LINE}`, borderRadius: 999, overflow: "hidden", background: "var(--solid)" }}>
           <span
             role="button"
             tabIndex={0}
@@ -201,7 +208,7 @@ export function PassDeck({ items }: { items: DeckItem[] }) {
       <EventCard event={p.event} href={p.href} />
       {/* the event card has no line for what the session is to you — it gets one
           under it, with the strip when you hold a way in */}
-      <div style={{ margin: "-4px 0 0", padding: "8px 12px 10px", background: "var(--card)", border: `1px solid ${LINE}`, borderTop: "none", borderRadius: "0 0 20px 20px" }}>
+      <div style={{ margin: "-4px 0 0", padding: "8px 12px 10px", background: "var(--card)", border: `1.5px solid ${LINE}`, borderTop: "none", borderRadius: "0 0 20px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
           <RoleChip label={p.roleLabel} />
           {p.booking ? (

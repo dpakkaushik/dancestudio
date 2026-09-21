@@ -20,7 +20,7 @@ function Row({ crew, own, sub }: { crew: CrewSummary; own: boolean; sub: string 
     <Link
       href={own ? `/crews/${crew.id}/manage` : `/crew/${crew.id}`}
       aria-label={`${crew.name} — ${own ? "manage the crew" : "open the profile"}`}
-      style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1px solid var(--el)", borderLeft: `4px solid ${own ? accent : "var(--el)"}`, borderRadius: 16, padding: "12px 13px", marginBottom: 9, color: INK, textDecoration: "none" }}
+      style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${own ? accent : "var(--el)"}`, borderRadius: 16, padding: "12px 13px", marginBottom: 9, color: INK, textDecoration: "none" }}
     >
       <span style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, background: own ? `${accent}1c` : "var(--el)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <CrewI size={17} color={own ? accent : "var(--sub)"} />
