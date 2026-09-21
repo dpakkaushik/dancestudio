@@ -265,7 +265,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     const styleTile = hero.locator('[aria-label$="a style this studio teaches"]').first();
     const styleTop = (await styleTile.count()) ? await styleTile.evaluate((el) => el.getBoundingClientRect().top) : Infinity;
     check(followersTop < styleTop, "studio home: the figures come BEFORE the styles, as on Home and the Profile tab");
-    check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 1, "studio home: a Media tile among the tools");
+    /* ⚠ NO MEDIA TILE (21 Sep 2026, the user: "remove media from all tool in all
+       profiles"). The desk showed the studio's two pictures — and since 20 Sep
+       the disc's ⊕ and the posters' ⊕ on this very home ARE the editor, so the
+       tile was a third door to a job whose controls sit on the pictures. The
+       ROUTE stays (Rule 14) and is driven further down this file. */
+    check((await org.getByRole("link", { name: "Media", exact: true }).count()) === 0, "studio home: NO Media tile — the pictures are edited on the pictures (21 Sep 2026)");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "studio home: one Stats door — the chip beside the QR (it left the grid on 18 Sep 2026)");
     /* ⚠ AND THE CHIPS ARE IN THE FIGURES ROW, NOT THE HERO'S RIGHT EDGE (20 Sep
        2026, the user: "should be placed in same row as follower following numbers
@@ -467,7 +472,11 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       await waitRailImgs(org, 1);
       check((await studioRows()) === 1, "studio posters: and Save is what removes one, too");
 
-      /* the Media desk: the same two pictures as a desk */
+      /* the Media desk: the same two pictures as a desk.
+         ⚠ ITS TILE IS OFF THE GRID SINCE 21 Sep 2026 and the ROUTE STAYS
+         (Rule 14: a link handed out is a promise, and the installed TWA reopens
+         on the last URL it showed) — which is why it is still reached by URL
+         here and still has to work. */
       await org.goto(`${BASE}/business/${studioId}/media`);
       await org.getByRole("heading", { name: "Media", exact: true }).waitFor();
       check((await org.getByTestId("media-disc").locator("img").count()) === 1, "media desk: the disc with its picture");

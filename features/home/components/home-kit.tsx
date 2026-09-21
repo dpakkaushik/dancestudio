@@ -252,7 +252,12 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
     { name: DOS_TOOLS.earn.name, href: desk("earnings"), k: "earn", c: DOS_TOOLS.earn.c },
     { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
     { name: DOS_TOOLS.assets.name, href: "/assets", k: "assets", c: DOS_TOOLS.assets.c },
-    { name: DOS_TOOLS.media.name, href: "/profile", k: "media", c: DOS_TOOLS.media.c },
+    /* ⚠ NO MEDIA TILE (21 Sep 2026, the user: "remove media from all tool in all
+       profiles"). It opened the Profile tab, because an artist's pictures are
+       edited there — and since 20-21 Sep the disc's ⊕ and the posters' ⊕ ARE
+       that editor, on the Profile tab and on Home alike. So the tile was a
+       third door to a job that already has two controls sitting on the picture
+       itself. `StudioMediaDesk` and its route stay (Rule 14). */
   ];
 };
 

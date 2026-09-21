@@ -14,12 +14,13 @@ import {
 } from "@/features/crews/server-actions/crews";
 import { EvIcon } from "@/features/events/components/event-kit";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
-import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/tenants/components/biz-kit";
 import { photoUrl } from "@/lib/media/photo";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
 import { EV_TINT } from "@/types/event";
-import { Toast, bizBtn, bizCard, pressKey, sinceWords } from "./crew-kit";
+import { Toast, bizBtn, bizCard, sinceWords } from "./crew-kit";
 
 /** The crew desks — prototype S_crewmanage (16318-16480), lifted: the three
  *  tiles, then Members OR Battle record. Members: a row per person with the
@@ -110,6 +111,16 @@ export function CrewManager({ crew, members, entries, todayKey, section }: { cre
 
         {seg === "members" ? (
           <>
+            {/* ⚠ THE SHARED ＋, ON TOP, IN THE SAME WORDS AS EVERY OTHER TEAM DESK
+                (21 Sep 2026, the user: "fix Team pages for all kinds of profile
+                types"). This was a hand-rolled `div role="button"` wearing
+                crew-kit's DASHED `bizBtn`, sitting at the FOOT of the roster and
+                reading "＋ Add member", while a studio's and an organization's
+                said "Add a team member" on the solid pill at the top. It is the
+                third desk of three and the last one still doing it its own way —
+                the organization's was corrected on 21 Sep and this one was
+                missed, which is exactly the shape of C36. */}
+            <DeskAddButton label="Add a team member" onClick={() => setAdd(true)} />
             {members.map((m, i) => {
               const rc = CREW_ROLE_TINT[m.role];
               const pending = m.status === "asked";
@@ -211,20 +222,32 @@ export function CrewManager({ crew, members, entries, todayKey, section }: { cre
                 </div>
               );
             })}
-            <div role="button" tabIndex={0} aria-label="Add member" onKeyDown={pressKey(() => setAdd((v) => !v))} onClick={() => setAdd((v) => !v)} style={{ ...bizBtn, marginTop: 4 }}>
-              ＋ Add member
-            </div>
+            {/* an empty roster said nothing at all, while the other two desks each
+                said something — so a leader whose asks were all declined read the
+                three tiles and a button and no words */}
+            {members.length === 0 ? (
+              <div style={{ ...bizCard, textAlign: "center", fontSize: 12, color: "var(--sub)", border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
+                Nobody in the crew yet. Ask somebody above — they are on the crew&rsquo;s page once they say yes.
+              </div>
+            ) : null}
             {/* SEARCH DANCEOS, THEN ASK THEM — nobody is added by this; a crew roster is a public page */}
             {add ? (
-              <div style={{ ...bizCard, marginTop: 8 }}>
-                <PeoplePicker
-                  exclude={members.map((m) => m.userId)}
-                  pickLabel={(p) => `Ask ${p.fullName} to join the crew`}
-                  onPick={(p) => {
-                    setAdd(false);
-                    void run(() => askCrewMemberAction({ crewId: crew.id, userId: p.id }), `📨 ${p.fullName} asked to confirm joining the crew`);
-                  }}
-                />
+              <div onClick={() => setAdd(false)} style={sheetWrap}>
+                <div role="dialog" aria-modal="true" aria-label="Add a team member" onClick={(e) => e.stopPropagation()} style={sheetBody}>
+                  <SheetHandle />
+                  <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 4 }}>Add a team member</div>
+                  <div style={{ fontSize: 11.5, color: "var(--sub)", marginBottom: 12, lineHeight: 1.5 }}>
+                    They accept before their name is on the crew&rsquo;s page — nobody is put on a roster without saying yes.
+                  </div>
+                  <PeoplePicker
+                    exclude={members.map((m) => m.userId)}
+                    pickLabel={(p) => `Ask ${p.fullName} to join the crew`}
+                    onPick={(p) => {
+                      setAdd(false);
+                      void run(() => askCrewMemberAction({ crewId: crew.id, userId: p.id }), `📨 ${p.fullName} asked to confirm joining the crew`);
+                    }}
+                  />
+                </div>
               </div>
             ) : null}
           </>

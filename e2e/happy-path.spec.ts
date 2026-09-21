@@ -1116,6 +1116,22 @@ test.describe.serial("DanceOS, end to end", () => {
     // ASKED IS NOT JOINED: the desk says the trainer has not answered, and counts one member
     await expect(learner.getByText("⏳ Waiting on them to confirm")).toBeVisible();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("1");
+    /* ⚠ ONE TEAM DESK, THREE KINDS OF PROFILE (21 Sep 2026, the user: "fix Team
+       pages for all kinds of profile types"). The crew's was the last one adding
+       people its own way: a hand-rolled DASHED control at the FOOT of the roster
+       reading "＋ Add member", where a studio's and an organization's are the
+       shared solid pill at the TOP reading "Add a team member", opening a sheet.
+       Both ends asserted — the shared control, and the absence of the old one —
+       because a check that only looks for what was added lets it live on. */
+    await expect(learner.getByRole("heading", { level: 1, name: "Team" })).toBeVisible();
+    await expect(learner.getByRole("button", { name: "Add member", exact: true })).toHaveCount(0);
+    await learner.getByRole("button", { name: "Add a team member" }).click();
+    const crewAdd = learner.getByRole("dialog", { name: "Add a team member" });
+    await expect(crewAdd).toBeVisible();
+    // the app's one people search, with its own clothes on — as on the other two desks
+    await expect(crewAdd.getByRole("textbox", { name: "Search DanceOS for a dancer" })).toBeVisible();
+    await learner.mouse.click(10, 10); // the scrim closes it
+    await expect(crewAdd).toHaveCount(0);
 
     // the trainer answers from the Requests desk — only they can
     await trainer.goto("/inbox");

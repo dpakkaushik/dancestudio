@@ -18,8 +18,9 @@ import {
   setMemberPowersAction,
   setMemberRoleAction,
 } from "@/features/staff/server-actions/staff";
+import Link from "next/link";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
+import { DOS_TOOLS, DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
@@ -99,28 +100,14 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit",
 };
 
-const sheetWrap: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,.6)",
-  display: "flex",
-  alignItems: "flex-end",
-  justifyContent: "center",
-  zIndex: 610,
-};
-
-const sheet: React.CSSProperties = {
-  background: "var(--solid)",
-  color: "var(--text)",
-  borderRadius: "24px 24px 0 0",
-  padding: "18px 16px 28px",
-  width: "100%",
-  maxWidth: 430,
-  boxSizing: "border-box",
-  maxHeight: "88vh",
-  overflowY: "auto",
-  fontFamily: DOS_UI,
-};
+/** ⚠ THE SHARED SHEET, NOT A LOCAL COPY OF IT (21 Sep 2026). These were declared
+ *  here — the same scrim, the same radius, the same max width as `biz-kit`'s —
+ *  and the copy had dropped ONE line, `animation: SHEET_ANIMATION`, so every
+ *  sheet on this desk APPEARED while the organization's and the crew's slid up.
+ *  Nothing typed can see that; you only notice it beside another desk, which is
+ *  the whole of what the user asked to be fixed. `sheet` keeps its name so the
+ *  eight call sites below read as they did. */
+const sheet = sheetBody;
 
 /* DosTeamRow's marks (18560-18565): the label wears its own colour, the person's
    kind rides beside it.
@@ -173,6 +160,12 @@ export function StaffDesk({
 }) {
   /** the invite link is this deployment's own /join/{code} */
   const origin = useSyncExternalStore(subscribeNever, readOrigin, readServerOrigin);
+  /* ⚠ THE PUBLIC FACE OF THE BUSINESS THIS DESK BELONGS TO (21 Sep 2026): a
+     studio has a page of its own; an ARTIST PAGE does not — an artist IS their
+     profile since 18 Sep (R24), so the door is the OWNER's person page, taken
+     from the roster rather than from `/artist/{id}`, which only redirects there */
+  const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
+  const publicHref = tenantType === "artist_page" ? (ownerUserId ? `/person/${ownerUserId}` : "/business") : `/studio/${tenantId}`;
   const [addOpen, setAddOpen] = useState(false);
   const [openMember, setOpenMember] = useState<TeamMember | null>(null);
   const [shareInvite, setShareInvite] = useState<TenantInvite | null>(null);
@@ -237,17 +230,24 @@ export function StaffDesk({
         margin: "0 auto",
         fontFamily: DOS_UI,
         minHeight: "100vh",
-        padding: "8px 16px 40px",
+        padding: "0 16px 40px",
         boxSizing: "border-box",
       }}
     >
-      {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
-      {/* ⚠ reads the tool's own colour (18 Sep 2026) — it hardcoded #F97316, so
-          when the palette deepened Team the tile and its page disagreed */}
-      <div aria-label={`${tenantName} — Team`} style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(DOS_TOOLS.team.c) }}>
-        <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Team</div>
-      </div>
+      {/* ⚠⚠ THE SHARED HERO, AND A REAL <h1> (21 Sep 2026, the user: "fix Team
+          pages for all kinds of profile types"). This was a HAND-COPY of
+          `DeskHero` — the same paint and the same geometry, drawn from the same
+          `dosToolPaint(DOS_TOOLS.team.c)` — with the title as a `<div>`, so this
+          page had **no heading at all** for a screen reader while the crew's and
+          the organization's Team desks both render `<h1>Team</h1>`. A copy that
+          looks identical and is not the same element is the worst kind, because
+          nothing on screen ever shows it drifting.
+          ⚠ AND IT NAMES THE BUSINESS, which the other two desks already did: an
+          organization runs several studios, and the tool hero names the tool. */}
+      <DeskHero tool="team" as="h1" margin="12px 0 8px" />
+      <Link href={publicHref} style={{ display: "block", fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px", textDecoration: "none" }}>
+        {tenantName} · who it names ›
+      </Link>
 
       {/* ＋ ADD, AT THE TOP, THE WAY CLASSES AND EVENTS OPEN (20 Sep 2026, the
           user: "Add button for team, room, crew to be similar to add class and
@@ -339,8 +339,12 @@ export function StaffDesk({
                       its own colour, then what they are on DanceOS and what they
                       dance — one line, the way the prototype sets it */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 38, height: 38, borderRadius: 19, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
-                      {face ? <Image src={face} alt="" width={38} height={38} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
+                    {/* ⚠ 36px AND A SQUIRCLE (21 Sep 2026), which is what the
+                        organization's and the crew's Team rows already draw and
+                        what C11 made the app's shape for a face. This was a 38px
+                        CIRCLE — the one round avatar left on any Team desk. */}
+                    <span style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
+                      {face ? <Image src={face} alt="" width={36} height={36} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : initialsOf(m.name)}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -525,7 +529,7 @@ export function StaffDesk({
             onClick={(e) => e.stopPropagation()}
             style={sheet}
           >
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
+            <SheetHandle />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add a team member</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
               They accept before anything is theirs to run — nobody is added to a business without saying yes.
@@ -577,13 +581,17 @@ export function StaffDesk({
 
             {addBy === "person" ? (
               /* the app's one people search — a name, a mobile number, or a
-                 scanned profile link, every row with its picture (R27) */
+                 scanned profile link, every row with its picture (R27).
+                 ⚠ IT WEARS THE PICKER'S OWN CLOTHES SINCE 21 Sep 2026: this call
+                 overrode all four of them — its own eyebrow, its own
+                 placeholder, "Ask" without the chevron, and `PINK`, which is
+                 CYAN — while the organization's and the crew's Team desks both
+                 take the defaults. One widget, three visual identities, on three
+                 pages doing the same job. `ariaLabel` stays, because it is the
+                 only one that says what THIS search is for rather than how it
+                 looks. */
               <PeoplePicker
-                title="Search DanceOS, then ask them"
-                placeholder="Name or mobile number"
                 ariaLabel="Search for somebody to add"
-                actionWord="Ask"
-                actionColor={PINK}
                 exclude={[meUserId, ...onTeam]}
                 pickLabel={(p) => `Ask ${p.fullName}`}
                 onPick={async (p) => {
@@ -668,7 +676,7 @@ export function StaffDesk({
             onClick={(e) => e.stopPropagation()}
             style={sheet}
           >
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
+            <SheetHandle />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{shareInvite.name}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px" }}>
               Invited as {MEMBER_ROLE_WORD[shareInvite.memberRole].toLowerCase()} · {shareInvite.email}
@@ -759,12 +767,23 @@ export function StaffDesk({
             onClick={(e) => e.stopPropagation()}
             style={sheet}
           >
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
+            <SheetHandle />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{openMember.name}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 10px" }}>
               {MEMBER_ROLE_WORD[openMember.role]}
               {openMember.city ? ` · ${openMember.city}` : ""}
             </div>
+            {/* ⚠ A DOOR TO THE PERSON (21 Sep 2026). The organization's and the
+                crew's Team rows both wrap the face and the name in a link to
+                `/person/{id}`; this desk's row could not, because the ROW is the
+                manage control — a link inside a `role="button"` is interactive
+                inside interactive. So the door is here, one step in, and every
+                Team desk has one. ⚠ Said plainly: this is the one Team
+                difference left standing, and it is a difference in WHERE the
+                door is, not in whether there is one. */}
+            <Link href={`/person/${openMember.userId}`} style={{ display: "inline-block", fontSize: 11.5, fontWeight: 900, color: "#5AC8FA", textDecoration: "none", marginBottom: 12 }}>
+              Open their profile ›
+            </Link>
             {/* ⚠ WHAT THE SEAT CARRIES, MOVED HERE FROM THE ROW (20 Sep 2026).
                 The roster prints a group per label now and its rows are one line
                 each, the way the prototype sets them (18541-18592) — so this
@@ -987,7 +1006,7 @@ export function StaffDesk({
       {payOpen && openMember && (
         <div onClick={() => setPayOpen(false)} style={{ ...sheetWrap, zIndex: 620 }}>
           <div role="dialog" aria-modal="true" aria-label={`Pay ${openMember.name}`} onClick={(e) => e.stopPropagation()} style={sheet}>
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
+            <SheetHandle />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Pay {openMember.name}</b>
             <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
               DanceOS records what you have paid — it does not move the money. This lands in your Earnings as an expense.

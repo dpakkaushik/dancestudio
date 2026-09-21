@@ -92,14 +92,14 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
 
   /* A STUDIO'S GRID, IN THE USER'S ORDER (18 Sep 2026, their list for all four
      kinds of account — deviation row R18): Classes · Calendar · Team · Students ·
-     Earnings · Memberships · Assets · Rooms · Media. Earnings is the owner's (the
-     desk is server-checked owner-only). Memberships and Assets have a prototype
-     screen (S_memberships 16846, S_assets 16791) and no desk yet, so they open
-     the prototype's own "nothing here yet" rather than nothing — a tile that
-     opens nothing is a lie, and so is a grid missing what the user asked to see
-     on it. MEDIA (15 Sep 2026) is the studio's two pictures as a desk. STATS left
-     the grid for the hero the same day — the chip beside the QR (`StudioHome`),
-     opening the studio board. */
+     Earnings · Memberships · Assets · Rooms. Earnings is the owner's (the desk is
+     server-checked owner-only). ⚠ MEMBERSHIPS AND ASSETS ARE REAL DESKS NOW —
+     memberships on 21 Sep (the tile had opened "nothing here yet" for two days
+     while the feature was live one address away) and assets the same day. ⚠ AND
+     MEDIA IS OFF THE GRID (21 Sep 2026, the user: "remove media from all tool in
+     all profiles"): the disc's ⊕ and the posters' ⊕ on this home are the picture
+     editor, so a desk for it was a third door. STATS left the grid on 18 Sep for
+     the chip beside the QR, opening the studio board. */
   const desk = (path: string) => `/business/${tenantId}/${path}`;
   const tiles: Tile[] = [
     { name: DOS_TOOLS.classes.name, href: desk("classes"), k: "classesmod", c: DOS_TOOLS.classes.c },
@@ -110,7 +110,12 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
     { name: DOS_TOOLS.memberships.name, href: desk("memberships"), k: "memberships", c: DOS_TOOLS.memberships.c },
     { name: DOS_TOOLS.assets.name, href: desk("assets"), k: "assets", c: DOS_TOOLS.assets.c },
     { name: DOS_TOOLS.rooms.name, href: desk("rooms"), k: "rooms", c: DOS_TOOLS.rooms.c },
-    { name: DOS_TOOLS.media.name, href: desk("media"), k: "media", c: DOS_TOOLS.media.c },
+    /* ⚠ NO MEDIA TILE (21 Sep 2026, the user: "remove media from all tool in all
+       profiles"). The Media desk was the studio's two pictures as a page — and
+       since 20 Sep the disc's ⊕ and the posters' ⊕ on this very home ARE the
+       editor, so the tile was a third door to a job whose controls already sit
+       on the pictures themselves. `/business/{id}/media` and `StudioMediaDesk`
+       stay (Rule 14: a link handed out is a promise), reachable by URL. */
   ];
 
   return (

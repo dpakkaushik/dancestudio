@@ -2,7 +2,80 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
-> ### ONE CONTROL FOR WHERE, A CORNER THAT OPENS THE THING YOU ARE STANDING ON, AND A STUDIO'S MEMBERSHIPS (21 Sep 2026, latest) — BUILT, no migration
+> ### MEDIA IS OFF EVERY GRID, AND THE THREE TEAM DESKS ARE ONE PRODUCT AGAIN (21 Sep 2026, latest) — BUILT, no migration
+> The user, in one message: *"Fix assets for both artist, studio and
+> organization. Make sure to just add name type of asset and price/ Old asset.
+> Remove media from all tool in all profiles. Fix Team pages for all kinds of
+> profile types. fix all i mentioned and push to live."* ⚠ **This push is the
+> second and third of those. The ASSETS slice is written, dry-run 23/23 and
+> HELD** — it needs a new table, and the standing rule is that the list goes in
+> front of the user before `db push`, every time (NEXT TO DO #0ak).
+> * **1 · MEDIA IS OFF EVERY GRID.** A studio's tile opened `StudioMediaDesk`
+>   (the disc and the header as a page, 15 Sep) and an artist's opened the
+>   Profile tab. ⚠ **Both were third doors to a job that already has two controls
+>   sitting on the picture itself** — since 20–21 Sep the disc's ⊕ and the
+>   posters' ⊕ ARE the editor, on a studio's home, a crew's home and the Profile
+>   tab alike (C26, C44). **The routes and `StudioMediaDesk` STAY** (Rule 14: a
+>   link handed out is a promise, and the installed TWA reopens on the last URL
+>   it showed) and `shoot-hero` still drives `/business/{id}/media` by URL, so
+>   the desk cannot rot behind the removed tile.
+> * ⚠⚠ **2 · THE THREE TEAM DESKS WERE THREE PRODUCTS, AND THE AUDIT FOUND
+>   SEVENTEEN DIFFERENCES.** A studio's and an artist page's (`StaffDesk`), an
+>   organization's (`OrgTeamDesk`) and a crew's (`CrewManager`) — same job, three
+>   shapes. What is fixed is the CHROME, because that is what makes them read as
+>   different products; what is left alone is each desk's own FEATURES.
+> * ⚠ **THE CREW WAS THE LAST DESK ADDING PEOPLE ITS OWN WAY.** Its control was a
+>   hand-rolled `div role="button"` wearing crew-kit's **dashed** `bizBtn`, at the
+>   **foot** of the roster, reading **"＋ Add member"**, opening a card in place —
+>   while the other two are the shared `DeskAddButton`, a solid pill at the
+>   **top**, reading **"Add a team member"**, opening a sheet. It is the shared
+>   control in a sheet now, with the organization desk's exact markup. ⚠ **This is
+>   C36 again, one desk further on**: the organization's was corrected on 21 Sep
+>   and the crew's was missed, which is what happens when a fix is applied to the
+>   desk that was complained about rather than to every desk that shares the job.
+> * ⚠⚠ **AND THE STUDIO'S DESK HAD NO HEADING AT ALL.** Its hero was a HAND-COPY
+>   of `DeskHero` — the same paint from the same `dosToolPaint(DOS_TOOLS.team.c)`,
+>   the same geometry — with the title as a `<div>`, so the page rendered no `<h1>`
+>   for a screen reader while the crew's and the organization's both render
+>   `<h1>Team</h1>`. **A copy that looks identical and is not the same element is
+>   the worst kind, because nothing on screen ever shows it drifting.** It is
+>   `DeskHero as="h1"` now, with the sub-line naming the business that the other
+>   two already had — which matters because an organization runs several studios
+>   and a tool hero names the tool.
+> * **AND THREE MORE OF ITS OWN COPIES WENT WITH IT:** `sheetWrap`/`sheet` were
+>   declared locally and had dropped ONE line, `animation: SHEET_ANIMATION`, so
+>   **every sheet on that desk appeared while the other two slid up**; the sheet
+>   HANDLE was hand-drawn in four places (swept in Node with a per-file assertion
+>   on the count, Rule 16) and is `SheetHandle` now; and the `PeoplePicker` call
+>   overrode **all four** of its clothes — its own eyebrow, its own placeholder,
+>   "Ask" without the chevron, and `PINK`, **which is cyan** — while the other two
+>   take the defaults. One widget, three visual identities, on three pages doing
+>   one job.
+> * **The roster row matches too**: the face is 36px and a squircle like the other
+>   two (it was the one round avatar left on any Team desk, and C11 made the
+>   squircle the app's shape), and the crew desk gained the empty state it never
+>   had — a leader whose asks were all declined read three tiles and a button and
+>   no words.
+> * ⚠ **ONE TEAM DIFFERENCE IS LEFT STANDING ON PURPOSE, AND IT IS SAID RATHER
+>   THAN HIDDEN.** On an organization's and a crew's desk the face and the name
+>   are a link to `/person/{id}`; on a studio's they cannot be, because **the ROW
+>   is the manage control** and a link inside a `role="button"` is interactive
+>   inside interactive. The door is in the member sheet instead — *"Open their
+>   profile ›"* — so every Team desk has one, and what differs is WHERE it is, not
+>   whether it exists.
+> * **What was deliberately NOT levelled**, because it is each desk's own work
+>   rather than its chrome: the studio's roster grouped by label with its
+>   permissions block and its Pay pill; the organization's and the crew's
+>   three-tile stat strips; the three ways a role is changed (chips in a sheet, a
+>   native select on the row, a Promote ladder); the three role vocabularies.
+>   Levelling those would be re-deciding three features, not making one product.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
+>   154/154** (the Media check inverted — both ends asserted, so the tile it
+>   replaced cannot live on — and the desk still driven by URL) · **the whole e2e
+>   suite 57/57 in 6.9 min on one worker**, first run, no red at any point, with a
+>   new assertion driving the crew desk's shared ＋ and the absence of the old one.
+
+> ### ONE CONTROL FOR WHERE, A CORNER THAT OPENS THE THING YOU ARE STANDING ON, AND A STUDIO'S MEMBERSHIPS (21 Sep 2026) — BUILT, no migration
 > The user, in one message: *"merge near me and city filter on discover. studio
 > and crew pages on home tab should have option to view their profile pages
 > currently taking to organizations page and user/artist page. fix memberships
@@ -4110,6 +4183,62 @@ summary; the report has the evidence.
   List / Unlist; no 18+ gate; the dead management token.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
+
+0ak. **⚠ THE ASSETS SLICE IS BUILT, DRY-RUN 23/23 AND HELD FOR THE USER'S WORD**
+   (21 Sep 2026, their ask: *"Fix assets for both artist, studio and
+   organization. Make sure to just add name type of asset and price/ Old
+   asset."*). It needs a NEW TABLE, and the standing rule is that the complete
+   list goes in front of the user before `db push`, **every time, however
+   thoroughly it was dry-run** — so the app code and the migration sit on local
+   `main` and are NOT pushed. ⚠ Nothing can deploy before the apply either: the
+   desk selects from `assets` and the tiles point at it.
+   **The whole of `20260921090000_a_business_has_assets.sql`, which is what the
+   user is being asked to approve:**
+   * **ONE NEW TABLE, `public.assets`** — `id`, `business_id` (→ `businesses`,
+     `on delete cascade`), `name`, `category`, `value_inr`, the four audit
+     columns and `deleted_at` (Rule 3). Three CHECKs: the name is 1–80 characters
+     trimmed, the value is 0 … 1,000,000,000, and the category is one of the
+     prototype's own **fourteen** words (16800) — Equipment · Sound & AV ·
+     Lighting · Infrastructure · Flooring · Mirrors · Costume · Props · Furniture
+     · IT & devices · Instruments · Safety · Merchandise · Vehicle. One partial
+     index on `(business_id, created_at desc)`.
+   * ⚠ **"PRICE / OLD ASSET" IS ONE FIELD, NOT TWO.** `value_inr = 0` MEANS "we
+     already had it" and prints as **"₹0 (legacy)"**, which is the prototype's own
+     `₹ (0 = old)` placeholder and its own row (16792, 16801). A boolean beside
+     the number would be the same fact twice and the two could disagree.
+   * **ONE SELECT POLICY** — `is_business_owner(business_id)` — and **no
+     insert/update/delete policy at all**. `grant select … to authenticated`
+     only; **anon is granted nothing**, so it is refused at the GRANT, one level
+     below the policy.
+   * **TWO NEW FUNCTIONS**, `save_asset` (add AND edit, owner-only) and
+     `remove_asset` (owner-only, SOFT delete). Both `security definer`, both
+     revoked from public and anon.
+   * ⚠ **THE AUDIT COLUMNS CARRY NO FOREIGN KEY INTO `auth.users`** — the 19 Sep
+     defect that made an account undeletable on two tables and needed
+     `20260919180000` to drop ten constraints. Asserted by the dry run.
+   * **NOTHING EXISTING IS TOUCHED**: no column, no policy, no function, no row.
+     The dry run asserts it — **no function's ACL changed but the two new ones,
+     and anon's executable set is unchanged at 46**.
+   **App side, ready and unpushed:** `repositories/assets.ts`,
+   `features/assets/{server-actions,components}`, the desk at
+   `/business/{id}/assets` for a studio, an artist page AND an organization's
+   hosting row (⚠ an organization never had the tile at all), `/assets` becomes a
+   redirect to the artist's own page's desk (Rule 14), and the artist's tile
+   points at `desk("assets")` like its Team, Students and Earnings tiles.
+   ⚠ **Deliberately no photo on an asset**, though the prototype's form has one
+   (16802-16810): the user's list is *"just … name type of asset and price"*, and
+   a picture is a storage folder, a policy and a cropper for a field nobody asked
+   for. Backlog row.
+   **On their word:**
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260921090000
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   # then RELOAD POSTGREST'S SCHEMA CACHE — the app selects a table that did not exist (19 Sep lesson)
+   npm run build; npx.cmd next start -p 3100
+   $env:DANCEOS_BASE_URL="http://localhost:3100"; $env:NODE_PATH="$pwd\node_modules"; node scripts/shots/shoot-hero.js
+   $env:PLAYWRIGHT_BASE_URL="http://localhost:3100"; npx playwright test --reporter=line --workers=1
+```
+   then push `main` and read it back off the deployment.
 
 0aj. **THE PAGE COUNT — ROUNDS 2 AND 3, THE ONE PART OF THE 21 Sep BATCH NOT
    BUILT.** The user asked twice: *"can we further reduce the no. of pages per
