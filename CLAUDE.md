@@ -2,14 +2,46 @@
 
 ## LAST SESSION (21 Sep 2026) — replaced on every push (Rule 13)
 
-> ### MEDIA IS OFF EVERY GRID, AND THE THREE TEAM DESKS ARE ONE PRODUCT AGAIN (21 Sep 2026, latest) — BUILT, no migration
+> ### A BUSINESS OWNS THINGS, MEDIA IS OFF EVERY GRID, AND THE THREE TEAM DESKS ARE ONE PRODUCT AGAIN (21 Sep 2026, latest) — ✅ ONE MIGRATION APPLIED (dry run **23/23**, rolled back first)
 > The user, in one message: *"Fix assets for both artist, studio and
 > organization. Make sure to just add name type of asset and price/ Old asset.
 > Remove media from all tool in all profiles. Fix Team pages for all kinds of
-> profile types. fix all i mentioned and push to live."* ⚠ **This push is the
-> second and third of those. The ASSETS slice is written, dry-run 23/23 and
-> HELD** — it needs a new table, and the standing rule is that the list goes in
-> front of the user before `db push`, every time (NEXT TO DO #0ak).
+> profile types. fix all i mentioned and push to live."* Media and Team went
+> first (`21dd8fd`); **assets was HELD until its list had been in front of the
+> user, and applied on their *"apply it"*.**
+> * ⚠⚠ **0 · ASSETS — `20260921090000_a_business_has_assets.sql`, APPLIED.** The
+>   tile had opened the prototype's "nothing here yet" since 18 Sep on an artist's
+>   grid and a studio's, and **an ORGANIZATION never had the tile at all**. One
+>   new table `assets` (`business_id`, `name`, `category`, `value_inr`, the audit
+>   columns, soft delete), ONE SELECT policy — `is_business_owner` — no write
+>   policies, and two owner-only doors `save_asset` / `remove_asset`.
+> * ⚠ **"PRICE / OLD ASSET" IS ONE FIELD, AND THAT IS THE PROTOTYPE'S OWN ANSWER.**
+>   S_assets' placeholder is `₹ (0 = old)` and its row prints `₹0 (legacy)`
+>   (16792, 16801) — so an asset the business already had is a **value of zero**,
+>   said in words on the row. A boolean beside the number would be the same fact
+>   twice and the two could disagree. The e2e asserts both halves: `₹0 (legacy)`
+>   on the row, and that it does not move the total.
+> * **THE CATEGORY IS A CLOSED LIST** — the prototype's own fourteen words (16800)
+>   — kept as a CHECK as well as a `<select>`, because a typed category is how one
+>   studio ends up with "Sound", "sound" and "Sound & AV" and no total worth
+>   reading. The dry run proves the DATABASE refuses a fifteenth, not just the form.
+> * **ONE DESK FOR ALL THREE KINDS**, because all three are `businesses`: a
+>   studio's, an artist page's, and an organization's own hosting row.
+>   `/assets` is a redirect now (Rule 14) and an artist's tile points at
+>   `desk("assets")` like its Team, Students and Earnings tiles.
+> * ⚠ **AND THE AUDIT COLUMNS CARRY NO FOREIGN KEY INTO `auth.users`** — the
+>   19 Sep defect that made an account undeletable on two tables and needed
+>   `20260919180000` to drop ten constraints. Asserted by the dry run AND by the
+>   live read-back.
+> * ⚠ **NO PHOTO ON AN ASSET, though the prototype's form has one** (16802-16810).
+>   The user's list is *"just … name type of asset and price"*, and a picture is a
+>   storage folder, a policy and a cropper for a field nobody asked for. Backlog row.
+> * **Applied, then read back off the LIVE catalog rather than assumed** (7/7):
+>   the ten columns, no audit FK, both doors, one SELECT-only policy, the only
+>   client grant `SELECT` to `authenticated`, **anon's executable set still 46**,
+>   and the table EMPTY — which is the dry run proving it persisted nothing.
+>   PostgREST's schema cache was reloaded first (the 19 Sep lesson: an apply does
+>   not do it, and the app selects a table that did not exist a minute earlier).
 > * **1 · MEDIA IS OFF EVERY GRID.** A studio's tile opened `StudioMediaDesk`
 >   (the disc and the header as a page, 15 Sep) and an artist's opened the
 >   Profile tab. ⚠ **Both were third doors to a job that already has two controls
@@ -69,11 +101,28 @@
 >   three-tile stat strips; the three ways a role is changed (chips in a sheet, a
 >   native select on the row, a Promote ladder); the three role vocabularies.
 >   Levelling those would be re-deciding three features, not making one product.
-> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero.js`
->   154/154** (the Media check inverted — both ends asserted, so the tile it
->   replaced cannot live on — and the desk still driven by URL) · **the whole e2e
->   suite 57/57 in 6.9 min on one worker**, first run, no red at any point, with a
->   new assertion driving the crew desk's shared ＋ and the absence of the old one.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the assets dry run
+>   **23/23 rolled back** · applied · the live read-back **7/7** ·
+>   **`shoot-hero.js` 155/155** (the Media check inverted — both ends asserted, so
+>   the tile it replaced cannot live on — and the desk still driven by URL) ·
+>   **the whole e2e suite 58/58 in 6.7 min on one worker**, with a **new
+>   fifty-eighth segment** driving assets from the tile: the desk instead of the
+>   shrug, the three fields, ₹28,000 on the row and in the total, **₹0 (legacy)
+>   not moving the total**, an edit in place, a removal, and a trainer on the
+>   team sent back to the studio because the desk is the OWNER's.
+>   ⚠ **One run before it came back 55/3, and the three were `admin-support`,
+>   which touches none of this** — 5/5 alone in 30.7 s, then 58/58 clean on the
+>   re-run. The 11 Sep rule held: a red on a busy machine is not evidence until
+>   the spec has been run by itself.
+> * ⚠ **AND THE MEDIA/TEAM HALF WENT FIRST AS ITS OWN PUSH (`21dd8fd`) ON
+>   PURPOSE.** Assets needed a table, and this file's standing rule is that the
+>   list goes in front of the user before `db push`, **every time, however
+>   thoroughly it was dry-run** — so the two asks that needed no schema shipped
+>   while the third waited. ⚠ That cost a second full verification pass, because
+>   the split tree is not the tree that was tested: `shoot-hero` and the suite
+>   were re-run against the media/team-only tree (154/154, 57/57) before it was
+>   pushed. **A commit you did not build is a commit you did not test**, even when
+>   it is a subset of one you did.
 
 > ### ONE CONTROL FOR WHERE, A CORNER THAT OPENS THE THING YOU ARE STANDING ON, AND A STUDIO'S MEMBERSHIPS (21 Sep 2026) — BUILT, no migration
 > The user, in one message: *"merge near me and city filter on discover. studio
@@ -4184,16 +4233,14 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0ak. **⚠ THE ASSETS SLICE IS BUILT, DRY-RUN 23/23 AND HELD FOR THE USER'S WORD**
-   (21 Sep 2026, their ask: *"Fix assets for both artist, studio and
-   organization. Make sure to just add name type of asset and price/ Old
-   asset."*). It needs a NEW TABLE, and the standing rule is that the complete
-   list goes in front of the user before `db push`, **every time, however
-   thoroughly it was dry-run** — so the app code and the migration sit on local
-   `main` and are NOT pushed. ⚠ Nothing can deploy before the apply either: the
-   desk selects from `assets` and the tiles point at it.
-   **The whole of `20260921090000_a_business_has_assets.sql`, which is what the
-   user is being asked to approve:**
+0ak. **~~THE ASSETS SLICE IS BUILT, DRY-RUN 23/23 AND HELD~~ — ✅ APPLIED AND
+   PUSHED 21 Sep 2026** on the user's *"apply it"*, after the list below had been
+   in front of them. `db-push -DryRun` listed exactly the one file, the apply
+   printed it on the FIRST try, PostgREST's cache was reloaded, and the live
+   read-back was 7/7. Kept as the record of what was approved — and of the shape
+   that worked: **the two asks needing no schema shipped first as their own push,
+   and the one needing a table waited for a word.**
+   **The whole of `20260921090000_a_business_has_assets.sql`:**
    * **ONE NEW TABLE, `public.assets`** — `id`, `business_id` (→ `businesses`,
      `on delete cascade`), `name`, `category`, `value_inr`, the four audit
      columns and `deleted_at` (Rule 3). Three CHECKs: the name is 1–80 characters
@@ -5028,6 +5075,23 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A BUSINESS OWNS THINGS, MEDIA IS OFF EVERY GRID, AND THE THREE TEAM DESKS
+  ARE ONE PRODUCT — 21 Sep 2026, no step number ⚠ (Rule 9: RLS) — ONE MIGRATION
+  APPLIED (dry run 23/23 rolled back first).** Four asks in one message.
+  **Assets** is a real desk for a studio, an artist page AND an organization's
+  hosting row — the user's own three fields, with ⚠ `value_inr = 0` MEANING "one
+  we already had" (`₹0 (legacy)`, the prototype's own `₹ (0 = old)`), the
+  category a closed fourteen kept as a CHECK, the owner's alone at the ceiling,
+  and no FK from the audit columns into `auth.users`. **Media** is off every grid
+  (the routes stay, Rule 14). **The three Team desks** share their chrome again
+  after an audit found seventeen differences — the crew's add control, the
+  studio's missing `<h1>`, its non-animating sheet copy, its four hand-drawn
+  handles and its four `PeoplePicker` overrides. Deviation rows R45, C48, C49.
+  ⚠ **The two asks needing no schema shipped first as their own push**, because
+  the migration's list goes in front of the user before `db push`, every time.
+  **typecheck 0 · lint 0 · build green · dry run 23/23 · live read-back 7/7 ·
+  shoot-hero 155/155 · the whole e2e suite 58/58 in 6.7 min**, with a new
+  fifty-eighth segment driving assets from the tile.
 - **ONE CONTROL FOR WHERE, A CORNER THAT OPENS THE THING YOU ARE STANDING ON,
   AND A STUDIO'S MEMBERSHIPS — 21 Sep 2026, no step number — BUILT, no
   migration.** Three asks in one message, two of them corrections of the same
@@ -8927,6 +8991,9 @@ Home. **Do not "restore parity" on these.**
 | C43 | The prototype's light palette is `#ffffff` on `#111111` with neutral greys (DOS_PALETTE) | **A WARM LIGHT THEME AND THICKER OUTLINES.** `#faf8f5` ground, `#17150f` ink, every grey and both alpha veils cast warm — the complaint is HALATION, which is what pure white at phone brightness does to near-black glyphs. And "a bit thicker everywhere" is two changes: `--el` gained opacity, and **364 `1px solid` borders across 105 files became `1.5px`** (⚠ swept in Node with per-file assertions, Rule 16; `1px solid transparent` skipped as a layout spacer; the app was already mixed, with 85 borders at 1.5px). ⚠ **And the check written to prove it found a defect nobody asked about**: `--muted` in the DARK theme was 4.0:1, under AA, unchanged since the palette was written — `#7b7b7b` now. Both themes clear AA on all three tiers for the first time | 21 Sep 2026, the user: *"fix light mode to a warmer tone so it doesnt blur text and make outlines a bit thicker everywhere."* |
 | C44 | The prototype has ONE editor per profile (11364) and one kind of profile that owns pictures | **ALL FOUR EDIT SEGMENTS ARE IN THE SAME PLACE ON ALL FIVE KINDS.** A crew's picture and posters left `CrewEditSheet` for the ⊕ on its disc and the ⊕ on its rail (`CrewPictures.tsx` — `StudioPictures.tsx` with a crew's doors), which is where a user's, an artist's and a studio's have been since 20 Sep; a studio's dance styles left `BusinessEditSheet` for a ＋ on its band (`StudioStylesRow`), which is where a person's have been since 19 Sep. Every Edit sheet holds WORDS now. ⚠ **The shared parts were extracted rather than copied a third time**: `PlusIcon` into `profile-kit` (it was declared twice and a crew's was next) and the styles editor into `StylesSheet.tsx`, which knows about neither door and takes the floor's words from its caller, because the two RPCs refuse an empty list for different reasons. ⚠ The studio's Edit sheet still READS and SENDS `styles` unchanged — the RPC takes the whole profile and an omitted list empties a column it then refuses | 21 Sep 2026, the user: *"make sure all profile types have similar ways to edit the profile, the segments like social media, dance styles, pictures and posters. similar buttons style."* |
 | C40 | S_profiletab is ONE screen behind a flag (`publicEntity`), and this app built it as two components at two addresses — `/profile` and `/person/{id}` — both reading the same person from the same call (C32, 20 Sep, made them share `PersonBody` and left the two addresses standing) | **YOUR OWN PROFILE IS `/person/{id}`, AND `/org/{id}` FOR AN ORGANIZATION.** `/profile` is a redirect (carrying `?settings=1`, so the gear still opens the sheet) and `OwnProfileScreen` is the owner's version of the one address, taking the person the route already read so the merge costs no round trip. ⚠ **Two orderings are load-bearing**: the owner branch sits ABOVE `loadOrg`, because that read answers only for a PUBLIC organization and an unverified one would otherwise 404 on its own profile; and `ensureArtistPage` sits ABOVE the owner's early return, or your own visit silently stops provisioning your artist page. ⚠ The hero's `avatarHref` went too — it pointed at the page it is on, which is C37's loop in a quieter coat. **Not merged, deliberately:** Stats keeps its own page (the user's call), and `/business/{id}` is NOT folded into `/studio/{id}` — ten owner-only tiles on a visitor's front door is a different screen wearing one address | 21 Sep 2026, the user: *"how can you reduce the no. of pages per profile type without changing functionality of the app"*, then *"keep stats as a separate page and push to live"* |
+| R45 | The prototype's S_assets (16791) is a studio's inventory on a localStorage array, and this app drew the tile over "nothing here yet" (18 Sep) — an ORGANIZATION never had the tile | **ONE ASSETS DESK FOR A STUDIO, AN ARTIST PAGE AND AN ORGANIZATION'S HOSTING ROW** (`/business/{id}/assets`), because all three are `businesses`. An asset is the user's own three things — a name, a TYPE from the prototype's closed fourteen, and a value — with ⚠ **`value_inr = 0` MEANING "one we already had"**, printed `₹0 (legacy)`: the prototype's own `₹ (0 = old)`, and no second control, because two ways to say one thing can disagree. The OWNER's alone, at the ceiling too (`is_business_owner` is the only SELECT policy). `/assets` is a redirect (Rule 14) | 21 Sep 2026, the user: *"Fix assets for both artist, studio and organization. Make sure to just add name type of asset and price/ Old asset."* ⚠ **No photo**, though the prototype's form has one — "just" is the user's word, and a picture is a storage folder, a policy and a cropper for a field nobody asked for |
+| C48 | The Media desk (15 Sep 2026) is a studio's two pictures as a page, and an artist's Media tile opens the Profile tab | **NO MEDIA TILE ON ANY GRID.** ⚠ The routes and `StudioMediaDesk` STAY (Rule 14) and `shoot-hero` still drives `/business/{id}/media` by URL, so the desk cannot rot behind the removed tile | 21 Sep 2026, the user: *"Remove media from all tool in all profiles."* Since 20–21 Sep the disc's ⊕ and the posters' ⊕ ARE the picture editor on every home and on the Profile tab (C26, C44), so the tile was a third door to a job whose controls already sit on the picture |
+| C49 | The prototype has one studio and therefore one Team screen | **ONE TEAM DESK, THREE KINDS OF PROFILE** — the CHROME is shared and each desk's own FEATURES are not. Levelled: the shared `DeskAddButton` at the top reading "Add a team member" in a `biz-kit` sheet (the crew's was a hand-rolled DASHED control at the FOOT reading "＋ Add member", opening a card in place); `DeskHero as="h1"` with a sub-line naming the business (⚠ the studio's was a hand-COPY with the title as a `<div>`, so that page had **no `<h1>` at all** while the other two render `<h1>Team</h1>`); the shared sheet styles and `SheetHandle` (⚠ the studio's local copy had dropped `animation: SHEET_ANIMATION`, so its sheets appeared while the others slid up); the `PeoplePicker`'s own clothes (the studio overrode all four, including `PINK`, which is cyan); and a 36px squircle face. ⚠ **Left standing and said**: on a studio's desk the face cannot be a link to `/person/{id}` — the ROW is the manage control — so the door is in the member sheet. **Not levelled, deliberately**: the studio's grouped roster, permissions block and Pay pill; the other two's stat strips; the three ways a role is changed | 21 Sep 2026, the user: *"Fix Team pages for all kinds of profile types."* An audit of the three found seventeen differences. ⚠ The crew's add control is C36 one desk further on — the organization's was corrected the day before and the crew's was missed, which is what happens when a fix goes to the desk that was complained about rather than to every desk sharing the job |
 | C45 | Discover's place is ONE chip (prototype 4507-4530), and this app grew a second beside it — the Near me chip (11 Sep), put on one line with the city on 18 Sep at the user's ask | **ONE CONTROL FOR WHERE, `PlaceChip`**: a chip printing where the list is measured from, opening on **◎ Near me** and then the cities. ⚠ The city stays underneath — `near` is only the radius search's ORIGIN, while the city still scopes the shelves that are not measured at all — so Near me keeps it and picking a city turns Near me off; the row is offered only on the studios tab, the one shelf that IS a radius search. `CitySelect` gained `lead` (a row above the cities that is not a city) so the shared picker keeps knowing only about places; `CityChip` and `NearMeChip` are deleted. ⚠⚠ **And the filter chip that was ALSO called "Near me" now reads "Within 5 km"** — it means `dist === "5"`, which is what the filter sheet's own DISTANCE row has always called that value. Two controls answering to one name on one screen is the thing being fixed; a third would have kept it alive | 21 Sep 2026, the user: *"merge near me and city filter on discover"* |
 | C46 | C37 (21 Sep, that morning) made EVERY home's corner the Profile tab, to end a two-screen loop | **A CORNER OPENS THE PUBLIC FACE OF THE THING YOU ARE STANDING ON.** A person's home keeps the Profile tab; a STUDIO's home and a CREW's home open `/studio/{id}` and `/crew/{id}`. ⚠ The loop stays cut, because a profile page still has no corner at all (C37's other half): home → the page → the back chip. Nothing is lost at the other end — the profile switcher beside the gear is on every screen since the same morning, and its own row is the way back to you | 21 Sep 2026, the user: *"studio and crew pages on home tab should have option to view their profile pages currently taking to organizations page and user/artist page."* ⚠ C37 was right about the loop and wrong about the answer: on a studio's home "the user profile" is the ORGANIZATION behind it, and on a crew's the PERSON who leads it — both true, neither anything to do with what you are looking at. **I had written this exact defect into the backlog myself and shipped it anyway; a row naming a defect is not a decision to accept it** |
 | C47 | The prototype has one studio, so `S_memberships` (16846) is a section of its settings and there is nothing to scope | **A STUDIO'S MEMBERSHIPS ARE ON THE STUDIO'S OWN HOME** (`/business/{id}/memberships`), beside Classes, Rooms, Team, Students and Earnings, and `/memberships` is the PERSON's desk alone — the passes they hold and what their **artist page** sells. A studio's desk has ONE side, because a studio holds no passes (`guard_person_only`), and says *"What {studio} sells"*. `/memberships/new` takes `?business=` — a pointer, re-authorized on the server and refused again by `save_membership` | 21 Sep 2026, the user: *"fix memberships for studio."* Two defects: the tile was drawn on **18 Sep** over the prototype's "nothing here yet" and the desk landed on **19 Sep** at another address with nobody coming back for it, so the feature was live one door away from the only door to it; and `/memberships` sold from *"the first business you own"*, so an organization's second studio was unreachable and the form saved against the wrong one |
@@ -8958,6 +9025,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **Assets, media and the Team desks, what they left (21 Sep 2026):** ⚠ **an asset has no PHOTO**, though the prototype's form does (16802-16810) — "just name type of asset and price" is the user's word, and it is a bucket, a policy and a cropper away. **No depreciation, no purchase date, no serial number, no room it lives in, no "who has it"** — the four fields are the whole record, and an inventory that cannot say WHERE a thing is will be the first thing a real studio asks for. **The total is every live asset at full value**, so a studio that bought a floor in 2016 reads its 2016 price for ever; `₹0 (legacy)` is the only nod to age. ⚠ **A trainer is redirected off the desk with no sentence** — the Earnings desk does the same, so it is consistent and it is still a silent bounce. ⚠ **No `.ps1` proof**: the dry run covered it 23/23 and the e2e drives it, but `run-proofs.ps1` globs `rls-proof-*.ps1` and there is no `rls-proof-assets.ps1`, so nothing re-checks the policy as regression cover. **Media**: the desk is now reachable only by URL, so if the user ever wants it back it is one tile — and until then `shoot-hero` is the only thing that opens it. **Team**: the three role vocabularies are still three unrelated sources (`types/staff.ts`, `OrgTeamDesk`'s local consts, `types/crew.ts`) with three colour scales, and Owner is a different amber in each; the three ways to change a role are still three widgets; `StaffDesk` still carries the dead `addBy` const and its unreachable email form, kept deliberately (#0a4) so the door can be reopened | S_assets 16791; settings 18428-18435 | a `rls-proof-assets.ps1` next time the proofs are opened; a room or a holder on an asset when a studio asks; one role vocabulary if the desks are ever opened together again |
 | **The place control, the corners and a studio's memberships, what they left (21 Sep 2026):** ⚠ **Near me is still a browser prompt with no memory** — turn it on, leave Discover, come back, and it is off, because the point lives only in the URL; the chip says "Near me · {city}" while it is on, which is the whole of the feedback. **A `near=` left in the URL on a tab that is not Studios does nothing and is not shown** — harmless, and it means a tab switch can silently drop it when a city is then picked. **The lead row is one row**: a second non-city idea (say "Everywhere") would need `CitySelect` to take a list, and the `allowNone` path is still separate from it — two mechanisms for "not a city" in one control. ⚠ **A STUDIO'S MEMBERSHIPS ARE THE OWNER'S ALONE** — a trainer pressing the tile is redirected to the studio's home with no sentence, where the Earnings desk at least has the same rule; and **an ARTIST who also owns a studio now has two addresses**, their page's on `/memberships` and each studio's on its own home, which is right and is one more thing to know. **Nothing lists a person's memberships across several studios they own** — that was what "the first business you own" was pretending to do. ⚠ **No proof or e2e covers the `?business=` refusal path** (a pointer at somebody else's studio): it is asserted by reading, by `save_membership`'s own owner check, and by nothing that runs. And **`rls-proof-memberships.ps1` does not know about the new address**, because it drives the RPCs rather than the screens | S_memberships 16846; 4507-4530 | a remembered Near me if anybody asks; a sentence for a trainer; a check on the pointer path next time the memberships proof is opened |
 | **The QR, the switcher, the warm light and the edit segments, what they left (21 Sep 2026):** ⚠ **the QR encoder's proof cannot decode**, because `BarcodeDetector` is absent from Chromium on Windows and there is no decoder in `node_modules` — four of its twelve checks are independent (published generator tables, the spec's worked example, the BCH remainder) and three only prove the matrix is self-consistent, so **a rule misread the same way in the writer and the reader would pass**; the standing answer is the PNG it writes and a phone. It is **level M and versions 1–10 only** (213 bytes), which covers every string this app encodes and throws rather than drawing an unreadable code for anything longer, and there is **no logo-in-the-middle** and no rounding, on purpose. **`qr-proof.js` is not in `run-proofs.ps1`** — that globs `rls-proof-*.ps1` and this is neither a `.ps1` nor about RLS, so it must be run by hand. ⚠ **The switcher chip shows initials, never the photo** — `AppChrome`'s switcher rows carry no picture path, and adding one is a read on every page. **Log out is now two presses** (open the menu, press it) where it was two before as well (gear, press), so nothing regressed, but there is no confirm on it and never was. ⚠ **The warm ground is one colour for both `--bg` and `--solid`**, so a sheet still separates from the page by its border alone rather than by lifting off it — the same as before, and the obvious next move if the light theme is revisited. **The 1.5px sweep did not touch literal-coloured borders** (`1px solid #…`, `1px solid rgba(…)`) — only `var(--…)` and `${…}` forms, which is 364 of 364 matched, but a future literal border will be thinner than its neighbours and nothing checks that. ⚠ **A crew's styles are still ONE value in its Edit sheet**, correctly — a crew has a single style, not a list — so the ＋ pattern applies to four kinds, not five; and **a crew has no links row at all** because `crews` has no `socials` column, which is a schema decision, not an omission | 21 Sep 2026 | a decoder, or a phone, for the QR; a photo on the switcher rows if the initials ever confuse; `--solid` lifted off `--bg` if the light theme is revisited |
 | **The corner and the button row, what they left (21 Sep 2026):** ⚠ **the door to your own public page is now the DISC on the Profile tab and the Share chip, and neither looks like a door** — the disc reads as a picture, so somebody who wants "what does a stranger see" has to know the disc opens it; the words are right (`Open your public page`) and the affordance is not. ~~**The corner is the same door on every home, so on a STUDIO's home it opens the person's own Profile tab rather than anything about the studio**~~ — **CLOSED THE SAME DAY BY C46, and the user found it before I acted on my own row**: a studio's and a crew's corner open their own public page now. ⚠ Kept as written, because the lesson is the row itself — **a backlog row naming a defect is not a decision to accept it**, and this one was written and shipped in the same breath. **Enquiry is disabled by a `title` and an `aria-label`**, not a visible sentence, so somebody who presses it reads nothing unless they hover or use a screen reader — the same gap the Follow bell's `cannotFollow` has. **A trainer on a studio's home gets the name-and-place Location query rather than the pin**, because `Tenant` carries no lat/lng and only the owner's `editable` read does; the button still opens Maps, and closing it means widening a read for one button. And the row is drawn on a studio's home **for every member**, so a front-desk seat sees Call and Mail to the studio's own number and address — harmless, and not the same as what a visitor sees | S_profiletab 10875-10940; 19313-19396 | one line if `/profile`'s eye should go; a visible reason when the bell's is done; a wider read if a trainer's pin ever matters |

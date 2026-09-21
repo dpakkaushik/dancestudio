@@ -2130,6 +2130,69 @@ test.describe.serial("DanceOS, end to end", () => {
     // would be a bigger change to the story than the thing it proves.
   });
 
+  test("assets: what a business owns, three fields, and ₹0 meaning one it already had", async () => {
+    /* ---- 21 Sep 2026, the user: "Fix assets for both artist, studio and
+       organization. Make sure to just add name type of asset and price/ Old
+       asset." The tile had opened the prototype's "nothing here yet" since
+       18 Sep on an artist's grid and a studio's, and an ORGANIZATION never had
+       the tile at all. Driven from the tile, because the tile is what was
+       broken. ---- */
+    const assetName = `E2E PA system ${stamp}`;
+
+    await owner.goto(`/business/${tenantId}`);
+    await owner.getByRole("link", { name: "Assets", exact: true }).click();
+    await owner.waitForURL(new RegExp(`/business/${tenantId}/assets$`));
+    await expect(owner.getByRole("heading", { level: 1, name: "Assets" })).toBeVisible();
+    // it names the business, because an organization runs several
+    await expect(owner.getByText(`What ${studioName} owns`)).toBeVisible();
+    // and it is not the shrug it used to be
+    await expect(owner.getByText("inventory and what it is worth")).toHaveCount(0);
+    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹0 total");
+
+    // ── THE THREE FIELDS AND NOTHING ELSE (the user's own list)
+    await owner.getByLabel("Asset name").fill(assetName);
+    await owner.getByLabel("Type of asset").selectOption("Sound & AV");
+    await owner.getByLabel("What it is worth — 0 means you already had it").fill("28000");
+    await owner.getByRole("button", { name: "Add asset" }).click();
+    const row = owner.getByTestId("asset-row").filter({ hasText: assetName });
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row.getByTestId("asset-value")).toHaveText("₹28,000");
+    await expect(row.getByText("Sound & AV")).toBeVisible();
+    // the total is COUNTED off the very rows it adds up (Step 25's rule)
+    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹28,000 total");
+
+    /* ⚠ ₹0 IS THE "OLD ASSET" ANSWER, not a missing one — the prototype's own
+       `₹ (0 = old)` placeholder and its own "₹0 (legacy)" row (16792). There is
+       no second control, because two ways to say one thing can disagree. */
+    const legacyName = `E2E Mirrors ${stamp}`;
+    await owner.getByLabel("Asset name").fill(legacyName);
+    await owner.getByLabel("Type of asset").selectOption("Mirrors");
+    await owner.getByLabel("What it is worth — 0 means you already had it").fill("0");
+    await owner.getByRole("button", { name: "Add asset" }).click();
+    const legacy = owner.getByTestId("asset-row").filter({ hasText: legacyName });
+    await expect(legacy.getByTestId("asset-value")).toHaveText("₹0 (legacy)", { timeout: 15_000 });
+    // and it does not move the total, which is the point of counting it as zero
+    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹28,000 total");
+
+    // ── EDIT IN PLACE, the prototype's own row edit (16823-16830)
+    await row.getByRole("button", { name: `Edit ${assetName}` }).click();
+    await owner.getByLabel(`What ${assetName} is worth`).fill("30000");
+    await row.getByRole("button", { name: "Save" }).click();
+    await expect(row.getByTestId("asset-value")).toHaveText("₹30,000", { timeout: 15_000 });
+    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹30,000 total");
+
+    // ── AND REMOVING ONE IS A SOFT DELETE the list stops carrying
+    await legacy.getByRole("button", { name: `Remove ${legacyName}` }).click();
+    await expect(owner.getByTestId("asset-row").filter({ hasText: legacyName })).toHaveCount(0, { timeout: 15_000 });
+
+    /* ⚠ THE OWNER'S ALONE, and the database says so too (`is_business_owner` is
+       the only SELECT policy on `assets`) — so the trainer, who is on this
+       studio's team, is sent back to the studio rather than reading what its
+       floor cost. A presentation gate over a real one, not instead of one. */
+    await trainer.goto(`/business/${tenantId}/assets`);
+    await expect(trainer).toHaveURL(new RegExp(`/business/${tenantId}$`), { timeout: 15_000 });
+  });
+
   test("the team is asked by name, labelled, ordered and paid — and a student is a person", async () => {
     /* ---- 19 Sep 2026, the user: "Team should only be able to add team member
        by typing name, number, email or scan … Should be able to Label them
