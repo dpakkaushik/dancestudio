@@ -132,6 +132,18 @@
 >   and Copy link are GONE as well as the code being real) · **the whole e2e suite
 >   57/57 TWICE — 17.2 min over the QR and switcher half, then 17.8 min over the
 >   whole batch**, both collected as 57, no red at any point in either.
+> * **PUSHED AND LIVE (`fcfcdac`), and read back off the deployment rather than
+>   assumed:** `shoot-invert.js` **16/16 against the live site** with the same
+>   numbers as `:3100` in both themes, `stranger-smoke.ps1` **11/11**, and a real
+>   listed studio's QR sheet opened on the live host — `viewBox="0 0 45 45"`,
+>   which is **37 modules plus the 8-module quiet zone, version 5**, exactly the
+>   version the shoot's own comment predicts for a live-host link against the 33
+>   it draws for `localhost:3100`. No Copy link in the sheet.
+>   ⚠ **The first live probe failed and it was the probe**: it clicked the chip
+>   straight after `domcontentloaded`, before hydration, so the press did nothing
+>   and the missing code read as a broken control. The second waited and it was
+>   there. **A click on a server-rendered page is not a click until React has
+>   claimed the button** — the same shape as every five-second wait in this file.
 > * ⚠ **AND THE ONE RED IN THE SHOOT WAS MY ASSERTION MEASURING THE PORT.** I
 >   asserted the profile QR is 37 modules — true on the deployment, and **33
 >   against `:3100`**, because the encoder picks the smallest version that fits
