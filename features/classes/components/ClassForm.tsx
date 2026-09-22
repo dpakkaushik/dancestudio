@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { PosterBlock } from "@/features/classes/components/poster";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import {
@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/FormPage";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosClassLabel, dosStyleColor } from "@/lib/constants/styles";
 import { INK, LILAC, SUB } from "@/lib/design/tokens";
-import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ClassClaim } from "@/types/claim";
 import type { ClassLevel, DanceClass, PosterChoice } from "@/types/class";
 import type { Room } from "@/types/room";
@@ -168,8 +167,13 @@ export function ClassForm({
      reader, so the two routes stopped sending them in the same push; the
      edit route's `findDiscoverCities` round trip went with it. */
   venueName = null,
+  sheet = false,
 }: {
   tenantId: string;
+  /** open over the register that offered it rather than as a page of its own
+   *  (22 Sep 2026). The form is unchanged either way — only its shell differs,
+   *  and `/business/{id}/classes/new` still renders the page (Rule 14). */
+  sheet?: boolean;
   /** a studio's form or an artist page's — decides WHERE and WHO (18 Sep 2026) */
   tenantType: TenantType;
   existing?: DanceClass;
@@ -199,11 +203,13 @@ export function ClassForm({
   /* the confirm sheet before a save (15586-15625) — the button sets which
      status the form will carry, and the sheet's own button submits it */
   const [confirm, setConfirm] = useState<"draft" | "publish" | null>(null);
-  /* `spend: false` — this sheet's button closes it AND submits in one tick, and
-     spending the history entry then would race the server action's redirect
-     (the hook's header tells the story); the orphaned entry is skipped on the
-     next back press instead (19 Sep 2026) */
-  useCloseOnBack(() => setConfirm(null), Boolean(confirm), { spend: false });
+  /* ⚠ THE CONFIRM'S HISTORY ENTRY IS `FormConfirm`'s, ONCE (22 Sep 2026). This
+     file used to register a SECOND `useCloseOnBack` of its own beside the kit's
+     — two entries for one question, which only worked because the orphan rule
+     happened to skip one of them, and which is why a class saved from a sheet
+     needed two back presses to be rid of. The `spend: false` it existed for is
+     a prop on the confirm now: this sheet's button closes it AND submits in one
+     tick, and spending the entry there would race what the submit does next. */
   /* WHAT THIS FORM IS ABOUT TO SUBMIT, IN THE DOM RATHER THAN IN STATE. React
      batches state updates inside a click handler, so setting a status and calling
      requestSubmit() in the same tick submits the value from the PREVIOUS render.
@@ -272,6 +278,23 @@ export function ClassForm({
 
   const [state, formAction, isPending] = useActionState(isEdit ? updateClassAction : createClassAction, initialState);
 
+  /* ⚠ A SHEET LEAVES ITSELF (22 Sep 2026). As a PAGE the action redirects and
+     this never runs. As a SHEET it hands back `ok` instead, and ONE `back()` is
+     enough for both entries: the confirm closed with `spend: false`, so we are
+     standing on its orphan, whose URL is the desk's own `?new=1` — the hook's
+     rule 3(a) then takes the second step on its own. `refresh()` re-runs the
+     register's read, so the class is in the list the sheet slides off.
+     No setState here on purpose: this repo's lint forbids it in an effect, and
+     the confirm is taken down by the render below reading `state.ok` instead. */
+  useEffect(() => {
+    if (!state.ok) return;
+    const t = setTimeout(() => {
+      router.back();
+      router.refresh();
+    }, 600);
+    return () => clearTimeout(t);
+  }, [state.ok, router]);
+
   /* the room the class is in: the studio's own, or the venue's */
   const roomList = isArtist ? venueRooms : rooms;
   const room = roomList.find((r) => r.id === roomId) ?? null;
@@ -332,6 +355,8 @@ export function ClassForm({
       steps={STEPS}
       step={step}
       sub={isEdit ? "Your saved details stay put — step through and change only what you need" : undefined}
+      sheet={sheet}
+      onClose={() => router.back()}
       onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
     >
       <form action={formAction} ref={formRef}>
@@ -341,6 +366,9 @@ export function ClassForm({
         <input type="hidden" name="tenantId" value={tenantId} />
         {/* where a save lands — an artist's register is Your classes' Manage segment, in one hop (19 Sep 2026) */}
         <input type="hidden" name="after" value={isArtist ? "/my-classes?show=manage" : `/business/${tenantId}/classes`} />
+        {/* which shell this form is in, so the action revalidates the register
+            and hands back instead of redirecting over the sheet's own entry */}
+        {sheet ? <input type="hidden" name="sheet" value="1" /> : null}
         {isEdit && existing && <input type="hidden" name="classId" value={existing.id} />}
         <input type="hidden" name="style" value={style} />
         <input type="hidden" name="level" value={level} />
@@ -730,7 +758,7 @@ export function ClassForm({
         </FormBar>
       </form>
 
-      {confirm && !isEdit ? (
+      {confirm && !isEdit && !state.ok ? (
         <FormConfirm
           label={confirm === "publish" ? "Publish this class?" : "Save as draft?"}
           title={confirm === "publish" ? "Publish this class?" : "Save as draft?"}
@@ -745,6 +773,7 @@ export function ClassForm({
           }
           confirmWord={confirm === "publish" ? "Publish it" : atStudio ? "Save & ask" : teacher && !isArtist ? "Save & ask" : "Save draft"}
           busy={isPending}
+          spend={false}
           onCancel={() => setConfirm(null)}
           onConfirm={() => {
             setConfirm(null);

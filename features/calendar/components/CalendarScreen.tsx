@@ -965,11 +965,19 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
         </div>
       ) : null}
 
-      {/* the compose button (10538-10560): "Add class" on a studio's calendar,
-          "Add event" on an organization's — each calendar offers the one thing
-          its owner can actually create (a studio hosts no event, R15; an
-          organization runs no class, R17) */}
-      {(mode === "studio" || isOrg) && composeHref ? (
+      {/* the compose button (10538-10560): "Add event" on an organization's
+          calendar — the one thing its owner can actually create here (a studio
+          hosts no event, R15; an organization runs no class, R17).
+          ⚠⚠ AND "ADD CLASS" IS GONE FROM A STUDIO'S CALENDAR (22 Sep 2026, the
+          user: "class should only be created from home tab", then "no, from
+          inside their respective sections, in home tab only"). A class begins in
+          the CLASSES section — the register, one tile away — and this was the
+          one door that made one from somewhere else. What the calendar does is
+          show you the days; making the thing that fills them is the other
+          section's job. The organization's Add event stays, because an event's
+          own section IS this calendar for an organization (R21: its calendar is
+          its events). */}
+      {isOrg && composeHref ? (
         <>
           {fabOpen ? (
             <div aria-hidden="true" onClick={() => setFabOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 315, background: "rgba(0,0,0,.25)" }} />

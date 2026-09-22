@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deleteEventAction, publishEventAction, setEventStatusAction } from "@/features/events/server-actions/events";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { DanceEvent, EventStatus } from "@/types/event";
@@ -37,19 +38,6 @@ const pill = (danger = false): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
 });
-
-const bizBtn: React.CSSProperties = {
-  textAlign: "center",
-  padding: 13,
-  borderRadius: 999,
-  background: "var(--text)",
-  color: "var(--solid)",
-  fontWeight: 900,
-  fontSize: 13.5,
-  cursor: "pointer",
-  marginBottom: 10,
-  textDecoration: "none",
-};
 
 export function EventsDesk({
   tenantId,
@@ -117,12 +105,11 @@ export function EventsDesk({
             </Link>
           </div>
         ) : (
-          <Link href={`/business/${tenantId}/events/new`} aria-label="Create event" style={{ ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Create event
-          </Link>
+          /* ⚠ THE SHARED CONTROL, AND IT OPENS A SHEET OVER THIS DESK (22 Sep
+             2026, ask 6) — `?new=1` on the desk's own address rather than a hop
+             to /events/new, so the list you were reading is still behind the
+             form. The route stays and still renders full page (Rule 14). */
+          <DeskAddButton label="Create event" href="?new=1" />
         )}
 
         {/* THE MONEY DOORS (17 Sep 2026): tickets and entries pay through Cashfree

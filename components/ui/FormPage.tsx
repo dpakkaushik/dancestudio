@@ -1,5 +1,7 @@
 "use client";
 
+import { createContext, useContext } from "react";
+import { Portal } from "@/components/ui/Portal";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 
@@ -104,14 +106,36 @@ export const formSecondary: React.CSSProperties = {
   fontFamily: "inherit",
 };
 
+/** ⚠ IS THIS FORM A SHEET RIGHT NOW? (22 Sep 2026, the user: "All forms and add
+ *  buttons anywhere in home tab should open form like how setting page or edit
+ *  profile page open from the same screen.")
+ *
+ *  The same form is BOTH — a sheet over the desk that offered it, and a page at
+ *  its own address, because a link handed out is a promise (Rule 14) and an
+ *  invite, a bookmark and the installed TWA's last URL all still open one. So
+ *  the anatomy is written once and the shell differs, and the parts that have to
+ *  know are the three that position themselves against the viewport: the action
+ *  bar, the confirm sheet and the toast. A CONTEXT rather than a prop, because
+ *  those three are rendered deep inside a caller's own JSX and threading a
+ *  boolean through five forms is how the boolean ends up wrong in one of them. */
+const InSheet = createContext(false);
+
 /** THE PAGE — the wash, the ← heading, the step line and the progress bars.
- *  `paddingBottom: 150` is what keeps the last field clear of the fixed bar. */
+ *  `paddingBottom: 150` is what keeps the last field clear of the fixed bar.
+ *
+ *  As a SHEET it is the same header and the same children inside a scrolling
+ *  panel, portalled to the body — because a panel with an animation makes its
+ *  own stacking context, and `position: fixed` children inside one are clipped
+ *  by it rather than laid over the app (the 16 Sep lesson: z-index is only
+ *  comparable inside ONE stacking context). */
 export function FormPage({
   title,
   sub,
   steps,
   step = 0,
   onBack,
+  sheet = false,
+  onClose,
   children,
 }: {
   title: string;
@@ -121,12 +145,17 @@ export function FormPage({
   steps?: readonly string[];
   step?: number;
   onBack: () => void;
+  /** open over the screen that offered it, instead of being a page of its own */
+  sheet?: boolean;
+  /** the scrim's press. `onBack` is still what the ← does, so a form in a sheet
+   *  steps backwards exactly as it does on its own page and closes from step 0 */
+  onClose?: () => void;
   children: React.ReactNode;
 }) {
   const line = sub ?? (steps && steps.length > 1 ? `Step ${step + 1} of ${steps.length} — ${steps[step]}` : steps?.[0]);
-  return (
-    <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 150px", boxSizing: "border-box" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 2px" }}>
+  const head = (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: sheet ? "2px 0" : "10px 0 2px" }}>
         <button type="button" aria-label={step > 0 ? "Back a step" : "Back"} onClick={onBack} style={{ fontSize: 20, cursor: "pointer", lineHeight: 1, background: "none", border: "none", color: INK, padding: 0, fontFamily: "inherit" }}>
           ←
         </button>
@@ -149,13 +178,56 @@ export function FormPage({
       ) : (
         <div style={{ height: 6 }} />
       )}
-      {children}
-    </div>
+    </>
+  );
+
+  if (!sheet) {
+    return (
+      <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", padding: "14px 16px 150px", boxSizing: "border-box" }}>
+        {head}
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <InSheet.Provider value>
+      <Portal>
+        <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600 }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: LILAC, color: INK, width: "100%", maxWidth: 430, maxHeight: "94vh", borderRadius: "24px 24px 0 0", boxSizing: "border-box", fontFamily: DOS_UI, display: "flex", flexDirection: "column", overflow: "hidden", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "10px auto 0", flexShrink: 0 }} />
+            {/* the scroller is the panel's own, so the app underneath does not
+                move and the action bar can stick to the panel's bottom edge */}
+            <div style={{ overflowY: "auto", padding: "6px 16px 0", flex: 1, minHeight: 0 }}>
+              {head}
+              {children}
+            </div>
+          </div>
+        </div>
+      </Portal>
+    </InSheet.Provider>
   );
 }
 
-/** the sticky action bar, gesture-inset aware (15568-15582) */
+/** the sticky action bar, gesture-inset aware (15568-15582). In a SHEET it
+ *  sticks to the panel's own bottom edge instead of the viewport's, and bleeds
+ *  to the panel's edges — a `position: fixed` bar inside a panel that has its
+ *  own stacking context would be laid against the panel anyway, and clipped. */
 export function FormBar({ children }: { children: React.ReactNode }) {
+  const sheet = useContext(InSheet);
+  if (sheet) {
+    return (
+      <div style={{ position: "sticky", bottom: 0, margin: "14px -16px 0", zIndex: 2, boxSizing: "border-box", background: "var(--solid)", borderTop: `1.5px solid ${EL}`, padding: "12px 16px calc(14px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
+        {children}
+      </div>
+    );
+  }
   return (
     <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 310, boxSizing: "border-box", background: "var(--solid)", borderTop: `1.5px solid ${EL}`, padding: "12px 16px calc(14px + env(safe-area-inset-bottom))", display: "flex", gap: 10 }}>
       {children}
@@ -186,6 +258,7 @@ export function FormConfirm({
   cancelWord = "Keep editing",
   confirmWord,
   busy = false,
+  spend = true,
   onCancel,
   onConfirm,
   children,
@@ -197,13 +270,29 @@ export function FormConfirm({
   cancelWord?: string;
   confirmWord: string;
   busy?: boolean;
+  /** ⚠ false when CONFIRMING closes this sheet AND submits in the same tick —
+   *  spending the history entry there would race what the submit does next
+   *  (19 Sep 2026). The entry it leaves is the hook's rule 3(a) orphan, skipped
+   *  on the next back press. Only the class form needs it, and it used to get
+   *  it by registering a SECOND `useCloseOnBack` of its own beside this one —
+   *  two entries for one question, survivable only because the orphan rule
+   *  happened to cover it. */
+  spend?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
   children?: React.ReactNode;
 }) {
-  useCloseOnBack(onCancel, true);
+  useCloseOnBack(onCancel, true, { spend });
+  const sheet = useContext(InSheet);
+  /* ⚠ PORTALLED, ALWAYS (22 Sep 2026). On a page this only removes an ancestor's
+     ability to trap it; in a SHEET it is the difference between working and not,
+     because the panel animates and therefore makes a stacking context, and a
+     `position: fixed` child of one is laid out against the panel and clipped by
+     its `overflow: hidden`. The z-index above the panel's 600 is what puts the
+     question over the form it is asking about. */
   return (
-    <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600 }}>
+    <Portal>
+    <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: sheet ? 660 : 600 }}>
       <div
         role="dialog"
         aria-modal="true"
@@ -225,6 +314,7 @@ export function FormConfirm({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 
@@ -241,10 +331,15 @@ export function FormSummary({ tint, head, children }: { tint: string; head: Reac
 
 /** the app's one toast, at the height that clears the action bar */
 export function FormToast({ msg }: { msg: string | null }) {
+  const sheet = useContext(InSheet);
   if (!msg) return null;
+  /* portalled for the same reason the confirm sheet is — and above the panel,
+     since the thing it is answering is the button at the panel's own foot */
   return (
-    <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650, boxShadow: "0 6px 24px rgba(0,0,0,.45)" }}>
-      {msg}
-    </div>
+    <Portal>
+      <div role="status" style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: sheet ? 670 : 650, boxShadow: "0 6px 24px rgba(0,0,0,.45)" }}>
+        {msg}
+      </div>
+    </Portal>
   );
 }

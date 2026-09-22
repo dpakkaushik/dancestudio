@@ -50,7 +50,8 @@ export function CrewsHub({ led, member }: { led: CrewSummary[]; member: Array<Cr
         {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026) — it was a dashed
             row under the list, so somebody who leads several scrolled past them
             all to start one */}
-        <DeskAddButton label="Create crew" href="/crews/new" />
+        {/* opens over this hub (22 Sep 2026); `/crews/new` is still the page */}
+      <DeskAddButton label="Create crew" href="?new=1" />
         {head("CREWS YOU LEAD")}
         {led.length ? (
           led.map((c) => <Row key={c.id} crew={c} own sub={`${c.members} member${c.members === 1 ? "" : "s"} · ${c.style} · ${c.city}`} />)

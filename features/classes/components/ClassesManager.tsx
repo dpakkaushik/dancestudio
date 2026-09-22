@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -12,6 +12,7 @@ import {
   type RoomClash,
 } from "@/features/classes/server-actions/classes";
 import { ClassTile } from "@/features/classes/components/ClassTile";
+import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import type { ClassPublishState } from "@/repositories/classes";
@@ -315,6 +316,16 @@ export function ClassesManager({
   canCreate?: boolean;
 }) {
   const router = useRouter();
+  const search = useSearchParams();
+  /* `?new=1` ON TOP OF WHATEVER IS ALREADY THERE (22 Sep 2026) — this register is
+     a page of its own AND the Manage segment of `/my-classes`, and on that second
+     surface the segment lives in the query, so a bare `?new=1` would take the
+     list out from under the sheet it just opened. */
+  const createHref = (() => {
+    const q = new URLSearchParams(search.toString());
+    q.set("new", "1");
+    return `?${q.toString()}`;
+  })();
   const [tab, setTab] = useState<ClassStatus>("published");
   const [liveOnly, setLiveOnly] = useState(false);
   const [ask, setAsk] = useState<{ kind: "publish" | "draft" | "published"; c: DanceClass; clash?: RoomClash } | null>(null);
@@ -404,8 +415,14 @@ export function ClassesManager({
             visiting teacher, an assistant and the front desk all got a pill that
             opens a two-step form and is refused at Save. `why_no_class` cannot
             catch it: it asks about the BUSINESS (its type, its artist's plan),
-            never about who is asking. Same rule as the sentence beside it — a
-            closed door that says why beats a form that is refused at the end. */}
+            never about who is asking. */}
+        {/* ⚠⚠ AND A CLASS IS CREATED FROM ITS OWN SECTION, WHICH IS THIS ONE
+            (22 Sep 2026, the user: "class should only be created from home tab",
+            then "no, from inside their respective sections, in home tab only").
+            So the door stays exactly where it is — the Classes section, reached
+            from the Home tab's Classes tile — and what goes is the CALENDAR's
+            ＋ Add class, which created a class from a section that is not this
+            one. It opens as a sheet over this register now. */}
         {!canCreate ? (
           <div role="status" data-testid="why-no-class" style={{ ...bizBtn, cursor: "default", background: EL, color: INK, fontWeight: 700, fontSize: 12.5, lineHeight: 1.45, padding: "12px 16px", marginBottom: 12 }}>
             Only the owner of this studio creates its classes. You can run the registers you have been given.
@@ -415,15 +432,12 @@ export function ClassesManager({
             {whyNoClass}
           </div>
         ) : (
-          <Link
-            href={`/business/${tenantId}/classes/new`}
-            style={{ ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Create class
-          </Link>
+          /* ⚠ the href KEEPS the query it is standing in: this same component is
+             embedded in `/my-classes?show=manage`, where a bare `?new=1` would
+             drop the segment and switch the list back to Booked underneath the
+             sheet it just opened. `/business/{id}/classes/new` is still the page
+             behind it (Rule 14). */
+          <DeskAddButton label="Create class" href={createHref} />
         )}
 
         <LiveBanner n={liveN} on={liveOnly} setOn={setLiveOnly} />

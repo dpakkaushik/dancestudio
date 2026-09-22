@@ -176,7 +176,12 @@ export function MembershipsScreen({
               nothing on its own — but without it a studio owner filling this
               form would be making a membership for whichever business happened
               to come back first. */}
-          <DeskAddButton label="New membership" href={business ? `/memberships/new?business=${business.id}` : "/memberships/new"} />
+          {/* ⚠ AND IT OPENS OVER THIS DESK (22 Sep 2026) — `?new=1` on the page
+              you are already on, the same shape as the gear's `?settings=1`, so
+              the phone's back gesture closes it. The studio's own desk needs no
+              `?business=` any more: the page it opens on IS that studio's, so
+              the id comes from the route rather than from the link. */}
+          <DeskAddButton label="New membership" href="?new=1" />
 
           {selling.map((m) => (
             <Link key={m.id} href={`/memberships/${m.id}`} aria-label={`Open ${m.name}`} style={{ ...card, display: "block", textDecoration: "none", color: INK }} data-testid="selling-membership">

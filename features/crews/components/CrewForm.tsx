@@ -40,7 +40,7 @@ import { pressKey } from "./crew-kit";
  *  ⚠ Everyone named is ASKED, never written onto a public roster — the rule
  *  since Step 22, and the confirm sheet says it in as many words. */
 
-export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
+export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string | null; sheet?: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -73,11 +73,21 @@ export function CrewForm({ defaultCity }: { defaultCity: string | null }) {
       return;
     }
     fire(`🎉 ${name.trim()} created — you're the leader`);
-    setTimeout(() => router.push(`/crews/${out.crewId}/manage`), 700);
+    /* ⚠ A SHEET REPLACES ITS OWN ENTRY ON THE WAY OUT (22 Sep 2026). Unlike a
+       routine or a membership, making a crew LEAVES for the thing you just made
+       — so a `push` from a sheet would stack the crew's home on top of the
+       `?new=1` entry that opened it, and the first back press would re-open the
+       form over the hub. That is the looping shape this app has been bitten by
+       twice already; `replace` spends the sheet's entry instead. */
+    setTimeout(() => {
+      const to = `/crews/${out.crewId}/manage`;
+      if (sheet) router.replace(to);
+      else router.push(to);
+    }, 700);
   };
 
   return (
-    <FormPage title="Create crew" steps={["The crew", "Members"]} step={step} onBack={() => (step > 0 ? setStep(0) : router.back())}>
+    <FormPage title="Create crew" steps={["The crew", "Members"]} step={step} sheet={sheet} onClose={() => router.back()} onBack={() => (step > 0 ? setStep(0) : router.back())}>
       {step === 0 ? (
         <>
           <div style={FORM_LABEL}>CREW NAME</div>

@@ -20,6 +20,14 @@ import { reconcileClassPeople } from "@/services/classPeople";
 
 export interface ClassActionState {
   error: string | null;
+  /** ⚠ SET INSTEAD OF REDIRECTING, WHEN THE FORM IS A SHEET (22 Sep 2026).
+   *  A sheet has to SPEND the `?new=1` entry that opened it rather than push a
+   *  second copy of the register over it — and only the client can sequence
+   *  that, because the confirm sheet's own entry sits on top. So the form says
+   *  it is a sheet in a hidden field, the action hands back "it is saved", and
+   *  `ClassForm` does the going back. As a PAGE nothing changes: the redirect
+   *  is still the action's, in one hop (19 Sep 2026). */
+  ok?: true;
 }
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -178,6 +186,10 @@ export async function createClassAction(
     return { error: error instanceof Error ? error.message : "Could not create the class" };
   }
 
+  if (isSheet(formData)) {
+    revalidatePath(afterSave(formData, d.tenantId));
+    return { error: null, ok: true };
+  }
   redirect(afterSave(formData, d.tenantId));
 }
 
@@ -222,6 +234,10 @@ export async function updateClassAction(
     return { error: error instanceof Error ? error.message : "Could not save the class" };
   }
 
+  if (isSheet(formData)) {
+    revalidatePath(afterSave(formData, d.tenantId));
+    return { error: null, ok: true };
+  }
   redirect(afterSave(formData, d.tenantId));
 }
 
@@ -234,6 +250,10 @@ const afterSave = (formData: FormData, tenantId: string) => {
   const after = String(formData.get("after") ?? "");
   return after === "/my-classes?show=manage" ? after : `/business/${tenantId}/classes`;
 };
+
+/** the form's own word for which shell it is in — a hint about NAVIGATION and
+ *  nothing else, so it grants nothing and is not worth validating beyond this */
+const isSheet = (formData: FormData) => String(formData.get("sheet") ?? "") === "1";
 
 const classRefSchema = z.object({
   classId: z.string().uuid(),

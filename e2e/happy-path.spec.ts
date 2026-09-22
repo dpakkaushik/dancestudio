@@ -1064,7 +1064,12 @@ test.describe.serial("DanceOS, end to end", () => {
     eventsHostId = owner.url().match(/\/business\/([0-9a-f-]+)\/events/)?.[1] ?? null;
     expect(eventsHostId).not.toBe(tenantId);
     await owner.getByRole("link", { name: "Create event" }).click();
-    await owner.waitForURL(/\/events\/new$/);
+    /* ⚠ THE FORM IS A SHEET OVER THE DESK NOW (22 Sep 2026, ask 6) — the same
+       form, the same fields, a different shell; the address is the desk's own
+       with `?new=1` on it, and `/business/{id}/events/new` is still the page
+       (Rule 14, and the segment below drives it by URL). */
+    await owner.waitForURL(/\/events\?new=1$/);
+    await expect(owner.getByRole("dialog", { name: "Add event" })).toBeVisible();
     await owner.getByRole("button", { name: "Showcase", exact: true }).click();
     await owner.getByLabel("Event name").fill(eventTitle);
     await owner.getByLabel("Dance style", { exact: true }).click();
@@ -1148,7 +1153,10 @@ test.describe.serial("DanceOS, end to end", () => {
        only way to know which of the three moved was to DIFF the three files
        against HEAD rather than hunt with another 12-minute run. */
     await learner.getByRole("link", { name: "Create crew", exact: true }).click();
-    await learner.waitForURL(/\/crews\/new$/);
+    /* ⚠ AND IT OPENS AS A SHEET OVER THE HUB (22 Sep 2026, ask 6) — `?new=1` on
+       `/crews` rather than a page away. `/crews/new` is still the page. */
+    await learner.waitForURL(/\/crews\?new=1$/);
+    await expect(learner.getByRole("dialog", { name: "Create crew" })).toBeVisible();
     /* ⚠ THE FORM WEARS THE ADD CLASS ANATOMY NOW (21 Sep 2026, the user:
        "Create Crew form in crews should look similar to add class page"): a ←
        heading, two steps, and a fixed bar whose button NAMES the missing answer
@@ -2104,13 +2112,14 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── FOUR FIELDS AND NOTHING ELSE. It is free on purpose: a free membership
     // is granted on the press, which is the only way a browser test can hold a
     // real pass — a priced one opens Cashfree's own window.
-    /* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026) and wears the Add class anatomy,
-       so the desk's button is a LINK and the four fields are split across the
-       two steps the class form splits its own across. Still four fields — and
-       the link NAMES the studio, because the form used to be filled from one
-       desk and saved against whichever business came back first. */
+    /* ⚠ THE FORM IS A SHEET OVER THIS DESK NOW (22 Sep 2026, ask 6) — it wore
+       the Add class anatomy from 21 Sep and wears its own address no longer:
+       `?new=1` on the desk that offered it, so the studio it sells for is the
+       desk's own and `?business=` is not needed at all from here (it stays for
+       `/memberships/new`, which is still a page — Rule 14). */
     await owner.getByRole("link", { name: "New membership" }).click();
-    await owner.waitForURL(new RegExp(`/memberships/new\\?business=${tenantId}$`));
+    await owner.waitForURL(new RegExp(`/business/${tenantId}/memberships\\?new=1$`));
+    await expect(owner.getByRole("dialog", { name: "Add membership" })).toBeVisible();
     await expect(owner.getByRole("button", { name: "Name the membership first" })).toBeVisible();
     await owner.getByLabel("Membership name").fill(passName);
     await owner.getByLabel("How many classes").fill("2");
@@ -2780,11 +2789,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── the desk: a routine is made in Routines, never typed on a class (12334)
     await trainer.goto("/routines");
     await expect(trainer.getByRole("heading", { name: "Routines" })).toBeVisible();
-    /* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026) and wears the Add class anatomy —
-       the desk's button is a LINK to it, and the name comes before the media the
-       way the class form's session comes before its price. */
+    /* ⚠ THE FORM IS A SHEET OVER THE DESK NOW (22 Sep 2026, ask 6): the same
+       Add class anatomy it took on 21 Sep, opened from the desk's own address
+       with `?new=1` rather than a page away. `/routines/new` still renders the
+       page (Rule 14), which `shoot-tiles.js` drives by URL. */
     await trainer.getByRole("link", { name: "New routine" }).click();
-    await trainer.waitForURL(/\/routines\/new$/);
+    await trainer.waitForURL(/\/routines\?new=1$/);
+    await expect(trainer.getByRole("dialog", { name: "Add routine" })).toBeVisible();
     await expect(trainer.getByRole("button", { name: "Name the routine first" })).toBeVisible();
     await trainer.getByLabel("Routine name").fill(routineName);
     await trainer.getByRole("button", { name: "Continue" }).click();

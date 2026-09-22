@@ -91,13 +91,17 @@ export function RoutinesDesk({
         </div>
       ) : (
         <>
-      {/* ⚠ THE FORM IS A PAGE NOW (21 Sep 2026, the user: "same should be for new
-          routine and new membership"). It was a card that expanded here, which
-          is exactly why it looked nothing like Add class — no heading, no step,
-          no fixed bar, and a Cancel that collapsed a box rather than leaving a
-          screen. `/routines/new` wears the shared `FormPage` anatomy, and this
-          desk keeps only the door to it. */}
-      <DeskAddButton label="New routine" href="/routines/new" />
+      {/* ⚠ THE FORM OPENS OVER THIS DESK (22 Sep 2026, the user: "All forms and
+          add buttons anywhere in home tab should open form like how setting page
+          or edit profile page open from the same screen"). It is the SAME form
+          wearing the SAME `FormPage` anatomy it has worn since 21 Sep — only its
+          shell differs — and `/routines/new` still renders it full-page, because
+          a link handed out is a promise (Rule 14) and the installed TWA reopens
+          on the last URL it showed.
+          ⚠ `?new=1` is PUSHED, exactly as the gear pushes `?settings=1`: the
+          param IS the history entry, so the phone's back gesture closes the
+          sheet instead of leaving the desk. */}
+      <DeskAddButton label="New routine" href="?new=1" />
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 12, padding: "9px 11px", marginBottom: 10 }}>
         <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 13 }}>

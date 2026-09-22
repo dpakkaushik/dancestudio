@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { MembershipForm } from "@/features/memberships/components/MembershipForm";
 import { MembershipsScreen } from "@/features/memberships/components/MembershipsScreen";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessMemberships } from "@/repositories/memberships";
@@ -26,8 +27,9 @@ import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
  *  `guard_person_only`), so this is the MANAGE side alone. `/memberships` keeps
  *  being the PERSON's desk: the passes they hold, and what their artist page
  *  sells. */
-export default async function StudioMembershipsPage({ params }: { params: Promise<{ tenantId: string }> }) {
+export default async function StudioMembershipsPage({ params, searchParams }: { params: Promise<{ tenantId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { tenantId } = await params;
+  const opening = (await searchParams).new === "1";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -68,5 +70,13 @@ export default async function StudioMembershipsPage({ params }: { params: Promis
     redirect(`/business/${tenantId}/events`);
   }
   const selling = await findBusinessMemberships(supabase, tenantId).catch(() => []);
-  return <MembershipsScreen passes={[]} selling={selling} canSell business={{ id: tenantId, name: seat.tenant.name }} />;
+  /* the form opens over THIS studio's desk (22 Sep 2026), so the seller is the
+     route's own business — the `?business=` pointer `/memberships/new` needs is
+     one the URL here already carries, and one this page has already authorized */
+  return (
+    <>
+      <MembershipsScreen passes={[]} selling={selling} canSell business={{ id: tenantId, name: seat.tenant.name }} />
+      {opening ? <MembershipForm sellerId={tenantId} sellerName={seat.tenant.name} backTo={`/business/${tenantId}/memberships`} sheet /> : null}
+    </>
+  );
 }

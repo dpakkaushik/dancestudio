@@ -45,15 +45,20 @@ export default async function TenantCalendarPage({
     toIso
   );
 
-  const composeHref = `/business/${tenantId}/classes/new`;
+  /* ⚠ THE EMPTY DAY'S DOOR IS THE REGISTER NOW, NOT THE FORM (22 Sep 2026, the
+     user: "class should only be created from home tab … from inside their
+     respective sections"). A class begins in the Classes section, so a day with
+     nothing on it sends you there rather than straight into a form opened from
+     a section that does not own it — and the compose ＋ this page used to pass
+     is gone with it (`composeHref` is the organization's alone). */
+  const emptyHref = `/business/${tenantId}/classes`;
   return (
     <CalendarScreen
       mode="studio"
       months={months}
       todayKey={dayKeyOf(now)}
       entries={entries}
-      emptyHref={composeHref}
-      composeHref={composeHref}
+      emptyHref={emptyHref}
     />
   );
 }

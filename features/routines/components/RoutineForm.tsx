@@ -39,7 +39,7 @@ import type { ClassLevel } from "@/types/class";
 
 const STEPS = ["The routine", "Song & video"] as const;
 
-export function RoutineForm({ userId }: { userId: string }) {
+export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?: boolean }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [pending, start] = useTransition();
@@ -102,12 +102,24 @@ export function RoutineForm({ userId }: { userId: string }) {
       setConfirm(false);
       if (out.error) return fire(out.error);
       fire("🎭 Routine added");
-      setTimeout(() => router.push("/routines"), 600);
+      /* ⚠ A SHEET GOES BACK, A PAGE GOES TO THE DESK (22 Sep 2026). As a sheet
+         the desk is already underneath — `back()` spends the `?new=1` entry that
+         opened it, and `refresh()` re-runs the desk's own read so the new
+         routine is in the list behind it. A `push` would stack a second copy of
+         the desk on the history and leave the sheet's entry live behind it. */
+      setTimeout(() => {
+        if (sheet) {
+          router.back();
+          router.refresh();
+          return;
+        }
+        router.push("/routines");
+      }, 600);
     });
   };
 
   return (
-    <FormPage title="Add routine" steps={STEPS} step={step} onBack={() => (step > 0 ? setStep(0) : router.back())}>
+    <FormPage title="Add routine" steps={STEPS} step={step} sheet={sheet} onClose={() => router.back()} onBack={() => (step > 0 ? setStep(0) : router.back())}>
       {step === 0 ? (
         <>
           <div style={FORM_LABEL}>ROUTINE NAME</div>

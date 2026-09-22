@@ -37,9 +37,12 @@ export function MembershipForm({
   sellerId,
   sellerName,
   backTo = "/memberships",
+  sheet = false,
 }: {
   sellerId: string;
   sellerName: string;
+  /** open over the desk that offered it rather than as a page (22 Sep 2026) */
+  sheet?: boolean;
   /** ⚠ the desk that sent you (21 Sep 2026): a studio's own, or a person's.
    *  It pushed `/memberships` whatever opened it, so a studio owner saving a
    *  membership landed on a page that no longer lists it. */
@@ -87,14 +90,23 @@ export function MembershipForm({
       setConfirm(false);
       if (out.error) return fire(out.error);
       fire("🎟 Membership on sale");
-      setTimeout(() => router.push(backTo), 600);
+      /* a sheet spends the `?new=1` entry that opened it and refreshes the desk
+       underneath; a page goes to the desk that sent it (22 Sep 2026) */
+    setTimeout(() => {
+      if (sheet) {
+        router.back();
+        router.refresh();
+        return;
+      }
+      router.push(backTo);
+    }, 600);
     });
   };
 
   const unitWord = f.unit === "hours" ? "hours" : "classes";
 
   return (
-    <FormPage title="Add membership" steps={STEPS} step={step} onBack={() => (step > 0 ? setStep(0) : router.back())}>
+    <FormPage title="Add membership" steps={STEPS} step={step} sheet={sheet} onClose={() => router.back()} onBack={() => (step > 0 ? setStep(0) : router.back())}>
       {step === 0 ? (
         <>
           <div style={FORM_LABEL}>NAME</div>

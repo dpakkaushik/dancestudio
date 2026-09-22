@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 
@@ -37,10 +38,16 @@ export function DeskAddButton({ label, href, onClick }: { label: string; href?: 
   );
   const style: CSSProperties = { ...bizBtn, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 };
   if (href) {
+    /* ⚠ A `next/link`, NOT a bare `<a>` (22 Sep 2026). Every href this takes now
+       points at the SAME page with `?new=1` on it — the form opens as a sheet
+       over the desk that offered it — and a bare anchor would reload the desk to
+       do that, throwing away its scroll and re-running every read behind it.
+       `scroll={false}` for the same reason: the desk must not jump when the
+       sheet opens over it. */
     return (
-      <a href={href} aria-label={label} style={style}>
+      <Link href={href} scroll={false} aria-label={label} style={style}>
         {inner}
-      </a>
+      </Link>
     );
   }
   return (

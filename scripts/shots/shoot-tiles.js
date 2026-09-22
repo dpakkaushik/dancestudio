@@ -126,6 +126,38 @@ async function pressEveryTile(page, who, expectedNames) {
        itself worth checking, because a first-time artist sees the first one. */
     await p2.goto(`${BASE}/`, { waitUntil: "networkidle" });
     await pressEveryTile(p2, "artist", ["Classes", "Events", "Calendar", "Crews", "Studios", "Routines", "Team", "Students", "Earnings", "Memberships", "Assets"]);
+
+    /* ⚠ A FORM OPENS OVER THE DESK THAT OFFERED IT, AND IS STILL A PAGE OF ITS
+       OWN (22 Sep 2026, the user: "All forms and add buttons anywhere in home
+       tab should open form like how setting page or edit profile page open from
+       the same screen"). BOTH ends are asserted, because the whole design is
+       that one form has two shells: the sheet over the desk, and `/routines/new`
+       for the link somebody was handed (Rule 14). */
+    await p2.goto(`${BASE}/routines`, { waitUntil: "networkidle" });
+    const deskH1 = await p2.locator("h1").first().innerText().catch(() => "");
+    await p2.getByRole("link", { name: "New routine" }).click();
+    const addRoutine = p2.getByRole("dialog", { name: "Add routine" });
+    await addRoutine.waitFor({ timeout: 15_000 }).catch(() => {});
+    check(await addRoutine.isVisible().catch(() => false), "artist · New routine opens a sheet over the desk");
+    check(new URL(p2.url()).search === "?new=1", `artist · the sheet is the URL, so back closes it (${new URL(p2.url()).search})`);
+    check((await p2.locator("h1").first().innerText().catch(() => "")) === deskH1, "artist · the desk is still underneath it");
+    await p2.goBack();
+    await p2.waitForTimeout(600);
+    check(!(await addRoutine.isVisible().catch(() => false)), "artist · back closes the sheet and leaves the desk");
+    /* and the address still renders the whole form, for the link handed out */
+    await p2.goto(`${BASE}/routines/new`, { waitUntil: "networkidle" });
+    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add routine", "artist · /routines/new is still a page of its own (Rule 14)");
+    check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
+
+    /* ⚠ ADD CLASS IS THE ONE THE USER NAMED, and it opens from the section that
+       owns it — an artist's register is the Manage segment of Your classes, so
+       the href must keep `show=manage` or the list changes under the sheet. */
+    await p2.goto(`${BASE}/my-classes?show=manage`, { waitUntil: "networkidle" });
+    await p2.getByRole("link", { name: "Create class" }).click();
+    const addClass = p2.getByRole("dialog", { name: "Add class" });
+    await addClass.waitFor({ timeout: 15_000 }).catch(() => {});
+    check(await addClass.isVisible().catch(() => false), "artist · Create class opens a sheet over the register");
+    check(new URL(p2.url()).search.includes("show=manage") && new URL(p2.url()).search.includes("new=1"), `artist · and it KEEPS the segment it was opened from (${new URL(p2.url()).search})`);
     await p2.close();
 
     // ── 3. an ORGANIZATION, verified, with no studio yet
@@ -160,6 +192,33 @@ async function pressEveryTile(page, who, expectedNames) {
         .then(() => true)
         .catch(() => false);
       check(landed, `org: the memberships desk redirects to its events (${new URL(p3.url()).pathname})`);
+
+      /* ⚠ CREATE EVENT OPENS OVER THE DESK THAT OFFERS IT (22 Sep 2026, ask 6).
+         The GST number is stamped first because a door that would be refused is
+         not drawn: without one this desk prints the database's sentence where
+         the button goes, which is the 21 Sep rule and is the reason the button
+         is not simply always there. */
+      /* ⚠ a GSTIN is UNIQUE across the table, so it cannot be the documented
+         placeholder ABC12345 — a demo account already holds that one, and the
+         PATCH answered 23505. Three letters and five digits is the shape
+         `verify_gstin` accepts; the digits are this run's own. */
+      const gstin = `DOS${String(Math.floor(Math.random() * 90000) + 10000)}`;
+      await rest("PATCH", `/rest/v1/profiles?id=eq.${org.id}`, { gstin, gstin_verified_at: new Date().toISOString() });
+      await p3.goto(`${BASE}/business/${hostId}/events`, { waitUntil: "networkidle" });
+      await p3.getByRole("link", { name: "Create event" }).click();
+      const addEvent = p3.getByRole("dialog", { name: "Add event" });
+      await addEvent.waitFor({ timeout: 15_000 }).catch(() => {});
+      check(await addEvent.isVisible().catch(() => false), "org · Create event opens a sheet over the events desk");
+      check(new URL(p3.url()).search === "?new=1", `org · the event sheet is the URL, so back closes it (${new URL(p3.url()).search})`);
+      await p3.goBack();
+      await p3.waitForTimeout(600);
+      check(!(await addEvent.isVisible().catch(() => false)), "org · back closes the event sheet and leaves the desk");
+      /* and the route is still a page of its own (Rule 14) — with a real <h1>,
+         which it did NOT have until it moved onto FormPage: its title was a div,
+         so `/events/new` and `…/edit` rendered no heading for a screen reader */
+      await p3.goto(`${BASE}/business/${hostId}/events/new`, { waitUntil: "networkidle" });
+      check((await p3.locator("h1").first().innerText().catch(() => "")) === "Add event", "org · /events/new is still a page, and has a real heading at last");
+      check((await p3.getByRole("dialog").count()) === 0, "org · and that page is not a sheet");
     }
 
     // ── 4. and a STUDIO's own home, under that organization

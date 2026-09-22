@@ -8,7 +8,8 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { centreOf } from "@/repositories/cities";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
-import { DOS_UI } from "@/lib/design/tokens";
+import { FormPage } from "@/components/ui/FormPage";
+import { Portal } from "@/components/ui/Portal";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import {
   EVENT_CATS,
@@ -105,7 +106,7 @@ function Chip({ on, onClick, children, col }: { on: boolean; onClick: () => void
 }
 
 
-export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: string; existing: DanceEvent | null; /** the city registry (11 Sep 2026) — only where the map opens once a city is known; the city itself comes off the venue's address */ cityCentres?: Array<{ city: string; lat: number; lng: number }> }) {
+export function EventForm({ tenantId, existing, cityCentres = [], sheet = false }: { tenantId: string; sheet?: boolean; existing: DanceEvent | null; /** the city registry (11 Sep 2026) — only where the map opens once a city is known; the city itself comes off the venue's address */ cityCentres?: Array<{ city: string; lat: number; lng: number }> }) {
   const router = useRouter();
   const E = existing;
   const [step, setStep] = useState(0);
@@ -210,10 +211,27 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
       fire(out.error);
       return;
     }
-    /* the confirm sheet stays up until the route changes: closing it here would
-       spend its history entry in the same tick as the push and race the router
-       (19 Sep 2026) — the desk's render takes it down */
     fire(publish ? "🎟 Published — it is on Discover" : "Saved as a draft");
+    /* ⚠ A SHEET GOES BACK, A PAGE GOES TO THE DESK (22 Sep 2026), and the ORDER
+       is the whole of it. As a sheet the desk is already underneath, so the
+       `?new=1` entry that opened it has to be SPENT rather than pushed over —
+       and the confirm's own entry sits on top of it, so the confirm closes
+       first (its close spends its entry on a microtask) and the back that
+       leaves the sheet is a task behind that. A `push` here would stack a
+       second copy of the desk and leave `?new=1` live beneath it, so the back
+       press after saving would re-open the form — the loop shape this app has
+       been bitten by three times.
+       As a PAGE the confirm deliberately stays up until the route changes:
+       closing it there would spend its entry in the same tick as the push and
+       race the router (19 Sep 2026). */
+    if (sheet) {
+      setConfirm(null);
+      setTimeout(() => {
+        router.back();
+        router.refresh();
+      }, 600);
+      return;
+    }
     router.push(`/business/${tenantId}/events`);
   };
 
@@ -226,35 +244,28 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
     }));
   };
 
+  /* ⚠⚠ THIS FORM WORE ITS OWN CHROME UNTIL 22 Sep 2026, AND THAT IS WHY IT HAD
+     NO HEADING. It hand-rolled the sticky header, the ← , the step line and the
+     step bar that `FormPage` has carried for the other four forms since 21 Sep —
+     and its title was a `<div>`, so `/business/{id}/events/new` and `…/edit`
+     rendered **no `<h1>` at all** for a screen reader: the exact gap `FormPage`'s
+     own heading was introduced to close, on the one form that never moved onto
+     it. A copy that looks identical and is not the same element is the worst
+     kind, because nothing on screen ever shows it drifting (the Team desk's own
+     hand-copied hero, 21 Sep, in a second coat).
+     ⚠ The `‹ Back` pill on step 1 is dropped rather than kept: the ← in the
+     header does exactly that, and two controls for one job on one line is what
+     this file keeps having to undo. */
   return (
-    <div style={{ background: "var(--bg)", maxWidth: 430, margin: "0 auto", color: "var(--text)", fontFamily: DOS_UI, paddingBottom: 60, minHeight: "100vh" }}>
-      {/* header — mirrors the class form */}
-      <div style={{ position: "sticky", top: "var(--dos-top)", zIndex: 20, background: "var(--solid)", padding: "14px 16px 10px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* the ← (15897): exits on step 0, steps back otherwise */}
-          <button type="button" aria-label={step > 0 ? "Back a step" : "Back"} onClick={() => (step > 0 ? setStep(step - 1) : router.back())} style={{ fontSize: 20, cursor: "pointer", lineHeight: 1, background: "none", border: "none", color: "var(--text)", padding: 0, fontFamily: "inherit" }}>
-            ←
-          </button>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 900 }}>{E ? "Edit event" : "Add event"}</div>
-            <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 1 }}>
-              Step {step + 1} of {STEPS.length} — {STEPS[step]}
-            </div>
-          </div>
-          {step > 0 ? (
-            <button type="button" onClick={() => setStep(0)} style={{ fontSize: 11.5, fontWeight: 800, padding: "7px 12px", borderRadius: 999, background: "var(--card)", border: "1.5px solid var(--el)", color: "var(--text)", cursor: "pointer", fontFamily: "inherit" }}>
-              ‹ Back
-            </button>
-          ) : null}
-        </div>
-        <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-          {STEPS.map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= step ? col : "var(--el)", transition: "background .2s" }} />
-          ))}
-        </div>
-      </div>
-
-      <div style={{ padding: "4px 16px 0" }}>
+    <FormPage
+      title={E ? "Edit event" : "Add event"}
+      steps={STEPS}
+      step={step}
+      sheet={sheet}
+      onClose={() => router.back()}
+      onBack={() => (step > 0 ? setStep(step - 1) : router.back())}
+    >
+      <>
         {step === 0 ? (
           <>
             <Head n="1">WHAT KIND OF EVENT</Head>
@@ -645,10 +656,16 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
             </div>
           </>
         ) : null}
-      </div>
+      </>
 
+      {/* ⚠ PORTALLED (22 Sep 2026): as a SHEET this form lives inside an
+          animating panel, which makes its own stacking context — a
+          `position: fixed` child of one is laid out against the panel and
+          clipped by its `overflow: hidden`, so the question would open inside
+          the form rather than over it. On a page it changes nothing. */}
       {confirm ? (
-        <div onClick={() => setConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600 }}>
+        <Portal>
+        <div onClick={() => setConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: sheet ? 660 : 600 }}>
           <div role="dialog" aria-modal="true" aria-label={confirm === "publish" ? "Publish this event?" : "Save as draft?"} onClick={(ev) => ev.stopPropagation()} style={{ background: "var(--solid)", color: "var(--text)", borderRadius: "24px 24px 0 0", padding: "18px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", textAlign: "center" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
             <b style={{ fontSize: 17 }}>{confirm === "publish" ? "Publish this event?" : "Save as draft?"}</b>
@@ -694,13 +711,16 @@ export function EventForm({ tenantId, existing, cityCentres = [] }: { tenantId: 
             </div>
           </div>
         </div>
+        </Portal>
       ) : null}
 
       {toast ? (
-        <div style={{ position: "fixed", bottom: 40, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: `1.5px solid ${col}`, color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 380, textAlign: "center", zIndex: 650 }}>
-          {toast}
-        </div>
+        <Portal>
+          <div style={{ position: "fixed", bottom: 40, left: "50%", transform: "translateX(-50%)", background: "var(--el)", border: `1.5px solid ${col}`, color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 380, textAlign: "center", zIndex: sheet ? 670 : 650 }}>
+            {toast}
+          </div>
+        </Portal>
       ) : null}
-    </div>
+    </FormPage>
   );
 }

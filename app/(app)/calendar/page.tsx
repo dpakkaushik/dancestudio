@@ -59,7 +59,15 @@ export default async function CalendarPage() {
         entries={[]}
         events={events}
         emptyHref={desk}
-        composeHref={hostId ? "/events/new" : desk}
+        /* ⚠ THIS WAS `/events/new`, AND THERE IS NO SUCH ROUTE (22 Sep 2026).
+           An organization pressing Add event on its own calendar got a 404 —
+           the one compose door on that screen, dead since the calendar learned
+           about events (18 Sep, R21). An event form lives under the business
+           that hosts it, and the hosting row's id is already read one line
+           above for `desk`. Found by mapping every add control in the app
+           rather than by a complaint, which is why it lasted: nobody presses
+           compose on an empty calendar in development. */
+        composeHref={hostId ? `/business/${hostId}/events/new` : desk}
       />
     );
   }

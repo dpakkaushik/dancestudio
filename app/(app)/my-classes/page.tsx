@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { ClassTile } from "@/features/classes/components/ClassTile";
 import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
@@ -102,7 +103,7 @@ const when = (iso: string | null): string =>
     ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso))
     : "no date yet";
 
-export default async function MyClassesPage({ searchParams }: { searchParams: Promise<{ show?: string | string[]; kind?: string | string[] }> }) {
+export default async function MyClassesPage({ searchParams }: { searchParams: Promise<{ show?: string | string[]; kind?: string | string[]; new?: string | string[] }> }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -117,6 +118,8 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
     redirect("/my-events");
   }
   const rawShow = Array.isArray(params.show) ? params.show[0] : params.show;
+  /* the Add class sheet, opened from the Manage segment (22 Sep 2026) */
+  const opening = (Array.isArray(params.new) ? params.new[0] : params.new) === "1";
 
   const [class_bookings, artistOn, assistantOn, memberships] = await Promise.all([
     findMyEnrollments(supabase),
@@ -299,6 +302,15 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           home tab for all profiles"). The segment above ALREADY carries its own
           count — "Manage 5" — so this line said the same number a second time,
           one row lower, in smaller type. */}
+
+      {/* ⚠ ADD CLASS OPENS OVER THIS PAGE (22 Sep 2026), from the Manage segment
+          that offers it — an artist's register is this segment, not a page of
+          its own (19 Sep), so this is the "respective section" a class begins
+          from. An artist page has no rooms of its own, so there is nothing extra
+          to read: the sheet costs one render and no round trip. */}
+      {opening && myPage && manage && !manage.whyNoClass ? (
+        <ClassForm tenantId={myPage.id} tenantType="artist_page" rooms={[]} isOwner sheet />
+      ) : null}
     </div>
   );
 }

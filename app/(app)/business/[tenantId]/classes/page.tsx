@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
+import { ClassForm } from "@/features/classes/components/ClassForm";
 import { ClassesManager } from "@/features/classes/components/ClassesManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findClassArtists } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession } from "@/repositories/enrollments";
+import { findRoomsByTenant } from "@/repositories/rooms";
 import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) — the register's
@@ -18,10 +20,13 @@ const stampNowIso = (): string => new Date().toISOString();
  *  page's address lands there (Rule 14). */
 export default async function TenantClassesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenantId: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { tenantId } = await params;
+  const opening = (await searchParams).new === "1";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -59,16 +64,36 @@ export default async function TenantClassesPage({
     /* the database's sentence, if a new class would be refused here (18 Sep 2026) */
     findWhyNoClass(supabase, tenantId),
   ]);
+  /* ⚠ ADD CLASS OPENS OVER THIS REGISTER (22 Sep 2026, the user: "all forms and
+     add buttons … should open form like how setting page or edit profile page
+     open from the same screen", then "from inside their respective sections").
+     The ROOMS the form offers are read only when the form is asked for — `?new=1`
+     — so the register costs exactly what it did before on every other visit, and
+     the owner-only rule is re-checked here because a query param is a thing
+     anybody can type. `/business/{id}/classes/new` still renders it full-page. */
+  const rooms = opening && myRole === "owner" && !whyNoClass ? await findRoomsByTenant(supabase, tenantId).catch(() => []) : [];
   return (
-    <ClassesManager
-      tenantId={tenantId}
-      classes={classes}
-      filledBySession={Object.fromEntries(counts)}
-      artists={Object.fromEntries(artists)}
-      publishState={Object.fromEntries(state)}
-      whyNoClass={whyNoClass}
-      canCreate={myRole === "owner"}
-      nowIso={stampNowIso()}
-    />
+    <>
+      <ClassesManager
+        tenantId={tenantId}
+        classes={classes}
+        filledBySession={Object.fromEntries(counts)}
+        artists={Object.fromEntries(artists)}
+        publishState={Object.fromEntries(state)}
+        whyNoClass={whyNoClass}
+        canCreate={myRole === "owner"}
+        nowIso={stampNowIso()}
+      />
+      {opening && myRole === "owner" && !whyNoClass ? (
+        <ClassForm
+          tenantId={tenantId}
+          tenantType={tenant.type}
+          rooms={rooms}
+          isOwner
+          studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
+          sheet
+        />
+      ) : null}
+    </>
   );
 }
