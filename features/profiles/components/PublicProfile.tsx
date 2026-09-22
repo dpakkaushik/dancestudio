@@ -7,7 +7,6 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { TenantFollower } from "@/types/follow";
 import type { PublicTeamMember, PublicTenantProfile } from "@/types/publicProfile";
-import { BusinessEditButton } from "./BusinessEditSheet";
 import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
@@ -233,18 +232,18 @@ export function PublicProfile({
             Edit beside it. ⚠ FOLLOW IS NOT HERE ANY MORE (20 Sep 2026): it is the
             bell in the figures row above, so this block draws only for the team
             and a visitor goes straight to the buttons. ── */}
+        {/* ⚠⚠ NO EDIT CELL IN THIS ROW ANY MORE (22 Sep 2026, the user: "studio
+            edit profile should be in settings"). A studio had TWO doors to its
+            own form — this one and the pencil on its home's corner — while a
+            person has had exactly one since C22, whose words were "all edit
+            profile options to be removed from home AND PROFILE PAGES". Both are
+            gone; Settings' THIS STUDIO block is the door. */}
         {isMember ? (
-          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: canEdit ? "2fr 1fr 1fr" : "1fr", gap: 6 }}>
+          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: canEdit && followers ? "2fr 1fr" : "1fr", gap: 6 }}>
             <Link href={manageHref} style={smallBox(false, RC)}>
               You are on this team · Manage ›
             </Link>
             {canEdit && followers ? <TenantFollowersButton followers={followers} accent={RC} /> : null}
-            {/* ⚠ THE WORDS ONLY (20 Sep 2026). This sheet used to carry the
-                studio's two pictures as well; they are the ⊕ on the disc and the
-                ⊕ on the posters rail on the studio's OWN HOME now, which is
-                where a person's have been since 19 Sep — and it is the only
-                place either is changed, so there is one door per picture. */}
-            {canEdit ? <BusinessEditButton tenant={tenant} /> : null}
           </div>
         ) : null}
 

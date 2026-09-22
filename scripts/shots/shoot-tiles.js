@@ -212,6 +212,21 @@ async function arrangeGrid(page, who, url) {
     check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add routine", "artist · /routines/new is still a page of its own (Rule 14)");
     check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
 
+    /* ⚠ AND THE TWO NOBODY LINKS TO ANY MORE (22 Sep 2026, found by auditing
+       what still points at each route). `/memberships/new` and `/crews/new`
+       were pages until C54 made both a sheet; every door in the app now opens
+       the sheet, so the ROUTES survive on Rule 14 alone — a link somebody was
+       handed, a bookmark, the installed TWA's last URL. Nothing drove either
+       one, which is exactly how a kept promise rots unnoticed: the previous
+       session found `shoot-hero` red for four days for the same reason.
+       An unlinked route needs a check MORE than a linked one, not less. */
+    await p2.goto(`${BASE}/memberships/new`, { waitUntil: "networkidle" });
+    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Add membership", "artist · /memberships/new is still a page, though nothing links to it (Rule 14)");
+    check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
+    await p2.goto(`${BASE}/crews/new`, { waitUntil: "networkidle" });
+    check((await p2.locator("h1").first().innerText().catch(() => "")) === "Create crew", "artist · /crews/new is still a page, though nothing links to it (Rule 14)");
+    check((await p2.getByRole("dialog").count()) === 0, "artist · and that page is not a sheet");
+
     /* ⚠ ADD CLASS IS THE ONE THE USER NAMED, and it opens from the section that
        owns it — an artist's register is the Manage segment of Your classes, so
        the href must keep `show=manage` or the list changes under the sheet. */
@@ -328,9 +343,22 @@ async function arrangeGrid(page, who, url) {
     const sTxt = await sheet.innerText();
     check(sTxt.includes("THIS STUDIO"), "studio · Settings is THE STUDIO'S — the block is headed THIS STUDIO");
     check(sTxt.includes(studio.name), "studio · and it says whose settings these are");
-    for (const want of ["Verification", "Subscription", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
+    for (const want of ["Edit studio", "Verification", "Subscription", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
       check(sTxt.includes(want), `studio · Settings carries ${want}`);
     }
+    /* ⚠⚠ AND EDIT STUDIO IS THE TILE THAT REPLACED THE CORNER PENCIL (22 Sep
+       2026, the user: "studio edit profile should be in settings … and profile
+       view button similar to other profiles"). Driven rather than read, because
+       a tile that is drawn and lands nowhere is the Memberships bug of 21 Sep:
+       press it, and the studio's own Edit sheet has to open over its home. */
+    await sheet.getByRole("link", { name: "Edit studio", exact: true }).click();
+    const sEdit = p3.getByRole("dialog", { name: "Edit business" });
+    await sEdit.waitFor({ state: "visible", timeout: 15_000 });
+    check(new URL(p3.url()).searchParams.get("edit") === "1", "studio · Edit studio opens the sheet at ?edit=1 on the studio's own home");
+    check(new URL(p3.url()).pathname === `/business/${studio.id}`, "studio · …over THIS studio, not the first one the account owns");
+    await sEdit.getByRole("button", { name: "Cancel" }).click();
+    await sEdit.waitFor({ state: "detached", timeout: 15_000 });
+    check(!new URL(p3.url()).searchParams.has("edit"), "studio · and Cancel spends the entry rather than leaving ?edit=1 live under it");
     /* ⚠ and NOT the person's own plan switch — that is the account's, and a
        sheet that mixed the two is the "which profile am I changing?" bug */
     check(!sTxt.includes("Artist tools"), "studio · and NOT the account's own plan switch");

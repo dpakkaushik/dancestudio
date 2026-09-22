@@ -1,22 +1,19 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { OrgDashboard } from "@/features/tenants/components/OrgDashboard";
-import { monthKeyOf, monthRefOf } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyOrgStats } from "@/repositories/orgStats";
 import { findProfileById } from "@/repositories/profiles";
 
-export const metadata: Metadata = { title: "Studios · combined — DanceOS" };
-
-/* the clock lives outside the component — this repo's lint refuses an impure
-   call during render (react-hooks/purity), even in a server component */
-const stampNowIso = (): string => new Date().toISOString();
-
-/** /business/stats — an ORGANIZATION's figures, combined and studio by studio
- *  (17 Sep 2026). The Stats tile on an organization's Home opens here; a
- *  person's opens /stats, their own record. Every number is `my_org_stats()`,
- *  scoped to the signed-in owner, so this page can only ever show your own. */
-export default async function OrgStatsPage() {
+/** `/business/stats` IS AN ADDRESS NOW, NOT A SCREEN (22 Sep 2026).
+ *
+ *  It drew `OrgDashboard` — an organization's figures combined and studio by
+ *  studio — while `/org/{me}/stats` drew the aggregate a VISITOR reads. Two
+ *  addresses, one subject, two different screens, and the one an organization
+ *  wanted was the one that did not name it. `/org/{id}/stats` renders the
+ *  dashboard when the id is the caller's, so the merge is the C40 shape.
+ *
+ *  ⚠ THE ROUTE STAYS (Rule 14): `OrgDashboard` itself is the kind of screen
+ *  somebody bookmarks, and the installed TWA reopens on the last URL it showed.
+ *  A server redirect costs one hop and leaves no extra history entry. */
+export default async function OrgStatsAddress() {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -28,10 +25,6 @@ export default async function OrgStatsPage() {
   if (!profile) {
     redirect("/onboarding");
   }
-  /* a person's stats are their record; this page is the organization's */
-  if (profile.role !== "org") {
-    redirect("/stats");
-  }
-  const rows = await findMyOrgStats(supabase);
-  return <OrgDashboard rows={rows} monthName={monthRefOf(monthKeyOf(stampNowIso())).monthName} />;
+  /* a person's stats are their record; this address is the organization's */
+  redirect(`${profile.role === "org" ? "/org" : "/person"}/${user.id}/stats`);
 }

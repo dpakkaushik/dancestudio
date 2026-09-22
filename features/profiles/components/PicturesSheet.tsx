@@ -12,7 +12,7 @@ import { MUTED, SUB } from "@/lib/design/tokens";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Profile } from "@/types/profile";
 import { ProfileDisc } from "./HeroRail";
-import { PlusIcon, Sheet, sheetBtn } from "./profile-kit";
+import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "./profile-kit";
 
 /** THE TWO PICTURES, AND THE TWO CONTROLS THAT CHANGE THEM.
  *
@@ -199,14 +199,14 @@ export function PicturesButton({
           borderRadius: 999,
           display: "grid",
           placeItems: "center",
-          background: "var(--card)",
-          border: "1.5px solid var(--el)",
+          /* the same paint the posters' ⊕ wears, three files over (22 Sep 2026) */
+          ...pictureChipPaint,
           cursor: "pointer",
           padding: 0,
           fontFamily: "inherit",
         }}
       >
-        <PlusIcon />
+        <PlusIcon light />
       </button>
       {viewing && avatar ? (
         <PhotoLightbox
@@ -249,8 +249,7 @@ export function HeaderEditButton({
           borderRadius: 999,
           display: "grid",
           placeItems: "center",
-          background: "rgba(10,10,10,.55)",
-          border: "1.5px solid rgba(255,255,255,.35)",
+          ...pictureChipPaint,
           cursor: "pointer",
           padding: 0,
           fontFamily: "inherit",

@@ -83,6 +83,7 @@ export function StatsScreen({
   boardPlace,
   tab,
   nowIso,
+  basePath,
 }: {
   name: string;
   /** the plan's word — an artist reads "Artist" where a learner reads "Taught by" */
@@ -106,6 +107,14 @@ export function StatsScreen({
   tab: Tab;
   /** the server's clock — the record's buckets are counted against it, never against a clock read during render */
   nowIso: string;
+  /** ⚠ THE ADDRESS THIS SCREEN IS BEING READ AT — `/person/{id}/stats` (22 Sep
+   *  2026). Every tab, segment, metric, city and style on this screen is URL
+   *  state, and they were all built as `/stats?…` — the address that is now a
+   *  REDIRECT to this one, so each press would have cost a round trip to land
+   *  where it already was. A STRING, never a builder: a server component may
+   *  not hand a function to a client one, which cost two minutes and a runtime
+   *  React #441 on the Earnings screen (21 Sep). */
+  basePath: string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const [side, setSide] = useState<Side | "all">("all");
@@ -148,9 +157,9 @@ export function StatsScreen({
     const m = over.metric ?? metric;
     const st = over.style === undefined ? styleFilter : over.style;
     const q = [`tab=charts`, `seg=${seg}`, c ? `city=${encodeURIComponent(c)}` : null, m !== "overall" ? `metric=${m}` : null, st ? `style=${encodeURIComponent(st)}` : null].filter(Boolean).join("&");
-    return `/stats?${q}`;
+    return `${basePath}?${q}`;
   };
-  const tabHref = (t: Tab) => (t === "charts" ? chartHref({}) : `/stats?tab=${t}`);
+  const tabHref = (t: Tab) => (t === "charts" ? chartHref({}) : `${basePath}?tab=${t}`);
 
   /* [label, figure, colour, the rows it opens] — the small cards; a zero is not drawn (10017) */
   const small: Array<[string, number, string, Array<[string, string]>]> = (

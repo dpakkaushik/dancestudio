@@ -23,8 +23,13 @@ const stampNowIso = (): string => new Date().toISOString();
  *  open the classes register; it opens this now, and the register is one of
  *  the tools. Only a studio has it: an artist page's desk IS its register, and
  *  an organization's hosting row (R15) has only its events desk. */
-export default async function StudioHomePage({ params }: { params: Promise<{ tenantId: string }> }) {
+export default async function StudioHomePage({ params, searchParams }: { params: Promise<{ tenantId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { tenantId } = await params;
+  /* ⚠ `?edit=1` — Settings' "Edit studio" navigates here with it (22 Sep 2026),
+     the way its Invoices, Refunds and Payments siblings navigate to their desks.
+     The gate is re-checked below rather than trusted from the query: the sheet
+     is drawn only when `editable` came back, which is the owner-only read. */
+  const editOpen = (await searchParams).edit === "1";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -161,6 +166,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       header={photos}
       ownerId={isOwner ? user.id : null}
       editable={editable}
+      editOpen={editOpen}
       deck={deck}
       roomCount={roomCounts[tenantId] ?? 0}
       /* WHAT IT SAYS IT DANCES, then what it teaches (19 Sep 2026) — the field

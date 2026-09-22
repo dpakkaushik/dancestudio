@@ -9,7 +9,7 @@ import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
-import { PlusIcon, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
+import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import { PROOF_MAX, type ProofPhoto } from "@/lib/media/proof";
 
@@ -188,9 +188,9 @@ export function StudioPicturesButton({
           type="button"
           aria-label="Change profile picture"
           onClick={() => setEditing(true)}
-          style={{ position: "absolute", right: -4, bottom: -4, width: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--card)", border: "1.5px solid var(--el)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+          style={{ position: "absolute", right: -4, bottom: -4, width: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", ...pictureChipPaint, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
         >
-          <PlusIcon />
+          <PlusIcon light />
         </button>
       ) : null}
       {viewing && avatar ? (
@@ -218,7 +218,7 @@ export function StudioPostersButton({ tenantId, tenantName, ownerId, photos = []
         type="button"
         aria-label="Edit posters"
         onClick={() => setOpen(true)}
-        style={{ width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", background: "rgba(10,10,10,.55)", border: "1.5px solid rgba(255,255,255,.35)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+        style={{ width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", ...pictureChipPaint, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
       >
         <PlusIcon light />
       </button>

@@ -162,7 +162,9 @@ export function OrganizationPublicPage({
                     variant="chip"
                   />
                 )}
-                <StatsChip href={isMe ? "/business/stats" : `/org/${org.id}/stats`} />
+                {/* one address, whoever is looking (22 Sep 2026) — `/org/{id}/stats`
+                draws the combined dashboard when the id is the caller's */}
+            <StatsChip href={`/org/${org.id}/stats`} />
                 <ProfileShare path={`/org/${org.id}`} name={org.name} />
                 <ProfileLink path={`/org/${org.id}`} name={org.name} />
               </>

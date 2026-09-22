@@ -6,7 +6,7 @@ import { DosStylePicker } from "@/components/ui/DosStyleKit";
 import { Portal } from "@/components/ui/Portal";
 import { updateCrewAction } from "@/features/crews/server-actions/crews";
 import { CityPicker } from "@/features/geo/components/CityPicker";
-import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "@/features/profiles/components/profile-kit";
+import { Sheet, fieldInput, fieldLabel, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { MUTED } from "@/lib/design/tokens";
 import type { Crew } from "@/types/crew";
 
@@ -104,15 +104,20 @@ export function CrewEditSheet({ crew, onClose }: { crew: Crew; onClose: () => vo
   );
 }
 
-/** The pencil on the crew home's corner and the sheet behind it, in one client island. */
-export function CrewEditButton({ crew }: { crew: Crew }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" aria-label="Edit crew" onClick={() => setOpen(true)} style={cornerChip}>
-        <PencilIcon />
-      </button>
-      {open ? <CrewEditSheet crew={crew} onClose={() => setOpen(false)} /> : null}
-    </>
-  );
+/** ⚠ THE PENCIL IS GONE FROM THE CORNER (22 Sep 2026), for the studio's reason
+ *  and in the same breath. The user asked for a STUDIO's edit to move into
+ *  Settings and for its view button to look like the other profiles'; a crew's
+ *  home carried the identical pencil-plus-eye pair, so fixing only the screen
+ *  that was complained about is the mistake this file has recorded twice — C36
+ *  corrected an organization's add control and missed the crew's, and C49 had
+ *  to come back for it.
+ *
+ *  ⚠ THIS SUPERSEDES C53's crew sentence, which said a crew's Settings has
+ *  nothing of its own *because* its name, picture and city are the pencil on
+ *  its home. That was true when it was written and is the thing being changed:
+ *  the sheet carries **Edit crew** now, so a crew's Settings is no longer an
+ *  apology for being empty. */
+export function CrewEditFromUrl({ crew }: { crew: Crew }) {
+  const router = useRouter();
+  return <CrewEditSheet crew={crew} onClose={() => router.back()} />;
 }

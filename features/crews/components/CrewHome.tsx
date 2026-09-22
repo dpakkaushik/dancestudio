@@ -16,7 +16,7 @@ import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { CREW_GRAD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
-import { CrewEditButton } from "./CrewEditSheet";
+import { CrewEditFromUrl } from "./CrewEditSheet";
 import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
 
 /** A CREW'S OWN HOME (18 Sep 2026, the user: "crews managed by you should take to
@@ -35,7 +35,7 @@ import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
  *  five, new today), the city, the style, the email — and the eye opens the
  *  crew's page as a stranger sees it. The picker that sat under the hero moved
  *  into the sheet, where every other picture in the app is changed. */
-export function CrewHome({ crew, members, entries, header = [], followers = 0, order = null, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; todayKey: string }) {
+export function CrewHome({ crew, members, entries, header = [], followers = 0, order = null, editOpen = false, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; /** `?edit=1`, which Settings' "Edit crew" navigates here with (22 Sep 2026) — the leader's alone, and `requireLedCrew` is what has already said so */ editOpen?: boolean; todayKey: string }) {
   const confirmed = members.filter((m) => m.status === "confirmed").length;
   const asked = members.filter((m) => m.status === "asked").length;
   const upcoming = entries.filter((e) => e.endDate >= todayKey && e.eventStatus !== "completed").length;
@@ -106,13 +106,12 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
              face of the thing you are standing on; a profile page has no corner,
              so nothing cycles, and the switcher beside the gear is the way back
              to you from anywhere. */
+          /* one control, like every other profile (22 Sep 2026) — the pencil is
+             Settings' "Edit crew" now, for the studio's reason */
           corner={
-            <>
-              <CrewEditButton crew={crew} />
-              <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
-                <EyeIcon />
-              </Link>
-            </>
+            <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
+              <EyeIcon />
+            </Link>
           }
         >
           {/* ── THE SAME BAND AS EVERY OTHER PROFILE (20 Sep 2026) — figures under
@@ -174,6 +173,8 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
           </ToolsPanel>
         </div>
       </div>
+      {/* the form Settings sends you to, over the home it belongs to */}
+      {editOpen ? <CrewEditFromUrl crew={crew} /> : null}
     </div>
   );
 }

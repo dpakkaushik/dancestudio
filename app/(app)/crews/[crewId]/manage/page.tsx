@@ -15,8 +15,11 @@ const stampNowIso = (): string => new Date().toISOString();
  *  /manage/events, and the URL stays what the hub, the Inbox and the e2e have
  *  always pointed at (Rule 14). The header pictures (19 Sep 2026) ride in for
  *  the hero and for the Edit sheet's grid. */
-export default async function CrewManagePage({ params }: { params: Promise<{ crewId: string }> }) {
+export default async function CrewManagePage({ params, searchParams }: { params: Promise<{ crewId: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { crewId } = await params;
+  /* `?edit=1` — Settings' "Edit crew" navigates here with it (22 Sep 2026).
+     `requireLedCrew` below is the authority; the query only asks. */
+  const editOpen = (await searchParams).edit === "1";
   const { supabase, crew } = await requireLedCrew(crewId);
   /* the follower count joins the batch rather than adding a round trip — and a
      failed read is a 0 on a figure, never a crew's home that will not open */
@@ -33,5 +36,5 @@ export default async function CrewManagePage({ params }: { params: Promise<{ cre
        it per request (19 Sep 2026), so `requireLedCrew` has already paid for it */
     user ? findMyToolOrder(supabase, user.id, toolsLayoutKey("crew", crewId)) : Promise.resolve(null),
   ]);
-  return <CrewHome crew={crew} members={members} entries={entries} header={header} followers={followers ?? 0} order={order} todayKey={dayKeyOf(stampNowIso())} />;
+  return <CrewHome crew={crew} members={members} entries={entries} header={header} followers={followers ?? 0} order={order} editOpen={editOpen} todayKey={dayKeyOf(stampNowIso())} />;
 }

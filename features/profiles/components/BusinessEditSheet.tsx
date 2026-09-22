@@ -8,9 +8,9 @@ import { setTenantLocationAction } from "@/features/geo/server-actions/location"
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 /* the style registry left with the styles block on 21 Sep — the value is still
    carried through this sheet's save, it is just not edited here any more */
-import { CARD, INK, LINE, SUB } from "@/lib/design/tokens";
+import { SUB } from "@/lib/design/tokens";
 import type { PublicTenant } from "@/types/publicProfile";
-import { PencilIcon, Sheet, cornerChip, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
 
 /** The business's own Edit sheet — the prototype has ONE editor for a profile
  *  (11364, "one editor, and it is Edit profile"), and a studio's page is the
@@ -291,30 +291,24 @@ export function BusinessEditSheet({
   );
 }
 
-/** The owner's Edit control (10613) and the sheet behind it, in one client
- *  island. Two dresses: the cell in the public page's action row, and — since
- *  15 Sep 2026 — the pencil on the hero's corner of a studio's own home, the
- *  same chip the Profile tab's Edit wears. */
-export function BusinessEditButton({
-  tenant,
-  corner = false,
-}: {
-  tenant: PublicTenant;
-  corner?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      {corner ? (
-        <button type="button" aria-label="Edit studio" onClick={() => setOpen(true)} style={{ ...cornerChip, border: "1.5px solid rgba(255,255,255,.28)" }}>
-          <PencilIcon />
-        </button>
-      ) : (
-        <button type="button" aria-label="Edit business" onClick={() => setOpen(true)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, cursor: "pointer", fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", background: CARD, color: INK, border: `1.5px solid ${LINE}`, fontFamily: "inherit" }}>
-          Edit
-        </button>
-      )}
-      {open ? <BusinessEditSheet tenant={tenant} onClose={() => setOpen(false)} /> : null}
-    </>
-  );
+/** ⚠⚠ `BusinessEditButton` IS GONE (22 Sep 2026, the user: "studio edit profile
+ *  should be in settings"). It carried BOTH of a studio's edit doors — the
+ *  pencil on its own home's corner and the Edit cell on its public page — while
+ *  a person has had exactly one since C22, in Settings. A studio's is in
+ *  Settings now too, so the control has no dress left to wear and is deleted
+ *  rather than left standing: a button nothing renders is where the next defect
+ *  hides, which is how the dead "Where you stand with DanceOS ›" link survived
+ *  from 11 to 21 Sep.
+ *
+ *  THE SHEET IS OPENED BY THE ADDRESS INSTEAD — `?edit=1` on the studio's own
+ *  home, which is the shape every other form in this app took on 22 Sep (C54):
+ *  the form opens over the screen it belongs to, system back closes it, and the
+ *  desk underneath keeps its scroll and its reads. */
+export function BusinessEditFromUrl({ tenant }: { tenant: PublicTenant }) {
+  const router = useRouter();
+  /* ⚠ `back()`, not a `?edit=` strip: the tile in Settings NAVIGATED here, so
+     the entry it pushed is the one to spend — the same rule the `?new=1` sheets
+     keep, and the reason a push there would re-open the form on the next back
+     press (C54). */
+  return <BusinessEditSheet tenant={tenant} onClose={() => router.back()} />;
 }

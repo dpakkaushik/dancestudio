@@ -634,7 +634,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByLabel("Add a photo")).toHaveCount(0);
     await expect(owner.getByLabel("Add photos of your space")).toHaveCount(0);
     await expect(owner.getByRole("button", { name: "Change profile picture" })).toBeVisible();
-    await owner.getByRole("button", { name: "Edit studio", exact: true }).click();
+    /* ⚠ THE PENCIL IS OFF THE CORNER AND THE SHEET IS AN ADDRESS (22 Sep 2026,
+       the user: "studio edit profile should be in settings … and profile view
+       button similar to other profiles"). Both ends, so the check cannot pass
+       on a home that still carries the old control. */
+    await expect(owner.getByRole("button", { name: "Edit studio", exact: true })).toHaveCount(0);
+    await owner.goto(`/business/${tenantId}?edit=1`);
     const studioSheet = owner.getByRole("dialog", { name: "Edit business" });
     await expect(studioSheet.getByText("Update profile", { exact: true })).toHaveCount(0);
     await expect(studioSheet.getByText("Update header", { exact: true })).toHaveCount(0);
@@ -1575,7 +1580,11 @@ test.describe.serial("DanceOS, end to end", () => {
        named "N followers" and "N following", and a bare string matches by
        SUBSTRING. */
     await expect(trainer.getByTestId("my-hero")).toBeVisible();
-    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", "/stats");
+    // ⚠ `/person/{you}/stats`, not `/stats` (22 Sep 2026): a person's stats had
+    // two addresses drawing two different screens, and the richer one was the
+    // one that did not name you. One address per subject now, so the chip reads
+    // the same whoever is looking — `/stats` is a redirect and is proved as one.
+    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/person/${trainerId}/stats`);
     await expect(trainer.getByRole("button", { name: "Follow", exact: true })).toHaveCount(0);
     // ⚠ and no photo control here either (16 Sep 2026): a picture is changed
     // behind the disc on HOME, and this screen only ever shows it
@@ -1876,8 +1885,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // textarea is off this sheet too, and the sheet is asserted not to offer one.
     // The COLUMN is still read and simply never written, so an existing paragraph
     // survives a Save; what is proven here is that the form cannot set one.
+    /* ⚠ THE EDIT CELL IS OFF THE PUBLIC PAGE (22 Sep 2026) — a studio had TWO
+       doors to its own form, this one and the corner pencil, where a person has
+       had exactly one since C22. Both are gone; the sheet is `?edit=1` on the
+       studio's own home, which is where Settings' THIS STUDIO tile lands. */
     await owner.goto(studioUrl);
-    await owner.getByRole("button", { name: "Edit business" }).click();
+    await expect(owner.getByRole("button", { name: "Edit business" })).toHaveCount(0);
+    await owner.goto(`/business/${tenantId}?edit=1`);
     const bizEdit = owner.getByRole("dialog", { name: "Edit business" });
     await expect(bizEdit.getByLabel("About")).toHaveCount(0);
     await bizEdit.getByLabel("Since").selectOption("2016");
@@ -2041,8 +2055,7 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ── I4: the OTHER end of an enquiry can ring too. The business publishes its
     // number on its own page; the person who asked reads it on the enquiry they sent.
-    await owner.goto(studioUrl);
-    await owner.getByRole("button", { name: "Edit business" }).click();
+    await owner.goto(`/business/${tenantId}?edit=1`);
     const bizSheet = owner.getByRole("dialog", { name: "Edit business" });
     await bizSheet.getByLabel("Phone", { exact: true }).fill("+91 90000 11111");
     await bizSheet.getByRole("button", { name: "Save" }).click();
@@ -2648,8 +2661,17 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ── 2b. AND ON A CREW'S PAGE — the leader's switch, in Edit crew. The policy on
     // crew_contacts IS the switch: off, no reader gets the number through any door.
+    /* the crew's sheet is an address too (22 Sep 2026), for the studio's reason:
+       Settings' THIS CREW tile lands here and the pencil has left the corner */
     await learner.goto(`/crews/${crewId}/manage`);
-    await learner.getByRole("button", { name: "Edit crew" }).click();
+    await expect(learner.getByRole("button", { name: "Edit crew" })).toHaveCount(0);
+    /* and the tile that replaced it, in the crew's OWN Settings — which said
+       "a crew has no settings of its own" until this edit gave it one */
+    await learner.getByRole("button", { name: "Settings", exact: true }).click();
+    const crewSettings = learner.getByRole("dialog", { name: "Settings" });
+    await expect(crewSettings.getByText("THIS CREW")).toBeVisible();
+    await expect(crewSettings.getByRole("link", { name: "Edit crew", exact: true })).toBeVisible();
+    await learner.goto(`/crews/${crewId}/manage?edit=1`);
     const crewSheet = learner.getByRole("dialog", { name: "Edit crew" });
     const crewSwitch = crewSheet.getByRole("switch", { name: "Show Call on the crew's page" });
     await expect(crewSwitch).toHaveAttribute("aria-checked", "false");

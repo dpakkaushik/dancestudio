@@ -191,7 +191,13 @@ export function PublicPersonPage({
                     variant="chip"
                   />
                 )}
-                <StatsChip href={isMe ? "/stats" : `${path}/stats`} />
+                {/* ⚠ ONE ADDRESS, WHOEVER IS LOOKING (22 Sep 2026). This was
+                `isMe ? "/stats" : …` because your own record and a visitor's
+                view of it were two different addresses; `/person/{id}/stats`
+                renders the owner's screen when the id is yours, so the chip no
+                longer has to know who is reading — which is the merge showing
+                its work. */}
+            <StatsChip href={`${path}/stats`} />
                 {kind === "org" ? null : <ProfileShare path={path} name={profile.fullName} />}
                 {kind === "org" ? null : <ProfileLink path={path} name={profile.fullName} />}
               </>

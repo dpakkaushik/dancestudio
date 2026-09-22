@@ -265,6 +265,20 @@ export function SettingsSheet({
           <>
             <div style={head}>THIS STUDIO</div>
             <div style={grid}>
+              {/* ⚠ FIRST, THE WAY A PERSON'S IS (22 Sep 2026, the user: "studio
+                  edit profile should be in settings"). C22 moved Edit profile
+                  here for a person — "all edit profile options to be removed
+                  from home and profile pages" — and a studio kept TWO: the
+                  pencil on its home's corner and an Edit cell on its public
+                  page. Both are gone; this is the door.
+                  ⚠ It NAVIGATES, like Invoices and Refunds below, rather than
+                  opening a sheet from the chrome — the form needs the studio's
+                  whole public profile, and carrying that in the layout would be
+                  a read on every desk and every class page for a sheet most
+                  visits never open. The same call C53 made for Verification. */}
+              <Tile icon={ICONS.edit("#5AC8FA")} href={`${desk}?edit=1`} onNavigate={go} ariaLabel="Edit studio">
+                Edit studio
+              </Tile>
               <Tile icon={ICONS.gst("#0EA5E9")} href={`${desk}/verification`} onNavigate={go} badge={<span style={badgeStyle(Boolean(studio.verifiedAt))}>{studio.verifiedAt ? "verified" : "not yet"}</span>}>
                 Verification
               </Tile>
@@ -287,14 +301,28 @@ export function SettingsSheet({
           </>
         ) : null}
 
-        {/* ── A CREW HAS NO SETTINGS OF ITS OWN, and says so rather than drawing
-            an empty section: its name, picture, city, style and number are the
-            pencil on its own home, and it takes no money. Only the ACCOUNT
-            block below is its. ── */}
+        {/* ── A CREW HAS ONE SETTING, AND IT IS THE SAME ONE A STUDIO HAS
+            (22 Sep 2026). ⚠ THIS REVERSES C53's OWN SENTENCE, which said a crew
+            has nothing here *because* its name, picture, city and style are the
+            pencil on its home — true when it was written, and exactly the thing
+            being changed. The user asked for a studio's edit to move into
+            Settings and for its view button to match the other profiles; a
+            crew's home carried the identical pencil-plus-eye pair, and fixing
+            only the screen that was complained about is the mistake C36 made
+            and C49 had to come back for. It takes no money, so that is still
+            all it has. ── */}
         {active.kind === "crew" ? (
-          <div style={{ fontSize: 11.5, color: SUB, fontWeight: 700, padding: "12px 2px 2px", lineHeight: 1.5 }}>
-            {active.crew.name} is edited from its own home — the pencil beside its picture. A crew takes no money, so it has nothing here.
-          </div>
+          <>
+            <div style={head}>THIS CREW</div>
+            <div style={grid}>
+              <Tile icon={ICONS.edit("#5AC8FA")} href={`/crews/${active.crew.id}/manage?edit=1`} onNavigate={go} ariaLabel="Edit crew">
+                Edit crew
+              </Tile>
+            </div>
+            <div style={{ fontSize: 11.5, color: SUB, fontWeight: 700, padding: "2px 2px 2px", lineHeight: 1.5 }}>
+              {active.crew.name} takes no money, so it has nothing else here.
+            </div>
+          </>
         ) : null}
 
         {/* ── YOU: Edit profile, first (19 Sep 2026). The pencil left Home's

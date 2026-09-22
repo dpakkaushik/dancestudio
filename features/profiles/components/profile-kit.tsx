@@ -199,11 +199,36 @@ export function PlusIcon({ light = false }: { light?: boolean }) {
   );
 }
 
+/** ⚠⚠ ONE PAINT FOR BOTH ⊕ CONTROLS ON A HERO (22 Sep 2026, the user: "same
+ *  plus icon color for profile pic and posters on all profiles").
+ *
+ *  They were two paints on the same hero, six times over: the DISC's ⊕ was
+ *  `var(--card)` under a `var(--el)` edge with the page's ink, and the POSTERS'
+ *  was a dark scrim under a white edge with a white glyph — written out
+ *  separately in `PicturesSheet`, `StudioPictures` and `CrewPictures`. C44
+ *  extracted the GLYPH into this file for exactly this reason and left the CHIP
+ *  behind, so the chip drifted; extracting the paint is what makes "the same on
+ *  all profiles" true by construction rather than by six edits that can drift
+ *  again.
+ *
+ *  ⚠ AND THE SCRIM IS THE ONE THAT WINS, WHICH IS A REASON RATHER THAN A COIN
+ *  FLIP. The posters' ⊕ sits ON a photograph and the disc's sits on the page,
+ *  so only one of the two paints is legible on BOTH grounds: a `var(--card)`
+ *  chip is `rgba(255,255,255,.07)` in the dark theme and would vanish into a
+ *  bright picture, while a dark scrim with a white glyph reads on anything. */
+export const pictureChipPaint = {
+  background: "rgba(10,10,10,.55)",
+  border: "1.5px solid rgba(255,255,255,.35)",
+} as const;
+
 export const cornerChip: CSSProperties = { width: 36, height: 36, borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,.42)", color: "#fff", border: "1.5px solid rgba(255,255,255,.28)", textDecoration: "none", padding: 0, fontFamily: "inherit" };
 
-export const PencilIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></svg>
-);
+/* ⚠ `PencilIcon` IS DELETED (22 Sep 2026). Its last two callers were the corner
+   pencils on a studio's and a crew's home, and both edits are Settings' THIS
+   STUDIO / THIS CREW tiles now — so the glyph had no caller left. A component
+   nothing renders is a lie to the next reader, and this repo has already paid
+   for that twice (the dead "Where you stand with DanceOS ›" link, `NotBuiltYet`
+   after its last shrug closed). `git` has it if a pencil is ever wanted again. */
 export const EyeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
 );

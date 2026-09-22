@@ -1,25 +1,29 @@
 import { redirect } from "next/navigation";
-import { StatsScreen } from "@/features/stats/components/StatsScreen";
-import { findDiscoverCities } from "@/repositories/cities";
-import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findMyCalendar } from "@/repositories/calendar";
 import { findProfileById } from "@/repositories/profiles";
-import { findChart, findMyHistory, findMyPlace, findMyStats } from "@/repositories/stats";
-import { parseChartMetric, type ChartSegment } from "@/types/stats";
-import { findMyArtistPlan } from "@/repositories/plans";
 
-const TABS = ["record", "history", "charts"] as const;
-const SEGMENTS: ChartSegment[] = ["dancer", "artist", "studio", "crew"];
-const DAY_MS = 86_400_000;
-
-/** Stats — the prototype's three dresses of one screen (S_profiletab's
- *  historyOnly / classesOnly / chartsOnly), as URL state so a board is a link:
- *  `tab`, `seg`, `city`, `metric` and `style` all live in the address. Every
- *  figure comes from a database function, so a number and the list behind it
- *  cannot disagree (prototype 9950). */
-export default async function StatsPage({ searchParams }: { searchParams: Promise<{ tab?: string; seg?: string; city?: string; metric?: string; style?: string }> }) {
-  const params = await searchParams;
+/** `/stats` IS AN ADDRESS NOW, NOT A SCREEN (22 Sep 2026).
+ *
+ *  The user: *"fix duplicates first."* A person's stats had two addresses —
+ *  this one, which drew `StatsScreen`, and `/person/{me}/stats`, which drew
+ *  `EntityStatsPage`, the version written for somebody ELSE to read. So the
+ *  richer screen was the one you could only reach by not naming yourself, and
+ *  typing your own id gave you the stranger's view of your own record. That is
+ *  the pair C32 found drifting five ways on the profile and C40 collapsed;
+ *  this is the same pair one page further on.
+ *
+ *  ⚠ THE ROUTE STAYS, AND MUST (Rule 14). The crew desk's "See crew ranking"
+ *  and a crew's home both open `/stats?tab=charts&seg=crew`, `OrgDashboard`
+ *  opens `…&seg=studio`, and neither knows the VIEWER's id — which is the whole
+ *  reason `/profile` survives too. A bookmark and the installed TWA's last URL
+ *  are the rest of it.
+ *
+ *  ⚠⚠ AND THE QUERY RIDES ALONG, WHICH IS MOST OF THE POINT. Every tab, board,
+ *  city, metric and style on that screen is URL state (19 Sep 2026), so a
+ *  redirect that dropped the parameters would have answered every "see the crew
+ *  ranking" with somebody's own record instead — a silent half-fix that only a
+ *  press finds, exactly as `?settings=1` would have been on `/profile`. */
+export default async function StatsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -27,57 +31,15 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
   if (!user) {
     redirect("/login");
   }
-
-  const tab = (TABS as readonly string[]).includes(params.tab ?? "") ? (params.tab as (typeof TABS)[number]) : "record";
-  const segment: ChartSegment = SEGMENTS.includes((params.seg ?? "") as ChartSegment) ? (params.seg as ChartSegment) : "studio";
-  /* the boards filter by any city the registry knows (11 Sep 2026) — it was one
-     of twelve, so a dancer could not see their own city's board unless DanceOS
-     had thought of it */
-  const cityList = await findDiscoverCities(supabase);
-  const city = cityList.some((c) => c.city === params.city) ? (params.city as string) : null;
-  const metric = parseChartMetric(params.metric);
-  const styleFilter = (DOS_STYLE_NAMES as readonly string[]).includes(params.style ?? "") ? (params.style as string) : null;
-
-  /* the server's clock, once: the record's buckets and the History's UPCOMING
-     group are both cut against it */
-  const nowIso = new Date().toISOString();
-  const aheadIso = new Date(new Date(nowIso).getTime() + 120 * DAY_MS).toISOString();
-
-  const [profile, stats, history, upcoming, chart, myPlace, boardPlace, plan] = await Promise.all([
-    findProfileById(supabase, user.id),
-    findMyStats(supabase),
-    findMyHistory(supabase),
-    tab === "history" ? findMyCalendar(supabase, user.id, nowIso, aheadIso) : Promise.resolve([]),
-    tab === "charts" ? findChart(supabase, { segment, city, style: styleFilter }) : Promise.resolve([]),
-    findMyPlace(supabase, "dancer", null),
-    /* where you stand on THIS board — a people board only (the prototype pins a
-       "you" row on Dancers and Artists, 9674) */
-    tab === "charts" && (segment === "dancer" || segment === "artist") ? findMyPlace(supabase, segment, city) : Promise.resolve(null),
-    findMyArtistPlan(supabase),
-  ]);
-
-  /* the styles a board can be narrowed by: the ones its rows carry, plus the
-     one already chosen (so a filter that empties the board can still be cleared) */
-  const chartStyles = [...new Set([...(styleFilter ? [styleFilter] : []), ...chart.map((r) => r.style).filter((s): s is string => Boolean(s))])];
-
-  return (
-    <StatsScreen
-      name={profile?.fullName ?? "You"}
-      isArtist={Boolean(plan?.active)}
-      stats={stats}
-      history={history}
-      upcoming={upcoming.filter((e) => new Date(e.startsAt).getTime() >= new Date(nowIso).getTime())}
-      chart={chart}
-      segment={segment}
-      metric={metric}
-      city={city}
-      styleFilter={styleFilter}
-      cities={cityList.map((c) => c.city)}
-      chartStyles={chartStyles}
-      myPlace={myPlace}
-      boardPlace={boardPlace}
-      tab={tab}
-      nowIso={nowIso}
-    />
-  );
+  const profile = await findProfileById(supabase, user.id);
+  if (!profile) {
+    redirect("/onboarding");
+  }
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(await searchParams)) {
+    if (typeof v === "string") q.set(k, v);
+    else if (Array.isArray(v) && v[0] != null) q.set(k, v[0]);
+  }
+  const search = q.size > 0 ? `?${q.toString()}` : "";
+  redirect(`${profile.role === "org" ? "/org" : "/person"}/${user.id}/stats${search}`);
 }

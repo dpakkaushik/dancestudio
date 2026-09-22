@@ -238,7 +238,14 @@ export default async function HomePage() {
              (18 Sep 2026) — it used to sit under the styles, a block away */
           eyebrowSub={
             profile.memberNo != null ? (
-              <Link href="/profile" aria-label="Open your profile" style={{ textDecoration: "none" }}>
+              /* ⚠ `publicHref`, NOT `/profile` (22 Sep 2026). `/profile` is a
+                 server REDIRECT to exactly this address (C40) and it exists for
+                 the callers that cannot compute it — the chrome's gear, a
+                 studio's corner, a crew's — because none of them knows the
+                 VIEWER's id. Home does: `publicHref` is built at the top of this
+                 file. Linking the redirect from here spent a round trip to reach
+                 a string the page had already made. */
+              <Link href={publicHref} aria-label="Open your profile" style={{ textDecoration: "none" }}>
                 <HeroId>{memberNoWords(profile.memberNo)}</HeroId>
               </Link>
             ) : null
@@ -282,7 +289,11 @@ export default async function HomePage() {
              door ever since. The public page is reached from there, or from the
              Share chip in the figures row. */
           corner={
-            <Link href="/profile" aria-label="Your profile" style={cornerChip}>
+            /* ⚠ `publicHref` rather than `/profile`, for the reason above: the
+               same destination, one hop fewer. The DOOR is unchanged — C37's
+               "one corner, the same on every home" still holds, because what
+               `/profile` resolves to IS this address. */
+            <Link href={publicHref} aria-label="Your profile" style={cornerChip}>
               <PersonIcon />
             </Link>
           }
@@ -303,7 +314,11 @@ export default async function HomePage() {
             chips={
               <>
                 {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */}
-                <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
+                {/* `publicHref` is already this subject's address, so its stats are
+                  one segment on (22 Sep 2026) — `/stats` and `/business/stats`
+                  are redirects to exactly this, for the callers that cannot
+                  compute it */}
+              <StatsChip href={`${publicHref}/stats`} />
                 <ProfileShare path={publicHref} name={profile.fullName} />
                 <ProfileLink path={publicHref} name={profile.fullName} />
               </>

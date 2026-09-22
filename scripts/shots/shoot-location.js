@@ -100,7 +100,12 @@ const rest = async (method, url, body) => {
   await page.goto(`${BASE}/studio/${tenant.id}`, { waitUntil: "networkidle" });
   await page.screenshot({ path: path.join(OUT, "loc-1-studio-page.png"), fullPage: true });
 
-  await page.getByRole("button", { name: "Edit business", exact: true }).click();
+  /* ⚠ THE EDIT SHEET IS AN ADDRESS ON THE STUDIO'S OWN HOME (22 Sep 2026, the
+     user: "studio edit profile should be in settings"). The public page's Edit
+     cell and the home's corner pencil were two doors to one form; both are gone
+     and Settings' THIS STUDIO tile navigates to this URL. The picker itself,
+     which is what this script exists to drive, has not moved. */
+  await page.goto(`${BASE}/business/${tenant.id}?edit=1`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
 
   /* ⚠ THE PICKER OPENS LOCKED for a business that already stands somewhere

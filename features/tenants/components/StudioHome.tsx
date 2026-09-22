@@ -3,7 +3,7 @@ import { ArrangeTools } from "@/features/home/components/ArrangeTools";
 import { ToolsPanel, type Tile } from "@/features/home/components/home-kit";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import { TodayShelf } from "@/features/home/components/TodayShelf";
-import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
+import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
@@ -75,6 +75,12 @@ export function StudioHome({
   /** this member's own arrangement of THIS studio's tools (22 Sep 2026) — keyed
    *  by the studio, so two people on one team each arrange it for themselves */
   order = null,
+  /** ⚠ `?edit=1` ON THIS HOME'S OWN ADDRESS (22 Sep 2026) — Settings' "Edit
+   *  studio" tile navigates here with it, the way its Invoices, Refunds and
+   *  Payments siblings navigate to their desks. A QUERY PARAMETER IS A REQUEST
+   *  AND NEVER AN AUTHORITY (C54): the sheet is drawn only when `editable` is
+   *  non-null, which is the owner-only read this page already made. */
+  editOpen = false,
 }: {
   tenant: Tenant;
   photo: string | null;
@@ -91,6 +97,7 @@ export function StudioHome({
   followingN?: number | null;
   tiles: Tile[];
   order?: string[] | null;
+  editOpen?: boolean;
   /** ⚠ `standing` is GONE (21 Sep 2026, later the same day): where this studio
    *  stands with DanceOS — its verification and its subscription, and the door
    *  to its refunds — is in its own Settings now, so this screen neither draws
@@ -188,15 +195,21 @@ export function StudioHome({
              page → the back chip. And nothing is lost at the other end — the
              profile switcher beside the gear is on every screen since this
              morning, and its own row is the way back to you. */
+          /* ⚠ ONE CONTROL, LIKE EVERY OTHER PROFILE (22 Sep 2026, the user:
+             "studio edit profile should be in settings … and profile view
+             button similar to other profiles"). The pencil that sat beside this
+             eye is in Settings' THIS STUDIO block now, so a studio's corner is
+             what a person's and an organization's have been since C22: a single
+             door to the profile. ⚠ The GLYPH and the LABEL stay this kind's own
+             — an eye saying "Public view", where a person's says "Your profile"
+             — because the two destinations differ in kind: /person/{id} renders
+             the OWNER's screen for its owner (C40), and /studio/{id} is the
+             public page for everybody. What "similar" asked for is the SHAPE,
+             and that is now identical: one chip, one geometry, one position. */
           corner={
-            <>
-              {/* the pencil edits the WORDS now — the pictures are the two ⊕
-                  controls on this hero (20 Sep 2026) */}
-              {editable ? <BusinessEditButton tenant={editable} corner /> : null}
-              <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
-                <EyeIcon />
-              </Link>
-            </>
+            <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
+              <EyeIcon />
+            </Link>
           }
         >
           {/* ── THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026, the user:
@@ -331,6 +344,9 @@ export function StudioHome({
           </ToolsPanel>
         </div>
       </div>
+      {/* the form Settings sends you to, over the home it belongs to (C54's
+          shape). Drawn only for somebody the OWNER read admitted. */}
+      {editOpen && editable ? <BusinessEditFromUrl tenant={editable} /> : null}
     </div>
   );
 }

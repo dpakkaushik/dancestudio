@@ -66,8 +66,14 @@ export default async function CalendarPage() {
            that hosts it, and the hosting row's id is already read one line
            above for `desk`. Found by mapping every add control in the app
            rather than by a complaint, which is why it lasted: nobody presses
-           compose on an empty calendar in development. */
-        composeHref={hostId ? `/business/${hostId}/events/new` : desk}
+           compose on an empty calendar in development.
+           ⚠ AND IT IS `?new=1` RATHER THAN `/new` (22 Sep 2026, the same audit
+           one step further on). The fix above pointed a dead door at a live
+           PAGE on the morning C54 was making every other add control a SHEET
+           over its desk — so the calendar's compose was the last control in the
+           app that left the screen to reach a form. It opens the events desk
+           with the sheet up now, which is what the desk's own ＋ does. */
+        composeHref={hostId ? `/business/${hostId}/events?new=1` : desk}
       />
     );
   }

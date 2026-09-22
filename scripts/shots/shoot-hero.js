@@ -285,7 +285,14 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check(Math.abs(figBox.top + figBox.height / 2 - (statsBox.top + statsBox.height / 2)) < 26 && statsBox.left > figBox.left, "studio home: the QR and Stats chips ride the FIGURES row, to the right of the numbers (20 Sep 2026)");
     /* R15, 15 Sep 2026: a studio cannot host an event, so its home offers no door to one */
     check((await org.getByRole("link", { name: "Events", exact: true }).count()) === 0, "studio home: NO Events tile — a studio does not host events");
-    check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 1, "studio home: the owner's pencil on the hero's corner");
+    /* ⚠⚠ AND THE PENCIL HAS LEFT THE CORNER (22 Sep 2026, the user: "studio edit
+       profile should be in settings … and profile view button similar to other
+       profiles"). BOTH ENDS, because a check that only looks at the new place
+       cannot tell you the old one was cleared — the lesson this file has paid
+       for four times. What is asserted here is the absence; the Settings tile
+       that replaced it is driven in `shoot-tiles`, which is where Settings is. */
+    check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 0, "studio home: NO pencil on the corner — Edit studio is Settings' THIS STUDIO tile (22 Sep 2026)");
+    check((await org.getByTestId("hero-corner").locator("a").count()) === 1, "studio home: and the corner is ONE control, like every other profile's");
     /* ⚠⚠ THE CORNER OPENS **THIS STUDIO'S** PUBLIC PAGE (21 Sep 2026, the user:
        "studio and crew pages on home tab should have option to view their
        profile pages currently taking to organizations page and user/artist
@@ -364,8 +371,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.goto(`${BASE}/business/${studioId}`);
     await hero.waitFor();
 
-    /* the pencil still edits the WORDS, and only the words */
-    await org.getByRole("button", { name: "Edit studio", exact: true }).click();
+    /* ⚠ THE SHEET IS AN ADDRESS NOW (22 Sep 2026) — `?edit=1` on the studio's own
+       home, the way `?new=1` opens every add form and `?settings=1` the Settings
+       sheet. Settings' THIS STUDIO tile navigates here; driving the URL is what
+       proves the door survives whichever control points at it, and the gate is
+       still the owner-only read behind it rather than the query. */
+    await org.goto(`${BASE}/business/${studioId}?edit=1`);
     const sheet = org.getByRole("dialog", { name: "Edit business" });
     await sheet.waitFor();
     check((await sheet.getByText("Update profile", { exact: true }).count()) === 0, "edit studio: NO picture block in the sheet any more — the disc's own ⊕ changes it (20 Sep 2026)");
@@ -602,11 +613,25 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        ("all edit profile options to be removed from home and profile pages") and
        the DISC became the door to both picture sections ("should be able to click
        and view both pictures sections when clicking on that photo") */
-    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === "/profile", "org home: the corner opens the Profile tab (21 Sep 2026)");
+    /* ⚠ THE DESTINATION, NOT THE SPELLING (22 Sep 2026). This asserted the href
+       was literally "/profile" — a redirect whose whole job is to resolve to
+       this very address (C40), and which Home has never needed, because Home
+       knows the viewer's id. So the check was pinned to one implementation of
+       the door rather than to where the door goes, and it went red for a change
+       that moved nobody anywhere. Asserting the resolved address is STRICTER:
+       a corner pointing at the wrong account would have passed the old line. */
+    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: the corner opens this organization's own profile (21 Sep 2026)");
     check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "org home: no eye — its public page is the Share chip, and the corner no longer loops");
     check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 1, "org home: the buttons above the schedule, Enquiry disabled with its reason");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "org home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
+    /* ⚠ AND IT IS THIS ORGANIZATION'S OWN ADDRESS (22 Sep 2026). `/business/stats`
+       drew the combined dashboard while `/org/{me}/stats` drew the aggregate a
+       VISITOR reads — one subject, two addresses, two screens, and the one an
+       organization wanted was the one that did not name it. Merged the C40 way:
+       `/org/{id}/stats` renders the dashboard when the id is the caller's, and
+       `/business/stats` is a redirect (Rule 14 — it is a bookmarkable screen). */
+    check((await org.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === `/org/${orgId}/stats`, "org home: the Stats chip opens this organization's own address");
     /* ⚠ NO "YOUR PICTURES" SHEET SINCE 20 Sep 2026 (the user: "Profile pic edit
        should just be a pencil besides and clciking on photo to view it not
        together in one. Similarly seprate for poster photos"). The in-between
@@ -651,6 +676,20 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await orgSheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
     await org.goto(`${BASE}/`);
     await shot("org-home");
+
+    /* ⚠ the two ends of the org merge, driven rather than reasoned about: the
+       old address still resolves (Rule 14), and the new one draws the OWNER's
+       dashboard rather than the visitor's aggregate. The second half is the one
+       that matters — before today, an organization reading its own id got the
+       stranger's version of itself, which is the C32 defect one page on. */
+    await org.goto(`${BASE}/business/stats`);
+    /* the client-side hop, because `/business` carries a loading boundary — see
+       the person's own check for why a redirect under one is a 200 */
+    await org.waitForURL(/\/org\/[^/]+\/stats/, { timeout: 15_000 }).catch(() => {});
+    check(new URL(org.url()).pathname === `/org/${orgId}/stats`, `/business/stats resolves to this organization's own address (read ${new URL(org.url()).pathname})`);
+    await org.goto(`${BASE}/org/${orgId}/stats`, { waitUntil: "networkidle" });
+    check(await org.getByText("Studios · combined").first().isVisible().catch(() => false), "org: its own /org/{me}/stats is the COMBINED dashboard, not the visitor's aggregate");
+
     await org.close();
 
     /* ── TWO: a person — one header picture; then an artist — up to five (19 Sep 2026; ten before) ── */
@@ -665,7 +704,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await me.getByLabel("Add a header picture").count()) === 0, "user home: NO Add tile on the hero — the header is filled behind the disc");
     check((await me.getByLabel("Change your photo").count()) === 0, "user home: NO ＋ on the disc either");
     check(await me.getByText(/^User(-\d{6})?$/).first().isVisible(), "user home: the role word, with the account number against it");
-    check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === "/profile", "user home: the corner opens the Profile tab (21 Sep 2026)");
+    /* the destination rather than the spelling — see the org's own corner above */
+    check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await me.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/person/${userId}`, "user home: the corner opens this person's own profile (21 Sep 2026)");
     check((await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "user home: no eye — this is the end of the loop the user reported");
     /* ⚠ A PLAIN USER'S ROW IS NOT DRAWN AT ALL, which is what the public page
        does too ("user — nothing", the 19 Sep list): they have no artist page for
@@ -848,7 +888,12 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
          "Follow". Without it this check reads the owner's own figures as a
          Follow bell and fails on a page that is right. Same trap as 20 Sep's
          "An organization does not follow", in a new coat. */
-      check((await me.getByRole("button", { name: "Follow", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === "/stats", "your own page at /person/{you}: no Follow bell, and the Stats chip opens your own record");
+      /* ⚠ `/person/{you}/stats`, NOT `/stats` (22 Sep 2026). Those were two
+         addresses for one person's stats drawing two different screens, and the
+         merge makes the chip say the same thing to everybody — so the assertion
+         reads the resolved address rather than the spelling the owner used to
+         get. `/stats` is the redirect now, and is checked as one below. */
+      check((await me.getByRole("button", { name: "Follow", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === `/person/${userId}/stats`, "your own page at /person/{you}: no Follow bell, and the Stats chip opens your own record");
       check((await me.getByTestId("my-followers").count()) === 1, "your own page at /person/{you}: it is the OWNER's version — the figures open your own lists");
       /* ⚠ NO CORNER ON A PROFILE PAGE (21 Sep 2026, the user: "no top right
          button required on profile pages"). This is the OTHER end of the loop:
@@ -856,6 +901,36 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
          pointing in it cycled two screens for ever. Both names are asserted
          absent, because the corner has worn each of them. */
       check((await me.getByRole("link", { name: "Your profile", exact: true }).count()) === 0 && (await me.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "your own page at /person/{you}: NO corner at all — the back chip is how you leave a page you drilled into");
+
+      /* ⚠⚠ `/stats` IS A REDIRECT NOW, AND THE QUERY IS THE HALF THAT COULD
+         BREAK IN SILENCE (22 Sep 2026). Every tab, board, city, metric and
+         style on that screen is URL state, and two live controls open it with
+         one — the crew desk's "See crew ranking" and OrgDashboard's per-studio
+         door — neither of which knows the viewer's id, which is why the address
+         survives at all. A redirect that dropped the parameters would answer
+         every one of them with somebody's own record instead, and nothing on
+         screen would say so. */
+      /* ⚠ `waitForURL`, NOT `me.url()` STRAIGHT AFTER `goto` — and the reason is
+         worth keeping. A redirect under a `loading.tsx` does NOT go out as a
+         307: once a boundary streams, Next answers 200 and does the hop on the
+         CLIENT (19 Sep 2026, when four specs went red on `expect(status).toBe(404)`
+         for the same reason). So the first cut of this check read `/stats` off a
+         page that was already rendering the right screen. `/stats`' own
+         boundary is deleted now — a skeleton over a pure redirect is a flash of
+         a thing that is not loading — but `/business/stats` still sits under
+         `/business`'s, so the wait is what makes both honest. */
+      await me.goto(`${BASE}/stats`);
+      await me.waitForURL(/\/person\/[^/]+\/stats/, { timeout: 15_000 }).catch(() => {});
+      check(new URL(me.url()).pathname === `/person/${userId}/stats`, `/stats resolves to this person's own address (read ${new URL(me.url()).pathname})`);
+      await me.goto(`${BASE}/stats?tab=charts&seg=crew`);
+      await me.waitForURL(/\/person\/[^/]+\/stats\?/, { timeout: 15_000 }).catch(() => {});
+      const carried = new URL(me.url());
+      check(carried.pathname === `/person/${userId}/stats` && carried.searchParams.get("tab") === "charts" && carried.searchParams.get("seg") === "crew", `/stats carries its whole query through the redirect (read ${carried.pathname}${carried.search})`);
+      /* and the screen it lands on builds its OWN links off the new address —
+         otherwise every tab press would be a round trip back through the
+         redirect to land where it already was */
+      const histHref = await me.getByRole("link", { name: "History" }).first().getAttribute("href").catch(() => "");
+      check(String(histHref).startsWith(`/person/${userId}/stats?`), `the screen's own tabs are built off the address it is read at (read ${histHref})`);
     } else {
       console.log("HEADER  the picture did not land in 25 s — is migration 20260915090000 on the database?");
       fail += 1;

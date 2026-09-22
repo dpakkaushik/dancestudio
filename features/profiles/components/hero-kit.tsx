@@ -172,8 +172,13 @@ export function IdentityHero({
   headerEdit?: ReactNode;
   /** THE HEADER — what swipes across the top */
   shots?: HeroShot[];
-  /** controls pinned to the hero's top-right corner (the Profile tab's Edit and
-   *  Public view, 10613) — stacked, the pencil above the eye (19 Sep 2026) */
+  /** ⚠ THE ONE CONTROL PINNED TO THE HERO'S TOP-RIGHT CORNER (10613) — the door
+   *  to this thing's profile page, and nothing else since 22 Sep 2026. It was a
+   *  COLUMN while a studio and a crew kept an edit pencil above the eye (19 Sep
+   *  2026); both pencils are Settings' THIS STUDIO / THIS CREW tiles now, so
+   *  every home's corner is a single chip, which is what the user meant by
+   *  "profile view button similar to other profiles". The layout stays a column
+   *  because it costs nothing and a second control would otherwise overlap. */
   corner?: ReactNode;
   testId?: string;
   /** whatever the page adds under the styles — Home's role word, code and rank */
@@ -205,7 +210,7 @@ export function IdentityHero({
       {/* THE CORNER IS A COLUMN (19 Sep 2026, the user: "give an eye to view
           profile on the home tab below edit on top right") — the pencil, then
           the eye under it, on every page that has both */}
-      {corner ? <div style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>{corner}</div> : null}
+      {corner ? <div data-testid="hero-corner" style={{ position: "absolute", right: 12, top: 12, zIndex: 3, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>{corner}</div> : null}
 
       <HeroRail name={name} grad={grad} shots={shots} edit={headerEdit} />
 

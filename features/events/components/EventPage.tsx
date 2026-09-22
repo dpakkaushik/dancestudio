@@ -842,7 +842,15 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                 {ledCrews.length === 0 ? (
                   <div style={{ background: "var(--card)", border: "1.5px dashed var(--el)", borderRadius: 14, padding: "12px", marginBottom: 12, fontSize: 11.5, color: "var(--sub)", lineHeight: 1.5 }}>
                     Only the person who leads a crew can put it forward — you don&apos;t lead one yet.{" "}
-                    <Link href="/crews/new" style={{ color: col, fontWeight: 800 }}>
+                    {/* ⚠ `/crews?new=1`, NOT `/crews/new` (22 Sep 2026). Since C54
+                        every add control in the app opens its form as a SHEET over
+                        the desk that offered it, and `CrewsHub`'s own ＋ has done
+                        that since the same day — this was the one door left
+                        pointing at the page, found by auditing what still links to
+                        each route. It also lands you on the crews hub rather than
+                        on a bare form, which is where your crews are. The route
+                        keeps rendering full page (Rule 14). */}
+                    <Link href="/crews?new=1" style={{ color: col, fontWeight: 800 }}>
                       Create a crew ›
                     </Link>
                   </div>

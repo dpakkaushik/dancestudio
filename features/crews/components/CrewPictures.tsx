@@ -9,7 +9,7 @@ import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
-import { PlusIcon, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
+import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { SUB } from "@/lib/design/tokens";
 import { HEADER_MAX_CREW } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -153,9 +153,9 @@ export function CrewPicturesButton({ crewId, crewName, grad, avatar, canEdit }: 
           type="button"
           aria-label="Change profile picture"
           onClick={() => setEditing(true)}
-          style={{ position: "absolute", right: -4, bottom: -4, width: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", background: "var(--card)", border: "1.5px solid var(--el)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+          style={{ position: "absolute", right: -4, bottom: -4, width: 28, height: 28, borderRadius: 999, display: "grid", placeItems: "center", ...pictureChipPaint, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
         >
-          <PlusIcon />
+          <PlusIcon light />
         </button>
       ) : null}
       {viewing && avatar ? (
@@ -172,13 +172,13 @@ export function CrewPostersButton({ crewId, crewName, photos }: { crewId: string
   const [open, setOpen] = useState(false);
   return (
     <>
-      {/* the same chip a studio's rail wears — dark glass on the picture, so it
-          reads against whatever is behind it */}
+      {/* the same chip every ⊕ in the app wears — `pictureChipPaint`, one
+          declaration since 22 Sep 2026 */}
       <button
         type="button"
         aria-label="Edit posters"
         onClick={() => setOpen(true)}
-        style={{ width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", background: "rgba(10,10,10,.55)", border: "1.5px solid rgba(255,255,255,.35)", cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+        style={{ width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", ...pictureChipPaint, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
       >
         <PlusIcon light />
       </button>

@@ -257,7 +257,9 @@ export function MyProfilePage({
               <>
                 {/* FOLLOW · STATS · QR · SHARE (21 Sep 2026) — no bell here,
                     because this screen is only ever your own */}
-                <StatsChip href={isOrg ? "/business/stats" : "/stats"} />
+                {/* this subject's own address, one segment on (22 Sep 2026) — the
+                same string the two chips below already build */}
+            <StatsChip href={`${isOrg ? `/org/${profile.id}` : `/person/${profile.id}`}/stats`} />
                 <ProfileShare path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
                 <ProfileLink path={isOrg ? `/org/${profile.id}` : `/person/${profile.id}`} name={profile.fullName} />
               </>

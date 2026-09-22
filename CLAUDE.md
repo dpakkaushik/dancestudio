@@ -1,8 +1,129 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (22 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (22–23 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A GRID IS ARRANGED — THE CONTROL ON TOP OF THE STORAGE, AND THE LEFTOVER PILE SWEPT (22 Sep 2026, latest) — BUILT, no migration
+> ### TWO ADDRESSES FOR ONE RECORD, A STUDIO'S EDIT DOOR, AND ONE ⊕ (22–23 Sep 2026, latest) — BUILT, no migration
+> ⚠ This session crossed midnight, so the comments it left in the code are dated
+> **22 Sep** and the verification below ran on the **23rd**. One slice, two dates.
+> The user, in three messages: *"give me a list of duplicate pages and dead
+> pages. lets try resolving that."*, then *"fix duplicates first"*, then
+> *"studio edit profile should be in settings in settings and profile view button
+> similar to other profiles. same plus icon color for profile pic and posters on
+> all profiles."*
+> * ⚠⚠ **1 · `/stats` AND `/person/{me}/stats` WERE TWO ADDRESSES FOR ONE
+>   RECORD, AND SO WERE `/business/stats` AND `/org/{me}/stats`.** That is C40's
+>   bill in a second place: C40 made your own PROFILE one address and left your
+>   own STATS as two, each drawing the same person from the same RPCs — which is
+>   why three different chips had to ask `isMe ?` before they could build an
+>   href. **`/stats` and `/business/stats` are redirects now**, carrying the whole
+>   query through (`?tab=`, `?seg=`, `?city=`, `?style=`), and
+>   `features/stats/components/OwnStatsScreen.tsx` holds the owner's reads that
+>   were inline in the route. The chips on all three profile surfaces build
+>   `${subject}/stats` and no longer know who is reading.
+> * ⚠ **AND THE OWNER BRANCH SITS ABOVE THE PUBLIC READ**, the ordering C40
+>   already had to get right for `/org/{id}`: `public_organization` and
+>   `findPublicPerson` answer only for a PUBLIC row, so below it an unverified
+>   organization — or a plain user — would meet `notFound()` on **their own
+>   record**, which is the worst possible place to learn a visibility rule.
+> * ⚠⚠ **AND `app/(app)/stats/loading.tsx` HAD TO GO, WHICH IS THE 19 Sep LESSON
+>   MET FROM THE OTHER SIDE.** The redirect worked and `page.url()` still read
+>   `/stats`: once a route streams behind a loading boundary, a `redirect()`
+>   inside it goes out as **200** with a client-side hop. Probed rather than
+>   guessed (`Invoke-WebRequest -MaximumRedirection 0` read 200, then 307 with
+>   the file gone). ⚠ **The boundary was NOT moved to `/person/{id}/stats`**: a
+>   guest must 307 to `/login` there and a plain user's must 404, and a boundary
+>   would turn both into a 200 — the same four specs that went red on 19 Sep.
+>   The person's stats screen has no skeleton as a result, and that is the price.
+> * **THREE MORE DOORS, EACH ONE HOP LONGER THAN IT NEEDED TO BE**: Home linked
+>   `/profile` twice through a redirect it could have skipped (it builds
+>   `publicHref` two lines above); the event page's *"Create a crew ›"* was the
+>   last control in the app still pointing at `/crews/new` rather than opening
+>   C54's sheet; and the calendar's compose ＋ pointed at `/business/{id}/events/new`
+>   the morning C54 made every other add control a sheet over its desk. All three
+>   routes still render full page (Rule 14).
+> * ⚠ **WHAT IS DELIBERATELY NOT MERGED, SO IT IS NOT RE-PROPOSED:**
+>   `/crews/{id}/manage` and `/crew/{id}` stay two screens. `AppChrome` decides
+>   "entity home" from the PATHNAME alone (`CREW_HOME_RE`) and cannot know the
+>   viewer's relationship, and `CrewHome` is a tool grid — merging would put
+>   owner-only tiles on a visitor's front door, which is the thing C40 exists to
+>   stop rather than to spread. `/invoices` · `/payments` · `/refunds` are NOT
+>   duplicates either: one component, a `side` prop, two different subjects.
+> * ⚠⚠ **2 · A STUDIO HAD TWO DOORS TO ITS OWN FORM AND A PERSON HAS HAD ONE
+>   SINCE C22.** The corner pencil on its home AND an Edit cell on its public
+>   page — while C22's own words were *"all edit profile options to be removed
+>   from home **and profile pages**"*. Both are gone; **Settings' THIS STUDIO
+>   block opens with an Edit studio tile**, and a crew's THIS CREW block is a
+>   real block now instead of a sentence saying a crew has no settings.
+> * ⚠ **THE SHEET IS AN ADDRESS — `?edit=1` ON THE ENTITY'S OWN HOME** — because
+>   the alternative is worse: for the chrome to OPEN the sheet it would need a
+>   `PublicTenant` read on every page under a studio, for a control almost nobody
+>   presses. It is the Verification precedent from C53 exactly, and it is C54's
+>   own grammar (`?new=1`) one control further on. ⚠ **The gate is re-checked on
+>   the page**: the sheet is drawn only when the owner-only read came back, so the
+>   query asks and never authorises.
+> * ⚠ **AND THE CORNER IS ONE CONTROL ON ALL FOUR HOMES**, which is what *"similar
+>   to other profiles"* asked for — a studio's was a COLUMN of two chips where
+>   every other profile had one. ⚠ **The GLYPH and the LABEL stay each kind's
+>   own**, and that is a decision rather than an oversight: `/person/{id}` renders
+>   the OWNER's screen for its owner (C40), so "Your profile" is true there and
+>   "Public view" would be a lie; `/studio/{id}` is the public page for everybody,
+>   so the eye is true there. What was asked for is the SHAPE, and the shape is
+>   now identical — one chip, one geometry, one position.
+> * ⚠ **`PencilIcon` IS DELETED**, not left standing: those two corners were its
+>   last callers, and this repo has twice paid for a component nothing renders.
+> * **3 · ONE ⊕ PAINT, `pictureChipPaint` IN `profile-kit`** — six call sites
+>   across three files drew their own, and the disc's and the posters' had drifted
+>   apart on every profile. ⚠ **C44 extracted the GLYPH into that file for exactly
+>   this reason AND LEFT THE CHIP BEHIND**, which is why it drifted; extracting
+>   the paint is what makes "the same on all profiles" true by construction.
+> * ⚠ **AND THE SCRIM IS THE ONE THAT WINS, WHICH IS A REASON RATHER THAN A COIN
+>   FLIP.** The posters' ⊕ sits ON a photograph and the disc's sits on the page,
+>   so only one of the two paints is legible on BOTH: `var(--card)` is
+>   `rgba(255,255,255,.07)` in the dark theme and would vanish into a bright
+>   picture, while a dark scrim with a white glyph reads on anything.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green ·
+>   **`shoot-tiles.js` 131/131** (121 before — the new ones drive the Edit studio
+>   tile from Settings, assert it lands at `?edit=1` on **this** studio's own home,
+>   and assert Cancel spends the entry rather than leaving it live underneath) ·
+>   **`shoot-hero.js` 162/162** (155 before — both ends of the corner: the pencil
+>   GONE and the sheet reachable at its address) · **the whole e2e suite 58/58 in
+>   one run, 18.7 min on one worker, no red at any point**, then — on the tree
+>   carrying one more assertion the collected run could not have seen (a crew's
+>   own Settings drawing THIS CREW and Edit crew, where C53's sheet used to say a
+>   crew has none) — **the happy path alone 20/20 in 13.3 min**. ⚠ The second run
+>   was taken because **Playwright collects every spec at the START of a run**, so
+>   a spec edited while a suite is in flight is not the spec that ran.
+> * ⚠ **AND `admin-support`'s TWO REDS EARLIER IN THE NIGHT WERE THE MACHINE, AS
+>   THE 11 Sep RULE SAYS TO ASSUME UNTIL PROVEN.** They landed in a suite sharing
+>   this machine with a build, two typechecks and two shoot scripts; neither test
+>   touches anything in this slice, and both are green in the clean run above.
+>   **A red on a busy machine is not evidence.**
+> * ⚠ **AND `shoot-location.js` IS 8/9, WITH THE ONE RED NOT THIS SLICE'S AND
+>   NAMED RATHER THAN WAVED AWAY:** *"Maps Demo Key limit reached: Your daily
+>   quota for Maps JavaScript 2D has been met"*, so Google refused the tiles and
+>   the map container never rendered. Everything the re-cut touches passed — the
+>   sheet opened at `?edit=1`, the picker was LOCKED, Places answered with five
+>   suggestions, the pin saved and `location_set_at` moved off the centroid. This
+>   is NEXT TO DO #7 and backlog row #0a3, now met for the third time.
+> * ⚠ **AND I MADE THE JSX-COMMENT MISTAKE THIS FILE ALREADY RECORDS, TWICE IN
+>   ONE EDIT.** `{/* … */}` is a CHILD; in attribute position it must be a bare
+>   `/* … */`, and inside a ternary branch it is two children in one parenthesised
+>   expression. Eight syntax errors across three files, all named by typecheck in
+>   one run — which is the whole argument for running it before anything else.
+> * ⚠⚠ **AND I BROKE RULE 16 ON THIS VERY FILE, WHICH IS THE THIRD TIME IT HAS
+>   BEEN BROKEN SINCE IT WAS WRITTEN.** Three deviation rows went in through a
+>   PowerShell array and `Set-Content`, and **every backtick in them was eaten**:
+>   inside a double-quoted PowerShell string a backtick is the ESCAPE character,
+>   so `` `app/... `` lost its `a` (backtick-a is an alert), and `` `redirect() ``
+>   lost its `r` **and inserted a carriage return** — which split two table rows
+>   into eight physical lines and made three of the four columns vanish. ⚠ The
+>   tell was free and is worth keeping: **count the pipes per row.** Four rows,
+>   two with 3 pipes where a four-column row needs 5. Repaired by cutting the
+>   damage with a Node script that asserts both anchors, the span and the length
+>   before it writes, then re-inserting with the Edit tool. **Never build markdown
+>   or source through a PowerShell string literal — the backtick will find you.**
+
+> ### A GRID IS ARRANGED — THE CONTROL ON TOP OF THE STORAGE, AND THE LEFTOVER PILE SWEPT (22 Sep 2026) — BUILT, no migration
 > The user: *"do both / finish the remaining 2"* — the two things the previous
 > push handed back. Both are done.
 > * ⚠⚠ **1 · THE SWEEP RAN, AND IT IS WHAT MAKES THE SUITE GREEN.** 479
@@ -5424,6 +5545,14 @@ summary; the report has the evidence.
    the quota is a real outage rather than a console line. The fix is #7 and is
    a deploy, not a rewrite: a billed Google Cloud project with the three APIs
    enabled and a referrer-restricted browser key.
+   ⚠ **THIRD TIME, 23 Sep 2026, AND THE FIRST ONE THAT FAILED A CHECK:**
+   `shoot-location.js` came back **8/9** with *"Google's own map container
+   rendered"* red — the tiles were refused, so the container was never made.
+   Everything around it passed (the picker LOCKED, Places answering with five
+   suggestions, the pin saved, the point off the centroid), so what the script
+   exists to prove is proven and the map itself is not. **It is now a check that
+   goes red on a quiet day, which is the point at which a demo key stops being
+   free.** Until #7 lands, a red on that one line is the key, not the product.
 
 0a0. **~~`scripts/stranger-smoke.ps1` DOES NOT EXIST~~ — ✅ WRITTEN 20 Sep 2026.**
    Ten checks with no session at all: `/` 307 and `/login` 200; Discover, Terms
@@ -5981,6 +6110,37 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **TWO ADDRESSES FOR ONE RECORD, A STUDIO'S EDIT DOOR, AND ONE ⊕ — 23 Sep 2026,
+  no step number — BUILT, no migration.** An audit of every route for duplicates
+  and dead ends, then the three things the user named. ⚠⚠ **`/stats` and
+  `/person/{me}/stats` were two addresses for one record**, and `/business/stats`
+  and `/org/{me}/stats` likewise — C40's bill in a second place, and the reason
+  three chips had to ask `isMe ?` before they could build an href. Both are
+  redirects now, carrying the whole query; `OwnStatsScreen` holds the owner's
+  reads. ⚠ The owner branch sits ABOVE the public read (or an unverified
+  organization 404s on its own record), and ⚠⚠ **`stats/loading.tsx` had to go** —
+  a boundary turns a `redirect()` into a 200 + client hop, which is why the probe
+  read 200 while the screen was correct; it was NOT moved to `/person/{id}/stats`,
+  where a guest must 307 and a plain user 404. Three more doors lost a hop
+  (Home's `/profile`, the event page's `/crews/new`, the calendar's compose ＋).
+  ⚠ The crew pair is deliberately NOT merged, and `/invoices` · `/payments` ·
+  `/refunds` were never duplicates. Then: ⚠⚠ **a studio had TWO doors to its own
+  form** — the corner pencil and an Edit cell on its public page — where C22's own
+  words were *"all edit profile options to be removed from home and profile
+  pages"*; both are gone and **Settings' THIS STUDIO block opens with Edit
+  studio**, a crew's THIS CREW likewise, the sheet reached at `?edit=1` on the
+  entity's own home (C54's grammar; the gate re-checked on the page). ⚠ Every
+  home's corner is ONE control now — the glyph and label stay each kind's own,
+  because `/person/{id}` renders the owner's screen and `/studio/{id}` does not.
+  `PencilIcon` is deleted. And **`pictureChipPaint`** gives every ⊕ one paint;
+  ⚠ the scrim wins because only it is legible on a photograph AND on the page.
+  Deviation rows **C57, C58, C59**. **typecheck 0 · lint 0 · build green ·
+  `shoot-tiles.js` 131/131 · `shoot-hero.js` 162/162 · the whole e2e suite
+  58/58 in one run, 18.7 min on one worker, no red at any point, then the happy
+  path alone 20/20 in 13.3 min** on the tree carrying one later assertion — ⚠ which also
+  settles `admin-support`'s two reds earlier the same night as the busy machine
+  (the 11 Sep rule), and leaves `shoot-location` at 8/9 on the **Maps demo key's
+  daily quota** (#0a3 / #7), not on anything here.
 - **A GRID IS ARRANGED, AND THE LEFTOVER PILE IS SWEPT — 22 Sep 2026, no step
   number — BUILT, no migration.** The user's *"do both"*, closing the two things
   the previous push handed back. **(1)** The sweep ran: **479 businesses and 14
@@ -10097,7 +10257,9 @@ Home. **Do not "restore parity" on these.**
 | C54 | Every "add something" form is a PAGE of its own — S_classform is a screen (15108-15650), and the prototype's routine and membership forms are cards that expand inside their desk (17129, 16846) | **EVERY FORM OPENS OVER THE DESK THAT OFFERED IT, AND IS STILL A PAGE AT ITS OWN ADDRESS.** `FormPage` gained a `sheet` shell — the same header and the same children inside a portalled panel — so Add routine, Add membership, Create crew, Add class and Add event all open at **`?new=1` on the desk's own URL**, with the desk underneath keeping its scroll and its reads (`next/link`, `scroll={false}`). ⚠ **The route stays and still renders full page** (Rule 14), which `shoot-tiles.js` asserts at both ends. ⚠ `FormBar`, `FormConfirm` and `FormToast` learn which shell they are in through a CONTEXT, and the last two are **portalled always**: a panel that animates makes its own stacking context, and a `position: fixed` child of one is laid against the panel and clipped (the 16 Sep lesson). ⚠⚠ **On save a sheet SPENDS its entry** — confirm closed first, `back()` a task later — because a `push` leaves `?new=1` live beneath and the next back press re-opens the form. ⚠ Every gate is re-checked on the desk: a query parameter is a request, never an authority. ⚠⚠ **And a class is made in the CLASSES section** (the user, correcting their own first instruction: *"no from inside their respective sections onin home tab only"*) — the register's pill is untouched and the **CALENDAR's** compose ＋ is what went, a screen that does not own a class having offered to make one | 22 Sep 2026, the user: *"All forms and add buttons anywhere in home tab should open form like how setting page or edit profile page open from the same screen. fix that for all such forms."* ⚠ Removing the calendar's ＋ found a door that was already dead: a person's calendar passed `composeHref="/events/new"`, a route that does not exist |
 | C55 | The prototype's add forms are two-step where they are forms at all (S_classform 15108-15650), its Rooms segment creates a room from a dashed row (18389-18425), and its section heads print a title with the figure pushed to the far edge | **THE LAST TWO "ADD SOMETHING" FORMS ARE SHEETS TOO, THREE FORMS LOST THEIR STEPS, AND A RULE RUNS BETWEEN A HEADING AND ITS FIGURE.** ⚠⚠ **ADD ROOM WAS NOT A FORM AT ALL** — the ＋ called `createRoomAction({ name: `Room N`, capacity: 20 })` on the press, so **capacity, the one field on that desk the database enforces on every booking, was set by a default**; it is asked for now, with the old defaults prefilled so the same answer is still one press. ADD ASSET was a card standing on the desk whether or not you were adding anything, and ⚠ its value is asked for rather than defaulted (an empty box became `Number(value \|\| 0)` — a claim about money made by not typing). ⚠ **Both are SHEET-ONLY**: neither ever had an address, and Rule 14 protects the ones handed out rather than inventing new ones. **Routine, membership and crew are ONE PAGE**; class and event keep their steps, at the user's word. ⚠ The crew's second step was MEMBERS, which is OPTIONAL. **The QR is off the students invite.** And **`FigureHead`** is the rule between a heading and its figure, written once, on every counted head under Home — ⚠ the rule is shared and **the TYPE is not**, because 9.5px money caps, an 11px card head and a 17px shelf head are legitimately different and one scale would be the 16 Sep mistake in reverse; ⚠ **no figure, no rule** | 22 Sep 2026, the user: *"form for adding asset and adding room should be same way, students invite doesnt need qr code. apart from class and event form all forms should be for one page"*, plus ask 7's first half (*"there should be a sprator between title and figure"*). ⚠⚠ **The suite caught a regression this row introduced**: all five rewritten forms grew a fixed `aria-label` on the primary button, so a screen reader heard "Create crew" while it read "Name your crew first" — `ClassForm`, the page they are matched to, has never had one, and its accessible name IS its visible text. ⚠⚠ **And `/business/{id}/rooms` had no `<h1>` at all**, a hand-copy of `DeskHero` with the title as a `<div>` — the THIRD time that shape has been found (18 Sep, 21 Sep, and `EventForm` on 22 Sep) |
 | C56 | The tool grid is the order `tilesFor` returns, the same for everybody with that kind of account (R18, 18 Sep 2026); the prototype has one grid and no way to arrange it | **THE GRID IS ARRANGED BY THE PERSON LOOKING AT IT, AND THE ORDER IS ON THE ACCOUNT.** `Arrange tools` at the FOOT of every tool panel — a person's Home, a studio's own home, a crew's — opens the same tiles as a single column with the app's own ▲▼ per row, Done puts them back in two, Reset forgets the key. ⚠ **ONE COLUMN IS THE DESIGN DECISION, not a shortcut**: `reorder_business_members` and `reorder_crew_members` are ▲▼ on LISTS, and in a two-up grid "▲" means *one place earlier*, which is visually up-**and-right** — an arrow that moves a tile sideways is a control that lies about itself. ⚠ **THE FOOT, NOT THE HEAD**, because C34 is still the user's word (*"only heading on top nothing else"*) and the plan badge was deleted for exactly that reason; re-opening a settled question to put a button somewhere is not worth a row. ⚠⚠ **A TILE THE STORED ORDER DOES NOT NAME IS APPENDED, NEVER DROPPED** — this app adds and removes tiles (Assets to an organization's grid on 21 Sep, Media off every grid), so a stored order is a snapshot of the day it was made, and treating it as the whole answer would silently cost somebody a door months later with nothing on screen to say why. The invariant is the COUNT, proven over 500 random stored orders. ⚠ Arranged on the SERVER, so the first paint is already right; and `layout` is deliberately not in `PROFILE_COLUMNS`, so no screen ever selects somebody else's — **a choice, not a wall**, since Step 1's policy still admits a signed-in reader at the ceiling | 22 Sep 2026, the user's *"do both"* — finishing ask 7's second half, whose storage went in the day before with no control on it. Their own earlier answers decided the two open questions: **which columns** (*"the reorder is required for columns inside tools on home tab for all profiles"*) and **where the order lives** (*"on the account, all devices"*), which is why the check that actually proves the feature is a reload |
-
+| C57 | C40 (21 Sep 2026) made your own PROFILE one address (`/profile` a redirect, `/person/{id}` rendering the owner's screen) and left your own STATS as two — `/stats` beside `/person/{me}/stats`, `/business/stats` beside `/org/{me}/stats` | **ONE ADDRESS PER RECORD, WHOEVER IS LOOKING.** `/stats` and `/business/stats` are REDIRECTS carrying the whole query (`?tab=` `?seg=` `?city=` `?style=`); `features/stats/components/OwnStatsScreen.tsx` holds the owner's reads that were inline in the route, and `StatsScreen` takes a `basePath` STRING — never a builder, because a server component may not hand a function to a client one (the 21 Sep React #441 lesson). The three chips build `${subject}/stats` and no longer ask `isMe ?`. ⚠ The owner branch sits ABOVE the public read on both routes, the ordering C40 already needed: `public_organization` and `findPublicPerson` answer only for a PUBLIC row, so below it an unverified organization meets `notFound()` on its own record. ⚠⚠ **`app/(app)/stats/loading.tsx` IS DELETED** — a streaming boundary turns a `redirect()` into a **200 with a client hop**, which is exactly why `page.url()` still read `/stats` while the screen was right; probed with `-MaximumRedirection 0` (200, then 307 with the file gone). ⚠ It was NOT moved onto `/person/{id}/stats`: a guest must 307 to `/login` there and a plain user's must 404, and a boundary breaks both — the four specs that went red on 19 Sep. The person's stats screen has no skeleton as a result, and that is the price. Three more doors lost a hop in the same audit: Home linked `/profile` where it had already built `publicHref`; the event page's "Create a crew ›" was the last control still pointing at `/crews/new` instead of C54's sheet; the calendar's compose ＋ pointed at `/business/{id}/events/new`. ⚠ **NOT merged, so it is not re-proposed:** `/crews/{id}/manage` and `/crew/{id}` — `AppChrome` reads the entity from the PATHNAME alone and cannot know the viewer's relationship, and `CrewHome` is a tool grid, so merging puts owner-only tiles on a visitor's front door; and `/invoices` · `/payments` · `/refunds` were never duplicates (one component, a `side` prop, two subjects) | 23 Sep 2026, the user: *"give me a list of duplicate pages and dead pages. lets try resolving that"*, then *"fix duplicates first"* |
+| C58 | A studio's own home carries the owner's pencil in its corner over the eye (C2, 15 Sep 2026), and its public page carries an Edit cell in the team row | **A STUDIO'S AND A CREW'S EDIT IS SETTINGS', AND THE CORNER IS ONE CONTROL.** Both doors are gone — ⚠ a studio had TWO where a person has had exactly one since C22, whose own words were *"all edit profile options to be removed from home **and profile pages**"* — and **Settings' THIS STUDIO block opens with an Edit studio tile**, a crew's THIS CREW block being a real block now rather than a sentence saying a crew has none. ⚠ **The sheet is an ADDRESS, `?edit=1` on the entity's own home** (C54's grammar), not a sheet the chrome opens: for the chrome to open it, it would need a `PublicTenant` read on every page under a studio for a control almost nobody presses — the C53 Verification precedent exactly. ⚠ The gate is re-checked on the PAGE (the sheet is drawn only when the owner-only read came back), so the query asks and never authorises. ⚠ **The glyph and the label stay each kind's own** — an eye saying *"Public view"* on a studio and a crew, a person saying *"Your profile"* on the other three — because the destinations differ in kind: `/person/{id}` renders the OWNER's screen for its owner (C40) and `/studio/{id}` is the public page for everybody, so unifying the word would make one of the two a lie. What *"similar"* asked for is the SHAPE, and that is now identical: one chip, one geometry, one position. ⚠ **`PencilIcon` is DELETED** — those corners were its last callers | 23 Sep 2026, the user: *"studio edit profile should be in settings in settings and profile view button similar to other profiles"* |
+| C59 | The ⊕ on the disc and the ⊕ on the posters rail are declared at their own call sites, one pair per profile kind (C44 extracted the GLYPH into `profile-kit` on 21 Sep and left the CHIP behind) | **ONE PAINT, `pictureChipPaint`, IN `profile-kit`** — six call sites over three files (`PicturesSheet`, `StudioPictures`, `CrewPictures`) read it, so *"the same on all profiles"* is true by construction rather than by six edits that can drift again. ⚠ **The SCRIM wins, and that is a reason rather than a coin flip:** the posters' ⊕ sits ON a photograph and the disc's sits on the page, so only one of the two paints is legible on BOTH grounds — `var(--card)` is `rgba(255,255,255,.07)` in the dark theme and would vanish into a bright picture, while a dark scrim with a white glyph reads on anything. The two disc glyphs move from `<PlusIcon />` to `<PlusIcon light />` with it | 23 Sep 2026, the user: *"same plus icon color for profile pic and posters on all profiles"* |
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -10118,6 +10280,7 @@ nothing to lift.
 |-----|--------------|-------------|
 | **Every form as a sheet, what stage 2 left (22 Sep 2026):** ⚠ **an EDIT still opens as a page, everywhere** — `/business/{id}/classes/{id}/edit` and `…/events/{id}/edit` are reached from a row, not from an add button, so the ask did not name them and they were not moved; a studio therefore edits a class on a screen and creates one in a sheet, which is one product wearing two shapes for one object. **`/crews/new`, `/routines/new`, `/memberships/new` and both `/…/new` routes are now reachable only by typing them** — no control in the app points at any of them any more, so they are kept alive by Rule 14 and by `shoot-tiles.js` alone; a link somebody was handed still opens, which is the whole reason they stay. **A sheet has no dirty guard**: the scrim and system back both close it with whatever was typed in it, exactly as the page's ← always has, and a half-filled class is lost in one press. **The panel is `94vh` with its own scroller**, so on a short phone the step bar scrolls away with the rest rather than pinning — the action bar is the only thing that sticks. And **`?new=1` is remembered by the browser**: reload a desk with the sheet open and it opens again, which is right, but a shared link to a desk that somebody copied mid-form carries the form with it. ⚠ And `createClassAction` / `updateClassAction` now **return instead of redirecting** when the form says it is a sheet — the one place in this app where a server action's navigation is the client's; it is a hint about navigation and grants nothing, but it does mean the register's fresh read is a `revalidatePath` + `router.refresh()` rather than the redirect's own | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit sheet when somebody asks; a dirty guard only if a real person loses work |
 | **The last two forms, the one-page collapse and the rule, what they left (22 Sep 2026):** ⚠ **an asset and a room have no EDIT sheet** — an asset is still corrected in place on its row and a room on its own, so those two objects are made in a sheet and changed on a list, which is one object wearing two shapes. **Neither form has an ADDRESS**, deliberately (nothing ever handed one out), so they are the only two "add something" forms `shoot-tiles` cannot drive by URL — if either is ever linked to, it needs a page in the same push. ⚠ **A ROOM'S AMENITIES ARE STILL NOT ASKED FOR**: a new room gets none and you fold its row open afterwards, which is unchanged and is now the one field the form does not cover. **The `₹0 = legacy` rule is now stated in two places** — the form's note and the row's own words — and they could drift. ⚠ **The separator is only where there IS a figure**, so the five micro-caps section heads that carry no count (`YOUR STUDIOS`, `CREWS YOU LEAD`, `WHERE IT CAME FROM`, `BY STUDIO`, `WHAT YOU OWE`) are untouched and still declared FIVE times in five files — the obvious consolidation, and not this slice's. And **`FigureHead` shares the rule and not the type**, so a new counted head can still pick its own scale; nothing checks that it picks one of the three that exist | S_assets 16791; settings 18389-18425; DosShelfHead 3446 | an edit sheet for each when somebody asks; one micro-caps head when a money desk is next opened |
+| **The duplicate-address audit, the edit door and the ⊕, what they left (23 Sep 2026):** ⚠ **THE PERSON'S AND THE ORGANIZATION'S STATS SCREEN HAVE NO SKELETON** — `app/(app)/stats/loading.tsx` covered a route that is now only a redirect, and moving it onto `/person/{id}/stats` would turn a guest's 307 and a plain user's 404 into a 200, which is the 19 Sep regression exactly. Closing it properly means a boundary that does not swallow a status, and nothing in Next offers one. **`/stats` and `/business/stats` are kept alive by Rule 14 and by three re-cut probe checks alone** — no control in the app points at either any more, so they rot the way `/crews/new` did until this audit found it. ⚠ **`?edit=1` HAS NO DIRTY GUARD**, exactly like `?new=1` (C54): the scrim and system back both close the sheet with whatever was typed in it, and a half-edited studio is lost in one press. **The Edit sheet's `?edit=1` is remembered by the browser**, so reloading a studio's home with it open re-opens it — right, and it means a link somebody copied mid-edit carries the form. ⚠ **The corner's glyph and label still differ by kind** (an eye on a studio and a crew, a person on the other three); if the user meant the GLYPH by "similar", that is one import. **`pictureChipPaint` sets the ground and the border and NOT the glyph's colour** — `<PlusIcon light />` is passed at all six sites by hand, so a seventh site can still draw a dark glyph on a dark scrim and nothing checks it | — (the prototype has one editor per profile, 11364) | a status-preserving boundary if the skeleton is ever missed; a dirty guard when a real person loses work; one glyph if that was the ask |
 | **The arranging control, what it left (22 Sep 2026):** ⚠ **▲▼ ONLY, NO DRAG** — a drag inside a scrolling page on a phone is its own slice, and the two roster desks have exactly the same limit, so this is consistent rather than short. **One press is one write**, as on those desks: eleven presses are eleven round trips, and the arrows are DISABLED while one is in flight — so there can be no burst to land out of order, at the cost of the control feeling sluggish on a poor connection. That trade is deliberate: every write sends the whole order, and HTTP does not promise the last one sent is the last to arrive. ⚠ **NOTHING IS ANNOUNCED TO A SCREEN READER WHEN A ROW MOVES** — the arrows carry their own names ("Move Calendar up"), and a listener hears the press without hearing the new position; an `aria-live` line saying "Calendar, 2 of 8" is the honest fix and is not built. **A tile added after somebody arranges always lands at the END for them**, never where the code puts it — predictable, deliberate (it is the only placement that cannot shuffle a stored order), and surprising the first time. ⚠ **ONLY THE TOOL GRID IS ARRANGEABLE**, which is the user's OWN narrowing of "all columns on such pages" (*"the reorder is required for columns inside tools on home tab for all profiles"*) — the sections inside each desk (Earnings' REVENUE · EXPENSES · WHAT IS LEFT, a profile's groups) are not, and if that was the wider reading it is a second slice. **The 40-grid / 40-tile / 4 kB ceilings are unreachable** from the app: the biggest grid in DanceOS is eleven tiles, so the CHECK's bounds only ever bite a hand-written PATCH — which is what they are for. | — (the prototype has one grid and no arrangement) | a drag when somebody asks; an `aria-live` position line; the other columns only if the wider reading was meant |
 | **Settings per profile, the mark as the switcher and the gap, what stage 1 left (22 Sep 2026):** ⚠ **`BusinessHub` still carries a verification FORM of its own**, so a studio's verification now has two doors — the hub's card and that studio's Settings. Left standing knowingly: an organization setting up its fifteenth studio would otherwise have to switch profile fifteen times to file fifteen requests, and the hub is the one screen that sees them all. It is the exact shape C31 warned about, taken with eyes open and written down here rather than discovered later. ⚠ **A trainer's Settings has no THIS STUDIO block and no sentence** — the same silent absence as the Earnings tile. ⚠ **The sheet's subject follows `hereItem`, so on a page that belongs to no profile it is YOURS** — `/discover`, `/inbox`, `/calendar` and every drill page off them give the account's own Settings, which is right for a person and means an organization on Discover cannot reach a studio's money without going to that studio first. ⚠ **An organization has no Invoices door at all** (its hosting row's ledger is `/business/{host}/invoices`, reachable only by URL) — the studio half of that ask is done and the organization half was not named. **And the deep-linked sheet now arrives with HYDRATION** rather than in the first HTML, because the chrome reads `?settings=1` on the client: every retrying assertion is fine and a one-shot `count()` is not, which is what the one red in `shoot-hero` was | settings 11402-11440; S_payments 16531 | a hub decision if two verification doors ever confuse; an organization's Invoices when the user says where; a sentence for a trainer |
 | **The five answers, what they left (21 Sep 2026):** ⚠ **the organization-membership refusal is the APP's and not the database's** — `save_membership` takes any business whose owner is asking, so the SQL type check is owed to the next memberships migration (#0al). ~~**INVOICES still has no door on a studio's home**~~ — **CLOSED 22 Sep 2026** (C53: it is a tile in that studio's own Settings, beside Refunds and Payments, so an organization's second studio's ledger is reachable by switching profile rather than by typing). ~~**The verification and subscription strips are the owner's, and a trainer gets no sentence**~~ — **the strips are GONE** (C53), and the gap MOVED rather than closing: a trainer's Settings simply has no THIS STUDIO block, so they still cannot tell whether the studio is unverified or whether they are merely not allowed to see. ⚠ **The students gate is presentation only**: `leads` and `attendance` admit every member at the ceiling, so a visiting teacher with an API client still reads the roster and its phone numbers — closing that is a policy change on two tables, and the desk says so in its own comment. **`/managed` redirects an organization to the HUB rather than its events desk**, deliberately — that address needs the hosting row's id and `my_org_business()` provisions the row on first ask, so the redirect would be a write; the cost is that an organization typing `/managed` lands one tap from its events rather than on them | S_managed 6332-6378; settings 16428-16435 | the type check with the next memberships migration; an Invoices door when the user says which half they meant; a policy change if the roster ceiling ever matters |
@@ -10528,6 +10691,32 @@ server action → UI, finished and verified before the next begins.
     days while every typed check stayed green. A rename sweep skips any literal
     that names a folder, and `shoot-hero.js` — the one thing that uploads to
     every folder from a real browser — runs after it.
+17. **Never build a file's CONTENT inside a PowerShell string.** (23 Sep 2026,
+    after four bites.) Two separate failures, and they compound: **a BOM-less
+    file is decoded as ANSI** by PowerShell 5.1, so a round trip through
+    `Get-Content`/`Set-Content` mojibakes every em dash and ⚠ (11 Sep, 18 Sep,
+    19 Sep, 21 Sep); and **a backtick inside a double-quoted PowerShell string is
+    the ESCAPE character**, so `` `r `` becomes a carriage return, `` `n `` a
+    line feed, and `` `a `` eats the `a` — which is how three markdown table rows
+    became eight physical lines with their columns gone (23 Sep). Use the **Edit
+    tool**, which preserves the bytes it does not touch. Where an edit is
+    genuinely mechanical — a sweep over many files, or cutting a line range —
+    write it in **Node**, reading and writing UTF-8 explicitly, and make it
+    ASSERT its own anchors, its span and the resulting length before it writes;
+    a mechanical patch that does not assert its own anchor fails SILENTLY
+    (19 Sep: a `String.replace` that matched nothing was reported as applied).
+    The cheap tells, worth checking after any bulk edit: `git diff --stat` for a
+    line count that cannot be right, a grep for `â€`, and — for a markdown
+    table — **the number of `|` per row**.
+    ⚠⚠ **AND THE CHECK ITSELF CAN LIE, WHICH IS THE PART THAT NEARLY GOT AWAY.**
+    `Set-Content -Encoding UTF8` WRITES A BOM, and PowerShell's `>` redirect adds
+    one too — so `git show HEAD:file > tmp` and then comparing leading bytes
+    reported "HEAD has a BOM" when HEAD had none, and the BOM this session had
+    just added to `CLAUDE.md` read as pre-existing. **Compare bytes through git
+    itself** (`git cat-file -p HEAD:file` read as a Buffer in Node), never
+    through a shell redirect, and read `git diff -U0` for what a file actually
+    LOST — a diff that claims line 1 changed when you never touched line 1 is
+    the tell.
 
 ## Session log
 
