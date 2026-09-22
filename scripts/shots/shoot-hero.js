@@ -329,7 +329,15 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByText(/^What .* sells$/).count()) === 1, "studio memberships: the desk says WHOSE it is — an organization runs several");
     /* a studio holds no passes (a business is not a person), so one side, no switch */
     check((await org.getByRole("button", { name: /^Booked/ }).count()) === 0, "studio memberships: no Booked side — a studio holds no pass");
-    check((await org.getByRole("link", { name: "New membership" }).getAttribute("href")) === `/memberships/new?business=${studioId}`, "studio memberships: the form is told WHICH studio, rather than taking the first one owned");
+    /* ⚠ STALE SINCE STAGE 2 AND ONLY FOUND TODAY (22 Sep 2026). This asserted
+       `/memberships/new?business={studio}` — right on 21 Sep, when the desk's
+       add control was a LINK to a page that had to be told which studio it was
+       for. Stage 2 (C54) made every add control a SHEET at `?new=1` on the
+       desk's own URL, so the studio is the ADDRESS now and there is nothing to
+       pass. The page still exists and still takes `?business=` (Rule 14), which
+       `shoot-tiles` drives. The lesson is this file's own: shoot-hero had not
+       been run since stage 1, and a proof is only true the last time it ran. */
+    check((await org.getByRole("link", { name: "New membership" }).getAttribute("href")) === "?new=1", "studio memberships: the form opens over THIS studio's desk, so the studio is the address (22 Sep 2026)");
     await org.goto(`${BASE}/business/${studioId}`);
 
     /* ⚠ AND IT IS OFF THE DESKS TOO NOW (18 Sep 2026, the user: "remove the blue

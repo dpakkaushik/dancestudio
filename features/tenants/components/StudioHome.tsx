@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ToolGrid, ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import { ArrangeTools } from "@/features/home/components/ArrangeTools";
+import { ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditButton } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
@@ -70,6 +72,9 @@ export function StudioHome({
   followers = 0,
   followingN = null,
   tiles,
+  /** this member's own arrangement of THIS studio's tools (22 Sep 2026) — keyed
+   *  by the studio, so two people on one team each arrange it for themselves */
+  order = null,
 }: {
   tenant: Tenant;
   photo: string | null;
@@ -85,6 +90,7 @@ export function StudioHome({
    *  has nothing to follow with of its own; null draws no figure */
   followingN?: number | null;
   tiles: Tile[];
+  order?: string[] | null;
   /** ⚠ `standing` is GONE (21 Sep 2026, later the same day): where this studio
    *  stands with DanceOS — its verification and its subscription, and the door
    *  to its refunds — is in its own Settings now, so this screen neither draws
@@ -319,7 +325,9 @@ export function StudioHome({
             every door is THIS studio's ── */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
           <ToolsPanel kind="studio">
-            <ToolGrid tiles={tiles} />
+            {/* arranged on the server so the first paint is already this
+                member's own order (22 Sep 2026) */}
+            <ArrangeTools tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("studio", tenant.id)} arranged={Boolean(order && order.length > 0)} />
           </ToolsPanel>
         </div>
       </div>

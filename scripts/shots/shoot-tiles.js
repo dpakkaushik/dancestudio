@@ -91,6 +91,67 @@ async function pressEveryTile(page, who, expectedNames) {
   }
 }
 
+/** ARRANGING A GRID, END TO END (22 Sep 2026) — the control on top of the
+ *  storage `20260922090000` applied, driven the way somebody would.
+ *
+ *  ⚠ THE CHECK THAT MATTERS IS THE RELOAD. The user's own answer to where the
+ *  order lives was **"on the account, all devices"**, so an arrangement that
+ *  only holds in React state would pass every other assertion here and be
+ *  exactly the feature they did not ask for. */
+async function arrangeGrid(page, who, url) {
+  await page.goto(url, { waitUntil: "networkidle" });
+  const read = () => page.evaluate(() => {
+    const head = [...document.querySelectorAll("*")].find((e) => /Tools$/.test((e.textContent || "").trim()) && e.children.length === 0);
+    const root = head ? head.closest("div")?.parentElement : null;
+    return [...(root || document.body).querySelectorAll("a[href]")].map((a) => (a.textContent || "").trim()).filter(Boolean);
+  });
+
+  const before = await read();
+  const arrange = page.getByRole("button", { name: "Arrange tools", exact: true });
+  check(await arrange.isVisible().catch(() => false), `${who} · the grid offers "Arrange tools" at its foot, not on the head (C34)`);
+  await arrange.click();
+
+  /* the arranging list is ONE COLUMN, which is why the arrows are honest: in a
+     two-up grid "up" would mean up-AND-right */
+  const up = page.getByRole("button", { name: `Move ${before[1]} up` });
+  check(await up.isVisible().catch(() => false), `${who} · every row carries its own named arrows ("Move ${before[1]} up")`);
+  const topUp = page.getByRole("button", { name: `Move ${before[0]} up` });
+  check(await topUp.isDisabled().catch(() => false), `${who} · and the first row's ▲ is disabled — a move off the top is not offered`);
+
+  await up.click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.waitForTimeout(600);
+  const after = await read();
+  check(after[0] === before[1] && after[1] === before[0], `${who} · the grid is re-ordered (${before[0]}·${before[1]} -> ${after[0]}·${after[1]})`);
+
+  /* ⚠ THE ONE THAT PROVES THE FEATURE */
+  await page.reload({ waitUntil: "networkidle" });
+  const reloaded = await read();
+  check(reloaded.join("|") === after.join("|"), `${who} · and it SURVIVES a reload — the order is on the account (${reloaded.slice(0, 2).join(" · ")})`);
+  check(reloaded.length === before.length, `${who} · with every tile still drawn (${reloaded.length} of ${before.length}) — an arrangement never costs a door`);
+
+  /* Reset forgets the key rather than storing an empty list.
+     ⚠ THE FIRST OF THESE TWO IS THE ONE THAT CAUGHT A REAL DEFECT: Reset used to
+     derive "the default" from the tiles it was HANDED, which are already
+     arranged once somebody has arranged them — so it stored exactly the right
+     thing and the list did not move until the next navigation. Reset is only
+     honest if it is visible before a reload. */
+  await page.getByRole("button", { name: "Arrange tools", exact: true }).click();
+  await page.getByRole("button", { name: "Reset to default", exact: true }).click();
+  await page.waitForTimeout(600);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.waitForTimeout(400);
+  const resetNow = await read();
+  check(resetNow.join("|") === before.join("|"), `${who} · Reset moves the grid AT ONCE, not on the next navigation (${resetNow.slice(0, 2).join(" · ")})`);
+  await page.reload({ waitUntil: "networkidle" });
+  const reset = await read();
+  check(reset.join("|") === before.join("|"), `${who} · Reset puts the code's own order back, and that survives a reload too`);
+  /* nothing to reset, so nothing is offered — a control that can only be a no-op */
+  await page.getByRole("button", { name: "Arrange tools", exact: true }).click();
+  check((await page.getByRole("button", { name: "Reset to default", exact: true }).count()) === 0, `${who} · and Reset is not offered when there is nothing to reset`);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+}
+
 (async () => {
   const stamp = Date.now().toString(36);
   const made = [];
@@ -105,6 +166,8 @@ async function pressEveryTile(page, who, expectedNames) {
     /* ⚠ Memberships is on a USER's grid since 21 Sep — they are who a membership
        is FOR, and a pass they had bought was reachable only by typing the URL */
     await pressEveryTile(p1, "user", ["Classes", "Events", "Calendar", "Crews", "Studios", "Routines", "Memberships", "Earnings"]);
+    /* the grid is arrangeable, and the arrangement is the account's (22 Sep 2026) */
+    await arrangeGrid(p1, "user", `${BASE}/`);
     await p1.close();
 
     // ── 2. an ARTIST — a user with a live plan; Home provisions the page itself
@@ -354,6 +417,12 @@ async function pressEveryTile(page, who, expectedNames) {
     check(mTxt.includes("HERE") && mTxt.includes(studio.name), "drill page · and it opens on the studio you are in, marked HERE");
     check(mTxt.includes("Log out"), "drill page · with Log out, reachable from anywhere");
     await p3.keyboard.press("Escape").catch(() => {});
+
+    /* ⚠ AND A STUDIO'S OWN GRID IS ARRANGED BY THE STUDIO (22 Sep 2026) — the
+       key carries the business id, so an organization's two studios are two
+       arrangements and two people on one team each get their own. This is the
+       case that a `tools:studio` key alone would have got wrong. */
+    await arrangeGrid(p3, "studio", `${BASE}/business/${studio.id}`);
     await p3.close();
   } catch (e) {
     console.log("\nTHREW: " + e.message);

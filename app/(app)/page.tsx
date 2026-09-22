@@ -15,6 +15,8 @@ import { amIPlatformAdmin } from "@/repositories/admin";
 import { headerMaxFor, photoUrl } from "@/lib/media/photo";
 import { CARD, DOS_UI, GOLD, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { BizSection } from "@/features/home/components/home-kit";
+import { toolsLayoutKey } from "@/features/home/toolOrder";
+import { findMyToolOrder } from "@/repositories/layout";
 import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
@@ -152,7 +154,14 @@ export default async function HomePage() {
      home"). They were skipped because R11 made an organization follow nothing;
      `20260920180000_an_organization_follows` lifts that refusal in the three
      doors, so these reads answer with real rows and the figure means something. */
-  const [header, deck, pageId, followers, followingPeople, followingTenants, followingOrgs, followingCrews] = await Promise.all([
+  /* THE GRID FOR THIS KIND OF ACCOUNT (18 Sep 2026, the user's list for all four
+     — `tilesFor` in home-kit carries it). An artist's grid opens the desks of the
+     page they OWN (Team, Students); a user's and an organization's carry no
+     desk of a business at all — a studio's desks are on the studio's own home.
+     ⚠ It is worked out HERE rather than beside the grid since 22 Sep 2026,
+     because the batch below needs it: the arrangement is keyed by kind. */
+  const homeKind = isOrg ? "org" : isArtist ? "artist" : "user";
+  const [header, deck, pageId, followers, followingPeople, followingTenants, followingOrgs, followingCrews, toolOrder] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     findMyDeck(supabase, user.id, nowIso, businesses),
     isOrg || !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
@@ -161,6 +170,11 @@ export default async function HomePage() {
     findMyFollowing(supabase).catch(() => []),
     findMyFollowedOrganizations(supabase).catch(() => []),
     findMyFollowedCrews(supabase).catch(() => []),
+    /* ⚠ THIS PERSON'S OWN ARRANGEMENT OF THE TOOL GRID (22 Sep 2026). It rides
+       the batch that is already being awaited, so Home costs no extra round
+       trip for it, and it answers null rather than throwing — a preference must
+       never be the reason a Home does not render. */
+    findMyToolOrder(supabase, user.id, toolsLayoutKey(homeKind)),
   ]);
 
   /* the metal the KIND wears (DOS_RINGS 1462): gold for an organization, silver
@@ -175,11 +189,6 @@ export default async function HomePage() {
      offered "See everything you manage" (7135: "offering it to somebody who
      manages nothing is a door onto an empty room"), and the empty day offers
      nothing at all now. Deleted rather than left computed and unread. */
-  /* THE GRID FOR THIS KIND OF ACCOUNT (18 Sep 2026, the user's list for all four
-     — `tilesFor` in home-kit carries it). An artist's grid opens the desks of the
-     page they OWN (Team, Students); a user's and an organization's carry no
-     desk of a business at all — a studio's desks are on the studio's own home. */
-  const homeKind = isOrg ? "org" : isArtist ? "artist" : "user";
   /* ⚠ WHERE AN ENQUIRY WOULD LAND, AND WHY IT IS NOT THE PROFILE (21 Sep 2026).
      `send_enquiry` names a BUSINESS or a crew, never a person — so an artist's
      asks go to the `artist_page` row behind them (R24) and an organization's to
@@ -386,7 +395,7 @@ export default async function HomePage() {
             sheet that covers the deck, so it is opaque and it is above. ── */}
         {orgAwaitingApproval ? null : (
           <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-            <BizSection kind={homeKind} pageId={pageId} eventsHostId={isOrg ? eventsHostId : null}>
+            <BizSection kind={homeKind} pageId={pageId} eventsHostId={isOrg ? eventsHostId : null} order={toolOrder}>
               {/* THE PAGE COULD NOT BE MADE (18 Sep 2026): the plan is live and Home just
                   tried to provision the page the artist tools run through, and the
                   database said no — a refusal Home swallows so it never fails on it.

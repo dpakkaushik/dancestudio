@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ToolGrid, ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import { ArrangeTools } from "@/features/home/components/ArrangeTools";
+import { ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
@@ -33,7 +35,7 @@ import { CrewPicturesButton, CrewPostersButton } from "./CrewPictures";
  *  five, new today), the city, the style, the email — and the eye opens the
  *  crew's page as a stranger sees it. The picker that sat under the hero moved
  *  into the sheet, where every other picture in the app is changed. */
-export function CrewHome({ crew, members, entries, header = [], followers = 0, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; todayKey: string }) {
+export function CrewHome({ crew, members, entries, header = [], followers = 0, order = null, todayKey }: { crew: Crew; members: CrewMember[]; entries: CrewEntry[]; header?: HeaderPhoto[]; /** how many follow this crew — `crew_follower_counts`, aggregate-only (20 Sep 2026) */ followers?: number; /** this leader's own arrangement of THIS crew's tools (22 Sep 2026) */ order?: string[] | null; todayKey: string }) {
   const confirmed = members.filter((m) => m.status === "confirmed").length;
   const asked = members.filter((m) => m.status === "asked").length;
   const upcoming = entries.filter((e) => e.endDate >= todayKey && e.eventStatus !== "completed").length;
@@ -163,7 +165,12 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, t
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
           <ToolsPanel kind="crew">
-            <ToolGrid tiles={tiles} />
+            {/* arranged on the server, so the first paint is already in this
+                leader's own order (22 Sep 2026). ⚠ The key carries the CREW's id,
+                so two people who lead crews each arrange their own — and a crew's
+                two tiles are the smallest grid in the app, which is exactly why
+                the control is offered rather than assumed unnecessary. */}
+            <ArrangeTools tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("crew", crew.id)} arranged={Boolean(order && order.length > 0)} />
           </ToolsPanel>
         </div>
       </div>

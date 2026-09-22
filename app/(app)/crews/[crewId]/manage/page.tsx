@@ -1,5 +1,7 @@
 import { CrewHome } from "@/features/crews/components/CrewHome";
 import { requireLedCrew } from "@/features/crews/server/requireLedCrew";
+import { toolsLayoutKey } from "@/features/home/toolOrder";
+import { findMyToolOrder } from "@/repositories/layout";
 import { dayKeyOf } from "@/lib/format/month";
 import { findCrewEntries, findCrewMembers } from "@/repositories/crews";
 import { findCrewFollowerCount } from "@/repositories/follows";
@@ -18,11 +20,18 @@ export default async function CrewManagePage({ params }: { params: Promise<{ cre
   const { supabase, crew } = await requireLedCrew(crewId);
   /* the follower count joins the batch rather than adding a round trip — and a
      failed read is a 0 on a figure, never a crew's home that will not open */
-  const [members, entries, header, followers] = await Promise.all([
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const [members, entries, header, followers, order] = await Promise.all([
     findCrewMembers(supabase, crewId),
     findCrewEntries(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
     findCrewFollowerCount(supabase, crewId).catch(() => 0),
+    /* how THIS leader has arranged THIS crew's tools (22 Sep 2026) — the read
+       rides the batch, and `getUser` above is free: the server client memoises
+       it per request (19 Sep 2026), so `requireLedCrew` has already paid for it */
+    user ? findMyToolOrder(supabase, user.id, toolsLayoutKey("crew", crewId)) : Promise.resolve(null),
   ]);
-  return <CrewHome crew={crew} members={members} entries={entries} header={header} followers={followers ?? 0} todayKey={dayKeyOf(stampNowIso())} />;
+  return <CrewHome crew={crew} members={members} entries={entries} header={header} followers={followers ?? 0} order={order} todayKey={dayKeyOf(stampNowIso())} />;
 }

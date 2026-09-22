@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import type { Tile } from "@/features/home/components/home-kit";
+import { toolsLayoutKey } from "@/features/home/toolOrder";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { StudioHome } from "@/features/tenants/components/StudioHome";
 import { photoUrl } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPublishedStylesByTenant } from "@/repositories/classes";
 import { findFollowerCounts } from "@/repositories/follows";
+import { findMyToolOrder } from "@/repositories/layout";
 import { findStudioDeck } from "@/repositories/home";
 import { findPublicStudioTeam, findPublicTenant } from "@/repositories/publicProfile";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
@@ -53,7 +55,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
      policy and set_business_profile_photo admit (20260829230000) */
   const canEditPhoto = isOwner || memberRole === "trainer";
   const nowIso = stampNowIso();
-  const [photos, deck, roomCounts, stylesByTenant, editable, followerCounts, team] = await Promise.all([
+  const [photos, deck, roomCounts, stylesByTenant, editable, followerCounts, team, toolOrder] = await Promise.all([
     /* the header pictures — the photos of its space, as shown to DanceOS;
        signed, and since 15 Sep 2026 readable by the whole team */
     findStudioProofPhotos(supabase, tenantId),
@@ -86,6 +88,11 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
        studio's public page; a refusal on either leaves the figure undrawn rather
        than printing a zero nobody measured. */
     findPublicStudioTeam(supabase, tenantId).catch(() => []),
+    /* ⚠ HOW THIS MEMBER HAS ARRANGED THIS STUDIO'S TOOLS (22 Sep 2026). Keyed by
+       the STUDIO, so an organization's two studios are two arrangements and two
+       people on one team each get their own — it is a preference about somebody's
+       own screen, stored on their own row, and nothing about the studio. */
+    findMyToolOrder(supabase, user.id, toolsLayoutKey("studio", tenantId)),
   ]);
   const ownerUserId = team.find((m) => m.role === "owner")?.userId ?? null;
   const ownerCounts = ownerUserId ? await findPersonFollowerCounts(supabase, [ownerUserId]).catch(() => new Map()) : new Map();
@@ -162,6 +169,7 @@ export default async function StudioHomePage({ params }: { params: Promise<{ ten
       followers={followerCounts.get(tenantId) ?? 0}
       followingN={ownerUserId ? (ownerCounts.get(ownerUserId)?.following ?? null) : null}
       tiles={tiles}
+      order={toolOrder}
     />
   );
 }
