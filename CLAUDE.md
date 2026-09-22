@@ -2,7 +2,7 @@
 
 ## LAST SESSION (22 Sep 2026) — replaced on every push (Rule 13)
 
-> ### EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT, AND A CLASS IS MADE IN THE CLASSES SECTION (22 Sep 2026, latest) — BUILT, no migration
+> ### EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT, AND A CLASS IS MADE IN THE CLASSES SECTION (22 Sep 2026, latest) — PUSHED AND LIVE (`e3246ef`), no migration
 > **STAGE 2 of three.** The user's ask 6, in their words: *"All forms and add
 > buttons anywhere in home tab should open form like how setting page or edit
 > profile page open from the same screen. fix that for all such forms."* Asked
@@ -100,6 +100,14 @@
 >   memberships desk came to draw nothing in silence on 21 Sep. If it returns, the
 >   server log is now the thing to read, and the three reads in that
 >   `Promise.all` are the suspects.
+> * **PUSHED AND LIVE (`e3246ef`), and read back off the deployment rather than
+>   assumed:** `shoot-tiles.js` **94/94 against `https://dancestudio-orcin.vercel.app`**
+>   — all five sheets driven from the desks that offer them on the live host, each
+>   route still a page, and the org memberships redirect — plus
+>   `stranger-smoke.ps1` **11/11**. ⚠ The deployment was confirmed by reading
+>   Vercel's own list for THIS SHA (BUILDING → READY) before any probe ran, which
+>   is the 21 Sep rule: a green push is not a deployment, and the webhook that
+>   silently did not fire that day did fire this time.
 > * ⚠ **AND THE FOUR REDS IN THE SUITE WERE ALL THE SAME STALE SHAPE, MINE:**
 >   `waitForURL(/\/crews\/new$/)`, `/routines/new`, `/memberships/new?business=…`
 >   and `/events/new` — four segments that pressed a button whose destination this
@@ -5659,7 +5667,7 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 ### Progress tracker — update after EVERY push (Rule 11)
 
 - **EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT — 22 Sep 2026, no step
-  number — BUILT, no migration.** Stage 2 of the seven-ask message (ask 6, and
+  number — PUSHED AND LIVE (`e3246ef`), no migration.** Stage 2 of the seven-ask message (ask 6, and
   the user's own narrowing of where a class begins). `FormPage` gained a `sheet`
   shell, so all five "add something" forms — routine, membership, crew, class,
   event — open as a portalled panel over the desk that offers them, at `?new=1`
@@ -5678,10 +5686,13 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   `EventForm` had no `<h1>` at all until it moved onto the kit. Deviation row
   **C54**. **typecheck 0 · lint 0 · `next build` green · `shoot-tiles.js`
   94/94** (79 before) · **the whole e2e suite 58/58 in 17.3 min**, then **the
-  happy path 20/20 in 13.0 min** on the bundle carrying the class-form change.
-  ⚠ One red on the way did not reproduce and is recorded as UNEXPLAINED with the
-  three reasons it is not this slice (the top block has them) — the re-run was
-  taken with the server's own log captured, and that log holds no real error.
+  happy path 20/20 in 13.0 min** on the bundle carrying the class-form change ·
+  read back off the DEPLOYMENT: **`shoot-tiles.js` 94/94 against the live host**
+  and **`stranger-smoke.ps1` 11/11**, with Vercel's own list checked for this SHA
+  before either probe ran. ⚠ One red on the way did not reproduce and is recorded
+  as UNEXPLAINED with the three reasons it is not this slice (the top block has
+  them) — the re-run was taken with the server's own log captured, and that log
+  holds no real error.
 - **SETTINGS IS THE PROFILE YOU ARE IN, THE MARK IS THE SWITCHER, AND THE GAP IS
   GONE — 22 Sep 2026, no step number — BUILT, no migration.** Stage 1 of a
   seven-ask message (asks 1–5; ask 6 is every form as a sheet, ask 7 the
