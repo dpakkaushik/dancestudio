@@ -4,6 +4,7 @@ import Image from "next/image";
 import { KIND_WORD, kindOf } from "@/types/profile";
 
 import { useState, useSyncExternalStore } from "react";
+import { FigureHead } from "@/components/ui/FigureHead";
 import { QRBlock } from "@/components/ui/QRBlock";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
@@ -308,17 +309,33 @@ export function StaffDesk({
         if (!members.length && !waiting.length) return null;
         return (
           <div key={role} style={{ marginBottom: 14 }}>
-            {/* the heading (18680-18688) */}
-            <div style={{ display: "flex", alignItems: "center", gap: 7, margin: "2px 0 7px", flexWrap: "wrap" }}>
-              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: L.colour, flexShrink: 0 }} />
-              <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", color: INK }}>{L.short}</span>
-              <span style={{ fontSize: 10.5, fontWeight: 800, color: MUTED }}>· {members.length + waiting.length}</span>
-              {L.teach ? (
-                <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, padding: "2px 7px", borderRadius: 999, background: `${L.colour}22`, color: L.colour }}>CAN TAKE A CLASS</span>
-              ) : L.assist ? (
-                <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, padding: "2px 7px", borderRadius: 999, background: `${L.colour}22`, color: L.colour }}>CAN ASSIST</span>
-              ) : null}
-            </div>
+            {/* the heading (18680-18688), with the rule between it and its count
+                since 22 Sep 2026 — it was "· N", which reads as punctuation
+                between two words rather than as a heading and its figure.
+                ⚠ `align="center"`, because the title here begins with a DOT and
+                a baseline would drop the rule onto the text's own baseline. The
+                capability badge rides AFTER the figure, where it always did. */}
+            <FigureHead
+              align="center"
+              margin="2px 0 7px"
+              title={
+                <>
+                  {/* ⚠ a FRAGMENT, so the dot and the label are two flex children
+                      of the head itself and the row's own gap spaces them — a
+                      margin here would be added to that gap */}
+                  <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 4, background: L.colour, flexShrink: 0 }} />
+                  <span style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1, textTransform: "uppercase", color: INK }}>{L.short}</span>
+                </>
+              }
+              figure={<span style={{ fontSize: 10.5, fontWeight: 800, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{members.length + waiting.length}</span>}
+              after={
+                L.teach ? (
+                  <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, padding: "2px 7px", borderRadius: 999, background: `${L.colour}22`, color: L.colour, flexShrink: 0 }}>CAN TAKE A CLASS</span>
+                ) : L.assist ? (
+                  <span style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: 0.4, padding: "2px 7px", borderRadius: 999, background: `${L.colour}22`, color: L.colour, flexShrink: 0 }}>CAN ASSIST</span>
+                ) : null
+              }
+            />
 
             {members.map((m, i) => {
               const mine = m.userId === meUserId;

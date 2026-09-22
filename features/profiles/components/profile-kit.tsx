@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import { FigureHead } from "@/components/ui/FigureHead";
 import { DOS_DISPLAY, GOLD } from "@/lib/design/tokens";
 import { isPlatform, type Platform } from "@/lib/constants/socials";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -314,13 +315,23 @@ export function EntityMark({ name, photo, size = 42, radius = 13 }: { name: stri
    because a group of PEOPLE rows is not a form field — that distinction is real
    and this one was not. */
 
+/** ⚠ A SEPARATOR BETWEEN THE TITLE AND THE FIGURE (22 Sep 2026, the user: "for
+ *  all column on any page in home tab for any profile there should be a sprator
+ *  between title and figure"). It was `marginLeft: auto` — the count was pushed
+ *  to the right edge by empty space, so on a short title the two read as two
+ *  unrelated things and on a long one they nearly touched. The rule FILLS that
+ *  gap, which is what makes the number belong to the heading it trails.
+ *  ⚠ It is `FigureHead` rather than a rule written out here, because the same
+ *  ask covers every counted head on every desk and this repo's own bill for
+ *  copying a design into several screens has been paid three times already. */
 export function Group({ title, n, children }: { title: string; n: number; children: ReactNode }) {
   return (
     <div style={{ marginTop: 18 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
-        <span style={{ ...TYPE.shelf, color: "var(--text)" }}>{title}</span>
-        <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{n}</span>
-      </div>
+      <FigureHead
+        margin="0 0 2px"
+        title={<span style={{ ...TYPE.shelf, color: "var(--text)" }}>{title}</span>}
+        figure={<span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{n}</span>}
+      />
       <div style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderRadius: 16, padding: "2px 11px" }}>{children}</div>
     </div>
   );

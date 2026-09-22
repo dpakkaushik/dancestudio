@@ -683,6 +683,31 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "🪞 Mirrors", exact: true }).click();
     await expect(owner.getByText("🪞 Mirrors", { exact: false }).first()).toBeVisible();
 
+    /* ⚠ ADDING A ROOM IS A FORM NOW (22 Sep 2026, the user: "form for adding
+       asset and adding room should be same way"). Until today the ＋ CREATED the
+       room on the press — named "Room N" after a counter, holding twenty people
+       nobody had chosen — and left you to correct both on the row. Capacity is
+       the one field on this desk the database enforces on every booking, so it
+       is asked for; the old defaults are prefilled, so the same answer is still
+       one press. ⚠ The room is removed again at the end, because the rest of
+       this serial story is written against a studio with exactly one. */
+    await owner.getByRole("link", { name: "Add room" }).click();
+    const addRoom = owner.getByRole("dialog", { name: "Add room" });
+    await expect(addRoom).toBeVisible({ timeout: 15_000 });
+    await expect(owner).toHaveURL(/\/rooms\?new=1$/);
+    // the defaults are the ones the press used to apply silently
+    await expect(addRoom.getByLabel("Room name")).toHaveValue("Room 2");
+    await expect(addRoom.getByLabel("How many it holds")).toHaveValue("20");
+    await addRoom.getByLabel("Room name").fill("Studio B");
+    await addRoom.getByLabel("How many it holds").fill("12");
+    await addRoom.getByRole("button", { name: "Add room" }).click();
+    await owner.getByRole("button", { name: "Add it" }).click();
+    await expect(addRoom).toBeHidden({ timeout: 15_000 });
+    await expect(owner.getByLabel("Studio B name")).toHaveValue("Studio B", { timeout: 15_000 });
+    await expect(owner.getByLabel("Studio B capacity")).toHaveValue("12");
+    await owner.getByRole("button", { name: "Remove Studio B" }).click();
+    await expect(owner.getByLabel("Studio B name")).toHaveCount(0, { timeout: 15_000 });
+
     /* ---- THE TRAINER SIGNS UP FIRST, AND IS THEN ASKED BY NAME (Step 12b,
        re-cut 20 Sep 2026) -------------------------------------------------
        ⚠ THE ORDER OF THESE TWO IS THE PRODUCT'S, NOT THE TEST'S. Until today
@@ -1157,18 +1182,21 @@ test.describe.serial("DanceOS, end to end", () => {
        `/crews` rather than a page away. `/crews/new` is still the page. */
     await learner.waitForURL(/\/crews\?new=1$/);
     await expect(learner.getByRole("dialog", { name: "Create crew" })).toBeVisible();
-    /* ⚠ THE FORM WEARS THE ADD CLASS ANATOMY NOW (21 Sep 2026, the user:
-       "Create Crew form in crews should look similar to add class page"): a ←
-       heading, two steps, and a fixed bar whose button NAMES the missing answer
-       rather than greying out. That last part is the one worth asserting — it is
-       the prototype's own rule (15573-15578) and the reason the three forms were
-       moved onto one kit at all. */
+    /* ⚠ THE FORM WEARS THE ADD CLASS ANATOMY (21 Sep 2026, the user: "Create
+       Crew form in crews should look similar to add class page"): a ← heading
+       and a fixed bar whose button NAMES the missing answer rather than greying
+       out. That last part is the one worth asserting — it is the prototype's own
+       rule (15573-15578) and the reason the forms were moved onto one kit.
+       ⚠ AND IT IS ONE PAGE NOW (22 Sep 2026, the user: "apart from class and
+       event form all forms should be for one page"), so there is no Continue to
+       press: members were the second step and are OPTIONAL — "a crew of one is a
+       real crew" — so the bar was making somebody walk through a step they could
+       skip entirely to reach a button that was already live. */
     await expect(learner.getByRole("heading", { name: "Create crew" })).toBeVisible();
     await expect(learner.getByRole("button", { name: "Name your crew first" })).toBeVisible();
     await learner.getByLabel("Crew name").fill(crewName);
     await learner.getByLabel("Dance style", { exact: true }).click();
     await learner.getByRole("button", { name: "Hip-Hop", exact: true }).click();
-    await learner.getByRole("button", { name: "Continue" }).click();
     await learner.getByRole("button", { name: "Add a member" }).click();
     await learner.getByLabel("Search DanceOS for a dancer").fill(trainerName);
     await learner.getByRole("button", { name: `Add ${trainerName} to the crew` }).click();
@@ -2123,7 +2151,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: "Name the membership first" })).toBeVisible();
     await owner.getByLabel("Membership name").fill(passName);
     await owner.getByLabel("How many classes").fill("2");
-    await owner.getByRole("button", { name: "Continue" }).click();
+    // ⚠ no Continue: four fields, one page (22 Sep 2026)
     await owner.getByLabel("Price", { exact: true }).fill("0");
     await owner.getByLabel("Total memberships").fill("5");
     await owner.getByRole("button", { name: "Put it on sale" }).click();
@@ -2226,39 +2254,74 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText(`What ${studioName} owns`)).toBeVisible();
     // and it is not the shrug it used to be
     await expect(owner.getByText("inventory and what it is worth")).toHaveCount(0);
-    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹0 total");
+    /* ⚠ the testid is on the FIGURE now, not on the whole line (22 Sep 2026):
+       "INVENTORY · ₹0 total" became a heading, a rule and a figure, because the
+       user asked for "a sprator between title and figure" on every counted head.
+       Asserting the figure alone is the better test anyway — it was checking the
+       heading's punctuation as well as the money. */
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹0 total");
 
-    // ── THE THREE FIELDS AND NOTHING ELSE (the user's own list)
-    await owner.getByLabel("Asset name").fill(assetName);
-    await owner.getByLabel("Type of asset").selectOption("Sound & AV");
-    await owner.getByLabel("What it is worth — 0 means you already had it").fill("28000");
-    await owner.getByRole("button", { name: "Add asset" }).click();
+    /* ⚠ THE FORM OPENS OVER THE DESK (22 Sep 2026, the user: "form for adding
+       asset and adding room should be same way"). It was a card standing on this
+       desk permanently — three fields above the very list they add to, whether or
+       not you were adding anything — which is the shape the routine and
+       membership forms were in before 21 Sep. */
+    const addAsset = async (name: string, type: string, worth: string) => {
+      await owner.getByRole("link", { name: "Add asset" }).click();
+      const sheet = owner.getByRole("dialog", { name: "Add asset" });
+      await expect(sheet).toBeVisible({ timeout: 15_000 });
+      // ⚠ and the desk is still underneath, not navigated away from
+      await expect(owner.getByRole("heading", { level: 1, name: "Assets" })).toBeVisible();
+      // ── THE THREE FIELDS AND NOTHING ELSE (the user's own list)
+      await sheet.getByLabel("Asset name").fill(name);
+      await sheet.getByLabel("Type of asset").selectOption(type);
+      await sheet.getByLabel("What it is worth — 0 means you already had it").fill(worth);
+      await sheet.getByRole("button", { name: "Add asset" }).click();
+      await owner.getByRole("button", { name: "Add it" }).click();
+      await expect(sheet).toBeHidden({ timeout: 15_000 });
+    };
+
+    /* the bar NAMES the missing answer rather than greying out (15573-15578), and
+       ⚠ the VALUE is one of the answers it asks for: on the old card an empty box
+       became `Number(value || 0)`, so not typing quietly filed the asset as one
+       the business already had — a claim about money made by leaving a field alone */
+    await owner.getByRole("link", { name: "Add asset" }).click();
+    const empty = owner.getByRole("dialog", { name: "Add asset" });
+    /* ⚠ ASKED FOR BY ACCESSIBLE NAME, not by text — the button carries no
+       `aria-label`, so what a screen reader hears IS what the screen says. Five
+       of these forms grew a fixed one on 22 Sep and this segment caught it. */
+    await expect(empty.getByRole("button", { name: "Name the asset first" })).toBeVisible();
+    await empty.getByLabel("Asset name").fill("x");
+    await expect(empty.getByRole("button", { name: "Say what it is worth — ₹0 if you already had it" })).toBeVisible();
+    // and system back closes it, leaving the desk exactly where it was
+    await owner.goBack();
+    await expect(empty).toBeHidden({ timeout: 15_000 });
+    await expect(owner).toHaveURL(new RegExp(`/business/${tenantId}/assets$`));
+
+    await addAsset(assetName, "Sound & AV", "28000");
     const row = owner.getByTestId("asset-row").filter({ hasText: assetName });
     await expect(row).toBeVisible({ timeout: 15_000 });
     await expect(row.getByTestId("asset-value")).toHaveText("₹28,000");
     await expect(row.getByText("Sound & AV")).toBeVisible();
     // the total is COUNTED off the very rows it adds up (Step 25's rule)
-    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹28,000 total");
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000 total");
 
     /* ⚠ ₹0 IS THE "OLD ASSET" ANSWER, not a missing one — the prototype's own
        `₹ (0 = old)` placeholder and its own "₹0 (legacy)" row (16792). There is
        no second control, because two ways to say one thing can disagree. */
     const legacyName = `E2E Mirrors ${stamp}`;
-    await owner.getByLabel("Asset name").fill(legacyName);
-    await owner.getByLabel("Type of asset").selectOption("Mirrors");
-    await owner.getByLabel("What it is worth — 0 means you already had it").fill("0");
-    await owner.getByRole("button", { name: "Add asset" }).click();
+    await addAsset(legacyName, "Mirrors", "0");
     const legacy = owner.getByTestId("asset-row").filter({ hasText: legacyName });
     await expect(legacy.getByTestId("asset-value")).toHaveText("₹0 (legacy)", { timeout: 15_000 });
     // and it does not move the total, which is the point of counting it as zero
-    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹28,000 total");
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹28,000 total");
 
     // ── EDIT IN PLACE, the prototype's own row edit (16823-16830)
     await row.getByRole("button", { name: `Edit ${assetName}` }).click();
     await owner.getByLabel(`What ${assetName} is worth`).fill("30000");
     await row.getByRole("button", { name: "Save" }).click();
     await expect(row.getByTestId("asset-value")).toHaveText("₹30,000", { timeout: 15_000 });
-    await expect(owner.getByTestId("assets-total")).toHaveText("INVENTORY · ₹30,000 total");
+    await expect(owner.getByTestId("assets-total")).toHaveText("₹30,000 total");
 
     // ── AND REMOVING ONE IS A SOFT DELETE the list stops carrying
     await legacy.getByRole("button", { name: `Remove ${legacyName}` }).click();
@@ -2798,7 +2861,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("dialog", { name: "Add routine" })).toBeVisible();
     await expect(trainer.getByRole("button", { name: "Name the routine first" })).toBeVisible();
     await trainer.getByLabel("Routine name").fill(routineName);
-    await trainer.getByRole("button", { name: "Continue" }).click();
+    // ⚠ no Continue: five fields, one page (22 Sep 2026)
     // ⚠ NO SONG NAME FIELD since 19 Sep 2026 (the user: "just remove song name
     // from the add routine form") — the link or the MP3 IS the song
     await expect(trainer.getByLabel("Song name")).toHaveCount(0);

@@ -2,7 +2,87 @@
 
 ## LAST SESSION (22 Sep 2026) — replaced on every push (Rule 13)
 
-> ### EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT, AND A CLASS IS MADE IN THE CLASSES SECTION (22 Sep 2026, latest) — PUSHED AND LIVE (`e3246ef`), no migration
+> ### THE LAST TWO FORMS, ONE PAGE EACH, A RULE BETWEEN A HEADING AND ITS FIGURE — AND A DESK THAT HAD NO HEADING AT ALL (22 Sep 2026, latest) — BUILT, no migration
+> The user, in one message: *"start with stage 3, form for adding asset and adding
+> room should be same way, students invite doesnt need qr code. apart from class
+> and event form all forms should be for one page."* Four asks; the fourth (stage
+> 3's reorder) needs a migration and is HELD for their word (#0am).
+> * ⚠⚠ **ADD ROOM WAS NOT A FORM AT ALL, AND THAT IS THE FIND.** Pressing ＋ on the
+>   Rooms desk called `createRoomAction({ name: "Room N", capacity: 20 })` **on the
+>   press** — a room appeared, named after a counter, holding a number nobody had
+>   chosen, and you corrected both on the row afterwards. ⚠ Capacity is the one
+>   field on that desk the DATABASE enforces on every booking (`assert_room_ok`
+>   caps a class by its room), so it was a rule being set by a default. It is asked
+>   for now, with the old defaults PREFILLED — the same one press when the answer
+>   is the same, a visible answer when it is not.
+> * **ADD ASSET was a card standing on the desk permanently**, three fields above
+>   the very list they add to, whether or not you were adding anything — the shape
+>   the routine and membership forms were in before 21 Sep. Both are `FormPage`
+>   sheets at `?new=1` now, like the other five. ⚠ **Sheet-only, deliberately**:
+>   neither ever had an address, and Rule 14 protects the ones that were handed
+>   out rather than inventing new ones to keep alive.
+> * ⚠ **AND THE ASSET'S VALUE IS ASKED FOR RATHER THAN DEFAULTED.** The old card
+>   sent `Number(value || 0)`, so leaving the box alone quietly filed the asset as
+>   **one the business already had** — a claim about money made by not typing.
+> * **ONE PAGE, NO STEPS** for routine, membership and crew; class and event keep
+>   theirs, at the user's own word. ⚠ The crew's second step was MEMBERS, which is
+>   optional — *"a crew of one is a real crew"* — so the bar was making somebody
+>   walk through a step they could skip entirely to reach a button already live.
+> * ⚠⚠ **AND THE SUITE CAUGHT A REGRESSION I HAD JUST INTRODUCED, WHICH IS THE
+>   LESSON OF THE DAY.** All five rewritten forms got a FIXED `aria-label` on the
+>   primary button — so a screen reader heard "Create crew" while the button read
+>   **"Name your crew first"**. `ClassForm`, the page all of these are matched to,
+>   has never had one: its accessible name IS its visible text, which is what the
+>   prototype's "the button names the missing answer" rule requires to be true for
+>   more than the sighted. `happy-path:1192` asks for the button BY the blocker's
+>   name and went red inside seven minutes. **A convention is only followed if you
+>   read the file you are matching, not the one you are writing.**
+> * ⚠ **A SEPARATOR BETWEEN A HEADING AND ITS FIGURE** (the first half of ask 7):
+>   `components/ui/FigureHead` — the rule, its weight and the gap either side,
+>   written ONCE — on the profile pages' `Group` (19 call sites), Home's shelf
+>   head, the Students desk, the Assets inventory, the studio Team desk's role
+>   groups and Earnings' REVENUE · EXPENSES · WHAT IS LEFT. ⚠ **The TYPE is not
+>   shared and must not be**: these heads are legitimately 9.5px, 11px and 17px,
+>   and one scale would be the 16 Sep mistake in reverse. ⚠ **No figure, no rule** —
+>   a separator with nothing after it is a line that trails off.
+> * ⚠⚠ **AND `/business/{id}/rooms` HAD NO `<h1>` AT ALL, FOUND BY A BROWSER
+>   CHECK.** Its hero was a HAND-COPY of `DeskHero` with the title as a `<div>` —
+>   **the third time this exact shape has been found** (the desks on 18 Sep, the
+>   studio's Team desk on 21 Sep, `EventForm` yesterday). A copy that looks
+>   identical and is not the same element is the worst kind, because nothing on
+>   screen ever shows it. It is `DeskHero tool="rooms" as="h1"` now, which also
+>   ends the colour drift its own comment warned about.
+> * ⚠ **THE QR IS OFF THE STUDENTS INVITE** (*"students invite doesnt need qr
+>   code"*). It was a real, scannable code since 21 Sep — what it was not is USED:
+>   a studio inviting a student types a number into the field above it and presses
+>   WhatsApp. `QRBlock` is untouched and still drawn where somebody really does
+>   hold a phone up.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-tiles.js`
+>   104/104** (94 before — the ten new ones drive both sheets from their desks,
+>   assert the bar names the missing answer BY ACCESSIBLE NAME, and assert the ADD
+>   ASSET card has LEFT the desk, because a check that only looks at the new place
+>   cannot tell you the old one was cleared) · **the happy path 20/20 alone in
+>   7.5 min** · **the other six specs 29/29 in 2.1 min** · so 57 of the 58 are
+>   green across the runs.
+> * ⚠⚠ **AND THE ONE RED IS THE LEFTOVER PILE, PROVEN RATHER THAN ASSUMED.**
+>   `admin-moderation:291` cannot find its own brand-new studio on Discover, and
+>   the reason is counted: **Pune holds 56 LISTED studios and `nearby_businesses`
+>   answers 50**, so the test's own row is outside the arbitrary first fifty. They
+>   are `Mod Studio *` — that spec's own leftovers from every run killed before its
+>   cleanup, mine today included. ⚠ It fails ALONE too, so it is not the busy
+>   machine (the 11 Sep rule, applied): it is deterministic and stays red until the
+>   sweep runs. The dry run is in front of the user — **14 profiles, 479
+>   businesses, keeping 34 and 31** (#0aa).
+> * ⚠ **ONE RED IN THE WHOLE-SUITE RUN WAS THE MACHINE, AND SAYING SO COST A RUN
+>   TO EARN.** `happy-path:1858` lost a FIVE-second wait for `PRO ACTIVE` in the
+>   Settings sheet — the sheet that has arrived with HYDRATION rather than in the
+>   first HTML since stage 1 made the chrome render it — and the same spec was
+>   **20/20 alone on the same bundle**. ⚠ It also skipped seventeen later segments,
+>   the assets and crew ones among them, which is the serial-suite trap this file
+>   has recorded twice: a red early in a serial story hides everything it was
+>   supposed to prove.
+
+> ### EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT, AND A CLASS IS MADE IN THE CLASSES SECTION (22 Sep 2026) — PUSHED AND LIVE (`e3246ef`), no migration
 > **STAGE 2 of three.** The user's ask 6, in their words: *"All forms and add
 > buttons anywhere in home tab should open form like how setting page or edit
 > profile page open from the same screen. fix that for all such forms."* Asked
@@ -4780,6 +4860,62 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0am. **⚠ STAGE 3 — ONE MIGRATION WRITTEN, NOT DRY-RUN, NOT APPLIED, AND THE LIST
+   IS IN FRONT OF THE USER.** `20260922090000_a_grid_is_arranged.sql`. The user's
+   ask 7 was two things: the separator (BUILT, `FigureHead`) and *"all columns on
+   such pages should be swapable so we can place them in order of our choice"*.
+   Asked which columns, they answered **"the reorder is required for columns
+   inside tools on home tab for all profiles"**, and then, given the two readings,
+   chose **the tool TILES in the Tools panel on Home** rather than the sections
+   inside each desk. Asked earlier where the order persists: **"On the account
+   (all devices)"**. **The whole of the file:**
+   * **ONE COLUMN — `profiles.layout jsonb not null default '{}'`.** Keyed by
+     grid: `tools:user`, `tools:artist`, `tools:org`, `tools:studio:{business id}`,
+     `tools:crew:{crew id}`; each value an ordered array of tool keys.
+   * ⚠ **IT IS A PREFERENCE, NOT A FACT ABOUT ANYBODY.** The Tools panel is on
+     YOUR OWN Home, so the order is the viewer's and lives on the viewer's own
+     profile row. **No public function is touched, no policy changes, nothing a
+     stranger reads.** Two people on one studio's team each arrange that studio's
+     tools for themselves, which is right — neither is looking at the other's
+     screen.
+   * **ONE CHECK — `profiles_layout_shape`** via a new immutable helper
+     `is_a_layout(jsonb)`: an object, at most 40 grids, each an array of at most
+     40 strings of 1–40 characters, the whole column under 4 kB. ⚠ **The CHECK is
+     the real guard, not the door** — Step 1's "users update own profile" policy
+     names no columns, so the row's owner can PATCH this column directly whatever
+     the app does (the same thing the 11 Sep audit found for every other column on
+     this table). ⚠ `length(layout::text)`, never `pg_column_size`, which is
+     STABLE rather than immutable.
+   * **ONE NEW DOOR — `set_my_layout(p_key text, p_order text[])`**, SECURITY
+     **INVOKER** (the own-row policy does the work, so there is no definer to
+     audit), scoped to `auth.uid()` inside with no `p_user_id` to aim at anybody
+     else, and ATOMIC (`jsonb_set` in one statement — a read-merge-write in
+     TypeScript would let two tabs arranging two grids overwrite each other).
+     Executable by `authenticated` only; revoked from `public` and `anon`. An
+     empty order FORGETS the key, so arranging back to the default stores nothing.
+   * ⚠ **`update_my_profile` IS NOT TOUCHED.** It takes the whole profile and
+     would have to be dropped and re-created to gain an argument — the pattern
+     this file records as the one that loses an ACL — for a preference that has
+     nothing to do with a person's name or city.
+   * **Nothing is backfilled and nothing moves**: an account with no layout gets
+     `{}` and every grid draws in the order the code has always drawn it, so
+     applying this changes what nobody sees until somebody arranges something.
+   ⚠⚠ **AND IT IS IN THE TREE, SO IT WILL RIDE ALONG.** `db-push` applies every
+   PENDING file, not the one you meant — `20260919130000` went in with push 2 for
+   exactly this reason. Until this is applied or removed, **any** `db push` takes
+   it too, which is why the dry run below must list exactly one file and be read.
+   ⚠ **The app side is NOT written yet**, deliberately — it selects a column that
+   does not exist, so writing it first would mean a tree that cannot deploy. On
+   the user's word: dry-run it in a rolled-back transaction (the `pg` client, #0ac),
+   put the ACL multiset and anon's executable set in the assertions, apply, reload
+   PostgREST's schema cache, then build the ＋/Arrange control (▲▼ per tile is this
+   app's own precedent — `reorder_business_members`, `reorder_crew_members`).
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260922090000
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   # then RELOAD POSTGREST'S SCHEMA CACHE — the app will select a column that did not exist (19 Sep lesson)
+```
+
 0ak. **~~THE ASSETS SLICE IS BUILT, DRY-RUN 23/23 AND HELD~~ — ✅ APPLIED AND
    PUSHED 21 Sep 2026** on the user's *"apply it"*, after the list below had been
    in front of them. `db-push -DryRun` listed exactly the one file, the apply
@@ -5666,6 +5802,28 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE LAST TWO FORMS, ONE PAGE EACH, AND A RULE BETWEEN A HEADING AND ITS
+  FIGURE — 22 Sep 2026, no step number — BUILT, no migration.** Four asks in one
+  message. **Add asset** and **Add room** are `FormPage` sheets over their desks
+  at `?new=1` — ⚠ **Add room was not a form at all**, the ＋ created "Room N"
+  holding twenty people on the press, so capacity, the one field the database
+  enforces on every booking, was set by a default. **Routine, membership and crew
+  lost their step bars** (class and event keep theirs, at the user's word); ⚠ the
+  crew's second step was MEMBERS, which is optional, so the bar made somebody walk
+  through a step they could skip to reach a button that was already live. **The QR
+  is off the students invite.** And **`FigureHead`** puts the asked-for rule
+  between a heading and its figure on every counted head under Home — ⚠ the rule
+  is shared and the TYPE is not, because these heads are legitimately three
+  different sizes. ⚠⚠ **The suite caught a regression I had just introduced**: all
+  five rewritten forms grew a fixed `aria-label`, so a screen reader heard "Create
+  crew" while the button read "Name your crew first" — `ClassForm`, the page they
+  are matched to, has never had one. ⚠⚠ **And `/business/{id}/rooms` had no `<h1>`
+  at all** — a hand-copy of `DeskHero` with the title as a `<div>`, the THIRD time
+  that shape has been found. Deviation row **C55**. **typecheck 0 · lint 0 · build
+  green · `shoot-tiles.js` 104/104** (94 before) **· the happy path 20/20 alone ·
+  the other six specs 29/29** — ⚠ the one red is `admin-moderation`'s Discover
+  find, which fails alone too: **Pune holds 56 listed studios against
+  `nearby_businesses`' 50-row cap**, the leftover pile of #0aa.
 - **EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT — 22 Sep 2026, no step
   number — PUSHED AND LIVE (`e3246ef`), no migration.** Stage 2 of the seven-ask message (ask 6, and
   the user's own narrowing of where a class begins). `FormPage` gained a `sheet`
@@ -9724,6 +9882,7 @@ Home. **Do not "restore parity" on these.**
 | C52 | S_managed (6332-6378) is one list over everything a person runs, and this app built it at `/managed` with a proof of its own | **`/managed` IS AN ADDRESS, NOT A PAGE** — an organization runs EVENTS so it redirects to `/business`, everybody else's register is their classes so `/my-classes?show=manage`. ⚠ A REDIRECT and not a 404 (Rule 14). What made it redundant is the year before the decision: the Classes and Events tiles open the same rows through desks that can **act** on them. Its last door went with the empty-day pills (C35) hours earlier and no grid had named it since 19 Sep, so it was already reachable only by typing the address. ⚠ `ManagedScreen`, `repositories/managed.ts`, `types/managed.ts` and `rls-proof-managed.ps1` are **deleted**, because a branch nobody renders is where a defect hides — the dead "Where you stand with DanceOS ›" link found the same day had survived in exactly that way | 21 Sep 2026, the user: *"5. No need for it"* |
 | C53 | The prototype has ONE kind of account, so its settings sheet (11402-11440) is one sheet about one person, opened from the Profile tab — and this app kept that shape through every account kind it added: `MyProfilePage` was the only component that rendered `SettingsSheet`, on `?settings=1` | **SETTINGS IS THE PROFILE YOU ARE IN, AND THE CHROME RENDERS IT.** ⚠ **It could not have been per-profile before, and the reason is structural rather than a matter of which tiles it drew**: rendered by one PAGE, the only profile it could ever be about was the person whose tab that page was. `AppChrome` renders it now — the one component that knows the pathname — and the subject comes from `hereItem`, the switcher's OWN prefix match, so **the sheet's subject and the switcher's HERE mark can never disagree**, and a studio's DESKS count as being in that studio. A studio gets **THIS STUDIO** — Verification (with a verified / not-yet badge, and a page of its own at `/business/{id}/verification`, because a tile must open something and it is the one FORM on the list), Subscription, Invoices, Refunds, Payments, Enquiry types — and **not** YOU, YOUR PLAN or MONEY, which are the account's. A crew gets one honest sentence and the ACCOUNT block, because it is edited from its own home and takes no money. ⚠ **AND THE MARK IS THE SWITCHER, ON EVERY SCREEN** (before the back chip, so the way out is not spent on the way sideways) — the chip beside the gear is deleted, superseding C42's placement. ⚠ The gear **pushes** `?settings=1` rather than replacing it, so system-back closes the sheet; a replace left the param one entry behind and back re-opened it, which is the "looping" this app has now been bitten by three times. ⚠ **A studio's own home carries no standing block at all**, and is one read-set lighter for its owner as a result | 22 Sep 2026, the user: *"give invoices to studio. Studio-Invoices subscription and refunds to be managed from settings. settings are seprate for each profile type according to which profile you are in. Profile switcher should be inside the dance os logo and should remain constant everywhere."* ⚠ And **an organization's memberships DESK redirects to its events** (*"membership not required for organization"*) — ⚠ **the ask was not about the grid, which has never drawn that tile for one**: `/business/{id}/memberships` admitted the owner of ANY business they are on, and an organization OWNS its hosting row (R15), so it could type its way to a form and file a membership **nothing could ever buy**, that row being `unlisted` for ever. `/memberships/new` was already right (it filters to a studio or an artist page, with the reason on the line), so the desk was the one hole. A PRESENTATION gate — the SQL type check is still owed to the next memberships migration (#0al) |
 | C54 | Every "add something" form is a PAGE of its own — S_classform is a screen (15108-15650), and the prototype's routine and membership forms are cards that expand inside their desk (17129, 16846) | **EVERY FORM OPENS OVER THE DESK THAT OFFERED IT, AND IS STILL A PAGE AT ITS OWN ADDRESS.** `FormPage` gained a `sheet` shell — the same header and the same children inside a portalled panel — so Add routine, Add membership, Create crew, Add class and Add event all open at **`?new=1` on the desk's own URL**, with the desk underneath keeping its scroll and its reads (`next/link`, `scroll={false}`). ⚠ **The route stays and still renders full page** (Rule 14), which `shoot-tiles.js` asserts at both ends. ⚠ `FormBar`, `FormConfirm` and `FormToast` learn which shell they are in through a CONTEXT, and the last two are **portalled always**: a panel that animates makes its own stacking context, and a `position: fixed` child of one is laid against the panel and clipped (the 16 Sep lesson). ⚠⚠ **On save a sheet SPENDS its entry** — confirm closed first, `back()` a task later — because a `push` leaves `?new=1` live beneath and the next back press re-opens the form. ⚠ Every gate is re-checked on the desk: a query parameter is a request, never an authority. ⚠⚠ **And a class is made in the CLASSES section** (the user, correcting their own first instruction: *"no from inside their respective sections onin home tab only"*) — the register's pill is untouched and the **CALENDAR's** compose ＋ is what went, a screen that does not own a class having offered to make one | 22 Sep 2026, the user: *"All forms and add buttons anywhere in home tab should open form like how setting page or edit profile page open from the same screen. fix that for all such forms."* ⚠ Removing the calendar's ＋ found a door that was already dead: a person's calendar passed `composeHref="/events/new"`, a route that does not exist |
+| C55 | The prototype's add forms are two-step where they are forms at all (S_classform 15108-15650), its Rooms segment creates a room from a dashed row (18389-18425), and its section heads print a title with the figure pushed to the far edge | **THE LAST TWO "ADD SOMETHING" FORMS ARE SHEETS TOO, THREE FORMS LOST THEIR STEPS, AND A RULE RUNS BETWEEN A HEADING AND ITS FIGURE.** ⚠⚠ **ADD ROOM WAS NOT A FORM AT ALL** — the ＋ called `createRoomAction({ name: `Room N`, capacity: 20 })` on the press, so **capacity, the one field on that desk the database enforces on every booking, was set by a default**; it is asked for now, with the old defaults prefilled so the same answer is still one press. ADD ASSET was a card standing on the desk whether or not you were adding anything, and ⚠ its value is asked for rather than defaulted (an empty box became `Number(value \|\| 0)` — a claim about money made by not typing). ⚠ **Both are SHEET-ONLY**: neither ever had an address, and Rule 14 protects the ones handed out rather than inventing new ones. **Routine, membership and crew are ONE PAGE**; class and event keep their steps, at the user's word. ⚠ The crew's second step was MEMBERS, which is OPTIONAL. **The QR is off the students invite.** And **`FigureHead`** is the rule between a heading and its figure, written once, on every counted head under Home — ⚠ the rule is shared and **the TYPE is not**, because 9.5px money caps, an 11px card head and a 17px shelf head are legitimately different and one scale would be the 16 Sep mistake in reverse; ⚠ **no figure, no rule** | 22 Sep 2026, the user: *"form for adding asset and adding room should be same way, students invite doesnt need qr code. apart from class and event form all forms should be for one page"*, plus ask 7's first half (*"there should be a sprator between title and figure"*). ⚠⚠ **The suite caught a regression this row introduced**: all five rewritten forms grew a fixed `aria-label` on the primary button, so a screen reader heard "Create crew" while it read "Name your crew first" — `ClassForm`, the page they are matched to, has never had one, and its accessible name IS its visible text. ⚠⚠ **And `/business/{id}/rooms` had no `<h1>` at all**, a hand-copy of `DeskHero` with the title as a `<div>` — the THIRD time that shape has been found (18 Sep, 21 Sep, and `EventForm` on 22 Sep) |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -9744,6 +9903,7 @@ nothing to lift.
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
 | **Every form as a sheet, what stage 2 left (22 Sep 2026):** ⚠ **an EDIT still opens as a page, everywhere** — `/business/{id}/classes/{id}/edit` and `…/events/{id}/edit` are reached from a row, not from an add button, so the ask did not name them and they were not moved; a studio therefore edits a class on a screen and creates one in a sheet, which is one product wearing two shapes for one object. **`/crews/new`, `/routines/new`, `/memberships/new` and both `/…/new` routes are now reachable only by typing them** — no control in the app points at any of them any more, so they are kept alive by Rule 14 and by `shoot-tiles.js` alone; a link somebody was handed still opens, which is the whole reason they stay. **A sheet has no dirty guard**: the scrim and system back both close it with whatever was typed in it, exactly as the page's ← always has, and a half-filled class is lost in one press. **The panel is `94vh` with its own scroller**, so on a short phone the step bar scrolls away with the rest rather than pinning — the action bar is the only thing that sticks. And **`?new=1` is remembered by the browser**: reload a desk with the sheet open and it opens again, which is right, but a shared link to a desk that somebody copied mid-form carries the form with it. ⚠ And `createClassAction` / `updateClassAction` now **return instead of redirecting** when the form says it is a sheet — the one place in this app where a server action's navigation is the client's; it is a hint about navigation and grants nothing, but it does mean the register's fresh read is a `revalidatePath` + `router.refresh()` rather than the redirect's own | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit sheet when somebody asks; a dirty guard only if a real person loses work |
+| **The last two forms, the one-page collapse and the rule, what they left (22 Sep 2026):** ⚠ **an asset and a room have no EDIT sheet** — an asset is still corrected in place on its row and a room on its own, so those two objects are made in a sheet and changed on a list, which is one object wearing two shapes. **Neither form has an ADDRESS**, deliberately (nothing ever handed one out), so they are the only two "add something" forms `shoot-tiles` cannot drive by URL — if either is ever linked to, it needs a page in the same push. ⚠ **A ROOM'S AMENITIES ARE STILL NOT ASKED FOR**: a new room gets none and you fold its row open afterwards, which is unchanged and is now the one field the form does not cover. **The `₹0 = legacy` rule is now stated in two places** — the form's note and the row's own words — and they could drift. ⚠ **The separator is only where there IS a figure**, so the five micro-caps section heads that carry no count (`YOUR STUDIOS`, `CREWS YOU LEAD`, `WHERE IT CAME FROM`, `BY STUDIO`, `WHAT YOU OWE`) are untouched and still declared FIVE times in five files — the obvious consolidation, and not this slice's. And **`FigureHead` shares the rule and not the type**, so a new counted head can still pick its own scale; nothing checks that it picks one of the three that exist | S_assets 16791; settings 18389-18425; DosShelfHead 3446 | an edit sheet for each when somebody asks; one micro-caps head when a money desk is next opened |
 | **Settings per profile, the mark as the switcher and the gap, what stage 1 left (22 Sep 2026):** ⚠ **`BusinessHub` still carries a verification FORM of its own**, so a studio's verification now has two doors — the hub's card and that studio's Settings. Left standing knowingly: an organization setting up its fifteenth studio would otherwise have to switch profile fifteen times to file fifteen requests, and the hub is the one screen that sees them all. It is the exact shape C31 warned about, taken with eyes open and written down here rather than discovered later. ⚠ **A trainer's Settings has no THIS STUDIO block and no sentence** — the same silent absence as the Earnings tile. ⚠ **The sheet's subject follows `hereItem`, so on a page that belongs to no profile it is YOURS** — `/discover`, `/inbox`, `/calendar` and every drill page off them give the account's own Settings, which is right for a person and means an organization on Discover cannot reach a studio's money without going to that studio first. ⚠ **An organization has no Invoices door at all** (its hosting row's ledger is `/business/{host}/invoices`, reachable only by URL) — the studio half of that ask is done and the organization half was not named. **And the deep-linked sheet now arrives with HYDRATION** rather than in the first HTML, because the chrome reads `?settings=1` on the client: every retrying assertion is fine and a one-shot `count()` is not, which is what the one red in `shoot-hero` was | settings 11402-11440; S_payments 16531 | a hub decision if two verification doors ever confuse; an organization's Invoices when the user says where; a sentence for a trainer |
 | **The five answers, what they left (21 Sep 2026):** ⚠ **the organization-membership refusal is the APP's and not the database's** — `save_membership` takes any business whose owner is asking, so the SQL type check is owed to the next memberships migration (#0al). ~~**INVOICES still has no door on a studio's home**~~ — **CLOSED 22 Sep 2026** (C53: it is a tile in that studio's own Settings, beside Refunds and Payments, so an organization's second studio's ledger is reachable by switching profile rather than by typing). ~~**The verification and subscription strips are the owner's, and a trainer gets no sentence**~~ — **the strips are GONE** (C53), and the gap MOVED rather than closing: a trainer's Settings simply has no THIS STUDIO block, so they still cannot tell whether the studio is unverified or whether they are merely not allowed to see. ⚠ **The students gate is presentation only**: `leads` and `attendance` admit every member at the ceiling, so a visiting teacher with an API client still reads the roster and its phone numbers — closing that is a policy change on two tables, and the desk says so in its own comment. **`/managed` redirects an organization to the HUB rather than its events desk**, deliberately — that address needs the hosting row's id and `my_org_business()` provisions the row on first ask, so the redirect would be a write; the cost is that an organization typing `/managed` lands one tap from its events rather than on them | S_managed 6332-6378; settings 16428-16435 | the type check with the next memberships migration; an Invoices door when the user says which half they meant; a policy change if the roster ceiling ever matters |
 | **Earnings, what the one screen left (21 Sep 2026, trimmed the same day):** ⚠ **the sums are still counted in TypeScript** behind a 4,000-row runaway guard — ONE aggregate RPC is the right answer (aggregating inside a definer function is fine; only the PostgREST path is closed) and it is a migration, so a very busy studio's YEAR view is the first thing that would go `complete: false`. **The chart has no y-axis and no value labels** — a column's numbers are in its `aria-label` and in the figures below it, which is legible on a phone and is not a chart you could read a precise figure off. **A bucket with no money is an empty column**, so a long quiet stretch looks like a broken chart rather than a quiet one. **An ARTIST PLAN is not counted as an expense anywhere** — `subscriptions.business_id` is null for one, so it cannot be attributed to a business; it stays on the person's invoice ledger. And **enquiry money is counted from `enquiry_quotes` regardless of the enquiry's own status**, so a quote marked paid on an enquiry later marked lost still counts, which is what "recorded as received" means and may not be what a studio expects — ⚠ **the user's call, left alone on their word** along with GST and TDS. ~~`MAX_PAYOUTS = 60` truncates silently~~ and ~~subscription money is not an expense~~ are **both CLOSED the same day**; ~~`/business/stats` disagrees with `/business/earnings`~~ was **NOT a disagreement** — that page says *"Studios · combined"* and **GROSS · ALL STUDIOS** with the event money in its own card below, so the two answer different questions and each says which | S_earn 17877-18205 | the aggregate RPC when migrations are being written anyway; GST, TDS and the enquiry rule are the user's |

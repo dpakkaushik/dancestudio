@@ -13,7 +13,6 @@ import {
   FormSummary,
   FormToast,
   formPrimary,
-  formSecondary,
 } from "@/components/ui/FormPage";
 import { saveMembershipAction } from "@/features/memberships/server-actions/memberships";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
@@ -29,7 +28,9 @@ import { INK, LILAC, SUB } from "@/lib/design/tokens";
  *  has, and this one splits the same four: what the pass IS, then what it costs
  *  and how many exist. No expiry, no tiers, nothing the user did not ask for. */
 
-const STEPS = ["What it is", "Price & how many"] as const;
+/* ⚠ ONE PAGE, NO STEPS (22 Sep 2026, the user: "apart from class and event form
+   all forms should be for one page"). Four fields — the user's own four — do not
+   need a step bar telling somebody there is more to come. */
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
@@ -49,7 +50,6 @@ export function MembershipForm({
   backTo?: string;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -64,13 +64,12 @@ export function MembershipForm({
   const price = Number(f.price);
   const total = Number(f.total);
 
-  const stepOneErr = !f.name.trim()
-    ? "Name the membership first"
-    : !Number.isFinite(units) || units <= 0
-      ? `Say how many ${f.unit} it is worth`
-      : null;
-
+  /* ⚠ ONE LIST, BECAUSE THERE IS ONE PAGE (22 Sep 2026) — the first two used to
+     be the first step's own gate, and the bar names whichever is missing in the
+     order the fields are asked */
   const blockers: string[] = [];
+  if (!f.name.trim()) blockers.push("Name the membership first");
+  if (!Number.isFinite(units) || units <= 0) blockers.push(`Say how many ${f.unit} it is worth`);
   if (!Number.isFinite(price) || price < 0) blockers.push("Put a price on it — ₹0 is allowed");
   if (!Number.isFinite(total) || total < 1) blockers.push("Say how many of these may be sold");
   const ready = blockers.length === 0;
@@ -106,9 +105,8 @@ export function MembershipForm({
   const unitWord = f.unit === "hours" ? "hours" : "classes";
 
   return (
-    <FormPage title="Add membership" steps={STEPS} step={step} sheet={sheet} onClose={() => router.back()} onBack={() => (step > 0 ? setStep(0) : router.back())}>
-      {step === 0 ? (
-        <>
+    <FormPage title="Add membership" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
+      <>
           <div style={FORM_LABEL}>NAME</div>
           <input aria-label="Membership name" value={f.name} onChange={(e) => setF((x) => ({ ...x, name: e.target.value.slice(0, 80) }))} placeholder="e.g. 10 classes" style={FORM_INPUT} />
 
@@ -134,9 +132,7 @@ export function MembershipForm({
             placeholder={f.unit === "hours" ? "How many hours" : "How many classes"}
             style={FORM_INPUT}
           />
-        </>
-      ) : (
-        <>
+
           <div style={FORM_LABEL}>PRICE</div>
           <input aria-label="Price" inputMode="numeric" value={f.price} onChange={(e) => setF((x) => ({ ...x, price: e.target.value }))} placeholder="₹ — 0 for a free one" style={FORM_INPUT} />
 
@@ -148,24 +144,12 @@ export function MembershipForm({
               ? `Sold from ${sellerName}'s page through the same payment window a class seat uses. A pass keeps the price it was bought at, so changing this later never rewrites what somebody already holds.`
               : `Sold from ${sellerName}'s page. A free one is active the moment somebody takes it — there is no payment step to wait on.`}
           </FormNote>
-        </>
-      )}
+      </>
 
       <FormBar>
-        {step === 0 ? (
-          <button type="button" aria-disabled={Boolean(stepOneErr)} onClick={() => (stepOneErr ? fire(stepOneErr) : setStep(1))} style={{ ...formPrimary(!stepOneErr), flex: 1 }}>
-            {stepOneErr ?? "Continue"}
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={() => setStep(0)} style={formSecondary}>
-              Back
-            </button>
-            <button type="button" aria-label="Put it on sale" aria-disabled={!ready} onClick={() => (ready ? setConfirm(true) : fire(blockers[0]))} style={formPrimary(ready)}>
-              {ready ? "Put it on sale" : blockers[0]}
-            </button>
-          </>
-        )}
+        <button type="button" aria-disabled={!ready} onClick={() => (ready ? setConfirm(true) : fire(blockers[0]))} style={{ ...formPrimary(ready), flex: 1 }}>
+          {ready ? "Put it on sale" : blockers[0]}
+        </button>
       </FormBar>
 
       {confirm ? (

@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { QRBlock } from "@/components/ui/QRBlock";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
+import { FigureHead } from "@/components/ui/FigureHead";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { photoUrl } from "@/lib/media/photo";
@@ -38,11 +38,15 @@ import type { Student } from "@/repositories/students";
  *  button here would be a door that does not open — the exact thing this
  *  codebase keeps refusing to ship. Instead the number or the address opens the
  *  studio's OWN WhatsApp, SMS app or mail client with the invite written, which
- *  works today, from a phone, with nothing signed up for. Copy link and the QR
- *  are the same invite for somebody standing at the desk. */
+ *  works today, from a phone, with nothing signed up for. Copy link is the same
+ *  invite for somebody standing at the desk — ⚠ and the QR beside it is gone
+ *  (22 Sep 2026, the user: "students invite doesnt need qr code"). */
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
+
+/** this desk's own section head — micro-caps, the shape five desks draw */
+const deskHead: React.CSSProperties = { fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)" };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -126,9 +130,14 @@ export function StudentsDesk({
         Everybody who has been <b>checked in</b> here or holds one of your memberships, plus anybody you added yourself. It counts attendance, not bookings — a seat nobody marked is not a session danced.
       </div>
 
-      <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", margin: "0 2px 8px" }}>
-        STUDENTS · {students.length}
-      </div>
+      {/* ⚠ the rule between the heading and its figure (22 Sep 2026) — it was a
+          "·", which reads as punctuation between two words rather than as a
+          heading and the number that belongs to it */}
+      <FigureHead
+        margin="0 2px 8px"
+        title={<span style={deskHead}>STUDENTS</span>}
+        figure={<span style={{ ...deskHead, fontVariantNumeric: "tabular-nums" }}>{students.length}</span>}
+      />
 
       {list.map((s) => {
         const key = s.userId ?? s.leadId ?? s.name;
@@ -292,21 +301,23 @@ function InviteSheet({
           )}
         </div>
 
-        {/* the same invite for somebody standing in front of you */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, padding: "12px", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14 }}>
-          {/* ⚠ 132, not 72: the line beside it says "they scan it", and since
-              21 Sep this is a REAL code — an invite URL is a version-5 code at
-              37 modules, so 72px gave it 1.6 pixels a module and no phone would
-              have read it. A control that says what it does has to be able to
-              do it. */}
-          <QRBlock code={inviteUrl} size={132} label="Invite link" />
+        {/* ⚠ NO QR HERE ANY MORE (22 Sep 2026, the user: "students invite doesnt
+            need qr code"). It was a real code and it was scannable — what it was
+            not is USED: a studio inviting a student is typing a number or an
+            address into the field above and pressing WhatsApp, and the square
+            was 132 pixels of a screen answering a question nobody on this desk
+            asks. The LINK is the thing both halves share, so Copy link stays and
+            is the whole of the in-person answer. `QRBlock` is untouched and
+            still drawn where somebody really does hold a phone up — a profile's
+            own sheet and the pass at a class door. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "12px", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 14 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)" }}>OR IN PERSON</div>
-            <div style={{ fontSize: 11, color: SUB, margin: "3px 0 8px", lineHeight: 1.45 }}>They scan it, or you send the link.</div>
-            <button type="button" onClick={() => void copy()} style={{ padding: "8px 14px", borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, color: INK, fontWeight: 800, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit" }}>
-              Copy link
-            </button>
+            <div style={{ fontSize: 11, color: SUB, marginTop: 3, lineHeight: 1.45 }}>Send them the link however you like.</div>
           </div>
+          <button type="button" onClick={() => void copy()} style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 999, background: "var(--solid)", border: `1.5px solid ${EL}`, color: INK, fontWeight: 800, fontSize: 11.5, cursor: "pointer", fontFamily: "inherit" }}>
+            Copy link
+          </button>
         </div>
 
         <button type="button" onClick={onClose} style={{ width: "100%", marginTop: 14, padding: 13, borderRadius: 999, background: CARD, border: `1.5px solid ${EL}`, color: INK, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>

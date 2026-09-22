@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
+import { FigureHead } from "@/components/ui/FigureHead";
 import { removeAssetAction, saveAssetAction } from "@/features/assets/server-actions/assets";
 import { DeskHero, BizToast } from "@/features/tenants/components/biz-kit";
-import { eyebrow, rupees } from "@/features/settings/components/settings-kit";
+import { DeskAddButton, eyebrow, rupees } from "@/features/settings/components/settings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { ASSET_CATEGORIES, type Asset } from "@/repositories/assets";
 
@@ -12,9 +13,12 @@ import { ASSET_CATEGORIES, type Asset } from "@/repositories/assets";
  *  "Fix assets for both artist, studio and organization. Make sure to just add
  *  name type of asset and price/ Old asset").
  *
- *  The prototype's S_assets (16791) lifted, and the user's "just" honoured:
- *  ADD ASSET is three fields on one card — a name, the TYPE from a closed list,
- *  and a value — then INVENTORY with the total, then a row each.
+ *  The prototype's S_assets (16791) lifted, and the user's "just" honoured: an
+ *  asset is three things — a name, the TYPE from a closed list, and a value.
+ *  The desk is the ＋, then INVENTORY with the total, then a row each; ⚠ the
+ *  three fields are `AssetForm`, opened over this desk at `?new=1` since 22 Sep
+ *  2026, because they were a card standing here permanently whether or not
+ *  anybody was adding anything.
  *
  *  ⚠ "₹0 = OLD ASSET" IS THE PRICE FIELD, not a second control. The prototype's
  *  own placeholder is `₹ (0 = old)` and its row prints "₹0 (legacy)" (16792,
@@ -43,9 +47,6 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
   const router = useRouter();
   const [pending, start] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<string>(ASSET_CATEGORIES[0]);
-  const [value, setValue] = useState("");
   /** the row being edited, and the two fields it edits in place (16823-16830) */
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -57,17 +58,6 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
   };
 
   const total = assets.reduce((n, a) => n + a.valueInr, 0);
-
-  const add = () =>
-    start(async () => {
-      if (!name.trim()) return fire("Name the asset");
-      const out = await saveAssetAction({ businessId, name, category: category as (typeof ASSET_CATEGORIES)[number], valueInr: Number(value || 0) });
-      if (out.error) return fire(out.error);
-      setName("");
-      setValue("");
-      fire("📦 Asset added");
-      router.refresh();
-    });
 
   const saveEdit = (a: Asset) =>
     start(async () => {
@@ -98,35 +88,27 @@ export function AssetsDesk({ businessId, businessName, assets }: { businessId: s
       {/* whose — an organization runs several businesses, and the tool hero names the tool */}
       <div style={{ fontSize: 11.5, color: SUB, fontWeight: 800, margin: "0 0 12px" }}>What {businessName} owns</div>
 
-      <div style={card}>
-        <div style={{ ...eyebrow, marginBottom: 8 }}>ADD ASSET</div>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Asset name" aria-label="Asset name" maxLength={80} style={{ ...field, marginBottom: 8 }} />
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Type of asset" style={{ ...field, flex: 1, width: "auto", fontSize: 12, fontWeight: 700, WebkitAppearance: "none", appearance: "none" }}>
-            {ASSET_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          {/* the prototype's own placeholder — the field IS the "old asset" answer */}
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value.replace(/[^\d]/g, ""))}
-            placeholder="₹ (0 = old)"
-            aria-label="What it is worth — 0 means you already had it"
-            inputMode="numeric"
-            style={{ ...field, width: 108, flexShrink: 0 }}
-          />
-        </div>
-        <button type="button" onClick={add} disabled={pending} style={{ ...primary, marginTop: 10 }}>
-          Add asset
-        </button>
-      </div>
+      {/* ⚠ THE ADD FORM LEFT THIS DESK (22 Sep 2026, the user: "form for adding
+          asset and adding room should be same way"). It was a card sitting here
+          permanently — three fields above the very list they add to, whether or
+          not you were adding anything — which is exactly the shape the routine
+          and membership forms were in before 21 Sep. The ＋ opens it over the
+          desk now, like every other "add something" in the app. */}
+      <DeskAddButton label="Add asset" href="?new=1" />
 
-      <div style={{ ...eyebrow, margin: "4px 0 8px" }} data-testid="assets-total">
-        INVENTORY · {rupees(total)} total
-      </div>
+      {/* ⚠ the rule between the heading and its figure (22 Sep 2026) — a "·"
+          reads as punctuation between two words, not as a heading and the total
+          that belongs to it. The total is still COUNTED off the very rows below
+          it, which is Step 25's rule. */}
+      <FigureHead
+        margin="4px 0 8px"
+        title={<span style={eyebrow}>INVENTORY</span>}
+        figure={
+          <span style={{ ...eyebrow, fontVariantNumeric: "tabular-nums" }} data-testid="assets-total">
+            {rupees(total)} total
+          </span>
+        }
+      />
 
       {assets.map((a) => (
         <div key={a.id} style={{ ...card, padding: "11px 13px" }} data-testid="asset-row">

@@ -289,6 +289,47 @@ async function pressEveryTile(page, who, expectedNames) {
       check((res ? res.status() : 0) < 400 && !blank, `studio · ${want} -> ${landed}${blank ? " ⚠ BLANK" : ""}`);
     }
 
+    /* ⚠ THE LAST TWO "ADD SOMETHING" FORMS (22 Sep 2026, the user: "form for
+       adding asset and adding room should be same way"). These two are the
+       reason the ask exists: ADD ASSET was a card standing on the desk whether
+       or not you were adding anything, and ADD ROOM was no form at all — the ＋
+       created "Room N" holding twenty people on the press.
+       ⚠ Both are SHEET-ONLY, so unlike the other five there is no page to assert
+       at the other end: neither ever had an address, and Rule 14 protects the
+       ones that were handed out rather than inventing new ones. */
+    for (const [tool, label, dialog, blocker] of [
+      ["assets", "Add asset", "Add asset", "Name the asset first"],
+      ["rooms", "Add room", "Add room", null],
+    ]) {
+      await p3.goto(`${BASE}/business/${studio.id}/${tool}`, { waitUntil: "networkidle" });
+      const before = await p3.locator("h1").first().innerText().catch(() => "");
+      await p3.getByRole("link", { name: label }).click();
+      const sheet = p3.getByRole("dialog", { name: dialog });
+      await sheet.waitFor({ timeout: 15_000 }).catch(() => {});
+      check(await sheet.isVisible().catch(() => false), `studio · ${label} opens a sheet over the ${tool} desk`);
+      check(new URL(p3.url()).search === "?new=1", `studio · the ${tool} sheet is the URL (${new URL(p3.url()).search})`);
+      check((await p3.locator("h1").first().innerText().catch(() => "")) === before, `studio · the ${tool} desk is still underneath it`);
+      /* ⚠ THE BAR NAMES THE MISSING ANSWER rather than greying out (15573-15578),
+         and it is the button's ACCESSIBLE NAME that says so, not just its text:
+         a fixed `aria-label` here would tell a screen reader "Add asset" while
+         the screen says "Name the asset first". `ClassForm`, the page all of
+         these are matched to, has never had one — I put one on all five on
+         22 Sep and the suite caught it within the hour. */
+      if (blocker) {
+        check(await sheet.getByRole("button", { name: blocker }).isVisible().catch(() => false), `studio · and the ${tool} bar names what is missing ("${blocker}")`);
+      } else {
+        check(await sheet.getByRole("button", { name: label }).isVisible().catch(() => false), `studio · and the ${tool} bar is ready, because its defaults are prefilled`);
+      }
+      await p3.goBack();
+      await p3.waitForTimeout(600);
+      check(!(await sheet.isVisible().catch(() => false)), `studio · back closes the ${tool} sheet and leaves the desk`);
+    }
+    /* ⚠ AND THE CARD THAT USED TO STAND ON THE ASSETS DESK IS GONE — a check
+       that only looks at the new place cannot tell you the old one was cleared,
+       which this file has been wrong about twice */
+    await p3.goto(`${BASE}/business/${studio.id}/assets`, { waitUntil: "networkidle" });
+    check((await p3.getByLabel("Asset name").count()) === 0, "studio · and the ADD ASSET card has LEFT the desk");
+
     /* ⚠⚠ THE SWITCHER IS INSIDE THE MARK, AND BOTH IT AND THE GEAR ARE ON A
        DRILL PAGE (21 Sep 2026, the user: "Profile switcher should be inside the
        dance os logo and should remain constant everywhere").

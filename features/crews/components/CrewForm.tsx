@@ -17,7 +17,6 @@ import {
   FormSummary,
   FormToast,
   formPrimary,
-  formSecondary,
 } from "@/components/ui/FormPage";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { SUB } from "@/lib/design/tokens";
@@ -40,9 +39,13 @@ import { pressKey } from "./crew-kit";
  *  ⚠ Everyone named is ASKED, never written onto a public roster — the rule
  *  since Step 22, and the confirm sheet says it in as many words. */
 
+/* ⚠ ONE PAGE, NO STEPS (22 Sep 2026, the user: "apart from class and event form
+   all forms should be for one page"). Members were the second step and are
+   OPTIONAL — "a crew of one is a real crew" — so the bar used to make somebody
+   walk through a step they could skip entirely, and the name and the city, which
+   are the only two answers the database needs, sat behind a Continue. */
 export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string | null; sheet?: boolean }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   /* the leader's own city to start with; a crew has no address to read one off,
      so the field is the app's one city control (11 / 19 Sep 2026) */
@@ -87,9 +90,8 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
   };
 
   return (
-    <FormPage title="Create crew" steps={["The crew", "Members"]} step={step} sheet={sheet} onClose={() => router.back()} onBack={() => (step > 0 ? setStep(0) : router.back())}>
-      {step === 0 ? (
-        <>
+    <FormPage title="Create crew" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
+      <>
           <div style={FORM_LABEL}>CREW NAME</div>
           <input value={name} aria-label="Crew name" onChange={(e) => setName(e.target.value.slice(0, 64))} placeholder="e.g. EEE Crew" style={FORM_INPUT} />
 
@@ -99,9 +101,7 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
           <div style={FORM_LABEL}>DANCE STYLE</div>
           {/* the app's one style picker (9561) — searchable, "All styles" above the list */}
           <DosStylePicker value={style} onChange={setStyle} all placeholder="Dance style" />
-        </>
-      ) : (
-        <>
+
           <div style={FORM_LABEL}>MEMBERS · {members.length} added</div>
           <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
             {members.map((m) => {
@@ -148,29 +148,18 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
               ? `Nobody is put on a public roster without saying yes — each of the ${members.length} will be asked, and the crew is yours from the moment you create it.`
               : "A crew of one is a real crew. You can ask people onto it any time from the crew's own desk."}
           </FormNote>
-        </>
-      )}
+      </>
 
       <FormBar>
-        {step === 0 ? (
-          <button
-            type="button"
-            aria-disabled={Boolean(stepOneErr)}
-            onClick={() => (stepOneErr ? fire(stepOneErr) : setStep(1))}
-            style={{ ...formPrimary(!stepOneErr), flex: 1 }}
-          >
-            {stepOneErr ?? "Continue"}
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={() => setStep(0)} style={formSecondary}>
-              Back
-            </button>
-            <button type="button" aria-label="Create crew" onClick={() => setConfirm(true)} style={formPrimary(true)}>
-              Create crew
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          
+          aria-disabled={Boolean(stepOneErr)}
+          onClick={() => (stepOneErr ? fire(stepOneErr) : setConfirm(true))}
+          style={{ ...formPrimary(!stepOneErr), flex: 1 }}
+        >
+          {stepOneErr ?? "Create crew"}
+        </button>
       </FormBar>
 
       {confirm ? (

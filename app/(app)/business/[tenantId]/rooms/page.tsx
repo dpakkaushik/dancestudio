@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { RoomForm } from "@/features/rooms/components/RoomForm";
 import { RoomsManager } from "@/features/rooms/components/RoomsManager";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findRoomsByTenant } from "@/repositories/rooms";
@@ -6,10 +7,16 @@ import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
 export default async function TenantRoomsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tenantId: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { tenantId } = await params;
+  /* the form opens over the desk at `?new=1` (22 Sep 2026) — and the gate is
+     re-checked below against `canEdit`, because a query parameter is a request
+     and never an authority */
+  const opening = (await searchParams).new === "1";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -34,13 +41,17 @@ export default async function TenantRoomsPage({
     findRoomsByTenant(supabase, tenantId),
     findMyMembershipRole(supabase, tenantId),
   ]);
+  const canEdit = myRole === "owner" || myRole === "trainer";
   return (
-    <RoomsManager
-      tenantId={tenantId}
-      tenantName={tenant.name}
-      tenantWhere={[tenant.area, tenant.city].filter(Boolean).join(", ") || "Your studio"}
-      rooms={rooms}
-      canEdit={myRole === "owner" || myRole === "trainer"}
-    />
+    <>
+      <RoomsManager
+        tenantId={tenantId}
+        tenantName={tenant.name}
+        tenantWhere={[tenant.area, tenant.city].filter(Boolean).join(", ") || "Your studio"}
+        rooms={rooms}
+        canEdit={canEdit}
+      />
+      {opening && canEdit ? <RoomForm tenantId={tenantId} tenantName={tenant.name} defaultName={`Room ${rooms.length + 1}`} /> : null}
+    </>
   );
 }

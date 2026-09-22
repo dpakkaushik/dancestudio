@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { AssetForm } from "@/features/assets/components/AssetForm";
 import { AssetsDesk } from "@/features/assets/components/AssetsDesk";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findBusinessAssets } from "@/repositories/assets";
@@ -17,8 +18,19 @@ import { findMyMemberships as findMyTeams } from "@/repositories/tenants";
  *  desk's kind of fact, not the register's: a trainer has no business reading
  *  what the floor cost. So this is a presentation gate over a REAL one, not
  *  instead of one. */
-export default async function BusinessAssetsPage({ params }: { params: Promise<{ tenantId: string }> }) {
+export default async function BusinessAssetsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ tenantId: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { tenantId } = await params;
+  /* ⚠ THE FORM OPENS OVER THE DESK (22 Sep 2026), and `?new=1` is what says so —
+     the same shape as the gear's `?settings=1`. The gate needs no second check
+     here for once: this whole page is the owner's, and a non-owner is redirected
+     four lines below before anything is rendered at all. */
+  const opening = (await searchParams).new === "1";
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -38,5 +50,10 @@ export default async function BusinessAssetsPage({ params }: { params: Promise<{
     redirect(`/business/${tenantId}`);
   }
   const assets = await findBusinessAssets(supabase, tenantId).catch(() => []);
-  return <AssetsDesk businessId={tenantId} businessName={seat.tenant.name} assets={assets} />;
+  return (
+    <>
+      <AssetsDesk businessId={tenantId} businessName={seat.tenant.name} assets={assets} />
+      {opening ? <AssetForm businessId={tenantId} businessName={seat.tenant.name} /> : null}
+    </>
+  );
 }

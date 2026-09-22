@@ -14,7 +14,6 @@ import {
   FormSummary,
   FormToast,
   formPrimary,
-  formSecondary,
 } from "@/components/ui/FormPage";
 import { saveRoutineAction } from "@/features/routines/server-actions/routines";
 import { DOS_LEVELS, DOS_LEVEL_LABEL, dosStyleColor } from "@/lib/constants/styles";
@@ -37,11 +36,16 @@ import type { ClassLevel } from "@/types/class";
  *  never rides a server action and only the PATH is sent, so moving the form to
  *  a page moved the upload with it rather than through a new door. */
 
-const STEPS = ["The routine", "Song & video"] as const;
+/* ⚠ ONE PAGE, NO STEPS (22 Sep 2026, the user: "apart from class and event form
+   all forms should be for one page"). It had two — "The routine" then "Song &
+   video" — and the reason it is right to collapse them is the count: five
+   fields. A step bar over five fields tells you there is more to come and then
+   there is not, which is a promise the form cannot keep; a class and an event
+   keep theirs because each is genuinely two decisions (when and where, then who
+   and what it costs). The FIELDS are untouched. */
 
 export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?: boolean }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -80,9 +84,10 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
     }
   };
 
-  const stepOneErr = !f.title.trim() ? "Name the routine first" : null;
-  /* both are required by the database, so the bar names whichever is missing */
+  /* all three are required by the database, so the bar names whichever is
+     missing — the name included, which used to be the first step's own gate */
   const blockers: string[] = [];
+  if (!f.title.trim()) blockers.push("Name the routine first");
   if (!f.songUrl.trim()) blockers.push(f.songSrc === "file" ? "Attach the MP3, or paste a link instead" : "Paste the song link");
   if (!f.videoUrl.trim()) blockers.push("Paste the video link");
   const ready = blockers.length === 0;
@@ -119,9 +124,8 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
   };
 
   return (
-    <FormPage title="Add routine" steps={STEPS} step={step} sheet={sheet} onClose={() => router.back()} onBack={() => (step > 0 ? setStep(0) : router.back())}>
-      {step === 0 ? (
-        <>
+    <FormPage title="Add routine" sheet={sheet} onClose={() => router.back()} onBack={() => router.back()}>
+      <>
           <div style={FORM_LABEL}>ROUTINE NAME</div>
           <input aria-label="Routine name" value={f.title} onChange={(e) => setF((x) => ({ ...x, title: e.target.value.slice(0, 120) }))} placeholder="e.g. Saturday set" style={FORM_INPUT} />
 
@@ -142,9 +146,7 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
               </button>
             ))}
           </div>
-        </>
-      ) : (
-        <>
+
           <div style={FORM_LABEL}>SONG · required</div>
           <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>
             {([["link", "Paste link"], ["file", "Add MP3"]] as const).map(([k, l]) => (
@@ -187,24 +189,12 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
           <FormNote blockers={blockers.length ? blockers : undefined}>
             A routine is yours, not a studio&rsquo;s — you carry it from one to the next. Attach it to a class from that class&rsquo;s own page.
           </FormNote>
-        </>
-      )}
+      </>
 
       <FormBar>
-        {step === 0 ? (
-          <button type="button" aria-disabled={Boolean(stepOneErr)} onClick={() => (stepOneErr ? fire(stepOneErr) : setStep(1))} style={{ ...formPrimary(!stepOneErr), flex: 1 }}>
-            {stepOneErr ?? "Continue"}
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={() => setStep(0)} style={formSecondary}>
-              Back
-            </button>
-            <button type="button" aria-label="Save routine" aria-disabled={!ready} onClick={() => (ready ? setConfirm(true) : fire(blockers[0]))} style={formPrimary(ready)}>
-              {ready ? "Save routine" : blockers[0]}
-            </button>
-          </>
-        )}
+        <button type="button" aria-disabled={!ready} onClick={() => (ready ? setConfirm(true) : fire(blockers[0]))} style={{ ...formPrimary(ready), flex: 1 }}>
+          {ready ? "Save routine" : blockers[0]}
+        </button>
       </FormBar>
 
       {confirm ? (

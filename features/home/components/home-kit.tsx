@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
+import { FigureHead } from "@/components/ui/FigureHead";
 import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { CrewI, dosToolPaint } from "@/features/crews/components/crew-kit";
 import { EventI } from "@/features/discovery/components/discover-kit";
@@ -17,12 +18,16 @@ export const HOME_TYPE = {
   micro: { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase" } as CSSProperties,
 };
 
-/* a shelf heading: sentence case, big, with whatever the shelf offers on the right (3446-3450) */
+/* a shelf heading: sentence case, big, with whatever the shelf offers on the
+   right (3446-3450) — ⚠ with a RULE between the two since 22 Sep 2026, the same
+   ask as every other counted head ("a sprator between title and figure"). It was
+   `marginLeft: auto`, so "3 today" was pushed to the far edge by empty space. */
 export const DosShelfHead = ({ children, right, pad = "0 16px 10px" }: { children: ReactNode; right?: ReactNode; pad?: string }) => (
-  <div style={{ display: "flex", alignItems: "baseline", gap: 8, padding: pad }}>
-    <span style={{ ...HOME_TYPE.shelf, color: INK }}>{children}</span>
-    {right ? <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 800, color: MUTED }}>{right}</span> : null}
-  </div>
+  <FigureHead
+    padding={pad}
+    title={<span style={{ ...HOME_TYPE.shelf, color: INK }}>{children}</span>}
+    figure={right ? <span style={{ fontSize: 10, fontWeight: 800, color: MUTED }}>{right}</span> : undefined}
+  />
 );
 
 /** THE HEADING OVER EVERY TOOL GRID (18 Sep 2026, the user: "all tools in the

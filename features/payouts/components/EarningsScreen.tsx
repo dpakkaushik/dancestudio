@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { FigureHead } from "@/components/ui/FigureHead";
 import { EarningsChart } from "@/features/payouts/components/EarningsChart";
 import { money } from "@/features/payouts/components/earnings-kit";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -40,12 +41,18 @@ function Breakup({ title, lines, total, tone, empty }: { title: string; lines: M
   const max = Math.max(1, ...lines.map((l) => l.amountInr));
   return (
     <div style={card}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: lines.length ? 10 : 0 }}>
-        <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>{title}</span>
-        <b style={{ fontSize: 17, fontWeight: 900, color: tone }} data-testid={`earn-${title.toLowerCase()}`}>
-          {money(total)}
-        </b>
-      </div>
+      {/* the rule between the heading and its figure (22 Sep 2026) — it was
+          `justify-content: space-between`, so on a phone REVENUE and the number
+          sat at opposite edges with a hand's width of nothing between them */}
+      <FigureHead
+        margin={`0 0 ${lines.length ? 10 : 0}px`}
+        title={<span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>{title}</span>}
+        figure={
+          <b style={{ fontSize: 17, fontWeight: 900, color: tone }} data-testid={`earn-${title.toLowerCase()}`}>
+            {money(total)}
+          </b>
+        }
+      />
       {lines.map((l) => {
         const row = (
           <>
@@ -197,12 +204,14 @@ export function EarningsScreen({
           The prototype's S_earn prints all three; printing them at ₹0 would be a
           claim about money rather than a measurement of it. */}
       <div style={{ ...card, background: left < 0 ? "rgba(248,113,113,.10)" : "rgba(34,197,94,.10)", border: `1.5px solid ${left < 0 ? "#F87171" : "#22C55E"}55` }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>WHAT IS LEFT</span>
-          <b style={{ fontSize: 22, fontWeight: 900, color: left < 0 ? "#F87171" : "#22C55E" }} data-testid="earn-left">
-            {money(left)}
-          </b>
-        </div>
+        <FigureHead
+          title={<span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>WHAT IS LEFT</span>}
+          figure={
+            <b style={{ fontSize: 22, fontWeight: 900, color: left < 0 ? "#F87171" : "#22C55E" }} data-testid="earn-left">
+              {money(left)}
+            </b>
+          }
+        />
         <div style={{ fontSize: 10.5, color: SUB, marginTop: 5, lineHeight: 1.5 }}>
           {noExpenses
             ? "Everything a studio has paid you. DanceOS records it, it does not move the money."

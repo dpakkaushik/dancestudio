@@ -2,14 +2,10 @@
 
 import { useState } from "react";
 import { dosKey } from "@/features/classes/components/ShareSheet";
-import {
-  createRoomAction,
-  deleteRoomAction,
-  updateRoomAction,
-} from "@/features/rooms/server-actions/rooms";
-import { DOS_TOOLS, dosToolPaint } from "@/features/tenants/components/biz-kit";
+import { deleteRoomAction, updateRoomAction } from "@/features/rooms/server-actions/rooms";
+import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { DOS_AMENITIES } from "@/lib/constants/amenities";
-import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
+import { DOS_UI } from "@/lib/design/tokens";
 import type { Room } from "@/types/room";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 
@@ -107,13 +103,16 @@ export function RoomsManager({
         color: "var(--text)",
       }}
     >
-      {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else */}
-      {/* ⚠ reads the tool's own colour (18 Sep 2026) — it hardcoded #3498DB, so
-          when the palette moved Rooms to indigo the tile and its page disagreed */}
-      <div style={{ borderRadius: 22, padding: "15px 17px 14px", marginBottom: 12, position: "relative", overflow: "hidden", color: "#fff", background: dosToolPaint(DOS_TOOLS.rooms.c) }}>
-        <div aria-hidden="true" style={{ position: "absolute", right: -28, top: -32, width: 130, height: 130, borderRadius: 65, background: "rgba(255,255,255,.13)" }} />
-        <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: -0.5, position: "relative", fontFamily: DOS_DISPLAY, lineHeight: 1.18 }}>Rooms</div>
-      </div>
+      {/* BizShell's hero (2964-2976): the tile's paint, the tool's name, nothing else.
+          ⚠⚠ AND IT IS THE SHARED ONE NOW (22 Sep 2026) — it was a HAND-COPY with
+          the title as a `<div>`, so this page rendered no `<h1>` at all for a
+          screen reader while every other desk renders one. That is the same gap
+          `DeskHero as="h1"` closed for the desks on 18 Sep, that the studio's
+          Team desk carried until 21 Sep, and that `EventForm` carried until
+          yesterday — three times now, always a copy that LOOKS identical and is
+          not the same element, which is the kind nothing on screen ever shows.
+          Found by a browser check asking what this page's heading is. */}
+      <DeskHero tool="rooms" as="h1" margin="0 0 12px" />
 
       {/* ⚠ AND ONLY FOR SOMEBODY WHO MAY ACTUALLY EDIT ONE (21 Sep 2026). Rooms
           are written by an OWNER or a TRAINER — "rooms are plain studio config,
@@ -126,23 +125,13 @@ export function RoomsManager({
           These are the studio&rsquo;s rooms. Changing them is the owner&rsquo;s and the faculty&rsquo;s.
         </div>
       ) : null}
-      {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026, the user's list 14) */}
-      {canEdit ? (
-      <DeskAddButton
-        label="Add room"
-        onClick={() =>
-          void run(
-            () =>
-              createRoomAction({
-                tenantId,
-                name: `Room ${rooms.length + 1}`,
-                capacity: 20,
-              }),
-            "● Room added",
-          )
-        }
-      />
-      ) : null}
+      {/* ＋ AT THE TOP, LIKE CLASSES AND EVENTS (20 Sep 2026, the user's list 14).
+          ⚠ AND IT OPENS A FORM NOW (22 Sep 2026, the user: "form for adding asset
+          and adding room should be same way"). It used to CREATE the room on the
+          press — named after a counter, holding twenty people nobody had chosen —
+          and leave you to correct both on the row. Capacity is the one field here
+          that the database enforces on every booking, so it is asked for. */}
+      {canEdit ? <DeskAddButton label="Add room" href="?new=1" /> : null}
 
       <div style={card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -298,7 +287,7 @@ export function RoomsManager({
         })}
         {rooms.length === 0 && (
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>
-            No rooms yet — add the first one below, and your classes can be held in it.
+            No rooms yet — add the first one above, and your classes can be held in it.
           </div>
         )}
       </div>
