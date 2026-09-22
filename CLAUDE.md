@@ -2,11 +2,11 @@
 
 ## LAST SESSION (22 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE LAST TWO FORMS, ONE PAGE EACH, A RULE BETWEEN A HEADING AND ITS FIGURE — AND A DESK THAT HAD NO HEADING AT ALL (22 Sep 2026, latest) — BUILT, no migration
+> ### THE LAST TWO FORMS, ONE PAGE EACH, A RULE BETWEEN A HEADING AND ITS FIGURE — AND A DESK THAT HAD NO HEADING AT ALL (22 Sep 2026, latest) — PUSHED AND LIVE (`e277f28`), ✅ ONE MIGRATION APPLIED (dry run **30/30**, rolled back first)
 > The user, in one message: *"start with stage 3, form for adding asset and adding
 > room should be same way, students invite doesnt need qr code. apart from class
-> and event form all forms should be for one page."* Four asks; the fourth (stage
-> 3's reorder) needs a migration and is HELD for their word (#0am).
+> and event form all forms should be for one page."* Four asks; the fourth is stage
+> 3's reorder, whose STORAGE is applied here and whose control is the next slice.
 > * ⚠⚠ **ADD ROOM WAS NOT A FORM AT ALL, AND THAT IS THE FIND.** Pressing ＋ on the
 >   Rooms desk called `createRoomAction({ name: "Room N", capacity: 20 })` **on the
 >   press** — a room appeared, named after a counter, holding a number nobody had
@@ -81,6 +81,50 @@
 >   the assets and crew ones among them, which is the serial-suite trap this file
 >   has recorded twice: a red early in a serial story hides everything it was
 >   supposed to prove.
+> * ⚠⚠ **AND THEN THE USER SAID "push to live and apply", SO
+>   `20260922090000_a_grid_is_arranged` IS APPLIED — THE STORAGE FOR THE REORDER,
+>   WITH NO CONTROL ON TOP OF IT YET.** `profiles.layout jsonb not null default
+>   '{}'`, keyed `tools:user | tools:artist | tools:org | tools:studio:{id} |
+>   tools:crew:{id}`; one invoker-only door `set_my_layout(key, order)`; one
+>   immutable helper `is_a_layout` behind a CHECK. **No policy changed, no public
+>   function touched, nothing a stranger reads** — the Tools panel is on YOUR OWN
+>   Home, so the order is the viewer's own and lives on the viewer's own row, and
+>   a studio's grid is keyed by the studio's id so two teammates each arrange it
+>   for themselves.
+> * ⚠⚠ **THE CHECK IS THE REAL GUARD, AND THE DOOR IS NOT.** Step 1's "users
+>   update own profile" policy **names no columns**, so the row's owner can PATCH
+>   this column straight through PostgREST whatever `set_my_layout` does — which
+>   is the 11 Sep bypass's own shape, one column further on. So the SHAPE is
+>   constrained by the DATABASE (an object, ≤40 grids, ≤40 short strings each,
+>   under 4 kB) and the dry run proves it by having the OWNER try: check 17 is the
+>   owner's own bad PATCH being refused by name.
+> * ⚠ **`length(layout::text)`, NOT `pg_column_size`** — the second is STABLE
+>   rather than immutable and a CHECK is not the place to find that out.
+> * ⚠ **AND IT IS A PREFERENCE, WHICH IS WHY IT IS A COLUMN AND NOT A TABLE**:
+>   `profiles.socials` and `profiles.styles` set that precedent. **Nothing is
+>   backfilled** — every account gets `{}` and every grid draws exactly as it
+>   always has, so this migration changes what nobody sees until somebody
+>   arranges something. Read back live: **0 rows carry a layout**.
+> * **Dry run `dryrunLayout.js` (scratchpad) — BEGIN, the whole file, 30 checks as
+>   real roles, ROLLBACK: 30 ok, 0 failed, the column gone again afterwards.**
+>   Including the three that are the point: **no existing function's ACL changed**,
+>   **exactly two functions added and they are the two**, and **anon's executable
+>   set unchanged at 46** — plus "not one policy is added, dropped or altered",
+>   and that the door has no `p_user_id` to aim at anybody else (check 24 asserts
+>   somebody else's row is untouched after a call).
+> * **PUSHED AND LIVE (`e277f28`), and read back off the deployment rather than
+>   assumed:** the live catalog **8/8** (the column, the CHECK, both doors,
+>   neither executable by anon, anon still 46, 0 layouts, the 3 profiles policies
+>   intact) · **`shoot-tiles.js` 105/105 against `https://dancestudio-orcin.vercel.app`**
+>   — both new sheets driven from the desks that offer them on the live host ·
+>   **`stranger-smoke.ps1` 11/11**. ⚠ The deployment was confirmed by reading
+>   Vercel's own list for THIS SHA (BUILDING → READY) before any probe ran, which
+>   is the 21 Sep rule: a green push is not a deployment.
+> * ⚠ **AND THE 105 IS ONE MORE THAN THE 104 AT `:3100`, WHICH IS EXPLAINED RATHER
+>   THAN WAVED AWAY.** One check is world-dependent: the organization's
+>   memberships-redirect assertion runs only when its Events tile resolved a
+>   hosting row id, and the live world has one. So the deployment ran a STRICTLY
+>   LARGER set than the local run — nothing was skipped.
 
 > ### EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT, AND A CLASS IS MADE IN THE CLASSES SECTION (22 Sep 2026) — PUSHED AND LIVE (`e3246ef`), no migration
 > **STAGE 2 of three.** The user's ask 6, in their words: *"All forms and add
@@ -4860,8 +4904,17 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0am. **⚠ STAGE 3 — ONE MIGRATION WRITTEN, NOT DRY-RUN, NOT APPLIED, AND THE LIST
-   IS IN FRONT OF THE USER.** `20260922090000_a_grid_is_arranged.sql`. The user's
+0am. **~~STAGE 3 — ONE MIGRATION WRITTEN, NOT DRY-RUN, NOT APPLIED~~ — ✅ APPLIED
+   AND PUSHED 22 Sep 2026** on the user's *"push to live and apply"*, after the
+   list below had been in front of them. Dry run **30/30 rolled back** (the ACL
+   multiset, anon's 46 and "not one policy altered" among them), `db-push -DryRun`
+   listed exactly the one file, the apply printed it on the FIRST try, PostgREST's
+   cache was reloaded, the live read-back was **8/8**. ⚠ **WHAT IS STILL OWED IS
+   THE CONTROL**: the storage is live and no screen writes to it, so the reorder
+   is not a feature yet — the ＋/Arrange control on `ToolsPanel` is the next
+   slice, and ▲▼ per tile is this app's own precedent (`reorder_business_members`,
+   `reorder_crew_members`). Kept as the record of what was approved.
+   `20260922090000_a_grid_is_arranged.sql`. The user's
    ask 7 was two things: the separator (BUILT, `FigureHead`) and *"all columns on
    such pages should be swapable so we can place them in order of our choice"*.
    Asked which columns, they answered **"the reorder is required for columns
@@ -4900,20 +4953,17 @@ summary; the report has the evidence.
    * **Nothing is backfilled and nothing moves**: an account with no layout gets
      `{}` and every grid draws in the order the code has always drawn it, so
      applying this changes what nobody sees until somebody arranges something.
-   ⚠⚠ **AND IT IS IN THE TREE, SO IT WILL RIDE ALONG.** `db-push` applies every
-   PENDING file, not the one you meant — `20260919130000` went in with push 2 for
-   exactly this reason. Until this is applied or removed, **any** `db push` takes
-   it too, which is why the dry run below must list exactly one file and be read.
-   ⚠ **The app side is NOT written yet**, deliberately — it selects a column that
-   does not exist, so writing it first would mean a tree that cannot deploy. On
-   the user's word: dry-run it in a rolled-back transaction (the `pg` client, #0ac),
-   put the ACL multiset and anon's executable set in the assertions, apply, reload
-   PostgREST's schema cache, then build the ＋/Arrange control (▲▼ per tile is this
-   app's own precedent — `reorder_business_members`, `reorder_crew_members`).
+   ⚠⚠ **AND WHILE IT SAT IN THE TREE IT WOULD HAVE RIDDEN ALONG.** `db-push`
+   applies every PENDING file, not the one you meant — `20260919130000` went in
+   with push 2 for exactly this reason. That is why the dry run had to list one
+   file and be READ, and it is the standing rule for the next held migration.
+   **The sequence that worked, for the next one to copy:**
 ```
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260922090000
+   node dryrunLayout.js                                                              # BEGIN … the file … 30 checks as real roles … ROLLBACK
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly the one file
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
-   # then RELOAD POSTGREST'S SCHEMA CACHE — the app will select a column that did not exist (19 Sep lesson)
+   node readbackLayout.js                                                            # notify pgrst 'reload schema', then read the LIVE catalog
+   git push origin main; node deploy.js <sha>                                        # Vercel's own list for THIS sha, BUILDING -> READY
 ```
 
 0ak. **~~THE ASSETS SLICE IS BUILT, DRY-RUN 23/23 AND HELD~~ — ✅ APPLIED AND
@@ -5803,7 +5853,9 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 ### Progress tracker — update after EVERY push (Rule 11)
 
 - **THE LAST TWO FORMS, ONE PAGE EACH, AND A RULE BETWEEN A HEADING AND ITS
-  FIGURE — 22 Sep 2026, no step number — BUILT, no migration.** Four asks in one
+  FIGURE — 22 Sep 2026, no step number ⚠ (Rule 9: the migration adds a column the
+  row's OWNER can PATCH directly) — PUSHED AND LIVE (`e277f28`), ONE MIGRATION
+  APPLIED (dry run 30/30, rolled back first).** Four asks in one
   message. **Add asset** and **Add room** are `FormPage` sheets over their desks
   at `?new=1` — ⚠ **Add room was not a form at all**, the ＋ created "Room N"
   holding twenty people on the press, so capacity, the one field the database
@@ -5823,7 +5875,15 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   green · `shoot-tiles.js` 104/104** (94 before) **· the happy path 20/20 alone ·
   the other six specs 29/29** — ⚠ the one red is `admin-moderation`'s Discover
   find, which fails alone too: **Pune holds 56 listed studios against
-  `nearby_businesses`' 50-row cap**, the leftover pile of #0aa.
+  `nearby_businesses`' 50-row cap**, the leftover pile of #0aa. **And then, on the
+  user's *"push to live and apply"*, `20260922090000_a_grid_is_arranged` went in**
+  — `profiles.layout` with a CHECK and one invoker-only door, the STORAGE for the
+  reorder with no control on it yet. ⚠ **The CHECK is the guard, not the door**:
+  Step 1's own-row policy names no columns, so the owner can PATCH that column
+  through PostgREST whatever the app does — the 11 Sep bypass's shape, one column
+  on. No policy changed, nothing a stranger reads, nothing backfilled. **Live
+  read-back 8/8 · `shoot-tiles.js` 105/105 against the deployment ·
+  `stranger-smoke.ps1` 11/11**, with Vercel's list read for THIS sha first.
 - **EVERY FORM OPENS OVER THE SCREEN THAT OFFERED IT — 22 Sep 2026, no step
   number — PUSHED AND LIVE (`e3246ef`), no migration.** Stage 2 of the seven-ask message (ask 6, and
   the user's own narrowing of where a class begins). `FormPage` gained a `sheet`
@@ -9904,6 +9964,7 @@ nothing to lift.
 |-----|--------------|-------------|
 | **Every form as a sheet, what stage 2 left (22 Sep 2026):** ⚠ **an EDIT still opens as a page, everywhere** — `/business/{id}/classes/{id}/edit` and `…/events/{id}/edit` are reached from a row, not from an add button, so the ask did not name them and they were not moved; a studio therefore edits a class on a screen and creates one in a sheet, which is one product wearing two shapes for one object. **`/crews/new`, `/routines/new`, `/memberships/new` and both `/…/new` routes are now reachable only by typing them** — no control in the app points at any of them any more, so they are kept alive by Rule 14 and by `shoot-tiles.js` alone; a link somebody was handed still opens, which is the whole reason they stay. **A sheet has no dirty guard**: the scrim and system back both close it with whatever was typed in it, exactly as the page's ← always has, and a half-filled class is lost in one press. **The panel is `94vh` with its own scroller**, so on a short phone the step bar scrolls away with the rest rather than pinning — the action bar is the only thing that sticks. And **`?new=1` is remembered by the browser**: reload a desk with the sheet open and it opens again, which is right, but a shared link to a desk that somebody copied mid-form carries the form with it. ⚠ And `createClassAction` / `updateClassAction` now **return instead of redirecting** when the form says it is a sheet — the one place in this app where a server action's navigation is the client's; it is a hint about navigation and grants nothing, but it does mean the register's fresh read is a `revalidatePath` + `router.refresh()` rather than the redirect's own | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit sheet when somebody asks; a dirty guard only if a real person loses work |
 | **The last two forms, the one-page collapse and the rule, what they left (22 Sep 2026):** ⚠ **an asset and a room have no EDIT sheet** — an asset is still corrected in place on its row and a room on its own, so those two objects are made in a sheet and changed on a list, which is one object wearing two shapes. **Neither form has an ADDRESS**, deliberately (nothing ever handed one out), so they are the only two "add something" forms `shoot-tiles` cannot drive by URL — if either is ever linked to, it needs a page in the same push. ⚠ **A ROOM'S AMENITIES ARE STILL NOT ASKED FOR**: a new room gets none and you fold its row open afterwards, which is unchanged and is now the one field the form does not cover. **The `₹0 = legacy` rule is now stated in two places** — the form's note and the row's own words — and they could drift. ⚠ **The separator is only where there IS a figure**, so the five micro-caps section heads that carry no count (`YOUR STUDIOS`, `CREWS YOU LEAD`, `WHERE IT CAME FROM`, `BY STUDIO`, `WHAT YOU OWE`) are untouched and still declared FIVE times in five files — the obvious consolidation, and not this slice's. And **`FigureHead` shares the rule and not the type**, so a new counted head can still pick its own scale; nothing checks that it picks one of the three that exist | S_assets 16791; settings 18389-18425; DosShelfHead 3446 | an edit sheet for each when somebody asks; one micro-caps head when a money desk is next opened |
+| ⚠⚠ **THE REORDER'S STORAGE IS LIVE AND ITS CONTROL IS NOT (22 Sep 2026)** — `profiles.layout`, `is_a_layout` and `set_my_layout` are applied, and **no screen reads or writes any of them**, so ask 7's second half is half-built in the most honest way available: nothing anybody sees has changed, and `0` accounts carry a layout. What is owed is the ＋/Arrange control on `ToolsPanel` (▲▼ per tile, `reorder_business_members`' own shape), `tilesFor` honouring the stored order, and a rule for what to do with a stored key naming a tile that no longer exists or missing one that now does — **the grid must fall back to the code's order rather than dropping a tile**, and nothing enforces that yet. ⚠ There is also **no `.ps1` proof**: the dry run covered it 30/30 and `run-proofs.ps1` globs `rls-proof-*.ps1`, so nothing re-checks the CHECK as regression cover. ⚠ And the door is **per grid, not per account** — two tabs arranging the SAME grid still last-writer-wins, which `jsonb_set` cannot help with and no screen can hit today | — (the prototype has one grid and no arrangement) | the control as its own slice; an `rls-proof-layout.ps1` next time the proofs are opened |
 | **Settings per profile, the mark as the switcher and the gap, what stage 1 left (22 Sep 2026):** ⚠ **`BusinessHub` still carries a verification FORM of its own**, so a studio's verification now has two doors — the hub's card and that studio's Settings. Left standing knowingly: an organization setting up its fifteenth studio would otherwise have to switch profile fifteen times to file fifteen requests, and the hub is the one screen that sees them all. It is the exact shape C31 warned about, taken with eyes open and written down here rather than discovered later. ⚠ **A trainer's Settings has no THIS STUDIO block and no sentence** — the same silent absence as the Earnings tile. ⚠ **The sheet's subject follows `hereItem`, so on a page that belongs to no profile it is YOURS** — `/discover`, `/inbox`, `/calendar` and every drill page off them give the account's own Settings, which is right for a person and means an organization on Discover cannot reach a studio's money without going to that studio first. ⚠ **An organization has no Invoices door at all** (its hosting row's ledger is `/business/{host}/invoices`, reachable only by URL) — the studio half of that ask is done and the organization half was not named. **And the deep-linked sheet now arrives with HYDRATION** rather than in the first HTML, because the chrome reads `?settings=1` on the client: every retrying assertion is fine and a one-shot `count()` is not, which is what the one red in `shoot-hero` was | settings 11402-11440; S_payments 16531 | a hub decision if two verification doors ever confuse; an organization's Invoices when the user says where; a sentence for a trainer |
 | **The five answers, what they left (21 Sep 2026):** ⚠ **the organization-membership refusal is the APP's and not the database's** — `save_membership` takes any business whose owner is asking, so the SQL type check is owed to the next memberships migration (#0al). ~~**INVOICES still has no door on a studio's home**~~ — **CLOSED 22 Sep 2026** (C53: it is a tile in that studio's own Settings, beside Refunds and Payments, so an organization's second studio's ledger is reachable by switching profile rather than by typing). ~~**The verification and subscription strips are the owner's, and a trainer gets no sentence**~~ — **the strips are GONE** (C53), and the gap MOVED rather than closing: a trainer's Settings simply has no THIS STUDIO block, so they still cannot tell whether the studio is unverified or whether they are merely not allowed to see. ⚠ **The students gate is presentation only**: `leads` and `attendance` admit every member at the ceiling, so a visiting teacher with an API client still reads the roster and its phone numbers — closing that is a policy change on two tables, and the desk says so in its own comment. **`/managed` redirects an organization to the HUB rather than its events desk**, deliberately — that address needs the hosting row's id and `my_org_business()` provisions the row on first ask, so the redirect would be a write; the cost is that an organization typing `/managed` lands one tap from its events rather than on them | S_managed 6332-6378; settings 16428-16435 | the type check with the next memberships migration; an Invoices door when the user says which half they meant; a policy change if the roster ceiling ever matters |
 | **Earnings, what the one screen left (21 Sep 2026, trimmed the same day):** ⚠ **the sums are still counted in TypeScript** behind a 4,000-row runaway guard — ONE aggregate RPC is the right answer (aggregating inside a definer function is fine; only the PostgREST path is closed) and it is a migration, so a very busy studio's YEAR view is the first thing that would go `complete: false`. **The chart has no y-axis and no value labels** — a column's numbers are in its `aria-label` and in the figures below it, which is legible on a phone and is not a chart you could read a precise figure off. **A bucket with no money is an empty column**, so a long quiet stretch looks like a broken chart rather than a quiet one. **An ARTIST PLAN is not counted as an expense anywhere** — `subscriptions.business_id` is null for one, so it cannot be attributed to a business; it stays on the person's invoice ledger. And **enquiry money is counted from `enquiry_quotes` regardless of the enquiry's own status**, so a quote marked paid on an enquiry later marked lost still counts, which is what "recorded as received" means and may not be what a studio expects — ⚠ **the user's call, left alone on their word** along with GST and TDS. ~~`MAX_PAYOUTS = 60` truncates silently~~ and ~~subscription money is not an expense~~ are **both CLOSED the same day**; ~~`/business/stats` disagrees with `/business/earnings`~~ was **NOT a disagreement** — that page says *"Studios · combined"* and **GROSS · ALL STUDIOS** with the event money in its own card below, so the two answer different questions and each says which | S_earn 17877-18205 | the aggregate RPC when migrations are being written anyway; GST, TDS and the enquiry rule are the user's |
