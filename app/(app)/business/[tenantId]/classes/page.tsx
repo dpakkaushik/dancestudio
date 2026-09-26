@@ -90,6 +90,8 @@ export default async function TenantClassesPage({
           tenantType={tenant.type}
           rooms={rooms}
           isOwner
+          /* the owner may take their own class (26 Sep 2026) — this branch is owner-only */
+          meId={user.id}
           studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
           sheet
         />

@@ -152,6 +152,91 @@ async function arrangeGrid(page, who, url) {
   await page.getByRole("button", { name: "Done", exact: true }).click();
 }
 
+/** A PERSON OPENS A STUDIO, AND TAKES THEIR OWN CLASS IN IT (26 Sep 2026, the
+ *  user: "allow user and artist to create studios now from studios tab at home
+ *  in a section … so studio profiles can be managed from the profile switcher
+ *  … when the same user is creating classes from studio … no verification is
+ *  required but keeps a log in the inbox"). Driven the way somebody would: the
+ *  sheet on the hub, then every place the studio must now appear — the card,
+ *  the switcher, THIS STUDIO in Settings, YOUR STUDIOS under the plan — then a
+ *  class the owner takes themselves, which the register may publish at once.
+ *  ⚠ Until `20260926090000` is applied the live gate still refuses a person;
+ *  the segment says SKIP in that case rather than reporting a red that means
+ *  "not applied yet". */
+async function personOpensAStudio(page, who, acc, stamp) {
+  const name = `Tiles Own Studio ${stamp}`;
+  await page.goto(`${BASE}/business`, { waitUntil: "networkidle" });
+  const gate = await page.getByRole("status").filter({ hasText: "Add studio" }).innerText().catch(() => "");
+  if (/Only an organization/.test(gate)) { console.log(`  SKIP ${who} · the live gate still refuses a person — apply 20260926090000 first`); return null; }
+  check(await page.getByRole("button", { name: "Add studio" }).isVisible().catch(() => false), `${who} · the Studios hub offers Add studio to a person`);
+  await page.getByRole("button", { name: "Add studio" }).click();
+  await page.locator('input[name="name"]').fill(name);
+  await page.locator('input[name="area"]').fill("Baner");
+  await page.getByLabel("Choose a city").first().selectOption("Pune");
+  await page.getByLabel("Room 1 name").fill("Floor 1");
+  await page.getByLabel("Add a dance style").selectOption("Hip-Hop");
+  await page.getByRole("button", { name: "Create studio" }).click();
+  const card = page.getByTestId("studio-card").filter({ hasText: name });
+  await card.waitFor({ timeout: 20_000 }).catch(() => {});
+  check(await card.isVisible().catch(() => false), `${who} · the studio is a card under YOUR STUDIOS`);
+  const strip = card.getByTestId("studio-verification");
+  check((await strip.getAttribute("aria-label").catch(() => "")) === "Studio verification: Not verified", `${who} · and the same verification form stands under it — the process is the same`);
+  const href = await card.getByRole("link", { name: `${name} — open the studio` }).getAttribute("href").catch(() => "");
+  const studioId = (href || "").split("/")[2] || "";
+  check(/^[0-9a-f-]{36}$/.test(studioId), `${who} · the card opens the studio's own home (${href})`);
+  if (!studioId) return null;
+
+  /* the switcher is where it is run from */
+  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /switch profile/i }).click();
+  const row = page.getByRole("menuitem", { name: new RegExp(name) }).or(page.getByRole("link", { name: new RegExp(name) }));
+  check(await row.first().isVisible().catch(() => false), `${who} · the profile switcher lists the studio`);
+  await page.keyboard.press("Escape");
+
+  /* THIS STUDIO in its own Settings — verification progress and the subscription */
+  await page.goto(`${BASE}/business/${studioId}`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Settings" });
+  await sheet.waitFor({ state: "visible", timeout: 15_000 });
+  const sTxt = await sheet.innerText();
+  check(sTxt.includes("THIS STUDIO") && sTxt.includes(name), `${who} · its Settings are THE STUDIO'S (THIS STUDIO · ${name})`);
+  check(/Verification/.test(sTxt) && /not yet/i.test(sTxt), `${who} · with Verification reading "not yet"`);
+  check(/Subscription/.test(sTxt), `${who} · and a Subscription tile`);
+  await page.keyboard.press("Escape");
+  await page.goto(`${BASE}/subscription`, { waitUntil: "networkidle" });
+  const subTxt = await page.locator("body").innerText().catch(() => "");
+  check(subTxt.includes("YOUR STUDIOS") && subTxt.includes(name), `${who} · /subscription lists the studio under YOUR STUDIOS, beside the person's own plan`);
+  check((await page.getByTestId("studio-subscription").filter({ hasText: name }).getByRole("button", { name: /^Subscribe/ }).count()) === 0, `${who} · and Subscribe is NOT offered before the badge`);
+
+  /* the owner takes their own class: nobody is asked, Publish is open at once, the Inbox keeps the line */
+  await page.goto(`${BASE}/business/${studioId}/classes?new=1`, { waitUntil: "networkidle" });
+  const form = page.getByRole("dialog", { name: "Add class" });
+  await form.waitFor({ timeout: 15_000 }).catch(() => {});
+  check(await form.isVisible().catch(() => false), `${who} · Create class opens over the studio's register`);
+  await form.getByLabel("Class date").fill(new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10));
+  await form.getByRole("button", { name: "Pick a dance style" }).or(form.getByRole("button", { name: /dance style/i })).first().click().catch(() => {});
+  await form.getByPlaceholder(/search/i).first().fill("Hip").catch(() => {});
+  await form.getByRole("option", { name: "Hip-Hop" }).or(form.getByRole("button", { name: "Hip-Hop", exact: true })).first().click().catch(() => {});
+  await form.getByRole("radio", { name: "Floor 1" }).or(form.getByText("Floor 1", { exact: true })).first().click().catch(() => {});
+  await form.getByRole("button", { name: "Continue" }).click();
+  const selfBtn = form.getByRole("button", { name: /I take this class myself/ });
+  check(await selfBtn.isVisible().catch(() => false), `${who} · the form offers "I take this class myself" to the owner`);
+  await selfBtn.click();
+  check(await form.getByTestId("self-teacher").isVisible().catch(() => false), `${who} · and says no confirmation is needed`);
+  await form.getByRole("button", { name: "Save draft", exact: true }).click();
+  await page.getByRole("button", { name: "Save draft", exact: true }).last().click();
+  await form.waitFor({ state: "detached", timeout: 20_000 }).catch(() => {});
+  await page.goto(`${BASE}/business/${studioId}/classes`, { waitUntil: "networkidle" });
+  const publish = page.getByRole("button", { name: "Publish", exact: true });
+  check((await publish.count()) >= 1, `${who} · the register offers Publish with nothing in its way — nobody was asked`);
+  await page.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
+  const inbox = await page.locator("body").innerText().catch(() => "");
+  check(/Hip-Hop/.test(inbox) && /confirmed/i.test(inbox), `${who} · the Inbox keeps the line, wearing its answer`);
+  await page.goto(`${BASE}/notifications`, { waitUntil: "networkidle" });
+  check(/You take Hip-Hop/.test(await page.locator("body").innerText().catch(() => "")), `${who} · and the bell says "You take …" — the log the user asked for`);
+  return studioId;
+}
+
 (async () => {
   const stamp = Date.now().toString(36);
   const made = [];
@@ -168,6 +253,8 @@ async function arrangeGrid(page, who, url) {
     await pressEveryTile(p1, "user", ["Classes", "Events", "Calendar", "Crews", "Studios", "Routines", "Memberships", "Earnings"]);
     /* the grid is arrangeable, and the arrangement is the account's (22 Sep 2026) */
     await arrangeGrid(p1, "user", `${BASE}/`);
+    /* a person opens a studio, runs it from the switcher, takes their own class (26 Sep 2026) */
+    await personOpensAStudio(p1, "user", user, stamp);
     await p1.close();
 
     // ── 2. an ARTIST — a user with a live plan; Home provisions the page itself

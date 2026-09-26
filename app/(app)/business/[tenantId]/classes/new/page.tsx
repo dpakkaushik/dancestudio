@@ -49,6 +49,9 @@ export default async function NewClassPage({
       tenantType={tenant.type}
       rooms={rooms}
       isOwner
+      /* 26 Sep 2026: the owner may take their own class; an artist's class in a studio they own needs no request */
+      meId={tenant.type === "studio" ? user.id : null}
+      ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id)}
       studioPlace={[tenant.area, tenant.city].filter(Boolean).join(", ")}
     />
   );

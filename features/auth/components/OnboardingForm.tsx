@@ -19,8 +19,10 @@ import type { Profile, ProfileRole, SocialLink } from "@/types/profile";
  *  is the plan, taken later from the Profile tab, and "studio" became the
  *  organization that runs studios (one org, many studios). */
 const ROLES: Array<{ key: ProfileRole; label: string; caption: string }> = [
-  { key: "user", label: "User", caption: "Learn, book classes, join crews — unlock Artist tools any time with the plan" },
-  { key: "org", label: "Organization", caption: "Run studios and events under one roof — verified by DanceOS before going public" },
+  /* 26 Sep 2026: a person opens a studio too (from Home's Studios tile), so the
+     caption says so — an organization is for several studios and for EVENTS */
+  { key: "user", label: "User", caption: "Learn, book classes, join crews — unlock Artist tools with the plan, or open a studio of your own" },
+  { key: "org", label: "Organization", caption: "Run several studios and host events under one roof — each studio verified by DanceOS before going public" },
 ];
 
 const inputStyle: React.CSSProperties = {

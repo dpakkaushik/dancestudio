@@ -241,6 +241,33 @@ export function SubscriptionScreen({
           </div>
         </>
       )}
+
+      {/* ⚠ A PERSON'S OWN STUDIOS, UNDER THEIR OWN PLAN (26 Sep 2026, the user:
+          "can see verification progress and future subscription for the studio
+          from there"). A user or an artist who opened a studio pays for it the
+          way an organization does — one mandate per studio — so each of theirs
+          gets the same strip, with the same Stop renewing, below the Artist
+          plan that is the account's. Drawn only when there is one. */}
+      {studios.length > 0 ? (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", padding: "0 2px 8px" }}>YOUR STUDIOS</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>
+            {studioPrice ? (
+              <>
+                Each studio has its own subscription — <b style={{ color: "var(--text)", fontFamily: DOS_MONO }}>{priceWords(studioPrice.priceInr, studioPrice.period)}</b> per studio, renewing on its own. A
+                studio you have not subscribed stays private; nothing in it is lost.
+              </>
+            ) : (
+              "No studio plan is on offer right now — message DanceOS from Settings › Help & support."
+            )}
+          </div>
+          {studios.map((t) =>
+            t.state ? (
+              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} verified={t.verified} state={t.state} studioPrice={studioPrice} heading={t.name} />
+            ) : null
+          )}
+        </div>
+      ) : null}
       <BizToast msg={toast} />
     </BizPage>
   );

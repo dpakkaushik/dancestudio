@@ -309,7 +309,16 @@ export default async function MyClassesPage({ searchParams }: { searchParams: Pr
           from. An artist page has no rooms of its own, so there is nothing extra
           to read: the sheet costs one render and no round trip. */}
       {opening && myPage && manage && !manage.whyNoClass ? (
-        <ClassForm tenantId={myPage.id} tenantType="artist_page" rooms={[]} isOwner sheet />
+        <ClassForm
+          tenantId={myPage.id}
+          tenantType="artist_page"
+          rooms={[]}
+          isOwner
+          sheet
+          /* the studios this artist OWNS (26 Sep 2026): a class held in one of
+             them needs no request, and the form says so */
+          ownedStudioIds={memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id)}
+        />
       ) : null}
     </div>
   );

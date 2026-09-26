@@ -102,8 +102,17 @@ export async function createTenantAction(
     redirect("/onboarding");
   }
 
-  /* who is asking decides what is being opened */
-  const type: TenantType = profile.role === "org" ? "studio" : "artist_page";
+  /* ⚠ THIS DOOR OPENS A STUDIO, FOR ANYBODY (26 Sep 2026, the user: "Move Studio
+     creation from org and allow user and artist to create studios"). It used to
+     read the account's kind — a studio for an organization, an artist page for
+     a person — and the second half has been dead since 18 Sep, when the artist
+     page became something Home PROVISIONS (`ensureArtistPage`) rather than
+     something anybody sets up. So the kind is no longer a fork: a user, an
+     artist and an organization all open a STUDIO here, and `why_no_studio()`
+     inside the RPC is the one gate (at most fifteen per account). `profile` is
+     still read so an account with no profile is sent to onboarding first. */
+  const type: TenantType = "studio";
+  void profile;
   if (type === "studio") {
     if (!parsed.data.city) return { error: "A studio needs a city" };
     if (!parsed.data.area) return { error: "A studio needs its area" };

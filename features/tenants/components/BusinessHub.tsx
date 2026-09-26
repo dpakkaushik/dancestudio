@@ -199,15 +199,19 @@ export function BusinessHub({
      the ones they teach at or own — a studio is listed once, under one heading */
   const learnt = attended.filter((t) => !theirs.some((x) => x.id === t.id) && !mine.some((x) => x.id === t.id));
 
-  /* what the sheet opens is decided by who is here, not by a toggle — and since
-     18 Sep 2026 only an organization opens anything here */
-  const isStudio = isOrg;
+  /* ⚠ THE SHEET OPENS A STUDIO, FOR ANYBODY (26 Sep 2026, the user: "Move Studio
+     creation from org and allow user and artist to create studios now from
+     studios tab at home in a section"). From 18 to 26 Sep a person opened
+     nothing here; the artist page is still provisioned by Home rather than set
+     up, so what a person opens is a STUDIO — the same form, the same gate, the
+     same badge and mandate afterwards. */
+  const isStudio = true;
   const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity > 0);
   const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk && styles.length > 0));
-  /* R14: an organization may open the sheet only when the gate is open. A button
-     that would be refused is not offered; the reason is printed in its place. */
-  const gateShut = isOrg ? whyNoStudio : null;
-  const canOpen = isOrg ? gateShut === null : false;
+  /* R14: the sheet opens only when the gate is open. A button that would be
+     refused is not offered; the reason is printed in its place. */
+  const gateShut = whyNoStudio;
+  const canOpen = gateShut === null;
 
   const cardStyle = (own: boolean): React.CSSProperties => ({
     position: "relative",
@@ -417,7 +421,11 @@ export function BusinessHub({
           </div>
         </div>
 
-        {isOrg ? (
+        {/* ⚠ YOUR STUDIOS IS EVERYBODY'S SECTION (26 Sep 2026) — it was an
+            organization's alone. A person's hub opens with the same pill and the
+            same list, and a person's studio card carries the same verification
+            form and Subscribe button, because the process is the same. */}
+        {(
           <>
             {/* ⚠ ＋ ADD STUDIO IS THE DESK PILL, AT THE TOP (20 Sep 2026, the user:
                 "fix add studio button also similarly"). It was a DASHED row at the
@@ -461,7 +469,9 @@ export function BusinessHub({
               <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px 10px" }}>
                 {gateShut
                   ? "No studios yet. One studio = one location; add another for each branch."
-                  : "No studios yet — the button above opens the first. One studio = one location; add another for each branch."}
+                  : isOrg
+                    ? "No studios yet — the button above opens the first. One studio = one location; add another for each branch."
+                    : "No studios yet — the button above opens one. DanceOS verifies it, then its own subscription puts it on Discover; you run it from the profile switcher."}
               </div>
             )}
 
@@ -477,7 +487,7 @@ export function BusinessHub({
                 usually a component in the wrong place. ONE door now, on Home,
                 where the user went looking for it on 11 Sep. */}
           </>
-        ) : null}
+        )}
 
         {/* ── A PERSON'S TWO LISTS (18 Sep 2026, the user: "Studios in user should
             show where they have learnt from, and for artist studios where they have
@@ -488,19 +498,19 @@ export function BusinessHub({
             artist's tools live on Home, and the page behind them is provisioned,
             not set up here. ── */}
         {theirs.length > 0 && (
-          <div style={{ marginTop: isOrg ? 20 : 0 }}>
+          <div style={{ marginTop: 20 }}>
             <Head>STUDIOS YOU HAVE TAUGHT AT</Head>
             {theirs.map((t) => plainCard(t))}
           </div>
         )}
         {!isOrg && learnt.length > 0 && (
-          <div style={{ marginTop: theirs.length > 0 ? 20 : 0 }}>
+          <div style={{ marginTop: 20 }}>
             <Head>STUDIOS YOU HAVE LEARNT AT</Head>
             {learnt.map((t) => plainCard(t))}
           </div>
         )}
         {!isOrg && learnt.length === 0 && theirs.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: SUB, padding: "0 2px" }}>
+          <div style={{ fontSize: 11.5, color: SUB, padding: "14px 2px 0" }}>
             {isArtist
               ? "The studios you teach at and learn at will be listed here — teach a class at one, or book one."
               : "The studios you learn at will be listed here once you have booked a class."}

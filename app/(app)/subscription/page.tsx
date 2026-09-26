@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findPlanCatalog, pickPlan } from "@/repositories/plans";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyArtistSubscription, findMyStudioSubscriptions, type StudioSubscriptionState } from "@/repositories/subscriptions";
-import { findMyTenants } from "@/repositories/tenants";
+import { findMyMemberships, findMyTenants } from "@/repositories/tenants";
 
 export const metadata: Metadata = { title: "Subscription — DanceOS" };
 
@@ -31,16 +31,21 @@ export default async function SubscriptionPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const [subscription, profile, catalog, tenants] = await Promise.all([
+  const [subscription, profile, catalog, tenants, memberships] = await Promise.all([
     findMyArtistSubscription(supabase).catch(() => null),
     findProfileById(supabase, user.id),
     findPlanCatalog(supabase).catch(() => []),
     findMyTenants(supabase).catch(() => []),
+    findMyMemberships(supabase).catch(() => []),
   ]);
   const isOrg = profile?.role === "org";
-  /* a studio it OWNS — a trainer neither pays nor cancels, which is the rule the
-     strip on the studio's home kept and this screen inherits */
-  const studios = isOrg ? tenants.filter((t) => t.type === "studio") : [];
+  /* ⚠ A STUDIO IT OWNS — a person's too, since 26 Sep 2026 (the user: "can see
+     verification progress and future subscription for the studio from there").
+     `findMyTenants` is every business this account is ON; a trainer neither pays
+     nor cancels, so the list is narrowed to the OWNER seat here, which is the
+     rule the strip on the studio's home kept and this screen inherits. */
+  const ownedIds = new Set(memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant.id));
+  const studios = tenants.filter((t) => t.type === "studio" && ownedIds.has(t.id));
   const studioStates: Record<string, StudioSubscriptionState> = studios.length
     ? await findMyStudioSubscriptions(supabase, studios.map((t) => t.id)).catch(() => ({}))
     : {};

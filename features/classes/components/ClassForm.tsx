@@ -168,8 +168,19 @@ export function ClassForm({
      edit route's `findDiscoverCities` round trip went with it. */
   venueName = null,
   sheet = false,
+  meId = null,
+  ownedStudioIds = [],
 }: {
   tenantId: string;
+  /** THE OWNER THEMSELVES (26 Sep 2026): a studio's form offers "I take it
+   *  myself" beside the people search, and the database seats that person
+   *  CONFIRMED rather than asked — there is nobody to ask. Null on an artist's
+   *  form and for anybody who is not the owner. */
+  meId?: string | null;
+  /** the STUDIOS THIS PERSON OWNS (26 Sep 2026): an artist's class held in one
+   *  of them needs no request — the room is theirs — so the form says so and
+   *  may publish straight away, exactly as a place of their own may */
+  ownedStudioIds?: string[];
   /** open over the register that offered it rather than as a page of its own
    *  (22 Sep 2026). The form is unchanged either way — only its shell differs,
    *  and `/business/{id}/classes/new` still renders the page (Rule 14). */
@@ -302,6 +313,12 @@ export function ClassForm({
   const capacity = room ? room.capacity : capacityInput;
   const atStudio = isArtist && whereKind === "studio";
   const atPlace = isArtist && whereKind === "place";
+  /* ⚠ YOUR OWN STUDIO (26 Sep 2026): the venue is one this person owns, so the
+     database accepts the room at birth and nothing waits — the words and the
+     buttons below follow, and the register's Publish is open the moment it lands */
+  const ownVenue = atStudio && venue !== null && ownedStudioIds.includes(venue.id);
+  /* the studio's owner taking their own class — born confirmed, never asked */
+  const selfTeacher = !isArtist && teacher !== null && meId !== null && teacher.id === meId;
   /* a link, and a real one — the same http(s) test `save_class` applies to
      anything rendered as an href on a page somebody else reads (11 Sep's
      `javascript:` lesson) */
@@ -342,7 +359,9 @@ export function ClassForm({
     if (!(capacity > 0)) blockers.push("Say how many people can book");
     if (Number.isNaN(Number(priceInr))) blockers.push("Set a price — put 0 if it is free");
   }
-  const canPublishHere = atPlace && ok && blockers.length === 0;
+  /* a place of their own, OR a room in a studio they own (26 Sep 2026) — both
+     have nobody to wait for, and `create_class_with_session` lets both publish */
+  const canPublishHere = (atPlace || ownVenue) && ok && blockers.length === 0;
 
   /* the rate only travels when an OWNER is saving — the RPCs reject it from anybody else */
   const peoplePayload = isArtist ? "" : JSON.stringify({ artistUserId: teacher?.id ?? null, ...(isOwner ? { artistPayInr } : {}) });
@@ -482,13 +501,19 @@ export function ClassForm({
                 {whereKind === "studio" ? (
                   <>
                     <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
-                      The studio is asked for its room. The class is saved as a draft and you can publish once they accept.
+                      {ownVenue
+                        ? "Your own studio — the room is yours without asking, and this class can be published straight away."
+                        : "The studio is asked for its room. The class is saved as a draft and you can publish once they accept."}
                     </div>
                     {venue ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, background: EL, border: `1.5px solid ${INK}`, borderRadius: 14, padding: "11px 13px", marginBottom: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 800 }}>{venue.name}</div>
-                          {venue.sub ? <div style={{ fontSize: 11, color: SUB }}>{venue.sub}</div> : null}
+                          {ownVenue ? (
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: "#22C55E" }} data-testid="own-venue">Your studio · no request needed</div>
+                          ) : venue.sub ? (
+                            <div style={{ fontSize: 11, color: SUB }}>{venue.sub}</div>
+                          ) : null}
                         </div>
                         <button
                           type="button"
@@ -581,15 +606,35 @@ export function ClassForm({
                 <div style={labelStyle}>5 · WHO IS TAKING IT</div>
                 <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
                   Any user or artist on DanceOS. They are asked to confirm — the class stays a draft until they do, and their name goes on it once they have.
+                  {meId ? " Or take it yourself — nobody has to confirm that." : ""}
                 </div>
+                {/* ⚠ THE OWNER TAKES IT THEMSELVES (26 Sep 2026, the user: "when
+                    the same user is creating classes from studio … no
+                    verification is required but keeps a log in the inbox"). The
+                    people search leaves you out on purpose (a search that finds
+                    yourself is a search that lies about who is available), so
+                    this is the one door to naming yourself. The database seats
+                    you CONFIRMED and the Inbox keeps the line. */}
+                {!teacher && meId ? (
+                  <button
+                    type="button"
+                    onClick={() => setTeacher({ id: meId, name: "You" })}
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 13, marginBottom: 8, background: CARD, border: `1.5px dashed ${EL}`, color: INK, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    <span style={{ display: "block", fontSize: 12.5, fontWeight: 900 }}>I take this class myself</span>
+                    <span style={{ display: "block", fontSize: 10.5, color: SUB, marginTop: 2 }}>Your own studio, your own class — no confirmation needed</span>
+                  </button>
+                ) : null}
                 {teacher ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, marginBottom: 6, background: EL, border: `1.5px solid ${INK}` }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 900 }}>{teacher.name}</div>
-                      <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>takes this class</div>
+                      <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1 }}>{selfTeacher ? "you take this class" : "takes this class"}</div>
                     </div>
                     {artistClaim && artistClaim.userId === teacher.id ? (
                       <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: claimTint(artistClaim.status) }}>{claimWord(artistClaim.status)}</span>
+                    ) : selfTeacher ? (
+                      <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#22C55E" }} data-testid="self-teacher">No confirmation needed</span>
                     ) : (
                       <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: "#F59E0B" }}>Will be asked</span>
                     )}
@@ -602,7 +647,7 @@ export function ClassForm({
                 )}
 
                 {/* ── WHAT A SESSION PAYS (Step 13): the studio owner's number, riding the ask ── */}
-                {isOwner && teacher && (
+                {isOwner && teacher && !selfTeacher && (
                   <>
                     <div style={labelStyle}>WHAT A SESSION PAYS THEM</div>
                     <input type="number" min={0} max={200000} step={50} value={artistPayInr} aria-label="What a session pays the artist" onChange={(e) => setArtistPayInr(Math.max(0, Number(e.target.value) || 0))} style={inputStyle} />
@@ -696,9 +741,13 @@ export function ClassForm({
           <FormNote blockers={atPlace && blockers.length ? blockers : undefined}>
             {atPlace
               ? "Your place, your capacity — this one can go straight on Discover."
-              : atStudio
-                ? `Saved as a draft. ${venue?.name ?? "The studio"} is asked for the room; publish from Your classes once they accept.`
-                : `Saved as a draft. ${teacher ? `${teacher.name} is asked` : "Nobody is asked yet — pick who takes it"}; publish from the register once they have said yes.`}
+              : ownVenue
+                ? `Your own studio's room — nothing waits on anybody, so this one can go straight on Discover.`
+                : atStudio
+                  ? `Saved as a draft. ${venue?.name ?? "The studio"} is asked for the room; publish from Your classes once they accept.`
+                  : selfTeacher
+                    ? "Saved as a draft with you as its teacher — nobody has to confirm. Publish it from the register."
+                    : `Saved as a draft. ${teacher ? `${teacher.name} is asked` : "Nobody is asked yet — pick who takes it"}; publish from the register once they have said yes.`}
           </FormNote>
         ) : null}
 
@@ -736,7 +785,7 @@ export function ClassForm({
                     }}
                     style={{ flex: canPublishHere ? 1 : 1.6, padding: "14px", borderRadius: 999, border: "none", background: canPublishHere ? CARD : INK, color: !ok ? "var(--muted)" : canPublishHere ? INK : LILAC, fontWeight: 700, fontSize: 14, cursor: ok ? "pointer" : "default", fontFamily: "inherit" }}
                   >
-                    {isPending ? "Saving…" : atStudio ? "Save & ask the studio" : !isArtist ? (teacher ? "Save & ask them" : "Save draft") : "Save draft"}
+                    {isPending ? "Saving…" : atStudio && !ownVenue ? "Save & ask the studio" : !isArtist ? (teacher && !selfTeacher ? "Save & ask them" : "Save draft") : "Save draft"}
                   </button>
                   {canPublishHere ? (
                     <button
@@ -765,13 +814,17 @@ export function ClassForm({
           sub={
             confirm === "publish"
               ? "It'll be added to your calendar and go live on Discover."
-              : atStudio
-                ? `${venue?.name ?? "The studio"} will be asked for ${room?.name ?? "the room"}. Only you can see the draft until they accept and you publish.`
-                : teacher
-                  ? `${teacher.name} will be asked to take it. Only you can see the draft until they say yes and you publish.`
-                  : "Only you can see drafts — edit anytime from the register's Drafts tab."
+              : ownVenue
+                ? `${room?.name ?? "The room"} at ${venue?.name ?? "your studio"} is yours — nothing waits on anybody. Only you can see the draft until you publish.`
+                : atStudio
+                  ? `${venue?.name ?? "The studio"} will be asked for ${room?.name ?? "the room"}. Only you can see the draft until they accept and you publish.`
+                  : selfTeacher
+                    ? "You take it — no confirmation needed. Only you can see the draft until you publish."
+                    : teacher
+                      ? `${teacher.name} will be asked to take it. Only you can see the draft until they say yes and you publish.`
+                      : "Only you can see drafts — edit anytime from the register's Drafts tab."
           }
-          confirmWord={confirm === "publish" ? "Publish it" : atStudio ? "Save & ask" : teacher && !isArtist ? "Save & ask" : "Save draft"}
+          confirmWord={confirm === "publish" ? "Publish it" : atStudio && !ownVenue ? "Save & ask" : teacher && !isArtist && !selfTeacher ? "Save & ask" : "Save draft"}
           busy={isPending}
           spend={false}
           onCancel={() => setConfirm(null)}
