@@ -96,7 +96,9 @@ export async function createTenantAction(
     lat: (formData.get("lat") as string) || undefined,
     lng: (formData.get("lng") as string) || undefined,
     phone: formData.get("phone"),
-    email: formData.get("email"),
+    /* `contact_email`, never `email` (26 Sep 2026): it is the STUDIO's address,
+       and the field's name says so — the login's is not asked for here */
+    email: formData.get("contact_email"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };

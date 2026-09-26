@@ -2,7 +2,211 @@
 
 ## LAST SESSION (26 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A PERSON OPENS A STUDIO, AND NOBODY IS ASKED TO SAY YES TO THEMSELVES (26 Sep 2026) — BUILT, ONE MIGRATION WRITTEN AND DRY-RUN **32/32**, ⚠ NOT APPLIED, NOT PUSHED (local `a4f39d4`)
+> ### A PERSON OPENS A STUDIO AND AN ORGANIZATION, THE ORGANIZATION LOGIN IS RETIRED, AND EVERY HOME EDITS BEHIND ONE PENCIL (26 Sep 2026) — ⚠ THREE MIGRATIONS APPLIED (dry runs **32/32**, **54/54**, **8/8**, each rolled back first), THE RETIREMENT SWEEP RUN, PUSHED AND LIVE — ⚠⚠ AND A FOURTH WRITTEN, DRY-RUN **16/16** AND **HELD FOR THE USER'S WORD** (NEXT TO DO #0ao)
+> The user, over one day and in this order: the studio ask (below); then *"make
+> organization a tab on home for artist and users and mechanism to create and
+> open an organization similar to studios … organization should not be able to
+> create studios and all associated ones should be deleted. seprate login for
+> organization also goes away … verification process remains same"*; *"all
+> profiles created from user or artist require a mobile number, email etc for
+> the studio, crew, organization … not take directly what the user used for
+> their login"*; *"delete all studios linked to organizations … delete all
+> existing organizations just give one verified one to artist deepak kaushik.
+> organization subscription price rs.5000"*; the edit-mode ask (row C60 quotes
+> it whole); and finally *"check end to end and push to live … try fixing
+> everything … dont wait for my check for 3 hrs … list things for me whats
+> pending at my end after this."* ⚠ **Two build agents were killed by the
+> session limit mid-way** (edit mode; the harness re-cut) and the tree was
+> committed as WIP `f02a0c3`; this block is the whole of what stands now.
+> * ⚠⚠ **1 · AN ORGANIZATION IS A BUSINESS A PERSON OPENS (row R48,
+>   `20260926120000`, dry-run 54/54).** `businesses.type = 'org'` from Home's
+>   **Organizations** tile, exactly as a studio from Studios: born unlisted, its
+>   GST number ON THE BUSINESS ROW (`verify_business_gstin`), public while
+>   GST-verified AND its own ₹5,000 mandate is live (`org_is_public`,
+>   `org_monthly`), run from the profile switcher with THIS ORGANIZATION in its
+>   Settings and a home of its own (`OrgHome`). The organization LOGIN is gone:
+>   `profiles.role` is `user` for everybody, onboarding offers no kind, four
+>   routes redirect to `/organizations`, `set_my_place` is dropped. ⚠ **The dry
+>   run found that anon could not read an organization's pictures** — a policy
+>   subquery on `businesses` runs under the CALLER's RLS, and an unlisted org row
+>   vanishes from it — so `business_pictures_are_public(uuid)` is a definer
+>   helper, which is the "a policy is not a grant" lesson in a third coat.
+> * ⚠⚠ **AND THE SWEEP RAN, ON THE USER'S OWN LIST** (`scripts/retire-organization-logins.js --apply`,
+>   dry-run listed first): **14 organization logins and 27 businesses**
+>   soft-deleted (22 classes · 22 sessions · 11 events · 17 rooms · 4 memberships
+>   · 38 seats beneath them — the demo world's four organizations and five
+>   studios among them), and ONE organization **"Deepak Kaushik"** (Gurugram, GST
+>   `DKO00001` stamped verified, private until its ₹5,000 mandate) made for user
+>   `5d06589f`. ⚠ **The two studio shifts were never run** — every studio those
+>   organizations owned went with them at the user's word; the script stays.
+>   ⚠ The test-phone owner was one of the fourteen; `ensure-test-phone-profiles.js`
+>   (re-cut) restores it as a USER owning "Proof Owner Org", and the proof suite
+>   died on "finish onboarding first" until it ran. **Run it after any sweep.**
+> * ⚠⚠ **2 · EVERY HOME EDITS BEHIND ONE PENCIL (row C60).** The corner pencil
+>   is BACK on all five homes, over the door, and it TOGGLES (`EditMode.tsx`, a
+>   context): read mode is the home with no control on it; pressed, every editor
+>   appears at once — the disc's ⊕, the posters' ⊕, the styles ＋, the links ＋,
+>   an **Edit details** chip beside the name for the words a form still holds,
+>   and a **＋ Contact buttons** ⊕ under the button row (`ContactEditor`) where
+>   Call (with an artist's and a crew's switch), Mail, **Message** (a WhatsApp
+>   number, kept as the `socials` entry it always was) and a business's Enquiry
+>   are made and UNMADE. ⚠ The number, the switch and the email left all three
+>   Edit sheets (sent back unchanged — two of the doors take the whole profile).
+>   ⚠ **Settings has no Edit tile, no YOU block, no Subscription and no Artist
+>   tools any more**: Subscription is a tile on every home (`/subscription` for
+>   the person, `/business/{id}/subscription` for a studio's or an
+>   organization's own mandate). ⚠ **`StylesRowEditor` and `LinksRowEditor` are
+>   the ONE row each** for a person, a business and a crew, with the door passed
+>   in — `HomeBand`, `StudioStylesRow`, `StudioLinksRow` and the new `CrewBand`
+>   are thin callers now, where three copies of the links row stood.
+> * **3 · A CREW DANCES A LIST AND HAS LINKS (row R49)** — `crews.styles` (the
+>   first kept equal to `style` by trigger) and `crews.socials`, two leader-only
+>   doors, drawn on the crew's home with a ＋ each and read on its page; **a crew
+>   is created with a mobile number and an email**, the crew's own, required.
+> * ⚠⚠ **4 · THE HARNESS FOUND A DEFECT IN THE FIRST MIGRATION, AND THE THIRD
+>   MIGRATION IS THE FIX** (`20260926130000_the_self_log_names_the_owner`,
+>   dry-run 8/8 rolled back, applied). The self-log — "You take {class} at
+>   {studio}", raised when an owner takes their own class — tested
+>   `new.user_id = new.created_by` on a confirmed INSERT, which the harness's
+>   service-role `Seat-Teacher` satisfies for ANY teacher: `rls-proof-notifications`
+>   check 4 read two notifications where one was expected. The test is the OWNER
+>   SEAT now. Nothing in the app writes such a row, so no user saw it; a condition
+>   a service-role write can satisfy is not the condition that was meant.
+> * ⚠⚠ **5 · AND A HYDRATION MISMATCH THAT HAD BEEN THERE SINCE C54, FOUND BY
+>   THE FIRST DEEP LINK A SHOOT EVER MADE TO `?new=1`.** `Portal` rendered null
+>   on the server (`typeof document`) and the portal on the client — fine for a
+>   sheet that mounts from a press, and React #418 for one open in the FIRST
+>   HTML: `shoot-tiles`' new person segment loads `/classes?new=1` by URL and
+>   read a page error every run. Reproduced on a DEV server (the minified error
+>   says nothing; the dev one printed `+ <div scrim>` against `- <Suspense>`
+>   under `<Portal>`). `useSyncExternalStore` with a false server snapshot is the
+>   fix — hydration sees nothing on both sides, the portal mounts on the render
+>   after — the same shape the theme reads the `<html>` class with, and no state
+>   written in an effect. **A page error nobody's run had ever taken that
+>   route to see is a page error that was always there.**
+> * ⚠⚠ **6 · THREE EDITORS WRITE ONE RECORD, AND THE LISTS THEY SHARE LIVE IN
+>   ONE PLACE NOW (`RecordLists.tsx`) — BECAUSE THE E2E LOST A STYLE.** Two
+>   finds, one cause. First `shoot-hero`: the contact ⊕ saved a WhatsApp number
+>   into the same `socials` the links row draws, the Message button appeared and
+>   the chip did not, because the row's `useState` had been seeded once. The
+>   morning's answer was `key={socialsKey(list)}` on every row — and then
+>   **`happy-path:2035` read a stranger's view of the trainer with Kathak GONE**:
+>   the styles row saved Kathak and called `router.refresh()`, the spec pressed
+>   the links ＋ within the second, and `HomeBand`'s save merged the styles off a
+>   PROP the refresh had not moved yet — `update_my_profile` takes the whole
+>   profile, so the link's save wrote the old styles back over the new. Kathak
+>   was on the screen (the row's state) and gone from the database. ⚠ The keyed
+>   row could not have caught it and had a cost of its own: the row REMOUNTED
+>   when its OWN refresh landed, so an open sheet closed a moment after each
+>   add. **So the two lists are held once per home** (`RecordListsProvider`,
+>   inside every `EditModeProvider`): the styles row, the links row, the contact
+>   ⊕ and Edit details all merge from `lists` and `adopt` what they wrote;
+>   nothing is read off a prop after the first render, nothing remounts, and the
+>   keys are gone. ⚠ The props are deliberately NOT re-adopted when the page
+>   re-reads — every writer on the screen is inside the provider, so a re-read
+>   can only confirm what is already there, and adopting it mid-flight is the
+>   same race from the other side. **A door that takes the whole record makes
+>   every caller a writer of every field; the fields have to have one home.**
+> * ⚠⚠ **7 · AND THE E2E FOUND THE ADMIN DESKS STILL KEYED ON THE RETIRED
+>   ROLE, AND A 500 THAT PREDATES EVERYTHING.** `happy-path:658` asked the
+>   Accounts desk for `1/1 STUDIOS SUBSCRIBED` and read `1 BUSINESS` — the chip,
+>   the PHOTOS chip, the Organizations tab and the Verification door were all
+>   gated on `profiles.role = 'org'`, which nobody has since the morning's sweep,
+>   and `admin_org_standing` answers only for that role, so it answers nobody for
+>   ever. **App-side, no migration** (the list goes in front of the user first,
+>   and they are out): the count is arithmetic over `admin_businesses`
+>   (`ownerStandingOf`), the tabs are All · Artists · Suspended, the Businesses
+>   desk gained an **Organizations** tab with each organization's own ₹5,000
+>   mandate chip and NO comp or visibility switch — `admin_grant_subscription`
+>   knows the studio and artist kinds only, and an organization's row is never
+>   `listed` — and the dashboard stops drawing the two role-counted figures that
+>   read 0. ⚠⚠ **Then `shoot-admin` opened `/admin/verifications?tab=approved`
+>   and it was a 500**: `findVerifiedStudiosPage` embedded
+>   `business_members (…, profiles (full_name))`, and `business_members.user_id`
+>   references `auth.users` — Step 11 wrote that down for the team read on
+>   25 Aug — so PostgREST has no relationship to embed through and refused the
+>   whole query. **The Verified tab of the verification desk has been a 500 from
+>   the day it was written (11 Sep)**, and nothing had opened it since: no e2e
+>   does, and the last recorded `shoot-admin` run is 11 Sep. Read off the live
+>   catalog (`fkcheck.js`, scratchpad) rather than guessed; the owner's name
+>   comes off `admin_businesses` now, the definer read every other desk uses,
+>   because an admin holds no policy on `business_members`. **19/19 admin
+>   screens clean** on the rebuilt bundle. ⚠ The three admin-support reds in the
+>   fourth run were ONE red and its shadow: the unread badge that did not clear
+>   was the busy machine (5/5 alone in 1.5 min, the RPC unchanged since 10 Sep),
+>   and the two after it were **the restarted worker's fresh `stamp`** — a spec
+>   that is not `describe.serial` gets a new worker after a failure, the
+>   describe body runs again, and every later test looks for names that no
+>   longer exist. A red after a red in a non-serial spec is a cascade, not two
+>   findings.
+> * ⚠⚠ **8 · THE LAST RED IS A HOLE THE MORNING'S MIGRATION OPENED, AND ITS FIX
+>   IS WRITTEN, DRY-RUN AND HELD.** `happy-path:2737`: an organization names the
+>   learner as its owner from its Team desk, and the learner's Inbox row reads
+>   **"An organization wants to name you as an owner of An organization"** — the
+>   ask row is theirs to read, but the organization's NAME is on a `businesses`
+>   row now, and that row is UNLISTED for ever (its public face is
+>   `org_is_public`), so nobody but its owner and an admin may read it and the
+>   embed came back null. Until the morning the name was on the organization
+>   LOGIN's profile row. **`20260926140000_being_asked_by_an_organization_lets_you_read_it`**
+>   is the 18 Sep rule one clause wider: `has_been_asked_by_business` — the
+>   definer helper behind "people asked onto a class read who asked" — also
+>   answers true for a live `organization_members` row, so the person named reads
+>   the organization that named them for exactly as long as the ask lives.
+>   Dry run **16/16, rolled back** (`dryrunOrgAsk.js`): the hole reproduced
+>   BEFORE (check 4), the name read AFTER through the very embed the Inbox makes,
+>   a stranger reading nothing, nothing ELSE unlisted reachable through it, the
+>   read dying with the ask, ACL multiset and anon's set and the policy count
+>   unchanged. `db-push -DryRun` lists exactly the one file. ⚠ **NOT APPLIED**:
+>   the list goes in front of the user before every `db push`, and they are out —
+>   so the suite's tally below carries this one red honestly, and the two
+>   segments behind it in the serial story did not run. Until it is applied a
+>   fresh organization ask reads that way in the Inbox; the ask itself lands and
+>   can be confirmed.
+> * ⚠ **Applied in the order the standing rule requires**: `db-push -DryRun`
+>   listed exactly the two (then exactly the one), the apply printed each on the
+>   FIRST try, PostgREST's cache was reloaded after each, the sweep ran after the
+>   apply (it inserts a column the migration adds).
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **all 33 proofs
+>   green** — the suite run had four reds and every one was the HARNESS, re-cut
+>   and re-run alone to green: `event-money` never dot-sourced `proof-lib` (the
+>   killed agent's half-edit), `layout`'s A14 asserted `tools:org` where an
+>   organization's grid is keyed by the organization now, `notifications` check 4
+>   (the defect above — fixed in the DATABASE, not the proof), `rooms-people`
+>   check 7 asserted "an organization cannot be asked" for an owner who is a
+>   person now and is seated at once · **`shoot-tiles.js` 148/148** on the
+>   rebuilt bundle (131 before — the seventeen new ones are the person's own
+>   studio pressed end to end: the hub, the switcher, THIS STUDIO, the
+>   Subscription tile, the self-taught class with Publish open and the Inbox
+>   line; and the organization opened from its hub and every tile on its home)
+>   · **`shoot-hero.js` 178/178** (162 before — the pencil gating every editor,
+>   both states; Edit details; the contact ⊕ on a person and on a studio, the
+>   WhatsApp chip and the Message button; no Edit or Subscription tile in
+>   Settings; 178/178 AGAIN on the final bundle, the WhatsApp chip through the
+>   shared lists) · **`shoot-admin.js` 19/19 screens clean** (its first run
+>   since 11 Sep) · **the e2e suite 55 passed · 1 failed · 2 did not run, in
+>   13.6 min on one worker — the one red is #8 above, the held migration's hole
+>   (`happy-path:2737`), and the two behind it are the serial story's last two
+>   segments**. Six suite runs to get there, and every red on the way is named
+>   in this block: two stalls on a renamed button, the GST card's own sentence,
+>   the busy machine once, the Accounts chip (#7), the lost style (#6), and #8.
+>   ⚠ Five shoot reds on the way were all the script: the register opens on
+>   Published and the Publish pill is on the Draft segment; the Inbox's log is on
+>   the Requests desk's SENT side; the organization sheet's button reads "Open
+>   organization", not "Create organization"; shoot-hero's GRANTED read two
+>   strips because this account owns an organization now too; and a plain
+>   user's Home draws no Message button by the 19 Sep list, so the button is
+>   asserted on the STUDIO's home. ⚠⚠ **And the same wrong button name cost the
+>   e2e a FIFTEEN-MINUTE STALL before it cost a failure**: happy-path segment 1
+>   carries `test.setTimeout(900_000)`, and a `click()` on a control that does
+>   not exist waits for the TEST timeout — so the suite sat at [25/58] for the
+>   full budget twice. **A control that does not exist is a stall, not a red,
+>   when the segment's budget is fifteen minutes** — grep the spec for every
+>   accessible name a slice changed before the run, which is the 21 Sep rule.
+> * ⚠⚠ **PENDING AT THE USER'S END** is NEXT TO DO #0an — the mandate on
+>   Deepak's organization, the demo re-seed, the sandbox items that have waited
+>   since #7, #8, #13, #14.
+>
+> ### THE STUDIO HALF, AS IT WENT IN (26 Sep 2026, earlier the same day) — the block below is what the first migration did; it is APPLIED now
 > The user: *"Move Studio creation from org and allow user and artist to create
 > studios now from studios tab at home in a section. verification and
 > subscription process remains the same for the studio. so studio profiles can be
@@ -5214,6 +5418,61 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0ao. **⚠⚠ ONE MIGRATION WRITTEN, DRY-RUN 16/16 AND HELD — `20260926140000_being_asked_by_an_organization_lets_you_read_it`.**
+   ⚠ Rule 9 (RLS): it widens what one person may read. **The whole of the file:**
+   `has_been_asked_by_business(uuid)` — the SECURITY DEFINER helper behind the
+   `businesses` SELECT policy "people asked onto a class read who asked"
+   (18 Sep 2026) — is `create or replace`d, same signature, to answer true ALSO
+   for a live `organization_members` row (asked, confirmed or rejected, exactly
+   the class rule's span). Its comment is re-cut; its grants are restated
+   (authenticated only; never anon). **No policy is added or changed, no table,
+   no column, no row, no grant moves; anon's executable set is unchanged.**
+   **What widens:** a person an organization has NAMED on its Team desk reads
+   that one organization's `businesses` row — name, city, picture, the GST
+   stamp — while the ask lives; withdraw the ask and the read goes with it.
+   **What it fixes:** the Inbox row "An organization wants to name you as an
+   owner of An organization" (`happy-path:2737`, the one e2e red; the top block's
+   #8). The dry run (`dryrunOrgAsk.js`, scratchpad) plants a real ask on Deepak's
+   organization inside a rolled-back transaction and proves the hole before, the
+   name after, a stranger still reading nothing, nothing else unlisted
+   reachable, the read dying with the ask, and the ACL multiset / anon's set /
+   policy count unchanged. `db-push -DryRun` lists exactly this one file.
+   **On the user's word:**
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260926140000
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   $env:PLAYWRIGHT_BASE_URL="http://localhost:3100"; npx playwright test e2e/happy-path.spec.ts --reporter=line --workers=1   # the push-2 segment and the two behind it
+```
+   ⚠ No PostgREST reload is needed (no column, no table) and no rebuild — the app
+   already asks the embed; the database simply starts answering it.
+
+0an. **⚠ PENDING AT THE USER'S END AFTER 26 Sep 2026** (the list they asked for
+   before going out), in the order it matters:
+   * **Say the word on #0ao** — one held migration, one clause, and the Inbox
+     row of an organization's ask names the organization again.
+   * **Authorise Deepak's organization's ₹5,000 mandate on the sandbox** — from
+     the organization's own home → Subscription tile (`/business/728fe050-…/subscription`),
+     with the sandbox UPI `testsuccess@gocash`. `org_is_public` needs the GST
+     number (stamped) AND the mandate, so until then "Deepak Kaushik" is private:
+     no public page, no bookable events. ⚠ Rule 9. The same goes for any studio
+     a person opens: verification by an admin, then its own ₹1,200 mandate.
+   * **Re-seed the demo world when one is wanted** — `node scripts/demo-data.js wipe`
+     then `seed`. The retirement took the demo organizations and their studios;
+     the seeder is re-cut to open an organization as a business and has not been
+     run since.
+   * **Sign in as the retired organizations?** Their auth accounts still exist
+     with a soft-deleted profile; signing in lands on onboarding and makes a
+     fresh USER profile. Delete the accounts from the admin API if that is not
+     wanted (`retire-organization-logins.js` left them on purpose — an account
+     is a login, and the user's word was "profiles").
+   * **The sandbox items that have waited**: a billed Google Maps key (#7 —
+     `shoot-location` has been 8/9 on the demo key's quota three times), the
+     Cashfree PG webhook sub-tab (#8), the Supabase email templates (#13), a
+     verified Resend domain (#14).
+   * **What the app CANNOT decide for you**: whether a retired organization's
+     photos (still in `proof/{old owner}/…`) should be purged from the bucket —
+     the rows are soft-deleted, the objects are orphaned and harmless.
+
 0am. **~~STAGE 3 — ONE MIGRATION WRITTEN, NOT DRY-RUN, NOT APPLIED~~ — ✅ APPLIED
    AND PUSHED 22 Sep 2026** on the user's *"push to live and apply"*, after the
    list below had been in front of them. Dry run **30/30 rolled back** (the ACL
@@ -6184,9 +6443,30 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
-- **A PERSON OPENS A STUDIO, AND NOBODY IS ASKED TO SAY YES TO THEMSELVES —
-  26 Sep 2026, no step number ⚠ (Rule 9: who may hold and pay for a studio) —
-  BUILT, ONE MIGRATION DRY-RUN 32/32 AND NOT APPLIED, NOT PUSHED.** The user's
+- **A PERSON OPENS A STUDIO AND AN ORGANIZATION, THE ORGANIZATION LOGIN IS
+  RETIRED, AND EVERY HOME EDITS BEHIND ONE PENCIL — 26 Sep 2026, no step number
+  ⚠ (Rule 9: who may hold and pay for a studio and an organization; a sweep of
+  production) — THREE MIGRATIONS APPLIED (32/32, 54/54, 8/8 rolled back first),
+  THE RETIREMENT SWEEP RUN, PUSHED AND LIVE.** An organization is a business a
+  person opens from Home's Organizations tile (R48): GST number on the business
+  row, public while verified AND its own ₹5,000 mandate is live, the login
+  retired and 14 of them swept with their 27 businesses at the user's word, one
+  verified organization made for Deepak Kaushik. Every home's corner pencil
+  toggles EDIT MODE (C60): the disc's ⊕, the posters' ⊕, the styles ＋, the
+  links ＋, an Edit details chip and a ＋ Contact buttons ⊕ (Call · Mail ·
+  Message · Enquiry, made and unmade) appear with it; Settings lost every Edit
+  tile and the Subscription and Artist-tools tiles — Subscription is a tile on
+  every home. A crew dances a list and has links (R49) and is created with its
+  own number and email. ⚠ The harness found a defect in the first migration's
+  self-log (a service-role seat satisfied "wrote it in their own name"), fixed
+  by the third migration (the owner seat is the test). **Verified:** typecheck 0
+  · lint 0 · build green · all 33 proofs green · `shoot-tiles` 148/148
+  · `shoot-hero` 178/178 · `shoot-admin` 19/19 · the e2e suite **55 passed ·
+  1 failed · 2 did not run** — the red is the Inbox row of an organization's
+  ask naming nobody, whose fix is `20260926140000`, dry-run 16/16 and HELD
+  (NEXT TO DO #0ao); the two behind it are the serial story's tail. **The
+  studio half,
+  as it first went in:** The user's
   ask: a user or an artist opens a studio from Home's Studios tile, verification
   and the per-studio mandate unchanged, runs it from the profile switcher, and
   when the same person is on both sides of a class (a studio owner teaching
@@ -10273,7 +10553,7 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R43 | New routine is a card that expands inside S_choreos (17129) and New membership one inside S_memberships (16846); Create crew is `crewFormOnly`'s own page with a blue sleeve (9545) — three different shapes, none of them S_classform's | **ALL FOUR "ADD SOMETHING" FORMS WEAR ONE ANATOMY** — `components/ui/FormPage`, which IS S_classform's (15108-15650): a ← heading, a step bar, one label tier, a fixed bottom bar whose button names the missing answer, and a confirm sheet with a summary card. `/routines/new` and `/memberships/new` are pages now; each re-checks its own gate on the server. ⚠ **`ClassForm` moved onto the kit too** — the screen the others are matched to is not allowed to be the one that drifts | 21 Sep 2026, the user: *"Create Crew form in crews should look similar to add class page. same should be for new routine and new membership."* The prototype has one studio and three unrelated add-flows; this app has four and they had drifted apart exactly the way `linkChip` and the figure row did before |
 | R44 | S_people (17293) is a student POOL a studio curates, and this app built it as the leads pipeline — five stages, a funnel, a trial class, a per-lead sheet (Step 12) | **A STUDENT IS A CONSEQUENCE**: checked in here, or holding a pass this business sold, or a walk-in the desk typed in (`repositories/students.ts`). No stages, no funnel, no trial. The only manual act is an INVITE, and it is a hand-off — the number or address opens the studio's own WhatsApp, SMS app or mail client with the link written, because there is no SMS provider and Resend reaches nobody but the account owner. ⚠ `leads` rows, columns and both write doors are KEPT (#0a4's precedent); `LeadsDesk.tsx` is deleted. ⚠⚠ **AND NOT EVERY SEAT SEES IT** (later the same day, the user's *"No"*): the desk was membership-only, so a visiting teacher and an assistant read the whole roster — every name, **every phone number**, and what each person holds — while `MEMBER_POWER_NOTE`, the sheet an owner reads before handing out a seat, gives the students desk to `staff` and `trainer` alone. The sheet was right and the code was wrong; both the desk and its tile refuse those two now. ⚠ It is a PRESENTATION gate: the reads underneath admit every member, so narrowing it properly is a policy change on `leads` and `attendance` | 21 Sep 2026, the user: *"Students section dont need to track a lead should just simply be able to send invite to a new user from here through mobile no. or email. rest all students are added automatically when they attend a class or take a membership."* ⚠ **Attendance, not bookings** — their own answer when asked, and Step 25's standing rule |
 
-| R47 | R3 / R14: only an ORGANIZATION opens studios; a person's hub opens nothing (18 Sep); a studio's class waits for its teacher's yes and an artist's class at a studio waits for the studio's (18 Sep, `classes_publish_needs_a_yes`) | **A USER OR AN ARTIST OPENS A STUDIO TOO** (26 Sep 2026): from Home's Studios tile, born unlisted, the badge from an admin, its own ₹1,200 mandate — the process is the same, and the studio is run from the profile switcher with THIS STUDIO in its Settings. An organization keeps its door. **And consent with nobody to ask is not asked**: a studio owner taking their own class is seated confirmed, an artist's class in a studio they own is accepted at birth; both raise a notification and the Inbox row stays with its answer — the LOG. Somebody else's class or studio is still an ask. ⚠ Migration written and dry-run 32/32, NOT applied at the time of writing | The user, 26 Sep 2026: *"Move Studio creation from org and allow user and artist to create studios … verification and subscription process remains the same … no verification is required but keeps a log in the inbox."* ⚠ Rule 9: `subscribe`'s studio branch now asks "is it yours" (owner seat + badge) instead of "are you an organization" |
+| R47 | R3 / R14: only an ORGANIZATION opens studios; a person's hub opens nothing (18 Sep); a studio's class waits for its teacher's yes and an artist's class at a studio waits for the studio's (18 Sep, `classes_publish_needs_a_yes`) | **A USER OR AN ARTIST OPENS A STUDIO TOO** (26 Sep 2026): from Home's Studios tile, born unlisted, the badge from an admin, its own ₹1,200 mandate — the process is the same, and the studio is run from the profile switcher with THIS STUDIO in its Settings. An organization keeps its door. **And consent with nobody to ask is not asked**: a studio owner taking their own class is seated confirmed, an artist's class in a studio they own is accepted at birth; both raise a notification and the Inbox row stays with its answer — the LOG. Somebody else's class or studio is still an ask. ✅ **APPLIED 26 Sep 2026** (`20260926090000`, with `20260926120000` in the same push); ⚠ "an organization keeps its door" was superseded the same day by R48 — there is no organization LOGIN left to hold one | The user, 26 Sep 2026: *"Move Studio creation from org and allow user and artist to create studios … verification and subscription process remains the same … no verification is required but keeps a log in the inbox."* ⚠ Rule 9: `subscribe`'s studio branch now asks "is it yours" (owner seat + badge) instead of "are you an organization" |
 
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
@@ -10351,6 +10631,9 @@ Home. **Do not "restore parity" on these.**
 | C57 | C40 (21 Sep 2026) made your own PROFILE one address (`/profile` a redirect, `/person/{id}` rendering the owner's screen) and left your own STATS as two — `/stats` beside `/person/{me}/stats`, `/business/stats` beside `/org/{me}/stats` | **ONE ADDRESS PER RECORD, WHOEVER IS LOOKING.** `/stats` and `/business/stats` are REDIRECTS carrying the whole query (`?tab=` `?seg=` `?city=` `?style=`); `features/stats/components/OwnStatsScreen.tsx` holds the owner's reads that were inline in the route, and `StatsScreen` takes a `basePath` STRING — never a builder, because a server component may not hand a function to a client one (the 21 Sep React #441 lesson). The three chips build `${subject}/stats` and no longer ask `isMe ?`. ⚠ The owner branch sits ABOVE the public read on both routes, the ordering C40 already needed: `public_organization` and `findPublicPerson` answer only for a PUBLIC row, so below it an unverified organization meets `notFound()` on its own record. ⚠⚠ **`app/(app)/stats/loading.tsx` IS DELETED** — a streaming boundary turns a `redirect()` into a **200 with a client hop**, which is exactly why `page.url()` still read `/stats` while the screen was right; probed with `-MaximumRedirection 0` (200, then 307 with the file gone). ⚠ It was NOT moved onto `/person/{id}/stats`: a guest must 307 to `/login` there and a plain user's must 404, and a boundary breaks both — the four specs that went red on 19 Sep. The person's stats screen has no skeleton as a result, and that is the price. Three more doors lost a hop in the same audit: Home linked `/profile` where it had already built `publicHref`; the event page's "Create a crew ›" was the last control still pointing at `/crews/new` instead of C54's sheet; the calendar's compose ＋ pointed at `/business/{id}/events/new`. ⚠ **NOT merged, so it is not re-proposed:** `/crews/{id}/manage` and `/crew/{id}` — `AppChrome` reads the entity from the PATHNAME alone and cannot know the viewer's relationship, and `CrewHome` is a tool grid, so merging puts owner-only tiles on a visitor's front door; and `/invoices` · `/payments` · `/refunds` were never duplicates (one component, a `side` prop, two subjects) | 23 Sep 2026, the user: *"give me a list of duplicate pages and dead pages. lets try resolving that"*, then *"fix duplicates first"* |
 | C58 | A studio's own home carries the owner's pencil in its corner over the eye (C2, 15 Sep 2026), and its public page carries an Edit cell in the team row | **A STUDIO'S AND A CREW'S EDIT IS SETTINGS', AND THE CORNER IS ONE CONTROL.** Both doors are gone — ⚠ a studio had TWO where a person has had exactly one since C22, whose own words were *"all edit profile options to be removed from home **and profile pages**"* — and **Settings' THIS STUDIO block opens with an Edit studio tile**, a crew's THIS CREW block being a real block now rather than a sentence saying a crew has none. ⚠ **The sheet is an ADDRESS, `?edit=1` on the entity's own home** (C54's grammar), not a sheet the chrome opens: for the chrome to open it, it would need a `PublicTenant` read on every page under a studio for a control almost nobody presses — the C53 Verification precedent exactly. ⚠ The gate is re-checked on the PAGE (the sheet is drawn only when the owner-only read came back), so the query asks and never authorises. ⚠ **The glyph and the label stay each kind's own** — an eye saying *"Public view"* on a studio and a crew, a person saying *"Your profile"* on the other three — because the destinations differ in kind: `/person/{id}` renders the OWNER's screen for its owner (C40) and `/studio/{id}` is the public page for everybody, so unifying the word would make one of the two a lie. What *"similar"* asked for is the SHAPE, and that is now identical: one chip, one geometry, one position. ⚠ **`PencilIcon` is DELETED** — those corners were its last callers | 23 Sep 2026, the user: *"studio edit profile should be in settings in settings and profile view button similar to other profiles"* |
 | C59 | The ⊕ on the disc and the ⊕ on the posters rail are declared at their own call sites, one pair per profile kind (C44 extracted the GLYPH into `profile-kit` on 21 Sep and left the CHIP behind) | **ONE PAINT, `pictureChipPaint`, IN `profile-kit`** — six call sites over three files (`PicturesSheet`, `StudioPictures`, `CrewPictures`) read it, so *"the same on all profiles"* is true by construction rather than by six edits that can drift again. ⚠ **The SCRIM wins, and that is a reason rather than a coin flip:** the posters' ⊕ sits ON a photograph and the disc's sits on the page, so only one of the two paints is legible on BOTH grounds — `var(--card)` is `rgba(255,255,255,.07)` in the dark theme and would vanish into a bright picture, while a dark scrim with a white glyph reads on anything. The two disc glyphs move from `<PlusIcon />` to `<PlusIcon light />` with it | 23 Sep 2026, the user: *"same plus icon color for profile pic and posters on all profiles"* |
+| R48 | R9 / R12 / R15 (8–9 Sep 2026): an ORGANIZATION is a LOGIN — `profiles.role = 'org'`, one account per organization, its events on a hosting row, its GST number on its profile, admin-verified once; R47 (26 Sep, earlier) let a person open a studio | **AN ORGANIZATION IS A BUSINESS A PERSON OPENS** (26 Sep 2026, `20260926120000`): `businesses.type = 'org'` owned by a user or an artist from Home's **Organizations** tile, exactly as a studio is from Studios — born unlisted, its GST number on the BUSINESS row (`verify_business_gstin`), public while GST-verified AND its own ₹5,000 mandate is live (`org_is_public`, `org_monthly`), run from the profile switcher with THIS ORGANIZATION in its Settings and a home of its own (`OrgHome`). **The organization LOGIN is retired**: `profiles.role` is `user` for everybody, onboarding offers no kind, `/gst` · `/business/team` · `/business/earnings` · `/business/stats` redirect to `/organizations`, `set_my_place` is dropped. **An organization opens no studios** (`why_no_studio` refuses the hosting row's owner nothing — it is a person — but there is no studio door on an organization's home). ⚠ Rule 9: `subscribe` takes `org`; `event_host_is_public` reads the business row; every public organization read is keyed on the BUSINESS id, and anon reads its pictures through `business_pictures_are_public` (a definer, because a policy subquery on `businesses` runs under the caller's RLS and an unlisted org row vanishes from it) | 26 Sep 2026, the user: *"make organization a tab on home for artist and users and mechanism to create and open an organization similar to studios … organization should not be able to create studios and all associated ones should be deleted. seprate login for organization also goes away … verification process remains same for organization."* Then: *"delete all studios linked to organizations owned studios. delete all existing organizations just give one verifired one to artist deepak kasuhik. organization subscription price rs.5000"* — `scripts/retire-organization-logins.js` ran on that word: 14 logins and 27 businesses soft-deleted, ONE organization "Deepak Kaushik" (Gurugram, GST `DKO00001` verified) made for user `5d06589f` |
+| R49 | A crew has ONE `style` and no links (Step 22; `crews` has no `socials` column, said on three screens) | **A CREW DANCES A LIST AND HAS LINKS** — `crews.styles text[]` (kept in step with `style`, which stays the FIRST for the card, the board and the search, by trigger) and `crews.socials jsonb`, two leader-only doors `set_crew_styles` / `set_crew_socials`, drawn as the app's one styles row and one links row on the crew's home with a ＋ each, and read back on its public page. **A crew is created WITH a mobile number and an email** (required on the form, the crew's own, landing through `update_crew` the moment the row exists) | 26 Sep 2026, the user: *"all profiles should have both dance style edits and social media edit options and option to add multiple"* and *"all profiles created from user or artist require a mobile number, email etc for the studio, crew, organization … editable to the user who creates that profile and not take directly what the user used for their login"* |
+| C60 | C22 (19 Sep 2026): Edit profile is Settings' first tile and no home carries a pencil; C58 (23 Sep): a studio's and a crew's Edit is a Settings tile too; the disc's ⊕, the posters' ⊕, the styles ＋ and the links ＋ are always drawn for whoever may edit; the number and the email are fields in every Edit sheet | **THE PENCIL IS BACK ON EVERY HOME'S CORNER, OVER THE DOOR, AND IT TOGGLES EDIT MODE** (`EditMode.tsx`: a context the page provides and every editor reads). Read mode is the home with NO control on it; the pencil (`aria-pressed`) makes them all appear at once — the disc's ⊕, the posters' ⊕, the styles ＋, the links ＋ (`StylesRowEditor`, `LinksRowEditor`: one row each for a person, a business and a crew, with the DOOR passed in), an **Edit details** chip beside the name for the words a form still holds (name · date of birth · city; a business's name · Since · the pin; a crew's name · city · first style — `?edit=1` on the entity's home, C54's grammar, or the person's sheet in place), and a **＋ Contact buttons** ⊕ under the button row (`ContactEditor`) where Call (with an artist's and a crew's switch), Mail, Message (a WhatsApp number, stored as the `socials` entry it always was, `wa.me`) and a business's Enquiry are made and UNMADE — an empty box takes the button off. **The number, the switch and the email left all three Edit sheets** (sent back unchanged, because two of the doors take the whole profile). **Settings has no Edit tile of any kind** — no YOU block, no Edit studio, no Edit organization, no Edit crew — and no Subscription or Artist tools either: **Subscription is a tile on every home** (a person's `/subscription` takes and ends the Artist plan and lists the studios and organizations they own; a studio's and an organization's `/business/{id}/subscription` is its own mandate). ⚠ A `Message` button is drawn wherever the row is (five homes, four public pages) | 26 Sep 2026, the user: *"it should be possible to edit everything in the edit profile option on the home page for every profile. should give edit plus button like profile pic for every part on the home tab which is editable. so fix that clicking on the edit pencil button from top right on every profile should open the option to edit everything from the home tab thats when the button to edits need to appear … all buttons like email, location, phone, message, enquiry on home tab should also be like social media and dance style edit style to add or remove and those options can be removed from edit profile. edit profile to be removed from all profiles settings and should be a button on top right with public page view right now. for user subscription should show option to subscribe to become an artist should not be a separate tab in settings like artist tools. studio and organization subscription managed separately … subscriptions also become an option on home tab for all profiles and is removed from settings for all."* ⚠ This SUPERSEDES C22 and C58 on the user's own later word; what those rows got right — one door to the words, the sheet as an address — is kept |
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps
@@ -10369,7 +10652,9 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| **A person opens a studio, what it left (26 Sep 2026):** ⚠ **an organization keeps its own Add studio door** — the additive reading of "move"; if the user meant organizations lose it, that is one line in `why_no_studio()` and the hub. **A shifted studio's old photos cannot be DELETED by the new owner** — the objects live in `proof/{org}/…` and the delete policy is the uploader's folder; the row soft-deletes and the object is orphaned, harmless. **The person's `/subscription` lists studios by owner seat** while `findMyTenants` still returns every seat, so the page makes one extra read. **`shoot-tiles`'s person segment SKIPs until the migration is applied** — a SKIP is not a pass, and the run's tally does not count it. **No e2e segment yet** drives a person's studio end to end; the tile probe is the cover. **An artist's own-page class still raises no notification** (it never asked, by construction since 18 Sep) — only the two cases that would otherwise have been an ask are logged. **The 15-studio cap is per account** whoever it is — a person with fifteen studios is a thing the word "account" now allows | — (the prototype has one studio and one kind of owner) | the door question is the user's; a segment when the story next grows |
+| **Edit mode, the contact ⊕ and the crew's rows, what they left (26 Sep 2026):** ⚠ **EDIT MODE IS COMPONENT STATE, NOT THE URL** — a reload, a sheet's `?edit=1` Cancel (which goes BACK an entry) and a navigation all put the home back in read mode, so the pencil is pressed again after each; deliberate, because `?editing=1` in the address would be a request the harness could hand anybody, and the mode grants nothing anyway — every editor re-checks its own door. **The pencil's `aria-pressed` is the only signal** a screen reader gets that the home changed state; nothing is announced. ⚠ **A PLAIN USER can store a WhatsApp number and never sees a Message button** — a user's page draws no buttons (the 19 Sep list), so the entry shows as a chip in the links row only; the sheet says so. **Message is a `wa.me` link built from digits**, so a WhatsApp URL pasted on 29 Aug as a profile link still draws the button (and the chip), and a number typed here lands in the links row too — one list, two readings, which is right and is the one place a "remove" has two doors. ⚠ **Location is not in the contact sheet**: a business's pin is its Edit details map and a person's city is theirs, said in words rather than drawn as a second map. **An artist's Enquiry cannot be switched off from the contact sheet** — their enquiries land on the artist PAGE, whose kinds are Settings › Enquiry types (every kind off takes the button off, through `EnquiryButton`'s new empty-list rule); a business's Enquiry IS a switch there. ⚠ **`EnquiryButton` returns null for an EMPTY types list** on every surface that passes one, and the person surfaces (`PublicPersonPage`, `MyProfilePage`, Home) pass none — so an artist page with every kind off still draws Enquiry on the person's page, which opens a sheet with nothing in it; the read that would close it (the page's `enquiry_types` beside `artist_page_of`) is a repository change. **The crew's first style is still the Edit details sheet's picker AND the first of the band's list** — the trigger keeps them equal, so the sheet's picker is the band's ＋ in a second coat and could go. ⚠ **`shift-studio-owner.js` has no job** and stays. **No e2e drives the contact sheet's WhatsApp field or a crew's links** — `shoot-hero` drives the first and the proofs the RPC of the second. ⚠ **`RecordListsProvider` holds a home's styles and links ONCE and never re-adopts the server's read** — right while every writer is inside it, and the day a new editor of either list is drawn OUTSIDE the provider (a sheet reached by navigation writes fresh props, which is fine; a same-page sibling does not), it is the stale-copy race again. `BusinessEditFromUrl` (`?edit=1`) is reached by navigation and still reads its props, which is why it is not inside | S_profiletab 10613, 11364; 10875-10888 | a URL mode only if a real person loses it; the artist-page read when somebody asks; an `aria-live` line |
+| **The admin desks after the organization login went, what the app-side re-cut left (26 Sep 2026):** ⚠ **FOUR THINGS IN THE DATABASE STILL SPEAK THE RETIRED ROLE, and each is one clause in the next admin migration** — `admin_org_standing(uuid[])` answers only for `profiles.role = 'org'` and so answers nobody (dead; drop it); `admin_dashboard()` counts `orgs` and `verified_orgs` by that role (both 0 for ever, no longer drawn) and has NO organizations figure, so the Businesses desk counts its organizations off the list it reads (a second `admin_businesses` read only while a search term narrows the first); `admin_grant_subscription` knows `studio` and `artist` and not `org`, so **an admin cannot comp an organization's ₹5,000 mandate** — the desk says so in a line where the button would be; and `admin_accounts` still returns `role`, which every row prints as USER. **The Verified tab reads owner names off `admin_businesses` at its 200-row cap** — a 201st business's owner would print as nobody on that tab (the page itself pages correctly); one more argument for a definer read keyed on ids. **The suspend note still says "every studio the account owns"** and `admin_suspend_account` was written for an organization's studios — whether it also unlists an organization BUSINESS a suspended person owns was not checked tonight. ⚠ **`shoot-admin` is the only thing that opens the Verified tab**, and its last run before tonight was 11 Sep: a desk tab no e2e drives is a tab that can 500 for fifteen days | — (the prototype has no admin) | one admin migration: drop the dead RPC, an organizations figure on the dashboard, the `org` kind on the grant, a by-id owner read |
+| **A person opens a studio, and an organization is a business — what the two migrations left (26 Sep 2026):** ~~an organization keeps its own Add studio door~~ — **answered the same day**: the organization login is retired (R48) and an organization's home has no studio door at all. **The two studio SHIFTS were never run** — every studio the retired organizations owned went with them at the user's word, so `scripts/shift-studio-owner.js` is a tool with no job today; it stays because a shift will be asked for again. **The person's `/subscription` lists studios and organizations by owner seat** while `findMyTenants` still returns every seat, so the page makes one extra read. ⚠ **`scripts/demo-data.js` was re-cut to open an organization as a business, and has NOT been re-seeded** since the retirement took the demo world's four organizations, five studios and everything under them — the live catalog holds the six real accounts, the two test-phone accounts (the owner now a user with "Proof Owner Org"), Deepak's organization and whatever the runs leave; `demo-data.js wipe` + `seed` is the next thing to run when a demo world is wanted. ⚠ **A retired organization's auth account still exists** — its profile is soft-deleted, so signing in lands on onboarding, which makes a fresh USER profile on that account; nothing stops that and nothing needs to. **No e2e segment yet** drives a person's studio or an organization end to end from the tiles; `shoot-tiles` presses every tile of both and the proofs cover the doors. **An artist's own-page class still raises no notification** (it never asked, by construction since 18 Sep) — only the two cases that would otherwise have been an ask are logged. **The 15-studio cap is per account** whoever it is. ⚠ **`org_is_public` needs BOTH the GST number and the mandate**, so Deepak's organization — verified, unsubscribed — is private until its ₹5,000 mandate is authorised on the sandbox, which is the user's to do from its Subscription tile | — (the prototype has one studio and one kind of owner) | a re-seed when a demo world is wanted; a segment when the story next grows |
 | **Every form as a sheet, what stage 2 left (22 Sep 2026):** ⚠ **an EDIT still opens as a page, everywhere** — `/business/{id}/classes/{id}/edit` and `…/events/{id}/edit` are reached from a row, not from an add button, so the ask did not name them and they were not moved; a studio therefore edits a class on a screen and creates one in a sheet, which is one product wearing two shapes for one object. **`/crews/new`, `/routines/new`, `/memberships/new` and both `/…/new` routes are now reachable only by typing them** — no control in the app points at any of them any more, so they are kept alive by Rule 14 and by `shoot-tiles.js` alone; a link somebody was handed still opens, which is the whole reason they stay. **A sheet has no dirty guard**: the scrim and system back both close it with whatever was typed in it, exactly as the page's ← always has, and a half-filled class is lost in one press. **The panel is `94vh` with its own scroller**, so on a short phone the step bar scrolls away with the rest rather than pinning — the action bar is the only thing that sticks. And **`?new=1` is remembered by the browser**: reload a desk with the sheet open and it opens again, which is right, but a shared link to a desk that somebody copied mid-form carries the form with it. ⚠ And `createClassAction` / `updateClassAction` now **return instead of redirecting** when the form says it is a sheet — the one place in this app where a server action's navigation is the client's; it is a hint about navigation and grants nothing, but it does mean the register's fresh read is a `revalidatePath` + `router.refresh()` rather than the redirect's own | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit sheet when somebody asks; a dirty guard only if a real person loses work |
 | **The last two forms, the one-page collapse and the rule, what they left (22 Sep 2026):** ⚠ **an asset and a room have no EDIT sheet** — an asset is still corrected in place on its row and a room on its own, so those two objects are made in a sheet and changed on a list, which is one object wearing two shapes. **Neither form has an ADDRESS**, deliberately (nothing ever handed one out), so they are the only two "add something" forms `shoot-tiles` cannot drive by URL — if either is ever linked to, it needs a page in the same push. ⚠ **A ROOM'S AMENITIES ARE STILL NOT ASKED FOR**: a new room gets none and you fold its row open afterwards, which is unchanged and is now the one field the form does not cover. **The `₹0 = legacy` rule is now stated in two places** — the form's note and the row's own words — and they could drift. ⚠ **The separator is only where there IS a figure**, so the five micro-caps section heads that carry no count (`YOUR STUDIOS`, `CREWS YOU LEAD`, `WHERE IT CAME FROM`, `BY STUDIO`, `WHAT YOU OWE`) are untouched and still declared FIVE times in five files — the obvious consolidation, and not this slice's. And **`FigureHead` shares the rule and not the type**, so a new counted head can still pick its own scale; nothing checks that it picks one of the three that exist | S_assets 16791; settings 18389-18425; DosShelfHead 3446 | an edit sheet for each when somebody asks; one micro-caps head when a money desk is next opened |
 | **The duplicate-address audit, the edit door and the ⊕, what they left (23 Sep 2026):** ⚠ **THE PERSON'S AND THE ORGANIZATION'S STATS SCREEN HAVE NO SKELETON** — `app/(app)/stats/loading.tsx` covered a route that is now only a redirect, and moving it onto `/person/{id}/stats` would turn a guest's 307 and a plain user's 404 into a 200, which is the 19 Sep regression exactly. Closing it properly means a boundary that does not swallow a status, and nothing in Next offers one. **`/stats` and `/business/stats` are kept alive by Rule 14 and by three re-cut probe checks alone** — no control in the app points at either any more, so they rot the way `/crews/new` did until this audit found it. ⚠ **`?edit=1` HAS NO DIRTY GUARD**, exactly like `?new=1` (C54): the scrim and system back both close the sheet with whatever was typed in it, and a half-edited studio is lost in one press. **The Edit sheet's `?edit=1` is remembered by the browser**, so reloading a studio's home with it open re-opens it — right, and it means a link somebody copied mid-edit carries the form. ⚠ **The corner's glyph and label still differ by kind** (an eye on a studio and a crew, a person on the other three); if the user meant the GLYPH by "similar", that is one import. **`pictureChipPaint` sets the ground and the border and NOT the glyph's colour** — `<PlusIcon light />` is passed at all six sites by hand, so a seventh site can still draw a dark glyph on a dark scrim and nothing checks it | — (the prototype has one editor per profile, 11364) | a status-preserving boundary if the skeleton is ever missed; a dirty guard when a real person loses work; one glyph if that was the ask |

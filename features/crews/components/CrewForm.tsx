@@ -51,6 +51,10 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
      so the field is the app's one city control (11 / 19 Sep 2026) */
   const [city, setCity] = useState<string>(defaultCity?.trim() || "");
   const [style, setStyle] = useState("");
+  /* THE CREW'S OWN NUMBER AND ADDRESS (26 Sep 2026): required, and never the
+     leader's login details — they are what its page's Call and Mail open */
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [members, setMembers] = useState<Profile[]>([]);
   const [pick, setPick] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -63,19 +67,21 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
   };
 
   /* the button NAMES what is missing rather than greying out (15573-15578) */
-  const stepOneErr = !name.trim() ? "Name your crew first" : !city ? "Pick a city" : null;
+  const phoneOk = /^\+?[0-9][0-9 ]{7,17}$/.test(phone.trim());
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const stepOneErr = !name.trim() ? "Name your crew first" : !city ? "Pick a city" : !phoneOk ? "Add the crew's mobile number" : !emailOk ? "Add the crew's email" : null;
 
   const create = async () => {
     if (busy) return;
     setBusy(true);
-    const out = await createCrewAction({ name: name.trim(), city, style: style || "All styles", memberIds: members.map((m) => m.id) });
+    const out = await createCrewAction({ name: name.trim(), city, style: style || "All styles", phone: phone.trim(), email: email.trim(), memberIds: members.map((m) => m.id) });
     setBusy(false);
     setConfirm(false);
     if (out.error || !out.crewId) {
       fire(out.error ?? "Give the crew a name first");
       return;
     }
-    fire(`🎉 ${name.trim()} created — you're the leader`);
+    fire(out.note ?? `🎉 ${name.trim()} created — you're the leader`);
     /* ⚠ A SHEET REPLACES ITS OWN ENTRY ON THE WAY OUT (22 Sep 2026). Unlike a
        routine or a membership, making a crew LEAVES for the thing you just made
        — so a `push` from a sheet would stack the crew's home on top of the
@@ -101,6 +107,14 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
           <div style={FORM_LABEL}>DANCE STYLE</div>
           {/* the app's one style picker (9561) — searchable, "All styles" above the list */}
           <DosStylePicker value={style} onChange={setStyle} all placeholder="Dance style" />
+
+          {/* THE CREW'S NUMBER AND ADDRESS (26 Sep 2026) — the crew's own, asked
+              for here rather than copied off the leader's login; both editable
+              from the crew's home afterwards */}
+          <div style={FORM_LABEL}>MOBILE</div>
+          <input name="phone" value={phone} aria-label="Mobile" type="tel" inputMode="tel" onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={FORM_INPUT} />
+          <div style={FORM_LABEL}>EMAIL</div>
+          <input name="contact_email" value={email} aria-label="Email" type="email" inputMode="email" onChange={(e) => setEmail(e.target.value)} placeholder="crew@example.com" style={FORM_INPUT} />
 
           <div style={FORM_LABEL}>MEMBERS · {members.length} added</div>
           <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>

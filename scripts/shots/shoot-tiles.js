@@ -207,8 +207,11 @@ async function personOpensAStudio(page, who, acc, stamp) {
   const sTxt = await sheet.innerText();
   check(sTxt.includes("THIS STUDIO") && sTxt.includes(name), `${who} · its Settings are THE STUDIO'S (THIS STUDIO · ${name})`);
   check(/Verification/.test(sTxt) && /not yet/i.test(sTxt), `${who} · with Verification reading "not yet"`);
-  check(/Subscription/.test(sTxt), `${who} · and a Subscription tile`);
+  /* the Subscription tile is the studio's own GRID's (26 Sep 2026), not Settings' */
+  check(!/Subscription/.test(sTxt), `${who} · and NO Subscription tile in Settings — it is on the studio's home`);
   await page.keyboard.press("Escape");
+  await page.goto(`${BASE}/business/${studioId}`, { waitUntil: "networkidle" });
+  check((await page.getByRole("link", { name: "Subscription", exact: true }).getAttribute("href").catch(() => null)) === `/business/${studioId}/subscription`, `${who} · the studio's home carries a Subscription tile onto its own mandate`);
   await page.goto(`${BASE}/subscription`, { waitUntil: "networkidle" });
   const subTxt = await page.locator("body").innerText().catch(() => "");
   check(subTxt.includes("YOUR STUDIOS") && subTxt.includes(name), `${who} · /subscription lists the studio under YOUR STUDIOS, beside the person's own plan`);
@@ -233,9 +236,16 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.getByRole("button", { name: "Save draft", exact: true }).last().click();
   await form.waitFor({ state: "detached", timeout: 20_000 }).catch(() => {});
   await page.goto(`${BASE}/business/${studioId}/classes`, { waitUntil: "networkidle" });
+  /* a new class is a DRAFT, and the register opens on Published — the Draft
+     segment is where its Publish pill is (the happy path presses the same pill) */
+  await page.getByRole("button", { name: /^Draft, \d+ classes$/ }).click().catch(() => {});
   const publish = page.getByRole("button", { name: "Publish", exact: true });
-  check((await publish.count()) >= 1, `${who} · the register offers Publish with nothing in its way — nobody was asked`);
+  await publish.first().waitFor({ timeout: 15_000 }).catch(() => {});
+  check((await publish.count()) >= 1, `${who} · the register offers Publish with nothing in its way — nobody was asked (${(await page.getByRole("button", { name: /^Publish/ }).allTextContents().catch(() => [])).join(" | ") || "no Publish pill at all"})`);
+  /* the log: the Requests desk's SENT side — an ask the studio made and its answer */
   await page.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /^Requests/ }).click().catch(() => {});
+  await page.getByRole("button", { name: "Sent requests" }).click().catch(() => {});
   const inbox = await page.locator("body").innerText().catch(() => "");
   check(/Hip-Hop/.test(inbox) && /confirmed/i.test(inbox), `${who} · the Inbox keeps the line, wearing its answer`);
   await page.goto(`${BASE}/notifications`, { waitUntil: "networkidle" });
@@ -351,7 +361,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p3.getByLabel("Choose a city").first().selectOption("Pune");
     await p3.locator('input[name="phone"]').fill("+919876543210");
     await p3.locator('input[name="contact_email"]').fill(`tiles.org.biz.${stamp}@example.com`);
-    await p3.getByRole("button", { name: "Create organization" }).click();
+    /* "Open organization" — the sheet's own word (a studio's is "Create studio") */
+    await p3.getByRole("button", { name: "Open organization" }).click();
     await p3.getByText(orgName, { exact: true }).first().waitFor({ timeout: 20_000 }).catch(() => {});
     const orgRows = await rest("GET", `/rest/v1/businesses?name=eq.${encodeURIComponent(orgName)}&type=eq.org&deleted_at=is.null&select=id,visibility`);
     const hostId = (orgRows && orgRows[0] && orgRows[0].id) || "";
@@ -455,18 +466,28 @@ async function personOpensAStudio(page, who, acc, stamp) {
     const sTxt = await sheet.innerText();
     check(sTxt.includes("THIS STUDIO"), "studio · Settings is THE STUDIO'S — the block is headed THIS STUDIO");
     check(sTxt.includes(studio.name), "studio · and it says whose settings these are");
-    for (const want of ["Edit studio", "Verification", "Subscription", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
+    for (const want of ["Verification", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
       check(sTxt.includes(want), `studio · Settings carries ${want}`);
     }
-    /* ⚠⚠ AND EDIT STUDIO IS THE TILE THAT REPLACED THE CORNER PENCIL (22 Sep
-       2026, the user: "studio edit profile should be in settings … and profile
-       view button similar to other profiles"). Driven rather than read, because
-       a tile that is drawn and lands nowhere is the Memberships bug of 21 Sep:
-       press it, and the studio's own Edit sheet has to open over its home. */
-    await sheet.getByRole("link", { name: "Edit studio", exact: true }).click();
+    /* ⚠⚠ NO EDIT TILE AND NO SUBSCRIPTION TILE HERE (26 Sep 2026, the user: "edit
+       profile to be removed from all profiles settings and should be a button on
+       top right … subscriptions also become an option on home tab for all
+       profiles and is removed from settings for all"). Both are the studio's own
+       home's now — the pencil on its corner, the Subscription tile in its grid. */
+    check(!sTxt.includes("Edit studio") && !/Subscription/.test(sTxt), "studio · Settings carries NO Edit tile and NO Subscription tile — both are the home's (26 Sep 2026)");
+    await p3.keyboard.press("Escape");
+    await p3.goto(`${BASE}/business/${studio.id}`, { waitUntil: "networkidle" });
+    /* THE PENCIL TOGGLES EDIT MODE, AND EDIT DETAILS IS THE SHEET'S ADDRESS.
+       Driven rather than read, because a chip that is drawn and lands nowhere is
+       the Memberships bug of 21 Sep: press it, and the studio's own Edit sheet
+       has to open over its home. */
+    check((await p3.getByRole("link", { name: "Edit details" }).count()) === 0, "studio · no Edit details before the pencil");
+    const pencil = p3.getByRole("button", { name: "Edit profile", exact: true });
+    await pencil.click();
+    await p3.getByRole("link", { name: "Edit details" }).click();
     const sEdit = p3.getByRole("dialog", { name: "Edit business" });
     await sEdit.waitFor({ state: "visible", timeout: 15_000 });
-    check(new URL(p3.url()).searchParams.get("edit") === "1", "studio · Edit studio opens the sheet at ?edit=1 on the studio's own home");
+    check(new URL(p3.url()).searchParams.get("edit") === "1", "studio · Edit details opens the sheet at ?edit=1 on the studio's own home");
     check(new URL(p3.url()).pathname === `/business/${studio.id}`, "studio · …over THIS studio, not the first one the account owns");
     await sEdit.getByRole("button", { name: "Cancel" }).click();
     await sEdit.waitFor({ state: "detached", timeout: 15_000 });

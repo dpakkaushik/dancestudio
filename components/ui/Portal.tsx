@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 /** A MODAL BELONGS AT THE ROOT OF THE DOCUMENT (16 Sep 2026).
@@ -22,12 +22,22 @@ import { createPortal } from "react-dom";
  *  Portalling to `document.body` puts the sheet back in the root context, where
  *  600 means 600. Nothing about the React tree changes — state, context and
  *  event bubbling all still flow through the component that rendered it — so
- *  `getByRole("dialog", …)` finds exactly what it found before. */
+ *  `getByRole("dialog", …)` finds exactly what it found before.
+ *
+ *  ⚠ NOTHING UNTIL HYDRATION IS DONE (26 Sep 2026). The first cut rendered null
+ *  on the server (`typeof document === "undefined"`) and the portal on the
+ *  client — which is fine for a sheet that mounts from a press, and a HYDRATION
+ *  MISMATCH for one that is open in the first HTML: a deep link to `?new=1` or
+ *  `?edit=1` (C54's sheets, the Edit-details sheet) rendered `<Suspense>` on the
+ *  server where the client drew the scrim `<div>`, React #418, and the tree was
+ *  thrown away and regenerated — a flash, and a page error `shoot-tiles` counts
+ *  as red. `useSyncExternalStore` with a false SERVER snapshot is the sanctioned
+ *  shape (the theme reads the `<html>` class the same way): hydration sees
+ *  nothing on both sides, and the portal mounts on the re-render straight
+ *  after, with no state written in an effect. */
+const subscribe = () => () => {};
 export function Portal({ children }: { children: ReactNode }) {
-  /* the target is a browser object, and these sheets only ever mount from a
-     press, so the server renders nothing of them and there is nothing for a
-     client render to disagree with. (A `useState` + effect would say the same
-     and trip this repo's own setState-in-effect rule.) */
-  if (typeof document === "undefined") return null;
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
+  if (!mounted) return null;
   return createPortal(children, document.body);
 }

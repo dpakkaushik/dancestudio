@@ -11,7 +11,7 @@ import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { INK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { AdminAccount } from "@/repositories/adminPanel";
-import type { OrgStandingRow } from "@/repositories/orgStanding";
+import type { OwnerStanding } from "@/repositories/orgStanding";
 import { agoWords } from "@/types/notification";
 import { AdminGlyph, DESK_TINT } from "./admin-glyphs";
 import type { AccountCounts, AccountTab } from "./accounts-tabs";
@@ -36,8 +36,14 @@ const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 
 
 /** ACCOUNTS (10 Sep 2026; subscriptions added 9 Sep 2026 for R14). Every live
  *  account, searchable, with what it holds and what an admin can do about it:
- *  write to it, suspend it, and — for an organization — set up or end the
- *  subscription that lets it open studios.
+ *  write to it, suspend it, or comp the Artist plan.
+ *
+ *  ⚠ EVERY ACCOUNT IS A PERSON SINCE 26 Sep 2026. The organization login is
+ *  retired, so the ORGANIZATION chip, the Organizations tab, the PHOTOS chip
+ *  (the old organization's own evidence) and the Verification door are gone
+ *  from here — a studio's and an organization's standing is on the Businesses
+ *  desk. What stays beside an owner is a COUNT of what they run, and how many
+ *  of their studios are subscribed, off the same list that desk reads.
  *
  *  Suspension before deletion, deliberately. A suspended account can still
  *  sign in and read, and is refused every act that touches somebody else; its
@@ -55,8 +61,8 @@ export function AccountsDesk({
 }: {
   /** ONE PAGE of the accounts on this tab */
   accounts: AdminAccount[];
-  /** R14/R16: subscription and evidence figures, per organization on this page */
-  standing: Record<string, OrgStandingRow>;
+  /** what each owner on this page runs, counted off the businesses list */
+  standing: Record<string, OwnerStanding>;
   q: string;
   tab: AccountTab;
   counts: AccountCounts;
@@ -139,12 +145,11 @@ export function AccountsDesk({
         icon={<AdminGlyph k="accounts" size={22} />}
       />
       <StatStrip
-        cols={4}
+        cols={3}
         figs={[
-          { n: counts.users, label: "users", href: `${base}?tab=users` },
-          { n: counts.orgs, label: "organizations", href: `${base}?tab=orgs` },
-          { n: counts.verifiedOrgs, label: "verified", href: "/admin/verifications?tab=approved", tone: "#22C55E" },
-          { n: counts.artists, label: "on the Artist plan", href: "/admin/subscriptions" },
+          { n: counts.all, label: "accounts", href: base },
+          { n: counts.artists, label: "on the Artist plan", href: `${base}?tab=artists` },
+          { n: counts.suspended, label: "suspended", href: `${base}?tab=suspended`, tone: counts.suspended > 0 ? "#EF4444" : undefined },
         ]}
       />
       <DeskTabs
@@ -153,13 +158,12 @@ export function AccountsDesk({
         keep={{ q: q || null }}
         tabs={[
           { key: "all", label: "All", count: counts.all },
-          { key: "users", label: "Users", count: counts.users },
-          { key: "orgs", label: "Organizations", count: counts.orgs },
+          { key: "artists", label: "Artists", count: counts.artists },
           { key: "suspended", label: "Suspended", count: counts.suspended, tone: "#EF4444" },
         ]}
       />
       <SearchBar action={base} q={q} keep={{ tab }} placeholder="Search a name, email or city…" />
-      <CountLine shown={accounts.length} total={total} what={tab === "all" ? "accounts" : tab === "orgs" ? "organizations" : tab} q={q} />
+      <CountLine shown={accounts.length} total={total} what={tab === "all" ? "accounts" : tab === "artists" ? "on the Artist plan" : tab} q={q} />
 
       {accounts.length === 0 ? (
         <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55 }}>Nobody matches that.</div>
@@ -167,9 +171,9 @@ export function AccountsDesk({
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {accounts.map((a) => {
             const suspended = Boolean(a.suspendedAt);
-            const sub = a.role === "org" ? (standing[a.id] ?? null) : null;
+            const sub = standing[a.id] ?? null;
             return (
-              <div key={a.id} data-testid="admin-account" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${suspended ? "#EF4444" : a.isAdmin ? "#7C3AED" : a.role === "org" ? "#3B82F6" : EL}`, borderRadius: 16, padding: "11px 12px" }}>
+              <div key={a.id} data-testid="admin-account" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${suspended ? "#EF4444" : a.isAdmin ? "#7C3AED" : EL}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                   <Face name={a.fullName} path={a.avatarPath} />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -182,23 +186,21 @@ export function AccountsDesk({
                       {a.city ? ` · ${a.city}` : ""}
                     </div>
                     <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
-                      <span style={{ ...chip, background: a.role === "org" ? "#DBEAFE" : "#E0F2FE", color: a.role === "org" ? "#1D4ED8" : "#0369A1" }}>
-                        {a.role === "org" ? "ORGANIZATION" : "USER"}
-                      </span>
+                      <span style={{ ...chip, background: "#E0F2FE", color: "#0369A1" }}>USER</span>
                       {a.hasPlan ? <span style={{ ...chip, background: "#FCE7F3", color: "#BE185D" }}>ARTIST</span> : null}
                       {a.isAdmin ? <span style={{ ...chip, background: "#EDE9FE", color: "#6B21A8" }}>ADMIN</span> : null}
                       {a.owns > 0 ? <span style={{ ...chip, background: "var(--el)", color: SUB }}>{a.owns} BUSINESS{a.owns === 1 ? "" : "ES"}</span> : null}
                       {suspended ? <span style={{ ...chip, background: "#FEE2E2", color: "#B42318" }}>SUSPENDED</span> : null}
-                      {/* an organization's studios and how many are subscribed (10 Sep
+                      {/* the studios this person runs and how many are subscribed (10 Sep
                           2026: a subscription is per studio, comped on Businesses) */}
-                      {a.role === "org" && sub && sub.studios > 0 ? (
+                      {sub && sub.studios > 0 ? (
                         <span style={{ ...chip, background: sub.subscribedStudios === sub.studios ? "#DCFCE7" : "#FEF3C7", color: sub.subscribedStudios === sub.studios ? "#15803D" : "#92400E" }}>
                           {sub.subscribedStudios}/{sub.studios} STUDIOS SUBSCRIBED
                         </span>
                       ) : null}
-                      {a.role === "org" && sub ? (
-                        <span style={{ ...chip, background: sub.proofPhotos >= 5 ? "var(--el)" : "#FEF3C7", color: sub.proofPhotos >= 5 ? SUB : "#92400E" }}>
-                          {sub.proofPhotos} PHOTO{sub.proofPhotos === 1 ? "" : "S"}
+                      {sub && sub.organizations > 0 ? (
+                        <span style={{ ...chip, background: "#DBEAFE", color: "#1D4ED8" }}>
+                          {sub.organizations} ORGANIZATION{sub.organizations === 1 ? "" : "S"}
                         </span>
                       ) : null}
                     </div>
@@ -305,13 +307,10 @@ export function AccountsDesk({
                         Suspend
                       </button>
                     )}
-                    {a.role !== "org" ? null : (
-                      <Link href="/admin/verifications" style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Verification</Link>
-                    )}
-                    {a.role === "org" && sub && sub.studios > 0 ? (
-                      <Link href={`/admin/businesses?q=${encodeURIComponent(a.fullName)}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Studios</Link>
+                    {a.owns > 0 ? (
+                      <Link href={`/admin/businesses?q=${encodeURIComponent(a.fullName)}`} style={{ ...btn, display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Businesses</Link>
                     ) : null}
-                    {a.role === "user" && !a.isAdmin && !suspended && !a.hasPlan ? (
+                    {!a.isAdmin && !suspended && !a.hasPlan ? (
                       <button type="button" onClick={() => { close(); setMonths(12); setGranting(a.id); }} style={{ ...btn, color: "#15803D" }} aria-label={`Grant ${a.fullName} the Artist plan`}>
                         Grant Artist plan
                       </button>
@@ -327,7 +326,7 @@ export function AccountsDesk({
       <Pager base={base} page={page} total={total} keep={{ tab, q: q || null }} />
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
-        Suspending unlists every studio the account owns and tells them why. Lifting it puts a verified organization&apos;s
+        Suspending unlists every studio the account owns and tells them why. Lifting it puts their verified, subscribed
         studios back. Deleting an account is not offered here — it erases a person&apos;s whole history, and
         <span className="mono"> scripts/remove-accounts.js</span> exists for when that is really what you mean.
       </div>

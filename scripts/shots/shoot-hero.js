@@ -120,6 +120,13 @@ const railImgs = async (page) => rail(page).locator("img").count();
 const discImgs = async (page) => disc(page).locator("img").count();
 /* wait until the rail holds exactly n pictures (a refresh after an upload) */
 const waitRailImgs = (page, n) => page.waitForFunction((want) => document.querySelectorAll('[data-testid="hero-rail"] img').length === want, n, { timeout: 25000 });
+/* EDIT MODE (26 Sep 2026): every editor on a home appears with the corner pencil,
+   so a script presses it first — idempotent, because a page reload turns it off */
+const enterEdit = async (page) => {
+  const pencil = page.getByRole("button", { name: "Edit profile", exact: true });
+  await pencil.waitFor({ timeout: 20000 });
+  if ((await pencil.getAttribute("aria-pressed")) !== "true") await pencil.click();
+};
 
 (async () => {
   const browser = await chromium.launch();
@@ -233,7 +240,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        honest answer. The paid-mandate path that DOES offer it needs a real
        Cashfree authorisation, which no script can drive; `rls-proof-*` and the
        live sandbox cover that. */
-    check(await org.getByText("GRANTED", { exact: true }).isVisible(), "subscription: the strip names the standing (GRANTED)");
+    /* scoped to THE STUDIO's strip (26 Sep 2026): this account also owns an
+       organization business now, whose own granted strip sits under YOUR ORGANIZATIONS */
+    check(await strip.getByText("GRANTED", { exact: true }).isVisible(), "subscription: the strip names the standing (GRANTED)");
     check((await org.getByRole("button", { name: /Stop .* renewing/ }).count()) === 0, "subscription: a grant offers no Stop renewing — there is nothing to stop");
     await org.goto(`${BASE}/business/${studioId}`);
 
@@ -258,9 +267,19 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        them lived in the Edit sheet behind the pencil; now the disc is the
        picture, a ⊕ beside it changes it, and the posters rail has its own ⊕ —
        the same two controls, with the same two names, a person's home has. */
+    /* ⚠ AND NONE OF THEM UNTIL THE PENCIL IS PRESSED (26 Sep 2026, the user:
+       "clicking on the edit pencil button from top right on every profile should
+       open the option to edit everything from the home tab thats when the button
+       to edits need to appear") — both states, because a ⊕ that is always there
+       is exactly what was asked to go */
+    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 0 && (await org.getByRole("button", { name: "Add a link" }).count()) === 0, "studio home: read-only until the pencil — no ⊕, no ＋ (26 Sep 2026)");
+    await enterEdit(org);
     check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "studio home: a ⊕ beside the disc, and only that changes the picture (20 Sep 2026)");
     check((await org.getByRole("button", { name: "Edit posters" }).count()) === 1, "studio home: the posters have their OWN ⊕ on the rail");
     check((await org.getByRole("button", { name: "Add a link" }).count()) === 1, "studio home: and ＋ Add link in the band, exactly as on a person's home");
+    check((await org.getByRole("button", { name: "Add a dance style" }).count()) === 1, "studio home: and ＋ on the styles");
+    check((await org.getByRole("button", { name: "Edit contact buttons" }).count()) === 1, "studio home: and the ⊕ that makes and unmakes Call · Mail · Message · Enquiry (26 Sep 2026)");
+    check((await org.getByRole("link", { name: "Edit details" }).getAttribute("href")) === `/business/${studioId}?edit=1`, "studio home: Edit details lands on the sheet's own address (?edit=1)");
     check((await org.getByLabel("Add a header picture").count()) === 0, "studio home: no Add tile ON the header itself — the ⊕ opens the grid");
     check((await rail(org).getAttribute("role")) === null, "studio home: an empty header is one square, so no swipe");
     check((await org.getByText(/^Managing/).count()) === 0, "studio home: no Managing strip");
@@ -310,8 +329,13 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        cannot tell you the old one was cleared — the lesson this file has paid
        for four times. What is asserted here is the absence; the Settings tile
        that replaced it is driven in `shoot-tiles`, which is where Settings is. */
-    check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 0, "studio home: NO pencil on the corner — Edit studio is Settings' THIS STUDIO tile (22 Sep 2026)");
-    check((await org.getByTestId("hero-corner").locator("a").count()) === 1, "studio home: and the corner is ONE control, like every other profile's");
+    /* ⚠ RE-CUT 26 Sep 2026: the pencil is BACK over the eye, at the user's word
+       ("edit profile to be removed from all profiles settings and should be a
+       button on top right with public page view right now") — and it toggles
+       every editor rather than opening one form. Settings' tile is gone (driven
+       in shoot-tiles). */
+    check((await org.getByRole("button", { name: "Edit studio", exact: true }).count()) === 0, "studio home: no 'Edit studio' button — the corner's pencil is 'Edit profile' and toggles edit mode");
+    check((await org.getByTestId("hero-corner").locator("a").count()) === 1 && (await org.getByTestId("hero-corner").getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "studio home: the corner is the pencil over the eye, like every other profile's (26 Sep 2026)");
     /* ⚠⚠ THE CORNER OPENS **THIS STUDIO'S** PUBLIC PAGE (21 Sep 2026, the user:
        "studio and crew pages on home tab should have option to view their
        profile pages currently taking to organizations page and user/artist
@@ -403,7 +427,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await sheet.getByText("Links", { exact: true }).count()) === 0, "edit studio: and no Links block — ＋ Add link is in the band on the home");
     /* 16 Sep 2026: ONE label style for every field on the form — the second,
        larger heading that briefly headed two blocks out of five is gone */
-    check((await sheet.getByText("Phone", { exact: true }).count()) === 1, "edit studio: the phone field is called Phone, not Phone (Call button)");
+    /* 26 Sep 2026: and no Phone or Email at all — they are the contact ⊕ beside the buttons on the studio's home */
+    check((await sheet.getByLabel("Phone", { exact: true }).count()) === 0 && (await sheet.getByLabel("Email", { exact: true }).count()) === 0, "edit studio: NO phone and NO email field — the contact ⊕ on the home is where Call and Mail are made (26 Sep 2026)");
     /* the location is READ-ONLY until somebody asks for it (16 Sep 2026): a map
        on greedy gestures inside a scrolling sheet moved the pin when a thumb
        scrolled past it, and this sheet SAVES a moved pin immediately */
@@ -420,6 +445,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     /* ── THE DISC (businesses.profile_photo_path, through set_business_profile_photo).
        It commits on upload, because replacing a picture is not destroying one —
        the same rule a person's disc keeps. ── */
+    await enterEdit(org);
     await org.getByRole("button", { name: "Change profile picture" }).click();
     const picSheet = org.getByRole("dialog", { name: "Profile picture" });
     await picSheet.waitFor();
@@ -454,6 +480,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        further down already has one of those, and two `const`s of one name in one
        scope is a parse error that only `node --check` (or the run) finds */
     const openStudioPosters = async () => {
+      await enterEdit(org);
       const edit = org.getByRole("button", { name: "Edit posters" });
       await edit.waitFor({ timeout: 20000 });
       await edit.click();
@@ -644,7 +671,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "org home: no eye — its public page is the Share chip, and the corner no longer loops");
     /* a plain user's Home carries no Enquiry — they have no artist page for one to land on; the ORGANIZATION's enquiries land on ITS home */
     check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 0, "org home: no Enquiry on a plain user's Home (the organization's enquiries are its own business's)");
-    check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "org home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
+    /* INVERTED 26 Sep 2026: the pencil is BACK on the corner, and it toggles
+       edit mode ("should be a button on top right with public page view") */
+    check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "org home: the pencil on the corner, over the door (26 Sep 2026)");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
     /* AND IT IS THIS PERSON'S OWN ADDRESS (C57): the chip builds `${subject}/stats` */
     check((await org.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === `/person/${orgId}/stats`, "org home: the Stats chip opens this person's own address");
@@ -655,8 +684,11 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        to SEE it, the pencil beside it CHANGES it, and the posters have a pencil
        of their own on the rail. */
     check((await org.getByRole("button", { name: "Your pictures", exact: true }).count()) === 0, "org home: the in-between 'Your pictures' sheet is gone (20 Sep 2026)");
+    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 0, "org home: read-only until the pencil (26 Sep 2026)");
+    await enterEdit(org);
     check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "org home: a pencil beside the disc, and only that changes the picture");
     check((await org.getByRole("button", { name: "Edit posters" }).count()) === 1, "org home: the posters have their OWN pencil on the rail");
+    check((await org.getByRole("button", { name: "Edit contact buttons" }).count()) === 1, "org home: and the ⊕ for the contact buttons (26 Sep 2026)");
     await org.getByRole("button", { name: "Change profile picture" }).click();
     /* "Profile picture", not "Logo" (26 Sep 2026): a person's disc is a picture — the Logo editor went with the organization login */
     const orgLogo = org.getByRole("dialog", { name: "Profile picture" });
@@ -665,33 +697,57 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     check((await orgLogo.getByLabel("Change your photo").count()) === 1, "org pictures: the picker is in the picture's own editor, reached in ONE press");
     await shot("org-pictures");
     await orgLogo.getByRole("button", { name: "Done" }).click().catch(() => {});
-    /* and the words are behind the gear */
+    /* ⚠ THE WORDS ARE THE EDIT DETAILS CHIP, NOT A SETTINGS TILE (26 Sep 2026,
+       the user: "edit profile to be removed from all profiles settings and
+       should be a button on top right"). Both ends: Settings carries no Edit
+       profile tile, and the chip beside the name opens the sheet. */
     await org.goto(`${BASE}/profile?settings=1`);
     const orgSettings = org.getByRole("dialog", { name: "Settings" });
     await orgSettings.waitFor();
-    /* ⚠ THE SHEET'S CONTENT ARRIVES WITH HYDRATION ON A DEEP LINK (21 Sep 2026).
-       Until today `?settings=1` was read on the SERVER by the page that rendered
-       the sheet, so the tiles were in the first HTML and a one-shot count was
-       safe. The sheet is the CHROME's now — a client component reading
-       `useSearchParams()`, which is what lets the gear open the right profile's
-       settings on every screen — so a fresh goto paints the dialog and fills it
-       a tick later. Wait for the tile, then count it. (The same shape as the
-       live QR probe's lesson: a click on a server-rendered page is not a click
-       until React has claimed the button.) */
-    const orgEdit = orgSettings.getByRole("button", { name: "Edit profile", exact: true });
+    await orgSettings.getByText("ACCOUNT").waitFor();
+    check((await orgSettings.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0 && !(await orgSettings.innerText()).includes("YOU\n"), "settings: NO Edit profile tile and no YOU block — the pencil is on Home's corner (26 Sep 2026)");
+    await org.goto(`${BASE}/`);
+    await enterEdit(org);
+    const orgEdit = org.getByRole("button", { name: "Edit details", exact: true });
     await orgEdit.waitFor();
-    check((await orgEdit.count()) === 1, "settings: Edit profile is the first option (19 Sep 2026)");
+    check((await orgEdit.count()) === 1, "home: Edit details appears with the pencil (26 Sep 2026)");
     await orgEdit.click();
     const orgSheet = org.getByRole("dialog", { name: "Edit profile" });
     await orgSheet.waitFor();
-    /* exact: getByLabel is a case-insensitive SUBSTRING match, so a bare "Age"
-       finds any label on the page that merely contains those three letters */
-    /* INVERTED 26 Sep 2026: a PERSON's sheet asks their age (an organization's never did — that sheet is gone with the login) */
-    check((await org.getByLabel("Age", { exact: true }).count()) === 1, "org edit profile: an age field — this is a person's sheet (26 Sep 2026)");
-    check((await orgSheet.getByLabel("Change your photo").count()) === 0 && (await orgSheet.getByLabel("Add picture").count()) === 0, "org edit profile: and NO pictures in it — they are behind the disc on Home");
+    /* a PERSON's sheet asks their date of birth (an organization's never did — that sheet is gone with the login) */
+    check((await orgSheet.getByLabel("Date of birth", { exact: true }).count()) === 1, "edit profile: a date-of-birth field — this is a person's sheet (26 Sep 2026)");
+    check((await orgSheet.getByLabel("Change your photo").count()) === 0 && (await orgSheet.getByLabel("Add picture").count()) === 0, "edit profile: and NO pictures in it — they are behind the disc on Home");
+    check((await orgSheet.getByLabel("Phone", { exact: true }).count()) === 0 && (await orgSheet.getByLabel("Email", { exact: true }).count()) === 0, "edit profile: and NO number or email — they are the contact ⊕ beside the buttons (26 Sep 2026)");
     await shot("org-edit");
-    await org.keyboard.press("Escape").catch(() => {});
     await orgSheet.getByRole("button", { name: "Cancel" }).click().catch(() => {});
+    await orgSheet.waitFor({ state: "detached" }).catch(() => {});
+    /* the contact sheet: a number in, the button appears; the number out, the button goes */
+    await org.getByRole("button", { name: "Edit contact buttons" }).click();
+    const contacts = org.getByRole("dialog", { name: "Contact buttons" });
+    await contacts.waitFor();
+    await contacts.getByLabel("WhatsApp", { exact: true }).fill("+91 98765 00000");
+    await contacts.getByRole("button", { name: "Save" }).click();
+    await contacts.waitFor({ state: "detached", timeout: 15000 });
+    /* the entry is a chip in the links row (a button while editing, a link when
+       not) — and ⚠ a PLAIN USER's Home draws NO Message button, by the 19 Sep
+       list ("user — nothing"): the sheet said so, and this asserts it */
+    const waChip = org.getByRole("button", { name: /^WhatsApp — / }).or(org.getByRole("link", { name: /^WhatsApp — / }));
+    await waChip.first().waitFor({ timeout: 15000 }).catch(() => {});
+    check((await waChip.count()) === 1, "contact ⊕: the WhatsApp number is a chip in the links row — one list, two readings (26 Sep 2026)");
+    check((await org.getByRole("link", { name: "Message", exact: true }).count()) === 0, "contact ⊕: and a plain user's Home draws no Message button — their page carries no buttons");
+    /* on a BUSINESS it becomes the button: the studio's own contact ⊕ */
+    await org.goto(`${BASE}/business/${studioId}`);
+    await enterEdit(org);
+    await org.getByRole("button", { name: "Edit contact buttons" }).click();
+    const bizContacts = org.getByRole("dialog", { name: "Contact buttons" });
+    await bizContacts.waitFor();
+    check((await bizContacts.getByRole("switch", { name: "Take enquiries" }).count()) === 1, "studio contact ⊕: Enquiry is a switch here — a business's to take off its page");
+    await bizContacts.getByLabel("WhatsApp", { exact: true }).fill("+91 98765 00001");
+    await bizContacts.getByRole("button", { name: "Save" }).click();
+    await bizContacts.waitFor({ state: "detached", timeout: 15000 });
+    const msg = org.getByRole("link", { name: "Message", exact: true });
+    await msg.waitFor({ timeout: 15000 }).catch(() => {});
+    check((await msg.count()) === 1 && (await msg.getAttribute("href")) === "https://wa.me/919876500001", "studio contact ⊕: a WhatsApp number becomes the Message button, a wa.me link (26 Sep 2026)");
     await org.goto(`${BASE}/`);
     await shot("org-home");
 
@@ -737,12 +793,21 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        does too ("user — nothing", the 19 Sep list): they have no artist page for
        an enquiry to land on, so a dead Enquiry would be worse than none */
     check((await me.getByRole("button", { name: /enquiries come to you here/ }).count()) === 0, "user home: no Enquiry — a plain user's page carries no buttons, and Home matches it");
-    check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "user home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
+    check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 1, "user home: the pencil on the corner, and it toggles edit mode (26 Sep 2026)");
     /* THE BAND ON HOME (19 Sep 2026): the two figures, the styles with their ＋,
        the links right under them with theirs — and NO rank */
     check((await me.getByTestId("home-followers").count()) === 1 && (await me.getByTestId("home-following").count()) === 1, "user home: Followers and Following, both clickable (19 Sep 2026)");
+    check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 0 && (await me.getByRole("button", { name: "Add a link" }).count()) === 0, "user home: read-only until the pencil — no ＋ (26 Sep 2026)");
+    await enterEdit(me);
     check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 1, "user home: the styles are edited HERE and nowhere else");
     check((await me.getByRole("button", { name: "Add a link" }).count()) === 1, "user home: and the links, right below them");
+    /* a plain user's contact sheet: a number and an email, NO Call switch (the plan adds it) */
+    await me.getByRole("button", { name: "Edit contact buttons" }).click();
+    const myContacts = me.getByRole("dialog", { name: "Contact buttons" });
+    await myContacts.waitFor();
+    check((await myContacts.getByRole("switch", { name: "Show Call on my profile" }).count()) === 0, "user contact ⊕: no Call switch — a plain user's page draws no buttons");
+    await myContacts.getByRole("button", { name: "Cancel" }).click();
+    await myContacts.waitFor({ state: "detached" });
     check((await me.getByRole("link", { name: /rank/i }).count()) === 0, "user home: no rank (19 Sep 2026, the user: 'Remove rank from home')");
     /* the chips ride the figures row here too (20 Sep 2026) — measured, because
        nothing in the DOM says which row a chip landed in */
@@ -794,6 +859,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        picture: pressing it OPENS it. Each editor is one press from the hero. ── */
     check((await me.getByRole("button", { name: "Your pictures", exact: true }).count()) === 0, "user home: the in-between 'Your pictures' sheet is gone (20 Sep 2026)");
     check((await me.getByRole("button", { name: "Rhea Kapoor — profile picture" }).count()) === 1, "user home: pressing the disc opens the picture, nothing else");
+    await enterEdit(me);
     check((await me.getByRole("button", { name: "Change profile picture" }).count()) === 1, "user home: and a pencil beside it is the only way to change it");
     check((await me.getByRole("button", { name: "Edit posters" }).count()) === 1, "user home: the posters have their OWN pencil on the rail");
     /* the disc's lightbox — what "clicking on profile pic should open the profile pic" means */
@@ -806,6 +872,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       /* Save and Cancel close it outright now that it is not nested in anything,
          so each visit is one press — and this WAITS for the pencil rather than
          racing the page after a re-render. */
+      await enterEdit(me);
       const edit = me.getByRole("button", { name: "Edit posters" });
       await edit.waitFor({ timeout: 20000 });
       await edit.click();
@@ -886,7 +953,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       check((await me.getByText(/rank$/).count()) === 0, "profile tab: no rank (19 Sep 2026, the user: 'remove rank from profile tab')");
       /* and no editing at all: the pencil went into Settings and the styles and
          links kept their rows and lost their ＋ (19 Sep 2026) */
-      check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "profile tab: NO pencil — Edit profile is Settings' first option");
+      check((await me.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "profile tab: NO pencil — the pencil is HOME's corner, and a profile page has none (26 Sep 2026)");
       check((await me.getByRole("button", { name: "Add a dance style" }).count()) === 0 && (await me.getByRole("button", { name: "Add a link" }).count()) === 0, "profile tab: the styles and the links are SHOWN here and changed on Home");
       /* ⚠ AND THE TAB HAS NO CORNER EITHER (21 Sep 2026, on the user's reading
          that the Profile tab and a profile page are the same thing). The check

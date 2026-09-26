@@ -1,7 +1,7 @@
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
-import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -164,6 +164,7 @@ export function OrganizationPublicPage({
           ) : null}
           {org.phone ? <CallButton phone={org.phone} /> : null}
           {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}
+          {whatsappHrefOf(org.socials) ? <MessageButton href={whatsappHrefOf(org.socials) as string} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : org.city ? <LocationButton query={`${org.name} ${org.city}`} /> : null}
         </ActionRow>
 

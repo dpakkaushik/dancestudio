@@ -83,6 +83,12 @@ export function EnquiryButton({
   cannotAsk?: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  /* ⚠ ENQUIRY CAN BE TAKEN OFF A PAGE (26 Sep 2026, the user: "all buttons like
+     … enquiry on home tab should also be … add or remove"). An EMPTY list of
+     accepted types — every switch off, or the contact sheet's Enquiry switch —
+     is a business that takes none, so no button is drawn rather than one that
+     opens a sheet with nothing in it. Null still means every type its kind allows. */
+  if (Array.isArray(enquiryTypes) && enquiryTypes.length === 0) return null;
   const box: React.CSSProperties = {
     display: "flex",
     alignItems: "center",

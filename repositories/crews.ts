@@ -13,6 +13,8 @@ interface CrewRow {
   name: string;
   city: string;
   style: string;
+  styles?: string[] | null;
+  socials?: unknown;
   leader_id: string;
   photo: string | null;
   contact_email?: string | null;
@@ -69,7 +71,12 @@ interface PartnerRow {
 /* `crew_contacts` is one-to-one (its crew_id is the primary key), so the embed is an
    object or null — null for a reader its policy keeps the number from, which is how
    a switched-off number never reaches a page (push 2, 19 Sep 2026) */
-const CREW_COLUMNS = "id, name, city, style, leader_id, photo, contact_email, created_at, member_no, crew_contacts (phone, phone_public)";
+/* `styles` and `socials` since 26 Sep 2026 (`20260926120000`) — a list of styles
+   and the links every other profile carries */
+const CREW_COLUMNS = "id, name, city, style, styles, socials, leader_id, photo, contact_email, created_at, member_no, crew_contacts (phone, phone_public)";
+/** the links column is jsonb — anything that is not a list of {platform, url} is read as none */
+const socialsOf = (v: unknown): Array<{ platform: string; url: string }> =>
+  Array.isArray(v) ? v.filter((x): x is { platform: string; url: string } => Boolean(x) && typeof x === "object" && typeof (x as { platform?: unknown }).platform === "string" && typeof (x as { url?: unknown }).url === "string") : [];
 const MEMBER_COLUMNS = "id, crew_id, user_id, role, status, sort, created_at, profiles (full_name, city, profile_photo_path)";
 
 const toCrew = (r: CrewRow): Crew => ({
@@ -77,6 +84,8 @@ const toCrew = (r: CrewRow): Crew => ({
   name: r.name,
   city: r.city,
   style: r.style,
+  styles: Array.isArray(r.styles) && r.styles.length ? r.styles : r.style ? [r.style] : [],
+  socials: socialsOf(r.socials),
   leaderId: r.leader_id,
   photo: r.photo,
   contactEmail: r.contact_email ?? null,
@@ -377,6 +386,23 @@ export async function updateCrew(
     p_phone: input.phone === undefined ? null : (input.phone ?? ""),
     p_phone_public: input.phonePublic === undefined ? null : input.phonePublic,
   });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** WHAT A CREW DANCES, AS A LIST (26 Sep 2026) — the leader's; the RPC keeps
+ *  `style` equal to the first and refuses an empty list */
+export async function setCrewStyles(supabase: SupabaseClient, crewId: string, styles: string[]): Promise<void> {
+  const { error } = await supabase.rpc("set_crew_styles", { p_crew_id: crewId, p_styles: styles });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+/** A CREW'S LINKS (26 Sep 2026) — the leader's; the RPC refuses anything that is not an http(s) address */
+export async function setCrewSocials(supabase: SupabaseClient, crewId: string, socials: Array<{ platform: string; url: string }>): Promise<void> {
+  const { error } = await supabase.rpc("set_crew_socials", { p_crew_id: crewId, p_socials: socials });
   if (error) {
     throw new Error(error.message);
   }

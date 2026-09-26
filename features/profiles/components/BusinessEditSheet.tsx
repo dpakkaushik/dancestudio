@@ -64,9 +64,12 @@ export function BusinessEditSheet({
      `update_business_profile` no longer takes `p_about` and there is nothing
      left to pass back. */
   const [founded, setFounded] = useState(tenant.foundedYear ? String(tenant.foundedYear) : "");
-  const [phone, setPhone] = useState(tenant.phone ?? "");
-  /* the Mail button's address (19 Sep 2026) — an empty box clears it */
-  const [email, setEmail] = useState(tenant.contactEmail ?? "");
+  /* ⚠ NO PHONE, NO EMAIL HERE (26 Sep 2026, the user: "all buttons like email,
+     location, phone, message, enquiry on home tab should also be like social
+     media and dance style edit style … and those options can be removed from
+     edit profile"). They are the ⊕ beside the buttons on the business's own
+     home (`ContactEditor`); this save sends both back exactly as they are,
+     because the door takes the whole profile. */
   /* ⚠ NO `socials` STATE — the links are edited on the studio's own home now
      (`StudioLinksRow`), the way a person's are on theirs. They are still SENT
      below, unchanged, because this door takes the whole profile and omitting
@@ -132,8 +135,8 @@ export function BusinessEditSheet({
         styles,
         name: name.trim() !== tenant.name ? name.trim() : undefined,
         foundedYear: yr,
-        phone: phone.trim() || null,
-        contactEmail: email.trim() || null,
+        phone: tenant.phone ?? null,
+        contactEmail: tenant.contactEmail ?? null,
         /* ⚠ SENT UNCHANGED (20 Sep 2026). The links are edited on the studio's
            home now, but this door takes the WHOLE profile — omitting them would
            empty the rail the moment somebody saved a phone number. */
@@ -200,31 +203,19 @@ export function BusinessEditSheet({
           all profiles", then "about and bio for profiles need to go away"). For
           one day the column stayed and was read but never written; it is dropped
           now, so there is nothing to keep and nothing to pass back. */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div>
-          <div style={fieldLabel}>Since</div>
-          <select aria-label="Since" value={founded} onChange={(e) => setFounded(e.target.value)} style={fieldInput}>
-            <option value="">Not shown</option>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          {/* "Phone (Call button)" until 16 Sep 2026 — the parenthetical told
-              the owner what the number is FOR, which the public page already
-              shows them, at the cost of being the longest label on the form */}
-          <div style={fieldLabel}>Phone</div>
-          <input aria-label="Phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={fieldInput} />
-        </div>
-      </div>
-      {/* THE MAIL BUTTON'S ADDRESS (19 Sep 2026, the user: "Mail for all except
-          users") — beside the number the Call button dials, saved through the
-          same door; an empty box clears it */}
-      <div style={fieldLabel}>Email</div>
-      <input aria-label="Email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@studio.example" style={fieldInput} />
+      <div style={fieldLabel}>Since</div>
+      <select aria-label="Since" value={founded} onChange={(e) => setFounded(e.target.value)} style={fieldInput}>
+        <option value="">Not shown</option>
+        {years.map((y) => (
+          <option key={y} value={y}>
+            {y}
+          </option>
+        ))}
+      </select>
+      {/* ⚠ THE PHONE AND THE EMAIL LEFT THIS SHEET (26 Sep 2026): the ⊕ beside
+          the buttons on the business's own home is where Call, Mail, Message and
+          Enquiry are made — and unmade — like the styles and the links */}
+      <div style={{ fontSize: 10.5, color: SUB, marginTop: 8 }}>The number, the email and the links are the ⊕ beside the buttons on the home — press the pencil first.</div>
 
       {/* ⚠ THE DANCE STYLES LEFT THIS SHEET TOO (21 Sep 2026, the user: "make
           sure all profile types have similar ways to edit the profile, the

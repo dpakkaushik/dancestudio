@@ -32,6 +32,8 @@ $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" 
 $adminH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json" }
 $anonH = @{ apikey = $anon; "Content-Type" = "application/json" }
 
+. (Join-Path $PSScriptRoot "proof-lib.ps1")   # New-Org / Verify-Org-Gst / Subscribe-Org / Assert-City (26 Sep 2026 — an organization is a business a person opens)
+
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 function Rpc($headers, $fn, $body) {
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/$fn" -Headers $headers -Body ($body | ConvertTo-Json -Depth 8)

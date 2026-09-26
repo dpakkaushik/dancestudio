@@ -83,12 +83,15 @@ export function AdminDashboardScreen({ pulse, nowIso }: { pulse: Pulse; nowIso: 
         </div>
       ) : null}
 
+      {/* ⚠ every account is a PERSON since 26 Sep 2026: `admin_dashboard` still
+          counts `orgs` and `verified_orgs` by the retired role, and both are 0
+          for ever, so they are not drawn — an organization is on WHAT EXISTS
+          through the Businesses desk. The aggregate gains an organizations
+          figure with the next admin migration. */}
       <Head>ACCOUNTS</Head>
       <Grid>
-        <Fig n={pulse.accounts.users} label="users" href="/admin/accounts?tab=users" />
-        <Fig n={pulse.accounts.orgs} label="organizations" href="/admin/accounts?tab=orgs" />
-        <Fig n={pulse.accounts.artists} label="on the Artist plan" />
-        <Fig n={pulse.accounts.verifiedOrgs} label="verified organizations" href="/admin/verifications?tab=approved" />
+        <Fig n={pulse.accounts.users + pulse.accounts.orgs} label="accounts" href="/admin/accounts" />
+        <Fig n={pulse.accounts.artists} label="on the Artist plan" href="/admin/accounts?tab=artists" />
         <Fig n={pulse.accounts.newThisWeek} label="new this week" />
         <Fig n={pulse.accounts.suspended} label="suspended" tone={pulse.accounts.suspended > 0 ? "#EF4444" : undefined} href="/admin/accounts?tab=suspended" />
       </Grid>

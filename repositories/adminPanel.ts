@@ -158,7 +158,9 @@ export async function unsuspendAccount(supabase: SupabaseClient, accountId: stri
 
 export interface AdminBusiness {
   id: string;
-  type: "studio" | "artist_page";
+  /** `org` since 26 Sep 2026: an organization is a business a person opens,
+   *  and `admin_businesses` lists it with its own mandate */
+  type: "studio" | "artist_page" | "org";
   name: string;
   city: string | null;
   area: string | null;

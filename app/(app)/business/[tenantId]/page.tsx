@@ -155,6 +155,12 @@ export default async function StudioHomePage({ params, searchParams }: { params:
         ] as Tile[])
       : []),
     { name: DOS_TOOLS.rooms.name, href: desk("rooms"), k: "rooms", c: DOS_TOOLS.rooms.c },
+    /* THE STUDIO'S OWN MANDATE IS A TILE ON ITS HOME (26 Sep 2026, the user:
+       "studio and organization subscription managed separately from their
+       subscription options … subscriptions also become an option on home tab
+       for all profiles and is removed from settings for all") — the owner's,
+       because only the owner starts or stops it */
+    ...(isOwner ? [{ name: DOS_TOOLS.subscription.name, href: desk("subscription"), k: "subscription", c: DOS_TOOLS.subscription.c } as Tile] : []),
   ];
 
   return (

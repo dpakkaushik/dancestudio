@@ -69,7 +69,10 @@ check(isArranged(null) === false && isArranged([]) === false && isArranged(["a"]
 /* the key must match the CHECK the database carries, or the door refuses it */
 const KEY = /^[a-z][a-z0-9_:-]{0,79}$/;
 const uuid = "3f1b9c8e-2a44-4d7e-9b10-0c5e6f7a8b90";
-check(toolsLayoutKey("user") === "tools:user" && toolsLayoutKey("artist") === "tools:artist" && toolsLayoutKey("org") === "tools:org", "A14 the three person grids are keyed as the migration says");
+/* ⚠ RE-CUT 26 Sep 2026: an organization is a BUSINESS a person opens, so its grid
+   is keyed by the organization (`tools:org:{id}`) like a studio's — `tools:org`
+   was the retired organization LOGIN's one grid, and with no id there is no key */
+check(toolsLayoutKey("user") === "tools:user" && toolsLayoutKey("artist") === "tools:artist" && toolsLayoutKey("org") === null && toolsLayoutKey("org", uuid) === `tools:org:${uuid}`, "A14 the two person grids are keyed as the migration says, and an organization's BY THE ORGANIZATION (26 Sep 2026)");
 check(toolsLayoutKey("studio", uuid) === `tools:studio:${uuid}`, "A15 a studio's grid is keyed BY THE STUDIO");
 check(toolsLayoutKey("crew", uuid) === `tools:crew:${uuid}`, "A16 a crew's grid is keyed BY THE CREW");
 check(

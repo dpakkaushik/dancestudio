@@ -44,6 +44,32 @@ export function MailButton({ email }: { email: string }) {
   );
 }
 
+/** MESSAGE — a WhatsApp hand-off (26 Sep 2026, the user's list of buttons on a
+ *  home: "email, location, phone, message, enquiry"; and their answer that
+ *  Message is a WhatsApp number). The number lives where every other link
+ *  does — the `socials` list, platform "WhatsApp", as a `wa.me` address — so a
+ *  profile that already pasted one on 29 Aug draws the button today with no
+ *  migration. `whatsappHrefOf` is the one reading of that entry. */
+export const whatsappHrefOf = (socials: Array<{ platform: string; url: string }> | null | undefined): string | null => {
+  const l = (socials ?? []).find((s) => s.platform === "WhatsApp");
+  if (!l) return null;
+  const s = String(l.url ?? "").trim();
+  return /^https?:\/\/[^\s]+$/i.test(s) ? s : null;
+};
+export function MessageButton({ href }: { href: string }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" aria-label="Message" style={box}>
+      <span style={glyph}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 6h16v10H9l-5 4z" />
+          <path d="M8 10h8M8 13h5" />
+        </svg>
+      </span>
+      Message
+    </a>
+  );
+}
+
 /** Location — opens the place in Maps. THE PIN WHEN THERE IS ONE (19 Sep 2026,
  *  the user: "locations should be the google map link for the particular
  *  organization and studio"): a studio that has placed itself hands its own

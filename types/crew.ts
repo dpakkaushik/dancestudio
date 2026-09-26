@@ -23,7 +23,12 @@ export interface Crew {
   id: string;
   name: string;
   city: string;
+  /** the FIRST of `styles` — kept equal by a trigger, for the card, the board and the search */
   style: string;
+  /** what it dances, in the leader's order (26 Sep 2026, `crews.styles`) */
+  styles: string[];
+  /** its links, the same list a person's and a business's carry (26 Sep 2026, `crews.socials`) */
+  socials: Array<{ platform: string; url: string }>;
   leaderId: string;
   photo: string | null;
   /** the Mail button's address on the crew's page (19 Sep 2026) — the leader's to publish */

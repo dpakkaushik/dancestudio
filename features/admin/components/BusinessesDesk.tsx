@@ -128,8 +128,8 @@ export function BusinessesDesk({
         figs={[
           { n: counts.studios, label: "studios", href: `${base}?tab=studios` },
           { n: counts.artists, label: "artist pages", href: `${base}?tab=artists` },
+          { n: counts.organizations, label: "organizations", href: `${base}?tab=organizations` },
           { n: counts.listed, label: "on Discover", href: `${base}?tab=public`, tone: "#22C55E" },
-          { n: counts.unlisted, label: "not public", href: `${base}?tab=private`, tone: counts.unlisted > 0 ? "#F59E0B" : undefined },
         ]}
       />
       <DeskTabs
@@ -140,11 +140,12 @@ export function BusinessesDesk({
           { key: "all", label: "All", count: counts.all },
           { key: "studios", label: "Studios", count: counts.studios },
           { key: "artists", label: "Artists", count: counts.artists },
+          { key: "organizations", label: "Organizations", count: counts.organizations },
           { key: "public", label: "Public", count: counts.listed },
           { key: "private", label: "Private", count: counts.unlisted, tone: "#F59E0B" },
         ]}
       />
-      <SearchBar action={base} q={q} keep={{ tab }} placeholder="A studio, a city, or an owner…" />
+      <SearchBar action={base} q={q} keep={{ tab }} placeholder="A studio, an organization, a city, or an owner…" />
       <CountLine shown={businesses.length} total={total} what={tab === "all" ? "businesses" : tab === "artists" ? "artist pages" : tab === "public" ? "on Discover" : tab === "private" ? "not public" : tab} q={q} />
 
       {businesses.length === 0 ? (
@@ -165,14 +166,24 @@ export function BusinessesDesk({
                STUDIO's badge and a live plan, and so does this now — the screen
                says what the database will actually refuse. */
             const blockedFromListing = !live && b.type === "studio" && (!b.verifiedAt || !(b.subStatus && ["active", "past_due", "canceled"].includes(b.subStatus)));
-            const subLive = b.type === "studio" && b.subStatus !== null && ["active", "past_due", "canceled"].includes(b.subStatus);
+            /* a studio's mandate, or — since 26 Sep 2026 — an organization's own ₹5,000 one */
+            const hasMandate = b.type === "studio" || b.type === "org";
+            const subLive = hasMandate && b.subStatus !== null && ["active", "past_due", "canceled"].includes(b.subStatus);
+            /* ⚠ AN ORGANIZATION IS NEVER `listed` (26 Sep 2026): its row stays
+               unlisted for ever and its publicness is `org_is_public` — the GST
+               number AND the mandate — so the visibility switch is not offered
+               on one, and neither is a comp: `admin_grant_subscription` knows
+               the studio and artist kinds only, and a button the RPC refuses is
+               noise. The next admin migration teaches it the third kind. */
+            const isOrg = b.type === "org";
+            const href = b.type === "studio" ? `/studio/${b.id}` : isOrg ? `/org/${b.id}` : `/artist/${b.id}`;
             return (
               <div key={b.id} data-testid="admin-business" style={{ background: CARD, border: `1.5px solid ${EL}`, borderLeft: `4px solid ${live ? "#22C55E" : "#F59E0B"}`, borderRadius: 16, padding: "11px 12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                   <Mark name={b.name} path={b.photoPath} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                      <Link href={b.type === "studio" ? `/studio/${b.id}` : `/artist/${b.id}`} style={{ fontSize: 13, fontWeight: 900, color: INK, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <Link href={href} style={{ fontSize: 13, fontWeight: 900, color: INK, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {b.name}
                       </Link>
                       {b.verifiedAt ? <VerifiedTick size={12} /> : null}
@@ -181,13 +192,14 @@ export function BusinessesDesk({
                       {[b.area, b.city].filter(Boolean).join(", ") || "no address"} · {b.rooms} room{b.rooms === 1 ? "" : "s"} · {b.classes} class{b.classes === 1 ? "" : "es"} · {b.events} event{b.events === 1 ? "" : "s"} · {b.followers} follower{b.followers === 1 ? "" : "s"}
                     </div>
                     <div style={{ display: "flex", gap: 4, marginTop: 5, flexWrap: "wrap" }}>
-                      <span style={{ ...chip, background: b.type === "studio" ? "#DBEAFE" : "#FCE7F3", color: b.type === "studio" ? "#1D4ED8" : "#BE185D" }}>
-                        {b.type === "studio" ? "STUDIO" : "ARTIST PAGE"}
+                      <span style={{ ...chip, background: b.type === "studio" ? "#DBEAFE" : isOrg ? "#E0E7FF" : "#FCE7F3", color: b.type === "studio" ? "#1D4ED8" : isOrg ? "#3730A3" : "#BE185D" }}>
+                        {b.type === "studio" ? "STUDIO" : isOrg ? "ORGANIZATION" : "ARTIST PAGE"}
                       </span>
-                      <span style={{ ...chip, background: live ? "#DCFCE7" : "#FEF3C7", color: live ? "#15803D" : "#92400E" }}>{live ? "PUBLIC" : "NOT PUBLIC"}</span>
+                      {/* an organization's row is never listed — its public face is the GST number plus the mandate */}
+                      {isOrg ? null : <span style={{ ...chip, background: live ? "#DCFCE7" : "#FEF3C7", color: live ? "#15803D" : "#92400E" }}>{live ? "PUBLIC" : "NOT PUBLIC"}</span>}
                       {b.ownerSuspended ? <span style={{ ...chip, background: "#FEE2E2", color: "#B42318" }}>OWNER SUSPENDED</span> : null}
-                      {/* the studio's own subscription (10 Sep 2026) */}
-                      {b.type === "studio" ? (
+                      {/* the studio's own subscription (10 Sep 2026), or the organization's (26 Sep 2026) */}
+                      {hasMandate ? (
                         subLive ? (
                           <span style={{ ...chip, background: b.subStatus === "past_due" ? "#FEE2E2" : "#DCFCE7", color: b.subStatus === "past_due" ? "#B42318" : "#15803D" }}>
                             {b.subStatus === "past_due" ? "PAST DUE" : b.subGranted ? "GRANTED" : b.subRenews ? "SUBSCRIBED · RENEWS" : "SUBSCRIBED · ENDING"}
@@ -210,7 +222,7 @@ export function BusinessesDesk({
                   ) : (
                     <span style={{ color: "#B42318", fontWeight: 800 }}>nobody live — an orphan row</span>
                   )}
-                  {b.ownerId ? ` · ${b.ownerRole === "org" ? "organization" : "user"}${b.ownerVerified ? ", verified" : ", not verified"}` : ""}
+                  {b.ownerId && b.ownerVerified ? " · verified" : ""}
                 </div>
 
                 {granting === b.id ? (
@@ -267,6 +279,11 @@ export function BusinessesDesk({
                       <button type="button" onClick={() => { setUnlisting(null); setReason(""); }} style={btn}>Cancel</button>
                     </div>
                   </div>
+                ) : isOrg ? (
+                  <div style={{ fontSize: 10.5, color: MUTED, marginTop: 9, lineHeight: 1.45 }}>
+                    An organization is public while its GST number is verified and its own mandate is live — both are its owner&apos;s, from
+                    its home. Ending or comping an organization&apos;s mandate from here is not built yet.
+                  </div>
                 ) : (
                   <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
                     {live ? (
@@ -306,8 +323,8 @@ export function BusinessesDesk({
       <Pager base={base} page={page} total={total} keep={{ tab, q: q || null }} />
 
       <div style={{ fontSize: 10.5, color: MUTED, marginTop: 16, lineHeight: 1.55, borderTop: `1.5px solid ${EL}`, paddingTop: 12 }}>
-        Taking one business off Discover leaves the rest of its organization alone — that is what this screen is for.
-        Revoking the organization&apos;s verification, on the Verifications screen, unlists every studio it runs.
+        Taking one business off Discover leaves the rest its owner runs alone — that is what this screen is for.
+        Revoking a studio&apos;s verification, on the Verifications screen, takes that studio off Discover too.
       </div>
 
       {toast ? (

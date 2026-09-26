@@ -11,7 +11,7 @@ import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repo
 import type { FollowedTenant } from "@/types/follow";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { PersonBody } from "./PersonBody";
-import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
+import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "./ContactButtons";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
@@ -309,6 +309,7 @@ export function MyProfilePage({
           ) : null}
           {profile.phone && (isOrg || (isArtist && profile.phonePublic)) ? <CallButton phone={profile.phone} /> : null}
           {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
+          {!isPlainUser && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
           {isOrg && profile.lat != null && profile.lng != null ? (
             <LocationButton href={mapsPinHref(profile.lat, profile.lng)} />
           ) : isOrg && profile.city ? (

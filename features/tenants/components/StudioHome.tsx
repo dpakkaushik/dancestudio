@@ -11,7 +11,10 @@ import { EntityBand, Figure } from "@/features/profiles/components/profile-band"
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
-import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
+import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
+import { EditDetailsChip, EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
+import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { StudioLinksRow } from "./StudioLinksRow";
 import { StudioStylesRow } from "./StudioStylesRow";
@@ -121,7 +124,15 @@ export function StudioHome({
       signed: true,
     }));
 
+  /* who may press the pencil: the owner (every editor) or a trainer (the disc) */
+  const canEditAny = Boolean(editable) || canEditPhoto;
+  const whatsapp = whatsappHrefOf(tenant.socials);
+
   return (
+    /* EDIT MODE (26 Sep 2026): the pencil toggles it and every editor on this
+       home appears with it — see `EditMode.tsx` */
+    <EditModeProvider>
+    <RecordListsProvider styles={tenant.styles} socials={tenant.socials}>
     <div
       style={{
         background: LILAC,
@@ -206,11 +217,20 @@ export function StudioHome({
              the OWNER's screen for its owner (C40), and /studio/{id} is the
              public page for everybody. What "similar" asked for is the SHAPE,
              and that is now identical: one chip, one geometry, one position. */
+          /* ⚠ THE PENCIL IS BACK, OVER THE EYE (26 Sep 2026, the user: "edit
+             profile to be removed from all profiles settings and should be a
+             button on top right with public page view right now") — and it
+             TOGGLES edit mode rather than opening a form; the form's words are
+             the Edit details chip beside the name */
           corner={
-            <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
-              <EyeIcon />
-            </Link>
+            <>
+              {canEditAny ? <EditModeButton /> : null}
+              <Link href={`/studio/${tenant.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
+              </Link>
+            </>
           }
+          detailsEdit={editable ? <EditDetailsChip href={`/business/${tenant.id}?edit=1`} /> : null}
         >
           {/* ── THE BAND, THE SAME ONE EVERY PROFILE WEARS (20 Sep 2026, the user:
               "check all profile pages look similar according to their Profile
@@ -300,6 +320,7 @@ export function StudioHome({
           />
           {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
           {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
+          {whatsapp ? <MessageButton href={whatsapp} /> : null}
           {/* ⚠ the PIN comes off `editable`, which is the owner's read and the
               only one carrying lat/lng — a trainer gets the name-and-place query
               instead, which still opens Maps. Same `locationSetAt` guard the
@@ -311,6 +332,8 @@ export function StudioHome({
             <LocationButton query={`${tenant.name} ${place}`} />
           ) : null}
         </ActionRow>
+        {/* the ⊕ that makes and unmakes those buttons — the owner's, while the pencil is pressed (26 Sep 2026) */}
+        {editable ? <ContactEditButton target={{ kind: "business", tenant, detailsHref: `/business/${tenant.id}?edit=1` }} /> : null}
 
         {/* ── TODAY, AS THE SCHEDULE IT ACTUALLY IS (7500-7520): every class and
             event running in THIS studio's rooms today, one card each, in the
@@ -348,5 +371,7 @@ export function StudioHome({
           shape). Drawn only for somebody the OWNER read admitted. */}
       {editOpen && editable ? <BusinessEditFromUrl tenant={editable} /> : null}
     </div>
+    </RecordListsProvider>
+    </EditModeProvider>
   );
 }

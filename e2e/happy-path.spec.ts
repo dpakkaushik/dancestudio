@@ -177,12 +177,39 @@ async function pressPill(page: Page, name: RegExp | string, attr: "aria-pressed"
  *  profile options to be removed from home and profile pages"). The pencil is
  *  gone from Home's hero and the Profile tab's corner, so every place that used
  *  to press one opens the gear's own screen instead and presses the tile. */
+/* ⚠ RE-CUT 26 Sep 2026 (the user: "edit profile to be removed from all profiles
+   settings and should be a button on top right … clicking on the edit pencil
+   button from top right on every profile should open the option to edit
+   everything from the home tab"). The pencil is BACK on Home's corner and it
+   TOGGLES edit mode — every editor appears with it — so the words a form still
+   holds are the "Edit details" chip beside the name, and that is what opens the
+   sheet. Settings has no Edit tile any more, and that is asserted where it was. */
 async function openEditProfile(page: Page) {
-  await page.goto("/profile?settings=1");
-  const settings = page.getByRole("dialog", { name: "Settings" });
-  await expect(settings).toBeVisible({ timeout: 20_000 });
-  await settings.getByRole("button", { name: "Edit profile" }).click();
+  await page.goto("/");
+  await enterEditMode(page);
+  await page.getByRole("button", { name: "Edit details" }).click();
   const sheet = page.getByRole("dialog", { name: "Edit profile" });
+  await expect(sheet).toBeVisible({ timeout: 15_000 });
+  return sheet;
+}
+
+/** press the corner pencil on a home so its editors appear — idempotent, so a
+ *  segment can call it after a reload without knowing whether it already did */
+async function enterEditMode(page: Page) {
+  const pencil = page.getByRole("button", { name: "Edit profile", exact: true });
+  await expect(pencil).toBeVisible({ timeout: 20_000 });
+  if ((await pencil.getAttribute("aria-pressed")) !== "true") await pencil.click();
+  await expect(pencil).toHaveAttribute("aria-pressed", "true");
+}
+
+/** the contact buttons' own sheet on a home (26 Sep 2026): the pencil, then the
+ *  ⊕ beside the buttons — where a number, an email, a WhatsApp and Enquiry are
+ *  made and unmade, now that none of them is in the Edit sheet */
+async function openContacts(page: Page, at = "/") {
+  await page.goto(at);
+  await enterEditMode(page);
+  await page.getByRole("button", { name: "Edit contact buttons" }).click();
+  const sheet = page.getByRole("dialog", { name: "Contact buttons" });
   await expect(sheet).toBeVisible({ timeout: 15_000 });
   return sheet;
 }
@@ -400,7 +427,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.locator('input[name="area"]').fill("Kothrud");
     await pickCity(owner, "Pune");
     await fillBusinessContact(owner, `e2e-org-${stamp}@example.com`);
-    await owner.getByRole("button", { name: "Create organization" }).click();
+    /* "Open organization" is the sheet's own word (a studio's is "Create studio");
+       ⚠ a click on a control that does not exist waits for the TEST timeout —
+       900 s here — which is how the wrong name cost a fifteen-minute stall
+       before it cost a failure (26 Sep 2026) */
+    await owner.getByRole("button", { name: "Open organization" }).click();
     await expect(owner.getByText(orgName, { exact: true })).toBeVisible();
     const orgRows = (await (await fetch(`${supabaseUrl}/rest/v1/businesses?name=eq.${encodeURIComponent(orgName)}&type=eq.org&deleted_at=is.null&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
     eventsHostId = orgRows[0]?.id ?? null;
@@ -430,7 +461,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("GST number").fill(gstin);
     await owner.getByRole("button", { name: "Verify" }).click();
     await expect(owner.getByRole("status", { name: "GST number: verified" })).toBeVisible({ timeout: 15_000 });
-    await expect(owner.getByText(/Your organization can put on events/)).toBeVisible();
+    /* the card's own sentence since the number moved onto the BUSINESS row (26 Sep 2026) */
+    await expect(owner.getByText(/This organization can put on events/)).toBeVisible();
     /* ⚠ the "Settings carries the GST row" assertion is gone with the login: the
        number is the organization business's, and its Settings are THAT profile's
        (C53) — the row is asserted from the org's own home later, not from the
@@ -544,10 +576,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(studioSettings).toContainText("THIS STUDIO");
     /* it says WHOSE settings these are, because it is no longer always yours */
     await expect(studioSettings).toContainText(studioName);
-    /* and the four the user named, plus the two that were already the studio's */
-    for (const tile of ["Verification", "Subscription", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
+    /* the studio's tiles — ⚠ NO Subscription and NO Edit tile since 26 Sep 2026
+       (the user: "subscriptions also become an option on home tab for all
+       profiles and is removed from settings for all … edit profile to be
+       removed from all profiles settings"): both are the studio's own home's */
+    for (const tile of ["Verification", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
       await expect(studioSettings.getByText(tile, { exact: true })).toBeVisible();
     }
+    await expect(studioSettings.getByText("Subscription", { exact: true })).toHaveCount(0);
+    await expect(studioSettings.getByRole("link", { name: "Edit studio", exact: true })).toHaveCount(0);
     /* ⚠ and NOT the account's own plan switch — a sheet that mixes the two is
        the "which profile am I changing?" bug this ask exists to end */
     await expect(studioSettings.getByText("Artist tools", { exact: true })).toHaveCount(0);
@@ -671,13 +708,21 @@ test.describe.serial("DanceOS, end to end", () => {
        Edit sheet holds only words. The rails themselves still offer no picker. */
     await expect(owner.getByLabel("Add a photo")).toHaveCount(0);
     await expect(owner.getByLabel("Add photos of your space")).toHaveCount(0);
+    /* ⚠ AND NOTHING IS EDITABLE UNTIL THE PENCIL IS PRESSED (26 Sep 2026, the
+       user: "clicking on the edit pencil button from top right on every profile
+       should open the option to edit everything from the home tab thats when
+       the button to edits need to appear"). Both states, because a ⊕ that is
+       always there is exactly what was asked to go. */
+    await expect(owner.getByRole("button", { name: "Change profile picture" })).toHaveCount(0);
+    await expect(owner.getByRole("button", { name: "Edit contact buttons" })).toHaveCount(0);
+    await enterEditMode(owner);
     await expect(owner.getByRole("button", { name: "Change profile picture" })).toBeVisible();
-    /* ⚠ THE PENCIL IS OFF THE CORNER AND THE SHEET IS AN ADDRESS (22 Sep 2026,
-       the user: "studio edit profile should be in settings … and profile view
-       button similar to other profiles"). Both ends, so the check cannot pass
-       on a home that still carries the old control. */
+    await expect(owner.getByRole("button", { name: "Edit contact buttons" })).toBeVisible();
+    /* the words a form still holds are the Edit details chip, which lands on the
+       sheet's ADDRESS (`?edit=1`, 22 Sep 2026); no "Edit studio" button anywhere */
     await expect(owner.getByRole("button", { name: "Edit studio", exact: true })).toHaveCount(0);
-    await owner.goto(`/business/${tenantId}?edit=1`);
+    await owner.getByRole("link", { name: "Edit details" }).click();
+    await expect(owner).toHaveURL(/edit=1/);
     const studioSheet = owner.getByRole("dialog", { name: "Edit business" });
     await expect(studioSheet.getByText("Update profile", { exact: true })).toHaveCount(0);
     await expect(studioSheet.getByText("Update header", { exact: true })).toHaveCount(0);
@@ -699,6 +744,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // this studio showed DanceOS five photos to be verified, and they ARE its header
     const before = await proofRows();
     expect(before).toBe(5);
+    /* the sheet's Cancel went back a history entry, so the home is fresh and read-only again */
+    await enterEditMode(owner);
     await owner.getByRole("button", { name: "Edit posters" }).click();
     const postersSheet = owner.getByRole("dialog", { name: "Posters", exact: true });
     await expect(postersSheet).toBeVisible();
@@ -1240,6 +1287,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByLabel("Crew name").fill(crewName);
     await learner.getByLabel("Dance style", { exact: true }).click();
     await learner.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    /* THE CREW'S OWN NUMBER AND EMAIL, REQUIRED (26 Sep 2026) — the bar names each
+       missing answer before it offers Create crew */
+    await expect(learner.getByRole("button", { name: "Add the crew's mobile number" })).toBeVisible();
+    await learner.getByLabel("Mobile", { exact: true }).fill("+91 90000 33330");
+    await expect(learner.getByRole("button", { name: "Add the crew's email" })).toBeVisible();
+    await learner.getByLabel("Email", { exact: true }).fill(`crew-${stamp}@example.com`);
     await learner.getByRole("button", { name: "Add a member" }).click();
     await learner.getByLabel("Search DanceOS for a dancer").fill(trainerName);
     await learner.getByRole("button", { name: `Add ${trainerName} to the crew` }).click();
@@ -1642,6 +1695,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("button", { name: `${trainerName} — profile picture` }).click();
     await expect(trainer.getByLabel(`${trainerName} — picture 1 of 1`)).toBeVisible();
     await trainer.getByRole("button", { name: "Close the picture" }).click();
+    /* the ⊕ appears with the corner pencil (26 Sep 2026) — read-only until then */
+    await expect(trainer.getByRole("button", { name: "Change profile picture" })).toHaveCount(0);
+    await enterEditMode(trainer);
     /* the pencil, and the picture's own editor — it commits on upload, so no Save */
     await trainer.getByRole("button", { name: "Change profile picture" }).click();
     const picSheet = trainer.getByRole("dialog", { name: "Profile picture" });
@@ -1654,13 +1710,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(picSheet.getByLabel("Change your photo")).toBeAttached();
     await picSheet.getByRole("button", { name: "Done" }).click();
     /* and the POSTERS have their own pencil, on the rail rather than the disc */
+    await enterEditMode(trainer);
     await trainer.getByRole("button", { name: "Edit posters" }).click();
     await expect(trainer.getByRole("dialog", { name: "Posters" })).toBeVisible();
     await trainer.getByRole("dialog", { name: "Posters" }).getByRole("button", { name: "Cancel" }).click();
-    /* and Edit profile carries neither picture any more */
+    /* and Edit profile carries neither picture any more — nor the number and the
+       email, which are the ⊕ beside the buttons since 26 Sep 2026 */
     const wordsOnly = await openEditProfile(trainer);
     await expect(wordsOnly.getByLabel("Change your photo")).toHaveCount(0);
     await expect(wordsOnly.getByLabel("Add picture")).toHaveCount(0);
+    await expect(wordsOnly.getByLabel("Phone")).toHaveCount(0);
+    await expect(wordsOnly.getByLabel("Email")).toHaveCount(0);
     await wordsOnly.getByRole("button", { name: "Cancel" }).click();
     // a stranger — no account at all — reads the same page and is offered Follow
     const guestContext = await browserRef.newContext();
@@ -1790,6 +1850,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("button", { name: "Add a link" })).toHaveCount(0);
     await trainer.goto("/");
     await trainer.getByTestId("hero-disc").waitFor();
+    /* and on Home the two ＋ appear with the pencil (26 Sep 2026) — not before */
+    await expect(trainer.getByRole("button", { name: "Add a dance style" })).toHaveCount(0);
+    await enterEditMode(trainer);
     // a style, from the registry
     await trainer.getByRole("button", { name: "Add a dance style" }).click();
     await trainer.getByRole("button", { name: "Add Kathak", exact: true }).click();
@@ -1801,6 +1864,7 @@ test.describe.serial("DanceOS, end to end", () => {
        18 Sep "Since 2016" flake in a new coat */
     await expect(trainer.getByLabel("Kathak — one of your styles", { exact: true })).toBeVisible({ timeout: 15_000 });
     // a link, on a known platform — the chip prints the handle, not the URL
+    await enterEditMode(trainer);
     await trainer.getByRole("button", { name: "Add a link" }).click();
     await trainer.getByRole("button", { name: "Add Instagram" }).click();
     await trainer.getByLabel("URL", { exact: true }).fill("https://instagram.com/rheamoves");
@@ -1808,6 +1872,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("dialog", { name: "Add a social link" }).getByRole("button", { name: "Done" }).click();
     await expect(trainer.getByRole("button", { name: "Instagram — @rheamoves" })).toBeVisible({ timeout: 15_000 });
     // and a bad address is refused with the database's own sentence, not saved
+    await enterEditMode(trainer);
     await trainer.getByRole("button", { name: "Add a link" }).click();
     await trainer.getByRole("button", { name: "Add YouTube" }).click();
     await trainer.getByLabel("URL", { exact: true }).fill("rheamoves");
@@ -1839,7 +1904,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.getByRole("button", { name: "Settings", exact: true }).click();
     const settings = trainer.getByRole("dialog", { name: "Settings" });
     await expect(settings).toBeVisible();
-    await expect(settings.getByText("YOUR PLAN")).toBeVisible();
+    /* ⚠ NO "YOUR PLAN" SINCE 26 Sep 2026 — the plan is the Subscription tile on Home */
+    await expect(settings.getByText("YOUR PLAN")).toHaveCount(0);
+    await expect(settings.getByText("ACCOUNT")).toBeVisible();
     /* 19 Sep 2026: TILES, and no Notifications among them — "What reaches you"
        lives on the bell's own screen, once (the user: "can remove notifications
        and keep it inside the notifications section only"); Help & support and
@@ -1896,20 +1963,31 @@ test.describe.serial("DanceOS, end to end", () => {
     // Artist tools is the Artist PLAN's switch (8855), and the plan has been live
     // since the trainer got it on day one — so the strip reads PRO ACTIVE, and
     // pressing it ENDS the plan
+    /* ⚠ THE PLAN IS THE SUBSCRIPTION TILE ON HOME SINCE 26 Sep 2026 (the user:
+       "subscribe to become an artist should not be a separate tab in settings
+       like artist tools … subscriptions also become an option on home tab for
+       all profiles and is removed from settings for all"). Both ends: Settings
+       carries neither the switch nor the tile, and the tile on Home opens the
+       plan's own screen, where ENDING is a real Cancel with a confirm. */
     await trainer.goto("/profile?settings=1");
     const settings2 = trainer.getByRole("dialog", { name: "Settings" });
-    await expect(settings2.getByText("PRO ACTIVE")).toBeVisible();
-    await expect(settings2.getByRole("link", { name: /Subscription/ })).toBeVisible();
+    await expect(settings2.getByText("ACCOUNT")).toBeVisible();
+    await expect(settings2.getByText("PRO ACTIVE")).toHaveCount(0);
+    await expect(settings2.getByRole("button", { name: "Artist tools" })).toHaveCount(0);
+    await expect(settings2.getByRole("link", { name: /Subscription/ })).toHaveCount(0);
+    await trainer.goto("/");
+    await expect(trainer.getByRole("link", { name: "Subscription", exact: true })).toHaveAttribute("href", "/subscription");
     // 10 Sep 2026: ENDING means stop renewing, the way every real subscription
     // works — the tools stay on until the period paid for is over, so the badge
     // still reads ARTIST, and the plan's own screen says it is ending. The ROLE
     // never moved either way (8 Sep 2026: Pro is a row, not a role)
-    await settings2.getByRole("button", { name: "Artist tools" }).click();
-    await expect(trainer.getByRole("status")).toContainText("Artist tools off", { timeout: 15_000 });
     await trainer.goto("/subscription");
-    await expect(trainer.getByText("Active · ending")).toBeVisible({ timeout: 15_000 });
-    await expect(trainer.getByText(/Stays on until .*, then stops\. Nothing more will be charged\./)).toBeVisible();
+    await expect(trainer.getByTestId("subscription-card")).toBeVisible();
+    /* the trainer's plan is an admin's GRANT (segment 4), so it renews nothing
+       and there is no Cancel to press — the screen says exactly that */
+    await expect(trainer.getByText("ACTIVE · GRANTED")).toBeVisible();
     await expect(trainer.getByText("This period does not renew. Once it ends you can subscribe again from here.")).toBeVisible();
+    await expect(trainer.getByRole("button", { name: /^Cancel subscription/ })).toHaveCount(0);
     // what was paid for stands: the same profile is still an artist
     await trainer.goto("/profile");
     await expect(trainer.getByText(/^Artist(-\d{6})?$/).first()).toBeVisible({ timeout: 15_000 });
@@ -1929,12 +2007,18 @@ test.describe.serial("DanceOS, end to end", () => {
     const bizEdit = owner.getByRole("dialog", { name: "Edit business" });
     await expect(bizEdit.getByLabel("About")).toHaveCount(0);
     await bizEdit.getByLabel("Since").selectOption("2016");
-    await bizEdit.getByLabel("Phone", { exact: true }).fill("+91 98765 43210");
+    /* ⚠ NO PHONE IN THE SHEET (26 Sep 2026) — the number is the ⊕ beside the buttons */
+    await expect(bizEdit.getByLabel("Phone", { exact: true })).toHaveCount(0);
     await bizEdit.getByRole("button", { name: "Save" }).click();
     /* fifteen seconds, not the default five: this lands in the one SERVER
        re-render the save triggers, and a whole-suite run was lost to the default
        here on 18 Sep 2026 (green alone, nothing on the page changed) */
     await expect(owner.getByText("Since 2016")).toBeVisible({ timeout: 15_000 });
+    /* the number, through the studio home's contact sheet — the studio's own */
+    const bizContacts = await openContacts(owner, `/business/${tenantId}`);
+    await bizContacts.getByLabel("Phone", { exact: true }).fill("+91 98765 43210");
+    await bizContacts.getByRole("button", { name: "Save" }).click();
+    await expect(bizContacts).toHaveCount(0, { timeout: 15_000 });
     // a stranger reads it too, and Call is a real tel: hand-off
     await learner.goto(studioUrl);
     await expect(learner.getByText("Since 2016")).toBeVisible({ timeout: 15_000 });
@@ -2067,15 +2151,17 @@ test.describe.serial("DanceOS, end to end", () => {
     // list gives Call to studios and organizations only (R25 — "user: nothing";
     // an artist's Call is a toggle in push 2, NEXT TO DO #0r). So the record holds
     // it, the sheet reads it back, and a stranger's page shows no Call either way.
-    const editSheet = learner.getByRole("dialog", { name: "Edit profile" });
-    await openEditProfile(learner);
+    /* ⚠ THROUGH THE CONTACT SHEET SINCE 26 Sep 2026 — the ⊕ beside the buttons
+       on Home, behind the pencil; the Edit profile sheet carries no number */
+    const editSheet = learner.getByRole("dialog", { name: "Contact buttons" });
+    await openContacts(learner);
     await editSheet.getByLabel("Phone").fill("+91 98765 43210");
     await editSheet.getByRole("button", { name: "Save" }).click();
     await expect(editSheet).toHaveCount(0);
-    // the record kept it: the sheet re-opens holding the number. `openEditProfile`
+    // the record kept it: the sheet re-opens holding the number. `openContacts`
     // navigates, so it re-reads the row — re-opening in the same breath as the
     // save would race router.refresh() and read the OLD one
-    await openEditProfile(learner);
+    await openContacts(learner);
     await expect(editSheet.getByLabel("Phone")).toHaveValue("+91 98765 43210", { timeout: 15_000 });
     // somebody else's read of it: the trainer opens the learner's page — no Call on a user's page
     await trainer.goto(`/person/${learnerId}`);
@@ -2085,15 +2171,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await editSheet.getByLabel("Phone").fill("");
     await editSheet.getByRole("button", { name: "Save" }).click();
     await expect(editSheet).toHaveCount(0);
-    await openEditProfile(learner);
+    await openContacts(learner);
     await expect(editSheet.getByLabel("Phone")).toHaveValue("", { timeout: 15_000 });
     await editSheet.getByRole("button", { name: "Cancel" }).click();
     await expect(editSheet).toHaveCount(0);
 
     // ── I4: the OTHER end of an enquiry can ring too. The business publishes its
     // number on its own page; the person who asked reads it on the enquiry they sent.
-    await owner.goto(`/business/${tenantId}?edit=1`);
-    const bizSheet = owner.getByRole("dialog", { name: "Edit business" });
+    const bizSheet = await openContacts(owner, `/business/${tenantId}`);
     await bizSheet.getByLabel("Phone", { exact: true }).fill("+91 90000 11111");
     await bizSheet.getByRole("button", { name: "Save" }).click();
     await expect(bizSheet).toHaveCount(0);
@@ -2676,8 +2761,10 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ── 2a. CALL IS A SWITCH ON AN ARTIST'S PAGE — off by default. The trainer holds the
     // plan (ending, still active), so their sheet carries the switch and their page may dial.
-    const sheet = trainer.getByRole("dialog", { name: "Edit profile" });
-    await openEditProfile(trainer);
+    /* ⚠ THE SWITCH IS IN THE CONTACT SHEET SINCE 26 Sep 2026 — beside the number
+       it governs, behind the pencil on Home */
+    const sheet = trainer.getByRole("dialog", { name: "Contact buttons" });
+    await openContacts(trainer);
     const callSwitch = sheet.getByRole("switch", { name: "Show Call on my profile" });
     await expect(callSwitch).toHaveAttribute("aria-checked", "false");
     await sheet.getByLabel("Phone").fill("+91 90000 22222");
@@ -2689,7 +2776,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // the Stats chip on somebody else's page opens THEIR record, not the board they stand on
     await expect(learner.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/person/${trainerId}/stats`);
     // off again: the number stays on the record, the page stops dialling it
-    await openEditProfile(trainer);
+    await openContacts(trainer);
     await expect(sheet.getByLabel("Phone")).toHaveValue("+91 90000 22222", { timeout: 15_000 });
     await expect(callSwitch).toHaveAttribute("aria-checked", "true");
     await callSwitch.click();
@@ -2698,26 +2785,34 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.reload();
     await expect(learner.getByRole("link", { name: "Call" })).toHaveCount(0);
     // a plain user's sheet has no such switch: their page carries no buttons at all
-    const userSheet = learner.getByRole("dialog", { name: "Edit profile" });
-    await openEditProfile(learner);
+    const userSheet = learner.getByRole("dialog", { name: "Contact buttons" });
+    await openContacts(learner);
     await expect(userSheet.getByRole("switch", { name: "Show Call on my profile" })).toHaveCount(0);
     await userSheet.getByRole("button", { name: "Cancel" }).click();
     await expect(userSheet).toHaveCount(0);
 
-    // ── 2b. AND ON A CREW'S PAGE — the leader's switch, in Edit crew. The policy on
-    // crew_contacts IS the switch: off, no reader gets the number through any door.
-    /* the crew's sheet is an address too (22 Sep 2026), for the studio's reason:
-       Settings' THIS CREW tile lands here and the pencil has left the corner */
+    // ── 2b. AND ON A CREW'S PAGE — the leader's switch, in the crew's contact
+    // sheet. The policy on crew_contacts IS the switch: off, no reader gets the
+    // number through any door.
+    /* ⚠ THE PENCIL IS BACK ON THE CREW'S CORNER (26 Sep 2026), and it toggles edit
+       mode; Settings carries NO Edit crew tile any more — both ends asserted */
     await learner.goto(`/crews/${crewId}/manage`);
     await expect(learner.getByRole("button", { name: "Edit crew" })).toHaveCount(0);
-    /* and the tile that replaced it, in the crew's OWN Settings — which said
-       "a crew has no settings of its own" until this edit gave it one */
     await learner.getByRole("button", { name: "Settings", exact: true }).click();
     const crewSettings = learner.getByRole("dialog", { name: "Settings" });
     await expect(crewSettings.getByText("THIS CREW")).toBeVisible();
-    await expect(crewSettings.getByRole("link", { name: "Edit crew", exact: true })).toBeVisible();
-    await learner.goto(`/crews/${crewId}/manage?edit=1`);
-    const crewSheet = learner.getByRole("dialog", { name: "Edit crew" });
+    await expect(crewSettings.getByRole("link", { name: "Edit crew", exact: true })).toHaveCount(0);
+    /* the words — name, city, the first style — are still `?edit=1`, reached
+       from the Edit details chip; the number is the contact sheet */
+    await learner.goto(`/crews/${crewId}/manage`);
+    await enterEditMode(learner);
+    await learner.getByRole("link", { name: "Edit details" }).click();
+    const crewWords = learner.getByRole("dialog", { name: "Edit crew" });
+    await expect(crewWords).toBeVisible({ timeout: 15_000 });
+    await expect(crewWords.getByLabel("Phone")).toHaveCount(0);
+    await crewWords.getByRole("button", { name: "Cancel" }).click();
+    await expect(crewWords).toHaveCount(0);
+    const crewSheet = await openContacts(learner, `/crews/${crewId}/manage`);
     const crewSwitch = crewSheet.getByRole("switch", { name: "Show Call on the crew's page" });
     await expect(crewSwitch).toHaveAttribute("aria-checked", "false");
     await crewSheet.getByLabel("Phone").fill("+91 90000 33333");

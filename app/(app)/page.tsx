@@ -21,7 +21,11 @@ import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { PersonIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
-import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
+import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
+import { EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
+import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
+import { PersonDetailsEdit } from "@/features/profiles/components/EditProfileSheet";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
@@ -195,6 +199,14 @@ export default async function HomePage() {
     .map((g, i) => ({ key: g.id, src: g.url as string, alt: `Header picture ${i + 1} of ${profile.fullName}` }));
 
   return (
+    /* ⚠ EDIT MODE (26 Sep 2026, the user: "clicking on the edit pencil button from
+       top right on every profile should open the option to edit everything from
+       the home tab thats when the button to edits need to appear"). The pencil
+       in the corner toggles it; every editor on this home — the disc's ⊕, the
+       posters' ⊕, the styles ＋, the links ＋, the contact ⊕, Edit details —
+       reads the context and draws itself only while editing. */
+    <EditModeProvider>
+    <RecordListsProvider styles={profile.styles} socials={profile.socials}>
     <div
       style={{
         background: LILAC,
@@ -274,14 +286,24 @@ export default async function HomePage() {
              door ever since. The public page is reached from there, or from the
              Share chip in the figures row. */
           corner={
-            /* ⚠ `publicHref` rather than `/profile`, for the reason above: the
-               same destination, one hop fewer. The DOOR is unchanged — C37's
-               "one corner, the same on every home" still holds, because what
-               `/profile` resolves to IS this address. */
-            <Link href={publicHref} aria-label="Your profile" style={cornerChip}>
-              <PersonIcon />
-            </Link>
+            /* ⚠ THE PENCIL IS BACK ON THE CORNER, OVER THE DOOR (26 Sep 2026, the
+               user: "edit profile to be removed from all profiles settings and
+               should be a button on top right with public page view right now").
+               C22 (19 Sep) took it to Settings; the user's later word puts it
+               here, and it TOGGLES rather than opens — every editor on this
+               home appears with it. The door under it is unchanged:
+               `publicHref` rather than `/profile`, the same destination one hop
+               fewer (C37's "one corner, the same on every home" still holds). */
+            <>
+              <EditModeButton />
+              <Link href={publicHref} aria-label="Your profile" style={cornerChip}>
+                <PersonIcon />
+              </Link>
+            </>
           }
+          /* the words a form still holds — the name, the date of birth, the city
+             — behind a chip that appears with the pencil (26 Sep 2026) */
+          detailsEdit={<PersonDetailsEdit profile={profile} />}
         >
           {/* ⚠ WHAT WAS HERE HAS GONE UP INTO THE HERO (18 Sep 2026): the role
               word moved to the eyebrow and the account number under it. What
@@ -379,10 +401,14 @@ export default async function HomePage() {
               {/* an ARTIST's Call only while their own switch is on (push 2, 19 Sep 2026) */}
               {profile.phone && isArtist && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
               {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
+              {/* MESSAGE — the WhatsApp entry in the links, as a button (26 Sep 2026) */}
+              {!isPlainUser && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
               {/* ⚠ a person's row never carries a pin — the Location button was the
                   retired organization login's (26 Sep 2026); an organization's pin
                   is its business row's, on its own home */}
             </ActionRow>
+            {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
+            <ContactEditButton target={{ kind: "person", profile, isArtist }} />
             <TodayShelf deck={deck} />
           </>
         )}
@@ -438,5 +464,7 @@ export default async function HomePage() {
         )}
       </div>
     </div>
+    </RecordListsProvider>
+    </EditModeProvider>
   );
 }

@@ -7,7 +7,9 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { MUTED } from "@/lib/design/tokens";
 import type { Profile } from "@/types/profile";
+import { EditDetailsChip } from "./EditMode";
 import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
+import { useRecordListsOptional } from "./RecordLists";
 
 /** EDIT PROFILE (prototype 11364 — "one editor, and it is Edit profile"), in
  *  the order the user asked for on 15 Sep 2026: Name · Mobile · Profile
@@ -43,6 +45,20 @@ import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
  *  longer be true; the branches that read it are left so the file keeps its
  *  shape until the profile role itself is retired. */
 
+/** THE "EDIT DETAILS" CHIP ON HOME AND THE SHEET IT OPENS (26 Sep 2026) — drawn
+ *  beside the name while the home is in edit mode; the words a form still holds
+ *  (the name, the date of birth, the city). It is the one client island a
+ *  server-rendered Home needs for this sheet. */
+export function PersonDetailsEdit({ profile }: { profile: Profile }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <EditDetailsChip onClick={() => setOpen(true)} />
+      {open ? <EditProfileSheet profile={profile} onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
 /* THE DATE OF BIRTH'S BOUNDS AND ITS ARITHMETIC (19 Sep 2026). The prototype
    offered 65 ages, 13 to 77 (11384); the app asks for the date instead and the
    database works the age out from it, so these are the same 13-to-99 window the
@@ -62,19 +78,26 @@ const ageFromDob = (iso: string): number => {
 
 export function EditProfileSheet({
   profile,
-  isArtist = false,
   onClose,
   onSaved,
 }: {
   profile: Profile;
-  /** the plan's word — an artist's page can dial their number, so an artist gets the switch */
-  isArtist?: boolean;
   onClose: () => void;
   onSaved?: () => void;
 }) {
   const router = useRouter();
   const isOrg = profile.role === "org";
-  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, dob: profile.dob ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "", phonePublic: profile.phonePublic });
+  /* the styles and the links as the HOME holds them, when this sheet is opened
+     from a home being edited (26 Sep 2026) — a style added on the band a moment
+     ago is not written back over by a change of city; off the prop elsewhere */
+  const home = useRecordListsOptional();
+  const lists = home?.lists ?? { styles: profile.styles, socials: profile.socials };
+  /* ⚠ NO NUMBER, NO SWITCH, NO EMAIL HERE (26 Sep 2026, the user: "all buttons
+     like email, location, phone, message, enquiry on home tab should also be
+     like social media and dance style edit style … and those options can be
+     removed from edit profile"). They are the ⊕ beside the buttons on Home
+     (`ContactEditor`); this save sends all three back exactly as they are. */
+  const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, dob: profile.dob ?? "" });
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -93,13 +116,11 @@ export function EditProfileSheet({
         age: isOrg ? null : d.age,
         /* THE DATE OF BIRTH (19 Sep 2026): the database works the age out from it; an empty box leaves it as it is */
         dob: isOrg || !d.dob ? undefined : d.dob,
-        socials: profile.socials,
-        styles: profile.styles,
-        phone: d.phone.trim() || null,
-        /* the Mail button's address (19 Sep 2026): an empty box clears it */
-        contactEmail: d.email.trim() || null,
-        /* CALL IS A TOGGLE (push 2): an organization's number is always its Call; a person's dials only while this is on */
-        phonePublic: isOrg ? undefined : d.phonePublic,
+        socials: lists.socials,
+        styles: lists.styles,
+        /* unchanged — the contact sheet on Home is where these move */
+        phone: profile.phone ?? null,
+        contactEmail: profile.contactEmail ?? null,
       });
       if (out.error) {
         setErr(out.error);
@@ -117,40 +138,11 @@ export function EditProfileSheet({
       <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Edit profile</b>
       <div style={fieldLabel}>Name</div>
       <input aria-label="Name" value={d.fullName} onChange={(e) => setD((x) => ({ ...x, fullName: e.target.value }))} style={fieldInput} />
-      {/* the number is the person's to publish and theirs to take down: an
-          empty box saves null, and the line under the box says so rather
-          than making them guess (N8 — Call, S_profiletab 10879) */}
-      <div style={fieldLabel}>Mobile</div>
-      <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
-      {/* CALL IS A STUDIO'S AND AN ORGANIZATION'S (19 Sep 2026, the user's list) —
-          and, since push 2, an ARTIST'S BY CHOICE: the switch under the box is
-          off until they turn it on. A plain user's number stays on the record
-          and is dialled from nowhere; the line under the box says which is true */}
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>
-        {isOrg ? "Shown on your organization's page as Call. Leave it empty and nobody sees a number." : isArtist ? "Shown on your page as Call only while the switch below is on." : "Kept on your account. It is not shown on your public page."}
-      </div>
-      {!isOrg && isArtist ? (
-        <button
-          type="button"
-          role="switch"
-          aria-checked={d.phonePublic}
-          aria-label="Show Call on my profile"
-          onClick={() => setD((x) => ({ ...x, phonePublic: !x.phonePublic }))}
-          style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0 2px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}
-        >
-          <span style={{ flex: 1, fontSize: 12, fontWeight: 800 }}>Show Call on my profile</span>
-          <span aria-hidden="true" style={{ width: 42, height: 24, borderRadius: 12, flexShrink: 0, background: d.phonePublic ? "#22C55E" : "var(--el)", position: "relative", display: "inline-block" }}>
-            <span style={{ position: "absolute", top: 3, left: d.phonePublic ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .15s" }} />
-          </span>
-        </button>
-      ) : null}
-      {/* THE MAIL BUTTON'S ADDRESS (19 Sep 2026): an organization's and an
-          artist's page carry Mail; a user's page carries no buttons at all */}
-      <div style={fieldLabel}>Email</div>
-      <input aria-label="Email" type="email" inputMode="email" value={d.email} onChange={(e) => setD((x) => ({ ...x, email: e.target.value }))} placeholder="you@example.com" style={fieldInput} />
-      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>{isOrg ? "Shown on your organization's page as Mail." : "Shown on your page as Mail while you hold the Artist plan."} Leave it empty and nobody sees an address.</div>
-      {/* ⚠ NO PICTURES IN THIS SHEET (19 Sep 2026) — both sections live behind
-          the disc on Home, which is the one place they are changed */}
+      {/* ⚠ NO MOBILE, NO CALL SWITCH, NO EMAIL (26 Sep 2026) — they are the ⊕
+          beside the buttons on Home; and NO PICTURES (19 Sep 2026) — both
+          sections live behind the disc on Home. This sheet is who you are and
+          where you are. */}
+      <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8 }}>Your number, email and links are edited on Home — press the pencil, then the ⊕ beside the buttons.</div>
       <div style={fieldLabel}>Location</div>
       {/* THE ONE CITY DROPDOWN (19 Sep 2026) — the same control as everywhere else */}
       <CityPicker value={d.city.trim() || null} onChange={(c) => setD((x) => ({ ...x, city: c ?? "" }))} label="" />

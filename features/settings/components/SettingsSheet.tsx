@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
-import { EditProfileSheet } from "@/features/profiles/components/EditProfileSheet";
 import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -170,7 +169,6 @@ export function SettingsSheet({
      close is `router.back()`, and the push was cancelled by it.) */
   const go = (href: string) => router.replace(href);
   const [enqOpen, setEnqOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
   /* NO sentinel of its own (19 Sep 2026): this sheet's open state IS the URL
@@ -265,9 +263,9 @@ export function SettingsSheet({
                   whole public profile, and carrying that in the layout would be
                   a read on every desk and every class page for a sheet most
                   visits never open. The same call C53 made for Verification. */}
-              <Tile icon={ICONS.edit("#5AC8FA")} href={`${desk}?edit=1`} onNavigate={go} ariaLabel="Edit studio">
-                Edit studio
-              </Tile>
+              {/* ⚠ NO EDIT TILE (26 Sep 2026, the user: "edit profile to be removed
+                  from all profiles settings and should be a button on top right
+                  with public page view") — the pencil on the studio's own home */}
               <Tile icon={ICONS.gst("#0EA5E9")} href={`${desk}/verification`} onNavigate={go} badge={<span style={badgeStyle(Boolean(studio.verifiedAt))}>{studio.verifiedAt ? "verified" : "not yet"}</span>}>
                 Verification
               </Tile>
@@ -301,9 +299,7 @@ export function SettingsSheet({
           <>
             <div style={head}>THIS ORGANIZATION</div>
             <div style={grid}>
-              <Tile icon={ICONS.edit("#5AC8FA")} href={`${desk}?edit=1`} onNavigate={go} ariaLabel="Edit organization">
-                Edit organization
-              </Tile>
+              {/* no Edit tile (26 Sep 2026) — the pencil on the organization's own home */}
               <Tile icon={ICONS.gst("#0EA5E9")} href={`${desk}/gst`} onNavigate={go} badge={<span style={badgeStyle(Boolean(org.gstinVerifiedAt))}>{org.gstinVerifiedAt ? "verified" : "needed"}</span>}>
                 GST number
               </Tile>
@@ -339,31 +335,20 @@ export function SettingsSheet({
         {active.kind === "crew" ? (
           <>
             <div style={head}>THIS CREW</div>
-            <div style={grid}>
-              <Tile icon={ICONS.edit("#5AC8FA")} href={`/crews/${active.crew.id}/manage?edit=1`} onNavigate={go} ariaLabel="Edit crew">
-                Edit crew
-              </Tile>
-            </div>
+            {/* ⚠ NO EDIT TILE (26 Sep 2026): a crew is edited by the pencil on its
+                own home, like every other profile; it takes no money, so nothing
+                else is its */}
             <div style={{ fontSize: 11.5, color: SUB, fontWeight: 700, padding: "2px 2px 2px", lineHeight: 1.5 }}>
-              {active.crew.name} takes no money, so it has nothing else here.
+              {active.crew.name} is edited from its own home — the pencil top right. It takes no money, so it has nothing else here.
             </div>
           </>
         ) : null}
 
-        {/* ── YOU: Edit profile, first (19 Sep 2026). The pencil left Home's
-            hero and the Profile tab's corner for this tile, so there is one
-            door to the form rather than three. The PICTURES are not behind it
-            — they are behind the disc on Home. ── */}
-        {me && profile ? (
-          <>
-            <div style={head}>YOU</div>
-            <div style={grid}>
-              <Tile icon={ICONS.edit("#5AC8FA")} onClick={() => setEditOpen(true)} ariaLabel="Edit profile">
-                Edit profile
-              </Tile>
-            </div>
-          </>
-        ) : null}
+        {/* ⚠ NO "YOU · Edit profile" BLOCK (26 Sep 2026, the user: "edit profile
+            to be removed from all profiles settings and should be a button on
+            top right with public page view right now"). C22 (19 Sep) brought the
+            pencil here; the user's later word puts it back on every home's
+            corner, where it opens EVERY editor at once rather than one form. */}
 
         {/* ⚠ YOUR PLAN IS GONE WHOLE (26 Sep 2026): the Artist tools switch and
             the Subscription tile are the Subscription tile on Home now, at the
@@ -429,12 +414,6 @@ export function SettingsSheet({
             switcher, which is the chip beside the gear on EVERY screen — so the
             way out went from being two taps inside the Profile tab to one tap
             from anywhere. Nothing is orphaned, which is the test C31 sets. */}
-
-        {/* EDIT PROFILE — portalled to the document root, so it opens OVER this
-            sheet rather than inside its scroll (the 16 Sep stacking lesson) */}
-        {editOpen && profile ? (
-          <EditProfileSheet profile={profile} isArtist={Boolean(plan?.active)} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} />
-        ) : null}
 
         {/* ── ENQUIRIES YOU ACCEPT (9000-9030) ── */}
         {enqOpen && biz ? (

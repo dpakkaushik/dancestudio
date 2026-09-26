@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AdminBusiness } from "@/repositories/adminPanel";
 
 /** THE TWO GATES A PERSON MEETS BEFORE OPENING A BUSINESS (9 Sep 2026; trimmed
  *  11 Sep; re-cut 26 Sep), plus the removal of a proof photo and the figures
- *  the admin accounts desk draws per organization.
+ *  the admin accounts desk draws per owner.
  *
  *  ⚠ `findMyOrgTenantId` LEFT ON 26 Sep 2026 with the organization LOGIN it
  *  served: `my_org_business()` made a hosting row for a login on first ask, and
@@ -40,32 +41,38 @@ export async function removeProofPhoto(supabase: SupabaseClient, id: string): Pr
   }
 }
 
-export interface OrgStandingRow {
-  orgId: string;
-  proofPhotos: number;
+/** What an ACCOUNT runs, for the admin accounts desk (26 Sep 2026). */
+export interface OwnerStanding {
+  ownerId: string;
   studios: number;
+  /** studios whose own mandate (or comp) is live — `studio_plan_active`'s
+   *  reading, taken off the same subscription row the Businesses desk prints */
   subscribedStudios: number;
+  organizations: number;
 }
 
-/** Evidence and studio figures for a page of organizations, for the admin
- *  accounts desk. One call for the whole page, not one per row. */
-export async function findAdminOrgStanding(
-  supabase: SupabaseClient,
-  orgIds: string[]
-): Promise<Map<string, OrgStandingRow>> {
-  const out = new Map<string, OrgStandingRow>();
-  if (orgIds.length === 0) return out;
-  const { data, error } = await supabase.rpc("admin_org_standing", { p_org_ids: orgIds });
-  if (error) {
-    throw new Error(`admin.orgStanding failed: ${error.message}`);
+/** ⚠ COUNTED OFF THE BUSINESSES LIST, NOT OFF `admin_org_standing` (26 Sep
+ *  2026). That RPC answers only for `profiles.role = 'org'`, and no such
+ *  profile exists since the organization login was retired — so it answers
+ *  nobody, for ever, and the desk read "1 BUSINESS" with no word on whether the
+ *  studio behind it was subscribed. `admin_businesses` already carries the
+ *  owner and the subscription row per business, so the figure the chip wants is
+ *  arithmetic over a list the panel reads anyway; the RPC is dead and is the
+ *  next admin migration's to drop, not tonight's. A subscription counts while
+ *  its status still grants access (active, past due, or cancelled with a paid
+ *  period left) — the three statuses `subscription_has_access` admits. */
+export function ownerStandingOf(businesses: ReadonlyArray<AdminBusiness>): Map<string, OwnerStanding> {
+  const out = new Map<string, OwnerStanding>();
+  for (const b of businesses) {
+    if (!b.ownerId) continue;
+    const row = out.get(b.ownerId) ?? { ownerId: b.ownerId, studios: 0, subscribedStudios: 0, organizations: 0 };
+    if (b.type === "studio") {
+      row.studios += 1;
+      if (b.subStatus && ["active", "past_due", "canceled"].includes(b.subStatus)) row.subscribedStudios += 1;
+    } else if (b.type === "org") {
+      row.organizations += 1;
+    }
+    out.set(b.ownerId, row);
   }
-  ((data ?? []) as Array<{ org_id: string; proof_photos: number; studios: number; subscribed_studios: number }>).forEach((r) => {
-    out.set(r.org_id, {
-      orgId: r.org_id,
-      proofPhotos: Number(r.proof_photos),
-      studios: Number(r.studios),
-      subscribedStudios: Number(r.subscribed_studios),
-    });
-  });
   return out;
 }

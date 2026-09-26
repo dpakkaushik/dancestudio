@@ -135,10 +135,13 @@ try {
   #    send a request". B is not on this team yet (they join below), so asking them
   #    is exactly the case that used to be refused.
   $offTeamAsk = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $b.user.id; p_kind = "assistant" }
-  $orgRefused = Expect-Fail {
-    Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $a.user.id; p_kind = "assistant" }
-  }
-  Check 7 "Somebody outside the team can be asked ($($offTeamAsk.status)), an organization cannot" (($offTeamAsk.status -eq "asked") -and $orgRefused)
+  # RE-CUT 26 Sep 2026: the owner is a PERSON now (the organization login is
+  # retired), and an owner naming THEMSELVES is seated CONFIRMED at once - nobody
+  # is asked to say yes to themselves (20260926090000). The row is then erased
+  # with the service role so the counts below stay about B's ask alone.
+  $selfAsk = Rpc (Api $a.access_token) "ask_class_person" @{ p_class_id = $byName.id; p_user_id = $a.user.id; p_kind = "assistant" }
+  Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/class_people?id=eq.$($selfAsk.id)" -Headers $svcH | Out-Null
+  Check 7 "Somebody outside the team can be asked ($($offTeamAsk.status)); the owner naming themselves is seated at once ($($selfAsk.status)) - nobody asks themselves (26 Sep 2026)" (($offTeamAsk.status -eq "asked") -and ($selfAsk.status -eq "confirmed"))
 
   # 7b. AND THEY CAN SEE WHAT THEY ARE BEING ASKED ABOUT (18 Sep 2026). The user:
   #     "when studio creating class request not going to artist in inbox". A new

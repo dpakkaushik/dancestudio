@@ -246,7 +246,7 @@ export function OrganizationsHub({
               <input name="phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={inp} />
               {phone.trim() && !phoneOk ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 4 }}>A mobile number is 8 to 18 digits.</div> : null}
               <div style={{ fontSize: 12, color: SUB, margin: "14px 0 4px" }}>Email — the organization&apos;s</div>
-              <input name="email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@example.com" style={inp} />
+              <input name="contact_email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@example.com" style={inp} />
               {email.trim() && !emailOk ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 4 }}>That is not an email address.</div> : null}
               <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 }}>Both are shown on its page as Call and Mail, and both are yours to change from its Settings.</div>
 

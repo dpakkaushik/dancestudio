@@ -282,9 +282,18 @@ export async function findVerifiedStudiosPage(
   input: { q?: string | null; page: number; pageSize: number }
 ): Promise<Page<StudioRow>> {
   const from = (input.page - 1) * input.pageSize;
+  /* ⚠ NO `business_members (…, profiles (full_name))` EMBED (26 Sep 2026).
+     `business_members.user_id` references `auth.users`, not `profiles` — Step
+     11 wrote that down for the team read — so PostgREST has no relationship to
+     embed a name through and answered "Could not find a relationship" to this
+     whole query: the Verified tab was a 500 from the day it was written, and
+     `shoot-admin` is the first thing that opened it. The owner's name comes
+     off `admin_businesses`, the definer read every other desk uses, because an
+     admin holds no policy on `business_members` and a direct read would hand
+     back only their own seats. */
   let query = supabase
     .from("businesses")
-    .select("id, name, city, area, profile_photo_path, socials, verified_at, visibility, business_members (user_id, member_role, deleted_at, profiles (full_name))", { count: "exact" })
+    .select("id, name, city, area, profile_photo_path, socials, verified_at, visibility", { count: "exact" })
     .eq("type", "studio")
     .is("deleted_at", null)
     .not("verified_at", "is", null);
@@ -300,24 +309,30 @@ export async function findVerifiedStudiosPage(
   }
   type Row = {
     id: string; name: string; city: string | null; area: string | null; profile_photo_path: string | null; socials: unknown; verified_at: string | null; visibility: string;
-    business_members: Array<{ user_id: string; member_role: string; deleted_at: string | null; profiles: { full_name: string } | null }> | null;
   };
+  const rows = (data ?? []) as unknown as Row[];
+  /* the owners of THIS PAGE, off the admin's own definer read; a failed lookup
+     leaves the name off the line rather than failing the desk */
+  const owners = new Map<string, { id: string | null; name: string | null }>();
+  if (rows.length > 0) {
+    const { data: known } = await supabase.rpc("admin_businesses", { p_q: null, p_limit: 200 });
+    ((known ?? []) as Array<{ id: string; owner_id: string | null; owner_name: string | null }>).forEach((b) => {
+      owners.set(b.id, { id: b.owner_id ?? null, name: b.owner_name ?? null });
+    });
+  }
   return {
     total: count ?? 0,
-    rows: ((data ?? []) as unknown as Row[]).map((r) => {
-      const owner = (r.business_members ?? []).find((m) => m.member_role === "owner" && !m.deleted_at) ?? null;
-      return {
-        id: r.id,
-        name: r.name,
-        city: r.city,
-        area: r.area,
-        photoPath: r.profile_photo_path,
-        socials: toSocials(r.socials),
-        verifiedAt: r.verified_at,
-        visibility: r.visibility,
-        ownerId: owner?.user_id ?? null,
-        ownerName: owner?.profiles?.full_name ?? null,
-      };
-    }),
+    rows: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      city: r.city,
+      area: r.area,
+      photoPath: r.profile_photo_path,
+      socials: toSocials(r.socials),
+      verifiedAt: r.verified_at,
+      visibility: r.visibility,
+      ownerId: owners.get(r.id)?.id ?? null,
+      ownerName: owners.get(r.id)?.name ?? null,
+    })),
   };
 }

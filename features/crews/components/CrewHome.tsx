@@ -9,8 +9,12 @@ import { EntityBand, Figure } from "@/features/profiles/components/profile-band"
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
-import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
+import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
+import { EditDetailsChip, EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
+import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
+import { CrewLinksRow, CrewStylesRow } from "./CrewBand";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
@@ -44,7 +48,13 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
     { name: DOS_TOOLS.events.name, href: `/crews/${crew.id}/manage/events`, k: "events", c: DOS_TOOLS.events.c },
   ];
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
+  const whatsapp = whatsappHrefOf(crew.socials);
   return (
+    /* EDIT MODE (26 Sep 2026): the pencil toggles it and every editor on this
+       home appears with it — see `EditMode.tsx`. `requireLedCrew` has already
+       said this is the leader, so the pencil is always drawn here. */
+    <EditModeProvider>
+    <RecordListsProvider styles={crew.styles.length ? crew.styles : crew.style ? [crew.style] : []} socials={crew.socials}>
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, boxSizing: "border-box", paddingBottom: "var(--dos-foot)" }}>
       <div style={{ padding: "0 16px" }}>
         <IdentityHero
@@ -109,10 +119,14 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
           /* one control, like every other profile (22 Sep 2026) — the pencil is
              Settings' "Edit crew" now, for the studio's reason */
           corner={
-            <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
-              <EyeIcon />
-            </Link>
+            <>
+              <EditModeButton />
+              <Link href={`/crew/${crew.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
+              </Link>
+            </>
           }
+          detailsEdit={<EditDetailsChip href={`/crews/${crew.id}/manage?edit=1`} />}
         >
           {/* ── THE SAME BAND AS EVERY OTHER PROFILE (20 Sep 2026) — figures under
               the styles, in the one spec `profile-band.tsx` holds. A crew leads
@@ -134,9 +148,18 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
                 <ProfileLink path={`/crew/${crew.id}`} name={crew.name} />
               </>
             }
-            styles={[crew.style]}
-            styleAria={(s) => `${s} — the crew's style`}
-          />
+            /* ⚠ BOTH ROWS ARE THE EDITABLE ONES (26 Sep 2026, the user: "all
+               profiles should have both dance style edits and social media edit
+               options and option to add multiple") — a list of styles and the
+               links every other profile carries, each with its ＋ while the
+               pencil is pressed. Passed as children with the band's own left
+               empty, so they land where they always did. */
+            styles={[]}
+            socials={[]}
+          >
+            <CrewStylesRow crew={crew} canEdit />
+            <CrewLinksRow crew={crew} canEdit />
+          </EntityBand>
         </IdentityHero>
 
         {/* ── THE BUTTONS THE CREW'S PAGE CARRIES (21 Sep 2026): Enquiry · Call ·
@@ -160,7 +183,10 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
           />
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}
+          {whatsapp ? <MessageButton href={whatsapp} /> : null}
         </ActionRow>
+        {/* the ⊕ that makes and unmakes those buttons, while the pencil is pressed (26 Sep 2026) */}
+        <ContactEditButton target={{ kind: "crew", crew, socials: crew.socials }} />
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
           <ToolsPanel kind="crew">
@@ -176,5 +202,7 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
       {/* the form Settings sends you to, over the home it belongs to */}
       {editOpen ? <CrewEditFromUrl crew={crew} /> : null}
     </div>
+    </RecordListsProvider>
+    </EditModeProvider>
   );
 }

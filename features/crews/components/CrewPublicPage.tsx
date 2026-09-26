@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
-import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
@@ -150,8 +150,11 @@ export function CrewPublicPage({
                 <ProfileLink path={path} name={crew.name} />
               </>
             }
-            styles={[crew.style]}
+            /* the LIST of styles and the links since 26 Sep 2026 — WhatsApp is the
+               Message button below rather than a chip, as on a person's page */
+            styles={crew.styles.length ? crew.styles : [crew.style]}
             styleAria={(s) => `${s} — the crew's style`}
+            socials={crew.socials.filter((l) => l.platform !== "WhatsApp")}
           />
         </IdentityHero>
 
@@ -181,6 +184,7 @@ export function CrewPublicPage({
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}
           {crew.contactEmail ? <MailButton email={crew.contactEmail} /> : null}
+          {whatsappHrefOf(crew.socials) ? <MessageButton href={whatsappHrefOf(crew.socials) as string} /> : null}
         </ActionRow>
 
         {/* ── THE ASSOCIATIONS, in one language: a row per person, the group headed with a count ── */}

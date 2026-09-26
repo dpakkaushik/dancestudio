@@ -12,6 +12,8 @@ import {
   respondToCrewAsk,
   respondToPartnerAsk,
   setCrewMemberRole,
+  setCrewSocials,
+  setCrewStyles,
   updateCrew,
   withdrawCrewAsk,
 } from "@/repositories/crews";
@@ -24,6 +26,8 @@ import {
 export interface CrewActionResult {
   error: string | null;
   crewId?: string;
+  /** a crew that was made whose number and email did not land — said, never swallowed */
+  note?: string;
 }
 
 async function requireUser() {
@@ -54,10 +58,22 @@ const city = z.string().trim().min(1, "Which city is the crew in?").max(120);
 const style = z.string().trim().min(1).max(40);
 const uuid = z.string().uuid();
 
+const phoneShape = z.string().trim().regex(/^\+?[0-9][0-9 ]{7,17}$/, "A mobile number is 8 to 18 digits");
+const emailShape = z.string().trim().email("That is not an email address").max(254);
+
+/* ⚠ A MOBILE NUMBER AND AN EMAIL ARE REQUIRED, AND THEY ARE THE CREW'S (26 Sep
+   2026, the user: "all profiles created from user or artist require a mobile
+   number, email etc for the studio, crew, organization … editable to the user
+   who creates that profile and not take directly what the user used for their
+   login"). `create_crew` keeps its four arguments; the two land through
+   `update_crew` the moment the row exists — two doors rather than a changed
+   creation signature, exactly as a studio's pin and an organization's number do. */
 const createSchema = z.object({
   name: z.string().trim().min(1, "Name your crew first").max(64),
   city,
   style,
+  phone: phoneShape,
+  email: emailShape,
   memberIds: z.array(uuid).max(50),
 });
 
@@ -66,11 +82,50 @@ export async function createCrewAction(input: z.input<typeof createSchema>): Pro
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the crew's details" };
   const supabase = await requireUser();
   try {
-    const crew = await createCrew(supabase, parsed.data);
+    const { phone, email, ...rest } = parsed.data;
+    const crew = await createCrew(supabase, rest);
+    /* the number and the address, last: a crew that exists with neither is still
+       a crew, so a refusal here is reported rather than undoing the row */
+    try {
+      await updateCrew(supabase, { crewId: crew.id, name: rest.name, city: rest.city, style: rest.style, contactEmail: email, phone, phonePublic: false });
+    } catch (error: unknown) {
+      revalidateCrews(crew.id);
+      return { error: null, crewId: crew.id, note: `Crew created. Its number and email could not be saved just now — ${error instanceof Error ? error.message : "add them from the crew's home"}.` };
+    }
     revalidateCrews(crew.id);
     return { error: null, crewId: crew.id };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not create the crew" };
+  }
+}
+
+/* THE LIST OF STYLES AND THE LINKS (26 Sep 2026) — the two doors the crew's home
+   band writes through; both RPCs re-check that the caller leads the crew */
+export async function setCrewStylesAction(input: { crewId: string; styles: string[] }): Promise<CrewActionResult> {
+  const parsed = z.object({ crewId: uuid, styles: z.array(z.string().trim().min(1).max(40)).min(1, "A crew dances at least one style").max(12) }).safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the styles" };
+  const supabase = await requireUser();
+  try {
+    await setCrewStyles(supabase, parsed.data.crewId, parsed.data.styles);
+    revalidateCrews(parsed.data.crewId);
+    return { error: null, crewId: parsed.data.crewId };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not save the styles" };
+  }
+}
+
+export async function setCrewSocialsAction(input: { crewId: string; socials: Array<{ platform: string; url: string }> }): Promise<CrewActionResult> {
+  const parsed = z
+    .object({ crewId: uuid, socials: z.array(z.object({ platform: z.string().trim().min(1).max(40), url: z.string().trim().url().max(300) })).max(12) })
+    .safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the links" };
+  const supabase = await requireUser();
+  try {
+    await setCrewSocials(supabase, parsed.data.crewId, parsed.data.socials);
+    revalidateCrews(parsed.data.crewId);
+    return { error: null, crewId: parsed.data.crewId };
+  } catch (error: unknown) {
+    return { error: error instanceof Error ? error.message : "Could not save the links" };
   }
 }
 

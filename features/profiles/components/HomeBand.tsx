@@ -3,20 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
-import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
+import { useState, type ReactNode } from "react";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
-import { dosStyleColor } from "@/lib/constants/styles";
-import { PLATFORMS, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
-import { CARD, INK, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
+import { CARD, INK, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedTenant } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
-import { useEditMode } from "./EditMode";
-import { CHIP_ROW, FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
-import { StylesSheet } from "./StylesSheet";
-import { PlatformIcon, RoleBadge, Sheet, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
+import { LinksRowEditor } from "./LinksRowEditor";
+import { CHIP_ROW, FIGURE_ROW, figureLabel, figureNum } from "./profile-band";
+import { useRecordLists } from "./RecordLists";
+import { StylesRowEditor } from "./StylesRowEditor";
+import { RoleBadge, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
 
 /** THE BAND UNDER THE NAME ON HOME — and the ONE place these three are edited
  *  (19 Sep 2026, the user: "Dance style for the page should also be editable
@@ -29,34 +27,20 @@ import { PlatformIcon, RoleBadge, Sheet, dangerBtn, fieldInput, fieldLabel, foll
  *  Three parts in the order they were asked for: the two FIGURES, the STYLES
  *  with their ＋, and the LINKS directly under them with theirs. The sheets are
  *  the prototype's own (11217 · 11161 · 11140 · 11335) — the same ones the
- *  Profile tab drew, which is the point: they MOVED, they were not copied. The
- *  Profile tab shows all three and offers a control on none of them now, so a
- *  style is changed in ONE place, the way a picture has been since 16 Sep.
+ *  Profile tab drew, which is the point: they MOVED, they were not copied.
  *
- *  Where the rank was: gone. Where you stand is the Stats chip's own screen,
- *  which prints the place WITH its population — the Profile tab lost the same
- *  figure earlier the same day (row C20). */
-
-
-const move = <T,>(arr: T[], i: number, dir: -1 | 1): T[] => {
-  const j = i + dir;
-  if (j < 0 || j >= arr.length) return arr;
-  const next = [...arr];
-  [next[i], next[j]] = [next[j], next[i]];
-  return next;
-};
+ *  ⚠ THE STYLES ROW AND THE LINKS ROW ARE THE APP'S ONE EACH SINCE 26 Sep 2026
+ *  (`StylesRowEditor`, `LinksRowEditor`) — a studio's, an organization's and a
+ *  crew's home draw the same two, with their own door behind them. What is
+ *  this file's is the person's door (`update_my_profile`, which takes the
+ *  whole profile, so everything not being edited rides through unchanged) and
+ *  the Followers / Following sheet.
+ *
+ *  ⚠ THE TWO ＋ APPEAR WITH THE PENCIL (26 Sep 2026): the home is read-only
+ *  until the corner's Edit is pressed. */
 
 const FOLLOW_SEGS = ["All", "Users", "Artists", "Organizations", "Studios", "Crews"] as const;
 type FollowSeg = (typeof FOLLOW_SEGS)[number];
-
-function Arrows({ i, n, onMove }: { i: number; n: number; onMove: (dir: -1 | 1) => void }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
-      <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => onMove(-1)} style={{ fontSize: 10, cursor: i === 0 ? "default" : "pointer", color: i === 0 ? "var(--el)" : "var(--sub)", lineHeight: 1, background: "none", border: "none", padding: 0 }}>▲</button>
-      <button type="button" aria-label="Move down" disabled={i === n - 1} onClick={() => onMove(1)} style={{ fontSize: 10, cursor: i === n - 1 ? "default" : "pointer", color: i === n - 1 ? "var(--el)" : "var(--sub)", lineHeight: 1, background: "none", border: "none", padding: 0 }}>▼</button>
-    </div>
-  );
-}
 
 export function HomeBand({
   profile,
@@ -79,57 +63,31 @@ export function HomeBand({
   followingCrews: FollowedCrew[];
 }) {
   const router = useRouter();
-  const [toast, setToast] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const [stylesOpen, setStylesOpen] = useState(false);
-  const [linksOpen, setLinksOpen] = useState(false);
-  const [linkEditor, setLinkEditor] = useState<{ platform: string; url: string; isNew: boolean } | null>(null);
-  const [customDraft, setCustomDraft] = useState({ label: "", url: "" });
+  const { lists } = useRecordLists();
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
-  /* ⚠ THE TWO ＋ AND THE CHIPS' EDITORS APPEAR WITH THE PENCIL (26 Sep 2026):
-     the home is read-only until the corner's Edit is pressed, and a link chip
-     is then a button onto its editor rather than a link out */
-  const { editing } = useEditMode();
 
-  const isOrg = profile.role === "org";
-  const styleList = profile.styles;
-  const socials = profile.socials;
   const followingN = followingPeople.length + followingTenants.length + followingOrgs.length + followingCrews.length;
 
-  const fire = (m: string) => {
-    setToast(m);
-    setTimeout(() => setToast(null), 2600);
-  };
   /* ONE RECORD, ONE DOOR — the very action the Profile tab called for these
-     three fields; everything not named here rides through unchanged */
-  const save = (next: { styles?: string[]; socials?: SocialLink[] }, said: string, after?: () => void) => {
-    if (!(profile.city ?? "").trim()) {
-      fire("Add your city first — Settings › Edit profile");
-      return;
-    }
-    start(async () => {
-      const out = await updateMyProfileAction({
-        fullName: profile.fullName,
-        city: (profile.city ?? "").trim(),
-        age: profile.age,
-        socials: next.socials ?? profile.socials,
-        styles: next.styles ?? profile.styles,
-        phone: profile.phone ?? null,
-      });
-      if (out.error) {
-        fire(out.error);
-        return;
-      }
-      after?.();
-      fire(said);
-      router.refresh();
+     fields; everything not named here rides through unchanged. ⚠ The database
+     refuses a profile without a city (9 Sep 2026), so it is said first.
+     ⚠ THE LIST NOT BEING EDITED COMES OFF `lists`, NEVER OFF THE PROP: the prop
+     is the server's read at mount, and a link saved a moment after a style
+     would carry the styles from before the style (the 26 Sep e2e find). */
+  const save = async (next: { styles?: string[]; socials?: SocialLink[] }): Promise<string | null> => {
+    if (!(profile.city ?? "").trim()) return "Add your city first — the pencil, then Edit details";
+    const out = await updateMyProfileAction({
+      fullName: profile.fullName,
+      city: (profile.city ?? "").trim(),
+      age: profile.age,
+      socials: next.socials ?? lists.socials,
+      styles: next.styles ?? lists.styles,
+      phone: profile.phone ?? null,
     });
+    if (!out.error) router.refresh();
+    return out.error;
   };
-
-  /* the chip is `linkChip` in profile-band.tsx now — it was declared here AND in
-     MyProfilePage, which is how two screens drew the same row differently */
-  const chip = linkChip;
 
   const followRows: Array<{ key: string; href: string; name: string; kind: string; glyph: FollowGlyph; tint: string; face: string | null; initials: string }> =
     followList === "followers"
@@ -151,14 +109,6 @@ export function HomeBand({
           <span data-testid="home-followers" style={figureNum}>{followers.length}</span>
           <span style={figureLabel}>Followers</span>
         </button>
-        {/* ⚠ AN ORGANIZATION HAS THIS FIGURE NOW (20 Sep 2026, the user:
-            "Organization and Studio still dont have Following section in profile
-            and home"). It was withheld because R11 made an organization follow
-            nothing — true until today, and the reason the figure would have read
-            0 for ever. Asked which way to take it the user chose to let an
-            organization really follow, and
-            `20260920180000_an_organization_follows` removes the refusal from the
-            three doors, so this counts rows rather than pretending. */}
         <button type="button" aria-label={`${followingN} following`} onClick={() => { setFollowSeg("All"); setFollowList("following"); }} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
           <span data-testid="home-following" style={figureNum}>{followingN}</span>
           <span style={figureLabel}>Following</span>
@@ -166,153 +116,18 @@ export function HomeBand({
         {chips ? <div style={CHIP_ROW}>{chips}</div> : null}
       </div>
 
-      {/* ── THE STYLES, AND THE ONE ＋ THAT CHANGES THEM (DosStyleRow 1767) ──
-          ⚠ `small` AND `STYLES_ROW` SINCE 20 Sep 2026, and this row is why the
-          user asked again. Home drew FULL-SIZE tiles here (12.5px on 7×13
-          padding, gap 6, 14px above) while the Profile tab, a studio's home and
-          a crew's home all drew the same styles `small` (11.5px on 6×11, gap 5,
-          12px above) — so the one screen that was supposed to match the Profile
-          tab was the only one that did not. Home moved rather than the other
-          three: it is one screen against three, and the size the three share is
-          `IdentityHero`'s own. The ＋ shrinks to 30px to sit on the shorter
-          tile's line; its name is unchanged, so every locator still finds it. */}
-      {isOrg ? null : (
-        <div style={STYLES_ROW}>
-          {styleList.map((s) => (
-            <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} small />
-          ))}
-          {editing ? (
-            <button type="button" aria-label="Add a dance style" onClick={() => setStylesOpen(true)} style={{ width: 30, height: 30, borderRadius: 10, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, fontWeight: 800, color: SUB, flexShrink: 0, border: "none", fontFamily: "inherit" }}>＋</button>
-          ) : null}
-          {styleList.length === 0 ? <span style={{ fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance go here.</span> : null}
-        </div>
-      )}
+      {/* ── THE STYLES, AND THE ONE ＋ THAT CHANGES THEM (DosStyleRow 1767) —
+          `small`, at the size the three other profile screens share (20 Sep 2026) ── */}
+      <StylesRowEditor
+        canEdit
+        aria={(s) => `${s} — one of your styles`}
+        lastWords="A user names at least one style"
+        emptyWords="The styles you dance go here."
+        save={(next) => save({ styles: next })}
+      />
 
       {/* ── THE LINKS, RIGHT BELOW THE STYLES (10760, and the user's own order) ── */}
-      {socials.length || editing ? (
-        <div style={LINKS_ROW}>
-          {socials.map((l) =>
-            editing ? (
-              <button type="button" key={l.platform} aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={chip}>
-                <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-              </button>
-            ) : (
-              /* read mode: the chip goes where it points, exactly as it does on the public page */
-              <a key={l.platform} href={safeHref(l.url) ?? undefined} target="_blank" rel="noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ ...chip, textDecoration: "none" }}>
-                <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-              </a>
-            )
-          )}
-          {editing ? (
-            <button type="button" aria-label="Add a link" onClick={() => setLinksOpen(true)} style={{ ...chip, background: "transparent", border: "1px dashed var(--el)", fontSize: 12, fontWeight: 800, color: SUB }}>＋ Add link</button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* ── Add a dance style (11217) — the sheet itself moved into
-          `StylesSheet.tsx` on 21 Sep 2026, when a STUDIO needed the same one.
-          Everything specific to a person stays here: the door it writes through
-          and the sentence under the last style. ── */}
-      {stylesOpen ? (
-        <StylesSheet
-          styles={styleList}
-          pending={pending}
-          lastWords="A user names at least one style"
-          onSave={(next, said) => save({ styles: next }, said)}
-          onClose={() => setStylesOpen(false)}
-        />
-      ) : null}
-
-      {/* ── Add a social link (11161) ── */}
-      {linksOpen ? (
-        <Sheet label="Add a social link" onClose={() => setLinksOpen(false)}>
-          <b style={{ fontSize: 16 }}>Add a social link</b>
-          <div style={{ fontSize: 12, color: SUB, margin: "4px 0 12px" }}>Drag order with ↑↓ · tap a platform below to add it.</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {socials.map((l, i, arr) => (
-              <div key={l.platform} style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: 14, background: CARD, border: `1.5px solid ${LINE}` }}>
-                <Arrows i={i} n={arr.length} onMove={(dir) => save({ socials: move(arr, i, dir) }, "Order saved")} />
-                <PlatformIcon label={l.platform} size={24} />
-                <button type="button" onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
-                  <b style={{ fontSize: 13.5, color: INK, display: "block" }}>{l.platform}</b>
-                  <span style={{ fontSize: 11, color: SUB, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.url}</span>
-                </button>
-                <span style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-                  <button type="button" aria-label={`Edit ${l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={{ fontSize: 12, fontWeight: 700, color: SUB, cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Edit</button>
-                  <button type="button" aria-label={`Remove ${l.platform}`} onClick={() => save({ socials: arr.filter((x) => x.platform !== l.platform) }, `${l.platform} removed`)} style={{ fontSize: 12, fontWeight: 800, color: "#EF4444", cursor: "pointer", background: "none", border: "none", fontFamily: "inherit" }}>Remove</button>
-                </span>
-              </div>
-            ))}
-          </div>
-          {PLATFORMS.some((p) => !socials.find((l) => l.platform === p)) ? (
-            <>
-              <div style={fieldLabel}>Add a platform</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {PLATFORMS.filter((p) => !socials.find((l) => l.platform === p)).map((p) => (
-                  <button type="button" key={p} aria-label={`Add ${p}`} onClick={() => setLinkEditor({ platform: p, url: "", isNew: true })} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, padding: "7px 13px 7px 7px", borderRadius: 999, cursor: "pointer", background: CARD, border: `1.5px solid ${LINE}`, color: INK, fontFamily: "inherit" }}>
-                    <PlatformIcon label={p} size={20} />
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : null}
-          <div style={{ ...fieldLabel, margin: "18px 0 6px" }}>Something else?</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input aria-label="Link label" value={customDraft.label} onChange={(e) => setCustomDraft((d) => ({ ...d, label: e.target.value }))} placeholder="Label, e.g. Linktree" style={{ ...fieldInput, flex: 1, minWidth: 0, padding: "10px 12px", fontSize: 13 }} />
-            <input aria-label="Link URL" value={customDraft.url} onChange={(e) => setCustomDraft((d) => ({ ...d, url: e.target.value }))} placeholder="https://…" style={{ ...fieldInput, flex: 1, minWidth: 0, padding: "10px 12px", fontSize: 13 }} />
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-            <button type="button" onClick={() => setLinksOpen(false)} style={sheetBtn(false)}>Done</button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                if (!customDraft.label.trim() || !customDraft.url.trim()) return fire("Add a label and URL first");
-                save({ socials: [...socials, { platform: customDraft.label.trim(), url: customDraft.url.trim() }] }, "✓ Link added", () => setCustomDraft({ label: "", url: "" }));
-              }}
-              style={sheetBtn(true)}
-            >
-              Add this link
-            </button>
-          </div>
-        </Sheet>
-      ) : null}
-
-      {/* ── one platform's URL (11140) ── */}
-      {linkEditor ? (
-        <Sheet label={linkEditor.isNew ? `Add your ${linkEditor.platform}` : `Edit ${linkEditor.platform}`} onClose={() => setLinkEditor(null)}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <PlatformIcon label={linkEditor.platform} size={24} />
-            <b style={{ fontSize: 16 }}>{linkEditor.isNew ? `Add your ${linkEditor.platform}` : `Edit ${linkEditor.platform}`}</b>
-          </div>
-          <div style={{ ...fieldLabel, margin: "16px 0 6px" }}>URL</div>
-          <input aria-label="URL" value={linkEditor.url} onChange={(e) => setLinkEditor((d) => (d ? { ...d, url: e.target.value } : d))} placeholder="https://…" autoFocus style={fieldInput} />
-          <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-            {!linkEditor.isNew ? (
-              <button type="button" onClick={() => save({ socials: socials.filter((l) => l.platform !== linkEditor.platform) }, `${linkEditor.platform} removed`, () => setLinkEditor(null))} style={dangerBtn}>Remove</button>
-            ) : null}
-            <button type="button" onClick={() => setLinkEditor(null)} style={sheetBtn(false)}>Cancel</button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                const url = linkEditor.url.trim();
-                if (!url) return fire("Add a URL first");
-                const rest = socials.filter((l) => l.platform !== linkEditor.platform);
-                const at = socials.findIndex((l) => l.platform === linkEditor.platform);
-                const next = at >= 0 ? [...rest.slice(0, at), { platform: linkEditor.platform, url }, ...rest.slice(at)] : [...rest, { platform: linkEditor.platform, url }];
-                save({ socials: next }, linkEditor.isNew ? `✓ ${linkEditor.platform} added` : `✓ ${linkEditor.platform} updated`, () => setLinkEditor(null));
-              }}
-              style={sheetBtn(true)}
-            >
-              Save
-            </button>
-          </div>
-        </Sheet>
-      ) : null}
+      <LinksRowEditor canEdit save={(next) => save({ socials: next })} />
 
       {/* ── Followers / Following, by account type (11335) ── */}
       {followList ? (
@@ -345,12 +160,6 @@ export function HomeBand({
             {shownFollowRows.length === 0 ? <div style={{ fontSize: 12, color: SUB, padding: "8px 2px" }}>{followList === "followers" ? "Nobody follows you yet." : "You follow nobody here yet."}</div> : null}
           </div>
         </Sheet>
-      ) : null}
-
-      {toast ? (
-        <div role="status" style={{ position: "fixed", left: "50%", bottom: "calc(90px + var(--dos-safe-bottom, 0px))", transform: "translateX(-50%)", zIndex: 800, background: "var(--solid)", border: "1.5px solid #0EA5E9", borderRadius: 999, padding: "9px 16px", fontSize: 12, fontWeight: 800, color: INK, boxShadow: "0 8px 24px rgba(0,0,0,.35)" }}>
-          {toast}
-        </div>
       ) : null}
     </>
   );

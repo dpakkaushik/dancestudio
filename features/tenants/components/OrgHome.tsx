@@ -9,7 +9,10 @@ import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
-import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
+import { ContactEditButton } from "@/features/profiles/components/ContactEditor";
+import { EditDetailsChip, EditModeButton, EditModeProvider } from "@/features/profiles/components/EditMode";
+import { RecordListsProvider } from "@/features/profiles/components/RecordLists";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { StudioLinksRow } from "./StudioLinksRow";
 import { StudioStylesRow } from "./StudioStylesRow";
@@ -82,8 +85,14 @@ export function OrgHome({
     .filter((p) => p.url)
     .map((p, i) => ({ key: p.id, src: p.url as string, alt: `Header picture ${i + 1} of ${tenant.name}`, signed: true }));
   const layoutKey = toolsLayoutKey("org", tenant.id);
+  const canEditAny = Boolean(editable) || canEditPhoto;
+  const whatsapp = whatsappHrefOf(tenant.socials);
 
   return (
+    /* EDIT MODE (26 Sep 2026): the pencil toggles it and every editor on this
+       home appears with it — see `EditMode.tsx` */
+    <EditModeProvider>
+    <RecordListsProvider styles={tenant.styles} socials={tenant.socials}>
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, boxSizing: "border-box", paddingBottom: "var(--dos-foot)" }}>
       <div style={{ padding: "0 16px" }}>
         <IdentityHero
@@ -111,11 +120,17 @@ export function OrgHome({
           headerEdit={ownerId ? <StudioPostersButton tenantId={tenant.id} tenantName={tenant.name} ownerId={ownerId} photos={header} /> : null}
           /* the corner is ONE control, exactly a studio's (C58): the eye onto THIS
              organization's public page. Edit is Settings' THIS ORGANIZATION tile. */
+          /* the pencil over the eye (26 Sep 2026) — it toggles edit mode; the
+             form's words are the Edit details chip beside the name */
           corner={
-            <Link href={`/org/${tenant.id}`} aria-label="Public view" style={cornerChip}>
-              <EyeIcon />
-            </Link>
+            <>
+              {canEditAny ? <EditModeButton /> : null}
+              <Link href={`/org/${tenant.id}`} aria-label="Public view" style={cornerChip}>
+                <EyeIcon />
+              </Link>
+            </>
           }
+          detailsEdit={editable ? <EditDetailsChip href={`/business/${tenant.id}?edit=1`} /> : null}
         >
           <EntityBand
             figures={
@@ -150,8 +165,11 @@ export function OrgHome({
           <EnquiryButton tenantId={tenant.id} tenantName={tenant.name} tenantType="org" signedIn accent={RG[1]} enquiryTypes={tenant.enquiryTypes} cannotAsk="You run this organization — enquiries come to you here" />
           {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
           {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
+          {whatsapp ? <MessageButton href={whatsapp} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${tenant.name} ${place}`} /> : null}
         </ActionRow>
+        {/* the ⊕ that makes and unmakes those buttons — the owner's, while the pencil is pressed */}
+        {editable ? <ContactEditButton target={{ kind: "business", tenant, detailsHref: `/business/${tenant.id}?edit=1` }} /> : null}
 
         {/* ORGANIZATION TOOLS — every door is THIS organization's */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC, marginTop: 14 }}>
@@ -163,5 +181,7 @@ export function OrgHome({
       {/* the form Settings sends you to, over the home it belongs to (C54's shape) */}
       {editOpen && editable ? <BusinessEditFromUrl tenant={editable} /> : null}
     </div>
+    </RecordListsProvider>
+    </EditModeProvider>
   );
 }

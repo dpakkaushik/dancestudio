@@ -7,7 +7,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { TenantFollower } from "@/types/follow";
 import type { PublicTeamMember, PublicTenantProfile } from "@/types/publicProfile";
-import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "./ContactButtons";
+import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "./ContactButtons";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowToggle } from "./FollowToggle";
@@ -266,6 +266,7 @@ export function PublicProfile({
           ) : null}
           {tenant.phone ? <CallButton phone={tenant.phone} /> : null}
           {tenant.contactEmail ? <MailButton email={tenant.contactEmail} /> : null}
+          {whatsappHrefOf(tenant.socials) ? <MessageButton href={whatsappHrefOf(tenant.socials) as string} /> : null}
           {pinHref ? <LocationButton href={pinHref} /> : place ? <LocationButton query={`${tenant.name} ${place}`} /> : null}
         </ActionRow>
 

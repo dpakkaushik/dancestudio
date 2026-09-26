@@ -6,7 +6,7 @@ import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "./profile-band";
-import { ActionRow, CallButton, MailButton } from "./ContactButtons";
+import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "./ContactButtons";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
@@ -227,6 +227,7 @@ export function PublicPersonPage({
           ) : null}
           {kind === "artist" && profile.phone && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
           {kind !== "user" && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
+          {kind !== "user" && whatsappHrefOf(profile.socials) ? <MessageButton href={whatsappHrefOf(profile.socials) as string} /> : null}
         </ActionRow>
 
         {/* ── EVERYTHING FROM HERE DOWN IS `PersonBody`, THE ONE THE PROFILE TAB

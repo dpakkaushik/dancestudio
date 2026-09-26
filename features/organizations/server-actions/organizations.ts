@@ -43,7 +43,7 @@ export async function createOrganizationAction(_prev: OrganizationActionState, f
     area: (formData.get("area") as string) || undefined,
     city: (formData.get("city") as string) || "",
     phone: formData.get("phone"),
-    email: formData.get("email"),
+    email: formData.get("contact_email"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
