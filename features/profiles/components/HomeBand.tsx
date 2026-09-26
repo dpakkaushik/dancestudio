@@ -7,12 +7,13 @@ import { useState, useTransition, type ReactNode } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { dosStyleColor } from "@/lib/constants/styles";
-import { PLATFORMS, handleOf, isPlatform } from "@/lib/constants/socials";
+import { PLATFORMS, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { CARD, INK, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { FollowedCrew, FollowedOrganization, PersonFollowRow } from "@/repositories/follows";
 import type { FollowedTenant } from "@/types/follow";
 import { kindOf, type Profile, type SocialLink } from "@/types/profile";
+import { useEditMode } from "./EditMode";
 import { CHIP_ROW, FIGURE_ROW, LINKS_ROW, STYLES_ROW, figureLabel, figureNum, linkChip } from "./profile-band";
 import { StylesSheet } from "./StylesSheet";
 import { PlatformIcon, RoleBadge, Sheet, dangerBtn, fieldInput, fieldLabel, followTint, initialsOf, sheetBtn, type FollowGlyph } from "./profile-kit";
@@ -86,6 +87,10 @@ export function HomeBand({
   const [customDraft, setCustomDraft] = useState({ label: "", url: "" });
   const [followList, setFollowList] = useState<"followers" | "following" | null>(null);
   const [followSeg, setFollowSeg] = useState<FollowSeg>("All");
+  /* ⚠ THE TWO ＋ AND THE CHIPS' EDITORS APPEAR WITH THE PENCIL (26 Sep 2026):
+     the home is read-only until the corner's Edit is pressed, and a link chip
+     is then a button onto its editor rather than a link out */
+  const { editing } = useEditMode();
 
   const isOrg = profile.role === "org";
   const styleList = profile.styles;
@@ -176,21 +181,35 @@ export function HomeBand({
           {styleList.map((s) => (
             <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — one of your styles`} small />
           ))}
-          <button type="button" aria-label="Add a dance style" onClick={() => setStylesOpen(true)} style={{ width: 30, height: 30, borderRadius: 10, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, fontWeight: 800, color: SUB, flexShrink: 0, border: "none", fontFamily: "inherit" }}>＋</button>
+          {editing ? (
+            <button type="button" aria-label="Add a dance style" onClick={() => setStylesOpen(true)} style={{ width: 30, height: 30, borderRadius: 10, background: "var(--el)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, fontWeight: 800, color: SUB, flexShrink: 0, border: "none", fontFamily: "inherit" }}>＋</button>
+          ) : null}
           {styleList.length === 0 ? <span style={{ fontSize: 11.5, color: SUB, fontWeight: 700 }}>The styles you dance go here.</span> : null}
         </div>
       )}
 
       {/* ── THE LINKS, RIGHT BELOW THE STYLES (10760, and the user's own order) ── */}
-      <div style={LINKS_ROW}>
-        {socials.map((l) => (
-          <button type="button" key={l.platform} aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={chip}>
-            <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
-            <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
-          </button>
-        ))}
-        <button type="button" aria-label="Add a link" onClick={() => setLinksOpen(true)} style={{ ...chip, background: "transparent", border: "1px dashed var(--el)", fontSize: 12, fontWeight: 800, color: SUB }}>＋ Add link</button>
-      </div>
+      {socials.length || editing ? (
+        <div style={LINKS_ROW}>
+          {socials.map((l) =>
+            editing ? (
+              <button type="button" key={l.platform} aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} onClick={() => setLinkEditor({ platform: l.platform, url: l.url, isNew: false })} style={chip}>
+                <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+              </button>
+            ) : (
+              /* read mode: the chip goes where it points, exactly as it does on the public page */
+              <a key={l.platform} href={safeHref(l.url) ?? undefined} target="_blank" rel="noreferrer" aria-label={`${l.platform} — ${isPlatform(l.platform) ? handleOf(l.url) : l.platform}`} style={{ ...chip, textDecoration: "none" }}>
+                <span style={{ flexShrink: 0, lineHeight: 0 }}><PlatformIcon label={l.platform} size={15} /></span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: PINK }}>{isPlatform(l.platform) ? handleOf(l.url) : l.platform}</span>
+              </a>
+            )
+          )}
+          {editing ? (
+            <button type="button" aria-label="Add a link" onClick={() => setLinksOpen(true)} style={{ ...chip, background: "transparent", border: "1px dashed var(--el)", fontSize: 12, fontWeight: 800, color: SUB }}>＋ Add link</button>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ── Add a dance style (11217) — the sheet itself moved into
           `StylesSheet.tsx` on 21 Sep 2026, when a STUDIO needed the same one.

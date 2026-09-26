@@ -29,12 +29,13 @@ export default async function TenantEventsPage({ params, searchParams }: { param
   if (!businesses.some((t) => t.id === tenantId)) {
     redirect("/business");
   }
-  /* AN EVENT NEEDS THE ORGANIZATION'S GST NUMBER (11 Sep 2026): the sentence
-     is the database's, and the desk prints it where Create event would be —
-     with the door to /gst, which is where the number is entered. The desk
-     itself still opens, because an organization with events already published
-     must be able to read and run them while the number is missing. */
-  const [events, whyNoEvent] = await Promise.all([findEventsByTenant(supabase, tenantId), findWhyNoEvent(supabase)]);
+  /* AN EVENT NEEDS THE ORGANIZATION'S OWN GST NUMBER (11 Sep 2026; keyed on
+     THIS business since 26 Sep 2026): the sentence is the database's, and the
+     desk prints it where Create event would be — with the door to this
+     organization's GST screen. The desk itself still opens, because an
+     organization with events already published must be able to read and run
+     them while the number is missing. */
+  const [events, whyNoEvent] = await Promise.all([findEventsByTenant(supabase, tenantId), findWhyNoEvent(supabase, tenantId)]);
 
   /* ⚠ THE FORM OPENS OVER THE DESK THAT OFFERS IT (22 Sep 2026, ask 6), and
      every gate `/events/new` keeps is re-checked HERE — a query parameter is a
@@ -49,7 +50,7 @@ export default async function TenantEventsPage({ params, searchParams }: { param
       redirect(`/business/${tenantId}/events`);
     }
     if (whyNoEvent) {
-      redirect("/gst?from=events");
+      redirect(`/business/${tenantId}/gst?from=events`);
     }
     cityCentres = await findDiscoverCities(supabase);
   }

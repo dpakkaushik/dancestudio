@@ -11,7 +11,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *  An artist plan is a user's own; a studio's belongs to its organization and
  *  names the studio — two studios, two rows. */
 
-export type SubscriptionKind = "artist" | "studio";
+/* `org` since 26 Sep 2026: an organization's own mandate, keyed on its business row */
+export type SubscriptionKind = "artist" | "studio" | "org";
 export type SubscriptionStatus = "pending_auth" | "active" | "past_due" | "canceled" | "expired";
 
 export interface Subscription {
@@ -135,14 +136,17 @@ export interface StudioSubscriptionState {
   whyNotPublic: string | null;
 }
 
-/** Each of the caller's studios: its live subscription and the one sentence
- *  between it and Discover. The sentence is the database's to write. */
+/** Each of the caller's studios — and, since 26 Sep 2026, ORGANIZATIONS — its
+ *  live subscription and the one sentence between it and the public. The
+ *  sentence is the database's to write (`why_not_public` answers an org's own
+ *  blocker: GST, then the mandate). */
 export async function findMyStudioSubscriptions(supabase: SupabaseClient, tenantIds: string[]): Promise<Record<string, StudioSubscriptionState>> {
   const out: Record<string, StudioSubscriptionState> = {};
   if (tenantIds.length === 0) return out;
   const all = await findMySubscriptions(supabase);
   for (const id of tenantIds) {
-    const mine = all.filter((s) => s.kind === "studio" && s.tenantId === id);
+    /* a business has ONE kind of mandate — matching on the id alone is what lets an org's row through */
+    const mine = all.filter((s) => (s.kind === "studio" || s.kind === "org") && s.tenantId === id);
     out[id] = { subscription: mine.find((s) => s.status !== "expired") ?? mine[0] ?? null, whyNotPublic: null };
   }
   await Promise.all(

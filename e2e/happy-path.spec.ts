@@ -103,52 +103,51 @@ async function confirmCrop(page: Page, times = 1) {
   await expect(dialog).toHaveCount(0, { timeout: 15_000 });
 }
 
-/** Walk onboarding as it stands since 8 Sep 2026: WHO IS HERE first (User is
- *  the default, Organization is a tap), ONE name, the city, Continue (the row is
- *  made and the photo picker appears — the photo is REQUIRED, so Continue names
- *  it until one is up), then a person's styles and optional links — or an
- *  organization's REQUIRED links AND its five photos (R16, 9 Sep 2026) — the
- *  price of asking to be verified — and "Open DanceOS →" off the bow. An organization's bow says it is in review and
- *  files the verification request as it leaves. */
-async function onboard(page: Page, name: string, role: "User" | "Organization", city: string, style = "Hip-Hop") {
+/** Walk onboarding as it stands since 26 Sep 2026: ONE kind of account. The
+ *  "Organization" tap is GONE — the organization login is retired
+ *  (20260926120000); an organization is a business a person opens from the
+ *  Organizations hub, the way a studio is opened from the Studios hub. So:
+ *  ONE name, the city, Continue (the row is made and the photo picker appears —
+ *  the photo is REQUIRED, so Continue names it until one is up), the styles,
+ *  optional links, and "Open DanceOS →" off the bow. */
+async function onboard(page: Page, name: string, role: "User", city: string, style = "Hip-Hop") {
   await expect(page).toHaveURL(/\/onboarding/);
-  const isOrg = role === "Organization";
-  if (isOrg) {
-    await page.getByText("Organization", { exact: true }).click();
-  }
+  void role;
+  /* the tap that used to be here must NOT be offered any more — asserted, so a
+     tile that quietly came back would be caught by the first segment */
+  await expect(page.getByText("Organization", { exact: true })).toHaveCount(0);
   await page.locator('input[name="name"]').fill(name);
   await pickCity(page, city);
   // the button reads "Continue" once the name is in (prototype 3820-3821)
   await page.getByRole("button", { name: "Continue" }).click();
   // the row exists now, so the picker is offered — and the button says the photo is missing
-  await expect(page.getByRole("button", { name: isOrg ? "Add a logo or photo" : "Add your profile photo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add your profile photo" })).toBeVisible();
   await expect(page.getByLabel("Add a photo")).toBeAttached();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   await confirmCrop(page);
-  await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByLabel("Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  if (isOrg) {
-    // AN ORGANIZATION IS ASKED FOR NOTHING ELSE (11 Sep 2026 — the user: "org
-    // no more needs admin verification at all; org has only GST verification").
-    // No styles, no links, no photos: the name and the logo are the whole flow,
-    // and what DanceOS checks is each STUDIO, later, from the hub.
-    await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
-    await expect(page.getByText("your first studio is next")).toBeVisible();
-    await expect(page.getByText("Your organization's links")).toHaveCount(0);
-  } else {
-    // styles: the grid, one picked, and the button counts it
-    await expect(page.getByText("Your dance styles")).toBeVisible();
-    await page.getByRole("button", { name: style, exact: true }).click();
-    await page.getByRole("button", { name: "Continue · 1 style" }).click();
-    // socials: optional for a person
-    await expect(page.getByText("Your social links")).toBeVisible();
-    await page.getByRole("button", { name: "Skip for now →" }).click();
-    // take a bow — the first word of the one name
-    await expect(page.getByText(`Take a bow, ${name.split(" ")[0]}!`)).toBeVisible();
-    await expect(page.getByText(style, { exact: true })).toBeVisible();
-  }
+  // styles: the grid, one picked, and the button counts it
+  await expect(page.getByText("Your dance styles")).toBeVisible();
+  await page.getByRole("button", { name: style, exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 style" }).click();
+  // socials: optional for a person
+  await expect(page.getByText("Your social links")).toBeVisible();
+  await page.getByRole("button", { name: "Skip for now →" }).click();
+  // take a bow — the first word of the one name
+  await expect(page.getByText(`Take a bow, ${name.split(" ")[0]}!`)).toBeVisible();
+  await expect(page.getByText(style, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
+}
+
+/** THE SHEET THAT OPENS A BUSINESS (26 Sep 2026): a studio from /business and an
+ *  organization from /organizations wear the same fields — a name, where it is,
+ *  the city, and now a MOBILE NUMBER and an EMAIL, which the sheet requires. One
+ *  helper fills the pair so no site forgets one and is refused at Create. */
+async function fillBusinessContact(page: Page, email: string) {
+  await page.locator('input[name="phone"]').fill("+919876543210");
+  await page.locator('input[name="contact_email"]').fill(email);
 }
 
 /** A segmented pill and a notification stack are both div[role="button"]
@@ -283,8 +282,13 @@ test.describe.serial("DanceOS, end to end", () => {
   let trainerId: string | null = null;
   let adminId: string | null = null;
   let tenantId: string | null = null;
-  /** R15: the organization's own events host — not one of its studios */
+  /** R15: the organization's own events host — not one of its studios. Since
+   *  26 Sep 2026 that is the ORGANIZATION BUSINESS the owner opens from the
+   *  Organizations hub (the organization login is retired), and every org
+   *  address in this story — its events desk, its team, its GST screen, its
+   *  public page, its stats — is keyed on this id. */
   let eventsHostId: string | null = null;
+  const orgName: string = `E2E Org ${stamp}`;
 
   /* the values a later segment needs from an earlier one */
   let shareSlug = "";
@@ -346,7 +350,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await adminContext.close();
   });
 
-  test("an organization signs up, is verified by an admin, and publishes a class with a room and a trainer", async () => {
+  test("a person signs up, opens a studio and an organization, the studio is verified by an admin, and publishes a class with a room and a trainer", async () => {
     /* THE LONGEST SEGMENT IN THE SUITE, and it has outgrown `test.slow()` (3x
        the 120 s default). It walks onboarding with FIVE photo uploads, the
        verification queue, a studio, that studio's subscription grant through the
@@ -363,16 +367,19 @@ test.describe.serial("DanceOS, end to end", () => {
        Accounts desk locator ambiguous on 10 Sep 2026) */
     const ownerEmail = `e2e-owner-${stamp}@example.com`;
     ownerId = await signUp(owner, ownerEmail);
-    await onboard(owner, "E2E Owner", "Organization", "Pune");
+    /* 26 Sep 2026: a USER. The organization login is retired; a person opens a
+       studio AND an organization from Home's two hubs (the user: "user signs up
+       as a user … and also has an option to open or run a studio"; "make
+       organization a tab on home for artist and users and mechanism to create
+       and open an organization similar to studios"). */
+    await onboard(owner, "E2E Owner", "User", "Pune");
 
-    // ---- 11 Sep 2026: NOTHING IS WITHHELD FROM A NEW ORGANIZATION ------------
-    // Home carries its GST card, NOT VERIFIED, and nothing waits on an admin. The
-    // user: "if a user doesn't have a GST he can still create a studio but can't
-    // create an event" — so the hub offers Add studio from the first minute and
-    // the events desk prints the one sentence that stands between it and an event.
+    // ---- NOTHING IS WITHHELD FROM A NEW PERSON --------------------------------
+    // Home says nothing about a GST number (it is an organization BUSINESS's, in
+    // that organization's own Settings), nothing waits on an admin, and the hub
+    // offers Add studio from the first minute (20260926090000 took the "Only an
+    // organization" line out of why_no_studio).
     await owner.goto("/");
-    /* 11 Sep 2026: Home says NOTHING about the GST number — it is a one-time
-       errand living in Settings, not a permanent card on the busiest screen */
     await expect(owner.getByText("GST number", { exact: true })).toHaveCount(0);
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
 
@@ -380,21 +387,39 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("button", { name: "Add studio" })).toBeVisible();
     await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toHaveCount(0);
     /* 15 Sep 2026: the hub no longer carries an events block — an event is the
-       organization's and its ONE door is the Events tile on Home */
+       organization's, and the organization is a business of its own */
     await expect(owner.getByRole("link", { name: "Your events" })).toHaveCount(0);
-    await owner.goto("/");
-    await owner.getByRole("link", { name: "Events", exact: true }).click();
-    await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
-    await expect(owner.getByRole("status", { name: /^Cannot create an event:/ })).toContainText("Add your GST number");
+
+    // ---- AN ORGANIZATION IS A BUSINESS A PERSON OPENS (26 Sep 2026) -----------
+    // From the Organizations hub, through a sheet shaped like the studio's: a
+    // name, where it is, the city, a number and an email. Born PRIVATE — its
+    // own GST number and its own ₹5,000 mandate are what make it public.
+    await owner.goto("/organizations");
+    await owner.getByRole("button", { name: "Add organization" }).click();
+    await owner.locator('input[name="name"]').fill(orgName);
+    await owner.locator('input[name="area"]').fill("Kothrud");
+    await pickCity(owner, "Pune");
+    await fillBusinessContact(owner, `e2e-org-${stamp}@example.com`);
+    await owner.getByRole("button", { name: "Create organization" }).click();
+    await expect(owner.getByText(orgName, { exact: true })).toBeVisible();
+    const orgRows = (await (await fetch(`${supabaseUrl}/rest/v1/businesses?name=eq.${encodeURIComponent(orgName)}&type=eq.org&deleted_at=is.null&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
+    eventsHostId = orgRows[0]?.id ?? null;
+    expect(eventsHostId).toBeTruthy();
+
+    /* the events desk is the ORGANIZATION's, and it prints the one sentence
+       that stands between it and an event: its own GST number (why_no_event
+       takes the org business now) */
+    await owner.goto(`/business/${eventsHostId}/events`);
+    await expect(owner.getByRole("status", { name: /^Cannot create an event:/ })).toContainText("Add the organization's GST number");
     await expect(owner.getByRole("link", { name: "Create event" })).toHaveCount(0);
     /* and typing the address by hand does not dead-end: it lands on the screen
-       that fixes it, which says why (the user's ask, 11 Sep 2026) */
-    const eventsUrl = owner.url();
-    await owner.goto(`${eventsUrl}/new`);
-    await owner.waitForURL(/\/gst\?from=events$/);
+       that fixes it, which says why (the user's ask, 11 Sep 2026) — the
+       organization's OWN GST screen since 26 Sep 2026 */
+    await owner.goto(`/business/${eventsHostId}/events/new`);
+    await owner.waitForURL(/\/business\/[0-9a-f-]+\/gst\?from=events$/);
     await expect(owner.getByRole("status", { name: "Why you are here" })).toContainText("Events need this first");
 
-    // ---- the organization verifies its own GST number, on the screen the
+    // ---- the owner verifies the organization's GST number, on the screen the
     // events desk sent it to — format-checked today, the API tomorrow ---------
     // stamped so a run the network killed cannot leave a twin behind (one
     // number, one organization — the database refuses a second)
@@ -406,9 +431,27 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Verify" }).click();
     await expect(owner.getByRole("status", { name: "GST number: verified" })).toBeVisible({ timeout: 15_000 });
     await expect(owner.getByText(/Your organization can put on events/)).toBeVisible();
-    /* and Settings carries the row that leads back here */
-    await owner.goto("/profile?settings=1");
-    await expect(owner.getByRole("link", { name: /GST number/ })).toContainText("verified");
+    /* ⚠ the "Settings carries the GST row" assertion is gone with the login: the
+       number is the organization business's, and its Settings are THAT profile's
+       (C53) — the row is asserted from the org's own home later, not from the
+       account's sheet, which no longer has one */
+
+    /* ⚠ AND ITS OWN MANDATE — GST then subscription is what makes an
+       organization PUBLIC (org_is_public): its events bookable, its page
+       readable, its team printed. Cashfree's mandate window is not a thing a
+       browser test drives, so the service role grants it, exactly as the
+       studio's grant below is the admin's. */
+    const orgSub = await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({
+        kind: "org", user_id: ownerId, business_id: eventsHostId, plan_key: "org_monthly", price_inr: 0, period: "monthly", status: "active",
+        current_period_start: new Date().toISOString().slice(0, 10),
+        current_period_end: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+        granted: true, note: "Granted by the happy path — nothing charged", created_by: ownerId, updated_by: ownerId,
+      }),
+    });
+    expect(orgSub.ok).toBeTruthy();
 
     // ---- a platform admin — named through the service role, never self-serve --
     adminId = await signUp(admin, `e2e-admin-${stamp}@example.com`);
@@ -419,14 +462,16 @@ test.describe.serial("DanceOS, end to end", () => {
     });
     expect(named.ok).toBeTruthy();
 
-    // ---- create the studio (nothing gates it but being an organization since
-    // ---- 11 Sep 2026); it is born PRIVATE until it is verified AND subscribed --
+    // ---- create the studio (nothing gates it at all since 26 Sep 2026 — any
+    // ---- person may); it is born PRIVATE until it is verified AND subscribed --
     await owner.goto("/business");
     await owner.getByRole("button", { name: "Add studio" }).click();
     await owner.locator('input[name="name"]').fill(studioName);
     await owner.locator('input[name="area"]').fill("Baner");
     await pickCity(owner, "Pune");
     await expect(owner.locator('input[name="city"]')).toHaveValue("Pune");
+    /* the sheet asks for a number and an email now (26 Sep 2026) */
+    await fillBusinessContact(owner, `e2e-studio-${stamp}@example.com`);
     // the sheet carries the studio's rooms — "a studio is created WITH its
     // floors" (prototype 2675-2683), and Create is refused until one is named
     await owner.getByLabel("Room 1 name").fill("Studio A");
@@ -571,13 +616,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByTestId("studio-live")).toBeVisible();
     await owner.goto("/subscription");
     await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toContainText("GRANTED");
-    // the Accounts desk counts it for the organization (the chip appears with the first studio)
+    // the Accounts desk counts it for the owner (the chip appears with the first studio)
     await admin.goto(`/admin/accounts?q=${encodeURIComponent(ownerEmail)}`);
     await expect(admin.getByTestId("admin-account").filter({ hasText: ownerEmail })).toContainText("1/1 STUDIOS SUBSCRIBED");
-    // Home: the tick, and NO card (11 Sep 2026 — the user: "after verification I
-    // don't need this box; the user will create the studio and to make it
-    // discoverable he will subscribe"). The verified state is the tick on the
-    // name; the hub's PUBLIC · GRANTED row above is the studio's own state.
+    // Home: NO card (11 Sep 2026 — the user: "after verification I don't need
+    // this box; the user will create the studio and to make it discoverable he
+    // will subscribe"). The hub's PUBLIC · GRANTED row above is the studio's own state.
     await owner.goto("/");
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
 
@@ -587,20 +631,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(admin).toHaveURL(/\/admin(\/verifications)?$/);
     await expect(admin.getByRole("button", { name: "Sign out" })).toBeVisible();
     await expect(admin.getByRole("navigation", { name: "Main" })).toHaveCount(0);
-    // R13: the tick is on the organization's own name on Home — and since 11 Sep
-    // 2026 that IS the verified state: the standing card is gone once the tick
-    // is there (the user: the studio hub with its Subscribe button is the next
-    // step, not a box on Home)
-    await owner.goto("/");
-    await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
-    // and its own Profile is the ONE place its studios appear together (R9, 8 Sep
-    // 2026): the group, the studio's door, the figure. Since 19 Sep 2026 a PUBLIC
-    // organization can be followed (R25, the user: "all profiles can be followed"),
-    // so the Profile tab carries its Followers figure too — none yet, and a button
-    await owner.goto("/profile");
-    await expect(owner.getByText("Your studios")).toBeVisible();
-    await expect(owner.getByRole("link", { name: `Open ${studioName}` })).toBeVisible();
-    await expect(owner.getByRole("link", { name: "1 studio — open the hub" })).toBeVisible();
+    // and the owner's own PROFILE names the studio under the seats they hold
+    // (26 Sep 2026: the owner is a person, so their profile is `/person/{id}` —
+    // C40 — and the group is "Manage", the user's own word for it, R43; the
+    // organization-only "Your studios" group went with the login). A person's
+    // page carries the Followers figure like everybody's — none yet, and a button
+    await owner.goto(`/person/${ownerId}`);
+    await expect(owner.getByText("Manage", { exact: true })).toBeVisible();
+    await expect(owner.getByRole("link", { name: new RegExp(`Open ${studioName}`) }).first()).toBeVisible();
     await expect(owner.getByRole("button", { name: "0 followers" })).toHaveCount(1);
 
     // ---- create + publish a class ----------------------------------------
@@ -1081,18 +1119,18 @@ test.describe.serial("DanceOS, end to end", () => {
     eventTitle = `E2E Showcase ${stamp}`;
     // R15 (9 Sep 2026): AN EVENT IS THE ORGANIZATION'S. Neither the studio's
     // register NOR its own home offers an Events door, because a studio cannot
-    // host one — `save_event` refuses a studio host outright. ONE desk, opened
-    // from the organization's Home, and the public page names the organization.
+    // host one — `save_event` refuses a studio host outright. ONE desk, on the
+    // ORGANIZATION BUSINESS the owner opened in segment 1 (26 Sep 2026), and the
+    // public page names the organization.
     await owner.goto(`/business/${tenantId}/classes`);
     await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveCount(0);
     /* 15 Sep 2026: and not on the studio's own home either */
     await owner.goto(`/business/${tenantId}`);
     await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveCount(0);
-    await owner.goto("/");
-    await owner.getByRole("link", { name: "Events", exact: true }).click();
-    await owner.waitForURL(/\/business\/[0-9a-f-]+\/events$/);
-    eventsHostId = owner.url().match(/\/business\/([0-9a-f-]+)\/events/)?.[1] ?? null;
     expect(eventsHostId).not.toBe(tenantId);
+    await owner.goto(`/business/${eventsHostId}/events`);
+    /* the GST number is on file since segment 1, so the door is drawn now */
+    await expect(owner.getByRole("status", { name: /^Cannot create an event:/ })).toHaveCount(0);
     await owner.getByRole("link", { name: "Create event" }).click();
     /* ⚠ THE FORM IS A SHEET OVER THE DESK NOW (22 Sep 2026, ask 6) — the same
        form, the same fields, a different shell; the address is the desk's own
@@ -1528,12 +1566,15 @@ test.describe.serial("DanceOS, end to end", () => {
       .click();
     await learner.waitForURL(/\/person\/[0-9a-f-]+$/);
 
-    // an organization is never a result and has no page for anybody else (R9):
-    // the same term finds the trainer and not the owner, and the owner's address
-    // answers 404 — while the admin, who verifies it, still reads it as evidence
+    // ⚠ INVERTED 26 Sep 2026: the owner is a PERSON now (the organization login
+    // is retired), so what R9 kept out of search and off a page is IN it — the
+    // same term that finds the trainer finds the owner under People, and the
+    // owner's address is an ordinary signed-in person's page (200, "User"). The
+    // ORGANIZATION is a business with a page of its own at /org/{business id},
+    // which the push-2 segment reads.
     await learner.goto("/discover?city=Pune&tab=classes");
     /* two claims, each on a term that cannot be crowded out by a leftover: this
-       run stamp finds the trainer, and the organization name finds nobody */
+       run stamp finds the trainer, and the owner's name finds the owner */
     await learner.getByLabel("Search DanceOS").fill(stamp);
     /* AN ARTIST IS FOUND ONCE (later on 18 Sep 2026, the user: "should only come
        as their profile as artist, no separate page required"): search lists the
@@ -1543,24 +1584,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainerRows).toHaveCount(1);
     await expect(trainerRows.and(learner.locator('[href^="/person/"]'))).toBeVisible();
     await learner.getByLabel("Search DanceOS").fill("E2E Owner");
-    await expect(learner.getByRole("option", { name: /^E2E Owner/ })).toHaveCount(0);
-    const orgPage = await learner.goto(`/person/${ownerId}`);
-    expect(orgPage?.status()).toBe(404);
-    await admin.goto(`/person/${ownerId}`);
-    /* ⚠ "Organization", NOT "ORGANIZATION" (20 Sep 2026): this page read
-       `KIND_BADGE` where Home and the Profile tab read `KIND_WORD`, and
-       `HERO_EYEBROW` uppercases in CSS — so the two LOOKED identical while a
-       screen reader said two different things. `KIND_BADGE` is deleted. The word
-       carries the account number against it now, with no gap (C28), so the match
-       is on the joined token rather than on the word alone. */
-    await expect(admin.getByTestId("person-hero").getByText(/^Organization(-\d{6})?$/)).toBeVisible();
-    /* ⚠ `exact: true` (20 Sep 2026): Playwright's name matching with a bare
-       STRING is a case-insensitive SUBSTRING, so "An organization does not
-       follow" — the disabled bell's own reason — matched a locator asking for
-       "Follow" and this line went red on a page that was right. The bell is not
-       drawn here at all now (an organization's public face is /org/{id}), and
-       the locator says what it means either way. */
-    await expect(admin.getByRole("button", { name: "Follow", exact: true })).toHaveCount(0);
+    await expect(learner.getByRole("option", { name: /^E2E Owner/ }).and(learner.locator('[href^="/person/"]')).first()).toBeVisible();
+    const ownerPage = await learner.goto(`/person/${ownerId}`);
+    expect(ownerPage?.status()).toBe(200);
+    /* ⚠ "User", NOT "USER" (20 Sep 2026): `HERO_EYEBROW` uppercases in CSS, so
+       the DOM keeps the word a screen reader should say; the word carries the
+       account number against it with no gap (C28), so the match is on the
+       joined token rather than on the word alone. */
+    await expect(learner.getByTestId("person-hero").getByText(/^User(-\d{6})?$/)).toBeVisible();
 
     // the crew's public roster opens its people too, and the trainer's own page
     // says it is theirs rather than offering them a Follow button
@@ -1660,11 +1691,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByRole("link", { name: "Everything you manage", exact: true })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Manage", exact: true })).toHaveCount(0);
 
-    /* ⚠ AN ORGANIZATION LANDS ON ITS STUDIOS, a person on their register. The
-       story's `owner` IS the organization, and getting this pair the wrong way
-       round is how a redirect ends up somewhere true-looking and wrong. */
+    /* ⚠ A PERSON LANDS ON THEIR REGISTER. This pair used to say "an organization
+       lands on its studios, a person on their register" with the owner as the
+       organization; since 26 Sep 2026 the owner is a person who OWNS studios and
+       an organization, and the redirect reads the account, not what it owns —
+       so both land on the register. Getting this wrong is how a redirect ends
+       up somewhere true-looking and wrong. */
     await owner.goto("/managed");
-    await owner.waitForURL(/\/business$/);
+    await owner.waitForURL(/\/my-classes\?show=manage$/);
     await learner.goto("/managed");
     await learner.waitForURL(/\/my-classes\?show=manage$/);
 
@@ -1984,19 +2018,22 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(taught.getByText("Teaching", { exact: true })).toBeVisible();
     await expect(taught.getByRole("button", { name: "Invoice" })).toHaveCount(0);
 
-    // AN ORGANIZATION'S HOME ASKS NO STUDIO'S QUESTION (17 Sep 2026, the user:
-    // "organization home tab should not have classes options"): its doors are Manage
-    // and Events, its grid is Studios · Events · Stats, and nothing on it opens a
-    // register or a studio calendar — it used to open its FIRST studio's.
+    // THE OWNER'S HOME ASKS NO STUDIO'S QUESTION (17 Sep 2026, the user:
+    // "organization home tab should not have classes options"; 26 Sep 2026: the
+    // owner is a PERSON, so this is a user's Home — its Studios tile is the door
+    // to every studio they run and nothing on it opens a register or a studio
+    // calendar). The organization's events are on the ORGANIZATION's own home,
+    // not on the person's.
     await owner.goto("/");
-    await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveAttribute("href", /\/business\/[0-9a-f-]+\/events$/);
     await expect(owner.getByRole("link", { name: "Classes at this studio" })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Open the studio calendar" })).toHaveCount(0);
-    await expect(owner.getByRole("link", { name: "Classes", exact: true })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Students", exact: true })).toHaveCount(0);
     await expect(owner.getByRole("link", { name: "Studios", exact: true })).toBeVisible();
     // Stats is the chip beside the QR in the hero since 18 Sep 2026, not a tile — still one link called Stats
     await expect(owner.getByRole("link", { name: "Stats", exact: true })).toBeVisible();
+    // and the organization's events desk is reached from the organization's own home
+    await owner.goto(`/business/${eventsHostId}`);
+    await expect(owner.getByRole("link", { name: "Events", exact: true })).toHaveAttribute("href", `/business/${eventsHostId}/events`);
     // the studio's question — what is running in its rooms — is asked on the STUDIO's own home
     await owner.goto(`/business/${tenantId}`);
     await expect(owner.getByTestId("deck-card").first().getByText("At your studio", { exact: true })).toBeVisible();
@@ -2585,8 +2622,10 @@ test.describe.serial("DanceOS, end to end", () => {
     // show all stats for that particular profile and rankings as well."
 
     // ── 1. THE ORGANIZATION NAMES ITS OWNER, from the Team desk — asked, then confirmed.
-    // An organization is still ONE LOGIN; Owner and Team are labels on its public page.
-    await owner.goto("/business/team");
+    // Owner and Team are labels on its public page. ⚠ 26 Sep 2026: the desk is the
+    // ORGANIZATION BUSINESS's (`/business/{org}/team`) — the organization login and
+    // its `/business/team` went away; the team hangs off the business id.
+    await owner.goto(`/business/${eventsHostId}/team`);
     await expect(owner.getByRole("heading", { name: "Team" })).toBeVisible();
     /* ⚠ THE ORGANIZATION'S ADD CONTROL IS THE SHARED PILL ON TOP NOW, OPENING A
        SHEET (21 Sep 2026, the user: "fix add team member for studio and
@@ -2603,21 +2642,23 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(owner.getByText("⏳ Waiting on them to confirm · as owner")).toBeVisible({ timeout: 15_000 });
     await expect(owner.getByTestId("org-team-tile-waiting")).toHaveText("1");
     // an unanswered ask never puts a name on a public page: a visitor reads no Owner yet
-    await trainer.goto(`/org/${ownerId}`);
+    // (the organization's public page is /org/{business id} since 26 Sep 2026)
+    await trainer.goto(`/org/${eventsHostId}`);
     await expect(trainer.getByRole("link", { name: `Open ${learnerName}` })).toHaveCount(0);
     // the learner reads the ask in their own Inbox — a label on a public page is a claim about them — and says yes
+    // (the ask names the organization BUSINESS, so the sentence carries its name)
     await learner.goto("/inbox");
     await pressPill(learner, /^Requests — \d+ waiting/);
-    await expect(learner.getByText("wants to name you as an owner of E2E Owner")).toBeVisible({ timeout: 15_000 });
-    await learner.getByRole("button", { name: "Confirm E2E Owner" }).click();
+    await expect(learner.getByText(`wants to name you as an owner of ${orgName}`)).toBeVisible({ timeout: 15_000 });
+    await learner.getByRole("button", { name: `Confirm ${orgName}` }).click();
     /* the answered ask stays on the desk, wearing its answer (19 Sep 2026).
        ⚠ Scoped to THIS row for the reason written out at the crews segment: every
        answered ask wears the same sentence, so `.first()` dodged strict mode by
        matching whichever row came first — proving nothing here and waiting for
        nothing, which left the count below racing the server action. */
-    const ownerAsk = learner.getByTestId("request-row").filter({ hasText: "wants to name you as an owner of E2E Owner" });
+    const ownerAsk = learner.getByTestId("request-row").filter({ hasText: `wants to name you as an owner of ${orgName}` });
     await expect(ownerAsk.getByText("✅ Confirmed — you said yes")).toBeVisible({ timeout: 15_000 });
-    await expect(ownerAsk.getByRole("button", { name: "Confirm E2E Owner" })).toHaveCount(0);
+    await expect(ownerAsk.getByRole("button", { name: `Confirm ${orgName}` })).toHaveCount(0);
     // the desk counts one owner; the public page prints them under OWNER, with a door to their profile
     await owner.reload();
     await expect(owner.getByTestId("org-team-tile-owners")).toHaveText("1");
@@ -2627,7 +2668,11 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(ownerRow).toHaveAttribute("href", `/person/${learnerId}`);
     await expect(ownerRow).toContainText("Owner");
     // and the Stats chip on somebody else's organization page opens THAT organization's standing
-    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/org/${ownerId}/stats`);
+    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/org/${eventsHostId}/stats`);
+    /* ⚠ AN ORGANIZATION RUNS NO STUDIOS (26 Sep 2026): its page lists none, and
+       the studio the same person owns is theirs, not the organization's */
+    await expect(trainer.getByText("Studios", { exact: true })).toHaveCount(0);
+    await expect(trainer.getByRole("link", { name: `Open ${studioName}`, exact: true })).toHaveCount(0);
 
     // ── 2a. CALL IS A SWITCH ON AN ARTIST'S PAGE — off by default. The trainer holds the
     // plan (ending, still active), so their sheet carries the switch and their page may dial.
@@ -2683,15 +2728,18 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:+919000033333", { timeout: 15_000 });
     await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/crew/${crewId}/stats`);
 
-    // ── 3. AN ORGANIZATION'S PIN lives in its Edit profile sheet, under Location — the
-    // map itself is Google's and is driven by scripts/shots/shoot-location.js, not here;
-    // what this asserts is that the block is the ORGANIZATION's alone
-    const orgSheet = owner.getByRole("dialog", { name: "Edit profile" });
+    // ── 3. DELETED 26 Sep 2026: "an organization's pin lives in its Edit PROFILE
+    // sheet" — the organization login is retired, `set_my_place` is dropped, and
+    // an organization's pin is its BUSINESS row's, set from the business's own
+    // Edit sheet the way a studio's is (scripts/shots/shoot-location.js drives
+    // that map). The owner's own Edit profile is a person's: no map block, and
+    // no Call switch either, because they hold no artist plan.
+    const ownerSheet = owner.getByRole("dialog", { name: "Edit profile" });
     await openEditProfile(owner);
-    await expect(orgSheet.getByText("On the map")).toBeVisible();
-    await expect(orgSheet.getByRole("switch", { name: "Show Call on my profile" })).toHaveCount(0);
-    await orgSheet.getByRole("button", { name: "Cancel" }).click();
-    await expect(orgSheet).toHaveCount(0);
+    await expect(ownerSheet.getByText("On the map")).toHaveCount(0);
+    await expect(ownerSheet.getByRole("switch", { name: "Show Call on my profile" })).toHaveCount(0);
+    await ownerSheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(ownerSheet).toHaveCount(0);
 
     // ── 4. SOMEBODY ELSE'S RECORD AND RANK — one page shape for four kinds of profile.
     // A place is never printed without its denominator, and an empty board is said,
@@ -2706,7 +2754,9 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByRole("heading", { name: crewName })).toBeVisible();
     await expect(learner.getByTestId("standing-card")).toHaveCount(2);
     await expect(learner.getByTestId("standing-card").first()).toContainText(standing);
-    // a STRANGER reads a listed studio's, and an organization's — which is its studios' — but a plain user's is still a signed-in page
+    // a STRANGER reads a listed studio's, and a public organization's — by its
+    // BUSINESS id (26 Sep 2026), which lists no studios: an organization runs
+    // none — but a plain user's is still a signed-in page
     const guestContext = await browserRef.newContext();
     try {
       const guest = await guestContext.newPage();
@@ -2714,9 +2764,9 @@ test.describe.serial("DanceOS, end to end", () => {
       await expect(guest.getByRole("heading", { name: studioName })).toBeVisible();
       await expect(guest.getByTestId("standing-card")).toHaveCount(2);
       await expect(guest.getByTestId("standing-card").first()).toContainText(standing);
-      await guest.goto(`/org/${ownerId}/stats`);
-      await expect(guest.getByRole("heading", { name: "E2E Owner" })).toBeVisible();
-      await expect(guest.getByRole("link", { name: `${studioName} — its record and rank` })).toHaveAttribute("href", `/studio/${tenantId}/stats`);
+      await guest.goto(`/org/${eventsHostId}/stats`);
+      await expect(guest.getByRole("heading", { name: orgName })).toBeVisible();
+      await expect(guest.getByRole("link", { name: `${studioName} — its record and rank` })).toHaveCount(0);
       await guest.goto(`/person/${learnerId}/stats`);
       await guest.waitForURL(/\/login/);
     } finally {
@@ -2724,7 +2774,7 @@ test.describe.serial("DanceOS, end to end", () => {
     }
   });
 
-  test("the team by the profile you are in: two granted powers, four labels, and a label that IS a seat", async () => {
+  test("the team by the profile you are in: two granted powers, the owner seat handed over, and a seat that is not a class", async () => {
     // ---- 20 Sep 2026: the user's answers on the team slice ----
     // "1. permission given by Artist or Studio for managing Attendance and Refunds.
     //  2. [relabelling away from Studio owner silently takes the seat back] Fix in
@@ -2733,8 +2783,12 @@ test.describe.serial("DanceOS, end to end", () => {
     //  switcher. 5. [associations are seats, not history] fix in best way."
     //
     // ⚠ Rule 9 in an e2e: one of the controls below hands out a REAL OWNER SEAT on
-    // a studio. The migration's dry run proves the door; this proves the SCREENS
-    // that reach it, which is the half that was missing when the door shipped.
+    // a studio (part 2, the studio's own desk). ⚠ 26 Sep 2026: the OTHER door to
+    // a seat — the organization's "Studio owner" label — is DELETED with the
+    // organization login (an organization runs no studios; `studio_owner` is
+    // refused by ask_organization_member and set_organization_member_role), so
+    // the parts that drove it (the four labels, the grant, the relabel putting
+    // the prior seat back) are gone from this segment.
 
     // ── 1. THE TWO STANDING POWERS are the studio's to grant, and only those two.
     // Everything else a seat carries is decided by the seat; these two are the ones
@@ -2775,55 +2829,25 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.reload();
     await expect(owner.getByRole("button", { name: `Manage ${learnerName}` })).toBeVisible({ timeout: 15_000 });
 
-    // ── 3. THE ORGANIZATION'S FOUR LABELS, and the one that is not a word.
-    // The learner is this organization's confirmed Owner from the push-2 segment.
-    await owner.goto("/business/team");
+    // ── 3. DELETED 26 Sep 2026: "the organization's four labels, and the one that
+    // is not a word" — the `Studio owner · {studio}` option, the grant it wrote on
+    // the studio's desk and the Studio owners group on the organization's page.
+    // An organization runs no studios now, so the label does not exist to offer;
+    // what is still asserted is that the organization's Team desk offers the
+    // three that remain and never a studio.
+    await owner.goto(`/business/${eventsHostId}/team`);
     const label = owner.getByRole("combobox", { name: `What ${learnerName} is` });
     await expect(label).toBeVisible({ timeout: 15_000 });
-    /* all four are offered, and Studio owner names a studio rather than being one word */
     await expect(label.getByRole("option", { name: "Owner", exact: true })).toHaveCount(1);
-    await expect(label.getByRole("option", { name: `Studio owner · ${studioName}` })).toHaveCount(1);
     await expect(label.getByRole("option", { name: "Event team" })).toHaveCount(1);
     await expect(label.getByRole("option", { name: "Other team member" })).toHaveCount(1);
+    await expect(label.getByRole("option", { name: /Studio owner/ })).toHaveCount(0);
+    await trainer.goto(`/org/${eventsHostId}`);
+    await expect(trainer.getByText("Studio owners", { exact: true })).toHaveCount(0);
 
-    // ⚠ NAMING THE STUDIO IS THE GRANT. The toast says so, because this is the one
-    // label on the screen that changes who can RUN something.
-    await label.selectOption(`studio_owner:${tenantId}`);
-    await expect(owner.getByRole("status")).toContainText(`now runs ${studioName}`, { timeout: 20_000 });
-
-    // THE STUDIO'S OWN DESK SAYS THEY ARE AN OWNER OF IT NOW — the seat is real,
-    // and the desk shows it the way it shows every owner: the row prints Owner and
-    // stops being something the desk manages (an owner is not managed from here).
-    await owner.goto(`/business/${tenantId}/staff`);
-    /* two owners on this desk now — the organization that made the studio, and the
-       person it just named.
-       ⚠ RE-CUT 20 Sep 2026: the flat roster printed a LEVEL and a label in one
-       text node ("Admin · Owner") and the grouped roster prints neither — the
-       level word is gone (every label carries its own colour now, so a second,
-       coarser scale would have painted Faculty, Visiting faculty and Assistant
-       the same orange) and the label stands alone in the row. The group heading
-       is the better claim anyway: it is the desk's own count of that seat, which
-       is exactly what this check is about, and it does not care which row was
-       drawn first. */
-    await expect(owner.getByText("Owners", { exact: true })).toBeVisible({ timeout: 15_000 });
-    await expect(owner.getByText("Owner", { exact: true })).toHaveCount(2);
-    await expect(owner.getByRole("button", { name: `Manage ${learnerName}` })).toHaveCount(0);
-
-    // …and the organization's public page prints them under Studio owners, with the
-    // studio they run beside their name
-    await trainer.goto(`/org/${ownerId}`);
-    /* ⚠ `Group`'s title is a styled SPAN, not a heading (profile-kit) — so
-       getByRole("heading") finds nothing here, and the absence check below would
-       have passed for that reason rather than the right one. Text locators. */
-    await expect(trainer.getByText("Studio owners", { exact: true })).toBeVisible({ timeout: 15_000 });
-    const soRow = trainer.getByRole("link", { name: `Open ${learnerName}` });
-    await expect(soRow).toContainText("Studio owner");
-    await expect(soRow).toContainText(studioName);
-
-    // ── 4. THE STUDIO IS A HOME THEY CAN SWITCH TO. ⚠ Not a before/after: they were
-    // already on this studio's team as Faculty, so the row was already in their
-    // switcher — what the owner seat changes is what they may DO once they are
-    // there, which is why the studio's own home opens for them at all.
+    // ── 4. THE STUDIO IS A HOME THEY CAN SWITCH TO. They are on this studio's team
+    // as Faculty (segment 1's invite), so the row is in their switcher — what the
+    // seat decides is what they may DO once there.
     await learner.goto("/");
     await learner.getByRole("button", { name: "Switch profile" }).click();
     /* ⚠ a MENUITEM, not a link: the switcher is a menu (`aria-haspopup="menu"`),
@@ -2845,21 +2869,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByText("Manage", { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(trainer.getByRole("link", { name: new RegExp(`Open ${studioName}`) }).first()).toBeVisible();
 
-    // ── 6. ⚠ AND MOVING THE LABEL AWAY PUTS BACK WHAT IT REPLACED (20260920140000).
-    // Before that migration this took the whole seat away: somebody who was Faculty
-    // when the organization named them Studio owner fell off the studio's team
-    // altogether when it changed the word back — and nothing said so.
-    await owner.goto("/business/team");
+    // ── 6. DELETED 26 Sep 2026: "moving the label away puts back what it replaced"
+    // (20260920140000) — there is no Studio owner label to move away from, so
+    // there is no seat to put back. The relabel that remains is a WORD: the
+    // organization changes it and the studio's desk does not move.
+    await owner.goto(`/business/${eventsHostId}/team`);
     await label.selectOption("event_team");
-    await expect(owner.getByRole("status")).toContainText(`no longer runs ${studioName}`, { timeout: 20_000 });
     await owner.goto(`/business/${tenantId}/staff`);
     const backRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
     await expect(backRow).toBeVisible({ timeout: 15_000 });
     await backRow.click();
     await expect(teamSheet.getByRole("button", { name: `Make ${learnerName} Faculty` })).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
-    /* and the public page stops calling them a studio owner */
-    await trainer.goto(`/org/${ownerId}`);
-    await expect(trainer.getByText("Studio owners", { exact: true })).toHaveCount(0);
   });
 
   test("routines: a song and a video, added from the class page, with its usage counted", async () => {

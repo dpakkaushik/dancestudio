@@ -6,7 +6,6 @@ import { findMyDeck } from "@/repositories/home";
 import { findMyPendingInvites } from "@/repositories/invites";
 import { ensureArtistPage, findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
-import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
@@ -22,7 +21,7 @@ import { HomeBand } from "@/features/profiles/components/HomeBand";
 import { HeaderEditButton, PicturesButton } from "@/features/profiles/components/PicturesSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { PersonIcon, ROLE_RING, cornerChip } from "@/features/profiles/components/profile-kit";
-import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "@/features/profiles/components/ContactButtons";
+import { ActionRow, CallButton, MailButton } from "@/features/profiles/components/ContactButtons";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { KIND_WORD, heroMetaWords, kindOf, memberNoWords } from "@/types/profile";
@@ -71,37 +70,25 @@ export default async function HomePage() {
   const now = new Date();
   const nowIso = now.toISOString();
 
-  const isOrg = profile.role === "org";
-  /* WHERE AN ORGANIZATION STANDS WITH DANCEOS BELONGS HERE (R13, 9 Sep 2026):
-     the badge on its own name, the steps, and the door to a person — not two
-     taps away behind "Studios". A person's Home asks for none of it.
-     ⚠ FOUR READS LEFT THIS LIST ON 11 Sep 2026 — the verification request, the
-     proof photos, the plan catalogue and the support threads all fed the
-     six-step organization card, and that card became the GST card. They were
-     four round-trips on every single Home load for a component that is not
-     drawn any more; what is still asked for is what is still shown. */
-  const [memberships, invites, plan, eventsHostId] = await Promise.all([
+  /* ⚠ `isOrg` IS GONE (26 Sep 2026): the organization LOGIN is retired — every
+     profile here is a person's, and an organization is a business they open
+     from the Organizations tile, with a Home of its own (`OrgHome`). The reads
+     that were the login's alone (`findMyOrgTenantId`, the GST card, the
+     standing card) went with it. What is still asked for is what is still
+     shown. */
+  const [memberships, invites, plan] = await Promise.all([
     /* WITH the role (18 Sep 2026): an artist's grid needs the page they OWN, not
        the first business they belong to — a studio they teach at is not theirs */
     findMyMemberships(supabase),
     // somebody asked you onto their team — matched on the address you sign in
     // with, so an invite arrives here without any link being passed around
     findMyPendingInvites(supabase),
-    isOrg ? Promise.resolve(null) : findMyArtistPlan(supabase),
-    /* R15: the organization's ONE events host, so Studio Tools can carry an
-       Events tile (11 Sep 2026) — the desk existed, the door from Home did not */
-    isOrg ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
-    /* ⚠ AND THE FIFTH READ WENT WITH ITS CARD (20 Sep 2026, the user: "remove
-       your conversation with dance os and subscription from just the home tab
-       for studio and organization profiles as already being handled from
-       settings"). `findSupportThreads` existed on Home for one row — the door
-       back to DanceOS's reply — and Settings' Help & support tile is that door
-       for every kind of account, so Home was the second one. The read is gone
-       too, not just the card: a round trip on every Home load for something
-       nothing renders is the shape this list was already trimmed for on 11 Sep. */
+    findMyArtistPlan(supabase),
+    /* ⚠ THE SUPPORT-THREADS READ WENT WITH ITS CARD (20 Sep 2026): Settings'
+       Help & support tile is that door for every kind of account */
   ]);
   const businesses = memberships.map((m) => m.tenant);
-  /* what the sleeve calls you: an organization is one; a person is an artist while the plan is live */
+  /* what the sleeve calls you: a person is an artist while the plan is live */
   const isArtist = Boolean(plan?.active);
   const kind = kindOf(profile.role, isArtist);
 
@@ -110,9 +97,8 @@ export default async function HomePage() {
      a user one, an artist five, an organization ten — and a plan that lapsed
      with five stored still draws one; the rest wait. */
   const headerMax = headerMaxFor(kind);
-  /* the page a stranger reads — an organization's own since 18 Sep 2026 (R23),
-     a person's whether or not they hold the plan (R24) */
-  const publicHref = isOrg ? `/org/${profile.id}` : `/person/${profile.id}`;
+  /* the page a stranger reads — a person's whether or not they hold the plan (R24) */
+  const publicHref = `/person/${profile.id}`;
 
   /* ⚠ NO RANK ON HOME (19 Sep 2026, the user: "Remove rank from home"). Where
      you stand is the Stats chip's own screen, which prints the place WITH its
@@ -160,11 +146,11 @@ export default async function HomePage() {
      desk of a business at all — a studio's desks are on the studio's own home.
      ⚠ It is worked out HERE rather than beside the grid since 22 Sep 2026,
      because the batch below needs it: the arrangement is keyed by kind. */
-  const homeKind = isOrg ? "org" : isArtist ? "artist" : "user";
+  const homeKind = isArtist ? "artist" : "user";
   const [header, deck, pageId, followers, followingPeople, followingTenants, followingOrgs, followingCrews, toolOrder] = await Promise.all([
     findPersonHeaderPhotos(supabase, user.id, headerMax),
     findMyDeck(supabase, user.id, nowIso, businesses),
-    isOrg || !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
+    !isArtist ? Promise.resolve(null) : ensureArtistPage(supabase, profile, memberships),
     findMyPersonFollowers(supabase).catch(() => []),
     findMyFollowedPeople(supabase).catch(() => []),
     findMyFollowing(supabase).catch(() => []),
@@ -191,13 +177,12 @@ export default async function HomePage() {
      nothing at all now. Deleted rather than left computed and unread. */
   /* ⚠ WHERE AN ENQUIRY WOULD LAND, AND WHY IT IS NOT THE PROFILE (21 Sep 2026).
      `send_enquiry` names a BUSINESS or a crew, never a person — so an artist's
-     asks go to the `artist_page` row behind them (R24) and an organization's to
-     its own hosting row (R15). A plain user has neither, which is why their row
-     carries no Enquiry at all rather than a dead one: the public page draws none
-     for a user either ("user — nothing", the 19 Sep list), and Home matching it
-     is the whole point of this row. */
-  const asksGoHere = isOrg ? eventsHostId : isArtist ? pageId : null;
-  const isPlainUser = !isOrg && !isArtist;
+     asks go to the `artist_page` row behind them (R24). A plain user has none,
+     which is why their row carries no Enquiry at all rather than a dead one:
+     the public page draws none for a user either ("user — nothing", the 19 Sep
+     list), and Home matching it is the whole point of this row. */
+  const asksGoHere = isArtist ? pageId : null;
+  const isPlainUser = !isArtist;
   /* THE ARTIST PAGE IS PROVISIONED HERE, NOT SET UP IN A SHEET (18 Sep 2026, the
      user: "no need for a separate artist page to be created … you just subscribe
      from a user to artist to get the additional tools"). A live plan and no page
@@ -385,22 +370,18 @@ export default async function HomePage() {
                 <EnquiryButton
                   tenantId={asksGoHere}
                   tenantName={profile.fullName}
-                  tenantType={isOrg ? "org" : "artist_page"}
+                  tenantType="artist_page"
                   signedIn
                   accent={ring[1]}
                   cannotAsk="This is your own page — enquiries come to you here"
                 />
               ) : null}
-              {/* an ORGANIZATION's Call is always drawn; an ARTIST's only while
-                  their own switch is on (push 2, 19 Sep 2026) */}
-              {profile.phone && (isOrg || (isArtist && profile.phonePublic)) ? <CallButton phone={profile.phone} /> : null}
+              {/* an ARTIST's Call only while their own switch is on (push 2, 19 Sep 2026) */}
+              {profile.phone && isArtist && profile.phonePublic ? <CallButton phone={profile.phone} /> : null}
               {!isPlainUser && profile.contactEmail ? <MailButton email={profile.contactEmail} /> : null}
-              {/* a person's row never carries a pin — only an organization's */}
-              {isOrg && profile.lat != null && profile.lng != null ? (
-                <LocationButton href={mapsPinHref(profile.lat, profile.lng)} />
-              ) : isOrg && place ? (
-                <LocationButton query={`${profile.fullName} ${place}`} />
-              ) : null}
+              {/* ⚠ a person's row never carries a pin — the Location button was the
+                  retired organization login's (26 Sep 2026); an organization's pin
+                  is its business row's, on its own home */}
             </ActionRow>
             <TodayShelf deck={deck} />
           </>
@@ -410,7 +391,7 @@ export default async function HomePage() {
             sheet that covers the deck, so it is opaque and it is above. ── */}
         {orgAwaitingApproval ? null : (
           <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-            <BizSection kind={homeKind} pageId={pageId} eventsHostId={isOrg ? eventsHostId : null} order={toolOrder}>
+            <BizSection kind={homeKind} pageId={pageId} order={toolOrder}>
               {/* THE PAGE COULD NOT BE MADE (18 Sep 2026): the plan is live and Home just
                   tried to provision the page the artist tools run through, and the
                   database said no — a refusal Home swallows so it never fails on it.

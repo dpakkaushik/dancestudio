@@ -8,7 +8,7 @@ import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/cla
 import { findAskedForMyCrews, findMyLedCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
 import { findReceivedEnquiries, findReceivedEnquiriesForCrews, findSentEnquiries } from "@/repositories/enquiries";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
-import { findAskedByMyOrganization, findMyPendingOrganizationAsks } from "@/repositories/organizationTeam";
+import { findAskedByOrganizations, findMyPendingOrganizationAsks } from "@/repositories/organizationTeam";
 import { findProfileById } from "@/repositories/profiles";
 import { findMyMemberships } from "@/repositories/tenants";
 import { findMyArtistPlan } from "@/repositories/plans";
@@ -43,6 +43,10 @@ export default async function InboxPage() {
   /* the rooms asked of the STUDIOS you own, and the rooms your own PAGE has asked for */
   const ownedStudioIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "studio").map((m) => m.tenant.id);
   const ownedPageIds = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "artist_page").map((m) => m.tenant.id);
+  /* the ORGANIZATIONS this account owns (26 Sep 2026) — their team asks are its
+     out-rows, one organization or several, each row wearing its own name */
+  const ownedOrgs = memberships.filter((m) => m.memberRole === "owner" && m.tenant.type === "org").map((m) => m.tenant);
+  const orgNameById = new Map(ownedOrgs.map((t) => [t.id, t.name]));
 
   /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
      requests don't get removed after accepting"): every ask read takes the
@@ -69,10 +73,15 @@ export default async function InboxPage() {
     findVenueRequestsForTenants(supabase, ownedStudioIds).catch(() => []),
     findMyVenueAsks(supabase, ownedPageIds).catch(() => []),
     /* push 2: an organization naming you on its page (a person's in), and the
-       people the organization is still waiting on (an organization's out) —
-       each read says whose rows it wants, so the other side is simply empty */
+       people YOUR organizations are still waiting on (the owner's out, keyed
+       on the businesses owned since 26 Sep 2026) — each read says whose rows
+       it wants, so the other side is simply empty */
     findMyPendingOrganizationAsks(supabase, [...ALL]).catch(() => []),
-    findAskedByMyOrganization(supabase, [...ALL]).catch(() => []),
+    findAskedByOrganizations(
+      supabase,
+      ownedOrgs.map((t) => t.id),
+      [...ALL]
+    ).catch(() => []),
   ]);
 
   const { requestsIn, requestsOut } = buildRequests({
@@ -87,7 +96,7 @@ export default async function InboxPage() {
     invitesOut: invitesOutByTenant.flat(),
     crewOut,
     partnerOut,
-    orgOut: orgAsked.map((m) => ({ ...m, orgName: profile?.fullName ?? "Your organization" })),
+    orgOut: orgAsked.map((m) => ({ ...m, orgName: orgNameById.get(m.orgId) ?? "Your organization" })),
   });
 
   /* one desk: what your businesses were asked, and what your crews were asked, newest first */

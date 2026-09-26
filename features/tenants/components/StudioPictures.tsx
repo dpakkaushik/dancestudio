@@ -8,6 +8,7 @@ import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderP
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
+import { useEditMode } from "@/features/profiles/components/EditMode";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
 import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { MUTED, SUB } from "@/lib/design/tokens";
@@ -168,6 +169,8 @@ export function StudioPicturesButton({
 }) {
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState(false);
+  /* the ⊕ appears with the pencil (26 Sep 2026) — edit mode, on top of the seat's own right */
+  const { editing: editMode } = useEditMode();
   const disc = <ProfileDisc name={tenantName} grad={grad} photo={avatar} photoAlt={tenantName} testId="hero-disc" />;
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
@@ -183,7 +186,7 @@ export function StudioPicturesButton({
       ) : (
         disc
       )}
-      {canEdit ? (
+      {canEdit && editMode ? (
         <button
           type="button"
           aria-label="Change profile picture"
@@ -212,6 +215,9 @@ export function StudioPicturesButton({
  *  there */
 export function StudioPostersButton({ tenantId, tenantName, ownerId, photos = [] }: { tenantId: string; tenantName: string; ownerId: string; photos?: ProofPhoto[] }) {
   const [open, setOpen] = useState(false);
+  const { editing } = useEditMode();
+  /* only while the pencil is pressed (26 Sep 2026) */
+  if (!editing) return null;
   return (
     <>
       <button

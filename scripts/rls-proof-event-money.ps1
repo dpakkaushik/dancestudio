@@ -69,9 +69,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -110,16 +108,19 @@ $BKSEL = "select=id,event_id,user_id,kind,ticket_tier_id,qty,amount_inr,status"
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$ownerA = New-EmailUser "em-ownera-$stamp@example.com" "Money Org $stamp" "org"
-$ownerB = New-EmailUser "em-ownerb-$stamp@example.com" "Rival Org $stamp" "org"
+$ownerA = New-EmailUser "em-ownera-$stamp@example.com" "Money Owner $stamp" "user"
+$ownerB = New-EmailUser "em-ownerb-$stamp@example.com" "Rival Owner $stamp" "user"
 $l1 = New-EmailUser "em-l1-$stamp@example.com" "Payer One $stamp" "user"
 $l2 = New-EmailUser "em-l2-$stamp@example.com" "Payer Two $stamp" "user"
 $l3 = New-EmailUser "em-l3-$stamp@example.com" "Payer Three $stamp" "user"
-# an event needs the organization's GST number (11 Sep 2026)
-Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "EVM$($stamp.Substring(1))" } | Out-Null
-Rpc (Api $ownerB.token) "verify_gstin" @{ p_gstin = "EVN$($stamp.Substring(1))" } | Out-Null
-$orgA = [string](Rpc (Api $ownerA.token) "my_org_business" @{})
-$orgB = [string](Rpc (Api $ownerB.token) "my_org_business" @{})
+# 26 Sep 2026: an organization is a BUSINESS its owner opens (the login is retired). An event needs
+# its OWN GST number, and the public books its events only while its own mandate is live - so A's
+# gets all three; B's is the rival, a private organization with a number and no mandate.
+$orgA = [string](New-Org $ownerA.token "Money Org $stamp" "Pune").id
+$orgB = [string](New-Org $ownerB.token "Rival Org $stamp" "Pune").id
+Verify-Org-Gst $ownerA.token $orgA "EVM$($stamp.Substring(1))" | Out-Null
+Verify-Org-Gst $ownerB.token $orgB "EVN$($stamp.Substring(1))" | Out-Null
+Subscribe-Org $orgA
 
 try {
   # the event, ten days out: a Rs 250 tier with TWO seats, and a free one
@@ -219,7 +220,8 @@ try {
   Check 10 "The host reads $($hostPay.Count) payments (Rs $hostSum); L1 reads $($l1Pay.Count) of their own; a rival $($rivalPay.Count); the public $($anonPay.Count)" (
     ($hostPay.Count -eq 5) -and ($hostSum -eq 1150) -and ($l1Pay.Count -eq 2) -and ($rivalPay.Count -eq 0) -and ($anonPay.Count -eq 0))
 
-  # 11. THE ORGANIZATION'S FIGURES: the owner's rows carry the event money; a person and a rival see none of it
+  # 11. THE ORGANIZATION'S FIGURES: the owner's rows carry the event money; a person who owns nothing
+  #     and a rival see none of it (the rival owns their own org business, so their list is not empty)
   $statsA = Rpc-Rows (Api $ownerA.token) "my_org_stats" @{}
   $hostRow = @($statsA | Where-Object { $_.business_id -eq $orgA })[0]
   $statsL1 = Rpc-Rows (Api $l1.token) "my_org_stats" @{}
@@ -236,7 +238,7 @@ try {
     ($stillPending.status -eq "pending_payment") -and ($directOrder -ne ""))
 }
 finally {
-  # the hosting rows cascade events -> tiers -> bookings -> orders -> payments; users cascade profiles
+  # the org businesses cascade events -> tiers -> bookings -> orders -> payments, and go BEFORE their owners; users cascade profiles
   foreach ($t in @($orgA, $orgB)) {
     try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$t" -Headers $svcH | Out-Null } catch {}
   }

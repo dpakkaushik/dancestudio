@@ -68,10 +68,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -96,7 +93,7 @@ function Grant-ArtistPlan($userId) {
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $dancer = New-EmailUser "set-a-$stamp@example.com" "Plan Proof $stamp" "user"
-$owner = New-EmailUser "set-b-$stamp@example.com" "Owner Proof $stamp" "org"
+$owner = New-EmailUser "set-b-$stamp@example.com" "Owner Proof $stamp" "user"
 $stranger = New-EmailUser "set-c-$stamp@example.com" "Stranger Proof $stamp" "user"
 $tenantId = $null
 $TSEL = "select=id,founded_year,phone,socials,enquiry_types,accepts_upi,accepts_cards,accepts_cash,accepts_bank,verified_at"
@@ -186,8 +183,8 @@ try {
 
   # -- the tick nobody can give themselves -------------------------
   # 11. the owner's direct PATCH of verified_at is refused by the guard; so is a person's on their own profile
-  #     (the owner is a VERIFIED organization since 8 Sep 2026 - stamped by the service role above - so its
-  #      tick is not null; the claim is that the PATCH does not MOVE it)
+  #     (26 Sep 2026: the owner is a PERSON with no tick - the organization login is retired - so the
+  #      claim is that the PATCH does not MOVE it off null; the shape of the check is unchanged)
   $before11 = (Rows (Api $owner.token) "profiles?select=verified_at&id=eq.$($owner.id)")[0].verified_at
   $r11a = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$tenantId" -Headers (Plain $owner.token) -Body (@{ verified_at = "2026-08-29T00:00:00Z" } | ConvertTo-Json) }
   $r11b = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($owner.id)" -Headers (Plain $owner.token) -Body (@{ verified_at = "2026-08-29T00:00:00Z" } | ConvertTo-Json) }
@@ -199,7 +196,7 @@ try {
   # `20260913100000_doors_that_were_not_doors` dropped the column-less update
   # policy an owner used to PATCH through. Both are refusals; only one throws.
   # So the test is what it always claimed to be about: THE TICK DID NOT MOVE.
-  Check 11 "an owner cannot tick their business and an account cannot tick itself (both refused; the business tick still null, the organization's tick unmoved)" (
+  Check 11 "an owner cannot tick their business and an account cannot tick itself (both refused; the business tick still null, the owner's own tick unmoved)" (
     $r11b -and $null -eq $row11[0].verified_at -and $prof11[0].verified_at -eq $before11)
 
   # 12. ... while the owner still changes the row THROUGH ITS OWN DOOR, and the

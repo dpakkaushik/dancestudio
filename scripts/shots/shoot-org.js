@@ -1,16 +1,18 @@
 /**
- * Look at a VERIFIED ORGANIZATION's three changed screens for real (11 Sep 2026):
+ * Look at a studio owner's three changed screens for real (11 Sep 2026; re-cut
+ * 26 Sep 2026 for the retired organization login):
  *
- *   1. Home — no "Verified organization" card any more, and an Events tile in
- *      Studio Tools (the user: "after verification I don't need this box";
- *      "I can't see events on my org page — where is it?").
+ *   1. Home — no "Verified organization" card, and the organization's events
+ *      desk is the ORGANIZATION BUSINESS's own, not a tile on the person's Home
+ *      (the user: "after verification I don't need this box"; "I can't see
+ *      events on my org page — where is it?").
  *   2. /business with the New-studio sheet open — the map picker is IN the sheet
  *      ("wherever we are giving an address there should be a location picker").
  *   3. Discover as a map — the shelf drawn as pins.
  *
- * Makes a verified organization with a subscribed studio, signs in as its owner,
- * shoots and ASSERTS each, and deletes everything it made. Fails on any console
- * error, the way shoot-admin.js does.
+ * Makes a PERSON who owns a subscribed studio and an organization business (GST
+ * verified, mandate granted), signs in as them, shoots and ASSERTS each, and
+ * deletes everything it made. Fails on any console error, the way shoot-admin.js does.
  *
  *   npm run dev            # in another terminal
  *   NODE_PATH=$(pwd)/node_modules node scripts/shots/shoot-org.js
@@ -52,9 +54,17 @@ const rest = async (method, url, body) => {
   const link = await fetch(`${SUPABASE}/auth/v1/admin/generate_link`, { method: "POST", headers: H, body: JSON.stringify({ type: "magiclink", email }) }).then((r) => r.json());
   if (!link.hashed_token) throw new Error(`generate_link failed: ${JSON.stringify(link)}`);
 
-  await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot Org ${stamp}`, role: "org", city: "Pune", created_by: link.id, updated_by: link.id });
-  await rest("PATCH", `/rest/v1/profiles?id=eq.${link.id}`, { verified_at: new Date().toISOString() });
-  const [tenant] = await rest("POST", "/rest/v1/businesses", { type: "studio", name: `Shot Studio ${stamp}`, area: "Kothrud", city: "Pune", lat: 18.5204, lng: 73.8567, visibility: "unlisted", created_by: link.id, updated_by: link.id });
+  /* a PERSON (26 Sep 2026: the organization login is retired; any account opens a studio) */
+  await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot Owner ${stamp}`, role: "user", city: "Pune", styles: ["Hip-Hop"], created_by: link.id, updated_by: link.id });
+  /* their ORGANIZATION, a business of its own: GST verified and its own mandate granted (org_is_public) */
+  const [orgBiz] = await rest("POST", "/rest/v1/businesses", { type: "org", name: `Shot Org ${stamp}`, city: "Pune", visibility: "unlisted", gstin: `SHO${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString(), created_by: link.id, updated_by: link.id });
+  await rest("POST", "/rest/v1/business_members", { business_id: orgBiz.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id });
+  await rest("POST", "/rest/v1/subscriptions", {
+    kind: "org", user_id: link.id, business_id: orgBiz.id, plan_key: "org_monthly", price_inr: 0, period: "monthly", status: "active", granted: true,
+    current_period_start: new Date().toISOString().slice(0, 10), current_period_end: new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10),
+    note: "Granted by a screenshot script - nothing charged", created_by: link.id, updated_by: link.id,
+  });
+  const [tenant] = await rest("POST", "/rest/v1/businesses", { type: "studio", name: `Shot Studio ${stamp}`, area: "Kothrud", city: "Pune", lat: 18.5204, lng: 73.8567, visibility: "unlisted", styles: ["Hip-Hop"], created_by: link.id, updated_by: link.id });
   await rest("POST", "/rest/v1/business_members", { business_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id });
   await rest("POST", "/rest/v1/subscriptions", {
     kind: "studio", user_id: link.id, business_id: tenant.id, plan_key: "studio_monthly", price_inr: 0, period: "monthly", status: "active", granted: true,
@@ -76,11 +86,16 @@ const rest = async (method, url, body) => {
   /* 1. Home */
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
   await page.screenshot({ path: path.join(OUT, "org-1-home.png"), fullPage: true });
-  check((await page.locator('[role="status"][aria-label^="Verification:"]').count()) === 0, "Home: no Verified-organization card once verified");
-  check((await page.getByLabel("Verified").count()) >= 1, "Home: the tick is on the name");
-  check((await page.getByRole("link", { name: "Events", exact: true }).count()) === 1, "Home: an Events tile in Studio Tools");
-  const eventsHref = await page.getByRole("link", { name: "Events", exact: true }).getAttribute("href");
-  check(/^\/business\/[0-9a-f-]+\/events$/.test(eventsHref ?? ""), `Home: Events tile opens the organization's desk (${eventsHref})`);
+  check((await page.locator('[role="status"][aria-label^="Verification:"]').count()) === 0, "Home: no Verified-organization card - a person's Home has nothing to verify (26 Sep 2026)");
+  /* 26 Sep 2026: "the tick is on the name" is DELETED - a person carries none;
+     the tick is the STUDIO's. And the events desk is the ORGANIZATION BUSINESS's
+     own home, reached by its id, not a tile on the person's grid. */
+  await page.goto(`${BASE}/business/${orgBiz.id}`, { waitUntil: "networkidle" });
+  await page.screenshot({ path: path.join(OUT, "org-1b-org-home.png"), fullPage: true });
+  const eventsHref = await page.getByRole("link", { name: "Events", exact: true }).first().getAttribute("href").catch(() => null);
+  check(eventsHref === `/business/${orgBiz.id}/events`, `Org home: an Events tile that opens THIS organization's desk (${eventsHref})`);
+  await page.goto(`${BASE}/business/${orgBiz.id}/events`, { waitUntil: "networkidle" });
+  check((await page.getByRole("link", { name: "Create event" }).count()) === 1, "Org events desk: Create event is offered - its own GST number is on file");
 
   /* 2. the hub: the studio above was made on Pune's centroid and never placed,
         so it must be ASKED for its pin — and the ask goes away once placed */
@@ -137,9 +152,11 @@ const rest = async (method, url, body) => {
 
   await browser.close();
 
-  await rest("DELETE", `/rest/v1/subscriptions?business_id=eq.${tenant.id}`);
-  await rest("DELETE", `/rest/v1/business_members?business_id=eq.${tenant.id}`);
-  await rest("DELETE", `/rest/v1/businesses?id=eq.${tenant.id}`);
+  for (const id of [tenant.id, orgBiz.id]) {
+    await rest("DELETE", `/rest/v1/subscriptions?business_id=eq.${id}`);
+    await rest("DELETE", `/rest/v1/business_members?business_id=eq.${id}`);
+    await rest("DELETE", `/rest/v1/businesses?id=eq.${id}`);
+  }
   await fetch(`${SUPABASE}/auth/v1/admin/users/${link.id}`, { method: "DELETE", headers: H });
 
   if (problems.length) {

@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { EditProfileSheet } from "@/features/profiles/components/EditProfileSheet";
-import { endArtistPlanAction, updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ArtistPlan } from "@/repositories/plans";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { Profile, ProfileRole } from "@/types/profile";
 import type { Tenant } from "@/types/tenant";
-import { dateWords } from "./settings-kit";
 
 /** THE SETTINGS SHEET — prototype S_profiletab 11402-11440, opened by the top
  *  bar's gear (19263: "if you are on the Profile tab, open settings now; else go
@@ -32,13 +31,18 @@ import { dateWords } from "./settings-kit";
  *  reaches you" (S_notif 13800), and it was the same switches twice. Language
  *  stays a tile and says the one true thing when pressed.
  *
- *  The Artist tools tile is what the prototype makes it — the Artist plan's
- *  switch (8855: a locked strip opens the plan; an active one shows PRO and
- *  ends it) — and keeps its name, its pressed state and its toast, which the
- *  happy path reads. Payments (S_payments), Invoices (S_invoices), Refunds
- *  (S_refunds) and Subscription (S_subscr) are pages; Enquiry types is the
- *  prototype's own sheet (9000-9030) saved onto the business; the GST number is
- *  an organization's one-time errand (11 Sep 2026). */
+ *  ⚠ NO PLAN, NO SUBSCRIPTION, NO ARTIST TOOLS SWITCH HERE SINCE 26 Sep 2026
+ *  (the user: "subscriptions also become an option on home tab for all profiles
+ *  and is removed from settings for all … subscribe to become an artist should
+ *  not be a separate tab in settings like artist tools"). YOUR PLAN is gone
+ *  whole — the prototype's Artist tools switch (8855) with it — and the one
+ *  door to `/subscription` is the Subscription tile on Home; a studio's and an
+ *  organization's mandate is the Subscription tile on its own home. The GST
+ *  number tile left MONEY the same day: it is an ORGANIZATION's, under THIS
+ *  ORGANIZATION, because the organization login is retired and the number is
+ *  the business row's. Payments (S_payments), Invoices (S_invoices) and Refunds
+ *  (S_refunds) are pages; Enquiry types is the prototype's own sheet (9000-9030)
+ *  saved onto the business. */
 
 const grid: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 };
 const tile: CSSProperties = { background: "var(--card)", borderRadius: 16, padding: "13px 12px 12px", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, cursor: "pointer", width: "100%", textAlign: "left", border: "1.5px solid var(--el)", fontFamily: "inherit", color: INK, textDecoration: "none", boxSizing: "border-box", minHeight: 86 };
@@ -63,8 +67,8 @@ const ICONS = {
   invoices: (c: string) => <Glyph c={c}><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6" /></Glyph>,
   refunds: (c: string) => <Glyph c={c}><path d="M9 14 4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 0 12h-3" /></Glyph>,
   enquiries: (c: string) => <Glyph c={c}><path d="M4 6h16v10H9l-5 4z" /><path d="M8 10h8M8 13h5" /></Glyph>,
-  subscription: (c: string) => <Glyph c={c}><path d="m12 3 2.7 5.6 6.1.8-4.4 4.3 1.1 6.1L12 17l-5.5 2.8 1.1-6.1L3.2 9.4l6.1-.8z" /></Glyph>,
-  artist: (c: string) => <Glyph c={c}><circle cx="12" cy="7.5" r="3.2" /><path d="M5.5 20c.8-3.6 3.2-5.5 6.5-5.5s5.7 1.9 6.5 5.5" /></Glyph>,
+  /* the team desk's glyph (26 Sep 2026) — two people, for the organization's Team tile */
+  team: (c: string) => <Glyph c={c}><circle cx="9" cy="8" r="3" /><path d="M3.5 19c.6-3 2.7-4.6 5.5-4.6s4.9 1.6 5.5 4.6" /><circle cx="16.5" cy="9" r="2.4" /><path d="M15.5 14.6c2.5.1 4.3 1.5 5 4.4" /></Glyph>,
   language: (c: string) => <Glyph c={c}><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.6 3.8 5.4 3.8 8.5s-1.2 5.9-3.8 8.5c-2.6-2.6-3.8-5.4-3.8-8.5S9.4 6.1 12 3.5z" /></Glyph>,
   privacy: (c: string) => <Glyph c={c}><path d="M12 3 5 6v5.5c0 4.2 2.9 7.6 7 9.5 4.1-1.9 7-5.3 7-9.5V6z" /><path d="m9.5 12 1.8 1.8L15 10" /></Glyph>,
   help: (c: string) => <Glyph c={c}><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.2" /><path d="m6 6 3.7 3.7M18 6l-3.7 3.7M18 18l-3.7-3.7M6 18l3.7-3.7" /></Glyph>,
@@ -132,20 +136,18 @@ export type SettingsProfile =
        *  rather than opening an empty form. */
       profile: Profile | null;
       role: ProfileRole;
-      /** the Artist plan, when one has been taken */
+      /** the Artist plan, when one has been taken — read for the Enquiry-types
+       *  gate only, now that the plan's own tiles have left this sheet (26 Sep 2026) */
       plan: ArtistPlan | null;
-      /** whether the organization's GST number is verified — the tile's badge
-       *  says which (11 Sep 2026). False for everybody who is not one. */
-      gstVerified: boolean;
       /** ⚠ THE ARTIST PAGE THIS PERSON OWNS, or null — never "the first
-       *  business you are on the team of", and no longer "the first one you
-       *  own" either. An organization owns studios AND its hosting row, so
-       *  `owned[0]` was an arbitrary pick between them; an organization's own
-       *  money is the account's (`/invoices` lists what IT paid), and each
-       *  studio's money is in that studio's own Settings. */
+       *  business you are on the team of", and never an arbitrary pick among the
+       *  ones they own: each studio's and each organization's money is in that
+       *  business's own Settings. */
       business: Tenant | null;
     }
   | { kind: "studio"; tenant: Tenant }
+  /* AN ORGANIZATION'S OWN SETTINGS (26 Sep 2026) — a business a person opens, with its own block */
+  | { kind: "org"; tenant: Tenant }
   | { kind: "crew"; crew: { id: string; name: string } };
 
 export function SettingsSheet({
@@ -183,37 +185,24 @@ export function SettingsSheet({
   };
   if (!open) return null;
 
-  /* ── WHAT THIS PROFILE IS, in the three shapes the sheet has to draw ── */
+  /* ── WHAT THIS PROFILE IS, in the four shapes the sheet has to draw ── */
   const me = active.kind === "me" ? active : null;
   const studio = active.kind === "studio" ? active.tenant : null;
+  const org = active.kind === "org" ? active.tenant : null;
   /* the business whose SETTINGS these are: a person's own artist page, or the
-     studio you are in. A crew is not a business and has neither. */
-  const biz: Tenant | null = studio ?? me?.business ?? null;
+     studio or organization you are in. A crew is not a business and has neither. */
+  const biz: Tenant | null = studio ?? org ?? me?.business ?? null;
   const profile = me?.profile ?? null;
   const role: ProfileRole = me?.role ?? "user";
   const plan = me?.plan ?? null;
-  const gstVerified = me?.gstVerified ?? false;
 
   /* the prototype's "dancer" is the KIND user — a person with no live plan; an
-     artist (the plan) or an organization gets the business desk's money tiles */
+     artist (the plan) gets the business desk's money tiles. ⚠ `role` is never
+     `org` since 26 Sep 2026 — the login is retired — so no branch reads it. */
   const isDancer = Boolean(me) && role === "user" && !plan?.active;
-  const artistOn = Boolean(plan?.active);
-  /* the tile is the plan's switch (8855): off → the plan page; on → end it */
-  const flipArtist = () => {
-    if (!artistOn) {
-      /* navigate INSTEAD of closing: a close that spends the sheet's history
-         entry in the same tick as a push races the router (19 Sep 2026) —
-         the route change takes the sheet down by itself */
-      go("/subscription");
-      return;
-    }
-    start(async () => {
-      const out = await endArtistPlanAction();
-      if (out.error) return fire(out.error);
-      fire("Artist tools off — back to dancing");
-      router.refresh();
-    });
-  };
+  /* ⚠ `flipArtist` IS GONE (26 Sep 2026): the Artist tools switch left this
+     sheet with the plan's tiles, and `/subscription` — the Subscription tile on
+     Home — is where the plan is taken and ended */
 
   /* ENQUIRIES YOU ACCEPT — null on the record means every type the kind allows (9010) */
   const enqAll = biz ? enquiryTypesFor(biz.type) : [];
@@ -232,10 +221,10 @@ export function SettingsSheet({
   const desk = biz ? `/business/${biz.id}` : null;
   /* a person with no page of their own reads their OWN money screens; a studio
      always reads its desk's, which is the whole point of ask 2 */
-  const personal = !studio && (isDancer || !desk);
+  const personal = !studio && !org && (isDancer || !desk);
   /* the sheet says whose settings these are, because it is no longer always
      yours — the switcher's dot answers the same question one control away */
-  const whose = studio ? studio.name : active.kind === "crew" ? active.crew.name : (profile?.fullName ?? null);
+  const whose = studio ? studio.name : org ? org.name : active.kind === "crew" ? active.crew.name : (profile?.fullName ?? null);
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 600, fontFamily: DOS_UI }}>
@@ -282,8 +271,44 @@ export function SettingsSheet({
               <Tile icon={ICONS.gst("#0EA5E9")} href={`${desk}/verification`} onNavigate={go} badge={<span style={badgeStyle(Boolean(studio.verifiedAt))}>{studio.verifiedAt ? "verified" : "not yet"}</span>}>
                 Verification
               </Tile>
-              <Tile icon={ICONS.subscription("#F59E0B")} href="/subscription" onNavigate={go}>
-                Subscription
+              {/* ⚠ NO SUBSCRIPTION TILE (26 Sep 2026): it is the Subscription tile
+                  on Home for the account, and `/business/{id}/subscription` for
+                  this studio's own mandate, reached from the same place */}
+              <Tile icon={ICONS.invoices("#3B82F6")} href={`${desk}/invoices`} onNavigate={go}>
+                Invoices
+              </Tile>
+              <Tile icon={ICONS.refunds("#F97316")} href={`${desk}/refunds`} onNavigate={go}>
+                Refunds
+              </Tile>
+              <Tile icon={ICONS.payments("#22C55E")} href={`${desk}/payments`} onNavigate={go}>
+                Payments
+              </Tile>
+              <Tile icon={ICONS.enquiries("#8B5CF6")} onClick={() => setEnqOpen(true)} badge={<span style={badgeStyle(enqCount > 0)}>{enqCount} of {enqAll.length}</span>}>
+                Enquiry types
+              </Tile>
+            </div>
+          </>
+        ) : null}
+
+        {/* ══ AN ORGANIZATION'S OWN SETTINGS (26 Sep 2026, the user: "separate
+            login for organization also goes away as it now gets created like
+            studios … verification process remains same for organization"). The
+            studio's block for the third kind of business a person opens: Edit,
+            then its VERIFICATION — which for an organization is its GST number,
+            on the business row, so the tile that was MONEY's for the retired
+            login is this block's now — then its Team, and its money. ══ */}
+        {org ? (
+          <>
+            <div style={head}>THIS ORGANIZATION</div>
+            <div style={grid}>
+              <Tile icon={ICONS.edit("#5AC8FA")} href={`${desk}?edit=1`} onNavigate={go} ariaLabel="Edit organization">
+                Edit organization
+              </Tile>
+              <Tile icon={ICONS.gst("#0EA5E9")} href={`${desk}/gst`} onNavigate={go} badge={<span style={badgeStyle(Boolean(org.gstinVerifiedAt))}>{org.gstinVerifiedAt ? "verified" : "needed"}</span>}>
+                GST number
+              </Tile>
+              <Tile icon={ICONS.team("#9A3412")} href={`${desk}/team`} onNavigate={go}>
+                Team
               </Tile>
               <Tile icon={ICONS.invoices("#3B82F6")} href={`${desk}/invoices`} onNavigate={go}>
                 Invoices
@@ -340,32 +365,18 @@ export function SettingsSheet({
           </>
         ) : null}
 
-        {/* ── YOUR PLAN: the Artist tools switch (a person), the plan's page (whoever holds one) ── */}
+        {/* ⚠ YOUR PLAN IS GONE WHOLE (26 Sep 2026): the Artist tools switch and
+            the Subscription tile are the Subscription tile on Home now, at the
+            user's word — "subscribe to become an artist should not be a separate
+            tab in settings like artist tools". Nothing is orphaned: /subscription
+            is the tile's own screen, and it still takes and ends the plan. */}
         {me ? (
         <>
-        <div style={head}>YOUR PLAN</div>
-        <div style={grid}>
-          {role !== "org" ? (
-            <Tile icon={ICONS.artist("#EC4899")} onClick={flipArtist} disabled={pending} ariaLabel="Artist tools" pressed={artistOn} badge={<span style={{ ...badgeStyle(artistOn), background: artistOn ? "rgba(236,72,153,.18)" : "var(--el)", color: artistOn ? "#EC4899" : SUB }}>{artistOn ? "PRO ACTIVE" : "PRO"}</span>}>
-              Artist tools
-            </Tile>
-          ) : null}
-          {!isDancer || artistOn ? (
-            <Tile icon={ICONS.subscription("#F59E0B")} href="/subscription" onNavigate={go} badge={artistOn && plan ? <span style={badgeStyle(true)}>until {dateWords(plan.until)}</span> : undefined}>
-              Subscription
-            </Tile>
-          ) : null}
-        </div>
-
-        {/* ── MONEY: a person's own screens, or the first business's desk ── */}
+        {/* ── MONEY: a person's own screens, or their artist page's desk. ⚠ NO
+            GST TILE HERE (26 Sep 2026): a GST number is an ORGANIZATION's, under
+            THIS ORGANIZATION above. ── */}
         <div style={head}>MONEY</div>
         <div style={grid}>
-          {/* THE GST NUMBER, ONCE (11 Sep 2026): only an organization has one, so only an organization sees the tile */}
-          {role === "org" ? (
-            <Tile icon={ICONS.gst("#0EA5E9")} href="/gst" onNavigate={go} badge={<span style={badgeStyle(gstVerified)}>{gstVerified ? "verified" : "needed for events"}</span>}>
-              GST number
-            </Tile>
-          ) : null}
           <Tile icon={ICONS.payments("#22C55E")} href={personal ? "/payments" : `${desk}/payments`} onNavigate={go}>
             {personal ? "Payments" : "Payments & verification"}
           </Tile>
@@ -377,8 +388,8 @@ export function SettingsSheet({
           </Tile>
         </div>
 
-        {/* ── BUSINESS: what the ARTIST PAGE you own accepts. A studio's is in
-            THIS STUDIO above, so the block is not drawn twice. ── */}
+        {/* ── BUSINESS: what the ARTIST PAGE you own accepts. A studio's and an
+            organization's are in their own blocks above, so it is not drawn twice. ── */}
         {biz ? (
           <>
             <div style={head}>BUSINESS</div>
@@ -422,7 +433,7 @@ export function SettingsSheet({
         {/* EDIT PROFILE — portalled to the document root, so it opens OVER this
             sheet rather than inside its scroll (the 16 Sep stacking lesson) */}
         {editOpen && profile ? (
-          <EditProfileSheet profile={profile} isArtist={artistOn} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} />
+          <EditProfileSheet profile={profile} isArtist={Boolean(plan?.active)} onClose={() => setEditOpen(false)} onSaved={() => fire("✓ Profile updated")} />
         ) : null}
 
         {/* ── ENQUIRIES YOU ACCEPT (9000-9030) ── */}

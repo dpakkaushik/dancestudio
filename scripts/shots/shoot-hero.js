@@ -127,6 +127,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
   let orgId = null;
   let userId = null;
   let studioId = null;
+  /* the ORGANIZATION BUSINESS the first account owns (26 Sep 2026) */
+  let orgBizId = null;
   const today = new Date().toISOString().slice(0, 10);
   const until = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
   try {
@@ -148,11 +150,25 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     });
     const shot = shotOf(org);
     orgId = await signUp(org, `hero-org-${stamp}@example.com`);
-    await onboard(org, "EEE Dance Company", "Organization", "New Delhi");
-    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${orgId}`, {
-      method: "PATCH", headers: adminHeaders,
-      body: JSON.stringify({ gstin: `HRO${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString() }),
-    });
+    /* 26 Sep 2026: a PERSON. The organization login is retired; "EEE Dance
+       Company" is this person's own name, they open the studio themselves, and
+       their ORGANIZATION is a business of its own below — GST verified and its
+       mandate granted through the service role, so it is PUBLIC (org_is_public). */
+    await onboard(org, "EEE Dance Company", "User", "New Delhi");
+    {
+      const orgRes = await fetch(`${supabaseUrl}/rest/v1/businesses`, {
+        method: "POST", headers: { ...adminHeaders, Prefer: "return=representation" },
+        body: JSON.stringify({ type: "org", name: "EEE Dance Company Events", city: "New Delhi", visibility: "unlisted", gstin: `HRO${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString(), created_by: orgId, updated_by: orgId }),
+      });
+      if (!orgRes.ok) throw new Error(`could not make the org business: ${orgRes.status} ${await orgRes.text()}`);
+      const [orgBiz] = await orgRes.json();
+      orgBizId = orgBiz.id;
+      await fetch(`${supabaseUrl}/rest/v1/business_members`, { method: "POST", headers: adminHeaders, body: JSON.stringify({ business_id: orgBizId, user_id: orgId, member_role: "owner", created_by: orgId, updated_by: orgId }) });
+      await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
+        method: "POST", headers: adminHeaders,
+        body: JSON.stringify({ kind: "org", user_id: orgId, business_id: orgBizId, plan_key: "org_monthly", price_inr: 0, period: "monthly", status: "active", current_period_start: today, current_period_end: until, granted: true, note: "Granted by shoot-hero.js — nothing charged", created_by: orgId, updated_by: orgId }),
+      });
+    }
     await org.goto(`${BASE}/business`);
     /* ⚠ BY ITS ACCESSIBLE NAME, NOT ITS TEXT (20 Sep 2026, the user: "fix add
        studio button also similarly"). It was a dashed row whose whole content
@@ -163,6 +179,9 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.locator('input[name="name"]').fill("EEE Dance Studio");
     await org.locator('input[name="area"]').fill("Kothrud");
     await pickCity(org, "Pune");
+    /* the sheet asks for a number and an email now (26 Sep 2026) */
+    await org.locator('input[name="phone"]').fill("+919876543210");
+    await org.locator('input[name="contact_email"]').fill(`hero-studio-${stamp}@example.com`);
     await org.getByLabel("Room 1 name").fill("Studio A");
     await org.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await org.getByRole("button", { name: "Create studio" }).click();
@@ -530,11 +549,14 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
       fail += 1;
     }
 
-    /* the organization's Home — the same hero, its logo on the disc, an empty header (none added yet — it may hold ten since 19 Sep 2026), and a QR to its own page */
+    /* THE OWNER'S OWN HOME (26 Sep 2026: a PERSON's — the organization login is
+       retired, so this is a user's Home wearing the same hero: the profile photo
+       on the disc, an empty header (a user holds one), and a QR to its own page.
+       The ORGANIZATION's own home is `/business/{org}`, driven at the end. */
     await org.goto(`${BASE}/`);
     await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
-    check((await discImgs(org)) === 1, "org home: the logo is on the disc");
-    check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (an organization holds up to ten since 19 Sep 2026)");
+    check((await discImgs(org)) === 1, "org home: the profile photo is on the disc");
+    check((await railImgs(org)) === 0, "org home: an empty header — nothing added yet (a user holds one)");
     /* ⚠ THE QR AND THE SHARE ARE TWO CHIPS NOW (21 Sep 2026, the user: "Seprate
        current Qr Code from share option and share to directly send link of that
        profile"). The QR's own name dropped "Share this profile — ", because the
@@ -586,12 +608,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await qrSvg.screenshot({ path: path.join(OUT, "hero-qr-code.png") });
     await qrSheet.getByRole("button", { name: "Done" }).click();
     await qrSheet.waitFor({ state: "hidden", timeout: 15000 });
-    check(await org.getByText(/^Organization(-\d{6})?$/).first().isVisible(), "org home: the role word, with the account number against it");
-    /* ⚠ BOTH FIGURES, ON AN ORGANIZATION TOO (20 Sep 2026, the user: "Organization
-       and Studio still dont have Following section in profile and home"). The
-       Following figure was withheld from an organization because R11 made it
-       follow nothing; `20260920180000_an_organization_follows` lifts that, so the
-       count is real and the sheet behind it opens like everybody else's. */
+    check(await org.getByText(/^User(-\d{6})?$/).first().isVisible(), "org home: the role word — User, since 26 Sep 2026 — with the account number against it");
+    /* BOTH FIGURES, on this person's Home like everybody's */
     check(
       (await org.getByTestId("home-followers").count()) === 1 && (await org.getByTestId("home-following").count()) === 1,
       "org home: Followers AND Following, both drawn and both clickable (20 Sep 2026)"
@@ -601,7 +619,7 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.keyboard.press("Escape").catch(() => {});
     await org.goto(`${BASE}/`);
     await org.getByRole("heading", { name: "EEE Dance Company", exact: true }).waitFor();
-    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the logo is changed behind the pencil beside it");
+    check((await org.getByLabel("Change your photo").count()) === 0, "org home: no ＋ on the disc — the picture is changed behind the pencil beside it");
     /* the chrome, re-cut 19 Sep 2026: THREE in the bar, the DISC is the door to the public page (the eye left Home
        later the same day — the user: "clicking on the profile photo on home tab takes to profile so can remove
        the eye from top right on home"), Stats the chip */
@@ -620,18 +638,16 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        the door rather than to where the door goes, and it went red for a change
        that moved nobody anywhere. Asserting the resolved address is STRICTER:
        a corner pointing at the wrong account would have passed the old line. */
-    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/org/${orgId}`, "org home: the corner opens this organization's own profile (21 Sep 2026)");
+    /* the corner opens this PERSON's own profile (26 Sep 2026: `/person/{id}`,
+       C40 — `/org/{id}` is the organization BUSINESS's page now, driven below) */
+    check((await org.getByRole("link", { name: "Your profile", exact: true }).count()) === 1 && (await org.getByRole("link", { name: "Your profile", exact: true }).getAttribute("href")) === `/person/${orgId}`, "org home: the corner opens this person's own profile (21 Sep 2026; a person's since 26 Sep)");
     check((await org.getByRole("link", { name: "Public view", exact: true }).count()) === 0, "org home: no eye — its public page is the Share chip, and the corner no longer loops");
-    check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 1, "org home: the buttons above the schedule, Enquiry disabled with its reason");
+    /* a plain user's Home carries no Enquiry — they have no artist page for one to land on; the ORGANIZATION's enquiries land on ITS home */
+    check((await org.getByRole("button", { name: /enquiries come to you here/ }).count()) === 0, "org home: no Enquiry on a plain user's Home (the organization's enquiries are its own business's)");
     check((await org.getByRole("button", { name: "Edit profile", exact: true }).count()) === 0, "org home: NO pencil — Edit profile is Settings' first option (19 Sep 2026)");
     check((await org.getByRole("link", { name: "Stats", exact: true }).count()) === 1, "org home: one Stats door — the chip beside the name (a tile until 18 Sep 2026)");
-    /* ⚠ AND IT IS THIS ORGANIZATION'S OWN ADDRESS (22 Sep 2026). `/business/stats`
-       drew the combined dashboard while `/org/{me}/stats` drew the aggregate a
-       VISITOR reads — one subject, two addresses, two screens, and the one an
-       organization wanted was the one that did not name it. Merged the C40 way:
-       `/org/{id}/stats` renders the dashboard when the id is the caller's, and
-       `/business/stats` is a redirect (Rule 14 — it is a bookmarkable screen). */
-    check((await org.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === `/org/${orgId}/stats`, "org home: the Stats chip opens this organization's own address");
+    /* AND IT IS THIS PERSON'S OWN ADDRESS (C57): the chip builds `${subject}/stats` */
+    check((await org.getByRole("link", { name: "Stats", exact: true }).getAttribute("href")) === `/person/${orgId}/stats`, "org home: the Stats chip opens this person's own address");
     /* ⚠ NO "YOUR PICTURES" SHEET SINCE 20 Sep 2026 (the user: "Profile pic edit
        should just be a pencil besides and clciking on photo to view it not
        together in one. Similarly seprate for poster photos"). The in-between
@@ -639,13 +655,14 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
        to SEE it, the pencil beside it CHANGES it, and the posters have a pencil
        of their own on the rail. */
     check((await org.getByRole("button", { name: "Your pictures", exact: true }).count()) === 0, "org home: the in-between 'Your pictures' sheet is gone (20 Sep 2026)");
-    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "org home: a pencil beside the disc, and only that changes the logo");
+    check((await org.getByRole("button", { name: "Change profile picture" }).count()) === 1, "org home: a pencil beside the disc, and only that changes the picture");
     check((await org.getByRole("button", { name: "Edit posters" }).count()) === 1, "org home: the posters have their OWN pencil on the rail");
     await org.getByRole("button", { name: "Change profile picture" }).click();
-    const orgLogo = org.getByRole("dialog", { name: "Logo" });
+    /* "Profile picture", not "Logo" (26 Sep 2026): a person's disc is a picture — the Logo editor went with the organization login */
+    const orgLogo = org.getByRole("dialog", { name: "Profile picture" });
     await orgLogo.waitFor();
-    check(await org.getByText("Logo", { exact: true }).first().isVisible(), "org logo: an organization's disc is its Logo");
-    check((await orgLogo.getByLabel("Change your photo").count()) === 1, "org logo: the picker is in the logo's own editor, reached in ONE press");
+    check((await org.getByRole("dialog", { name: "Logo" }).count()) === 0, "org pictures: no Logo editor — a person's disc is a Profile picture (26 Sep 2026)");
+    check((await orgLogo.getByLabel("Change your photo").count()) === 1, "org pictures: the picker is in the picture's own editor, reached in ONE press");
     await shot("org-pictures");
     await orgLogo.getByRole("button", { name: "Done" }).click().catch(() => {});
     /* and the words are behind the gear */
@@ -669,7 +686,8 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await orgSheet.waitFor();
     /* exact: getByLabel is a case-insensitive SUBSTRING match, so a bare "Age"
        finds any label on the page that merely contains those three letters */
-    check((await org.getByLabel("Age", { exact: true }).count()) === 0, "org edit profile: no age for an organization");
+    /* INVERTED 26 Sep 2026: a PERSON's sheet asks their age (an organization's never did — that sheet is gone with the login) */
+    check((await org.getByLabel("Age", { exact: true }).count()) === 1, "org edit profile: an age field — this is a person's sheet (26 Sep 2026)");
     check((await orgSheet.getByLabel("Change your photo").count()) === 0 && (await orgSheet.getByLabel("Add picture").count()) === 0, "org edit profile: and NO pictures in it — they are behind the disc on Home");
     await shot("org-edit");
     await org.keyboard.press("Escape").catch(() => {});
@@ -677,18 +695,26 @@ const waitRailImgs = (page, n) => page.waitForFunction((want) => document.queryS
     await org.goto(`${BASE}/`);
     await shot("org-home");
 
-    /* ⚠ the two ends of the org merge, driven rather than reasoned about: the
-       old address still resolves (Rule 14), and the new one draws the OWNER's
-       dashboard rather than the visitor's aggregate. The second half is the one
-       that matters — before today, an organization reading its own id got the
-       stranger's version of itself, which is the C32 defect one page on. */
-    await org.goto(`${BASE}/business/stats`);
-    /* the client-side hop, because `/business` carries a loading boundary — see
-       the person's own check for why a redirect under one is a 200 */
-    await org.waitForURL(/\/org\/[^/]+\/stats/, { timeout: 15_000 }).catch(() => {});
-    check(new URL(org.url()).pathname === `/org/${orgId}/stats`, `/business/stats resolves to this organization's own address (read ${new URL(org.url()).pathname})`);
-    await org.goto(`${BASE}/org/${orgId}/stats`, { waitUntil: "networkidle" });
-    check(await org.getByText("Studios · combined").first().isVisible().catch(() => false), "org: its own /org/{me}/stats is the COMBINED dashboard, not the visitor's aggregate");
+    /* ⚠ THE ORGANIZATION IS A BUSINESS OF ITS OWN (26 Sep 2026): the checks that
+       used to read `/business/stats` → `/org/{me}/stats` and the "Studios ·
+       combined" dashboard are DELETED — both were the organization LOGIN's, and
+       an organization runs no studios to combine. What replaces them: the org
+       business's own home renders for its owner, its public page answers a
+       STRANGER (GST verified + mandate live = org_is_public), and that page
+       lists no studios. */
+    await org.goto(`${BASE}/business/${orgBizId}`, { waitUntil: "networkidle" });
+    check(await org.getByRole("heading", { name: "EEE Dance Company Events", exact: true }).isVisible().catch(() => false), "org business: its own home renders for its owner, headed with its name");
+    check((await org.getByRole("link", { name: "Events", exact: true }).count()) >= 1, "org business: an Events tile on ITS home — the desk is the organization's, not the person's");
+    await shot("org-business-home");
+    {
+      const guestCtx2 = await browser.newContext({ viewport: { width: 430, height: 932 } });
+      const guest2 = await guestCtx2.newPage();
+      const res = await guest2.goto(`${BASE}/org/${orgBizId}`, { waitUntil: "domcontentloaded" });
+      check(res !== null && res.status() === 200, `org business: its public page answers a stranger by its business id (${res ? res.status() : "no response"})`);
+      check((await guest2.getByText("Studios", { exact: true }).count()) === 0, "org business: and lists NO studios — an organization runs none (26 Sep 2026)");
+      await shotOf(guest2)("public-org-guest");
+      await guestCtx2.close();
+    }
 
     await org.close();
 

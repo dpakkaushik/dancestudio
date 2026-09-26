@@ -160,6 +160,11 @@ export function BusinessHub({
   const [rooms, setRooms] = useState<RoomDraft[]>(seedRooms);
   /* a studio names at least one dance style at birth (19 Sep 2026) */
   const [styles, setStyles] = useState<string[]>([]);
+  /* THE STUDIO'S OWN NUMBER AND ADDRESS, REQUIRED (26 Sep 2026, the user: "all
+     profiles created from user or artist require a mobile number, email etc …
+     not take directly what the user used for their login") */
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   /* the pin from the sheet's map, if the owner placed one (11 Sep 2026) */
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
   /* THE ADDRESS FILLS THE FORM (11 Sep 2026). Area and City are written by the
@@ -181,6 +186,8 @@ export function BusinessHub({
         setCity("");
         setRooms(seedRooms());
         setPicked(null);
+        setPhone("");
+        setEmail("");
         if (result.note) setToast(result.note);
       }
       return result;
@@ -191,6 +198,8 @@ export function BusinessHub({
   /* system back closes the sheet that is open, exactly as tapping the scrim does */
   useCloseOnBack(() => setSheetOpen(false), sheetOpen);
 
+  /* ⚠ NEVER TRUE SINCE 26 Sep 2026: the organization login is retired and `role`
+     is `user` for everybody; the two branches below keep reading as a decision */
   const isOrg = role === "org";
   const mine = memberships.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   const theirs = memberships.filter((m) => m.memberRole !== "owner").map((m) => m.tenant);
@@ -207,7 +216,9 @@ export function BusinessHub({
      same badge and mandate afterwards. */
   const isStudio = true;
   const roomsOk = rooms.length > 0 && rooms.every((r) => r.name.trim().length > 0 && r.capacity > 0);
-  const ok = name.trim().length > 0 && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk && styles.length > 0));
+  const phoneOk = /^\+?[0-9][0-9 ]{7,17}$/.test(phone.trim());
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const ok = name.trim().length > 0 && phoneOk && emailOk && (!isStudio || (area.trim().length > 0 && city.length > 0 && roomsOk && styles.length > 0));
   /* R14: the sheet opens only when the gate is open. A button that would be
      refused is not offered; the reason is printed in its place. */
   const gateShut = whyNoStudio;
@@ -419,6 +430,12 @@ export function BusinessHub({
           >
             {DOS_TOOLS.studios.name}
           </div>
+        </div>
+        {/* THE PRICE, ONCE, FROM THE PRICE LIST (26 Sep 2026) — the one fact the
+            cards cannot say until there is one; the Organizations hub prints
+            its own the same way */}
+        <div style={{ fontSize: 11, color: SUB, lineHeight: 1.5, margin: "-4px 2px 12px" }}>
+          {studioPrice ? `A studio is ${priceWords(studioPrice.priceInr, studioPrice.period).replace("/mo", " a month")} once DanceOS has verified it.` : "No studio plan is on offer right now — message DanceOS from Settings › Help & support."}
         </div>
 
         {/* ⚠ YOUR STUDIOS IS EVERYBODY'S SECTION (26 Sep 2026) — it was an
@@ -634,6 +651,16 @@ export function BusinessHub({
                   }}
                 />
               </div>
+
+              {/* ── THE STUDIO'S OWN CONTACT, REQUIRED (26 Sep 2026): shown on its
+                  page as Call and Mail, and never the number or address the person
+                  signed in with — both are the studio's to change from its Settings ── */}
+              <div style={{ fontSize: 12, color: SUB, margin: "14px 0 4px" }}>Mobile number — the studio&apos;s</div>
+              <input name="phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" style={inp} />
+              {phone.trim() && !phoneOk ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 4 }}>A mobile number is 8 to 18 digits.</div> : null}
+              <div style={{ fontSize: 12, color: SUB, margin: "14px 0 4px" }}>Email — the studio&apos;s</div>
+              <input name="email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@example.com" style={inp} />
+              {email.trim() && !emailOk ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 4 }}>That is not an email address.</div> : null}
 
               {/* ── THE DANCE STYLES (19 Sep 2026, the user: "some studios dont
                   show dance styles on profile it is mandatory to have one at

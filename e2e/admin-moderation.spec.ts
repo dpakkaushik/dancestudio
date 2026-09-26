@@ -81,27 +81,24 @@ const PNG_BYTES = Buffer.from(
 );
 const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
 
-/** Onboarding, both kinds (11 Sep 2026): who first, one name, the city, the
- *  required photo — then a person picks styles and may add links, and an
- *  ORGANIZATION is done: it is asked for no links, no photos, and files
- *  nothing, because DanceOS reviews its STUDIOS, not the organization. */
-async function onboard(page: Page, name: string, role: "User" | "Organization", city: string) {
+/** Onboarding, ONE kind (26 Sep 2026: the organization login is retired, and
+ *  the "Organization" tap with it): one name, the city, the required photo, the
+ *  styles, optional links. Whoever opens a studio afterwards is a person. */
+async function onboard(page: Page, name: string, role: "User", city: string) {
   await expect(page).toHaveURL(/\/onboarding/);
-  const isOrg = role === "Organization";
-  if (isOrg) await page.getByText("Organization", { exact: true }).click();
+  void role;
+  await expect(page.getByText("Organization", { exact: true })).toHaveCount(0);
   await page.locator('input[name="name"]').fill(name);
   await pickCity(page, city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   // the cropper (18 Sep 2026): every picture is confirmed in "Crop & preview" before it goes up
   await page.getByRole("dialog", { name: "Crop & preview" }).getByRole("button", { name: "Use this photo" }).click();
-  await expect(page.getByLabel(isOrg ? "Your logo" : "Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByLabel("Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  if (!isOrg) {
-    await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
-    await page.getByRole("button", { name: "Continue · 1 style" }).click();
-    await page.getByRole("button", { name: "Skip for now →" }).click();
-  }
+  await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 style" }).click();
+  await page.getByRole("button", { name: "Skip for now →" }).click();
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
@@ -197,13 +194,15 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await anonContext?.close();
   });
 
-  test("an organization opens a studio; DanceOS verifies the studio; its subscription puts it on Discover", async () => {
+  test("a person opens a studio; DanceOS verifies the studio; its subscription puts it on Discover", async () => {
     ownerId = await signUp(owner, `mod-owner-${stamp}@example.com`);
-    await onboard(owner, orgName, "Organization", "Pune");
+    /* 26 Sep 2026: a USER — any person opens a studio (20260926090000), and the
+       organization login is retired. `orgName` is the OWNER's own name now. */
+    await onboard(owner, orgName, "User", "Pune");
 
-    // 11 Sep 2026: nothing gates CREATING a studio but being an organization —
-    // the hub offers Add studio from the first minute. What DanceOS reviews is
-    // the STUDIO, below, once it exists and has something to show.
+    // nothing gates CREATING a studio at all — the hub offers Add studio from
+    // the first minute. What DanceOS reviews is the STUDIO, below, once it
+    // exists and has something to show.
     await owner.goto("/business");
     await expect(owner.getByRole("button", { name: "Add studio" })).toBeVisible();
     await expect(owner.getByRole("status", { name: /^Cannot add a studio: / })).toHaveCount(0);
@@ -224,6 +223,9 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.locator('input[name="name"]').fill(studioName);
     await owner.locator('input[name="area"]').fill("Baner");
     await pickCity(owner, "Pune");
+    /* the sheet asks for a number and an email now (26 Sep 2026) */
+    await owner.locator('input[name="phone"]').fill("+919876543210");
+    await owner.locator('input[name="contact_email"]').fill(`mod-studio-${stamp}@example.com`);
     await owner.getByLabel("Room 1 name").fill("Studio A");
     await owner.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await owner.getByRole("button", { name: "Create studio" }).click();
@@ -379,12 +381,12 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await expect(owner.getByText(`${studioName} has been taken off Discover`)).toBeVisible();
     await expect(owner.getByText(/Two people say these photos belong to another studio/)).toBeVisible();
 
-    // the organization itself is untouched — this is the whole point of the
-    // screen. ⚠ AND THE TICK IS THE STUDIO'S, NOT THE ORGANIZATION'S (11 Sep
-    // 2026: nobody reviews an organization any more, so its Home wears no badge
-    // and no standing card). What still wears the badge is the STUDIO — being
-    // taken off Discover is a moderation decision, not the withdrawal of a
-    // verification, and the two must not be confused.
+    // the owner themselves is untouched — this is the whole point of the
+    // screen. ⚠ AND THE TICK IS THE STUDIO'S (11 Sep 2026: nobody reviews the
+    // account behind a studio, so its Home wears no badge and no standing card;
+    // 26 Sep 2026: that account is a plain person). What still wears the badge
+    // is the STUDIO — being taken off Discover is a moderation decision, not the
+    // withdrawal of a verification, and the two must not be confused.
     await owner.goto("/");
     await expect(owner.getByRole("status", { name: /^Verification:/ })).toHaveCount(0);
     await owner.goto("/business");

@@ -42,11 +42,11 @@ $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 
-# a verified organization of this run's own, so nothing pre-existing is touched
+# an owner of this run's own, so nothing pre-existing is touched (26 Sep 2026: a PERSON - the
+# organization login is retired, and any account opens a studio)
 $email = "tc-owner-$stamp@example.com"
 $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
-Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $u.id; full_name = "Col Owner $stamp"; role = "org"; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $u.id; full_name = "Col Owner $stamp"; role = "user"; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
 $owner = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
 $H = Api $owner.access_token
 

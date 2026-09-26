@@ -4,7 +4,6 @@ import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
 import { findStudiosAttended } from "@/repositories/enrollments";
-import { findMyOrgTenantId } from "@/repositories/orgStanding";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findPublicPerson, type PublicPerson } from "@/repositories/publicPerson";
@@ -50,7 +49,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      is the chrome's now — so the layout reads them once for every page instead
      of this page reading them for one. Two fewer reads here, and the two they
      replaced in the layout ride a batch that was already being awaited. */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, trainsAt, eventsHostId] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, trainsAt] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -74,10 +73,8 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
        yourself and on nobody else's view of you. An organization books nothing
        (R11), so it is not asked. */
     role === "org" ? Promise.resolve([]) : findStudiosAttended(supabase, userId).catch(() => []),
-    /* an ORGANIZATION's own hosting row (R15) — where an enquiry to it lands,
-       and the one id the button row needs that `findPublicPerson` cannot
-       carry (21 Sep 2026). A person has none and is not asked. */
-    role === "org" ? findMyOrgTenantId(supabase).catch(() => null) : Promise.resolve(null),
+    /* ⚠ `findMyOrgTenantId` LEFT THIS LIST (26 Sep 2026) with the organization
+       login: `my_org_business()` is dropped, and every profile here is a person's */
   ]);
   /* THE HEADER (15 Sep 2026): the KIND decides how many — one for a user, five
      for an artist, ten for an organization (19 Sep 2026) — the same rule the
@@ -118,7 +115,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       businesses={businesses}
       memberships={memberships}
       trainsAt={trainsAt}
-      eventsHostId={eventsHostId}
+      eventsHostId={null}
       plan={plan}
     />
   );

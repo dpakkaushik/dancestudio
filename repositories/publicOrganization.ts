@@ -3,12 +3,15 @@ import type { SocialLink } from "@/types/profile";
 
 /** AN ORGANIZATION'S PUBLIC PAGE (18 Sep 2026, the user: "should show
  *  organization profile page, and the same should reflect inside the event cards
- *  with photo" — amending R9). Three SECURITY DEFINER reads, each answering only
- *  for a PUBLIC organization (one whose events may be public, or that runs a
- *  listed studio) and handing back exactly the columns a stranger may see:
- *  `public_organization`, `public_organization_studios`, `event_host_cards`
- *  (`20260918173000_an_organization_has_a_page.sql`). The organization's
- *  `profiles` row itself stays as private as R12 made it. */
+ *  with photo" — amending R9). SECURITY DEFINER reads, each answering only for a
+ *  PUBLIC organization and handing back exactly the columns a stranger may see.
+ *
+ *  ⚠ KEYED ON THE BUSINESS SINCE 26 Sep 2026 (`20260926120000`): the
+ *  organization login is retired, an organization is a `businesses` row of type
+ *  `org`, and "public" means its GST number is verified AND its own
+ *  subscription is live (`org_is_public`). `id` and `hostBusinessId` are the
+ *  same id now — the row is its own host. `public_organization_studios` is
+ *  DROPPED: an organization runs no studios. */
 
 export interface PublicOrganization {
   id: string;
@@ -16,10 +19,11 @@ export interface PublicOrganization {
   city: string | null;
   photoPath: string | null;
   socials: SocialLink[];
+  /** its GST number is verified (26 Sep 2026) */
   verified: boolean;
   since: string;
-  /** the hosting row its events hang off (R15) — null if none was ever made; since
-   *  19 Sep 2026 also what an enquiry to the organization is sent to */
+  /** what its events hang off and what an enquiry is sent to — the same id as
+   *  `id` since 26 Sep 2026, kept so nothing that reads it has to learn that */
   hostBusinessId: string | null;
   /** the Call button's number (19 Sep 2026) — the organization's, published from Edit profile */
   phone: string | null;
@@ -30,15 +34,6 @@ export interface PublicOrganization {
   lng: number | null;
   /** its own account number, beside the word ORGANIZATION (20 Sep 2026) */
   memberNo: number | null;
-}
-
-export interface PublicOrganizationStudio {
-  id: string;
-  name: string;
-  area: string | null;
-  city: string | null;
-  photoPath: string | null;
-  verifiedAt: string | null;
 }
 
 /** who hosts an event, as an event card prints it: a name, a picture, and the
@@ -86,21 +81,18 @@ export async function findPublicOrganization(supabase: SupabaseClient, orgId: st
 /** A PUBLIC ORGANIZATION'S TEAM (push 2, 19 Sep 2026): the confirmed people it
  *  named, owners first — what its page prints under OWNER and TEAM. Empty for a
  *  private organization, by the definer read's own rule.
- *  ⚠ 20 Sep 2026 (the user's list A): three labels are PUBLISHED — Owner,
- *  Studio owner (which names the studio it owns) and Event team. A plain
- *  `member` is the organization's own note and the definer read leaves it out,
- *  so the page cannot print somebody the organization did not mean to name. */
+ *  ⚠ TWO LABELS ARE PUBLISHED SINCE 26 Sep 2026 — Owner and Event team; the
+ *  Studio owner label went with the studios an organization no longer runs. A
+ *  plain `member` is the organization's own note and the definer read leaves it
+ *  out, so the page cannot print somebody the organization did not mean to name. */
 export interface PublicOrganizationTeamMember {
   memberId: string;
   userId: string;
-  role: "owner" | "studio_owner" | "event_team";
+  role: "owner" | "event_team";
   name: string;
   photoPath: string | null;
   city: string | null;
   isArtist: boolean;
-  /** the studio a `studio_owner` owns — null for the other two labels */
-  businessId: string | null;
-  businessName: string | null;
 }
 
 export async function findPublicOrganizationTeam(supabase: SupabaseClient, orgId: string): Promise<PublicOrganizationTeamMember[]> {
@@ -108,32 +100,18 @@ export async function findPublicOrganizationTeam(supabase: SupabaseClient, orgId
   if (error) {
     throw new Error(`publicOrganization.team failed: ${error.message}`);
   }
-  return ((data ?? []) as Array<{ member_id: string; user_id: string; role: "owner" | "studio_owner" | "event_team"; full_name: string; photo_path: string | null; city: string | null; is_artist: boolean; business_id: string | null; business_name: string | null }>).map((r) => ({
-    memberId: r.member_id,
-    userId: r.user_id,
-    role: r.role,
-    name: r.full_name,
-    photoPath: r.photo_path,
-    city: r.city,
-    isArtist: Boolean(r.is_artist),
-    businessId: r.business_id ?? null,
-    businessName: r.business_name ?? null,
-  }));
-}
-
-export async function findPublicOrganizationStudios(supabase: SupabaseClient, orgId: string): Promise<PublicOrganizationStudio[]> {
-  const { data, error } = await supabase.rpc("public_organization_studios", { p_org_id: orgId });
-  if (error) {
-    throw new Error(`publicOrganization.studios failed: ${error.message}`);
-  }
-  return ((data ?? []) as Array<{ id: string; name: string; area: string | null; city: string | null; photo_path: string | null; verified_at: string | null }>).map((r) => ({
-    id: r.id,
-    name: r.name,
-    area: r.area,
-    city: r.city,
-    photoPath: r.photo_path,
-    verifiedAt: r.verified_at,
-  }));
+  return ((data ?? []) as Array<{ member_id: string; user_id: string; role: string; full_name: string; photo_path: string | null; city: string | null; is_artist: boolean }>)
+    /* a word the page has no group for is dropped rather than drawn under the wrong one */
+    .filter((r) => r.role === "owner" || r.role === "event_team")
+    .map((r) => ({
+      memberId: r.member_id,
+      userId: r.user_id,
+      role: r.role as "owner" | "event_team",
+      name: r.full_name,
+      photoPath: r.photo_path,
+      city: r.city,
+      isArtist: Boolean(r.is_artist),
+    }));
 }
 
 /** the hosts of a list of events, in one read — a card per public host, keyed by the hosting row */

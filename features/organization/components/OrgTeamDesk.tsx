@@ -20,29 +20,28 @@ import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { OrgAskRole, OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam";
 
-/** AN ORGANIZATION'S TEAM DESK — `/business/team`, the Team tile on an
- *  organization's Home (push 2, 19 Sep 2026; the user: "You add a user or artist
- *  in Team section for organization to label them as owner"). Until today the
- *  tile opened the prototype's own "nothing here yet", because an organization
- *  is ONE LOGIN (8 Sep 2026) and there was no table to put a person in.
+/** AN ORGANIZATION'S TEAM DESK — `/business/{id}/team`, the Team tile on an
+ *  organization's own home (push 2, 19 Sep 2026; the user: "You add a user or
+ *  artist in Team section for organization to label them as owner"). Until then
+ *  the tile opened the prototype's own "nothing here yet", because an
+ *  organization was ONE LOGIN (8 Sep 2026) and there was no table to put a
+ *  person in.
  *
- *  THERE STILL IS ONE LOGIN. What this desk keeps is `organization_members`:
- *  the people the organization NAMES on its public page — as its OWNER, or on
- *  its TEAM — each ASKED and CONFIRMED like every roster in this app (a crew's,
- *  a class's, a studio's), because a public page is a claim about the person
- *  on it. Owner and Member are LABELS: they change what `/org/{id}` prints and
- *  give nobody a key to anything. The desk is the crew desk's shape (S_crewmanage
- *  16318, one section): a row per person with the label's colour on its edge,
- *  ASKED IS NOT JOINED, Make owner / Make member, Remove or Withdraw, and
- *  "+ Add to the team" opening SEARCH DANCEOS, THEN ASK THEM. */
+ *  ⚠ THE LOGIN IS RETIRED (26 Sep 2026): an organization is a `businesses` row a
+ *  person opens, and this desk is that organization's, keyed on its id —
+ *  `/business/team` was the login's one desk and redirects to `/organizations`.
+ *  What it keeps is `organization_members`: the people the organization NAMES
+ *  on its public page — as its OWNER, on its EVENT TEAM, or as a member — each
+ *  ASKED and CONFIRMED like every roster in this app (a crew's, a class's, a
+ *  studio's), because a public page is a claim about the person on it. Owner
+ *  and Member are LABELS; Event team may run its events (R40). ⚠ `studio_owner`
+ *  is GONE with the studios: an organization runs none, so there is no seat to
+ *  hand out and the dropdown that named a studio is deleted rather than left
+ *  empty. The desk is the crew desk's shape (S_crewmanage 16318, one section). */
 
-/* ⚠ FOUR LABELS SINCE 20 Sep 2026 (the user's list A: Owner · Studio owner ·
-   Event Team · Other Team Members). `studio_owner` is amber like Owner because
-   it IS one: it writes a real owner seat on the studio it names. */
-const ROLE_TINT: Record<OrgTeamRole, string> = { owner: "#F59E0B", studio_owner: "#F59E0B", event_team: "#8B5CF6", member: "#3B82F6" };
-const ROLE_WORD: Record<OrgTeamRole, string> = { owner: "Owner", studio_owner: "Studio owner", event_team: "Event team", member: "Other team member" };
-/* what the ASK may offer — a studio-owner seat is real power over a studio, so
-   it is never given to somebody who has not said yes yet (the RPC refuses it) */
+/* ⚠ THREE LABELS SINCE 26 Sep 2026 (Owner · Event team · Other team member) */
+const ROLE_TINT: Record<OrgTeamRole, string> = { owner: "#F59E0B", event_team: "#8B5CF6", member: "#3B82F6" };
+const ROLE_WORD: Record<OrgTeamRole, string> = { owner: "Owner", event_team: "Event team", member: "Other team member" };
 const ASK_ROLES: ReadonlyArray<readonly [OrgAskRole, string]> = [
   ["owner", "As owner"],
   ["event_team", "As event team"],
@@ -54,7 +53,7 @@ const ASK_ROLES: ReadonlyArray<readonly [OrgAskRole, string]> = [
    broke both (20 Sep 2026). */
 const ASK_PHRASE: Record<OrgAskRole, string> = { owner: "an owner", event_team: "on the event team", member: "on the team" };
 
-export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: string; orgName: string; members: OrgTeamMember[]; /** the studios this organization runs — the Studio owner dropdown's options (20 Sep 2026) */ studios?: Array<{ id: string; name: string }> }) {
+export function OrgTeamDesk({ orgId, orgName, members }: { /** the ORGANIZATION BUSINESS this desk is (26 Sep 2026) */ orgId: string; orgName: string; members: OrgTeamMember[] }) {
   const router = useRouter();
   const [add, setAdd] = useState(false);
   const [askRole, setAskRole] = useState<OrgAskRole>("member");
@@ -109,7 +108,7 @@ export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: 
         ))}
       </div>
       {/* the one fact the screen cannot show: what these labels are NOT */}
-      <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.45, margin: "0 2px 12px" }}>Owner and Team are labels on your public page. They give nobody a login to this organization or a seat on any studio&apos;s team.</div>
+      <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.45, margin: "0 2px 12px" }}>Owner and Team are labels on this organization&apos;s public page; Event team may run its events. Nobody here gets a login or a seat on any studio.</div>
       {error ? (
         <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>
           {error}
@@ -146,8 +145,6 @@ export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: 
                   ) : (
                     <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: rc, textTransform: "uppercase", marginTop: 1 }}>
                       {ROLE_WORD[m.role]}
-                      {/* a studio owner owns ONE named studio — the label means nothing without it */}
-                      {m.role === "studio_owner" && m.businessName ? ` · ${m.businessName}` : ""}
                     </div>
                   )}
                   <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 2 }}>
@@ -159,42 +156,21 @@ export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: 
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
               {/* a row only offers what it can actually change: a label moves only once they have said yes */}
-              {/* ⚠ THE LABEL IS A DROPDOWN NOW (20 Sep 2026), not a toggle — there
-                  are four of them, and one of them names a studio. A plain
-                  <select> so the whole list is one press on a phone. */}
+              {/* ⚠ THE LABEL IS A DROPDOWN (20 Sep 2026), not a toggle — a plain
+                  <select> so the whole list is one press on a phone. The studio
+                  rows it carried are gone with the studios (26 Sep 2026). */}
               {!pending ? (
                 <select
                   aria-label={`What ${m.name} is`}
                   disabled={busy}
-                  value={m.role === "studio_owner" ? `studio_owner:${m.businessId ?? ""}` : m.role}
+                  value={m.role}
                   onChange={(e) => {
-                    const [role, biz] = e.target.value.split(":");
-                    /* ⚠ SAY THAT A SEAT MOVED (20 Sep 2026, the user's answer 2:
-                       "fix in best way"). Studio owner is not a word — it writes
-                       a real owner row on that studio, and taking it away takes
-                       the seat back. The toast said only the new label, so the
-                       one label on this screen that changes who can RUN a studio
-                       looked exactly like the three that change nothing. */
-                    const was = m.role === "studio_owner" ? m.businessName : null;
-                    const now = role === "studio_owner" ? (studios.find((s) => s.id === biz)?.name ?? null) : null;
-                    const word = role === "studio_owner" ? "Studio owner" : ROLE_WORD[role as OrgTeamRole];
-                    const note = now
-                      ? `${m.name} → Studio owner · now runs ${now}`
-                      : was
-                        ? `${m.name} → ${word} · no longer runs ${was}`
-                        : `${m.name} → ${word}`;
-                    void run(() => setOrganizationMemberRoleAction({ memberId: m.id, role: role as OrgTeamRole, businessId: biz || null }), note);
+                    const role = e.target.value as OrgTeamRole;
+                    void run(() => setOrganizationMemberRoleAction({ memberId: m.id, role, orgId }), `${m.name} → ${ROLE_WORD[role]}`);
                   }}
                   style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", background: "var(--el)", color: "var(--text)", border: "none", fontFamily: "inherit" }}
                 >
                   <option value="owner">Owner</option>
-                  {/* one row per studio this organization runs — "Studio owner with
-                      drop down for multiple studios", and naming it IS the grant */}
-                  {studios.map((s) => (
-                    <option key={s.id} value={`studio_owner:${s.id}`}>
-                      Studio owner · {s.name}
-                    </option>
-                  ))}
                   <option value="event_team">Event team</option>
                   <option value="member">Other team member</option>
                 </select>
@@ -205,7 +181,7 @@ export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: 
                 aria-label={pending ? `Withdraw the ask to ${m.name}` : `Remove ${m.name}`}
                 onClick={() =>
                   void run(
-                    () => (pending ? withdrawOrganizationAskAction({ memberId: m.id }) : removeOrganizationMemberAction({ memberId: m.id })),
+                    () => (pending ? withdrawOrganizationAskAction({ memberId: m.id, orgId }) : removeOrganizationMemberAction({ memberId: m.id, orgId })),
                     pending ? `Withdrawn — ${m.name} is no longer being asked` : `${m.name} is off your page`
                   )
                 }
@@ -261,7 +237,7 @@ export function OrgTeamDesk({ orgId, orgName, members, studios = [] }: { orgId: 
               pickLabel={(p) => `Ask ${p.fullName} to be named ${ASK_PHRASE[askRole]}`}
               onPick={(p) => {
                 setAdd(false);
-                void run(() => askOrganizationMemberAction({ userId: p.id, role: askRole }), `📨 ${p.fullName} asked to confirm`);
+                void run(() => askOrganizationMemberAction({ orgId, userId: p.id, role: askRole }), `📨 ${p.fullName} asked to confirm`);
               }}
             />
           </div>

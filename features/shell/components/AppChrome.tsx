@@ -134,15 +134,19 @@ export interface SwitcherItem {
   label: string;
   /** what this is to you — "Your profile", "Owner", "Faculty", "Crew you lead" */
   sub: string;
-  kind: "me" | "studio" | "crew";
+  /* `org` since 26 Sep 2026: an organization is a business a person owns, run from here like a studio */
+  kind: "me" | "studio" | "org" | "crew";
 }
 
-const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studio: "#3B82F6", crew: "#DC2626" };
+const SWITCH_TINT: Record<SwitcherItem["kind"], string> = { me: "#5AC8FA", studio: "#3B82F6", org: "#1D4ED8", crew: "#DC2626" };
 
 /* AN ENTITY'S HOME (18 Sep 2026): a studio's own home and a crew's, with their
    inboxes — the pages that wear the entity's Home · Inbox bar instead of the
    main bar. Matched on a uuid so the static /business/stats, /earnings and /team
-   are not mistaken for a studio. */
+   (all redirects since 26 Sep 2026) are not mistaken for a studio. ⚠ An
+   ORGANIZATION's home is `/business/{uuid}` too (26 Sep 2026), so the same
+   match gives it the same bar; the chrome cannot tell the two apart from the
+   path, and does not need to — the bar's three doors are the same. */
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const STUDIO_HOME_RE = new RegExp(`^/business/(${UUID})(/inbox)?$`, "i");
 const CREW_HOME_RE = new RegExp(`^/crews/(${UUID})/(manage|inbox)$`, "i");
@@ -164,6 +168,9 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   /* the two that were tabs until 15 Sep 2026 */
   [/^\/profile$/, "Profile"],
   [/^\/stats$/, "Stats"],
+  [/^\/subscription$/, "Subscription"],
+  /* the Organizations tile's word (26 Sep 2026) */
+  [/^\/organizations$/, "Organizations"],
   [/^\/classes$/, "Classes"],
   [/^\/c\/[^/]+$/, "Class"],
   /* the Home grid's own words (18 Sep 2026): Classes and Events are two tiles now */
@@ -193,6 +200,10 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/business\/[^/]+\/events\/[^/]+\/edit$/, "Edit event"],
   [/^\/business\/[^/]+\/events\/[^/]+$/, "Manage event"],
   [/^\/business\/[^/]+\/staff$/, "Team"],
+  /* an organization's own desks (26 Sep 2026) */
+  [/^\/business\/[^/]+\/team$/, "Team"],
+  [/^\/business\/[^/]+\/gst$/, "GST number"],
+  [/^\/business\/[^/]+\/subscription$/, "Subscription"],
   [/^\/business\/[^/]+\/memberships$/, "Memberships"],
   [/^\/business\/[^/]+\/assets$/, "Assets"],
   [/^\/e\/[^/]+$/, "Event"],
@@ -281,13 +292,12 @@ export interface ChromeSettings {
   role: ProfileRole;
   plan: ArtistPlan | null;
   isAdmin: boolean;
-  gstVerified: boolean;
   /** ⚠ the artist page this account OWNS, or null — never a business it is
    *  merely on the team of, and never an arbitrary pick among the ones it owns */
   ownBusiness: Tenant | null;
-  /** every studio this account is on the team of, so the sheet can be THAT
-   *  studio's while you are inside it */
-  studios: Tenant[];
+  /** every studio AND organization this account is on the team of (26 Sep
+   *  2026), so the sheet can be THAT one's while you are inside it */
+  businesses: Tenant[];
 }
 
 export function AppChrome({
@@ -368,13 +378,13 @@ export function AppChrome({
           profile: settings.profile,
           role: settings.role,
           plan: settings.plan,
-          gstVerified: settings.gstVerified,
           business: settings.ownBusiness,
         };
         if (!hereItem) return mine;
-        if (hereItem.kind === "studio") {
-          const tenant = settings.studios.find((t) => t.id === hereItem.key);
-          return tenant ? { kind: "studio", tenant } : mine;
+        if (hereItem.kind === "studio" || hereItem.kind === "org") {
+          /* the same row the switcher named — a studio's or, since 26 Sep 2026, an organization's */
+          const tenant = settings.businesses.find((t) => t.id === hereItem.key);
+          return tenant ? { kind: hereItem.kind, tenant } : mine;
         }
         if (hereItem.kind === "crew") return { kind: "crew", crew: { id: hereItem.key, name: hereItem.label } };
         return mine;
@@ -748,6 +758,10 @@ export function AppChrome({
           so a screen reader names all of them. ── */}
       {showBar && (
         <nav
+          /* ⚠ still "Studio" for an organization's home too (26 Sep 2026): the chrome
+             cannot tell the two apart from the path, and `shoot-hero` locates the bar by
+             this word — an organization's bar being called Studio is the price of
+             not adding a read to every page for a label */
           aria-label={entity ? (entity.kind === "studio" ? "Studio" : "Crew") : "Main"}
           style={{
             position: "fixed",

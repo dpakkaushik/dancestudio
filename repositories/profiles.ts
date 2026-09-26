@@ -142,15 +142,8 @@ export async function updateMyProfile(supabase: SupabaseClient, input: MyProfile
   }
 }
 
-/** AN ORGANIZATION'S PIN (19 Sep 2026, push 2): `set_my_place` refuses a person
- *  and a point outside India; both null clears it. The page's Location button
- *  opens the pin once it is set. */
-export async function setMyPlace(supabase: SupabaseClient, input: { lat: number | null; lng: number | null }): Promise<void> {
-  const { error } = await supabase.rpc("set_my_place", { p_lat: input.lat, p_lng: input.lng });
-  if (error) {
-    throw new Error(error.message);
-  }
-}
+/* ⚠ `setMyPlace` LEFT on 26 Sep 2026 with `set_my_place` (`20260926120000`): an
+   organization's pin is its business row's now — `setTenantLocation`. */
 
 /** WHO, AMONG THESE PEOPLE, IS AN ARTIST RIGHT NOW. The plan is a row on
  *  artist_plans_legacy, own-rows under RLS, so the badge beside somebody ELSE's name

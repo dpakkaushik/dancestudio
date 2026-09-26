@@ -5,14 +5,13 @@ import { ActionRow, CallButton, LocationButton, MailButton, mapsPinHref } from "
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
-import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
 import { Group, PROFILE_RING, Row, TYPE } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
-import type { PublicOrganization, PublicOrganizationStudio, PublicOrganizationTeamMember } from "@/repositories/publicOrganization";
+import type { PublicOrganization, PublicOrganizationTeamMember } from "@/repositories/publicOrganization";
 import { enquiryTypesFor } from "@/types/enquiry";
 import type { DanceEvent } from "@/types/event";
 
@@ -40,38 +39,34 @@ import type { DanceEvent } from "@/types/event";
  *  Edit profile (`set_my_place`), Maps by name and city until then. **Stats**
  *  opens THIS organization's standing — its studios' rows — for a visitor.
  *
- *  Not in search's People (R9, R11 stand); its `profiles` row stays private
- *  (R12). Readable signed out. */
+ *  ⚠ AN ORGANIZATION IS A BUSINESS A PERSON OPENS SINCE 26 Sep 2026: `org.id` is
+ *  its `businesses` row, following it is following the BUSINESS (kind
+ *  "business" on the bell), an enquiry lands on the row itself, and there is
+ *  NO Studios group — it runs none — and no "N studios" in the meta line. The
+ *  owner reads this page exactly as a visitor does (a studio's owner reads
+ *  `/studio/{id}` the same way); their own screen is `/business/{id}`, so
+ *  `isMe` is gone. A studio follows nobody, so Following is not a figure here. */
 
 const monthYear = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
 export function OrganizationPublicPage({
   org,
-  studios,
   events,
   team = [],
   header = [],
-  isMe = false,
   following = false,
   followers = null,
-  followingN = null,
   signedIn = false,
 }: {
   org: PublicOrganization;
-  studios: PublicOrganizationStudio[];
   events: DanceEvent[];
   /** THE TEAM (push 2): the confirmed people it named — owners first */
   team?: PublicOrganizationTeamMember[];
-  /** THE HEADER PICTURES (19 Sep 2026): up to ten, the organization's own */
+  /** THE HEADER PICTURES: up to ten, the organization's own `studio_photos` (26 Sep 2026) */
   header?: HeaderPhoto[];
-  /** the organization looking at its own page: no Follow, no Enquiry */
-  isMe?: boolean;
   following?: boolean;
-  /** the live follower count, printed on the Follow button (19 Sep 2026, later) */
+  /** the live follower count, printed on the Follow bell (19 Sep 2026, later) */
   followers?: number | null;
-  /** and how many it follows (20 Sep 2026) — the second figure every other
-   *  profile has had, and the one the user asked for by name */
-  followingN?: number | null;
   signedIn?: boolean;
 }) {
   /* ⚠ BLUE, BECAUSE IT IS AN ORGANIZATION (20 Sep 2026, the user's colour list).
@@ -89,13 +84,10 @@ export function OrganizationPublicPage({
      your own profile should show same buttons which you see on discover") —
      `ActionRow` sizes its grid by how many cells it gets, so dropping this one
      re-laid out the three beside it. */
-  const asksGoHere = Boolean(org.hostBusinessId) && enquiryTypesFor("org").length > 0;
-  const canAsk = !isMe && asksGoHere;
-  /* ⚠ THREE PUBLISHED LABELS SINCE 20 Sep 2026 (the user's list A): Owner,
-     Studio owner — which names the studio it owns — and Event team. The definer
-     read leaves a plain `member` out, so there is no fourth group to draw. */
+  const asksGoHere = enquiryTypesFor("org").length > 0;
+  /* ⚠ TWO PUBLISHED LABELS SINCE 26 Sep 2026: Owner and Event team. The definer
+     read leaves a plain `member` out, so there is no third group to draw. */
   const owners = team.filter((m) => m.role === "owner");
-  const studioOwners = team.filter((m) => m.role === "studio_owner");
   const eventTeam = team.filter((m) => m.role === "event_team");
   /* the Location button opens the organization's own pin once it has placed itself (push 2) */
   const pinHref = org.lat != null && org.lng != null ? mapsPinHref(org.lat, org.lng) : null;
@@ -116,10 +108,6 @@ export function OrganizationPublicPage({
               {org.city ? <span>{org.city}</span> : null}
               {org.city ? <HeroDot /> : null}
               <span>Since {monthYear(org.since)}</span>
-              <HeroDot />
-              <span>
-                {studios.length} studio{studios.length === 1 ? "" : "s"}
-              </span>
             </>
           }
           styles={[]}
@@ -137,34 +125,26 @@ export function OrganizationPublicPage({
             figures={
               <>
                 <Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />
-                {/* ⚠ AND WHAT IT FOLLOWS (20 Sep 2026, the user: "Organization and
-                    Studio still dont have Following section in profile and home").
-                    An organization follows since
-                    `20260920180000_an_organization_follows`, so this is a real
-                    count rather than a zero that could never move. */}
-                <Figure n={followingN} label="Following" />
+                {/* ⚠ NO FOLLOWING FIGURE (26 Sep 2026): a business follows nothing —
+                    `follows.follower_id` references `profiles` — and the login that
+                    used to follow on the organization's behalf is retired */}
               </>
             }
-            /* the three chips (20 Sep 2026) — the QR, the organization's own
-               combined board (or, for a visitor, where each of its studios ranks),
-               and the Follow bell, drawn for every viewer */
-            /* FOLLOW · STATS · QR · SHARE (21 Sep 2026, the user's own order) */
+            /* FOLLOW · QR · SHARE (21 Sep 2026, the user's own order). ⚠ NO STATS
+               CHIP (26 Sep 2026): the board it opened ranked the organization's
+               STUDIOS, and it runs none now — `/org/{id}/stats` redirects here. */
             chips={
               <>
-                {/* not drawn on your own page — you do not follow yourself */}
-                {isMe ? null : (
-                  <FollowToggle
-                    target={{ kind: "person", id: org.id }}
-                    initialFollowing={following}
-                    initialFollowers={followers}
-                    accent={tint}
-                    signedIn={signedIn}
-                    variant="chip"
-                  />
-                )}
-                {/* one address, whoever is looking (22 Sep 2026) — `/org/{id}/stats`
-                draws the combined dashboard when the id is the caller's */}
-            <StatsChip href={`/org/${org.id}/stats`} />
+                {/* a BUSINESS follow — the bell says why when the database would
+                    refuse (the organization's own team cannot follow it) */}
+                <FollowToggle
+                  target={{ kind: "business", id: org.id }}
+                  initialFollowing={following}
+                  initialFollowers={followers}
+                  accent={tint}
+                  signedIn={signedIn}
+                  variant="chip"
+                />
                 <ProfileShare path={`/org/${org.id}`} name={org.name} />
                 <ProfileLink path={`/org/${org.id}`} name={org.name} />
               </>
@@ -178,14 +158,9 @@ export function OrganizationPublicPage({
         {/* no gap of its own — the hero's own bottom padding is it (21 Sep 2026) */}
         <ActionRow>
           {asksGoHere ? (
-            <EnquiryButton
-              tenantId={org.hostBusinessId as string}
-              tenantName={org.name}
-              tenantType="org"
-              signedIn={signedIn}
-              accent={tint}
-              cannotAsk={canAsk ? null : "This is your own page — enquiries come to you here"}
-            />
+            /* the organization's own row is what an enquiry lands on (26 Sep 2026) —
+               `send_enquiry` refuses the organization's own team, in its own words */
+            <EnquiryButton tenantId={org.id} tenantName={org.name} tenantType="org" signedIn={signedIn} accent={tint} />
           ) : null}
           {org.phone ? <CallButton phone={org.phone} /> : null}
           {org.contactEmail ? <MailButton email={org.contactEmail} /> : null}
@@ -193,20 +168,12 @@ export function OrganizationPublicPage({
         </ActionRow>
 
         {/* ── THE ASSOCIATIONS (push 2: "Organization: Owner (one of the users added
-            from team), list of studios they run"): Owner · Team · Studios · Events ── */}
+            from team)"): Owner · Event team · Events. ⚠ NO STUDIOS GROUP since
+            26 Sep 2026 — an organization runs none. ── */}
         {owners.length ? (
           <Group title="Owner" n={owners.length}>
             {owners.map((m) => (
               <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} right="Owner" />
-            ))}
-          </Group>
-        ) : null}
-        {studioOwners.length ? (
-          <Group title="Studio owners" n={studioOwners.length}>
-            {studioOwners.map((m) => (
-              /* the studio is the fact here, so it is the sub-line — and it is a
-                 real seat on that studio, not a word (20 Sep 2026) */
-              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.businessName, m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} right="Studio owner" />
             ))}
           </Group>
         ) : null}
@@ -217,13 +184,6 @@ export function OrganizationPublicPage({
             ))}
           </Group>
         ) : null}
-        <Group title="Studios" n={studios.length}>
-          {studios.length ? (
-            studios.map((s) => <Row key={s.id} href={`/studio/${s.id}`} title={s.name} sub={[s.area, s.city].filter(Boolean).join(", ") || "Studio"} photo={photoUrl(s.photoPath)} right={s.verifiedAt ? "Verified" : undefined} />)
-          ) : (
-            <div style={{ fontSize: 11.5, color: MUTED, padding: "10px 0" }}>No studio on Discover yet.</div>
-          )}
-        </Group>
 
         <div style={{ marginTop: 18 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>

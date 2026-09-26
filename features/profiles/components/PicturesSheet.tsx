@@ -11,6 +11,7 @@ import { useHeaderDraft } from "@/features/media/headerDraft";
 import { MUTED, SUB } from "@/lib/design/tokens";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { Profile } from "@/types/profile";
+import { useEditMode } from "./EditMode";
 import { ProfileDisc } from "./HeroRail";
 import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "./profile-kit";
 
@@ -163,6 +164,9 @@ export function PicturesButton({
 }) {
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState(false);
+  /* ⚠ THE ⊕ IS DRAWN ONLY WHILE THE HOME IS IN EDIT MODE (26 Sep 2026): the
+     pencil in the corner is what makes every editor on a home appear */
+  const { editing: editMode } = useEditMode();
   /* ⚠ TWO CONTROLS, TWO JOBS (20 Sep 2026, the user: "Profile pic edit should
      just be a pencil besides and clicking on photo to view it not together in
      one"). Pressing the picture OPENS THE PICTURE — which is what pressing a
@@ -186,28 +190,30 @@ export function PicturesButton({
       ) : (
         disc
       )}
-      <button
-        type="button"
-        aria-label="Change profile picture"
-        onClick={() => setEditing(true)}
-        style={{
-          position: "absolute",
-          right: -4,
-          bottom: -4,
-          width: 28,
-          height: 28,
-          borderRadius: 999,
-          display: "grid",
-          placeItems: "center",
-          /* the same paint the posters' ⊕ wears, three files over (22 Sep 2026) */
-          ...pictureChipPaint,
-          cursor: "pointer",
-          padding: 0,
-          fontFamily: "inherit",
-        }}
-      >
-        <PlusIcon light />
-      </button>
+      {editMode ? (
+        <button
+          type="button"
+          aria-label="Change profile picture"
+          onClick={() => setEditing(true)}
+          style={{
+            position: "absolute",
+            right: -4,
+            bottom: -4,
+            width: 28,
+            height: 28,
+            borderRadius: 999,
+            display: "grid",
+            placeItems: "center",
+            /* the same paint the posters' ⊕ wears, three files over (22 Sep 2026) */
+            ...pictureChipPaint,
+            cursor: "pointer",
+            padding: 0,
+            fontFamily: "inherit",
+          }}
+        >
+          <PlusIcon light />
+        </button>
+      ) : null}
       {viewing && avatar ? (
         <PhotoLightbox
           shots={[{ key: "avatar", src: avatar, alt: `${profile.fullName} — profile picture`, signed: false }]}
@@ -237,6 +243,9 @@ export function HeaderEditButton({
   headerMax?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const { editing } = useEditMode();
+  /* only while the pencil is pressed (26 Sep 2026) */
+  if (!editing) return null;
   return (
     <>
       <button

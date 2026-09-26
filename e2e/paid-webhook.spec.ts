@@ -585,14 +585,44 @@ test("cashfree webhook for an EVENT TICKET (17 Sep 2026): a priced seat waits fo
   const owner = await signInTestNumber("+919999999999");
   const learner = await signInTestNumber("+918888888888");
 
-  /* an event needs the organization's GST number (11 Sep 2026); the restorer
-     usually leaves the test organization with one — ask, and add one if not */
-  const why = await rpc<string | null>(userHeaders(owner.token), "why_no_event", {});
+  /* AN EVENT IS HOSTED ON AN ORGANIZATION BUSINESS THE OWNER OWNS (26 Sep 2026:
+     the organization login is retired; `my_org_business` and `verify_gstin` are
+     dropped). scripts/ensure-test-phone-profiles.js leaves the test-phone owner
+     with ONE — "Proof Owner Org", GST verified, mandate granted — so the usual
+     path is to find it; a database the restorer has not been run on gets one
+     made here, the way the restorer makes it: the business through the owner's
+     own door, its GST number through verify_business_gstin, and its mandate by
+     the service role (what makes it PUBLIC, so the learner may book). */
+  const ownedOrgs = await rows<{ business_id: string; businesses: { id: string; type: string; gstin_verified_at: string | null; deleted_at: string | null } | null }>(
+    serviceHeaders,
+    `business_members?user_id=eq.${owner.userId}&member_role=eq.owner&deleted_at=is.null&select=business_id,businesses!inner(id,type,gstin_verified_at,deleted_at)&businesses.type=eq.org&businesses.deleted_at=is.null`
+  );
+  let hostId = ownedOrgs.find((r) => r.businesses && r.businesses.type === "org" && !r.businesses.deleted_at)?.business_id ?? null;
+  let madeOrgHere = false;
+  if (!hostId) {
+    const made = await rpc<{ id: string }>(userHeaders(owner.token), "create_business_with_owner", { p_name: `Webhook Org ${stamp}`, p_type: "org", p_area: null, p_city: "Pune" });
+    hostId = made.id;
+    madeOrgHere = true;
+  }
+  const why = await rpc<string | null>(userHeaders(owner.token), "why_no_event", { p_business_id: hostId });
   if (why) {
     /* the placeholder shape is THREE LETTERS then five digits — "E2E" has a digit in it */
-    await rpc(userHeaders(owner.token), "verify_gstin", { p_gstin: `WEB${String(Date.now()).slice(-5)}` });
+    await rpc(userHeaders(owner.token), "verify_business_gstin", { p_business_id: hostId, p_gstin: `WEB${String(Date.now()).slice(-5)}` });
   }
-  const hostId = await rpc<string>(userHeaders(owner.token), "my_org_business", {});
+  const liveMandate = await rows<{ id: string }>(serviceHeaders, `subscriptions?business_id=eq.${hostId}&kind=eq.org&status=eq.active&deleted_at=is.null&select=id`);
+  if (liveMandate.length === 0) {
+    const granted = await fetch(`${supabaseUrl}/rest/v1/subscriptions`, {
+      method: "POST",
+      headers: serviceHeaders,
+      body: JSON.stringify({
+        kind: "org", user_id: owner.userId, business_id: hostId, plan_key: "org_monthly", price_inr: 0, period: "monthly", status: "active",
+        current_period_start: new Date().toISOString().slice(0, 10),
+        current_period_end: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+        granted: true, note: "Granted by paid-webhook.spec.ts — nothing charged", created_by: owner.userId, updated_by: owner.userId,
+      }),
+    });
+    expect(granted.ok).toBeTruthy();
+  }
   const inTenDays = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const eventId = await rpc<string>(userHeaders(owner.token), "save_event", {
     p_business_id: hostId,
@@ -679,5 +709,10 @@ test("cashfree webhook for an EVENT TICKET (17 Sep 2026): a priced seat waits fo
   } finally {
     // the event delete cascades its tiers, bookings, orders and payments
     await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}`, { method: "DELETE", headers: serviceHeaders });
+    /* an org business THIS run made goes with it; the restorer's own one stays,
+       because nine phone-based proofs share it */
+    if (madeOrgHere && hostId) {
+      await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${hostId}`, { method: "DELETE", headers: serviceHeaders });
+    }
   }
 });

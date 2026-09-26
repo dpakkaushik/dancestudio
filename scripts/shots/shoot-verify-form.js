@@ -52,7 +52,8 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 
   const link = await fetch(`${SUPABASE}/auth/v1/admin/generate_link`, { method: "POST", headers: H, body: JSON.stringify({ type: "magiclink", email }) }).then((r) => r.json());
   if (!link.hashed_token) throw new Error(`generate_link failed: ${JSON.stringify(link)}`);
-  await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot Verify ${stamp}`, role: "org", city: "Pune", created_by: link.id, updated_by: link.id });
+  /* 26 Sep 2026: a PERSON owns the studio - the organization login is retired */
+  await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot Verify ${stamp}`, role: "user", city: "Pune", styles: ["Hip-Hop"], created_by: link.id, updated_by: link.id });
   /* an unverified studio — the form's whole reason to exist */
   const [tenant] = await rest("POST", "/rest/v1/businesses", { type: "studio", name: `Shot Verify Studio ${stamp}`, area: "Kothrud", city: "Pune", lat: 18.5204, lng: 73.8567, visibility: "unlisted", created_by: link.id, updated_by: link.id });
   await rest("POST", "/rest/v1/business_members", { business_id: tenant.id, user_id: link.id, member_role: "owner", created_by: link.id, updated_by: link.id });

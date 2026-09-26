@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
+import { useEditMode } from "@/features/profiles/components/EditMode";
 import { STYLES_ROW } from "@/features/profiles/components/profile-band";
 import { StylesSheet } from "@/features/profiles/components/StylesSheet";
 import { dosStyleColor } from "@/lib/constants/styles";
@@ -54,6 +55,9 @@ export function StudioStylesRow({
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /* the ＋ appears with the pencil (26 Sep 2026) — the owner's right, in edit mode */
+  const { editing } = useEditMode();
+  const showPlus = canEdit && editing;
 
   const fire = (m: string) => {
     setToast(m);
@@ -88,7 +92,7 @@ export function StudioStylesRow({
         {(styles.length ? styles : fallback).map((s) => (
           <DosStyleTile key={s} label={s} color={dosStyleColor(s)} aria={`${s} — a style this business teaches`} small />
         ))}
-        {canEdit ? (
+        {showPlus ? (
           <button
             type="button"
             aria-label="Add a dance style"
@@ -98,7 +102,7 @@ export function StudioStylesRow({
             ＋
           </button>
         ) : null}
-        {styles.length === 0 && fallback.length === 0 && !canEdit ? <span style={{ fontSize: 11.5, color: SUB }}>No styles named yet.</span> : null}
+        {styles.length === 0 && fallback.length === 0 && !showPlus ? <span style={{ fontSize: 11.5, color: SUB }}>No styles named yet.</span> : null}
       </div>
       {open ? (
         <StylesSheet

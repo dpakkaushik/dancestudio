@@ -8,6 +8,7 @@ import { HeaderPictures, headerTiles } from "@/features/media/components/HeaderP
 import { PhotoLightbox } from "@/features/media/components/PhotoLightbox";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { useHeaderDraft } from "@/features/media/headerDraft";
+import { useEditMode } from "@/features/profiles/components/EditMode";
 import { ProfileDisc } from "@/features/profiles/components/HeroRail";
 import { PlusIcon, pictureChipPaint, Sheet, sheetBtn } from "@/features/profiles/components/profile-kit";
 import { SUB } from "@/lib/design/tokens";
@@ -133,6 +134,8 @@ export function CrewPostersSheet({ crewId, crewName, photos = [], onClose }: { c
 export function CrewPicturesButton({ crewId, crewName, grad, avatar, canEdit }: { crewId: string; crewName: string; grad: [string, string]; avatar: string | null; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState(false);
+  /* the ⊕ appears with the pencil (26 Sep 2026) — edit mode, on top of the leader's own right */
+  const { editing: editMode } = useEditMode();
   const disc = <ProfileDisc name={crewName} grad={grad} photo={avatar} photoAlt={crewName} testId="hero-disc" />;
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
@@ -148,7 +151,7 @@ export function CrewPicturesButton({ crewId, crewName, grad, avatar, canEdit }: 
       ) : (
         disc
       )}
-      {canEdit ? (
+      {canEdit && editMode ? (
         <button
           type="button"
           aria-label="Change profile picture"
@@ -170,6 +173,9 @@ export function CrewPicturesButton({ crewId, crewName, grad, avatar, canEdit }: 
  *  rail so it reads as a pair with the disc's own. Leader only, same reason. */
 export function CrewPostersButton({ crewId, crewName, photos }: { crewId: string; crewName: string; photos: HeaderPhoto[] }) {
   const [open, setOpen] = useState(false);
+  const { editing } = useEditMode();
+  /* only while the pencil is pressed (26 Sep 2026) */
+  if (!editing) return null;
   return (
     <>
       {/* the same chip every ⊕ in the app wears — `pictureChipPaint`, one

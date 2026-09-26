@@ -46,6 +46,17 @@ const nextConfig: NextConfig = {
     return [
       { source: "/login/phone", destination: "/login/email", permanent: false },
       { source: "/login/verify", destination: "/login/email", permanent: false },
+      /* THE ORGANIZATION LOGIN'S FOUR ADDRESSES (26 Sep 2026). That login is
+         retired — an organization is a business a person opens — so its GST
+         screen, its Team desk, its combined earnings and its dashboard are each
+         that organization's own, under `/business/{id}/…`, and the hub that
+         lists them is where the old addresses land. Each route also redirects
+         on the server; this is the layer that catches a stale TWA before the
+         page does. 307, not 308, for the reason above. */
+      { source: "/gst", destination: "/organizations", permanent: false },
+      { source: "/business/team", destination: "/organizations", permanent: false },
+      { source: "/business/earnings", destination: "/organizations", permanent: false },
+      { source: "/business/stats", destination: "/organizations", permanent: false },
     ];
   },
 };

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findProfileById } from "@/repositories/profiles";
 import { createRoom } from "@/repositories/rooms";
-import { createTenantWithOwner, setTenantLocation } from "@/repositories/tenants";
+import { createTenantWithOwner, setTenantLocation, updateTenantProfile } from "@/repositories/tenants";
 import type { TenantType } from "@/types/tenant";
 
 export interface TenantActionState {
@@ -52,6 +52,16 @@ const createTenantSchema = z
        server a pair of numbers. */
     lat: z.coerce.number().min(6).max(37.5).optional(),
     lng: z.coerce.number().min(68).max(97.5).optional(),
+    /* THE STUDIO'S OWN NUMBER AND ADDRESS, REQUIRED (26 Sep 2026, the user:
+       "all profiles created from user or artist require a mobile number, email
+       etc … not take directly what the user used for their login"). The same
+       two shapes `update_business_profile` keeps as CHECKs, so a refusal is
+       instant here and impossible to walk past there. */
+    phone: z
+      .string()
+      .trim()
+      .regex(/^\+?[0-9][0-9 ]{7,17}$/, "A mobile number is 8 to 18 digits"),
+    email: z.string().trim().email("That is not an email address").max(254),
   })
   /* THE LIST IS GONE (11 Sep 2026): any city the map names is allowed, and the
      database folds it onto a canonical form so Bengaluru and Bangalore stay one
@@ -85,6 +95,8 @@ export async function createTenantAction(
     styles: readRooms(formData.get("styles")),
     lat: (formData.get("lat") as string) || undefined,
     lng: (formData.get("lng") as string) || undefined,
+    phone: formData.get("phone"),
+    email: formData.get("email"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
@@ -161,6 +173,21 @@ export async function createTenantAction(
      save does not undo a studio that did — it is said in the toast, and the same
      map is on the studio's Edit sheet. */
   let note: string | undefined;
+  /* THE NUMBER AND THE ADDRESS (26 Sep 2026) — through the one owner-only door,
+     the moment the studio exists. A refusal does not undo the studio: it is said
+     in the toast, and both fields are on its Edit sheet. */
+  try {
+    await updateTenantProfile(supabase, tenantId, {
+      foundedYear: null,
+      phone: parsed.data.phone,
+      socials: [],
+      enquiryTypes: null,
+      accepts: { upi: true, cards: true, cash: true, bank: false },
+      contactEmail: parsed.data.email,
+    });
+  } catch {
+    note = "Studio created. Its number and email could not be saved just now — add them from Edit studio in its Settings.";
+  }
   if (type === "studio" && parsed.data.lat !== undefined && parsed.data.lng !== undefined) {
     try {
       await setTenantLocation(supabase, {
@@ -172,10 +199,10 @@ export async function createTenantAction(
       });
       revalidatePath("/discover");
     } catch {
-      note = "Studio created. The map pin could not be saved yet — place it again from Edit on the studio's page.";
+      note = note ?? "Studio created. The map pin could not be saved yet — place it again from Edit on the studio's page.";
     }
   } else if (type === "studio") {
-    note = "Studio created on its city's centre. Place the pin from Edit on its page so Discover can say how far away it is.";
+    note = note ?? "Studio created on its city's centre. Place the pin from Edit on its page so Discover can say how far away it is.";
   }
 
   // a redirect to /business would land on the same route and leave the sheet's

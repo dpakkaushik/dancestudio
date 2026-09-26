@@ -63,10 +63,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
@@ -90,7 +87,7 @@ $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $me = New-EmailUser "media-me-$stamp@example.com" "Media Me $stamp" "user"
 $other = New-EmailUser "media-other-$stamp@example.com" "Media Other $stamp" "user"
-$owner = New-EmailUser "media-owner-$stamp@example.com" "Media Owner $stamp" "org"
+$owner = New-EmailUser "media-owner-$stamp@example.com" "Media Owner $stamp" "user"
 $ta = New-Studio $owner.token "Media Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
 $crew = Rpc (Api $me.token) "create_crew" @{ p_name = "Media Crew $stamp"; p_city = "Pune"; p_style = "Hip-Hop"; p_member_ids = @() }

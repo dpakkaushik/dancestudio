@@ -2,19 +2,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** AN ORGANIZATION'S TEAM (push 2, 19 Sep 2026 — the user: "You add a user or
  *  artist in Team section for organization to label them as owner").
- *  `organization_members`: the people an organization account names, each
- *  ASKED and CONFIRMED like every roster in this app; `owner | member` are
- *  LABELS for the public page, not powers. Every "mine" read says whose rows it
- *  wants out loud (`org_id = me`, `user_id = me`) — RLS is a ceiling, not a
- *  scope. Every write is an RPC. Two foreign keys point at `profiles`, so every
- *  embed names its key (the 28 Aug lesson). */
+ *  `organization_members`: the people an organization names, each ASKED and
+ *  CONFIRMED like every roster in this app; `owner | event_team | member` are
+ *  LABELS for the public page (Event team may run its events, R40).
+ *
+ *  ⚠ HUNG OFF THE BUSINESS SINCE 26 Sep 2026: `org_id` references `businesses`
+ *  now, not `profiles` — the organization login was retired and an organization
+ *  is a business a person opens. So every read here takes the ORGANIZATION'S
+ *  ID rather than reading `auth.uid()` as "the organization", and the owner's
+ *  read is admitted by their owner seat (`is_business_owner(org_id)`). The
+ *  `studio_owner` label is GONE with it: an organization runs no studios. Every
+ *  write is an RPC; `user_id` embeds through its named key (the 28 Aug lesson). */
 
-/** ⚠ FOUR LABELS SINCE 20 Sep 2026 (the user's list A). `studio_owner` is not
- *  a label at all: it writes a REAL owner seat on the studio it names, which is
- *  why it is set only on a CONFIRMED member and never offered on the ask. */
-export type OrgTeamRole = "owner" | "studio_owner" | "event_team" | "member";
-/** what the ask may offer — everything but studio_owner (a seat, not a word) */
-export type OrgAskRole = "owner" | "event_team" | "member";
+export type OrgTeamRole = "owner" | "event_team" | "member";
+/** what the ask may offer — the same three, since there is no seat label any more */
+export type OrgAskRole = OrgTeamRole;
 export type OrgTeamStatus = "asked" | "confirmed" | "rejected";
 
 export interface OrgTeamMember {
@@ -28,9 +30,6 @@ export interface OrgTeamMember {
   name: string;
   city: string | null;
   avatarPath: string | null;
-  /** the studio a `studio_owner` owns — null for every other label (20 Sep 2026) */
-  businessId: string | null;
-  businessName: string | null;
 }
 
 /** an ask waiting for the signed-in person — the Requests desk's RECEIVED side */
@@ -51,12 +50,10 @@ interface Row {
   status: OrgTeamStatus;
   sort: number;
   created_at: string;
-  business_id: string | null;
-  business: { name: string } | null;
   person: { full_name: string; city: string | null; profile_photo_path: string | null } | null;
 }
 
-const COLUMNS = "id, org_id, user_id, role, status, sort, created_at, business_id, business:businesses (name), person:profiles!organization_members_user_id_fkey (full_name, city, profile_photo_path)";
+const COLUMNS = "id, org_id, user_id, role, status, sort, created_at, person:profiles!organization_members_user_id_fkey (full_name, city, profile_photo_path)";
 
 const toMember = (r: Row): OrgTeamMember => ({
   id: r.id,
@@ -69,8 +66,6 @@ const toMember = (r: Row): OrgTeamMember => ({
   name: r.person?.full_name ?? "Someone",
   city: r.person?.city ?? null,
   avatarPath: r.person?.profile_photo_path ?? null,
-  businessId: r.business_id ?? null,
-  businessName: r.business?.name ?? null,
 });
 
 async function currentUserId(supabase: SupabaseClient): Promise<string | null> {
@@ -80,14 +75,14 @@ async function currentUserId(supabase: SupabaseClient): Promise<string | null> {
   return user?.id ?? null;
 }
 
-/** The organization's own desk: asked and confirmed rows, owners first. */
-export async function findMyOrganizationTeam(supabase: SupabaseClient): Promise<OrgTeamMember[]> {
-  const me = await currentUserId(supabase);
-  if (!me) return [];
+/** One organization's own desk: asked and confirmed rows, owners first. RLS
+ *  admits the organization's OWNER and each person to their own row, so a
+ *  teammate reading this sees only themselves — and the desk is owner-only. */
+export async function findMyOrganizationTeam(supabase: SupabaseClient, orgId: string): Promise<OrgTeamMember[]> {
   const { data, error } = await supabase
     .from("organization_members")
     .select(COLUMNS)
-    .eq("org_id", me)
+    .eq("org_id", orgId)
     .in("status", ["asked", "confirmed"])
     .is("deleted_at", null)
     .order("sort", { ascending: true })
@@ -100,13 +95,14 @@ export async function findMyOrganizationTeam(supabase: SupabaseClient): Promise<
   return [...rows.filter((r) => r.role === "owner"), ...rows.filter((r) => r.role !== "owner")];
 }
 
-/** The asks waiting on the signed-in PERSON. */
+/** The asks waiting on the signed-in PERSON. The organization is a business
+ *  now, so its name embeds through `businesses`. */
 export async function findMyPendingOrganizationAsks(supabase: SupabaseClient, statuses: OrgTeamStatus[] = ["asked"]): Promise<MyOrgTeamAsk[]> {
   const me = await currentUserId(supabase);
   if (!me) return [];
   const { data, error } = await supabase
     .from("organization_members")
-    .select("id, org_id, role, status, created_at, org:profiles!organization_members_org_id_fkey (full_name)")
+    .select("id, org_id, role, status, created_at, org:businesses!organization_members_org_id_fkey (name)")
     .eq("user_id", me)
     /* answered asks too, when the Inbox wants them (19 Sep 2026) */
     .in("status", statuses)
@@ -116,24 +112,26 @@ export async function findMyPendingOrganizationAsks(supabase: SupabaseClient, st
   if (error) {
     throw new Error(`organizationTeam.myAsks failed: ${error.message}`);
   }
-  return ((data ?? []) as unknown as Array<{ id: string; org_id: string; role: OrgTeamRole; status: OrgTeamStatus; created_at: string; org: { full_name: string } | null }>).map((r) => ({
+  return ((data ?? []) as unknown as Array<{ id: string; org_id: string; role: OrgTeamRole; status: OrgTeamStatus; created_at: string; org: { name: string } | null }>).map((r) => ({
     id: r.id,
     orgId: r.org_id,
-    orgName: r.org?.full_name ?? "An organization",
+    orgName: r.org?.name ?? "An organization",
     role: r.role,
     status: r.status,
     createdAt: r.created_at,
   }));
 }
 
-/** The asks the signed-in ORGANIZATION is still waiting on (the desk's SENT side). */
-export async function findAskedByMyOrganization(supabase: SupabaseClient, statuses: OrgTeamStatus[] = ["asked"]): Promise<OrgTeamMember[]> {
-  const me = await currentUserId(supabase);
-  if (!me) return [];
+/** The asks these ORGANIZATIONS are still waiting on (the desk's SENT side, and
+ *  the owner's Inbox). Takes the list of the caller's OWNED organizations;
+ *  `org_id in (…)` is said out loud — RLS is a ceiling, not a scope. */
+export async function findAskedByOrganizations(supabase: SupabaseClient, orgIds: string[], statuses: OrgTeamStatus[] = ["asked"]): Promise<OrgTeamMember[]> {
+  const ids = [...new Set(orgIds.filter(Boolean))];
+  if (ids.length === 0) return [];
   const { data, error } = await supabase
     .from("organization_members")
     .select(COLUMNS)
-    .eq("org_id", me)
+    .in("org_id", ids)
     .in("status", statuses)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -151,15 +149,16 @@ const rpcVoid = async (supabase: SupabaseClient, fn: string, args: Record<string
   }
 };
 
-export const askOrganizationMember = (supabase: SupabaseClient, userId: string, role: OrgAskRole) =>
-  rpcVoid(supabase, "ask_organization_member", { p_user_id: userId, p_role: role });
+/** the OWNER of `orgId` asks somebody onto its team — the RPC re-checks the seat */
+export const askOrganizationMember = (supabase: SupabaseClient, orgId: string, userId: string, role: OrgAskRole) =>
+  rpcVoid(supabase, "ask_organization_member", { p_org_id: orgId, p_user_id: userId, p_role: role });
 export const respondToOrganizationAsk = (supabase: SupabaseClient, memberId: string, accept: boolean) =>
   rpcVoid(supabase, "respond_to_organization_ask", { p_member_id: memberId, p_accept: accept });
 export const withdrawOrganizationAsk = (supabase: SupabaseClient, memberId: string) =>
   rpcVoid(supabase, "withdraw_organization_ask", { p_member_id: memberId });
 export const removeOrganizationMember = (supabase: SupabaseClient, memberId: string) =>
   rpcVoid(supabase, "remove_organization_member", { p_member_id: memberId });
-/** ⚠ `businessId` is REQUIRED by the database when the label is `studio_owner`
- *  and refused otherwise — naming the studio IS the grant (20 Sep 2026). */
-export const setOrganizationMemberRole = (supabase: SupabaseClient, memberId: string, role: OrgTeamRole, businessId: string | null = null) =>
-  rpcVoid(supabase, "set_organization_member_role", { p_member_id: memberId, p_role: role, p_business_id: businessId });
+/** ⚠ `p_business_id` is sent null on purpose: the RPC keeps the argument and
+ *  refuses any value, because an organization runs no studios (26 Sep 2026). */
+export const setOrganizationMemberRole = (supabase: SupabaseClient, memberId: string, role: OrgTeamRole) =>
+  rpcVoid(supabase, "set_organization_member_role", { p_member_id: memberId, p_role: role, p_business_id: null });

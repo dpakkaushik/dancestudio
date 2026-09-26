@@ -7,6 +7,7 @@ import { findAskedClaimsForTenants } from "@/repositories/claims";
 import { findVenueRequestsForTenants } from "@/repositories/classes";
 import { findReceivedEnquiries } from "@/repositories/enquiries";
 import { findPendingInvites } from "@/repositories/invites";
+import { findAskedByOrganizations } from "@/repositories/organizationTeam";
 import { findMyMemberships } from "@/repositories/tenants";
 
 const stampNowIso = (): string => new Date().toISOString();
@@ -33,18 +34,23 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ te
   if (!membership) {
     redirect("/business");
   }
-  const { tenant } = membership;
-  if (tenant.type !== "studio") {
+  const { tenant, memberRole } = membership;
+  /* ⚠ AN ORGANIZATION'S HOME WEARS THE SAME BAR (26 Sep 2026), so its Inbox
+     tab lands here too: its enquiries, and — for its owner — the team asks it
+     is waiting on. An artist page's inbox is the person's own. */
+  if (tenant.type !== "studio" && tenant.type !== "org") {
     redirect(`/business/${tenantId}`);
   }
+  const isOrg = tenant.type === "org";
 
-  const [enquiriesIn, venueIn, claimsOut, invitesOut] = await Promise.all([
+  const [enquiriesIn, venueIn, claimsOut, invitesOut, orgAsked] = await Promise.all([
     findReceivedEnquiries(supabase, [tenantId]),
-    findVenueRequestsForTenants(supabase, [tenantId]).catch(() => []),
-    findAskedClaimsForTenants(supabase, [tenantId]),
-    findPendingInvites(supabase, tenantId).then((rows) => rows.map((i) => ({ ...i, tenantName: tenant.name }))),
+    isOrg ? Promise.resolve([]) : findVenueRequestsForTenants(supabase, [tenantId]).catch(() => []),
+    isOrg ? Promise.resolve([]) : findAskedClaimsForTenants(supabase, [tenantId]),
+    isOrg ? Promise.resolve([]) : findPendingInvites(supabase, tenantId).then((rows) => rows.map((i) => ({ ...i, tenantName: tenant.name }))),
+    isOrg && memberRole === "owner" ? findAskedByOrganizations(supabase, [tenantId], ["asked", "confirmed", "rejected"]).catch(() => []) : Promise.resolve([]),
   ]);
-  const { requestsIn, requestsOut } = buildRequests({ venueIn, claimsOut, invitesOut });
+  const { requestsIn, requestsOut } = buildRequests({ venueIn, claimsOut, invitesOut, orgOut: orgAsked.map((m) => ({ ...m, orgName: tenant.name })) });
 
   return <InboxScreen accent={gradientOf(tenant.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} enquiriesIn={enquiriesIn} enquiriesOut={[]} nowIso={stampNowIso()} />;
 }

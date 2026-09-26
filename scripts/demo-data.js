@@ -35,7 +35,8 @@
  * THE WORLD (19 Sep 2026, the user: "create 15 dummy accounts for all kinds
  * of user … mostly in Gurugram, Pune, Delhi, Bengaluru … show all types of
  * events and participation and spectators … so I can view all kinds of
- * records"): 4 organizations, 4 artists, 7 users; 5 studios (two in Gurugram),
+ * records"): 4 organization OWNERS (users who each own an org business — the
+ * organization LOGIN is retired since 26 Sep 2026), 4 artists, 7 users; 5 studios (two in Gurugram),
  * 4 artist pages; classes of every state — free, paid, full with a waitlist, a
  * draft, an artist's class in a studio's room (accepted, pending, declined),
  * an artist's class at their own pin, and PAST classes with registers that
@@ -146,14 +147,16 @@ async function seed() {
   console.log("Seeding the DanceOS demo world…\n");
 
   /* ────────────────────────────────────────────────────────────────────────
-     PEOPLE — 15 accounts: 4 organizations, 4 artists, 7 users
+     PEOPLE — 15 accounts: 4 organization owners, 4 artists, 7 users
      ──────────────────────────────────────────────────────────────────────── */
   console.log("People");
-  /* an organization is ONE LOGIN named after itself (8 Sep 2026) */
-  const rhythm = await makeUser("rhythm", "Rhythm Collective", "org", "Gurugram");
-  const eeeCo = await makeUser("eee", "EEE Dance Company", "org", "Pune");
-  const bounceCo = await makeUser("bounce", "Bounce Dance Academy", "org", "New Delhi");
-  const namma = await makeUser("namma", "Namma Dance Co.", "org", "Bengaluru");
+  /* 26 Sep 2026: the organization LOGIN is retired (20260926120000). These four
+     are USERS who own their studios directly and each open ONE org business —
+     a `businesses` row of type `org` — below, named after themselves. */
+  const rhythm = await makeUser("rhythm", "Rhythm Collective", "user", "Gurugram");
+  const eeeCo = await makeUser("eee", "EEE Dance Company", "user", "Pune");
+  const bounceCo = await makeUser("bounce", "Bounce Dance Academy", "user", "New Delhi");
+  const namma = await makeUser("namma", "Namma Dance Co.", "user", "Bengaluru");
   /* artists — a person with a live Artist plan (granted below) */
   const meera = await makeUser("meera", "Meera Grewal", "user", "Gurugram");
   const aditya = await makeUser("aditya", "Aditya Pillai", "user", "Gurugram");
@@ -171,13 +174,14 @@ async function seed() {
   const artists = [meera, aditya, rhea, karan];
   const users = [kabir, zaid, aki, sneha, rohit, priya, nikhil];
   const everyone = [...orgs, ...artists, ...users];
-  everyone.forEach((u) => log(`${u.name} · ${u.email} · ${u.role === "org" ? "organization" : artists.includes(u) ? "artist" : "user"} · ${u.city}`));
+  everyone.forEach((u) => log(`${u.name} · ${u.email} · ${orgs.includes(u) ? "organization owner" : artists.includes(u) ? "artist" : "user"} · ${u.city}`));
 
-  /* ── plans: the Artist plan and each studio's own subscription are PAID
-     (10 Sep 2026) — the service role stands in for an admin's grant ── */
+  /* ── plans: the Artist plan, each studio's own subscription and each
+     organization's own (26 Sep 2026, ₹5,000 a month) are PAID — the service
+     role stands in for an admin's grant ── */
   const grantPlan = (kind, userId, tenantId, note) =>
     insert(H_SERVICE, "subscriptions", {
-      kind, user_id: userId, business_id: tenantId, plan_key: kind === "studio" ? "studio_monthly" : "artist_monthly",
+      kind, user_id: userId, business_id: tenantId, plan_key: kind === "studio" ? "studio_monthly" : kind === "org" ? "org_monthly" : "artist_monthly",
       price_inr: 0, period: "monthly", status: "active",
       current_period_start: new Date().toISOString().slice(0, 10),
       current_period_end: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
@@ -186,7 +190,9 @@ async function seed() {
   for (const a of artists) await grantPlan("artist", a.id, null, "Granted by the demo seeder — nothing charged");
   log("Meera, Aditya, Rhea and Karan hold the Artist plan (granted, ₹0)");
 
-  /* ── the organizations: about, links, a number, a contact email, a GST number, the tick, and a PIN ── */
+  /* ── the organizations: a BUSINESS each owner opens (26 Sep 2026), with a GST
+     number OF ITS OWN, its own ₹5,000 mandate, links, a number, a contact
+     email and a PIN — the owner's own profile is a person's, with a style ── */
   const orgFacts = [
     [rhythm, "Gurugram's home for street and contemporary — two studios, one crew, a stage every season.", "rhythmcollective", "+91 98100 10001", "hello@rhythm.example"],
     [eeeCo, "Pune's cypher house since 2016.", "eeedance", "+91 98200 10002", "hi@eee.example"],
@@ -197,16 +203,23 @@ async function seed() {
      column is dropped and `update_my_profile` no longer takes `p_about`. The
      tuples keep their shape so the cast below stays readable. */
   for (const [o, , handle, phone, email] of orgFacts) {
-    await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: o.city, p_age: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }, { platform: "YouTube", url: `https://youtube.com/@${handle}` }], p_styles: [], p_phone: phone, p_contact_email: email });
-    await patch(H_SERVICE, `profiles?id=eq.${o.id}`, {
-      verified_at: nowIso(),
-      gstin: `DM${handle.slice(0, 1).toUpperCase()}${String(Date.now() % 100000).padStart(5, "0")}`,
-      gstin_verified_at: nowIso(),
-    });
-    /* the organization's own pin (push 2) — what its Location button opens */
-    await rpc(o.h, "set_my_place", { p_lat: CITY[o.city].lat + 0.004, p_lng: CITY[o.city].lng + 0.003 });
+    /* the OWNER is a person now: a city and at least one style, like everybody */
+    await rpc(o.h, "update_my_profile", { p_full_name: o.name, p_city: o.city, p_age: null, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }], p_styles: ["Hip-Hop"], p_phone: phone, p_contact_email: email });
+    /* the org BUSINESS, through the same door a studio uses — born private */
+    o.org = await rpc(o.h, "create_business_with_owner", { p_name: o.name, p_type: "org", p_area: null, p_city: o.city });
+    /* its GST number, the owner's own door (verify_gstin on a profile is DROPPED) */
+    await rpc(o.h, "verify_business_gstin", { p_business_id: o.org.id, p_gstin: `DM${handle.slice(0, 1).toUpperCase()}${String(Date.now() % 100000).padStart(5, "0")}` });
+    /* and its own mandate — GST then subscription is what makes it PUBLIC (org_is_public) */
+    await grantPlan("org", o.id, o.org.id, "Granted by the demo seeder — nothing charged");
+    /* the links, the number and the contact email are the BUSINESS's now — what
+       public_organization hands a stranger — through the business's own door */
+    await rpc(o.h, "update_business_profile", { p_business_id: o.org.id, p_founded_year: 2016, p_phone: phone, p_socials: [{ platform: "Instagram", url: `https://instagram.com/${handle}` }, { platform: "YouTube", url: `https://youtube.com/@${handle}` }], p_enquiry_types: null, p_accepts_upi: true, p_accepts_cards: true, p_accepts_cash: true, p_accepts_bank: false, p_contact_email: email });
+    /* the organization's own pin — on the business row since 26 Sep 2026
+       (set_my_place is DROPPED with the login); the service role stands in for
+       the Edit sheet's map, the way it stands in for the admin's grant */
+    await patch(H_SERVICE, `businesses?id=eq.${o.org.id}`, { lat: CITY[o.city].lat + 0.004, lng: CITY[o.city].lng + 0.003, location_set_at: nowIso() });
   }
-  log("the four organizations are verified, carry a GST number, a number, a contact email and a pin on the map");
+  log("the four organizations are businesses their owners opened: a verified GST number each, a ₹5,000 mandate granted, links, a number, a contact email and a pin on the map");
 
   /* ── the people: a city, styles, About, links; the Call switch ON for Meera and OFF for Aditya (push 2) ── */
   const personFacts = [
@@ -286,9 +299,10 @@ async function seed() {
   await invite(bounceCo, bounce, rohit, "staff");
   await invite(namma, nammaStudio, karan, "trainer");
   log("Sector 29: Aditya (faculty), Sneha (staff), Kabir invited and waiting · EEE: Rhea (faculty) · Bounce: Rohit (staff) · Namma: Karan (faculty)");
-  /* the organization NAMES people on its page (push 2): asked, then confirmed from their Inbox */
+  /* the organization NAMES people on its page (push 2): asked, then confirmed
+     from their Inbox — keyed on the org BUSINESS since 26 Sep 2026 */
   const orgAsk = async (o, who, role, accept = true) => {
-    const m = await rpc(o.h, "ask_organization_member", { p_user_id: who.id, p_role: role });
+    const m = await rpc(o.h, "ask_organization_member", { p_org_id: o.org.id, p_user_id: who.id, p_role: role });
     if (accept) await rpc(who.h, "respond_to_organization_ask", { p_member_id: m.id, p_accept: true });
   };
   await orgAsk(rhythm, meera, "owner");
@@ -528,10 +542,11 @@ async function seed() {
   await followPerson(priya, rhea);
   await followPerson(nikhil, karan);
   await followPerson(aki, meera);
-  /* a PUBLIC organization can be followed (19 Sep 2026) */
-  await followPerson(kabir, rhythm);
-  await followPerson(sneha, rhythm);
-  await followPerson(priya, eeeCo);
+  /* a PUBLIC organization can be followed (19 Sep 2026) — following the
+     BUSINESS since 26 Sep 2026 (set_follow admits a public org row) */
+  await followBiz(kabir, rhythm.org);
+  await followBiz(sneha, rhythm.org);
+  await followBiz(priya, eeeCo.org);
   /* a crew's own people cannot follow it — so the followers are outsiders */
   await followCrew(sneha, rockers);
   await followCrew(rohit, rockers);
@@ -543,10 +558,12 @@ async function seed() {
      ENQUIRIES — all five kinds, at every stage, to a studio, an organization, an artist and a crew
      ──────────────────────────────────────────────────────────────────────── */
   console.log("\nEnquiries");
-  const rhythmHost = await rpc(rhythm.h, "my_org_business", {});
-  const eeeHost = await rpc(eeeCo.h, "my_org_business", {});
-  const bounceHost = await rpc(bounceCo.h, "my_org_business", {});
-  const nammaHost = await rpc(namma.h, "my_org_business", {});
+  /* the org BUSINESS each owner opened above is what an enquiry and an event
+     land on (my_org_business is DROPPED with the login, 26 Sep 2026) */
+  const rhythmHost = rhythm.org.id;
+  const eeeHost = eeeCo.org.id;
+  const bounceHost = bounceCo.org.id;
+  const nammaHost = namma.org.id;
   /* an enquiry names a business OR a crew, never both (18 Sep 2026) */
   const enquire = (u, businessId, type, fields, days, where, message, crewId = null) => {
     log(`… ${u.name} asks ${(crewId ?? businessId).slice(0, 8)} (${type}${crewId ? ", crew" : ""})`);
@@ -804,7 +821,7 @@ async function seed() {
 
   console.log("\n─────────────────────────────────────────────");
   console.log("Demo world ready. Sign in with any of these:");
-  everyone.forEach((u) => console.log(`  ${u.email}   (${u.name} · ${u.role === "org" ? "organization" : artists.includes(u) ? "artist" : "user"} · ${u.city})`));
+  everyone.forEach((u) => console.log(`  ${u.email}   (${u.name} · ${orgs.includes(u) ? "organization owner" : artists.includes(u) ? "artist" : "user"} · ${u.city})`));
   console.log(`  password: ${PASSWORD}`);
   console.log("\nSign in at /login/email with the password. Remove everything with:  node scripts/demo-data.js wipe");
 }
@@ -853,7 +870,10 @@ async function wipe() {
     await remove(H_SERVICE, `crews?id=eq.${c.id}`);
     console.log(`  crew removed: ${c.name}`);
   }
-  /* the businesses: deleting one cascades its rooms, classes, sessions,
+  /* the businesses — the studios, the artist pages AND the org businesses the
+     four owners opened (26 Sep 2026; `created_by` is the owner for all three,
+     and organization_members cascades off the org row): deleting one cascades
+     its rooms, classes, sessions,
      class_bookings, claims, invites, leads, orders, payments, refunds,
      payouts, events and event bookings. THE CLASSES GO FIRST: a studio that is
      the VENUE of an artist's class would otherwise have that class's venue set

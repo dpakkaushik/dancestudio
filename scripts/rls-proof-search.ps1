@@ -55,10 +55,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -68,10 +65,12 @@ $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $tag = "Zq$stamp"   # a token no real row carries, so every match is ours
-# the organization's NAME is what its events are found by (R15: the organiser is the organization,
-# hosted by its own tenant row, which the profile trigger names after the organization)
-$ownerA = New-EmailUser "srch-a-$stamp@example.com" "$tag Organization Kothrud" "org"
-$ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "org"
+# the organization's NAME is what its events are found by (R15: the organiser is the organization).
+# 26 Sep 2026: the organization is a BUSINESS the owner opens (the login is retired), so the name
+# the search matches is the org business's, made below; the owner is a plain person.
+$ownerA = New-EmailUser "srch-a-$stamp@example.com" "Owner A $stamp" "user"
+$ownerB = New-EmailUser "srch-b-$stamp@example.com" "Owner B $stamp" "user"
+$orgA = $null
 $dancer = New-EmailUser "srch-d-$stamp@example.com" "$tag Dancer" "user"
 $ta = New-Studio $ownerA.token "$tag Studio Kothrud" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
@@ -85,11 +84,12 @@ try {
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof"
     entry_format = "solo"; bracket = 16; rounds = 0; prizes = @(); tickets_on = $false; ticket_tiers = @()
     entry_tiers = @(@{ format = "solo"; fee_inr = 0; capacity = 8 }) }
-  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
-  # tenant row (my_org_business), never by one of its studios; save_event refuses a studio outright.
-  # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
-  Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "SRC$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
-  $orgA = [string](Rpc (Api $ownerA.token) "my_org_business" @{})
+  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION, never to one of its studios; save_event
+  # refuses a studio outright. 26 Sep 2026: the org BUSINESS carries the name the search matches, its
+  # OWN GST number, and its own mandate - a stranger finds its event only while it is public.
+  $orgA = [string](New-Org $ownerA.token "$tag Organization Kothrud" "Pune").id
+  Verify-Org-Gst $ownerA.token $orgA "SRC$((Get-Date -Format 'HHmmss').Substring(1))" | Out-Null
+  Subscribe-Org $orgA
   $pubId = Rpc (Api $ownerA.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = $ev }
   Rpc (Api $ownerA.token) "publish_event" @{ p_event_id = $pubId } | Out-Null
   $ev.title = "Draft $tag Battle"
@@ -110,7 +110,9 @@ try {
 
   # 3. A WORD THAT STARTS WITH THE TERM MATCHES (the studio, and the organization's event through the
   #    organiser's name - both carry "Kothrud"); a substring inside a word does not (the prototype's `m`, 4546).
-  #    The organization's own hosting row is NEVER a result (R15: it is unbrowsable) - only its event is.
+  #    The organization's own business row is NEVER a result (R15: search lists the two public types
+  #    by name and never an `org` row) - only its event is. Its name carries "Kothrud" too, so this
+  #    count is also the proof that the org row stays out.
   $word = Search $anonH "kothrud"
   $mid = Search $anonH "othrud"
   $wordKinds = @($word | ForEach-Object { $_.kind } | Sort-Object) -join ","
@@ -177,6 +179,11 @@ finally {
   foreach ($t in @($ta, $tb)) {
     try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null }
     catch { $left += "business $($t.id)" }
+  }
+  # the org business too, BEFORE its owner (26 Sep 2026) - the name-prefix sweep below also catches it
+  if ($orgA) {
+    try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$orgA" -Headers $svcH | Out-Null }
+    catch { $left += "org business $orgA" }
   }
   try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?name=like.$tag*" -Headers $svcH | Out-Null }
   catch { $left += "businesses named $tag*" }

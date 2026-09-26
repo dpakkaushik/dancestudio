@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { setMyPlace, updateMyProfile } from "@/repositories/profiles";
+import { updateMyProfile } from "@/repositories/profiles";
 
 /** The Profile tab's one write (S_profiletab: Edit profile 11364, the links
  *  sheet 11161, the styles sheet 11217 — three sheets, one record). Zod checks
@@ -47,31 +47,9 @@ const schema = z.object({
 
 export type MyProfileInput = z.infer<typeof schema>;
 
-/** AN ORGANIZATION'S PIN (push 2): the Edit sheet's map writes it the moment the
- *  organization places it — a pin somebody has visibly put should not need a
- *  second press — and the locked picker is what makes that safe (16 Sep 2026). */
-export async function setMyPlaceAction(input: { lat: number | null; lng: number | null }): Promise<{ error: string | null }> {
-  const parsed = z.object({ lat: z.number().finite().nullable(), lng: z.number().finite().nullable() }).safeParse(input);
-  if (!parsed.success) {
-    return { error: "That is not a place on the map" };
-  }
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    redirect("/login");
-  }
-  try {
-    await setMyPlace(supabase, parsed.data);
-    revalidatePath("/");
-    revalidatePath("/profile");
-    revalidatePath(`/org/${user.id}`);
-    return { error: null };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not save the pin" };
-  }
-}
+/* ⚠ `setMyPlaceAction` IS GONE (26 Sep 2026): it wrote `set_my_place` on the
+   organization LOGIN's row, and both the login and the RPC are retired. An
+   organization's pin is its business row's, through `set_business_location`. */
 
 export async function updateMyProfileAction(input: MyProfileInput): Promise<{ error: string | null }> {
   const parsed = schema.safeParse(input);
@@ -95,8 +73,6 @@ export async function updateMyProfileAction(input: MyProfileInput): Promise<{ er
     revalidatePath("/profile");
     revalidatePath("/");
     revalidatePath(`/person/${user.id}`);
-    /* an organization's page reads the same row (19 Sep 2026) */
-    revalidatePath(`/org/${user.id}`);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not save your profile" };

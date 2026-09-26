@@ -74,10 +74,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -85,9 +82,9 @@ function New-EmailUser($email, $name, $role) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "staffproof-owner-$stamp@example.com" "Owner $stamp" "org"
+$owner = New-EmailUser "staffproof-owner-$stamp@example.com" "Owner $stamp" "user"
 $joiner = New-EmailUser "staffproof-join-$stamp@example.com" "Vikram $stamp" "user"
-$rival = New-EmailUser "staffproof-rival-$stamp@example.com" "Rival $stamp" "org"
+$rival = New-EmailUser "staffproof-rival-$stamp@example.com" "Rival $stamp" "user"
 # checks 16-17: a staff assistant whose seat is pulled out from under them
 $ghost = New-EmailUser "staffproof-ghost-$stamp@example.com" "Priya $stamp" "user"
 
@@ -185,22 +182,22 @@ try {
   # hand the seat over: now there are two owners
   $handOver = Why-Fail { Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "owner" } }
   $promoted = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&select=member_role"
-  # ⚠ AND NOW THE SECOND GUARD, which this proof's own cast made visible: there are
-  # two owners, so the last-owner rule is satisfied - and the first owner STILL
-  # cannot be moved to a person's seat, because it is an ORGANIZATION. R11
-  # (guard_person_only, 8 Sep 2026): an organization owns a studio, it does not
-  # teach at one. Two independent reasons an owner may not be demoted, and only a
-  # call distinguishes them - the first cut of this check assumed the refusal it
-  # got was the last-owner rule, and it was not.
-  $orgStepDown = Why-Fail { Rpc (Api $joiner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $owner.id; p_role = "trainer" } }
+  # !! INVERTED 26 Sep 2026: the second guard this used to prove - "the first owner
+  # cannot be moved to a person's seat because it is an ORGANIZATION" (R11) - has
+  # no subject left: the organization login is retired, and every owner is a
+  # person. With two owners on the desk, the FIRST owner may now step down to a
+  # person's seat like anybody else, and the second (the joiner) puts them back
+  # so the checks after this one find the world they expect.
+  $ownerDown = Why-Fail { Rpc (Api $joiner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $owner.id; p_role = "trainer" } }
   $stepped = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($owner.id)&select=member_role"
-  # a PERSON holding the second seat may step down, because the organization still owns it
+  Rpc (Api $joiner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $owner.id; p_role = "owner" } | Out-Null
+  # a PERSON holding the second seat may step down, because the first owner still owns it
   $joinerDown = Why-Fail { Rpc (Api $owner.token) "set_member_role" @{ p_business_id = $ta.id; p_user_id = $joiner.id; p_role = "staff" } }
   $joinerNow = Get-Rows $svcH "business_members?business_id=eq.$($ta.id)&user_id=eq.$($joiner.id)&select=member_role"
-  Check 12 "Owner sets them to $($roleNow[0].member_role); the ONLY owner cannot be demoted ('$lastOwner'); the seat is handed to a person ($($promoted[0].member_role)$(if ($handOver) { " !$handOver" })); an ORGANIZATION owner still cannot take a person's seat ('$orgStepDown', still $($stepped[0].member_role)) while the person can step down ($($joinerNow[0].member_role))" (
+  Check 12 "Owner sets them to $($roleNow[0].member_role); the ONLY owner cannot be demoted ('$lastOwner'); the seat is handed to a person ($($promoted[0].member_role)$(if ($handOver) { " !$handOver" })); with two owners the first may step down to a person's seat ('$ownerDown', became $($stepped[0].member_role)) and is put back; the second can step down ($($joinerNow[0].member_role))" (
     ($roleNow[0].member_role -eq "staff") -and ($lastOwner -match "only owner") -and
     ($handOver -eq "") -and ($promoted[0].member_role -eq "owner") -and
-    ($orgStepDown -match "organization") -and ($stepped[0].member_role -eq "owner") -and
+    ($ownerDown -eq "") -and ($stepped[0].member_role -eq "trainer") -and
     ($joinerDown -eq "") -and ($joinerNow[0].member_role -eq "staff"))
 
   # 13. an owner cannot be removed from their own business (so the last owner survives)

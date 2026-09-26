@@ -33,7 +33,11 @@ const KEY = /^[a-z][a-z0-9_:-]{0,79}$/;
  *  the caller simply draws the code's order instead of sending something the
  *  database would refuse. */
 export function toolsLayoutKey(kind: GridKind, id?: string | null): string | null {
-  if (kind === "studio" || kind === "crew") {
+  /* ⚠ AN ORGANIZATION'S GRID IS KEYED BY THE ORGANIZATION SINCE 26 Sep 2026
+     (`tools:org:{business id}`), because an organization is a business a person
+     opens now — one account can own several, each arranged on its own — where
+     `tools:org` was the retired organization LOGIN's one grid. No id, no key. */
+  if (kind === "studio" || kind === "crew" || kind === "org") {
     const at = (id ?? "").trim().toLowerCase();
     if (!at) return null;
     const key = `tools:${kind}:${at}`;

@@ -58,8 +58,8 @@ async function signUp(page, email) {
     userId = await signUp(page, email);
     await page.waitForURL(/\/onboarding/);
     await shot("onboarding");
-    /* onboarded as an ORGANIZATION (8 Sep 2026) — the only account that opens studios */
-    await page.getByText("Organization", { exact: true }).click();
+    /* onboarded as a PERSON (26 Sep 2026): the organization login is retired,
+       and any account opens a studio — the "Organization" tap is gone */
     await page.locator('input[name="name"]').fill("EEE Dance Company");
     /* the one city dropdown (19 Sep 2026): through "Search another city…" */
     await page.getByLabel("Choose a city").first().selectOption("New Delhi");
@@ -68,26 +68,22 @@ async function signUp(page, email) {
     await page.getByLabel("Add a photo").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: PNG });
     /* the cropper (18 Sep 2026): the picture is confirmed in "Crop & preview" before it goes up */
     await page.getByRole("dialog", { name: "Crop & preview" }).getByRole("button", { name: "Use this photo" }).click();
-    await page.getByLabel("Your logo", { exact: true }).waitFor({ timeout: 20000 });
+    await page.getByLabel("Your profile photo", { exact: true }).waitFor({ timeout: 20000 });
     await shot("onboarding-photo");
     await page.getByRole("button", { name: "Continue", exact: true }).click();
-    /* an organization is asked for nothing else since 11 Sep 2026 — no styles,
-       no links, no photos: DanceOS checks each STUDIO, from the hub */
-    await page.getByText(/Welcome, /).waitFor();
+    await page.getByText("Your dance styles").waitFor();
+    await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+    await page.getByRole("button", { name: "Continue · 1 style" }).click();
+    await page.getByText("Your social links").waitFor();
+    await page.getByRole("button", { name: "Skip for now →" }).click();
+    await page.getByText(/Take a bow, /).waitFor();
     await shot("onboarding-done");
     await page.getByRole("button", { name: "Open DanceOS →" }).click();
     await page.waitForURL((u) => !u.pathname.startsWith("/onboarding"));
     await page.goto(`${BASE}/`);
-    /* 11 Sep 2026: Home carries the GST card — NOT VERIFIED first */
-    await shot("home-org-gst");
-    /* the number is the organization's own to verify; the service role stands in
-       for the Verify button, exactly as it stands in for the webhook below */
-    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-      method: "PATCH", headers: adminHeaders,
-      body: JSON.stringify({ gstin: `SHT${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString() }),
-    });
-    await page.goto(`${BASE}/`);
-    await shot("home-org-verified");
+    /* a person's Home says nothing about a GST number — that is an ORGANIZATION
+       BUSINESS's, in that organization's own Settings (26 Sep 2026) */
+    await shot("home-user");
 
     /* a studio, which since 10 Sep 2026 is born PRIVATE */
     await page.goto(`${BASE}/business`);
@@ -100,6 +96,9 @@ async function signUp(page, email) {
     /* the city picker replaced the select (11 Sep 2026) — a Google city search,
        with the typed name as the fallback a test can rely on */
     await page.getByLabel("Choose a city").first().selectOption("Pune");
+    /* the sheet asks for a number and an email now (26 Sep 2026) */
+    await page.locator('input[name="phone"]').fill("+919876543210");
+    await page.locator('input[name="contact_email"]').fill(`shots-studio-${stamp}@example.com`);
     await page.getByLabel("Room 1 name").fill("Studio A");
     await page.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await shot("new-studio-sheet");

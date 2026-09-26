@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { clearGstinAction, verifyGstinAction } from "@/features/orgs/server-actions/gst";
+import { clearBusinessGstinAction, verifyBusinessGstinAction } from "@/features/orgs/server-actions/gst";
 import { dateWords } from "@/features/settings/components/settings-kit";
 import { checkGstin, normalizeGstin, GSTIN_EXAMPLE } from "@/lib/gst/gstin";
 import { INK, SUB } from "@/lib/design/tokens";
@@ -29,13 +29,20 @@ const RED = "#F87171";
  *  here?" as well as "what do I type?". That is what `cameForEvents` is for.
  *
  *  The check is the placeholder the user asked for: three letters, five digits.
- *  The government API goes inside `verify_gstin` in the database later, and
- *  this screen does not change when it does. */
+ *  The government API goes inside `verify_business_gstin` in the database
+ *  later, and this screen does not change when it does.
+ *
+ *  ⚠ ABOUT ONE ORGANIZATION BUSINESS SINCE 26 Sep 2026 (`businessId`): the
+ *  organization login is retired, so the number is the business row's and this
+ *  card is reached from that organization's own Settings. */
 export function GstCard({
+  businessId,
   gstin,
   verifiedAt,
   cameForEvents = false,
 }: {
+  /** the ORGANIZATION business whose number this is — the RPC re-checks that the caller owns it */
+  businessId: string;
   gstin: string | null;
   verifiedAt: string | null;
   /** true when an event was what sent them here — say so, do not make them guess */
@@ -57,7 +64,7 @@ export function GstCard({
   const verify = () =>
     start(async () => {
       setErr(null);
-      const out = await verifyGstinAction({ gstin: clean });
+      const out = await verifyBusinessGstinAction({ businessId, gstin: clean });
       if (out.error) {
         setErr(out.error);
         setDone(null);
@@ -71,7 +78,7 @@ export function GstCard({
   const remove = () =>
     start(async () => {
       setErr(null);
-      const out = await clearGstinAction();
+      const out = await clearBusinessGstinAction({ businessId });
       if (out.error) {
         setErr(out.error);
         return;
@@ -95,7 +102,7 @@ export function GstCard({
         </div>
         <div style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 19, fontWeight: 800, letterSpacing: 2, color: INK, margin: "6px 0 8px" }}>{gstin ?? clean}</div>
         <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55 }}>
-          Your organization can put on events. Nothing else on DanceOS waits on this — studios, classes, bookings and Discover never did.
+          This organization can put on events, and its subscription can be started. Nothing else on DanceOS waits on this — studios, classes and bookings never did.
         </div>
         <button
           type="button"
@@ -123,7 +130,7 @@ export function GstCard({
       ) : null}
 
       <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.55, marginBottom: 13 }}>
-        Enter it once. Your studios, classes, bookings and Discover do not wait on it — only <b style={{ color: INK }}>events</b> do.
+        Enter it once. Studios, classes and bookings do not wait on it — the organization&apos;s <b style={{ color: INK }}>events</b> and its <b style={{ color: INK }}>subscription</b> do.
       </div>
 
       <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: MUTED, marginBottom: 6 }}>GST NUMBER</div>

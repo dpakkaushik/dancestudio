@@ -82,9 +82,7 @@ function New-EmailUser($email, $name, $role) {
   if ($role -eq "user") { $styles = @("Hip-Hop") }
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; styles = $styles; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
@@ -106,8 +104,8 @@ Assert-City "Pune"
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$org = New-EmailUser "memproof-org-$stamp@example.com" "MemProof Org $stamp" "org"
-$rival = New-EmailUser "memproof-rival-$stamp@example.com" "MemProof Rival $stamp" "org"
+$org = New-EmailUser "memproof-org-$stamp@example.com" "MemProof Owner $stamp" "user"
+$rival = New-EmailUser "memproof-rival-$stamp@example.com" "MemProof Rival $stamp" "user"
 $learner = New-EmailUser "memproof-learner-$stamp@example.com" "MemProof Learner $stamp" "user"
 $other = New-EmailUser "memproof-other-$stamp@example.com" "MemProof Other $stamp" "user"
 $onTeam = New-EmailUser "memproof-team-$stamp@example.com" "MemProof Team $stamp" "user"

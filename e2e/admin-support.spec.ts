@@ -51,23 +51,24 @@ const PNG_BYTES = Buffer.from(
 );
 const ONE_PX_PNG = { name: "face.png", mimeType: "image/png", buffer: PNG_BYTES };
 
-/** Onboard as an organization: who first, one name, city, photo — the links
- *  are optional since 11 Sep 2026, and nothing is filed as it leaves: the
- *  review is of a STUDIO, asked for from the hub once one exists. */
+/** Onboard as a PERSON (26 Sep 2026: the organization login is retired, so the
+ *  account that opens a studio is a user like any other): one name, city,
+ *  photo, a style, links skipped. Nothing is filed as it leaves: the review is
+ *  of a STUDIO, asked for from the hub once one exists. */
 async function onboardOrg(page: Page, name: string, city: string) {
   await expect(page).toHaveURL(/\/onboarding/);
-  await page.getByText("Organization", { exact: true }).click();
+  await expect(page.getByText("Organization", { exact: true })).toHaveCount(0);
   await page.locator('input[name="name"]').fill(name);
   await pickCity(page, city);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Add a photo").setInputFiles(ONE_PX_PNG);
   // the cropper (18 Sep 2026): every picture is confirmed in "Crop & preview" before it goes up
   await page.getByRole("dialog", { name: "Crop & preview" }).getByRole("button", { name: "Use this photo" }).click();
-  await expect(page.getByLabel("Your logo", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByLabel("Your profile photo", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  /* 11 Sep 2026: an organization is asked for no links and no photos — the
-     name and the logo are the whole flow */
-  await expect(page.getByText(`Welcome, ${name}!`)).toBeVisible();
+  await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
+  await page.getByRole("button", { name: "Continue · 1 style" }).click();
+  await page.getByRole("button", { name: "Skip for now →" }).click();
   await page.getByRole("button", { name: "Open DanceOS →" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/onboarding"));
 }
@@ -132,7 +133,10 @@ async function studioIdOf(name: string): Promise<string> {
 
 /** WHAT A STUDIO SHOWS DANCEOS (11 Sep 2026): a public link and five photos.
  *  The service role stands in for the owner's Edit sheet and upload strip —
- *  happy-path drives both for real; this spec is about the desk that answers. */
+ *  happy-path drives both for real; this spec is about the desk that answers.
+ *  ⚠ `org_id` on studio_photos is the legacy column for the uploader's account
+ *  (the storage folder is `proof/{owner}/`); it is the owner's id, who is a
+ *  person since 26 Sep 2026. */
 async function showSpace(studioId: string, ownerId: string) {
   const linked = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${studioId}`, {
     method: "PATCH",
@@ -202,6 +206,9 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await org.locator('input[name="name"]').fill(studioName);
     await org.locator('input[name="area"]').fill("Baner");
     await pickCity(org, "Pune");
+    /* the sheet asks for a number and an email now (26 Sep 2026) */
+    await org.locator('input[name="phone"]').fill("+919876543210");
+    await org.locator('input[name="contact_email"]').fill(`panel-studio-${stamp}@example.com`);
     await org.getByLabel("Room 1 name").fill("Floor 1");
     await org.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await org.getByRole("button", { name: "Create studio" }).click();

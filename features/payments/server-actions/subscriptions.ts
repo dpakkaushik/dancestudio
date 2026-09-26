@@ -146,7 +146,9 @@ export async function startSubscriptionAction(input: unknown): Promise<StartSubs
     const providerPlanId = await ensureCashfreePlan(admin, plan);
     const profile = await findProfileById(supabase, user.id);
     const providerSubscriptionId = providerSubscriptionIdFor(row.id, row.attempt);
-    const returnUrl = `${await siteOrigin()}${row.kind === "studio" ? "/business" : "/subscription"}`;
+    /* the mandate window returns to the hub the business lives on — an
+       organization's is `/organizations` since 26 Sep 2026 */
+    const returnUrl = `${await siteOrigin()}${row.kind === "studio" ? "/business" : row.kind === "org" ? "/organizations" : "/subscription"}`;
     const cfSub = await createCashfreeSubscription({
       providerSubscriptionId,
       providerPlanId,

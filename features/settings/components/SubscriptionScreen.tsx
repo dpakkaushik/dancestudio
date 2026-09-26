@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
@@ -22,8 +21,10 @@ import { BizPage, BizToast, bizBtn, bizCard, dateWords } from "./settings-kit";
  *  days of grace, not a locked door. A plan the admin has priced at ₹0 is
  *  started without a payment and the button says so.
  *
- *  An ORGANIZATION has no artist plan: its subscriptions are per studio and live
- *  on the business hub, so this screen sends it there. */
+ *  ⚠ THERE IS NO ORGANIZATION BRANCH SINCE 26 Sep 2026: the organization login
+ *  is retired, so every reader of this screen is a person. What they OWN —
+ *  each studio and each organization, with its own mandate — is listed under
+ *  their plan, priced by kind. */
 
 const FEATURES: Array<[string, string, string]> = [
   ["🏠", "Business home", "earnings, sessions & student metrics at a glance"],
@@ -49,20 +50,21 @@ export function subscriptionWords(s: Subscription): { title: string; tone: strin
 export function SubscriptionScreen({
   subscription,
   catalog,
-  isOrg,
   studioPrice,
-  studios = [],
+  orgPrice = null,
+  businesses = [],
 }: {
   subscription: Subscription | null;
   /** the artist plans on offer, from the price list */
   catalog: PlanCatalogRow[];
-  isOrg: boolean;
-  /** for an organization: what one studio costs, or null when none is on offer */
+  /** what one studio costs, or null when none is on offer */
   studioPrice: PlanCatalogRow | null;
-  /** ⚠ the organization's OWN studios, each with its standing and its control
-   *  (20 Sep 2026) — this screen used to hand an organization a door to the hub
-   *  and nothing else, and the hub has no cancel on it */
-  studios?: Array<{ id: string; name: string; verified: boolean; state: StudioSubscriptionState | null }>;
+  /** what one organization costs (26 Sep 2026), or null when none is on offer */
+  orgPrice?: PlanCatalogRow | null;
+  /** ⚠ the businesses this person OWNS — studios and, since 26 Sep 2026,
+   *  organizations — each with its standing and its control: this screen holds
+   *  the app's one Stop renewing, so it must list everything that renews */
+  businesses?: Array<{ id: string; name: string; kind: "studio" | "org"; verified: boolean; state: StudioSubscriptionState | null }>;
 }) {
   const router = useRouter();
   const offers = catalog.filter((p) => p.kind === "artist" && p.active);
@@ -91,48 +93,9 @@ export function SubscriptionScreen({
       router.refresh();
     });
 
-  if (isOrg) {
-    return (
-      <BizPage title="Subscription" sub="DanceOS Pro for organizations — one subscription per studio" grad="linear-gradient(135deg,#0E7490,#22D3EE)">
-        <div style={{ ...bizCard, borderLeft: "3px solid #0E7490" }}>
-          <div style={{ fontSize: 15, fontWeight: 900 }}>Each studio has its own subscription</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 4, lineHeight: 1.55 }}>
-            {studioPrice ? (
-              <>
-                <b style={{ color: "var(--text)", fontFamily: DOS_MONO }}>{priceWords(studioPrice.priceInr, studioPrice.period)}</b> per studio, renewing on
-                its own until you cancel. Two studios need two subscriptions, each linked to its studio. A studio you have not
-                subscribed stays private — nothing in it is lost, it is just not on Discover yet.
-              </>
-            ) : (
-              "No studio plan is on offer right now — message DanceOS from Settings › Help & support."
-            )}
-          </div>
-        </div>
-
-        {/* ⚠ EVERY STUDIO, WITH ITS OWN CONTROL (20 Sep 2026) — the strip that
-            stood on each studio's own home, one per studio, here. This is the
-            only Stop renewing in the app, so it had to land somewhere before the
-            home lost it; Settings is where the user said subscriptions belong. */}
-        {studios.map((t) =>
-          t.state ? (
-            <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} verified={t.verified} state={t.state} studioPrice={studioPrice} heading={t.name} />
-          ) : null
-        )}
-        {studios.length === 0 ? (
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "2px 2px 10px" }}>
-            No studios yet. Open one from <b>Studios</b> and it appears here with its own subscription.
-          </div>
-        ) : null}
-
-        <Link href="/business" style={bizBtn}>
-          Open Studios ›
-        </Link>
-        <BizToast msg={toast} />
-      </BizPage>
-    );
-  }
-
   const live = subscription && subscription.hasAccess ? subscription : null;
+  const studios = businesses.filter((b) => b.kind === "studio");
+  const orgs = businesses.filter((b) => b.kind === "org");
 
   return (
     <BizPage title="Subscription" sub="DanceOS Pro · Artist — one profile, more tools" grad="linear-gradient(135deg,#F59E0B,#EC4899)">
@@ -244,10 +207,10 @@ export function SubscriptionScreen({
 
       {/* ⚠ A PERSON'S OWN STUDIOS, UNDER THEIR OWN PLAN (26 Sep 2026, the user:
           "can see verification progress and future subscription for the studio
-          from there"). A user or an artist who opened a studio pays for it the
-          way an organization does — one mandate per studio — so each of theirs
-          gets the same strip, with the same Stop renewing, below the Artist
-          plan that is the account's. Drawn only when there is one. */}
+          from there"). A user or an artist who opened a studio pays for it —
+          one mandate per studio — so each of theirs gets the same strip, with
+          the same Stop renewing, below the Artist plan that is the account's.
+          Drawn only when there is one. */}
       {studios.length > 0 ? (
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", padding: "0 2px 8px" }}>YOUR STUDIOS</div>
@@ -264,6 +227,29 @@ export function SubscriptionScreen({
           {studios.map((t) =>
             t.state ? (
               <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} verified={t.verified} state={t.state} studioPrice={studioPrice} heading={t.name} />
+            ) : null
+          )}
+        </div>
+      ) : null}
+      {/* ⚠ AND THEIR ORGANIZATIONS (26 Sep 2026): an organization is a business a
+          person opens now, with a ₹5,000 mandate of its own that starts once its
+          GST number is verified — `verified` here is that number, not a badge */}
+      {orgs.length > 0 ? (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", padding: "0 2px 8px" }}>YOUR ORGANIZATIONS</div>
+          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>
+            {orgPrice ? (
+              <>
+                Each organization has its own subscription — <b style={{ color: "var(--text)", fontFamily: DOS_MONO }}>{priceWords(orgPrice.priceInr, orgPrice.period)}</b>, renewing on its own, once its
+                GST number is verified. An organization you have not subscribed stays private; its events are not.
+              </>
+            ) : (
+              "No organization plan is on offer right now — message DanceOS from Settings › Help & support."
+            )}
+          </div>
+          {orgs.map((t) =>
+            t.state ? (
+              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} verified={t.verified} state={t.state} studioPrice={orgPrice} heading={t.name} />
             ) : null
           )}
         </div>

@@ -161,6 +161,19 @@ $migration$;
 
 drop function public._dos_swap(text, text, text, text, integer);
 
+-- ── 8. THE PHOTOS TRIGGER THAT WOULD HAVE REFUSED A PERSON'S STUDIO ──────────
+-- ⚠ Found by the organization migration's dry run, and it is THIS migration's
+-- bug: `guard_org_only` (11 Sep 2026) refuses a `studio_photos` row whose
+-- uploader is not an organization LOGIN — so a person who opens a studio under
+-- the rule above could never add its header pictures, and therefore never ask
+-- for its badge (five photos are required). `add_studio_photo` already refuses
+-- anybody but the studio's OWNER, which is the rule that matters; the role test
+-- was the 11 Sep model and goes with it. The `org_plans` twin of this trigger
+-- went with that table on 10 Sep.
+drop trigger if exists org_proof_photos_org_only on public.studio_photos;
+drop trigger if exists studio_photos_org_only on public.studio_photos;
+drop function if exists public.guard_org_only();
+
 comment on function public.why_no_studio() is
   'Why the signed-in account may not open a studio right now — null when it may. Any account (26 Sep 2026: a user, an artist or an organization); at most 15 studios. Printed by the hub and raised by create_business_with_owner.';
 comment on function public.subscribe(text, uuid) is

@@ -2,9 +2,7 @@ import { redirect } from "next/navigation";
 import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
 import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findBusinessCalendarEvents, findMyCalendar, findMyCalendarEvents } from "@/repositories/calendar";
-import { findMyOrgTenantId } from "@/repositories/orgStanding";
-import { findProfileById } from "@/repositories/profiles";
+import { findMyCalendar, findMyCalendarEvents } from "@/repositories/calendar";
 import { findMyTenants } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) */
@@ -19,12 +17,11 @@ const MONTHS_AHEAD = 3;
 /** Your calendar — what you train in, teach and assist, and the events you hold
  *  a ticket for or are running (prototype `CalTab`, S_profiletab calendarOnly).
  *
- *  ⚠ AN ORGANIZATION GETS ITS OWN CALENDAR HERE (18 Sep 2026). It books no
- *  class, teaches none and assists on none — `guard_person_only` refuses an
- *  organization every one of those seats — so this page could only ever draw it
- *  an empty schedule, under a heading that offered to find it a class Discover
- *  would not let it book. What an organization actually runs is EVENTS, so that
- *  is what its calendar is. */
+ *  ⚠ THE ORGANIZATION BRANCH IS GONE (26 Sep 2026): it drew the organization
+ *  LOGIN's events as its whole calendar (18 Sep, R21), and that login is
+ *  retired. An organization is a business a person opens now, and the events
+ *  it runs reach this person's calendar the way a studio's do — through
+ *  `findMyCalendarEvents`, which already takes every business they are on. */
 export default async function CalendarPage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -40,43 +37,8 @@ export default async function CalendarPage() {
   const toIso = monthStartIso(shiftMonthKey(months[months.length - 1].key, -1));
   const todayKey = dayKeyOf(now);
 
-  const [profile, businesses] = await Promise.all([findProfileById(supabase, user.id), findMyTenants(supabase)]);
+  const businesses = await findMyTenants(supabase);
   const tenantIds = businesses.map((t) => t.id);
-
-  if (profile?.role === "org") {
-    /* every business it owns, the hosting row included — that row is where its
-       events live (R15), and the others are its studios */
-    const [events, hostId] = await Promise.all([
-      findBusinessCalendarEvents(supabase, tenantIds, fromIso, toIso),
-      findMyOrgTenantId(supabase).catch(() => null),
-    ]);
-    const desk = hostId ? `/business/${hostId}/events` : "/business";
-    return (
-      <CalendarScreen
-        mode="org"
-        months={months}
-        todayKey={todayKey}
-        entries={[]}
-        events={events}
-        emptyHref={desk}
-        /* ⚠ THIS WAS `/events/new`, AND THERE IS NO SUCH ROUTE (22 Sep 2026).
-           An organization pressing Add event on its own calendar got a 404 —
-           the one compose door on that screen, dead since the calendar learned
-           about events (18 Sep, R21). An event form lives under the business
-           that hosts it, and the hosting row's id is already read one line
-           above for `desk`. Found by mapping every add control in the app
-           rather than by a complaint, which is why it lasted: nobody presses
-           compose on an empty calendar in development.
-           ⚠ AND IT IS `?new=1` RATHER THAN `/new` (22 Sep 2026, the same audit
-           one step further on). The fix above pointed a dead door at a live
-           PAGE on the morning C54 was making every other add control a SHEET
-           over its desk — so the calendar's compose was the last control in the
-           app that left the screen to reach a form. It opens the events desk
-           with the sheet up now, which is what the desk's own ＋ does. */
-        composeHref={hostId ? `/business/${hostId}/events?new=1` : desk}
-      />
-    );
-  }
 
   const [entries, events] = await Promise.all([
     findMyCalendar(supabase, user.id, fromIso, toIso),

@@ -1,11 +1,11 @@
 # Proof for the profile-page re-cut of 19 Sep 2026 - the five migrations
 # 20260919120000 .. 20260919124000, as real roles against the live database.
 #
-# The claims under test: a CREW can be followed (one door, idempotent; not by an
-# organization, not by its own leader or members; a stranger reads the count and
-# the leader reads who); a PUBLIC organization can be followed while a private one
-# cannot, and an organization account still follows nobody; an ORGANIZATION takes
-# an enquiry through its hosting row for a celebration, a corporate show or a
+# The claims under test: a CREW can be followed (one door, idempotent; not by its
+# own leader or members; a stranger reads the count and the leader reads who); a
+# PUBLIC organization BUSINESS can be followed while a private one cannot (26 Sep
+# 2026: an organization is a business a person opens - the login is retired); an
+# ORGANIZATION takes an enquiry through its business row for a celebration, a corporate show or a
 # collaboration and nothing else; a CONTACT EMAIL lands on a profile, a business
 # and a crew through the three doors, is refused when it is not an address,
 # clears on an empty string, and reaches a stranger through public_organization
@@ -74,10 +74,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
@@ -93,10 +90,8 @@ $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$org = New-EmailUser "prof-org-$stamp@example.com" "Prof Org $stamp" "org"
-$private = New-EmailUser "prof-private-$stamp@example.com" "Prof Private Org $stamp" "org"
-# a PRIVATE organization: the tick taken off again, no GST, no listed studio
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($private.id)" -Headers $svcH -Body (@{ verified_at = $null } | ConvertTo-Json) | Out-Null
+$org = New-EmailUser "prof-org-$stamp@example.com" "Prof Org $stamp" "user"
+$private = New-EmailUser "prof-private-$stamp@example.com" "Prof Private Org $stamp" "user"
 $lead = New-EmailUser "prof-lead-$stamp@example.com" "Prof Lead $stamp" "user"
 $member = New-EmailUser "prof-member-$stamp@example.com" "Prof Member $stamp" "user"
 $fan = New-EmailUser "prof-fan-$stamp@example.com" "Prof Fan $stamp" "user"
@@ -104,10 +99,15 @@ $artist = New-EmailUser "prof-artist-$stamp@example.com" "Prof Artist $stamp" "u
 Grant-ArtistPlan $artist.id
 $studio = New-Studio $org.token "Prof Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$studio.id)
-# the organization's hosting row (R15) - what an enquiry to it is sent to
+# 26 Sep 2026: an organization is a BUSINESS its owner opens (the login is retired). $org's is
+# PUBLIC - its own GST number verified and its own mandate live (org_is_public) - and $private's
+# has neither, which is what a private organization IS now. An enquiry, a follow and the public
+# page all land on the business id.
 # ($host is PowerShell's READ-ONLY automatic variable, like $pid - never a name here)
-$hostRow = [string](Rpc (Api $org.token) "my_org_business" @{})
-$hostPriv = [string](Rpc (Api $private.token) "my_org_business" @{})
+$hostRow = [string](New-Org $org.token "Prof Org Business $stamp" "Pune").id
+Verify-Org-Gst $org.token $hostRow "PRO$($stamp.Substring(1))" | Out-Null
+Subscribe-Org $hostRow
+$hostPriv = [string](New-Org $private.token "Prof Private Business $stamp" "Pune").id
 
 try {
   # -- A CREW CAN BE FOLLOWED ---------------------------------------------------
@@ -125,18 +125,16 @@ try {
   Check 1 "The fan follows the crew: following $($c1.following), $($c1.followers) follower; again still $($c1b.followers); a stranger reads the count $anonN" (
     ($c1.following -eq $true) -and ([int]$c1.followers -eq 1) -and ([int]$c1b.followers -eq 1) -and ($anonN -eq 1))
 
-  # 2. not by the crew itself; AN ORGANIZATION MAY, SINCE 20 Sep 2026
-  #    (20260920180000_an_organization_follows - the user: "Organization and Studio
-  #    still dont have Following section in profile and home"). The refusal this
-  #    check used to assert was the ONLY thing between an organization and a
-  #    Following figure that could ever move; the rules that remain are the ones
-  #    about the CREW - its leader and its confirmed members are the crew.
+  # 2. not by the crew itself; a bystander may (the studio's owner here - a plain
+  #    person since 26 Sep 2026, so this is the ordinary rule; the rules that
+  #    remain are the ones about the CREW - its leader and its confirmed members
+  #    are the crew).
   $byLead = Fails { Rpc (Api $lead.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
   $byMember = Fails { Rpc (Api $member.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
   $byOrg = Rpc (Api $org.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true }
   Rpc (Api $org.token) "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $false } | Out-Null
   $byAnon = Fails { Rpc $anonH "set_crew_follow" @{ p_crew_id = $crew.id; p_on = $true } }
-  Check 2 "The leader is refused ($byLead); a member is refused ($byMember); an organization FOLLOWS the crew ($($byOrg.following), $($byOrg.followers) followers) and unfollows again; the public cannot call it ($([bool]$byAnon))" (
+  Check 2 "The leader is refused ($byLead); a member is refused ($byMember); a bystander FOLLOWS the crew ($($byOrg.following), $($byOrg.followers) followers) and unfollows again; the public cannot call it ($([bool]$byAnon))" (
     ($byLead -match "in this crew") -and ($byMember -match "in this crew") -and ($byOrg.following -eq $true) -and ([int]$byOrg.followers -eq 2) -and ($byAnon -ne ""))
 
   # 3. WHO follows is the leader's to read; the row is the follower's own; nobody else's; unfollow soft-deletes
@@ -150,22 +148,24 @@ try {
     ($leadSees.Count -eq 1) -and ($fanSees.Count -eq 1) -and ($memberSees.Count -eq 0) -and ($anonSees.Count -eq 0) -and ([int]$u1.followers -eq 0) -and ($allRows.Count -eq 1) -and ($null -ne $allRows[0].deleted_at))
 
   # -- AN ORGANIZATION CAN BE FOLLOWED, WHILE IT IS PUBLIC ---------------------
-  # 4. a public one yes, a private one no, an organization as the caller never
-  # !! re-cut 20 Sep 2026: an organization is BOTH ends of a follow now. What is
-  #    still refused is a PRIVATE organization as the target - that rule never moved.
-  $o1 = Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $org.id; p_on = $true }
-  $priv = Fails { Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $private.id; p_on = $true } }
+  # 4. a public one yes, a private one no - and the follow names the BUSINESS
+  # !! re-cut 26 Sep 2026: an organization is a business, so following one is
+  #    set_follow on its row (my_followed_organizations reads follows.business_id
+  #    joined to type = 'org'). What is still refused is a PRIVATE organization as
+  #    the target - set_follow admits an unlisted org row only while org_is_public.
+  #    The owner is a person and follows like anybody (set_person_follow).
+  $o1 = Rpc (Api $fan.token) "set_follow" @{ p_business_id = $hostRow; p_on = $true }
+  $priv = Fails { Rpc (Api $fan.token) "set_follow" @{ p_business_id = $hostPriv; p_on = $true } }
   $orgCaller = Rpc (Api $org.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $true }
   $orgCounts = Rpc-Rows (Api $org.token) "person_follower_counts" @{ p_user_ids = @($org.id) }
   $orgFollowing = 0; foreach ($r in $orgCounts) { if ($r.user_id -eq $org.id) { $orgFollowing = [int]$r.following } }
   Rpc (Api $org.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $false } | Out-Null
-  $anonOrgCount = Rpc-Rows $anonH "person_follower_counts" @{ p_user_ids = @($org.id) }
   $mine = Rpc-Rows (Api $fan.token) "my_followed_organizations" @{}
-  Check 4 "The fan follows the public organization ($($o1.followers)); a private one is refused ($priv); the organization FOLLOWS the fan back ($($orgCaller.following)) and its own Following reads $orgFollowing; a stranger reads the public one's count ($($anonOrgCount.Count) row, $($anonOrgCount[0].followers)); the fan's Following sheet lists $($mine.Count) organization ($($mine[0].name))" (
-    ([int]$o1.followers -eq 1) -and ($priv -match "not open to the public") -and ($orgCaller.following -eq $true) -and ($orgFollowing -eq 1) -and ($anonOrgCount.Count -eq 1) -and ([int]$anonOrgCount[0].followers -eq 1) -and ($mine.Count -eq 1) -and ($mine[0].org_id -eq $org.id))
+  Check 4 "The fan follows the public organization's business ($($o1.followers)); a private one is refused ($priv); the owner FOLLOWS the fan back ($($orgCaller.following)) and their own Following reads $orgFollowing; the fan's Following sheet lists $($mine.Count) organization ($($mine[0].name)) by its business id" (
+    ([int]$o1.followers -eq 1) -and ($priv -match "not open to the public") -and ($orgCaller.following -eq $true) -and ($orgFollowing -eq 1) -and ($mine.Count -eq 1) -and ([string]$mine[0].org_id -eq $hostRow))
 
   # -- AN ORGANIZATION TAKES ENQUIRIES ------------------------------------------
-  # 5. through its hosting row, for the three kinds it can be asked for
+  # 5. through its own business row, for the three kinds it can be asked for
   $enq = Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $hostRow; p_type_key = "celebration"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "A wedding sangeet - can you host?"; p_mobile = $null; p_crew_id = $null }
   $judge = Fails { Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $hostRow; p_type_key = "judge"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "Judge?"; p_mobile = $null; p_crew_id = $null } }
   $privateAsk = Fails { Rpc (Api $fan.token) "send_enquiry" @{ p_business_id = $hostPriv; p_type_key = "celebration"; p_fields = @(); p_dates = @($in10); p_where = "Pune"; p_message = "Hello?"; p_mobile = $null; p_crew_id = $null } }
@@ -188,19 +188,21 @@ try {
     ($bad -match "not an email address") -and ($artistRow.contact_email -eq "artist@example.com") -and ($pubArtist.Count -eq 1) -and ($pubArtist[0].contact_email -eq "artist@example.com") -and ([string]$cleared.contact_email -eq ""))
 
   # 7. the business door and the crew door; the organization's through public_organization, with its phone
+  #    (26 Sep 2026: the organization's phone and email are the BUSINESS's - written through
+  #    update_business_profile on the org row, read back off public_organization by the business id)
   Rpc (Api $org.token) "update_business_profile" @{ p_business_id = $studio.id; p_founded_year = 2016; p_phone = "+91 98765 43210"; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true; p_name = $null; p_contact_email = "hello@studio.example" } | Out-Null
   $bizRow = @(Get-Rows $anonH "businesses?id=eq.$($studio.id)&select=contact_email,phone")[0]
   $bizBad = Fails { Rpc (Api $org.token) "update_business_profile" @{ p_business_id = $studio.id; p_founded_year = 2016; p_phone = "+91 98765 43210"; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true; p_name = $null; p_contact_email = "nope" } }
   $crewRow = Rpc (Api $lead.token) "update_crew" @{ p_crew_id = $crew.id; p_name = $crew.name; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = "crew@example.com" }
   $crewBad = Fails { Rpc (Api $lead.token) "update_crew" @{ p_crew_id = $crew.id; p_name = $crew.name; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = "nope" } }
   $crewOutsider = Fails { Rpc (Api $fan.token) "update_crew" @{ p_crew_id = $crew.id; p_name = "Taken"; p_city = "Pune"; p_style = "Hip-Hop"; p_contact_email = $null } }
-  Rpc (Api $org.token) "update_my_profile" @{ p_full_name = $org.name; p_city = "Pune"; p_age = $null; p_socials = @(); p_styles = @(); p_phone = "+91 91234 56789"; p_contact_email = "org@example.com" } | Out-Null
-  $pubOrg = Rpc-Rows $anonH "public_organization" @{ p_org_id = $org.id }
+  Rpc (Api $org.token) "update_business_profile" @{ p_business_id = $hostRow; p_founded_year = 2016; p_phone = "+91 91234 56789"; p_socials = @(); p_enquiry_types = $null; p_accepts_upi = $true; p_accepts_cards = $true; p_accepts_cash = $true; p_accepts_bank = $true; p_name = $null; p_contact_email = "org@example.com" } | Out-Null
+  $pubOrg = Rpc-Rows $anonH "public_organization" @{ p_org_id = $hostRow }
   Check 7 "The studio's lands ($($bizRow.contact_email)) and a bad one is refused ($bizBad); the crew's lands ($($crewRow.contact_email)), a bad one is refused ($crewBad), an outsider is refused ($crewOutsider); a stranger reads the organization's phone ($($pubOrg[0].phone)) and email ($($pubOrg[0].contact_email)) off its page" (
     ($bizRow.contact_email -eq "hello@studio.example") -and ($bizBad -match "not an email address") -and ($crewRow.contact_email -eq "crew@example.com") -and ($crewBad -match "not an email address") -and ($crewOutsider -match "leader") -and ($pubOrg.Count -eq 1) -and ($pubOrg[0].phone -eq "+91 91234 56789") -and ($pubOrg[0].contact_email -eq "org@example.com"))
 
   # -- A STUDIO'S PUBLIC TEAM ---------------------------------------------------
-  # 8. the owner (an organization) and a trainer, to a stranger; exactly the five columns; an unlisted studio's to its team alone
+  # 8. the owner (a PERSON since 26 Sep 2026 - is_org reads false) and a trainer, to a stranger; exactly the five columns; an unlisted studio's to its team alone
   Rpc (Api $org.token) "invite_to_business" @{ p_business_id = $studio.id; p_name = $member.name; p_email = $member.email; p_role = "trainer" } | Out-Null
   $inv = @(Get-Rows (Api $org.token) "business_invites?business_id=eq.$($studio.id)&status=eq.pending&select=code")[0]
   Rpc (Api $member.token) "accept_business_invite" @{ p_code = $inv.code } | Out-Null
@@ -212,20 +214,22 @@ try {
   $teamSees = Rpc-Rows (Api $member.token) "public_studio_team" @{ p_business_id = $studio.id }
   Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($studio.id)" -Headers $svcH -Body (@{ visibility = "listed" } | ConvertTo-Json) | Out-Null
   Check 8 "A stranger reads the listed studio's team ($($team.Count) rows: $(@($team | ForEach-Object { $_.member_role }) -join ', '); owner is_org $($ownerRow.is_org); columns $cols); unlisted -> a stranger reads $($hidden.Count), a member $($teamSees.Count)" (
-    ($team.Count -eq 2) -and ($team[0].member_role -eq "owner") -and ($ownerRow.is_org -eq $true) -and ($ownerRow.full_name -eq $org.name) -and ($cols -eq "full_name,is_org,member_role,photo_path,user_id") -and ($hidden.Count -eq 0) -and ($teamSees.Count -eq 2))
+    ($team.Count -eq 2) -and ($team[0].member_role -eq "owner") -and ($ownerRow.is_org -eq $false) -and ($ownerRow.full_name -eq $org.name) -and ($cols -eq "full_name,is_org,member_role,photo_path,user_id") -and ($hidden.Count -eq 0) -and ($teamSees.Count -eq 2))
 
   # -- HEADER PICTURES BY KIND --------------------------------------------------
-  # 9. a user holds one, an artist five, an organization more than one; a file outside your folder is refused
+  # 9. a user holds one, an artist five; a file outside your folder is refused.
+  #    (26 Sep 2026: "an organization holds ten" is DELETED here - the organization
+  #    login is retired, and an org BUSINESS's header is its studio_photos rows,
+  #    which business_header_photos reads for type 'org' as it does for a studio;
+  #    the owner's own profile holds a user's one.)
   Rpc (Api $fan.token) "add_my_header_photo" @{ p_path = "gallery/$($fan.id)/one.jpg" } | Out-Null
   $userSecond = Fails { Rpc (Api $fan.token) "add_my_header_photo" @{ p_path = "gallery/$($fan.id)/two.jpg" } }
   1..5 | ForEach-Object { Rpc (Api $artist.token) "add_my_header_photo" @{ p_path = "gallery/$($artist.id)/p$_.jpg" } | Out-Null }
   $artistSixth = Fails { Rpc (Api $artist.token) "add_my_header_photo" @{ p_path = "gallery/$($artist.id)/p6.jpg" } }
-  Rpc (Api $org.token) "add_my_header_photo" @{ p_path = "gallery/$($org.id)/h1.jpg" } | Out-Null
-  $orgSecond = Rpc (Api $org.token) "add_my_header_photo" @{ p_path = "gallery/$($org.id)/h2.jpg" }
   $wrongFolder = Fails { Rpc (Api $fan.token) "add_my_header_photo" @{ p_path = "gallery/$($artist.id)/steal.jpg" } }
   $artistRows = Get-Rows $anonH "profile_header_photos?user_id=eq.$($artist.id)&deleted_at=is.null&select=id"
-  Check 9 "A user's second is refused ($userSecond); an artist's sixth is refused ($artistSixth) with $($artistRows.Count) held; an organization's second lands ($([bool]$orgSecond)); somebody else's folder is refused ($wrongFolder)" (
-    ($userSecond -match "one header picture") -and ($artistSixth -match "five") -and ($artistRows.Count -eq 5) -and ([string]$orgSecond -ne "") -and ($wrongFolder -match "own folder"))
+  Check 9 "A user's second is refused ($userSecond); an artist's sixth is refused ($artistSixth) with $($artistRows.Count) held; somebody else's folder is refused ($wrongFolder)" (
+    ($userSecond -match "one header picture") -and ($artistSixth -match "five") -and ($artistRows.Count -eq 5) -and ($wrongFolder -match "own folder"))
 
   # 10. a crew's header: the leader's to add, five at most, in the crew's own folder; anybody's to read; no direct writes
   $ids = @()
@@ -255,7 +259,7 @@ finally {
   foreach ($u in @($org, $private, $lead, $member, $fan, $artist)) {
     if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
   }
-  "   (cleanup: proof studio, hosting rows, crew and throwaway accounts deleted)"
+  "   (cleanup: proof studio, the two org businesses, crew and throwaway accounts deleted)"
 }
 
 if ($pass) { "`nALL PROFILE PAGE CHECKS PASSED"; exit 0 } else { "`nPROFILE PAGE CHECKS FAILED"; exit 1 }

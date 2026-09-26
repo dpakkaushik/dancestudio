@@ -7,12 +7,12 @@
 # The claims under test:
 #   * `assistant` is a seat BOTH tables admit - business_members and the table
 #     that FEEDS it, business_invites (the 19 Sep bug, one day old, not repeated)
-#   * an organization's four labels, and `studio_owner` refused on the ASK
-#   * setting `studio_owner` writes a real owner row on the studio it names, is
-#     IDEMPOTENT (there is no unique index behind it), and relabelling away takes
-#     the seat back - but never the last owner
-#   * `public_organization_team` prints Owner / Studio owner with its studio /
-#     Event team to a stranger and leaves a plain `member` OUT
+#   * an organization's three labels (owner, event team, member), keyed on the
+#     org BUSINESS since 26 Sep 2026 (the organization login is retired); the
+#     `studio_owner` label and its seat grant are GONE - an organization runs no
+#     studios - so the grant checks (5, 7, 8) are inverted or deleted below
+#   * `public_organization_team` prints Owner / Event team to a stranger and
+#     leaves a plain `member` OUT
 #   * `public_studio_team` carries assistants
 #   * `person_associations` names listed businesses only, never a `staff` seat,
 #     and answers a STRANGER for an artist alone
@@ -81,9 +81,7 @@ function New-EmailUser($email, $name, $role) {
   if ($role -eq "user") { $styles = @("Hip-Hop") }
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; styles = $styles; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
@@ -103,7 +101,7 @@ Assert-City "Pune"
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$org = New-EmailUser "orgteam-org-$stamp@example.com" "OrgTeam Org $stamp" "org"
+$org = New-EmailUser "orgteam-org-$stamp@example.com" "OrgTeam Org $stamp" "user"
 $boss = New-EmailUser "orgteam-boss-$stamp@example.com" "OrgTeam Boss $stamp" "user"
 $hand = New-EmailUser "orgteam-hand-$stamp@example.com" "OrgTeam Hand $stamp" "user"
 $artist = New-EmailUser "orgteam-artist-$stamp@example.com" "OrgTeam Artist $stamp" "user"
@@ -112,6 +110,11 @@ Grant-ArtistPlan $artist.id
 $studio = New-Studio $org.token "OrgTeam Studio $stamp" "Kothrud" "Pune"
 $studioId = [string]$studio.id
 Subscribe-Studio $studioId
+# 26 Sep 2026: the organization is a BUSINESS $org opens (the login is retired), PUBLIC through its
+# own GST number and its own mandate - which is what lets a stranger read its team below
+$orgId = [string](New-Org $org.token "OrgTeam Org Business $stamp" "Pune").id
+Verify-Org-Gst $org.token $orgId "OTM$($stamp.Substring(1))" | Out-Null
+Subscribe-Org $orgId
 
 try {
   # -- 1. `assistant` IS A SEAT, AND SO IS THE INVITE THAT CARRIES IT ------------
@@ -125,10 +128,12 @@ try {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/business_invites?id=eq.$([string]$invite.id)" -Headers $svcH | Out-Null
 
   # -- 2. THE ASK OFFERS THREE LABELS, NEVER studio_owner ------------------------
-  $askStudioOwner = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $boss.id; p_role = "studio_owner" } }
-  $ask = Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $boss.id; p_role = "event_team" }
+  # (26 Sep 2026: an organization runs NO studios, so studio_owner is refused for
+  # good rather than deferred to a yes; the ask is keyed on the org business)
+  $askStudioOwner = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $orgId; p_user_id = $boss.id; p_role = "studio_owner" } }
+  $ask = Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $orgId; p_user_id = $boss.id; p_role = "event_team" }
   $memberId = [string]$ask.id
-  $askNonsense = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $hand.id; p_role = "chief" } }
+  $askNonsense = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $orgId; p_user_id = $hand.id; p_role = "chief" } }
   Check 2 "studio_owner cannot be ASKED ($askStudioOwner); event_team can (status $($ask.status)); an invented label is refused ($askNonsense)" (
     ($askStudioOwner -ne "") -and ($ask.status -eq "asked") -and ($ask.role -eq "event_team") -and ($askNonsense -ne ""))
 
@@ -139,53 +144,44 @@ try {
   Check 3 "A bystander cannot answer ($fanAnswers) and cannot relabel ($fanRelabels); the person asked confirms" (
     ($fanAnswers -ne "") -and ($fanRelabels -ne ""))
 
-  # -- 4. studio_owner NEEDS A STUDIO, AND THE STUDIO MUST BE THE ORGANIZATION'S --
-  $noStudio = Fails { Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "studio_owner"; p_business_id = $null } }
-  $memberWithStudio = Fails { Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "member"; p_business_id = $studioId } }
-  Check 4 "studio_owner without a studio is refused ($noStudio); a plain member WITH one is refused ($memberWithStudio)" (
-    ($noStudio -ne "") -and ($memberWithStudio -ne ""))
-
-  # -- 5. !! THE GRANT: A REAL OWNER SEAT, AND IT IS IDEMPOTENT ------------------
+  # -- 4. studio_owner IS NOT A LABEL ANY MORE, AND A STUDIO IS NEVER NAMED ------
+  # !! INVERTED 26 Sep 2026: an organization runs NO studios (20260926120000), so
+  # `set_organization_member_role` refuses studio_owner outright and refuses ANY
+  # label carrying a p_business_id - where it used to grant a real owner seat on
+  # the studio named. The seat the grant used to write is asserted NOT to appear.
   $before = (Owners $studioId).Count
-  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "studio_owner"; p_business_id = $studioId } | Out-Null
+  $studioOwner = Fails { Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "studio_owner"; p_business_id = $studioId } }
+  $memberWithStudio = Fails { Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "member"; p_business_id = $studioId } }
   $after = (Owners $studioId)
-  # there is NO unique index on (business_id, user_id), so a second call must not seat them twice
-  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "studio_owner"; p_business_id = $studioId } | Out-Null
-  $twice = (Owners $studioId)
   $seated = @($after | Where-Object { [string]$_.user_id -eq $boss.id }).Count
-  Check 5 "Studio owner seats them for real: owners $before -> $($after.Count), the boss among them ($seated); calling it AGAIN leaves $($twice.Count), not more" (
-    ($after.Count -eq $before + 1) -and ($seated -eq 1) -and ($twice.Count -eq $after.Count))
+  Check 4 "studio_owner is refused ($studioOwner); a label WITH a studio is refused ($memberWithStudio); the studio's owners are still $($after.Count) of $before and the boss is seated $seated times" (
+    ($studioOwner -match "owner, event team or a member") -and ($memberWithStudio -match "studio") -and ($after.Count -eq $before) -and ($seated -eq 0))
 
-  # -- 6. A STRANGER READS THE THREE PUBLISHED LABELS AND NOT THE FOURTH ---------
-  $askHand = Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $hand.id; p_role = "member" }
+  # -- 5. DELETED 26 Sep 2026: "the grant writes a REAL OWNER SEAT, idempotently" -
+  #       there is no grant; an organization runs no studios. Check 4 is its inverse.
+
+  # -- 6. A STRANGER READS THE PUBLISHED LABELS AND NOT `member` -----------------
+  $askHand = Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $orgId; p_user_id = $hand.id; p_role = "member" }
   Rpc (Api $hand.token) "respond_to_organization_ask" @{ p_member_id = [string]$askHand.id; p_accept = $true } | Out-Null
-  $team = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $org.id }
+  $team = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $orgId }
   $bossRow = @($team | Where-Object { [string]$_.user_id -eq $boss.id })[0]
   $handRows = @($team | Where-Object { [string]$_.user_id -eq $hand.id }).Count
-  Check 6 "A stranger reads $($team.Count) named: the boss as $($bossRow.role) of '$($bossRow.business_name)'; an Other team member appears $handRows times" (
-    ($team.Count -eq 1) -and ($bossRow.role -eq "studio_owner") -and ([string]$bossRow.business_id -eq $studioId) -and ($handRows -eq 0))
+  Check 6 "A stranger reads $($team.Count) named on the org business: the boss as $($bossRow.role); an Other team member appears $handRows times" (
+    ($team.Count -eq 1) -and ($bossRow.role -eq "event_team") -and ($handRows -eq 0))
 
-  # -- 7. RELABELLING AWAY TAKES THE SEAT BACK ----------------------------------
-  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "event_team"; p_business_id = $null } | Out-Null
+  # -- 7. RELABELLING IS A WORD, AND ONLY A WORD --------------------------------
+  # (26 Sep 2026: there is no seat to take back; the label moves and the studio's
+  # owner rows do not)
+  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "owner"; p_business_id = $null } | Out-Null
+  $relabelled = @(Get-Rows $svcH "organization_members?id=eq.$memberId&select=role,business_id")[0]
   $afterBack = (Owners $studioId)
-  $stillSeated = @($afterBack | Where-Object { [string]$_.user_id -eq $boss.id }).Count
-  Check 7 "Relabelling to Event team takes the owner seat back: owners $($afterBack.Count), the boss seated $stillSeated times" (
-    ($afterBack.Count -eq $before) -and ($stillSeated -eq 0))
+  Check 7 "Relabelling to Owner moves the word ($($relabelled.role), no studio: $($null -eq $relabelled.business_id)) and the studio's owners stay $($afterBack.Count) of $before" (
+    ($relabelled.role -eq "owner") -and ($null -eq $relabelled.business_id) -and ($afterBack.Count -eq $before))
+  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "event_team"; p_business_id = $null } | Out-Null
 
-  # -- 8. AND IT NEVER REMOVES THE LAST OWNER -----------------------------------
-  # the organization itself owns the studio; make IT the studio_owner and take the
-  # label away again - the seat it already had must survive
-  $solo = New-Studio $org.token "OrgTeam Solo $stamp" "Kothrud" "Pune"
-  $soloId = [string]$solo.id
-  $soloOwnersBefore = (Owners $soloId).Count
-  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "studio_owner"; p_business_id = $soloId } | Out-Null
-  $soloWith = (Owners $soloId).Count
-  # take the boss's seat away by hand, then relabel - the organization's own seat must stand
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/business_members?business_id=eq.$soloId&user_id=eq.$($boss.id)" -Headers $svcH -Body (@{ deleted_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "member"; p_business_id = $null } | Out-Null
-  $soloAfter = (Owners $soloId).Count
-  Check 8 "A studio is never left ownerless: $soloOwnersBefore -> $soloWith -> $soloAfter" (
-    ($soloWith -eq $soloOwnersBefore + 1) -and ($soloAfter -ge 1))
+  # -- 8. DELETED 26 Sep 2026: "the grant never removes the last owner" - no grant,
+  #       no seat, nothing to remove. The last-owner rule itself is rls-proof-staff's.
+  $soloId = $null
 
   # -- 9. A STUDIO'S PUBLIC TEAM CARRIES ASSISTANTS ------------------------------
   $studioTeam = Rpc-Rows $anonH "public_studio_team" @{ p_business_id = $studioId }
@@ -216,9 +212,9 @@ try {
   # first run, closed by 20260920150000. RLS IS THE CEILING: a rule kept only in
   # the definer read is kept only at the door you went in by.
   Rpc (Api $org.token) "set_organization_member_role" @{ p_member_id = $memberId; p_role = "member"; p_business_id = $null } | Out-Null
-  $anonMembers = Get-Rows $anonH "organization_members?org_id=eq.$($org.id)&select=role"
-  $anonFrontDesk = Get-Rows $anonH "organization_members?org_id=eq.$($org.id)&role=eq.member&select=role"
-  $ownMembers = Get-Rows (Api $org.token) "organization_members?org_id=eq.$($org.id)&role=eq.member&select=role"
+  $anonMembers = Get-Rows $anonH "organization_members?org_id=eq.$orgId&select=role"
+  $anonFrontDesk = Get-Rows $anonH "organization_members?org_id=eq.$orgId&role=eq.member&select=role"
+  $ownMembers = Get-Rows (Api $org.token) "organization_members?org_id=eq.$orgId&role=eq.member&select=role"
   Check 11 "A front-desk seat is not a public association ($($assocStaff.Count)); an unlisted studio is named to nobody ($($assocUnlisted.Count)); a STRANGER reads $($anonFrontDesk.Count) front-desk rows off the table itself while the organization reads its own ($($ownMembers.Count))" (
     ($assocStaff.Count -eq 0) -and ($assocUnlisted.Count -eq 0) -and
     ($anonFrontDesk.Count -eq 0) -and ($anonMembers.Count -eq 0) -and ($ownMembers.Count -ge 1))
@@ -227,7 +223,7 @@ try {
   Insert "business_members" @{ business_id = $studioId; user_id = $fan.id; member_role = "trainer"; created_by = $org.id; updated_by = $org.id } | Out-Null
   $fanToStranger = Rpc-Rows $anonH "person_associations" @{ p_user_id = $fan.id }
   $fanToSignedIn = Rpc-Rows (Api $boss.token) "person_associations" @{ p_user_id = $fan.id }
-  $noDirect = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/organization_members" -Headers (Api $fan.token) -Body (@{ org_id = $org.id; user_id = $fan.id; role = "owner" } | ConvertTo-Json) }
+  $noDirect = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/organization_members" -Headers (Api $fan.token) -Body (@{ org_id = $orgId; user_id = $fan.id; role = "owner" } | ConvertTo-Json) }
   Check 12 "A plain user's seats reach a stranger $($fanToStranger.Count) times and a signed-in reader $($fanToSignedIn.Count); nobody writes organization_members directly ($noDirect)" (
     ($fanToStranger.Count -eq 0) -and ($fanToSignedIn.Count -eq 1) -and ($noDirect -ne ""))
 
@@ -245,8 +241,8 @@ try {
   if ($pass) { "ALL ORG TEAM CHECKS PASSED" } else { "-- FAIL: see above" }
 }
 finally {
-  # the businesses first (a business whose owner is gone is the #0aa pile growing back)
-  foreach ($id in @($studioId, $soloId)) {
+  # the businesses first - the studio AND the org business (a business whose owner is gone is the #0aa pile growing back)
+  foreach ($id in @($studioId, $orgId, $soloId)) {
     if ($id) { try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$id" -Headers $svcH | Out-Null } catch {} }
   }
   foreach ($u in @($org, $boss, $hand, $artist, $fan)) {

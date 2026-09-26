@@ -39,8 +39,8 @@ async function rest(method, pathname, body) {
     // ── a real owner, made the way every proof makes one
     const made = await rest("POST", "/auth/v1/admin/users", { email, password, email_confirm: true });
     userId = made.id;
-    await rest("POST", "/rest/v1/profiles", { id: userId, full_name: `Earn Org ${stamp}`, role: "org", city: "Pune", created_by: userId, updated_by: userId });
-    await rest("PATCH", `/rest/v1/profiles?id=eq.${userId}`, { verified_at: new Date().toISOString() });
+    /* 26 Sep 2026: a PERSON owns the studio - the organization login is retired */
+    await rest("POST", "/rest/v1/profiles", { id: userId, full_name: `Earn Owner ${stamp}`, role: "user", city: "Pune", styles: ["Hip-Hop"], created_by: userId, updated_by: userId });
 
     const [biz] = await rest("POST", "/rest/v1/businesses", {
       type: "studio", name: `Earn Studio ${stamp}`, area: "Kothrud", city: "Pune",
@@ -179,11 +179,12 @@ async function rest(method, pathname, body) {
     check(page.url().includes("period=day"), "studio · and picking a bucket does NOT navigate — every bucket came back in one read");
 
     // ───────────────── the organization's combined ─────────────────
-    await page.goto(`${BASE}/business/earnings?period=day`, { waitUntil: "networkidle" });
-    await page.getByRole("heading", { level: 1, name: "Earnings" }).waitFor({ timeout: 20000 });
-    const orgLeft = (await page.getByTestId("earn-left").innerText()).trim();
-    check(orgLeft === rupees(300), `org · combined nets the same ${rupees(300)} (read ${orgLeft})`);
-    check((await page.getByTestId("earn-expenses").count()) === 1, "org · and it HAS an expense side, which it never had before 21 Sep");
+    /* DELETED 26 Sep 2026: `/business/earnings` was the organization LOGIN's
+       combined ledger (its studios plus its hosting row), and that login is
+       retired — an organization is a business a person opens, with its OWN
+       earnings desk at `/business/{org}/earnings` holding only its events'
+       money, and this owner has no org business and no event money. What the
+       block proved (the expense side, the same net) is the studio's above. */
 
     // ───────────────── a person's own ─────────────────
     await page.goto(`${BASE}/earnings?period=year`, { waitUntil: "networkidle" });

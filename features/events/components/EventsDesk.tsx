@@ -96,11 +96,12 @@ export function EventsDesk({
       <div style={{ padding: "12px 16px 0" }}>
         {whyNoEvent ? (
           /* a door that would be refused is not offered; the reason stands in
-             its place, with the way to open it — the GST card on Home */
+             its place, with the way to open it — THIS organization's GST screen
+             (26 Sep 2026: the number is the business row's) */
           <div role="status" aria-label={`Cannot create an event: ${whyNoEvent}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 14, background: "var(--card)", border: "1px dashed var(--el)" }}>
             <span aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }}>🧾</span>
             <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: SUB, lineHeight: 1.5 }}>{whyNoEvent}</span>
-            <Link href="/gst?from=events" style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "underline", textUnderlineOffset: 2 }}>
+            <Link href={`/business/${tenantId}/gst?from=events`} style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "underline", textUnderlineOffset: 2 }}>
               Add it
             </Link>
           </div>

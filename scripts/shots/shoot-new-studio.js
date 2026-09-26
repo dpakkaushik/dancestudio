@@ -54,8 +54,8 @@ const rest = async (method, url, body) => {
 
   const link = await fetch(`${SUPABASE}/auth/v1/admin/generate_link`, { method: "POST", headers: H, body: JSON.stringify({ type: "magiclink", email }) }).then((r) => r.json());
   if (!link.hashed_token) throw new Error(`generate_link failed: ${JSON.stringify(link)}`);
-  await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot New Studio ${stamp}`, role: "org", city: "Pune", created_by: link.id, updated_by: link.id });
-  await rest("PATCH", `/rest/v1/profiles?id=eq.${link.id}`, { verified_at: new Date().toISOString() });
+  /* 26 Sep 2026: a PERSON - any account opens a studio; the organization login is retired */
+  await rest("POST", "/rest/v1/profiles", { id: link.id, full_name: `Shot New Studio ${stamp}`, role: "user", city: "Pune", styles: ["Hip-Hop"], created_by: link.id, updated_by: link.id });
 
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 2 });

@@ -119,6 +119,7 @@ export function IdentityHero({
   headerEdit = null,
   shots = [],
   corner,
+  detailsEdit = null,
   testId,
   children,
 }: {
@@ -180,6 +181,14 @@ export function IdentityHero({
    *  "profile view button similar to other profiles". The layout stays a column
    *  because it costs nothing and a second control would otherwise overlap. */
   corner?: ReactNode;
+  /** ⚠ THE CORNER IS A COLUMN AGAIN (26 Sep 2026): the EDIT pencil over the
+   *  eye, on every home — `EditModeButton` toggles the home's edit mode and the
+   *  eye stays the door to the public page. A page that passes one chip still
+   *  gets one chip. */
+  /** the "Edit details" chip drawn under the meta line while the home is in
+   *  edit mode (26 Sep 2026) — a home hands it `EditDetailsChip`, which draws
+   *  nothing until the pencil has been pressed; a public page passes none */
+  detailsEdit?: ReactNode;
   testId?: string;
   /** whatever the page adds under the styles — Home's role word, code and rank */
   children?: ReactNode;
@@ -283,6 +292,7 @@ export function IdentityHero({
               {verified ? <span style={{ flexShrink: 0, marginTop: 6 }}><VerifiedTick size={18} /></span> : null}
             </div>
             {meta ? <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 6, fontSize: 13, fontWeight: 800, color: INK }}>{meta}</div> : null}
+            {detailsEdit}
           </div>
         </div>
         {styles.length ? (

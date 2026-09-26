@@ -63,6 +63,16 @@ export const DOS_TOOLS = {
      paint follows it */
   calendar: { name: "Calendar", c: "#06B6D4" },
   crews: { name: "Crews", c: "#DC2626" },
+  /* AN ORGANIZATION IS A TILE A PERSON OPENS (26 Sep 2026, the user: "make
+     organization a tab on home for artist and users") — a deep plum, 24° off
+     Routines' pink and separated from it by depth, because the warm band is
+     full at the lightness Routines sits at */
+  organizations: { name: "Organizations", c: "#701A75" },
+  /* SUBSCRIPTION IS ON HOME FOR EVERY PROFILE (26 Sep 2026, the user: "subscriptions
+     also become an option on home tab for all profiles and is removed from
+     settings for all") — a deep blue, 15° off Studios' and a full step darker,
+     since the two sit on the same grid */
+  subscription: { name: "Subscription", c: "#0369A1" },
   /* `managed` ("Manage", violet) left this list on 19 Sep 2026 — the user: "just
      need to remove manage as the tile in tools, nothing else changes". The
      /managed page stays; nothing paints a tile for it any more */

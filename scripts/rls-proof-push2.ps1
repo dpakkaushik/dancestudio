@@ -5,12 +5,13 @@
 #
 # The claims under test: an ORGANIZATION names people on its public page (asked,
 # then confirmed; only the person asked answers; Owner / Team are labels; a private
-# organization's team reaches nobody; no direct write); CALL IS A TOGGLE for an
+# organization's team reaches nobody; no direct write) - keyed on the org BUSINESS
+# since 26 Sep 2026, the organization login being retired; CALL IS A TOGGLE for an
 # artist (public_artist hands a stranger the number only while the switch is on)
 # and for a crew (the policy on crew_contacts IS the switch - off, neither a
-# stranger nor a signed-in bystander reads it, the leader still does); an
-# ORGANIZATION HAS A PLACE (set_my_place, India only, cleared by nulls, read off
-# public_organization for a public organization and for nobody else); STATS FOR
+# stranger nor a signed-in bystander reads it, the leader still does); a PUBLIC
+# organization's page is a stranger's to read by its business id and a private
+# one's is nobody's (set_my_place is dropped - the pin is the business row's); STATS FOR
 # SOMEBODY ELSE'S PROFILE (entity_chart_row: a listed studio's, a public artist's
 # and a live crew's row to a stranger, a plain user's to a signed-in reader only,
 # an unlisted studio's to nobody; dance_chart still refuses a stranger and the
@@ -80,10 +81,7 @@ function New-EmailUser($email, $name, $role) {
   if ($role -eq "user") { $styles = @("Hip-Hop") }
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; styles = $styles; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
@@ -118,10 +116,8 @@ function Set-Crew($u, $crewId, $name, $phone, $phonePublic) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$org = New-EmailUser "p2-org-$stamp@example.com" "P2 Org $stamp" "org"
-$private = New-EmailUser "p2-private-$stamp@example.com" "P2 Private Org $stamp" "org"
-# a PRIVATE organization: the tick taken off again, no GST, no listed studio
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($private.id)" -Headers $svcH -Body (@{ verified_at = $null } | ConvertTo-Json) | Out-Null
+$org = New-EmailUser "p2-org-$stamp@example.com" "P2 Org $stamp" "user"
+$private = New-EmailUser "p2-private-$stamp@example.com" "P2 Private Org $stamp" "user"
 $lead = New-EmailUser "p2-lead-$stamp@example.com" "P2 Leader $stamp" "user"
 $artist = New-EmailUser "p2-artist-$stamp@example.com" "P2 Artist $stamp" "user"
 $fan = New-EmailUser "p2-fan-$stamp@example.com" "P2 Fan $stamp" "user"
@@ -129,6 +125,13 @@ Grant-ArtistPlan $artist.id
 $studio = New-Studio $org.token "P2 Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$studio.id)
 $studioId = [string]$studio.id
+# 26 Sep 2026: an organization is a BUSINESS its owner opens (the login is retired). $org's is
+# PUBLIC (its own GST number verified, its own mandate live - org_is_public); $private's has
+# neither, which is what a private organization IS now. The team hangs off the business id.
+$hostRow = [string](New-Org $org.token "P2 Org Business $stamp" "Pune").id
+Verify-Org-Gst $org.token $hostRow "PTW$($stamp.Substring(1))" | Out-Null
+Subscribe-Org $hostRow
+$hostPriv = [string](New-Org $private.token "P2 Private Business $stamp" "Pune").id
 $crew = $null
 $crewId = $null
 
@@ -148,11 +151,11 @@ try {
 
   # -- A. THE ORGANIZATION'S TEAM ----------------------------------------------
   # 1. asked, not added; the person reads their ask, a bystander nothing, a stranger no team; the person was told
-  $ask = Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $lead.id; p_role = "owner" }
+  $ask = Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $lead.id; p_role = "owner" }
   $memberId = [string]$ask.id
-  $leadReads = Get-Rows (Api $lead.token) "organization_members?org_id=eq.$($org.id)&select=id,status"
-  $fanReads = Get-Rows (Api $fan.token) "organization_members?org_id=eq.$($org.id)&select=id"
-  $anonTeam0 = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $org.id }
+  $leadReads = Get-Rows (Api $lead.token) "organization_members?org_id=eq.$hostRow&select=id,status"
+  $fanReads = Get-Rows (Api $fan.token) "organization_members?org_id=eq.$hostRow&select=id"
+  $anonTeam0 = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $hostRow }
   $told = @(Get-Rows (Api $lead.token) "notifications?select=title&deleted_at=is.null&kind=eq.people" | Where-Object { $_.title -match "wants you on its team as owner" }).Count
   Check 1 "The organization asks the leader as owner (status $($ask.status), role $($ask.role)); they read their ask ($($leadReads.Count)); a bystander reads $($fanReads.Count); a stranger sees $($anonTeam0.Count) on the team; they were told ($told)" (
     ($ask.status -eq "asked") -and ($ask.role -eq "owner") -and ($leadReads.Count -eq 1) -and ($fanReads.Count -eq 0) -and ($anonTeam0.Count -eq 0) -and ($told -ge 1))
@@ -160,28 +163,33 @@ try {
   # 2. only the person asked answers; confirmed, a stranger reads them as Owner; the organization was told
   $fanAnswers = Fails { Rpc (Api $fan.token) "respond_to_organization_ask" @{ p_member_id = $memberId; p_accept = $true } }
   Rpc (Api $lead.token) "respond_to_organization_ask" @{ p_member_id = $memberId; p_accept = $true } | Out-Null
-  $anonTeam1 = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $org.id }
-  $orgTold = @(Get-Rows (Api $org.token) "notifications?select=title&deleted_at=is.null&kind=eq.people" | Where-Object { $_.title -match "joined your team" }).Count
+  $anonTeam1 = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $hostRow }
+  # "joined the team of {org}" since 26 Sep 2026 - the notification names the BUSINESS
+  $orgTold = @(Get-Rows (Api $org.token) "notifications?select=title&deleted_at=is.null&kind=eq.people" | Where-Object { $_.title -match "joined the team of" }).Count
   Check 2 "A bystander cannot answer ($fanAnswers); the leader confirms and a stranger reads $($anonTeam1.Count) on the team - $($anonTeam1[0].full_name) as $($anonTeam1[0].role), is_artist $($anonTeam1[0].is_artist); the organization was told ($orgTold)" (
     ($fanAnswers -match "request not found") -and ($anonTeam1.Count -eq 1) -and ($anonTeam1[0].role -eq "owner") -and ($anonTeam1[0].full_name -eq $lead.name) -and ($anonTeam1[0].is_artist -eq $false) -and ($orgTold -ge 1))
 
   # 3. refused in words
-  $again = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $lead.id; p_role = "member" } }
-  $askOrg = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $private.id; p_role = "member" } }
-  $userAsks = Fails { Rpc (Api $lead.token) "ask_organization_member" @{ p_user_id = $fan.id; p_role = "member" } }
-  $badRole = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_user_id = $fan.id; p_role = "boss" } }
-  Check 3 "Asking twice ($again); asking an organization ($askOrg); a person asking ($userAsks); an invented role ($badRole)" (
+  #    26 Sep 2026: "asking an ORGANIZATION" is DELETED - there is no organization
+  #    login to ask any more; the private organization's owner is a person and a
+  #    perfectly good team member. What replaces it: somebody who does not OWN the
+  #    business cannot ask on its behalf (the lead asks, and is refused as not the owner).
+  $again = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $lead.id; p_role = "member" } }
+  $userAsks = Fails { Rpc (Api $lead.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $fan.id; p_role = "member" } }
+  $badRole = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $fan.id; p_role = "boss" } }
+  $selfAsk = Fails { Rpc (Api $org.token) "ask_organization_member" @{ p_org_id = $hostRow; p_user_id = $org.id; p_role = "member" } }
+  Check 3 "Asking twice ($again); somebody who is not the owner asking ($userAsks); an invented role ($badRole); the owner asking themselves ($selfAsk)" (
     # 20 Sep 2026: the ask offers THREE labels now (owner, event team, member) and
     # refuses studio_owner, which is a seat granted after a yes - so the sentence
     # is longer than "an owner or a member". It still names what may be asked.
-    ($again -match "already") -and ($askOrg -match "not on DanceOS") -and ($userAsks -match "only an organization") -and ($badRole -match "event team"))
+    ($again -match "already") -and ($userAsks -match "owner") -and ($badRole -match "event team") -and ($selfAsk -match "own this organization"))
 
   # 4. a PRIVATE organization's confirmed team is nobody else's
-  $privAsk = Rpc (Api $private.token) "ask_organization_member" @{ p_user_id = $lead.id; p_role = "member" }
+  $privAsk = Rpc (Api $private.token) "ask_organization_member" @{ p_org_id = $hostPriv; p_user_id = $lead.id; p_role = "member" }
   Rpc (Api $lead.token) "respond_to_organization_ask" @{ p_member_id = [string]$privAsk.id; p_accept = $true } | Out-Null
-  $anonPriv = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $private.id }
-  $anonPrivTable = Get-Rows $anonH "organization_members?org_id=eq.$($private.id)&select=id"
-  $privReads = Get-Rows (Api $private.token) "organization_members?org_id=eq.$($private.id)&select=id,status"
+  $anonPriv = Rpc-Rows $anonH "public_organization_team" @{ p_org_id = $hostPriv }
+  $anonPrivTable = Get-Rows $anonH "organization_members?org_id=eq.$hostPriv&select=id"
+  $privReads = Get-Rows (Api $private.token) "organization_members?org_id=eq.$hostPriv&select=id,status"
   Check 4 "A private organization's team: the definer read hands a stranger $($anonPriv.Count), the table $($anonPrivTable.Count); the organization reads its own ($($privReads.Count), $($privReads[0].status))" (
     ($anonPriv.Count -eq 0) -and ($anonPrivTable.Count -eq 0) -and ($privReads.Count -eq 1) -and ($privReads[0].status -eq "confirmed"))
 
@@ -191,7 +199,7 @@ try {
   $fanRemoves = Fails { Rpc (Api $fan.token) "remove_organization_member" @{ p_member_id = [string]$privAsk.id } }
   Rpc (Api $lead.token) "remove_organization_member" @{ p_member_id = [string]$privAsk.id } | Out-Null
   $left = @(Get-Rows $svcH "organization_members?id=eq.$($privAsk.id)&select=deleted_at")[0]
-  $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/organization_members" -Headers (Api $org.token) -Body (@{ org_id = $org.id; user_id = $fan.id } | ConvertTo-Json) }
+  $direct = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/organization_members" -Headers (Api $org.token) -Body (@{ org_id = $hostRow; user_id = $fan.id } | ConvertTo-Json) }
   Check 5 "Relabelled to $($relabelled.role); a bystander cannot remove ($fanRemoves); the person leaves and the row is kept, deleted ($([bool]$left.deleted_at)); a direct insert is refused ($([bool]$direct))" (
     ($relabelled.role -eq "owner") -and ($fanRemoves -match "only the organization") -and ($null -ne $left.deleted_at) -and ($direct -ne ""))
 
@@ -228,21 +236,19 @@ try {
     ($stillOff.phone_public -eq $false))
 
   # -- C. AN ORGANIZATION'S PLACE ----------------------------------------------
-  # 9. placed, read off its page; a person refused; the sea refused; cleared by nulls
-  Rpc (Api $org.token) "set_my_place" @{ p_lat = 18.5204; p_lng = 73.8567 } | Out-Null
-  $pubOrg = Rpc-Rows $anonH "public_organization" @{ p_org_id = $org.id }
-  $personPlace = Fails { Rpc (Api $lead.token) "set_my_place" @{ p_lat = 18.5; p_lng = 73.8 } }
-  $sea = Fails { Rpc (Api $org.token) "set_my_place" @{ p_lat = 0; p_lng = 0 } }
-  Rpc (Api $org.token) "set_my_place" @{ p_lat = $null; p_lng = $null } | Out-Null
-  $pubOrg2 = Rpc-Rows $anonH "public_organization" @{ p_org_id = $org.id }
-  $rowOrg = @(Get-Rows $svcH "profiles?id=eq.$($org.id)&select=lat,lng,location_set_at")[0]
-  Check 9 "The organization places itself and a stranger reads the pin ($($pubOrg[0].lat), $($pubOrg[0].lng)); a person is refused ($personPlace); the sea is refused ($sea); nulls clear it (lat '$($pubOrg2[0].lat)', set_at '$($rowOrg.location_set_at)')" (
-    ($pubOrg.Count -eq 1) -and ([double]$pubOrg[0].lat -eq 18.5204) -and ([double]$pubOrg[0].lng -eq 73.8567) -and ($personPlace -match "only an organization") -and ($sea -match "not in India") -and ($null -eq $pubOrg2[0].lat) -and ($null -eq $rowOrg.location_set_at))
+  # 9. DELETED 26 Sep 2026: `set_my_place` is DROPPED with the organization login
+  #    (20260926120000) - an organization's pin is its BUSINESS row's now, the same
+  #    `lat/lng/location_set_at` a studio carries, and public_organization reads it
+  #    off the business. What is kept of the old check is the half that is about
+  #    the PAGE, not the door: a stranger reads a public organization's page by its
+  #    business id, and a private one's page reaches nobody.
+  $pubOrg = Rpc-Rows $anonH "public_organization" @{ p_org_id = $hostRow }
+  Check 9 "A stranger reads the public organization's page by its business id ($($pubOrg.Count) row, host $($pubOrg[0].host_business_id -eq $hostRow), verified $($pubOrg[0].verified))" (
+    ($pubOrg.Count -eq 1) -and ([string]$pubOrg[0].host_business_id -eq $hostRow) -and ($pubOrg[0].verified -eq $true))
 
-  # 10. a private organization's pin reaches nobody
-  Rpc (Api $private.token) "set_my_place" @{ p_lat = 18.5; p_lng = 73.8 } | Out-Null
-  $privPub = Rpc-Rows $anonH "public_organization" @{ p_org_id = $private.id }
-  Check 10 "A private organization's pin: public_organization hands a stranger $($privPub.Count) rows" ($privPub.Count -eq 0)
+  # 10. a private organization's page reaches nobody (no GST number, no mandate)
+  $privPub = Rpc-Rows $anonH "public_organization" @{ p_org_id = $hostPriv }
+  Check 10 "A private organization's page: public_organization hands a stranger $($privPub.Count) rows" ($privPub.Count -eq 0)
 
   # -- D. STATS FOR SOMEBODY ELSE'S PROFILE ------------------------------------
   # 11. the board still refuses a stranger; the ungated core is executable by no client role
@@ -281,11 +287,14 @@ finally {
     Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/crew_header_photos?crew_id=eq.$crewId" -Headers $svcH | Out-Null
     Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/crews?id=eq.$crewId" -Headers $svcH | Out-Null
   }
-  if ($studioId) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$studioId" -Headers $svcH | Out-Null }
+  # the studio and the two org businesses go BEFORE their owners (26 Sep 2026)
+  foreach ($bid in @($studioId, $hostRow, $hostPriv)) {
+    if ($bid) { try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$bid" -Headers $svcH | Out-Null } catch {} }
+  }
   foreach ($u in @($org, $private, $lead, $artist, $fan)) {
     if ($u) { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null }
   }
-  "   (cleanup: proof studio, crew and throwaway accounts deleted)"
+  "   (cleanup: proof studio, the two org businesses, crew and throwaway accounts deleted)"
 }
 
 if ($pass) { "`nALL PUSH 2 CHECKS PASSED"; exit 0 } else { "`nPUSH 2 CHECKS FAILED"; exit 1 }

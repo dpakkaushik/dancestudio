@@ -20,7 +20,10 @@ export interface AuthActionState {
 
 const completeProfileSchema = z.object({
   fullName: z.string().trim().min(1, "Tell us your name").max(120),
-  role: z.enum(["user", "org"]),
+  /* ⚠ `user` ONLY SINCE 26 Sep 2026: the organization login is retired — an
+     organization is a business a person opens from Home. The database keeps the
+     word so soft-deleted rows stay valid history; nobody may sign up as one. */
+  role: z.enum(["user"]),
   city: z.string().trim().min(1, "Tell us your city").max(120),
 });
 

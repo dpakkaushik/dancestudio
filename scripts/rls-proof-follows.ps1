@@ -65,10 +65,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -82,8 +79,8 @@ function Count-Of($headers, $tenantId) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$ownerA = New-EmailUser "follow-ownera-$stamp@example.com" "Owner A $stamp" "org"
-$ownerB = New-EmailUser "follow-ownerb-$stamp@example.com" "Owner B $stamp" "org"
+$ownerA = New-EmailUser "follow-ownera-$stamp@example.com" "Owner A $stamp" "user"
+$ownerB = New-EmailUser "follow-ownerb-$stamp@example.com" "Owner B $stamp" "user"
 $l1 = New-EmailUser "follow-l1-$stamp@example.com" "Learner One $stamp" "user"
 $l2 = New-EmailUser "follow-l2-$stamp@example.com" "Learner Two $stamp" "user"
 
@@ -147,13 +144,14 @@ try {
   #    home"). This check used to read the OWNER's refusal as "an organization
   #    follows nothing at all" — and the owner was refused one clause earlier
   #    than that anyway, for belonging to the business. Both halves are proven
-  #    apart now: owner A is refused for BELONGING, and organization B, which
-  #    belongs to nothing of A's, follows it like anybody else.
+  #    apart now: owner A is refused for BELONGING, and owner B, who belongs to
+  #    nothing of A's, follows it like anybody else. (26 Sep 2026: both owners
+  #    are PEOPLE - the organization login is retired - so this is the plain rule.)
   $priv = Fails { Rpc (Api $l1.token) "set_follow" @{ p_business_id = $tb.id; p_on = $true } }
   $self = Fails { Rpc (Api $ownerA.token) "set_follow" @{ p_business_id = $ta.id; p_on = $true } }
   $orgFollows = Rpc (Api $ownerB.token) "set_follow" @{ p_business_id = $ta.id; p_on = $true }
   Rpc (Api $ownerB.token) "set_follow" @{ p_business_id = $ta.id; p_on = $false } | Out-Null
-  Check 8 "Following a private business is refused ($priv); its own owner is refused for BELONGING to it ($self); another organization FOLLOWS it ($($orgFollows.following), $($orgFollows.followers) followers)" (
+  Check 8 "Following a private business is refused ($priv); its own owner is refused for BELONGING to it ($self); another studio's owner FOLLOWS it ($($orgFollows.following), $($orgFollows.followers) followers)" (
     ($priv -match "not open") -and ($self -match "already belong") -and ($orgFollows.following -eq $true) -and ([int]$orgFollows.followers -eq 3))
 
   # 9. a stranger cannot follow at all

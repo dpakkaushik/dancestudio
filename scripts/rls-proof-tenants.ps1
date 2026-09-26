@@ -29,10 +29,10 @@ $a = Sign-In "+919999999999"
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 
-# 8 Sep 2026: only an ORGANIZATION opens a studio, and +918888888888 is the proofs' LEARNER (a user).
-# Owner A is the test-number organization (verified - scripts/ensure-test-phone-profiles.js); owner B
-# is an email organization made for this run, verified the same way (9 Sep 2026, R14: an unverified
-# organization cannot create a studio at all, so B has to be).
+# 26 Sep 2026: ANY person opens a studio (20260926090000 took "Only an organization" out of
+# why_no_studio), and the organization LOGIN is retired. +918888888888 is the proofs' LEARNER (a
+# user). Owner A is the test-number owner, a USER (scripts/ensure-test-phone-profiles.js); owner B
+# is a user made for this run.
 #
 # 10 Sep 2026: a studio is born UNLISTED and goes public on ITS OWN subscription (one per studio,
 # Rs 1,200 a month). A's studio is subscribed - the service role standing in for an admin's grant -
@@ -41,14 +41,12 @@ $stamp = Get-Date -Format "HHmmss"
 $service = $vars["SUPABASE_SERVICE_ROLE_KEY"]
 if (-not $service) { throw "SUPABASE_SERVICE_ROLE_KEY missing from .env.local" }
 $svcH = @{ apikey = $service; Authorization = "Bearer $service"; "Content-Type" = "application/json"; Prefer = "return=representation" }
-function New-OrgOwner($email, $name) {
+function New-Owner($email, $name) {
   $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
-  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $u.id; full_name = $name; role = "org"; city = "New Delhi"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  # the organization is VERIFIED by the service role here, standing in for the admin
-  Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $u.id; full_name = $name; role = "user"; city = "New Delhi"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   return Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
 }
-$b = New-OrgOwner "st-ownerb-$stamp@example.com" "Owner B $stamp"
+$b = New-Owner "st-ownerb-$stamp@example.com" "Owner B $stamp"
 
 # each owner creates a studio via the RPC (tenant + owner membership, atomic)
 $ta = New-Studio $a.access_token "Studio A $stamp" "Kothrud" "Pune"

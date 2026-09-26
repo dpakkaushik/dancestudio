@@ -1,16 +1,18 @@
 /* AN EVENT IS THE ORGANIZATION'S — PROVED AGAINST THE LIVE DATABASE
-   (15 Sep 2026, R15).
+   (15 Sep 2026, R15; re-cut 26 Sep 2026 for the retired organization login).
  *
- * The screens stopped offering an events door on a studio today. That is a
+ * The screens stopped offering an events door on a studio on 15 Sep. That is a
  * screen decision, and a screen decision is not a rule — so this asks the
- * DATABASE the same question, as a real signed-in organization, through every
- * door an event could be created by:
+ * DATABASE the same question, as a real signed-in PERSON who owns BOTH a studio
+ * and an organization business (26 Sep 2026: any account opens a studio, and an
+ * organization is a `businesses` row of type `org` a person opens — there is no
+ * organization login any more), through every door an event could be created by:
  *
  *   1  save_event with a STUDIO as the host          → refused, in words
  *   2  a direct PostgREST INSERT into `events`       → refused (no insert policy)
- *   3  save_event with the ORGANIZATION's host row   → accepted
- *   4  the host row is NOT the studio                → they are different businesses
- *   5  the host row is type 'org' and unlisted       → never on Discover (R15)
+ *   3  save_event with the ORGANIZATION business     → accepted
+ *   4  the org business is NOT the studio            → they are different businesses
+ *   5  the org business is type 'org' and unlisted   → never on Discover (R15)
  *   6  can_run_events on the studio                  → true (so #1 is the TYPE
  *                                                      check refusing, not a
  *                                                      permission check — the
@@ -59,18 +61,18 @@ async function rpc(headers, fn, args) {
   const stamp = Date.now().toString(36);
   const email = `proof-events-${stamp}@example.com`;
   const password = `Pw-${stamp}-${Math.random().toString(36).slice(2, 10)}`;
-  let orgId = null;
+  let userId = null;
   let studioId = null;
   let hostId = null;
 
   try {
-    /* ── a real organization, signed in ─────────────────────────────────── */
+    /* ── a real person, signed in ───────────────────────────────────────── */
     const made = await (await fetch(`${URL}/auth/v1/admin/users`, {
       method: "POST", headers: admin,
       body: JSON.stringify({ email, password, email_confirm: true }),
     })).json();
-    orgId = made.id;
-    if (!orgId) throw new Error(`could not create the account: ${JSON.stringify(made).slice(0, 200)}`);
+    userId = made.id;
+    if (!userId) throw new Error(`could not create the account: ${JSON.stringify(made).slice(0, 200)}`);
 
     const signedIn = await (await fetch(`${URL}/auth/v1/token?grant_type=password`, {
       method: "POST", headers: { apikey: ANON, "Content-Type": "application/json" },
@@ -80,25 +82,24 @@ async function rpc(headers, fn, args) {
     if (!token) throw new Error(`could not sign in: ${JSON.stringify(signedIn).slice(0, 200)}`);
     const me = asUser(token);
 
-    /* its profile — an ORGANIZATION, with a verified GST so the events gate is
-       open and nothing below is refused for the wrong reason */
+    /* its profile — a USER (26 Sep 2026: the only kind of login there is) */
     const prof = await fetch(`${URL}/rest/v1/profiles`, {
       method: "POST", headers: { ...me, Prefer: "return=representation" },
-      body: JSON.stringify({ id: orgId, full_name: `Proof Org ${stamp}`, role: "org", city: "Pune" }),
+      body: JSON.stringify({ id: userId, full_name: `Proof Owner ${stamp}`, role: "user", city: "Pune", styles: ["Hip-Hop"] }),
     });
     if (!prof.ok) throw new Error(`could not create the profile: ${(await prof.text()).slice(0, 200)}`);
-    await fetch(`${URL}/rest/v1/profiles?id=eq.${orgId}`, {
-      method: "PATCH", headers: admin,
-      body: JSON.stringify({ gstin: `PRF${String(Date.now() % 100000).padStart(5, "0")}`, gstin_verified_at: new Date().toISOString() }),
-    });
 
-    /* a studio of its own, and its events host */
+    /* a studio of its own, and an ORGANIZATION business of its own — the same
+       door for both; then the organization's OWN GST number so the events gate
+       is open and nothing below is refused for the wrong reason */
     const studio = await rpc(me, "create_business_with_owner", { p_name: `Proof Studio ${stamp}`, p_type: "studio", p_area: "Kothrud", p_city: "Pune", p_styles: ["Hip-Hop"] });
     studioId = studio.body && studio.body.id;
     if (!studioId) throw new Error(`could not create the studio: ${studio.message.slice(0, 200)}`);
-    const host = await rpc(me, "my_org_business", {});
-    hostId = typeof host.body === "string" ? host.body : null;
-    if (!hostId) throw new Error(`no events host: ${host.message.slice(0, 200)}`);
+    const org = await rpc(me, "create_business_with_owner", { p_name: `Proof Org ${stamp}`, p_type: "org", p_area: null, p_city: "Pune" });
+    hostId = org.body && org.body.id;
+    if (!hostId) throw new Error(`could not create the organization: ${org.message.slice(0, 200)}`);
+    const gst = await rpc(me, "verify_business_gstin", { p_business_id: hostId, p_gstin: `PRF${String(Date.now() % 100000).padStart(5, "0")}` });
+    if (!gst.ok) throw new Error(`could not verify the organization's GST number: ${gst.message.slice(0, 200)}`);
 
     const payload = (title) => ({
       category: "showcase", title, style: "All styles",
@@ -111,7 +112,7 @@ async function rpc(headers, fn, args) {
     const onStudio = await rpc(me, "save_event", { p_business_id: studioId, p_event_id: null, p_event: payload(`Proof studio-hosted ${stamp}`) });
     check(
       !onStudio.ok && /belongs to the organization/i.test(onStudio.message),
-      "save_event refuses a STUDIO as the host, in words",
+      "save_event refuses a STUDIO as the host, in words — even when the same person owns an organization",
       `got ${onStudio.status}: ${String(onStudio.message).slice(0, 160)}`
     );
 
@@ -127,17 +128,17 @@ async function rpc(headers, fn, args) {
       `got ${direct.status}: ${directBody.slice(0, 160)}`
     );
 
-    /* ── 3. and the organization's own host row is accepted ─────────────── */
+    /* ── 3. and the organization business is accepted ───────────────────── */
     const onHost = await rpc(me, "save_event", { p_business_id: hostId, p_event_id: null, p_event: payload(`Proof org-hosted ${stamp}`) });
-    check(onHost.ok && typeof onHost.body === "string", "save_event ACCEPTS the organization's host row", `got ${onHost.status}: ${String(onHost.message).slice(0, 160)}`);
+    check(onHost.ok && typeof onHost.body === "string", "save_event ACCEPTS the organization business the same person owns", `got ${onHost.status}: ${String(onHost.message).slice(0, 160)}`);
 
-    /* ── 4-5. and that host is a different tenant, of type org, unlisted ── */
+    /* ── 4-5. and that host is a different business, of type org, unlisted ── */
     check(hostId !== studioId, "the events host is NOT the studio");
     const rows = await (await fetch(`${URL}/rest/v1/businesses?id=eq.${hostId}&select=type,visibility`, { headers: admin })).json();
     const hostRow = Array.isArray(rows) ? rows[0] : null;
     check(
       hostRow && hostRow.type === "org" && hostRow.visibility === "unlisted",
-      "the host row is type 'org' and unlisted — never on Discover (R15)",
+      "the org business is type 'org' and unlisted — never on Discover (R15); org_is_public is what opens it",
       `got ${JSON.stringify(hostRow)}`
     );
 
@@ -152,11 +153,11 @@ async function rpc(headers, fn, args) {
     console.log("FAILED", String(e).slice(0, 400));
     fail += 1;
   } finally {
-    /* everything this made, it removes */
+    /* everything this made, it removes — the businesses BEFORE the account */
     for (const id of [studioId, hostId]) {
       if (id) await fetch(`${URL}/rest/v1/businesses?id=eq.${id}`, { method: "DELETE", headers: admin }).catch(() => {});
     }
-    if (orgId) await fetch(`${URL}/auth/v1/admin/users/${orgId}`, { method: "DELETE", headers: admin }).catch(() => {});
+    if (userId) await fetch(`${URL}/auth/v1/admin/users/${userId}`, { method: "DELETE", headers: admin }).catch(() => {});
     console.log(`\n${pass} passed, ${fail} failed`);
     process.exitCode = fail ? 1 : 0;
   }

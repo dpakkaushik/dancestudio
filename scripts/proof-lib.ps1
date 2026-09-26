@@ -27,6 +27,10 @@
 # proof's own Rpc/Api helpers, because not every proof defines them (rls-proof-tenants
 # has no Rpc at all). All it needs is $base and $anon, which every proof has before
 # it dot-sources this file.
+#
+# 26 Sep 2026: ANY account opens a studio - a user, an artist - since
+# 20260926090000 took the "Only an organization" line out of why_no_studio().
+# The organization LOGIN is retired (20260926120000); nothing here assumes one.
 function New-Studio($token, $name, $area, $city, $styles = @("Hip-Hop")) {
   Assert-City $city
   Sweep-Own-Leftovers $token $name
@@ -42,7 +46,7 @@ function New-Studio($token, $name, $area, $city, $styles = @("Hip-Hop")) {
 # that dies before its `try`, never reaches it. One row per interrupted run does
 # not sound like much, and by 19 Sep 2026 it was 147 businesses - which broke
 # THREE REAL THINGS rather than merely looking untidy:
-#   * `why_no_studio()` caps an organization at 15 studios, so the test-phone
+#   * `why_no_studio()` caps an account at 15 studios, so the test-phone
 #     owner sat at 15 and NINE PHONE-BASED PROOFS could not create their world
 #     at all - red for a day, for a reason none of them named;
 #   * `nearby_businesses` answers 50 rows, and Pune's shelf became 88 junk
@@ -98,6 +102,55 @@ function New-Artist-Page($token, $name, $area, $city) {
   $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
   return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
     p_name = $name; p_type = "artist_page"; p_area = $area; p_city = $city } | ConvertTo-Json)
+}
+
+# ---------------------------------------------------------------------------
+# AN ORGANIZATION IS A BUSINESS A PERSON OPENS (26 Sep 2026, 20260926120000).
+#
+# The separate organization login is retired. What an organization IS from here:
+# a `businesses` row of type `org`, owned through the same owner seat a studio
+# is, with a GST number OF ITS OWN and a Rs 5,000-a-month mandate. It is PUBLIC
+# (its events bookable, its page readable, its team printed, followable) only
+# while its GST number is verified AND its own subscription is live
+# (org_is_public). So a proof that hosts an event, or reads an organization as
+# a stranger, needs all three of these in order:
+#
+#   $org = New-Org $owner.token "Proof Org $stamp" "Pune"
+#   Verify-Org-Gst $owner.token ([string]$org.id) "PRF$digits"
+#   Subscribe-Org ([string]$org.id)
+#
+# Every proof's cleanup deletes the org business it made BEFORE the account, the
+# same as a studio (a business whose owner is gone is the #0aa pile).
+function New-Org($token, $name, $city) {
+  Assert-City $city
+  Sweep-Own-Leftovers $token $name
+  $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_business_with_owner" -Headers $h -Body (@{
+    p_name = $name; p_type = "org"; p_area = $null; p_city = $city } | ConvertTo-Json)
+}
+
+# the owner's own door for the GST number, the way the Verify button does it
+# (shape-checked: three letters then five digits). Replaces verify_gstin(text),
+# which is DROPPED - the number is the business's, not a profile's.
+function Verify-Org-Gst($token, $orgId, $gstin) {
+  $h = @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" }
+  return Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/verify_business_gstin" -Headers $h -Body (@{
+    p_business_id = $orgId; p_gstin = $gstin } | ConvertTo-Json)
+}
+
+# the organization's own mandate, as an admin's grant - Subscribe-Studio's twin
+# for the third kind. $userId is optional: read off the owner seat when absent.
+# !! NOTHING is listed: an organization's row is never `listed`; org_is_public is
+# what makes it public, and that reads the GST number and this row.
+function Subscribe-Org($orgId, $userId = $null) {
+  if (-not $userId) {
+    $ownerRows = @(Invoke-RestMethod -Method Get -Uri "$base/rest/v1/business_members?business_id=eq.$orgId&member_role=eq.owner&deleted_at=is.null&select=user_id" -Headers $svcH)
+    $userId = [string]$ownerRows[0].user_id
+  }
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/subscriptions" -Headers $svcH -Body (@{
+    kind = "org"; user_id = $userId; business_id = $orgId; plan_key = "org_monthly"; price_inr = 0; period = "monthly"; status = "active"
+    current_period_start = (Get-Date).ToString("yyyy-MM-dd"); current_period_end = (Get-Date).AddYears(1).ToString("yyyy-MM-dd"); granted = $true
+    note = "Granted by a proof script - nothing charged"; created_by = $userId; updated_by = $userId } | ConvertTo-Json) | Out-Null
 }
 
 # THE CITY VOCABULARY IS THE DATABASE'S, AND A PROOF MAY NOT INVENT ONE.
@@ -157,8 +210,9 @@ function Subscribe-Studio($tenantId) {
 # already stands in for an admin's grant. The PUBLISH itself still goes through the
 # trigger, so the rule is proven rather than bypassed: seat nobody and it refuses.
 #
-# The teacher must be a PERSON: an organization account is refused a seat on a class
-# (guard_person_only), so a phone-based proof teaches with its learner.
+# The teacher is a PERSON - any account is one since 26 Sep 2026 (the organization
+# login is retired); a phone-based proof still teaches with its learner so the
+# owner's own record stays what the proof set up.
 function Seat-Teacher($classId, $teacherUserId) {
   $cls = Invoke-RestMethod -Method Get -Uri "$base/rest/v1/classes?id=eq.$classId&select=business_id" -Headers $svcH
   $bid = [string](@($cls)[0].business_id)

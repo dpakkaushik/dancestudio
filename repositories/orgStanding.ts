@@ -1,20 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** WHAT AN ORGANIZATION STILL ASKS THE DATABASE (9 Sep 2026; trimmed 11 Sep).
+/** THE TWO GATES A PERSON MEETS BEFORE OPENING A BUSINESS (9 Sep 2026; trimmed
+ *  11 Sep; re-cut 26 Sep), plus the removal of a proof photo and the figures
+ *  the admin accounts desk draws per organization.
  *
- *  Four things, and none of them is a verification any more: the one sentence
- *  between it and a new studio, its events host, the removal of a proof photo
- *  (shared with the studio strip, which is the only thing that ADDS one), and
- *  the figures the admin accounts desk draws per organization.
- *
- *  ⚠ THE ORGANIZATION PHOTO READS LEFT ON 11 Sep 2026. An organization shows
- *  DanceOS nothing — the user: "org no more needs admin verification at all" —
- *  so the photos, and the signing helper they shared, moved to
- *  `repositories/studioVerification.ts`, where a STUDIO's evidence is read.
- *  Subscriptions left on 10 Sep 2026, and are per studio. */
+ *  ⚠ `findMyOrgTenantId` LEFT ON 26 Sep 2026 with the organization LOGIN it
+ *  served: `my_org_business()` made a hosting row for a login on first ask, and
+ *  there is no such login any more — an organization is a `businesses` row a
+ *  person opens from `/organizations`, found through `findMyMemberships` like a
+ *  studio. Anything that still wants "the organization's id" reads the owned
+ *  memberships of type `org`. */
 
-/** The one sentence left between this organization and CREATING a studio, or
- *  null. Asked of the database so the screen cannot disagree with the gate. */
+/** The one sentence left between this account and CREATING a studio, or null.
+ *  Asked of the database so the screen cannot disagree with the gate. */
 export async function findWhyNoStudio(supabase: SupabaseClient): Promise<string | null> {
   const { data, error } = await supabase.rpc("why_no_studio");
   if (error) {
@@ -23,13 +21,14 @@ export async function findWhyNoStudio(supabase: SupabaseClient): Promise<string 
   return typeof data === "string" && data.length > 0 ? data : null;
 }
 
-/** The organization's own events host (R15, 9 Sep 2026) — the tenant its
- *  events belong to and whose name a public event prints. Made on first ask,
- *  so this is safe to call before one exists. */
-export async function findMyOrgTenantId(supabase: SupabaseClient): Promise<string | null> {
-  const { data, error } = await supabase.rpc("my_org_business");
+/** The one sentence between this account and OPENING AN ORGANIZATION, or null
+ *  (26 Sep 2026) — `why_no_organization()`, the same shape as the studio's gate:
+ *  the hub prints it where the Add button would be, and
+ *  `create_business_with_owner` raises it. */
+export async function findWhyNoOrganization(supabase: SupabaseClient): Promise<string | null> {
+  const { data, error } = await supabase.rpc("why_no_organization");
   if (error) {
-    throw new Error(`org.eventsHost failed: ${error.message}`);
+    throw new Error(`org.openGate failed: ${error.message}`);
   }
   return typeof data === "string" && data.length > 0 ? data : null;
 }

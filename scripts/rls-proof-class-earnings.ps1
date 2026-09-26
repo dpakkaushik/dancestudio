@@ -53,10 +53,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -93,9 +90,9 @@ function Money-Of($headers, $classId) {
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$owner = New-EmailUser "earnproof-owner-$stamp@example.com" "Owner $stamp" "org"
+$owner = New-EmailUser "earnproof-owner-$stamp@example.com" "Owner $stamp" "user"
 $trainer = New-EmailUser "earnproof-trainer-$stamp@example.com" "Trainer $stamp" "user"
-$rival = New-EmailUser "earnproof-rival-$stamp@example.com" "Rival $stamp" "org"
+$rival = New-EmailUser "earnproof-rival-$stamp@example.com" "Rival $stamp" "user"
 $learners = @()
 foreach ($i in 1..5) { $learners += New-EmailUser "earnproof-l$i-$stamp@example.com" "Learner $i $stamp" "user" }
 

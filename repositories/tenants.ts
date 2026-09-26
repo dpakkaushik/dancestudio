@@ -24,11 +24,15 @@ export interface TenantRow {
   contact_email?: string | null;
   styles?: string[] | null;
   member_no?: number | null;
+  gstin?: string | null;
+  gstin_verified_at?: string | null;
 }
 
 /* ⚠ `about` LEFT on 20 Sep 2026 (`20260920160000_the_bio_is_gone`) — selecting a
-   dropped column would fail every business read. `events.about` is untouched. */
-export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles, member_no";
+   dropped column would fail every business read. `events.about` is untouched.
+   `gstin` and `gstin_verified_at` ARRIVED on 26 Sep 2026 (`20260926120000`): an
+   organization's GST number is the business row's now. */
+export const TENANT_COLUMNS = "id, type, name, area, city, profile_photo_path, founded_year, phone, socials, enquiry_types, accepts_upi, accepts_cards, accepts_cash, accepts_bank, verified_at, location_set_at, contact_email, styles, member_no, gstin, gstin_verified_at";
 
 const toSocials = (raw: unknown): SocialLink[] =>
   Array.isArray(raw)
@@ -62,6 +66,8 @@ export const toTenant = (row: TenantRow): Tenant => ({
      (20 Sep 2026, the user: "Id should be besides profile type on home and
      profilepage both") — until today only `profiles` had one */
   memberNo: row.member_no == null ? null : Number(row.member_no),
+  gstin: row.gstin ?? null,
+  gstinVerifiedAt: row.gstin_verified_at ?? null,
 });
 
 export interface TenantProfileInput {
@@ -138,8 +144,7 @@ export async function createTenantWithOwner(
  *  earnings is still `businesses.type = 'artist_page'` — every class, ask and
  *  payout in this database hangs off a business — but nobody opens it from a
  *  sheet any more. The first time an account with a LIVE plan renders Home
- *  without one, this makes it, named after the person and in their city, the
- *  way `my_org_business()` makes an organization's hosting row on first ask.
+ *  without one, this makes it, named after the person and in their city.
  *  The database keeps its own gate (`create_business_with_owner` refuses one
  *  without the plan, and a second one), and a refusal here is swallowed: Home is
  *  not the place to fail, and the tiles fall back to the hub. Returns the page's

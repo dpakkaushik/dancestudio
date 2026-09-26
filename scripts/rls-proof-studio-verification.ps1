@@ -8,15 +8,16 @@
 #
 # What is proven, against the live database, as the PEOPLE involved (never the service role,
 # except where it stands in for an admin's hand or a screen the owner would have used):
-#   1. an organization NOBODY has verified opens a studio
-#   2. the GST number cannot be written by hand; only verify_gstin moves it
-#   3. verify_gstin refuses a wrong shape with the reason, accepts a right one, refuses a twin
+#   1. a PERSON nobody has verified opens a studio (26 Sep 2026: any account may - the
+#      organization login is retired, and an organization is a BUSINESS a person opens)
+#   2. the org business's GST number cannot be written by hand; only verify_business_gstin moves it
+#   3. verify_business_gstin refuses a wrong shape with the reason, accepts a right one, refuses a twin
 #      (the accepted shape is the PLACEHOLDER the user asked for: 3 letters, 5 digits)
-#   4. an event is refused without the number and allowed with it
+#   4. an event is refused without the number and allowed with it (why_no_event takes the org business)
 #   5. the studio's review: a link and five photos before the ask; only the owner asks; idempotent
 #   6. no badge, no subscription; the owner cannot stamp the badge; an admin can, and it lists
 #   7. the badge can be revoked and given again; the GST number can be cleared and the door shuts
-#   7b. a platform admin reads the unlisted studio it is reviewing; another organization cannot
+#   7b. a platform admin reads the unlisted studio it is reviewing; another person cannot
 #
 # Reads keys from .env.local - run from the repo root:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rls-proof-studio-verification.ps1
@@ -67,12 +68,14 @@ function Check($n, $label, $ok) {
 # a why_no_* function answering NULL comes back from PostgREST as the four-character body `null`,
 # which Invoke-RestMethod hands over as the STRING "null" - so "no sentence" has two spellings
 function NoSentence($v) { return ($null -eq $v) -or ("$v" -eq "") -or ("$v" -eq "null") }
-# an organization NOBODY has verified - no tick, no GST - which is the whole point
-function New-Org($email, $name) {
+# a PERSON nobody has verified - no tick, no GST - which is the whole point.
+# (26 Sep 2026: role `user`; the organization login is retired. Named New-Person
+# so it does not shadow proof-lib's New-Org, which makes the org BUSINESS below.)
+function New-Person($email, $name) {
   $u = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
-    id = $u.id; full_name = $name; role = "org"; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
+    id = $u.id; full_name = $name; role = "user"; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -82,52 +85,59 @@ $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $digits = (Get-Date -Format "HHmmss").Substring(1)
 $made = @()
+$orgA = $null
+$orgB = $null
 
 try {
-  $a = New-Org "sv-a-$stamp@example.com" "Studio Verif A $stamp"; $made += $a.id
-  $b = New-Org "sv-b-$stamp@example.com" "Studio Verif B $stamp"; $made += $b.id
+  $a = New-Person "sv-a-$stamp@example.com" "Studio Verif A $stamp"; $made += $a.id
+  $b = New-Person "sv-b-$stamp@example.com" "Studio Verif B $stamp"; $made += $b.id
 
-  # ── 1. an unverified organization opens a studio ──
+  # ── 1. a person nobody has verified opens a studio ──
   $gate = Rpc (Api $a.token) "why_no_studio" @{}
   $ta = New-Studio $a.token "SV Studio $stamp" "Kothrud" "Pune"
-  Check 1 "An organization nobody has verified opens a studio (gate: '$gate'; studio: $($ta.id))" ((NoSentence $gate) -and $ta.id)
+  Check 1 "A person nobody has verified opens a studio (gate: '$gate'; studio: $($ta.id))" ((NoSentence $gate) -and $ta.id)
+
+  # the two org BUSINESSES the GST number belongs to (26 Sep 2026) - born without one
+  $orgA = [string](New-Org $a.token "SV Org A $stamp" "Pune").id
+  $orgB = [string](New-Org $b.token "SV Org B $stamp" "Pune").id
 
   # ── 2. the GST number is not written by hand ──
-  $hand = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($a.id)" -Headers (Api $a.token) -Body (@{ gstin = "HND${digits}"; gstin_verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) }
-  $after = Get-Rows $svcH "profiles?id=eq.$($a.id)&select=gstin,gstin_verified_at"
-  Check 2 "The owner's own PATCH of gstin is refused or ignored ('$hand'); the column is still empty" ($null -eq $after[0].gstin)
+  $hand = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$orgA" -Headers (Api $a.token) -Body (@{ gstin = "HND${digits}"; gstin_verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) }
+  $after = Get-Rows $svcH "businesses?id=eq.$orgA&select=gstin,gstin_verified_at"
+  Check 2 "The owner's own PATCH of the org business's gstin is refused or ignored ('$hand'); the column is still empty" ($null -eq $after[0].gstin)
 
-  # ── 3. verify_gstin: the reasons, the acceptance, the twin ──
-  $short = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "ABC1234" } }
-  $long = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "ABC123456" } }
-  $shape = Fails { Rpc (Api $a.token) "verify_gstin" @{ p_gstin = "27ABCDE1234F1Z5" } }
+  # ── 3. verify_business_gstin: the reasons, the acceptance, the twin ──
+  $short = Fails { Verify-Org-Gst $a.token $orgA "ABC1234" }
+  $long = Fails { Verify-Org-Gst $a.token $orgA "ABC123456" }
+  $shape = Fails { Verify-Org-Gst $a.token $orgA "27ABCDE1234F1Z5" }
+  $onStudio = Fails { Verify-Org-Gst $a.token ([string]$ta.id) "PRS${digits}" }
+  $notMineGst = Fails { Verify-Org-Gst $b.token $orgA "PRX${digits}" }
   $gstA = "PRF${digits}"
-  $when = Rpc (Api $a.token) "verify_gstin" @{ p_gstin = " prf-${digits} " }
-  $rowA = Get-Rows $svcH "profiles?id=eq.$($a.id)&select=gstin,gstin_verified_at"
-  Check 3 "verify_gstin says why: four digits ('$short'), six digits ('$long'), a real 15-character GSTIN is not the accepted shape ('$shape'); accepts and normalises the right one (stored: $($rowA[0].gstin))" (
-    ($short -match "three letters then five digits") -and ($long -match "three letters then five digits") -and ($shape -match "three letters then five digits") -and ($rowA[0].gstin -eq $gstA) -and $rowA[0].gstin_verified_at)
-  $twin = Fails { Rpc (Api $b.token) "verify_gstin" @{ p_gstin = $gstA } }
+  $when = Verify-Org-Gst $a.token $orgA " prf-${digits} "
+  $rowA = Get-Rows $svcH "businesses?id=eq.$orgA&select=gstin,gstin_verified_at"
+  Check 3 "verify_business_gstin says why: four digits ('$short'), six digits ('$long'), a real 15-character GSTIN is not the accepted shape ('$shape'); a STUDIO takes none ('$onStudio'); somebody else's organization is refused ('$notMineGst'); accepts and normalises the right one (stored: $($rowA[0].gstin))" (
+    ($short -match "three letters then five digits") -and ($long -match "three letters then five digits") -and ($shape -match "three letters then five digits") -and ($onStudio -match "belongs to an organization") -and ($notMineGst -match "owner") -and ($rowA[0].gstin -eq $gstA) -and $rowA[0].gstin_verified_at)
+  $twin = Fails { Verify-Org-Gst $b.token $orgB $gstA }
   Check 4 "A second organization cannot claim the same number ('$twin')" ($twin -match "already on another")
 
   # ── 4. an event needs the number ──
-  $whyB = Rpc (Api $b.token) "why_no_event" @{}
-  $orgB = [string](Rpc (Api $b.token) "my_org_business" @{})
+  $whyB = Rpc (Api $b.token) "why_no_event" @{ p_business_id = $orgB }
   $in10 = (Get-Date).AddDays(10).ToString("yyyy-MM-dd")
   $ev = @{ category = "showcase"; title = "SV Showcase $stamp"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof event"
     entry_format = "none"; bracket = 0; rounds = 0; prizes = @(); tickets_on = $false; entry_tiers = @(); ticket_tiers = @() }
   $noGst = Fails { Rpc (Api $b.token) "save_event" @{ p_business_id = $orgB; p_event_id = $null; p_event = $ev } }
-  Rpc (Api $b.token) "verify_gstin" @{ p_gstin = "PRB${digits}" } | Out-Null
-  $whyB2 = Rpc (Api $b.token) "why_no_event" @{}
+  Verify-Org-Gst $b.token $orgB "PRB${digits}" | Out-Null
+  $whyB2 = Rpc (Api $b.token) "why_no_event" @{ p_business_id = $orgB }
   $evId = Rpc (Api $b.token) "save_event" @{ p_business_id = $orgB; p_event_id = $null; p_event = $ev }
   Check 5 "Without a GST number: why_no_event = '$whyB'; save_event refused ('$noGst'). With one: why_no_event is null and the event saves ($evId)" (
     ($whyB -match "GST") -and ($noGst -match "GST") -and (NoSentence $whyB2) -and $evId)
   # the number can be taken off again, and the events door closes with it
-  Rpc (Api $b.token) "clear_gstin" @{} | Out-Null
-  $whyB3 = Rpc (Api $b.token) "why_no_event" @{}
-  $rowB = Get-Rows $svcH "profiles?id=eq.$($b.id)&select=gstin,gstin_verified_at"
-  Rpc (Api $b.token) "verify_gstin" @{ p_gstin = "PRB${digits}" } | Out-Null
-  Check "5b" "clear_gstin empties both columns (gstin: '$($rowB[0].gstin)') and the door shuts again: '$whyB3'" (($null -eq $rowB[0].gstin) -and ($null -eq $rowB[0].gstin_verified_at) -and ($whyB3 -match "GST"))
+  Rpc (Api $b.token) "clear_business_gstin" @{ p_business_id = $orgB } | Out-Null
+  $whyB3 = Rpc (Api $b.token) "why_no_event" @{ p_business_id = $orgB }
+  $rowB = Get-Rows $svcH "businesses?id=eq.$orgB&select=gstin,gstin_verified_at"
+  Verify-Org-Gst $b.token $orgB "PRB${digits}" | Out-Null
+  Check "5b" "clear_business_gstin empties both columns (gstin: '$($rowB[0].gstin)') and the door shuts again: '$whyB3'" (($null -eq $rowB[0].gstin) -and ($null -eq $rowB[0].gstin_verified_at) -and ($whyB3 -match "GST"))
 
   # ── 5. the studio's review ──
   $noLink = Fails { Rpc (Api $a.token) "request_studio_verification" @{ p_business_id = $ta.id } }
@@ -141,7 +151,7 @@ try {
   $req1 = [string](Rpc (Api $a.token) "request_studio_verification" @{ p_business_id = $ta.id })
   $req2 = [string](Rpc (Api $a.token) "request_studio_verification" @{ p_business_id = $ta.id })
   $reqRow = Get-Rows $svcH "studio_verification_requests?id=eq.$req1&select=status,business_id,org_id"
-  Check 6 "No link: '$noLink'. No photos: '$noPhotos'. Another organization's photo: '$notMine'. A file outside the owner's folder: '$wrongFolder'. Another organization's ask: '$bAsks'. Then the ask files once ($req1) and is idempotent" (
+  Check 6 "No link: '$noLink'. No photos: '$noPhotos'. Another person's photo: '$notMine'. A file outside the owner's folder: '$wrongFolder'. Another person's ask: '$bAsks'. Then the ask files once ($req1) and is idempotent" (
     ($noLink -match "link") -and ($noPhotos -match "5 photos") -and ($notMine -match "owner") -and ($wrongFolder -match "folder") -and ($bAsks -match "owner") -and $req1 -and ($req1 -eq $req2) -and ($reqRow[0].status -eq "pending") -and ($reqRow[0].business_id -eq $ta.id))
 
   # ── 6. no badge, no subscription; the badge is DanceOS's to give ──
@@ -153,7 +163,7 @@ try {
     ($noBadge -match "badge") -and ($null -eq $tick0[0].verified_at) -and ($why0 -match "checking this studio"))
 
   # a platform admin, named through the service role - never self-serve
-  $adm = New-Org "sv-admin-$stamp@example.com" "SV Admin $stamp"; $made += $adm.id
+  $adm = New-Person "sv-admin-$stamp@example.com" "SV Admin $stamp"; $made += $adm.id
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/platform_admins" -Headers $svcH -Body (@{ user_id = $adm.id } | ConvertTo-Json) | Out-Null
   # 14 Sep 2026: the desk reads the studio under RLS, and a studio under review is UNLISTED - so
   # the admin must be able to read a tenant it is neither a member of nor able to see on Discover,
@@ -161,7 +171,7 @@ try {
   # over a studio that had just submitted a link and five photos.
   $adminSees = Get-Rows (Api $adm.token) "businesses?id=eq.$($ta.id)&select=id,name,visibility"
   $bSees = Get-Rows (Api $b.token) "businesses?id=eq.$($ta.id)&select=id"
-  Check "7b" "The admin reads the unlisted studio it is reviewing ($($adminSees.Count) row, visibility $($adminSees[0].visibility)); another organization reads nothing ($($bSees.Count) rows)" (($adminSees.Count -eq 1) -and ($adminSees[0].visibility -eq "unlisted") -and ($bSees.Count -eq 0))
+  Check "7b" "The admin reads the unlisted studio it is reviewing ($($adminSees.Count) row, visibility $($adminSees[0].visibility)); another person reads nothing ($($bSees.Count) rows)" (($adminSees.Count -eq 1) -and ($adminSees[0].visibility -eq "unlisted") -and ($bSees.Count -eq 0))
   $bDecides = Fails { Rpc (Api $b.token) "decide_studio_verification" @{ p_business_id = $ta.id; p_approve = $true; p_note = $null } }
   Rpc (Api $adm.token) "decide_studio_verification" @{ p_business_id = $ta.id; p_approve = $true; p_note = "Floor, mirrors, a class in progress - approved." } | Out-Null
   $tick1 = Get-Rows $svcH "businesses?id=eq.$($ta.id)&select=verified_at,visibility"
@@ -194,14 +204,12 @@ finally {
       Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
     }
     if ($evId) { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/events?id=eq.$evId" -Headers $svcH | Out-Null }
-    if ($orgB) {
-      Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/business_members?business_id=eq.$orgB" -Headers $svcH | Out-Null
-      Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$orgB" -Headers $svcH | Out-Null
-    }
-    $orgA = Get-Rows $svcH "businesses?type=eq.org&select=id&created_by=eq.$($a.id)"
-    foreach ($o in $orgA) {
-      Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/business_members?business_id=eq.$($o.id)" -Headers $svcH | Out-Null
-      Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($o.id)" -Headers $svcH | Out-Null
+    # the two org businesses this proof opened (26 Sep 2026), BEFORE their owners
+    foreach ($o in @($orgA, $orgB)) {
+      if ($o) {
+        Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/business_members?business_id=eq.$o" -Headers $svcH | Out-Null
+        Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$o" -Headers $svcH | Out-Null
+      }
     }
   } catch { "cleanup note: $($_.Exception.Message)" }
   foreach ($id in $made) {

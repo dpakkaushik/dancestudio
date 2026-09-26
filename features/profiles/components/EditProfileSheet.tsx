@@ -3,15 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Portal } from "@/components/ui/Portal";
-import dynamic from "next/dynamic";
 import { CityPicker } from "@/features/geo/components/CityPicker";
-
-/* THE MAP LOADS WHEN THE SHEET NEEDS IT (19 Sep 2026, "make app snappier"): this
-   sheet is on Home, and the Google Maps picker — the map component, its loader,
-   the places search — was in Home's first-load JavaScript for the one
-   organization in a hundred loads that opens the sheet to place a pin */
-const LocationPicker = dynamic(() => import("@/features/geo/components/LocationPicker").then((m) => m.LocationPicker), { ssr: false });
-import { setMyPlaceAction, updateMyProfileAction } from "@/features/profiles/server-actions/profile";
+import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { MUTED } from "@/lib/design/tokens";
 import type { Profile } from "@/types/profile";
 import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
@@ -38,15 +31,17 @@ import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
  *  (`HomeBand`, the prototype's sheets 11217 · 11161) — so this save sends them
  *  back exactly as they are.
  *
- *  PUSH 2 (19 Sep 2026), two of the user's answers: an ARTIST gets a switch
- *  under Mobile — "Show Call on my profile" (`phone_public`, off by default:
- *  "Call is off for artist page by default but should have option to make it
- *  available on profile"); an ORGANIZATION gets the map under Location — its
- *  PIN (`set_my_place`), which is what its page's Location button opens
- *  ("locations should be the google map link for the particular organization").
- *  The pin is written the moment it is placed, like a studio's: a pin somebody
- *  has visibly put should not need a second press, and the LOCKED picker
- *  (16 Sep 2026) is what keeps a scroll from moving it. */
+ *  PUSH 2 (19 Sep 2026), the user's answer: an ARTIST gets a switch under
+ *  Mobile — "Show Call on my profile" (`phone_public`, off by default: "Call
+ *  is off for artist page by default but should have option to make it
+ *  available on profile").
+ *
+ *  ⚠ THE ORGANIZATION'S PIN BLOCK IS GONE (26 Sep 2026): it wrote `set_my_place`
+ *  on the organization LOGIN's profile row, and that login is retired — an
+ *  organization is a business a person opens, and its pin is its business
+ *  row's, placed from its own Edit sheet like a studio's. `isOrg` here can no
+ *  longer be true; the branches that read it are left so the file keeps its
+ *  shape until the profile role itself is retired. */
 
 /* THE DATE OF BIRTH'S BOUNDS AND ITS ARITHMETIC (19 Sep 2026). The prototype
    offered 65 ages, 13 to 77 (11384); the app asks for the date instead and the
@@ -81,7 +76,6 @@ export function EditProfileSheet({
   const isOrg = profile.role === "org";
   const [d, setD] = useState({ fullName: profile.fullName, city: profile.city ?? "", age: profile.age, dob: profile.dob ?? "", phone: profile.phone ?? "", email: profile.contactEmail ?? "", phonePublic: profile.phonePublic });
   const [err, setErr] = useState<string | null>(null);
-  const [placeNote, setPlaceNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const save = () => {
@@ -161,30 +155,7 @@ export function EditProfileSheet({
       {/* THE ONE CITY DROPDOWN (19 Sep 2026) — the same control as everywhere else */}
       <CityPicker value={d.city.trim() || null} onChange={(c) => setD((x) => ({ ...x, city: c ?? "" }))} label="" />
       {!d.city.trim() ? <div style={{ fontSize: 10.5, color: "#EF4444", marginTop: 4 }}>Your city is required — it is where Discover and the rankings place you.</div> : null}
-      {/* AN ORGANIZATION'S PIN (push 2): what its page's Location button opens.
-          Written the moment it is placed — see the header — and the picker opens
-          LOCKED once there is a pin, so scrolling past the map moves nothing */}
-      {isOrg ? (
-        <>
-          <div style={fieldLabel}>On the map</div>
-          <div style={{ fontSize: 10.5, color: MUTED, marginBottom: 6 }}>Where the Location button on your page points. Saved as soon as you place it.</div>
-          <LocationPicker
-            value={{ lat: profile.lat, lng: profile.lng, area: profile.city }}
-            onChange={(p) => {
-              start(async () => {
-                const out = await setMyPlaceAction({ lat: p.lat, lng: p.lng });
-                setPlaceNote(out.error ? out.error : "Pin saved — your Location button opens it now.");
-                if (!out.error) router.refresh();
-              });
-            }}
-          />
-          {placeNote ? (
-            <div role="status" style={{ fontSize: 10.5, color: placeNote.startsWith("Pin saved") ? "#22C55E" : "#F87171", marginTop: 6 }}>
-              {placeNote}
-            </div>
-          ) : null}
-        </>
-      ) : null}
+      {/* ⚠ no pin block (26 Sep 2026) — a person's row carries none; see the header */}
       {/* an organization has no age (10594) */}
       {isOrg ? null : (
         <>

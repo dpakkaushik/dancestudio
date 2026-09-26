@@ -57,11 +57,11 @@ const rest = async (method, url, body) => {
   }).then((r) => r.json());
   if (!link.hashed_token) throw new Error(`generate_link failed: ${JSON.stringify(link)}`);
 
+  /* 26 Sep 2026: a PERSON owns the studio - the organization login is retired */
   await rest("POST", "/rest/v1/profiles", {
-    id: link.id, full_name: `Shot Owner ${stamp}`, role: "org", city: "Pune",
+    id: link.id, full_name: `Shot Owner ${stamp}`, role: "user", city: "Pune", styles: ["Hip-Hop"],
     created_by: link.id, updated_by: link.id,
   });
-  await rest("PATCH", `/rest/v1/profiles?id=eq.${link.id}`, { verified_at: new Date().toISOString() });
 
   /* the studio, made by the service role the way the proofs do — on Pune's
      centroid, which is exactly the guess the picker exists to replace */

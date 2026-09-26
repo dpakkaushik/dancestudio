@@ -65,10 +65,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -103,9 +100,9 @@ $BKSEL = "select=id,event_id,user_id,kind,ticket_tier_id,entry_format,qty,entran
 
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
-$ownerA = New-EmailUser "ev-ownera-$stamp@example.com" "Owner A $stamp" "org"
+$ownerA = New-EmailUser "ev-ownera-$stamp@example.com" "Owner A $stamp" "user"
 $staffA = New-EmailUser "ev-staffa-$stamp@example.com" "Staff A $stamp" "user"
-$ownerB = New-EmailUser "ev-ownerb-$stamp@example.com" "Owner B $stamp" "org"
+$ownerB = New-EmailUser "ev-ownerb-$stamp@example.com" "Owner B $stamp" "user"
 $l1 = New-EmailUser "ev-l1-$stamp@example.com" "Dancer One $stamp" "user"
 $l2 = New-EmailUser "ev-l2-$stamp@example.com" "Dancer Two $stamp" "user"
 
@@ -114,14 +111,15 @@ Subscribe-Studio ([string]$ta.id)
 $tb = New-Studio $ownerB.token "Rival Studio $stamp" "Baner" "Pune"
 Subscribe-Studio ([string]$tb.id)
 Add-Member $ta.id $staffA.id "staff" $ownerA.id
-# R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
-# tenant row (my_org_business), never by one of its studios; save_event refuses a studio outright.
-# The organization is ONE login: its studio's staff are on the studio's team, not on the host's, so
-# they neither run the event nor its door - and they are not "people who run it" at the box office
-# either. The checks below say exactly that (the accounts backlog row records the limitation).
-# 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
-Rpc (Api $ownerA.token) "verify_gstin" @{ p_gstin = "EVT$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
-$orgA = [string](Rpc (Api $ownerA.token) "my_org_business" @{})
+# R15 (10 Sep 2026): an event belongs to the ORGANIZATION, never to one of its studios; save_event
+# refuses a studio outright. 26 Sep 2026: the organization is a BUSINESS the owner opens (the login
+# is retired) - the studio's staff are on the studio's team, not on the org business's, so they
+# neither run the event nor its door, and they are not "people who run it" at the box office either.
+# An event needs the organization's OWN GST number, and the public reads its events only while its
+# own mandate is live (org_is_public) - so: the business, its number, its subscription.
+$orgA = [string](New-Org $ownerA.token "Event Proof Org $stamp" "Pune").id
+Verify-Org-Gst $ownerA.token $orgA "EVT$((Get-Date -Format 'HHmmss').Substring(1))" | Out-Null
+Subscribe-Org $orgA
 
 try {
   # 1. the owner saves a battle as a DRAFT: three ways in (solo has ONE place), a
@@ -278,10 +276,10 @@ try {
     ($rivalDel -match "owner or a trainer|run its events") -and ($anonShow.Count -eq 0) -and ($null -ne $ownerShow.deleted_at))
 }
 finally {
-  # businesses cascade events -> tiers -> bookings; users cascade profiles (and the organization's
-  # hosting row, with the events on it, goes with its profile)
-  foreach ($t in @($ta, $tb)) {
-    try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($t.id)" -Headers $svcH | Out-Null } catch {}
+  # businesses cascade events -> tiers -> bookings; users cascade profiles. The org business goes
+  # the same way as a studio (26 Sep 2026) - BEFORE its owner, or it is the #0aa pile growing back
+  foreach ($bid in @([string]$ta.id, [string]$tb.id, $orgA)) {
+    if ($bid) { try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$bid" -Headers $svcH | Out-Null } catch {} }
   }
   foreach ($u in @($ownerA, $staffA, $ownerB, $l1, $l2)) {
     try { Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null } catch {}

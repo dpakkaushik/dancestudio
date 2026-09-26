@@ -9,21 +9,18 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { updateMyProfileAction } from "@/features/profiles/server-actions/profile";
 import { DOS_STYLE_REG, dosStyleColor } from "@/lib/constants/styles";
-import { BTN_STYLE, DOS_DISPLAY, DOS_TINT, DOS_UI, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
+import { BTN_STYLE, DOS_DISPLAY, DOS_UI, INK, LINE, PINK, SUB } from "@/lib/design/tokens";
 import { dosToolPaint } from "@/lib/format/styleInk";
 import { photoUrl } from "@/lib/media/photo";
 import type { Profile, ProfileRole, SocialLink } from "@/types/profile";
 
-/** WHO IS HERE (8 Sep 2026, the user's decision): a person, or an organization.
- *  The prototype's three tiles — dancer, artist, studio — became two: "artist"
- *  is the plan, taken later from the Profile tab, and "studio" became the
- *  organization that runs studios (one org, many studios). */
-const ROLES: Array<{ key: ProfileRole; label: string; caption: string }> = [
-  /* 26 Sep 2026: a person opens a studio too (from Home's Studios tile), so the
-     caption says so — an organization is for several studios and for EVENTS */
-  { key: "user", label: "User", caption: "Learn, book classes, join crews — unlock Artist tools with the plan, or open a studio of your own" },
-  { key: "org", label: "Organization", caption: "Run several studios and host events under one roof — each studio verified by DanceOS before going public" },
-];
+/** WHO IS HERE: A PERSON, AND NOBODY ELSE (26 Sep 2026). The prototype's three
+ *  tiles — dancer, artist, studio — became two on 8 Sep (User · Organization),
+ *  and the second is retired: the user's decision that "separate login for
+ *  organization also goes away as it now gets created like studios". An
+ *  organization, like a studio, is a business a person opens from Home, so
+ *  onboarding asks no "who" at all any more and simply proceeds as a user. The
+ *  `ROLES` list and the two cards are deleted rather than left with one tile. */
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -36,13 +33,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: 15,
   outline: "none",
   fontFamily: "inherit",
-};
-
-const pressKey = (fn: () => void) => (e: React.KeyboardEvent) => {
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    fn();
-  }
 };
 
 /** the ▲▼ pair every ordered list in the prototype's onboarding wears (3871-3875) */
@@ -87,11 +77,13 @@ const asUrl = (v: string): string => {
 type Step = "profile" | "styles" | "socials" | "proof" | "done";
 
 /** ONBOARDING — the prototype's screens (3781-3943), re-cut on 8 Sep 2026 for
- *  the two kinds of account the user decided on:
+ *  the two kinds of account the user decided on, and again on 26 Sep 2026 when
+ *  the organization kind was retired (an organization is a business a person
+ *  opens now — `isOrg` below can no longer be true, and its branches are kept
+ *  only so the file keeps its shape until the role itself is retired):
  *
- *  1. WHO IS HERE, first — User or Organization — then ONE name (no first and
- *     last: an organization has one name and so, for this purpose, does a
- *     person), the city, and the photo once the row exists.
+ *  1. ONE name (no first and last), the city, and the photo once the row
+ *     exists. No "who is here" — everybody is a person.
  *  2. STYLES — a person's own; an organization is not asked what it dances.
  *  3. LINKS — optional for a person; REQUIRED for an organization, because the
  *     links are what a DanceOS admin verifies before anything it runs is public.
@@ -121,8 +113,9 @@ export function OnboardingForm({
   userId: string;
   existing?: Profile | null;
 }) {
-  const [role, setRole] = useState<ProfileRole>(existing?.role ?? "user");
-  const isOrg = role === "org";
+  /* ⚠ ALWAYS A USER (26 Sep 2026): the server refuses any other word */
+  const role: ProfileRole = "user";
+  const isOrg = existing?.role === "org";
   /* RESUMING: a row already exists when the page re-renders mid-flow (every server
      action refetches the route) or when somebody comes back the next morning —
      the form picks up from what the row holds rather than asking it all again */
@@ -180,26 +173,10 @@ export function OnboardingForm({
         <div style={{ fontSize: 24, fontWeight: 800, margin: "14px 0 4px", fontFamily: DOS_DISPLAY, letterSpacing: -0.5 }}>{isOrg ? "Set up your organization" : "Set up your profile"}</div>
         <div style={{ fontSize: 13, color: SUB, marginBottom: 18 }}>{isOrg ? "Who you are, where you are, and a logo — your studios come next." : "A photo and your basics — this is how the community sees you."}</div>
 
-        {/* WHO IS HERE, FIRST (8 Sep 2026). Two cards; the choice is final once the row
-            exists, so both go quiet after the first Continue. */}
-        <div style={{ fontSize: 12, color: SUB, fontWeight: 700, margin: "0 0 8px", letterSpacing: 0.5 }}>I AM HERE AS…</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
-          {ROLES.map((r) => {
-            const on = role === r.key;
-            const accent = DOS_TINT[r.key];
-            return (
-              <div key={r.key} role="button" tabIndex={0} aria-pressed={on} aria-disabled={saved} onClick={() => !saved && setRole(r.key)} onKeyDown={pressKey(() => !saved && setRole(r.key))} style={{ padding: "13px 16px", borderRadius: 14, cursor: saved ? "default" : "pointer", background: on ? `${accent}14` : "var(--card)", border: `2px solid ${on ? accent : LINE}`, transition: "all .15s", opacity: saved && !on ? 0.55 : 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: on ? accent : INK }}>
-                  {r.label}
-                  {on && " ✓"}
-                </div>
-                <div style={{ fontSize: 12, color: SUB, marginTop: 2 }}>{r.caption}</div>
-              </div>
-            );
-          })}
-        </div>
+        {/* ⚠ NO "I AM HERE AS…" CARDS (26 Sep 2026): the organization kind is
+            retired, and a choice with one option is not a choice */}
 
-        {/* ONE NAME (8 Sep 2026): an organization has one, and so does a person here */}
+        {/* ONE NAME (8 Sep 2026) */}
         <div style={{ fontSize: 12, color: SUB, fontWeight: 700, marginBottom: 8, letterSpacing: 0.5 }}>{isOrg ? "ORGANIZATION NAME" : "YOUR NAME"}</div>
         <input
           name="name"
@@ -423,7 +400,7 @@ export function OnboardingForm({
           </>
         ) : (
           <>
-            ⭐ Teach or get booked? Unlock <b style={{ color: "#F5F2FA" }}>Artist tools</b> any time with the plan on your Profile tab. Run a studio? That is an <b style={{ color: "#F5F2FA" }}>organization</b> account.
+            ⭐ Teach or get booked? Unlock <b style={{ color: "#F5F2FA" }}>Artist tools</b> any time from the Subscription tile on Home. Run a studio or an organization? Open one from Home — <b style={{ color: "#F5F2FA" }}>Studios</b> and <b style={{ color: "#F5F2FA" }}>Organizations</b> are tiles there.
           </>
         )}
       </div>

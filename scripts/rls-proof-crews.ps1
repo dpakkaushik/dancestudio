@@ -64,10 +64,7 @@ function New-EmailUser($email, $name, $role) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = "Pune"; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; token = $tok.access_token }
@@ -87,9 +84,10 @@ $lead = New-EmailUser "crew-lead-$stamp@example.com" "Crew Lead $stamp" "user"
 $m1 = New-EmailUser "crew-m1-$stamp@example.com" "Member One $stamp" "user"
 $m2 = New-EmailUser "crew-m2-$stamp@example.com" "Member Two $stamp" "user"
 $out = New-EmailUser "crew-out-$stamp@example.com" "Outsider $stamp" "user"
-$owner = New-EmailUser "crew-owner-$stamp@example.com" "Owner $stamp" "org"
+$owner = New-EmailUser "crew-owner-$stamp@example.com" "Owner $stamp" "user"
 $ta = New-Studio $owner.token "Crew Proof Studio $stamp" "Kothrud" "Pune"
 Subscribe-Studio ([string]$ta.id)
+$orgA = $null
 
 try {
   # 1. CREATE: the leader is on the roster confirmed; everyone named is ASKED, not written
@@ -172,11 +170,13 @@ try {
     ($leaderLeaves -match "cannot leave") -and ($outRemoves -match "leader") -and ($c2 -eq 2) -and ($ordered[0].user_id -eq $m1.id))
 
   # 10. STEP 21's DEBT, PART ONE - a crew entry is the LEADER's, from a crew they lead
-  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION - it is hosted by the organization's own
-  # tenant row (my_org_business), never by one of its studios; save_event refuses a studio outright.
-  # 11 Sep 2026: an event needs the organization's GST number - verified here the way the Verify button does it (shape-checked)
-  Rpc (Api $owner.token) "verify_gstin" @{ p_gstin = "CRW$((Get-Date -Format 'HHmmss').Substring(1))" } | Out-Null
-  $orgA = [string](Rpc (Api $owner.token) "my_org_business" @{})
+  # R15 (10 Sep 2026): an event belongs to the ORGANIZATION, never to one of its studios; save_event
+  # refuses a studio outright. 26 Sep 2026: the organization is a BUSINESS the owner opens (the login
+  # is retired), with its OWN GST number and its own mandate - which is what lets a stranger read the
+  # crew's battle record on it below (org_is_public).
+  $orgA = [string](New-Org $owner.token "Crew Proof Org $stamp" "Pune").id
+  Verify-Org-Gst $owner.token $orgA "CRW$((Get-Date -Format 'HHmmss').Substring(1))" | Out-Null
+  Subscribe-Org $orgA
   $ev = Rpc (Api $owner.token) "save_event" @{ p_business_id = $orgA; p_event_id = $null; p_event = @{
     category = "battle"; title = "Crew Battle $stamp"; style = "All styles"; start_date = $in10; end_date = $in10; start_time = "18:00"
     venue = "Proof Hall"; address = "Kothrud"; city = "Pune"; maps_url = "https://maps.google.com/?q=Proof+Hall"; about = "Proof"
@@ -223,6 +223,8 @@ try {
 }
 finally {
   Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers $svcH | Out-Null
+  # the org business goes BEFORE its owner (26 Sep 2026), like the studio
+  if ($orgA) { try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$orgA" -Headers $svcH | Out-Null } catch {} }
   foreach ($u in @($lead, $m1, $m2, $out, $owner)) {
     Invoke-RestMethod -Method Delete -Uri "$base/auth/v1/admin/users/$($u.id)" -Headers $adminH | Out-Null
   }

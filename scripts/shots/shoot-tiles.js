@@ -33,15 +33,16 @@ async function rest(method, pathname, body) {
   return t ? JSON.parse(t) : null;
 }
 
-async function makeAccount(stamp, who, role) {
+/* 26 Sep 2026: every account is a USER - the organization login is retired
+   (20260926120000); an organization is a business a person opens from its hub */
+async function makeAccount(stamp, who) {
   const email = `tiles.${who}.${stamp}@example.com`;
   const password = `Tiles!${stamp}aA1`;
   const made = await rest("POST", "/auth/v1/admin/users", { email, password, email_confirm: true });
   await rest("POST", "/rest/v1/profiles", {
-    id: made.id, full_name: `Tiles ${who} ${stamp}`, role, city: "Pune",
+    id: made.id, full_name: `Tiles ${who} ${stamp}`, role: "user", city: "Pune", styles: ["Hip-Hop"],
     created_by: made.id, updated_by: made.id,
   });
-  if (role === "org") await rest("PATCH", `/rest/v1/profiles?id=eq.${made.id}`, { verified_at: new Date().toISOString() });
   return { id: made.id, email, password };
 }
 
@@ -59,9 +60,11 @@ async function signIn(page, acc) {
   await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 60000 });
 }
 
-/** press every tile on the grid in front of us and report what came back */
-async function pressEveryTile(page, who, expectedNames) {
-  await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
+/** press every tile on the grid in front of us and report what came back.
+ *  `startPath` is the home the grid is on - a person's `/`, or a business's own
+ *  home (`/business/{id}`) since 26 Sep 2026, when an organization became one */
+async function pressEveryTile(page, who, expectedNames, startPath = "/") {
+  await page.goto(`${BASE}${startPath}`, { waitUntil: "networkidle" });
   const panel = page.getByRole("navigation", { name: /tools/i }).or(page.locator("[data-tools-grid]"));
   // the grid is whatever links sit under the Tools heading; read them off the page
   const tiles = await page.evaluate(() => {
@@ -173,6 +176,9 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.locator('input[name="name"]').fill(name);
   await page.locator('input[name="area"]').fill("Baner");
   await page.getByLabel("Choose a city").first().selectOption("Pune");
+  /* the sheet asks for a number and an email now (26 Sep 2026) */
+  await page.locator('input[name="phone"]').fill("+919876543210");
+  await page.locator('input[name="contact_email"]').fill(`tiles.${who}.studio.${stamp}@example.com`);
   await page.getByLabel("Room 1 name").fill("Floor 1");
   await page.getByLabel("Add a dance style").selectOption("Hip-Hop");
   await page.getByRole("button", { name: "Create studio" }).click();
@@ -243,7 +249,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
   const b = await chromium.launch();
   try {
     // ── 1. a plain USER, brand new and empty
-    const user = await makeAccount(stamp, "user", "user");
+    const user = await makeAccount(stamp, "user");
     made.push(user.id);
     const p1 = await b.newPage({ viewport: { width: 420, height: 1000 } });
     p1.on("pageerror", (e) => { console.log("PAGEERROR(user) " + e.message); bad++; });
@@ -258,7 +264,7 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p1.close();
 
     // ── 2. an ARTIST — a user with a live plan; Home provisions the page itself
-    const artist = await makeAccount(stamp, "artist", "user");
+    const artist = await makeAccount(stamp, "artist");
     made.push(artist.id);
     const today = new Date().toISOString().slice(0, 10);
     const until = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -325,25 +331,42 @@ async function personOpensAStudio(page, who, acc, stamp) {
     check(new URL(p2.url()).search.includes("show=manage") && new URL(p2.url()).search.includes("new=1"), `artist · and it KEEPS the segment it was opened from (${new URL(p2.url()).search})`);
     await p2.close();
 
-    // ── 3. an ORGANIZATION, verified, with no studio yet
-    const org = await makeAccount(stamp, "org", "org");
+    // ── 3. an ORGANIZATION — a BUSINESS a person opens (26 Sep 2026, the user:
+    //       "make organization a tab on home for artist and users and mechanism
+    //       to create and open an organization similar to studios"). The account
+    //       is a USER; the organization is opened from the Organizations hub
+    //       through the sheet, the way a studio is, and then run from ITS OWN
+    //       home, where its tiles are pressed.
+    const org = await makeAccount(stamp, "org");
     made.push(org.id);
     const p3 = await b.newPage({ viewport: { width: 420, height: 1000 } });
     p3.on("pageerror", (e) => { console.log("PAGEERROR(org) " + e.message); bad++; });
     await signIn(p3, org);
-    await pressEveryTile(p3, "org", ["Events", "Studios", "Calendar", "Team", "Earnings", "Assets"]);
+    const orgName = `Tiles Org ${stamp}`;
+    await p3.goto(`${BASE}/organizations`, { waitUntil: "networkidle" });
+    check(await p3.getByRole("button", { name: "Add organization" }).isVisible().catch(() => false), "org · the Organizations hub offers Add organization to a person");
+    await p3.getByRole("button", { name: "Add organization" }).click();
+    await p3.locator('input[name="name"]').fill(orgName);
+    await p3.locator('input[name="area"]').fill("Kothrud");
+    await p3.getByLabel("Choose a city").first().selectOption("Pune");
+    await p3.locator('input[name="phone"]').fill("+919876543210");
+    await p3.locator('input[name="contact_email"]').fill(`tiles.org.biz.${stamp}@example.com`);
+    await p3.getByRole("button", { name: "Create organization" }).click();
+    await p3.getByText(orgName, { exact: true }).first().waitFor({ timeout: 20_000 }).catch(() => {});
+    const orgRows = await rest("GET", `/rest/v1/businesses?name=eq.${encodeURIComponent(orgName)}&type=eq.org&deleted_at=is.null&select=id,visibility`);
+    const hostId = (orgRows && orgRows[0] && orgRows[0].id) || "";
+    check(/^[0-9a-f-]{36}$/.test(hostId), `org · the sheet made an org business (${hostId || "none"})`);
+    check(orgRows && orgRows[0] && orgRows[0].visibility === "unlisted", "org · born PRIVATE - its own GST number and its own mandate are what make it public");
+
+    /* the organization's OWN home carries its tools - the person's Home does not */
+    await pressEveryTile(p3, "org", ["Events", "Team", "Earnings", "Assets", "Subscription"], `/business/${hostId}`);
 
     /* ⚠ AN ORGANIZATION SELLS NO MEMBERSHIPS, AND THE DESK SAYS SO BY URL
        (22 Sep 2026, the user: "membership not required for organization"). No
        grid has ever drawn that tile for one, so the only way in was to type it —
        and the desk admitted the owner of any business they are on, which
-       includes an organization's own hosting row (R15). Asserted at BOTH ends,
-       the way every redirect in this repo is: the hosting row's id is read off
-       the Events tile, which is the one door that names it. */
-    await p3.goto(`${BASE}/`);
-    const eventsHref = await p3.getByRole("link", { name: "Events", exact: true }).first().getAttribute("href");
-    const hostId = (eventsHref || "").split("/")[2] || "";
-    check(/^[0-9a-f-]{36}$/.test(hostId), `org: the Events tile names the hosting row (${eventsHref})`);
+       includes an organization's own row. Asserted at BOTH ends, the way every
+       redirect in this repo is. */
     if (hostId) {
       await p3.goto(`${BASE}/business/${hostId}/memberships`);
       /* ⚠ WAIT FOR THE URL, NEVER READ IT ONCE (the 19 Sep lesson, met again).
@@ -366,9 +389,10 @@ async function personOpensAStudio(page, who, acc, stamp) {
       /* ⚠ a GSTIN is UNIQUE across the table, so it cannot be the documented
          placeholder ABC12345 — a demo account already holds that one, and the
          PATCH answered 23505. Three letters and five digits is the shape
-         `verify_gstin` accepts; the digits are this run's own. */
+         `verify_business_gstin` accepts; the digits are this run's own.
+         26 Sep 2026: the number is the ORG BUSINESS's, stamped on its row. */
       const gstin = `DOS${String(Math.floor(Math.random() * 90000) + 10000)}`;
-      await rest("PATCH", `/rest/v1/profiles?id=eq.${org.id}`, { gstin, gstin_verified_at: new Date().toISOString() });
+      await rest("PATCH", `/rest/v1/businesses?id=eq.${hostId}`, { gstin, gstin_verified_at: new Date().toISOString() });
       await p3.goto(`${BASE}/business/${hostId}/events`, { waitUntil: "networkidle" });
       await p3.getByRole("link", { name: "Create event" }).click();
       const addEvent = p3.getByRole("dialog", { name: "Add event" });
@@ -386,7 +410,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
       check((await p3.getByRole("dialog").count()) === 0, "org · and that page is not a sheet");
     }
 
-    // ── 4. and a STUDIO's own home, under that organization
+    // ── 4. and a STUDIO's own home, owned by the same person (an organization
+    //       runs no studios since 26 Sep 2026 - the person does)
     const [studio] = await rest("POST", "/rest/v1/businesses", {
       type: "studio", name: `Tiles Studio ${stamp}`, area: "Kothrud", city: "Pune",
       lat: 18.5204, lng: 73.8567, visibility: "unlisted", styles: ["Hip-Hop"],

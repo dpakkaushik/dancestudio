@@ -91,7 +91,10 @@ function Rpc-Anon($fn, $body) {
 # ---- PAGES rather than about which row happens to be first ------------------
 $studio = Rows "businesses?select=id,name&type=eq.studio&visibility=eq.listed&deleted_at=is.null&limit=1"
 $crew = Rows "crews?select=id,name&deleted_at=is.null&limit=1"
-$org = Rows "profiles?select=id,full_name&role=eq.org&deleted_at=is.null&verified_at=not.is.null&limit=1"
+# 26 Sep 2026: an organization is a BUSINESS (type org) with its own GST number - the organization
+# login is retired. A PUBLIC one also needs its own live mandate (org_is_public), so the pick
+# joins the subscription rather than taking the first row with a number.
+$org = Rows "businesses?select=id,name&type=eq.org&deleted_at=is.null&gstin_verified_at=not.is.null&subscriptions!inner(kind,status)&subscriptions.kind=eq.org&subscriptions.status=eq.active&limit=1"
 # !! AN ARTIST IS A LIVE PLAN **ON A LIVE PROFILE** - the first cut took the first
 # active artist subscription and got one whose profile is gone, so `/person/{id}`
 # answered 307 and the check read as a broken rule rather than a bad pick. A
@@ -131,8 +134,8 @@ if ($studio.Count) {
 # ---- 4. a public organization's page ---------------------------------------
 if ($org.Count) {
   $p = Get-Page "/org/$($org[0].id)"
-  Check 4 "A public organization's page is public ($($p.code))" ($p.code -eq 200)
-} else { Check 4 "A public organization's page - none verified, nothing smoked" $false }
+  Check 4 "A public organization's page is public ($($p.code)) - by its BUSINESS id since 26 Sep 2026" ($p.code -eq 200)
+} else { Check 4 "A public organization's page - none with a verified GST number AND a live mandate, nothing smoked" $false }
 
 # ---- 5. a crew's page -------------------------------------------------------
 if ($crew.Count) {
@@ -166,7 +169,7 @@ if ($org.Count) {
   $page = Rpc-Anon "public_organization" @{ p_org_id = $org[0].id }
   Check 8 "A stranger reads a public organization's team ($($team.code)) and its page WITH its number ($($page.code))" (
     $team.code -eq 200 -and $page.code -eq 200 -and $page.text -match '"member_no"')
-} else { Check 8 "The two organization reads - none verified, nothing smoked" $false }
+} else { Check 8 "The two organization reads - no public organization business, nothing smoked" $false }
 
 # ---- 9. a person's seats answer a stranger for an ARTIST only --------------
 if ($artistId -and $plain) {

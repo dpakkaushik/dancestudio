@@ -223,12 +223,14 @@ export const pictureChipPaint = {
 
 export const cornerChip: CSSProperties = { width: 36, height: 36, borderRadius: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxSizing: "border-box", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", background: "rgba(0,0,0,.42)", color: "#fff", border: "1.5px solid rgba(255,255,255,.28)", textDecoration: "none", padding: 0, fontFamily: "inherit" };
 
-/* ⚠ `PencilIcon` IS DELETED (22 Sep 2026). Its last two callers were the corner
-   pencils on a studio's and a crew's home, and both edits are Settings' THIS
-   STUDIO / THIS CREW tiles now — so the glyph had no caller left. A component
-   nothing renders is a lie to the next reader, and this repo has already paid
-   for that twice (the dead "Where you stand with DanceOS ›" link, `NotBuiltYet`
-   after its last shrug closed). `git` has it if a pencil is ever wanted again. */
+/** ⚠ `PencilIcon` IS BACK (26 Sep 2026) — it was deleted on 22 Sep when its
+ *  last two corner callers moved into Settings, and the user has now moved EDIT
+ *  the other way, onto every home's corner as a MODE: "clicking on the edit
+ *  pencil button from top right on every profile should open the option to edit
+ *  everything from the home tab". One glyph, one caller (`EditModeButton`). */
+export const PencilIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L20 8l-4-4L4 16z" /><path d="m14.5 5.5 4 4" /></svg>
+);
 export const EyeIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>
 );

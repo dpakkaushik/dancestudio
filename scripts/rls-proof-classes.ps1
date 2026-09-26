@@ -95,16 +95,17 @@ if (-not $gone) { $pass = $false }
 
 # 9-10. A CLASS BELONGS TO A STUDIO OR AN ARTIST PAGE, NEVER TO THE ORGANIZATION ITSELF
 # (17 Sep 2026, the user: "classes can only be created by users with artist subscription and
-# studios"). The organization's hosting row (R15) exists for its events; the database refuses a
-# class on it in words (migration 20260917180000), and why_no_class says the same sentence for a
-# screen to print before the form is drawn. Both checks are RED until that migration is applied.
+# studios"). An organization is a BUSINESS the owner opens since 26 Sep 2026 (the login is
+# retired); it exists for its events, the database refuses a class on it in words (migration
+# 20260917180000), and why_no_class says the same sentence for a screen to print before the
+# form is drawn.
 function ErrBody($e) {
   if ($e.ErrorDetails -and $e.ErrorDetails.Message) { return [string]$e.ErrorDetails.Message }
   try { $s = $e.Exception.Response.GetResponseStream(); $s.Position = 0; return (New-Object IO.StreamReader($s)).ReadToEnd() } catch { return [string]$e.Exception.Message }
 }
-# my_org_business() RETURNS THE UUID ITSELF, not a row - reading `.id` off it gave "" and the
-# RPC was refused for "invalid input syntax for type uuid", which check 9 rightly called the wrong reason
-$hostId = [string](Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/my_org_business" -Headers (Api $a.access_token) -Body "{}")
+# the org business A opens for this run (my_org_business is DROPPED with the login, 26 Sep 2026);
+# New-Org hands back the ROW, so `.id` is the uuid - the shape check 9 was once bitten by
+$hostId = [string](New-Org $a.access_token "Class Proof Org $stamp" "Pune").id
 try {
   $onOrg = $clsBody.Clone(); $onOrg["p_business_id"] = $hostId; $onOrg["p_room"] = $null; $onOrg["p_title"] = "Hip-Hop - Beginner"
   $stray = Invoke-RestMethod -Method Post -Uri "$base/rest/v1/rpc/create_class_with_session" -Headers (Api $a.access_token) -Body ($onOrg | ConvertTo-Json)
@@ -131,5 +132,8 @@ $studioClear = ($null -eq $whyStudio) -or ("$whyStudio" -eq "null") -or ("$whySt
 $hostNamed = "$whyHost" -match "organization"
 "10. why_no_class: a studio -> nothing ($studioClear); the hosting row -> '$whyHost' $(if ($studioClear -and $hostNamed) {'-- OK'} else {'-- !!! FAILED !!!'})"
 if (-not ($studioClear -and $hostNamed)) { $pass = $false }
+
+# the org business this run opened goes with the run (the studio is the cleanup script's, as before)
+try { Invoke-RestMethod -Method Delete -Uri "$base/rest/v1/businesses?id=eq.$hostId" -Headers $svcH | Out-Null } catch {}
 
 if ($pass) { "`nALL CLASS RLS CHECKS PASSED"; exit 0 } else { "`nCLASS RLS CHECKS FAILED"; exit 1 }

@@ -52,8 +52,8 @@ $stamp = Get-Date -Format "HHmmss"
 # as an admin would) and deleted after.
 $orgBEmail = "leads-orgb-$stamp@example.com"
 $orgBUser = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/admin/users" -Headers $svcH -Body (@{ email = $orgBEmail; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
-Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $orgBUser.id; full_name = "Rival Org $stamp"; role = "org"; city = "Mumbai"; created_by = $orgBUser.id; updated_by = $orgBUser.id } | ConvertTo-Json) | Out-Null
-Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($orgBUser.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
+# 26 Sep 2026: the rival owner is a PERSON - the organization login is retired, and any account opens a studio
+Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{ id = $orgBUser.id; full_name = "Rival Owner $stamp"; role = "user"; city = "Mumbai"; created_by = $orgBUser.id; updated_by = $orgBUser.id } | ConvertTo-Json) | Out-Null
 $orgB = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers @{ apikey = $anon; "Content-Type" = "application/json" } -Body (@{ email = $orgBEmail; password = "Proof-passw0rd!" } | ConvertTo-Json)
 
 $ta = New-Studio $a.access_token "Leads Proof Studio $stamp" "Kothrud" "Pune"

@@ -14,21 +14,20 @@ import {
   type OrgTeamRole,
 } from "@/repositories/organizationTeam";
 
-/** AN ORGANIZATION'S TEAM — the five doors (push 2, 19 Sep 2026). Zod checks
- *  the shape; every RPC decides who may call it: only an organization asks,
- *  relabels and withdraws; only the person asked answers; the organization or
- *  the person themselves removes. */
+/** AN ORGANIZATION'S TEAM — the five doors (push 2, 19 Sep 2026; keyed on the
+ *  ORGANIZATION BUSINESS since 26 Sep 2026). Zod checks the shape; every RPC
+ *  decides who may call it: only the organization's OWNER asks, relabels and
+ *  withdraws; only the person asked answers; the owner or the person themselves
+ *  removes. The `orgId` in an ask is a request, never an authority. */
 
 export interface OrgTeamActionResult {
   error: string | null;
 }
 
 const uuid = z.string().uuid();
-/* ⚠ THE ASK AND THE LABEL TAKE DIFFERENT SETS (20 Sep 2026): `studio_owner`
-   grants a real owner seat on a studio, so it may only be set on somebody who
-   has already confirmed — the RPC refuses it on an ask, and so does this. */
-const askRole = z.enum(["owner", "event_team", "member"]);
-const labelRole = z.enum(["owner", "studio_owner", "event_team", "member"]);
+/* ⚠ THREE LABELS SINCE 26 Sep 2026: `studio_owner` is refused by the database
+   now — an organization runs no studios, so there is no seat to grant */
+const role = z.enum(["owner", "event_team", "member"]);
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -41,20 +40,22 @@ async function requireUser() {
   return { supabase, userId: user.id };
 }
 
-const revalidate = (orgId?: string) => {
-  revalidatePath("/business/team");
+const revalidate = (orgId?: string | null) => {
   revalidatePath("/inbox");
   revalidatePath("/notifications");
-  if (orgId) revalidatePath(`/org/${orgId}`);
+  if (orgId) {
+    revalidatePath(`/business/${orgId}/team`);
+    revalidatePath(`/org/${orgId}`);
+  }
 };
 
-export async function askOrganizationMemberAction(input: { userId: string; role: OrgAskRole }): Promise<OrgTeamActionResult> {
-  const parsed = z.object({ userId: uuid, role: askRole }).safeParse(input);
+export async function askOrganizationMemberAction(input: { orgId: string; userId: string; role: OrgAskRole }): Promise<OrgTeamActionResult> {
+  const parsed = z.object({ orgId: uuid, userId: uuid, role }).safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
-  const { supabase, userId } = await requireUser();
+  const { supabase } = await requireUser();
   try {
-    await askOrganizationMember(supabase, parsed.data.userId, parsed.data.role);
-    revalidate(userId);
+    await askOrganizationMember(supabase, parsed.data.orgId, parsed.data.userId, parsed.data.role);
+    revalidate(parsed.data.orgId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not ask them" };
@@ -74,39 +75,41 @@ export async function respondToOrganizationAskAction(input: { memberId: string; 
   }
 }
 
-export async function withdrawOrganizationAskAction(input: { memberId: string }): Promise<OrgTeamActionResult> {
-  const parsed = z.object({ memberId: uuid }).safeParse(input);
+/* the three below take the ORGANIZATION too, only so the right desk is
+   revalidated — the RPC finds the row's own organization and re-checks the seat */
+export async function withdrawOrganizationAskAction(input: { memberId: string; orgId?: string | null }): Promise<OrgTeamActionResult> {
+  const parsed = z.object({ memberId: uuid, orgId: uuid.nullish() }).safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
-  const { supabase, userId } = await requireUser();
+  const { supabase } = await requireUser();
   try {
     await withdrawOrganizationAsk(supabase, parsed.data.memberId);
-    revalidate(userId);
+    revalidate(parsed.data.orgId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not withdraw" };
   }
 }
 
-export async function removeOrganizationMemberAction(input: { memberId: string }): Promise<OrgTeamActionResult> {
-  const parsed = z.object({ memberId: uuid }).safeParse(input);
+export async function removeOrganizationMemberAction(input: { memberId: string; orgId?: string | null }): Promise<OrgTeamActionResult> {
+  const parsed = z.object({ memberId: uuid, orgId: uuid.nullish() }).safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
-  const { supabase, userId } = await requireUser();
+  const { supabase } = await requireUser();
   try {
     await removeOrganizationMember(supabase, parsed.data.memberId);
-    revalidate(userId);
+    revalidate(parsed.data.orgId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not remove them" };
   }
 }
 
-export async function setOrganizationMemberRoleAction(input: { memberId: string; role: OrgTeamRole; businessId?: string | null }): Promise<OrgTeamActionResult> {
-  const parsed = z.object({ memberId: uuid, role: labelRole, businessId: uuid.nullish() }).safeParse(input);
+export async function setOrganizationMemberRoleAction(input: { memberId: string; role: OrgTeamRole; orgId?: string | null }): Promise<OrgTeamActionResult> {
+  const parsed = z.object({ memberId: uuid, role, orgId: uuid.nullish() }).safeParse(input);
   if (!parsed.success) return { error: "Invalid request" };
-  const { supabase, userId } = await requireUser();
+  const { supabase } = await requireUser();
   try {
-    await setOrganizationMemberRole(supabase, parsed.data.memberId, parsed.data.role, parsed.data.businessId ?? null);
-    revalidate(userId);
+    await setOrganizationMemberRole(supabase, parsed.data.memberId, parsed.data.role);
+    revalidate(parsed.data.orgId);
     return { error: null };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not change the label" };

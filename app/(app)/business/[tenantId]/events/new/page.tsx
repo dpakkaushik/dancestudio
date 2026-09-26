@@ -30,8 +30,9 @@ export default async function NewEventPage({ params }: { params: Promise<{ tenan
      bounce them back to the desk they came from, which would be a door that
      closes with no way forward: it takes them to the screen that fixes it, and
      `?from=events` is what makes that screen say why they are standing there. */
-  if (await findWhyNoEvent(supabase)) {
-    redirect("/gst?from=events");
+  if (await findWhyNoEvent(supabase, tenantId)) {
+    /* THIS organization's GST screen (26 Sep 2026) — the number is the business row's */
+    redirect(`/business/${tenantId}/gst?from=events`);
   }
   /* the city registry (11 Sep 2026): quick chips beside the venue, and where
      the map opens — it replaces the twelve hardcoded names */

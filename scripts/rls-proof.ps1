@@ -30,7 +30,9 @@ if ($a.user.id -eq $b.user.id) { $pass = $false }
 
 function Api($token) { return @{ apikey = $anon; Authorization = "Bearer $token"; "Content-Type" = "application/json"; Prefer = "return=representation" } }
 
-foreach ($u in @(@{s=$a;n="Priya Test";r="user";c="Pune"}, @{s=$b;n="Studio Test";r="org";c="Delhi"})) {
+# 26 Sep 2026: both are USERS - the organization login is retired (and "Delhi" is not in the
+# eight-city registry, which a BEFORE trigger refuses since 19 Sep 2026)
+foreach ($u in @(@{s=$a;n="Priya Test";r="user";c="Pune"}, @{s=$b;n="Studio Test";r="user";c="New Delhi"})) {
   try {
     $body = @{ id = $u.s.user.id; full_name = $u.n; role = $u.r; city = $u.c } | ConvertTo-Json
     Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers (Api $u.s.access_token) -Body $body | Out-Null

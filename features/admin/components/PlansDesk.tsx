@@ -13,7 +13,9 @@ const btn: React.CSSProperties = { height: 32, padding: "0 11px", borderRadius: 
 
 const KIND_WORDS: Record<PlanCatalogRow["kind"], { who: string; what: string; tone: string }> = {
   artist: { who: "a user", what: "unlocks the artist tools and one artist page", tone: "#EC4899" },
-  studio: { who: "an organization, per studio", what: "puts ONE studio on Discover — two studios need two", tone: "#0E7490" },
+  studio: { who: "a person, per studio", what: "puts ONE studio on Discover — two studios need two", tone: "#0E7490" },
+  /* the third kind (26 Sep 2026): an organization is a business a person opens, with its own mandate */
+  org: { who: "a person, per organization", what: "puts ONE organization and its events in front of the public, once its GST number is verified", tone: "#0369A1" },
 };
 
 /** PLANS (10 Sep 2026) — the user's ask, word for word: "keep the subscription

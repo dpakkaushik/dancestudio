@@ -12,7 +12,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *  plan's amount is fixed, so a price change makes a new one the next time
  *  somebody subscribes, and existing mandates stay on theirs. */
 
-export type PlanKind = "artist" | "studio";
+/* `org` since 26 Sep 2026: ₹5,000 a month per ORGANIZATION (`org_monthly`), the
+   studio's mandate for the third kind of business a person opens */
+export type PlanKind = "artist" | "studio" | "org";
 export type PlanPeriod = "monthly" | "yearly";
 export type ArtistPlanKind = PlanPeriod;
 

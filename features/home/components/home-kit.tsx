@@ -83,10 +83,14 @@ export function ToolsPanel({ kind, children }: { kind: ToolsKind; children: Reac
   return <InvertedPanel head={<ToolsHead kind={kind} />}>{children}</InvertedPanel>;
 }
 
-/** WHO THE GRID IS FOR. A person is a user, or an artist while the plan is live;
- *  an organization is the third. A STUDIO's own grid is built beside the studio's
- *  home (`app/(app)/business/[tenantId]/page.tsx`), because every one of its
- *  doors is that studio's. */
+/** WHO THE GRID IS FOR. A person is a user, or an artist while the plan is live.
+ *  ⚠ `org` STAYS IN THE UNION AND NAMES NO LOGIN (26 Sep 2026): the organization
+ *  account was retired — an organization is a `businesses` row a person opens,
+ *  with a grid of its own beside its home (`OrgHome`). The word is kept so
+ *  `ToolsKind`, `TOOLS_HEADING` and the layout key keep compiling; `tilesFor`
+ *  answers the person's list for it. A STUDIO's own grid is built beside the
+ *  studio's home (`app/(app)/business/[tenantId]/page.tsx`), because every one
+ *  of its doors is that studio's. */
 export type HomeKind = "user" | "artist" | "org";
 
 /** THE HOME GRID, FOR ALL FOUR KINDS OF ACCOUNT (18 Sep 2026 — the user's list,
@@ -96,17 +100,29 @@ export type HomeKind = "user" | "artist" | "org";
  *  opened the Discover listing.
  *
  *  A. USER — Classes (booked, assist) · Events (participant, spectator, assisting)
- *     · Calendar · Crews · Studios (taken classes at).
- *  B. ARTIST (the plan is live) — the same five, then Team · Students · Routines ·
+ *     · Calendar · Crews · Studios (taken classes at) · Organizations · … ·
+ *     Subscription.
+ *  B. ARTIST (the plan is live) — the same, then Team · Students · Routines ·
  *     Earnings · Memberships · Assets · Media. The desks that are their PAGE's
  *     (Team, Students) open that page, or the hub where the page is made when
  *     there is none yet; Media is their pictures, which live in the Profile tab's
  *     Edit sheet (16 Sep 2026); Routines, Memberships and Assets open the
  *     prototype's own "nothing here yet" until their desks exist.
- *  C. ORGANIZATION — Events · Studios · Team · Earnings (combined). Team is
- *     "nothing here yet": an organization is one login today.
+ *  C. ⚠ ORGANIZATION IS NOT A KIND OF ACCOUNT ANY MORE (26 Sep 2026): its grid
+ *     is built beside its own home (`OrgHome`), the way a studio's is — Events ·
+ *     Team · Earnings · Assets · Subscription. An `org` kind handed here answers
+ *     the person's list.
  *  D. STUDIO — on its own home: Classes · Calendar · Team · Students · Earnings ·
  *     Memberships · Assets · Rooms · Media.
+ *
+ *  ⚠ ORGANIZATIONS AND SUBSCRIPTION ARE ON EVERY PERSON'S GRID (26 Sep 2026,
+ *  the user: "make organization a tab on home for artist and users", and
+ *  "subscriptions also become an option on home tab for all profiles and is
+ *  removed from settings for all … subscribe to become an artist should not be
+ *  a separate tab in settings like artist tools"). Organizations sits right
+ *  after Studios, because the two are the same shape of door — a business you
+ *  open and run from the switcher; Subscription is LAST, because it is the one
+ *  tile that is about the account rather than about dancing.
  *
  *  ⚠ STATS IS NOT A TILE ANY MORE (18 Sep 2026, the user: "remove stats from
  *  tools and place like a button similar to the qr code in the same area on
@@ -117,34 +133,20 @@ export type HomeKind = "user" | "artist" | "org";
  *  The prototype's list (DOS_TOOLS 2931) is the vocabulary — names, colours,
  *  glyphs; which tiles a kind gets is the user's decision. Events on an
  *  organization points at its ONE events desk (R15). */
-export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: string | null): Tile[] => {
-  if (kind === "org") {
-    return [
-      { name: DOS_TOOLS.events.name, href: eventsHostId ? `/business/${eventsHostId}/events` : "/business", k: "events", c: DOS_TOOLS.events.c },
-      { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
-      /* 18 Sep 2026, the user: "only events calendar required here" — an
-         organization's calendar IS its events (row R21), so the tile opens it */
-      { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
-      { name: DOS_TOOLS.team.name, href: "/business/team", k: "team", c: DOS_TOOLS.team.c },
-      { name: DOS_TOOLS.earn.name, href: "/business/earnings", k: "earn", c: DOS_TOOLS.earn.c },
-      /* ⚠ AN ORGANIZATION HAS ASSETS TOO (21 Sep 2026, the user: "fix assets for
-         both artist, studio and organization"). It never had the tile — the
-         18 Sep list gave Assets to an artist and a studio only — and an
-         organization owns things a studio does not: a van, a PA that travels
-         between its studios. They hang off its own hosting row, which is the one
-         business an organization owns. */
-      ...(eventsHostId ? [{ name: DOS_TOOLS.assets.name, href: `/business/${eventsHostId}/assets`, k: "assets", c: DOS_TOOLS.assets.c } as Tile] : []),
-      /* ⚠ NO MANAGE TILE (19 Sep 2026, the user: "just need to remove manage as
-         the tile in tools, nothing else changes") — /managed still exists and
-         Home's empty day still offers it; it is simply not a tile */
-    ];
-  }
+export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
+  /* ⚠ THE `org` BRANCH IS DELETED, NOT LEFT DEAD (26 Sep 2026): there is no
+     organization login for it to draw, and an organization's own grid is built
+     beside its home. The kind is kept in the union for the types that share it. */
   const person: Tile[] = [
     { name: DOS_TOOLS.classes.name, href: "/my-classes", k: "classesmod", c: DOS_TOOLS.classes.c },
     { name: DOS_TOOLS.events.name, href: "/my-events", k: "events", c: DOS_TOOLS.events.c },
     { name: DOS_TOOLS.calendar.name, href: "/calendar", k: "calendar", c: DOS_TOOLS.calendar.c },
     { name: DOS_TOOLS.crews.name, href: "/crews", k: "crews", c: DOS_TOOLS.crews.c },
     { name: DOS_TOOLS.studios.name, href: "/business", k: "studios", c: DOS_TOOLS.studios.c },
+    /* AN ORGANIZATION IS OPENED FROM HERE (26 Sep 2026) — right after Studios,
+       because it is the same shape of door: a business you open, own through a
+       seat, and run from the profile switcher */
+    { name: DOS_TOOLS.organizations.name, href: "/organizations", k: "organizations", c: DOS_TOOLS.organizations.c },
     /* ⚠ ROUTINES IS A USER'S TILE TOO (20 Sep 2026, the user: "routines you
        learned … should be visible to user profiles as well in tools"). It was an
        artist's, because MAKING one is an artist's tool — but the desk has two
@@ -172,11 +174,16 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
      unreachable; and ⚠ a pass left at `pending_payment` when the Cashfree window
      closed could NOT be paid for, because the "Pay ₹X" button to resume it
      exists only on that screen. */
-  if (kind === "user") {
+  /* THE ACCOUNT'S OWN PLAN, LAST (26 Sep 2026) — Settings lost its Subscription
+     tile and its Artist tools switch the same day, so this is the one door to
+     `/subscription` for a user, an artist and an organization's owner alike */
+  const subscription: Tile = { name: DOS_TOOLS.subscription.name, href: "/subscription", k: "subscription", c: DOS_TOOLS.subscription.c };
+  if (kind !== "artist") {
     return [
       ...person,
       { name: DOS_TOOLS.memberships.name, href: "/memberships", k: "memberships", c: DOS_TOOLS.memberships.c },
       { name: DOS_TOOLS.earn.name, href: "/earnings", k: "earn", c: DOS_TOOLS.earn.c },
+      subscription,
     ];
   }
   /* an artist's page's desks — or the hub, which is where the page is made */
@@ -208,6 +215,7 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
        that editor, on the Profile tab and on Home alike. So the tile was a
        third door to a job that already has two controls sitting on the picture
        itself. `StudioMediaDesk` and its route stay (Rule 14). */
+    subscription,
   ];
 };
 
@@ -222,20 +230,19 @@ export const tilesFor = (kind: HomeKind, pageId: string | null, eventsHostId: st
 export function BizSection({
   kind,
   pageId,
-  eventsHostId = null,
   order = null,
   children,
 }: {
   kind: HomeKind;
   /** an artist's own page (the one they OWN), for the desks that are its */
   pageId: string | null;
-  /** R15: the organization's own events host — the Events tile points at its desk */
-  eventsHostId?: string | null;
   /** this person's own arrangement of THIS grid, or null for the code's order */
   order?: string[] | null;
   children?: ReactNode;
 }) {
-  const base = tilesFor(kind, pageId, eventsHostId);
+  /* `eventsHostId` left with the organization login (26 Sep 2026) — an
+     organization's events desk is a tile on ITS home now, not on a person's */
+  const base = tilesFor(kind, pageId);
   /* ⚠ THE `plan` PROP IS GONE, not left unread (21 Sep 2026) — the badge it
      drew was the "nothing else" the user asked off this head, and a prop no
      branch renders is the same lie as a field no screen reads. */

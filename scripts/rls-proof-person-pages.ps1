@@ -74,10 +74,7 @@ function New-EmailUser($email, $name, $role, $city) {
     email = $email; password = "Proof-passw0rd!"; email_confirm = $true } | ConvertTo-Json)
   Invoke-RestMethod -Method Post -Uri "$base/rest/v1/profiles" -Headers $svcH -Body (@{
     id = $u.id; full_name = $name; role = $role; city = $city; created_by = $u.id; updated_by = $u.id } | ConvertTo-Json) | Out-Null
-  if ($role -eq "org") {
-    # 8 Sep 2026: a studio is public only under a VERIFIED organization - the service role stands in for the admin here
-    Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/profiles?id=eq.$($u.id)" -Headers $svcH -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) | Out-Null
-  }
+  # 26 Sep 2026: the organization LOGIN is retired - every account here is a person
   $tok = Invoke-RestMethod -Method Post -Uri "$base/auth/v1/token?grant_type=password" -Headers $anonH -Body (@{
     email = $email; password = "Proof-passw0rd!" } | ConvertTo-Json)
   return [pscustomobject]@{ id = $u.id; email = $email; name = $name; token = $tok.access_token }
@@ -86,7 +83,7 @@ function New-EmailUser($email, $name, $role, $city) {
 $pass = $true
 $stamp = Get-Date -Format "HHmmss"
 $city = "Hyderabad"   # one of the eight the registry allows (19 Sep 2026), and one the demo world does not use
-$owner = New-EmailUser "pp-owner-$stamp@example.com" "PP Owner $stamp" "org" $city
+$owner = New-EmailUser "pp-owner-$stamp@example.com" "PP Owner $stamp" "user" $city
 $teacher = New-EmailUser "pp-teacher-$stamp@example.com" "PP Teacher $stamp" "user" $city
 $fan = New-EmailUser "pp-fan-$stamp@example.com" "PP Fan $stamp" "user" $city
 $other = New-EmailUser "pp-other-$stamp@example.com" "PP Other $stamp" "user" $city
@@ -186,18 +183,16 @@ try {
   Check 7 "Following yourself refused ($self); somebody who is not on DanceOS refused ($ghost); the public cannot follow ($anonFollow)" (
     ($self -match "yourself") -and ($ghost -match "not on DanceOS") -and ($anonFollow -ne ""))
 
-  # 7b. AN ORGANIZATION IS FOLLOWED, AND NOW FOLLOWS TOO (re-cut 20 Sep 2026, the
-  #     user: "Organization and Studio still dont have Following section in profile
-  #     and home"). A PUBLIC organization - this owner is verified and runs a listed
-  #     studio - has been followable since 20260919120000; since
-  #     20260920180000_an_organization_follows it is also a FOLLOWER, so the figure
-  #     on its Home, its Profile tab and its public page counts real rows.
-  #     What has NOT changed: search still does not offer it as a person (R9), and
-  #     `guard_person_only` still keeps it out of every other person's seat (R11).
+  # 7b. THE OWNER IS A PERSON LIKE ANY OTHER (re-cut 26 Sep 2026: the organization
+  #     login is retired, so the studio's owner is a plain USER). What this used to
+  #     prove about an organization - followable, and a follower - is now the plain
+  #     person rule, and one thing INVERTS: search DOES offer the owner as a person,
+  #     where R9 kept an organization out of the People section. (Following an
+  #     organization BUSINESS is rls-proof-profile-pages' subject.)
   $orgFollow = Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $owner.id; p_on = $true }
-  # !! the organization follows the FAN, not the teacher: check 9 below reads the
-  #    owner as a BYSTANDER to the teacher's followers, and a follower — even one
-  #    who has since unfollowed — reads their own row, which is right and would
+  # !! the owner follows the FAN, not the teacher: check 9 below reads the
+  #    owner as a BYSTANDER to the teacher's followers, and a follower - even one
+  #    who has since unfollowed - reads their own row, which is right and would
   #    have made that check fail for the wrong reason.
   $orgCaller = Rpc (Api $owner.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $true }
   $orgCounts = Rows (Api $owner.token) "person_follower_counts" @{ p_user_ids = @($owner.id) }
@@ -205,8 +200,8 @@ try {
   $orgFound = @((Rows (Api $fan.token) "search_dance_os" @{ p_q = "PP Owner"; p_limit = 3 }) | Where-Object { $_.kind -eq "person" }).Count
   Rpc (Api $owner.token) "set_person_follow" @{ p_user_id = $fan.id; p_on = $false } | Out-Null
   Rpc (Api $fan.token) "set_person_follow" @{ p_user_id = $owner.id; p_on = $false } | Out-Null
-  Check "7b" "Following a PUBLIC organization is allowed (following $($orgFollow.following), $($orgFollow.followers) follower); an organization now FOLLOWS a person too ($($orgCaller.following)), and its own Following reads $orgFollowing; search still offers $orgFound people for its name" (
-    ($orgFollow.following -eq $true) -and ([int]$orgFollow.followers -eq 1) -and ($orgCaller.following -eq $true) -and ($orgFollowing -eq 1) -and ($orgFound -eq 0))
+  Check "7b" "Following the studio's owner is allowed (following $($orgFollow.following), $($orgFollow.followers) follower); the owner FOLLOWS a person too ($($orgCaller.following)), and their own Following reads $orgFollowing; search offers $orgFound person for their name (a person, since 26 Sep 2026)" (
+    ($orgFollow.following -eq $true) -and ([int]$orgFollow.followers -eq 1) -and ($orgCaller.following -eq $true) -and ($orgFollowing -eq 1) -and ($orgFound -eq 1))
 
   # 8. A FOLLOW NAMES EXACTLY ONE OBJECT - the table cannot hold anything else
   $both = Fails { Invoke-RestMethod -Method Post -Uri "$base/rest/v1/follows" -Headers $svcH -Body (@{
