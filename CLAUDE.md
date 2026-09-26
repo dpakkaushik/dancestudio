@@ -1,8 +1,82 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (22–23 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (26 Sep 2026) — replaced on every push (Rule 13)
 
-> ### TWO ADDRESSES FOR ONE RECORD, A STUDIO'S EDIT DOOR, AND ONE ⊕ (22–23 Sep 2026, latest) — BUILT, no migration
+> ### A PERSON OPENS A STUDIO, AND NOBODY IS ASKED TO SAY YES TO THEMSELVES (26 Sep 2026) — BUILT, ONE MIGRATION WRITTEN AND DRY-RUN **32/32**, ⚠ NOT APPLIED, NOT PUSHED (local `a4f39d4`)
+> The user: *"Move Studio creation from org and allow user and artist to create
+> studios now from studios tab at home in a section. verification and
+> subscription process remains the same for the studio. so studio profiles can be
+> managed from the profile switcher … when the same user is creating classes from
+> studio or as an artist using the same studio or artist profile no verification
+> is required but keeps a log in the inbox. … shift one studio to deepak kaushik
+> and one to alisha."*
+> * ⚠⚠ **WHAT KEPT A STUDIO AN ORGANIZATION'S WAS THREE LINES, NOT A MODEL**:
+>   one in `why_no_studio()`, one in `subscribe`'s studio branch, one in the app's
+>   create action. Everything downstream — badge, photos (keyed on the uploader's
+>   OWN folder), mandate, the switcher, THIS STUDIO in Settings, the studio's own
+>   home — has keyed on the OWNER SEAT since 14 Sep. So the migration
+>   (`20260926090000_a_person_opens_a_studio.sql`) edits seven function BODIES out
+>   of the catalog by asserted anchor (never re-typed; a helper `_dos_swap`
+>   refuses unless the anchor occurs exactly the expected number of times, and is
+>   dropped at the end): the two role lines go; the 15-studio cap stays and reads
+>   "One account"; `ask_class_person` seats an owner naming THEMSELVES as
+>   confirmed; `create_class_with_session` and `classes_venue_changes` accept a
+>   room in a studio the caller OWNS at birth (and let the form publish); the two
+>   notify triggers raise the LOG in both self cases. No signature, no grant, no
+>   policy, no row: the dry run asserts the ACL multiset identical, anon 46 → 46,
+>   policies 121 → 121, functions 277 → 277.
+> * ⚠⚠ **AND THE DRY RUN FOUND A PRE-EXISTING BUG: THE VENUE-REQUEST
+>   NOTIFICATIONS OF 18 Sep HAVE NEVER LANDED ONCE.** Both branches wrote the kind
+>   `'classes'`; the `notifications.kind` CHECK admits `'class'`; and `notify()`
+>   swallows every error by design, so the studio being asked for its room was
+>   never told and neither was the artist when it answered. The Inbox row was
+>   always there, which is why nobody noticed. Fixed in the same migration (three
+>   occurrences, asserted). **A notification that never fails is a notification
+>   that can be silently wrong for eight days.**
+> * **The app side:** the hub offers Add studio and YOUR STUDIOS to everybody, the
+>   same verification form and Subscribe under each card; `/subscription` lists a
+>   person's own studios (owner seat only) under their Artist plan, each with its
+>   strip; the class form offers **"I take this class myself"** to a studio owner
+>   and says **"Your studio · no request needed"** when an artist picks a studio
+>   they own, with Publish available; the create action opens a STUDIO for
+>   anybody (its artist-page half had been dead since `ensureArtistPage`, 18 Sep);
+>   onboarding's captions say a user can open a studio. ⚠ **An organization keeps
+>   its own door** — the additive reading; taking it away is one line and the
+>   user's call (open question 1).
+> * ⚠ **THE TWO SHIFTS ARE A SCRIPT, NOT A MIGRATION, AND NOT RUN**:
+>   `scripts/shift-studio-owner.js --studio … --to … [--apply]` moves the OWNER
+>   SEAT's `user_id` and nothing else, closing any other seat the person already
+>   held there. ⚠ **It REFUSES a studio with a live subscription** — a Cashfree
+>   mandate belongs to whoever authorised it and money is not re-attributed — so
+>   Bb and Deepak EEE TEST 2 are out. Dry-run and proposed: **Studio 2** (Deepak
+>   Studio org → Deepak Kaushik, 0 classes) and **Deepak Eee** (Deepak EEE org →
+>   Alisha Maini, 0 classes, 5 photos), both verified and unsubscribed, so each
+>   person then sees "verified — subscribe to go on Discover" in the studio's own
+>   Settings. Which pair is open question 2.
+> * **Verified so far:** dry run **32/32 rolled back** (a user opens a studio born
+>   unlisted, holds the owner seat, is refused a subscription for THE BADGE and
+>   granted one once verified, is asked the same links-and-five-photos, takes
+>   their own class born confirmed with Publish open and the notification landed;
+>   naming somebody else is still an ask; an artist's class in their own studio is
+>   accepted at birth and may publish from the form, in somebody else's is still a
+>   request and cannot; an organization still opens studios; the ask notification
+>   lands at last) · typecheck 0 · lint 0 · `next build` green · **`shoot-tiles.js`
+>   131/131** on the existing checks, its new person segment printing SKIP because
+>   the live gate still refuses a person until the apply. ⚠ Three dry-run reds on
+>   the way were all the harness (the badge stamped before the verification ask;
+>   a second teacher asked without withdrawing the first — `class_people_one_live_artist`;
+>   Alisha's notification read while still signed in as Deepak, which RLS hides).
+> * ⚠ **A STALE `next start` FROM 22 Sep WAS HOLDING :3100** (pid 7880) — the
+>   21 Sep lesson met again; stopped before the fresh bundle was started.
+> * **On the user's "apply and push":** `db-push -DryRun` must list exactly
+>   `20260926090000`; apply; reload PostgREST's cache; run both shifts with
+>   `--apply`; proofs (`tenants classes rooms-people settings-screens studio-verification notifications`);
+>   `shoot-tiles` (the SKIP must turn into checks); the whole e2e suite on one
+>   worker; then push `main`, read Vercel's list for the sha, `stranger-smoke.ps1`.
+>   Then this block, the tracker bullet, deviation row R47 and the backlog row
+>   move from "not applied" to what actually ran.
+
+> ### TWO ADDRESSES FOR ONE RECORD, A STUDIO'S EDIT DOOR, AND ONE ⊕ (22–23 Sep 2026) — BUILT, no migration
 > ⚠ This session crossed midnight, so the comments it left in the code are dated
 > **22 Sep** and the verification below ran on the **23rd**. One slice, two dates.
 > The user, in three messages: *"give me a list of duplicate pages and dead
@@ -6110,6 +6184,21 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A PERSON OPENS A STUDIO, AND NOBODY IS ASKED TO SAY YES TO THEMSELVES —
+  26 Sep 2026, no step number ⚠ (Rule 9: who may hold and pay for a studio) —
+  BUILT, ONE MIGRATION DRY-RUN 32/32 AND NOT APPLIED, NOT PUSHED.** The user's
+  ask: a user or an artist opens a studio from Home's Studios tile, verification
+  and the per-studio mandate unchanged, runs it from the profile switcher, and
+  when the same person is on both sides of a class (a studio owner teaching
+  their own class; an artist holding a class in a studio they own) nobody is
+  asked and the Inbox keeps a line. ⚠ Three lines held the old rule
+  (`why_no_studio()`, `subscribe`, the create action); the migration edits seven
+  bodies out of the catalog by asserted anchor. ⚠⚠ Its dry run found the venue
+  notifications of 18 Sep had **never landed** (kind `'classes'` against a
+  CHECK that admits `'class'`, swallowed by `notify()`); fixed in the same file.
+  Two studio shifts to Deepak Kaushik and Alisha are a dry-run script that
+  refuses a subscribed studio. Deviation row **R47**. Waits on the user's word
+  and two answers (does an organization keep its own door; which two studios).
 - **TWO ADDRESSES FOR ONE RECORD, A STUDIO'S EDIT DOOR, AND ONE ⊕ — 23 Sep 2026,
   no step number — BUILT, no migration.** An audit of every route for duplicates
   and dead ends, then the three things the user named. ⚠⚠ **`/stats` and
@@ -10184,6 +10273,8 @@ hold for, each with its reason. **Do not "restore parity" on any of them.**
 | R43 | New routine is a card that expands inside S_choreos (17129) and New membership one inside S_memberships (16846); Create crew is `crewFormOnly`'s own page with a blue sleeve (9545) — three different shapes, none of them S_classform's | **ALL FOUR "ADD SOMETHING" FORMS WEAR ONE ANATOMY** — `components/ui/FormPage`, which IS S_classform's (15108-15650): a ← heading, a step bar, one label tier, a fixed bottom bar whose button names the missing answer, and a confirm sheet with a summary card. `/routines/new` and `/memberships/new` are pages now; each re-checks its own gate on the server. ⚠ **`ClassForm` moved onto the kit too** — the screen the others are matched to is not allowed to be the one that drifts | 21 Sep 2026, the user: *"Create Crew form in crews should look similar to add class page. same should be for new routine and new membership."* The prototype has one studio and three unrelated add-flows; this app has four and they had drifted apart exactly the way `linkChip` and the figure row did before |
 | R44 | S_people (17293) is a student POOL a studio curates, and this app built it as the leads pipeline — five stages, a funnel, a trial class, a per-lead sheet (Step 12) | **A STUDENT IS A CONSEQUENCE**: checked in here, or holding a pass this business sold, or a walk-in the desk typed in (`repositories/students.ts`). No stages, no funnel, no trial. The only manual act is an INVITE, and it is a hand-off — the number or address opens the studio's own WhatsApp, SMS app or mail client with the link written, because there is no SMS provider and Resend reaches nobody but the account owner. ⚠ `leads` rows, columns and both write doors are KEPT (#0a4's precedent); `LeadsDesk.tsx` is deleted. ⚠⚠ **AND NOT EVERY SEAT SEES IT** (later the same day, the user's *"No"*): the desk was membership-only, so a visiting teacher and an assistant read the whole roster — every name, **every phone number**, and what each person holds — while `MEMBER_POWER_NOTE`, the sheet an owner reads before handing out a seat, gives the students desk to `staff` and `trainer` alone. The sheet was right and the code was wrong; both the desk and its tile refuse those two now. ⚠ It is a PRESENTATION gate: the reads underneath admit every member, so narrowing it properly is a policy change on `leads` and `attendance` | 21 Sep 2026, the user: *"Students section dont need to track a lead should just simply be able to send invite to a new user from here through mobile no. or email. rest all students are added automatically when they attend a class or take a membership."* ⚠ **Attendance, not bookings** — their own answer when asked, and Step 25's standing rule |
 
+| R47 | R3 / R14: only an ORGANIZATION opens studios; a person's hub opens nothing (18 Sep); a studio's class waits for its teacher's yes and an artist's class at a studio waits for the studio's (18 Sep, `classes_publish_needs_a_yes`) | **A USER OR AN ARTIST OPENS A STUDIO TOO** (26 Sep 2026): from Home's Studios tile, born unlisted, the badge from an admin, its own ₹1,200 mandate — the process is the same, and the studio is run from the profile switcher with THIS STUDIO in its Settings. An organization keeps its door. **And consent with nobody to ask is not asked**: a studio owner taking their own class is seated confirmed, an artist's class in a studio they own is accepted at birth; both raise a notification and the Inbox row stays with its answer — the LOG. Somebody else's class or studio is still an ask. ⚠ Migration written and dry-run 32/32, NOT applied at the time of writing | The user, 26 Sep 2026: *"Move Studio creation from org and allow user and artist to create studios … verification and subscription process remains the same … no verification is required but keeps a log in the inbox."* ⚠ Rule 9: `subscribe`'s studio branch now asks "is it yours" (owner seat + badge) instead of "are you an organization" |
+
 **Not gated, deliberately:** a Pro user's artist page is public immediately (the
 user chose "Pro gets one artist business" without admin verification). **Still
 the service role's:** `tenants.verified_at` (the KYC tick on a business) is
@@ -10278,6 +10369,7 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| **A person opens a studio, what it left (26 Sep 2026):** ⚠ **an organization keeps its own Add studio door** — the additive reading of "move"; if the user meant organizations lose it, that is one line in `why_no_studio()` and the hub. **A shifted studio's old photos cannot be DELETED by the new owner** — the objects live in `proof/{org}/…` and the delete policy is the uploader's folder; the row soft-deletes and the object is orphaned, harmless. **The person's `/subscription` lists studios by owner seat** while `findMyTenants` still returns every seat, so the page makes one extra read. **`shoot-tiles`'s person segment SKIPs until the migration is applied** — a SKIP is not a pass, and the run's tally does not count it. **No e2e segment yet** drives a person's studio end to end; the tile probe is the cover. **An artist's own-page class still raises no notification** (it never asked, by construction since 18 Sep) — only the two cases that would otherwise have been an ask are logged. **The 15-studio cap is per account** whoever it is — a person with fifteen studios is a thing the word "account" now allows | — (the prototype has one studio and one kind of owner) | the door question is the user's; a segment when the story next grows |
 | **Every form as a sheet, what stage 2 left (22 Sep 2026):** ⚠ **an EDIT still opens as a page, everywhere** — `/business/{id}/classes/{id}/edit` and `…/events/{id}/edit` are reached from a row, not from an add button, so the ask did not name them and they were not moved; a studio therefore edits a class on a screen and creates one in a sheet, which is one product wearing two shapes for one object. **`/crews/new`, `/routines/new`, `/memberships/new` and both `/…/new` routes are now reachable only by typing them** — no control in the app points at any of them any more, so they are kept alive by Rule 14 and by `shoot-tiles.js` alone; a link somebody was handed still opens, which is the whole reason they stay. **A sheet has no dirty guard**: the scrim and system back both close it with whatever was typed in it, exactly as the page's ← always has, and a half-filled class is lost in one press. **The panel is `94vh` with its own scroller**, so on a short phone the step bar scrolls away with the rest rather than pinning — the action bar is the only thing that sticks. And **`?new=1` is remembered by the browser**: reload a desk with the sheet open and it opens again, which is right, but a shared link to a desk that somebody copied mid-form carries the form with it. ⚠ And `createClassAction` / `updateClassAction` now **return instead of redirecting** when the form says it is a sheet — the one place in this app where a server action's navigation is the client's; it is a hint about navigation and grants nothing, but it does mean the register's fresh read is a `revalidatePath` + `router.refresh()` rather than the redirect's own | S_classform 15108-15650; S_choreos 17129; S_memberships 16846 | an edit sheet when somebody asks; a dirty guard only if a real person loses work |
 | **The last two forms, the one-page collapse and the rule, what they left (22 Sep 2026):** ⚠ **an asset and a room have no EDIT sheet** — an asset is still corrected in place on its row and a room on its own, so those two objects are made in a sheet and changed on a list, which is one object wearing two shapes. **Neither form has an ADDRESS**, deliberately (nothing ever handed one out), so they are the only two "add something" forms `shoot-tiles` cannot drive by URL — if either is ever linked to, it needs a page in the same push. ⚠ **A ROOM'S AMENITIES ARE STILL NOT ASKED FOR**: a new room gets none and you fold its row open afterwards, which is unchanged and is now the one field the form does not cover. **The `₹0 = legacy` rule is now stated in two places** — the form's note and the row's own words — and they could drift. ⚠ **The separator is only where there IS a figure**, so the five micro-caps section heads that carry no count (`YOUR STUDIOS`, `CREWS YOU LEAD`, `WHERE IT CAME FROM`, `BY STUDIO`, `WHAT YOU OWE`) are untouched and still declared FIVE times in five files — the obvious consolidation, and not this slice's. And **`FigureHead` shares the rule and not the type**, so a new counted head can still pick its own scale; nothing checks that it picks one of the three that exist | S_assets 16791; settings 18389-18425; DosShelfHead 3446 | an edit sheet for each when somebody asks; one micro-caps head when a money desk is next opened |
 | **The duplicate-address audit, the edit door and the ⊕, what they left (23 Sep 2026):** ⚠ **THE PERSON'S AND THE ORGANIZATION'S STATS SCREEN HAVE NO SKELETON** — `app/(app)/stats/loading.tsx` covered a route that is now only a redirect, and moving it onto `/person/{id}/stats` would turn a guest's 307 and a plain user's 404 into a 200, which is the 19 Sep regression exactly. Closing it properly means a boundary that does not swallow a status, and nothing in Next offers one. **`/stats` and `/business/stats` are kept alive by Rule 14 and by three re-cut probe checks alone** — no control in the app points at either any more, so they rot the way `/crews/new` did until this audit found it. ⚠ **`?edit=1` HAS NO DIRTY GUARD**, exactly like `?new=1` (C54): the scrim and system back both close the sheet with whatever was typed in it, and a half-edited studio is lost in one press. **The Edit sheet's `?edit=1` is remembered by the browser**, so reloading a studio's home with it open re-opens it — right, and it means a link somebody copied mid-edit carries the form. ⚠ **The corner's glyph and label still differ by kind** (an eye on a studio and a crew, a person on the other three); if the user meant the GLYPH by "similar", that is one import. **`pictureChipPaint` sets the ground and the border and NOT the glyph's colour** — `<PlusIcon light />` is passed at all six sites by hand, so a seventh site can still draw a dark glyph on a dark scrim and nothing checks it | — (the prototype has one editor per profile, 11364) | a status-preserving boundary if the skeleton is ever missed; a dirty guard when a real person loses work; one glyph if that was the ask |
