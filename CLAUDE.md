@@ -118,15 +118,53 @@
 >   production is **"Mod Org cv999h" with NO owner seat at all** — an
 >   admin-moderation leftover — which is what made the dry run die on the
 >   function's own correct refusal before it tested anything.
-> * **Verified:** typecheck 0 · lint 0 · `next build` green · the dry run 30/30
->   rolled back. The proofs, the shoots and the suite are in NEXT TO DO #0ap's
->   sequence, which runs after the user's word on the held migration.
-> * ⚠⚠ **WHAT IS IN FRONT OF THE USER:** the held migration's list (#0ap), and
->   **item 8**, which cannot be built without an answer — its clauses 2 and 3
->   ("multiple, paid separately" and "renewals from their home") are ALREADY true,
->   and clause 1 ("payment before adding") reverses the verification-first rule the
->   user has reaffirmed twice. The question is asked rather than guessed, because
->   it is money (Rule 9) and the two readings are different products.
+> * ⚠⚠ **8 · AND ITEM 8 WAS ASKED RATHER THAN GUESSED, BECAUSE IT IS MONEY.** Its
+>   clauses 2 and 3 ("multiple, paid separately" and "renewals from their home")
+>   were ALREADY true; clause 1 reversed the verification-first rule the user had
+>   reaffirmed twice. Three orders were put to them and they chose **"Pay at
+>   creation, verify after"** — `20260927100000` (R51), applied. ⚠ It is TWO
+>   refusals deleted from `subscribe` and nothing else, because **the rest of the
+>   database was already built for this order**: the approval path already lists a
+>   studio that paid while it waited, the webhook's listing branch already tests
+>   the badge, and `org_is_public` is read live. Creating now lands on that
+>   business's own Subscription screen (⚠ 700 ms behind the sheet's close — the
+>   19 Sep race again, and a `setTimeout(…, 0)` did NOT clear it).
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · dry runs **30/30**
+>   and **25/25** rolled back · **both applied**, each read back off the LIVE
+>   catalog **11/11** · **33/33 proofs** · **`shoot-tiles` 155/155** ·
+>   **`shoot-hero` 178/178** · **`shoot-admin` 19/19 screens clean** · **the whole
+>   e2e suite 58/58 in one run, 16.3 min on one worker, no red at any point**.
+>   **PUSHED AND LIVE (`6ec237b`), read back off the deployment rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-tiles.js` 155/155 against the live host**, the pay-at-creation
+>   hand-off driven end to end on it.
+> * ⚠ **FOUR REDS ON THE WAY AND EVERY ONE WAS A TEST DESCRIBING A DECISION THAT
+>   CHANGED** — which is the right kind. `happy-path:2767` asserted a Stats chip
+>   removed from an organization's page on 26 Sep, **and only went red today
+>   because it finally RAN**: it sits behind the ask that yesterday's migration
+>   hole was blocking, so this segment had stopped short for a day and the two
+>   lines under it never executed. `happy-path:549` and `rls-proof-studio-verification`
+>   check 7 both asserted "Subscribe is NOT offered before the badge", which is
+>   the rule the user reversed. And `shoot-tiles`' Arrange-tools check asserted
+>   the control on a read-only home. **A serial suite's lines behind a red are not
+>   passing — they are not running.**
+> * ⚠ **AND ONE OF MY OWN FIXES INTRODUCED THE BUG IT WAS FIXING, CAUGHT BY
+>   READING IT BACK.** `PersonBody`'s Teach/Assist filter was re-cut to exclude
+>   "the page they own" using `person.runs` — and `runs` comes from
+>   `business_members`, which RLS admits to a business's OWN MEMBERS, so it is
+>   EMPTY for a stranger and every visitor would have seen the person's own page
+>   listed under Teach: R24's exact bug, for the majority of viewers. The test is
+>   `artistPageId`, a definer read that answers anybody. **Twice in one day a fix
+>   was corrected by re-reading it rather than by a run.**
+> * ⚠ **Two proof-writing traps worth keeping.** `now()` DOES NOT ADVANCE INSIDE A
+>   TRANSACTION, so in a rolled-back dry run every `created_at` is the same
+>   instant and `order by created_at desc limit 1` hands back an ARBITRARY row —
+>   it gave me the grant's notification while checking the end, and failed two
+>   checks that described correct behaviour. And the owner's PATCH of
+>   `visibility` is refused **silently** (0 rows, by the policy
+>   `20260913100000` added) and never reaches the trigger, so asserting the
+>   refusal's MESSAGE passes on `''` for ever: read the column back.
 
 > ### A PERSON OPENS A STUDIO AND AN ORGANIZATION, THE ORGANIZATION LOGIN IS RETIRED, AND EVERY HOME EDITS BEHIND ONE PENCIL (26 Sep 2026) — ⚠ THREE MIGRATIONS APPLIED (dry runs **32/32**, **54/54**, **8/8**, each rolled back first), THE RETIREMENT SWEEP RUN, PUSHED AND LIVE — ⚠⚠ AND A FOURTH WRITTEN, DRY-RUN **16/16** AND **HELD FOR THE USER'S WORD** (NEXT TO DO #0ao)
 > The user, over one day and in this order: the studio ask (below); then *"make
@@ -5558,7 +5596,43 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0aq. **⚠⚠ A SECOND MIGRATION WRITTEN, DRY-RUN 25/25 AND HELD —
+0ar. **⚠ WHAT IS PENDING AT THE USER'S END AFTER 27 Sep 2026**, and it is short:
+   * **A real ₹5,000 Cashfree mandate on Deepak's organization**, if one is
+     wanted. It is PUBLIC now on a ₹0 admin COMP (granted to 27 Sep 2027), which
+     is what the panel's grant is for; a real mandate is their own browser with
+     the sandbox UPI handle, from its home → Subscription.
+   * **The three REAL retired logins were KEPT** on their own word —
+     `jishnu.nanda@gmail.com` (Dancing Curve), `deepak@eeetaxi.com` (Deepak EEE),
+     `deepakkaushikdevtest@gmail.com` (Deepak Studio). Their profiles are
+     soft-deleted, so signing in lands on onboarding and makes a fresh USER
+     profile. Say the word if any should go.
+   * **51 older `role = 'org'` leftovers stay** (proof and e2e accounts swept on
+     18, 19 and 22 Sep). `scratchpad/deleteRetiredOrgs.js` takes a date; the
+     repo's own `cleanup-proof-leftovers.js --show-kept` is the wider sweep and
+     would take **15 profiles and 46 businesses** today. ⚠ Never while a suite
+     is in flight.
+   * **The four sandbox items they said to "leave for now"**: a billed Google
+     Maps key (#7), the Cashfree PG webhook sub-tab (#8), the Supabase email
+     templates (#13), a verified Resend domain (#14).
+   * ⚠ **AND ONE CONSEQUENCE OF THE ORDER THEY CHOSE, said rather than
+     discovered:** somebody can now pay for a studio DanceOS then refuses to
+     verify. There is no automatic refund — `admin_end_subscription` ends it with
+     a reason the owner reads, and the money already taken is a Cashfree refund
+     somebody makes by hand. Worth a decision before real money moves.
+
+0aq. **~~A SECOND MIGRATION WRITTEN, DRY-RUN 25/25 AND HELD~~ — ✅ APPLIED AND
+   PUSHED 27 Sep 2026** (`6ec237b`), after the user chose **"Pay at creation,
+   verify after"** from three orders put to them, the option text naming the
+   exact refusal being dropped and its cost. The dry run was re-run on the
+   post-#0ap catalog (25/25 again), `db-push -DryRun` listed exactly the one
+   file, and the live read-back was **11/11** — including the one that matters:
+   ⚠ **`guard_business_visibility` STILL refuses an unverified studio**, so
+   paying buys the mandate and never the audience. **Three tests were re-cut
+   because they described the rule the user reversed** (`happy-path:549`,
+   `rls-proof-studio-verification` check 7, `shoot-tiles`), and three specs
+   learned the new create-and-pay hand-off. The list is kept below.
+
+0aq-old. **THE LIST, AS IT WENT TO THE USER —
    `20260927100000_pay_at_creation_verify_after`.** The user's item 8, and their
    own answer when asked which of three orders they meant: **"Pay at creation,
    verify after"**. ⚠ Rule 9: money — it changes WHEN somebody may pay.
@@ -6768,8 +6842,16 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   Decline**) into two sections and two cards; the event card takes an action row
   like a class card's; Arrange tools moves behind the pencil; Settings tiles
   **push** so back returns to the menu; six paragraphs leave the creation forms.
-  Deviation rows **C61–C65**, R50. **typecheck 0 · lint 0 · `next build` green ·
-  dry run 30/30 rolled back.**
+  And **item 8 is "pay at creation, verify after"** (R51), the user's own choice
+  of three orders: two refusals out of `subscribe`, creating a studio or an
+  organization landing on its own Subscription screen, and verification still
+  deciding Discover. Deviation rows **C61–C65**, **R50**, **R51**.
+  **typecheck 0 · lint 0 · `next build` green · dry runs 30/30 and 25/25 rolled
+  back · both applied, read back 11/11 each · 33/33 proofs · `shoot-tiles`
+  155/155 · `shoot-hero` 178/178 · `shoot-admin` 19/19 · the whole e2e suite
+  58/58 in one run, 16.3 min on one worker, no red at any point. PUSHED AND LIVE
+  (`6ec237b`)** — Vercel's own list read for the sha, `stranger-smoke` 11/11 and
+  `shoot-tiles` 155/155 against the deployment.
 - **A PERSON OPENS A STUDIO AND AN ORGANIZATION, THE ORGANIZATION LOGIN IS
   RETIRED, AND EVERY HOME EDITS BEHIND ONE PENCIL — 26 Sep 2026, no step number
   ⚠ (Rule 9: who may hold and pay for a studio and an organization; a sweep of
