@@ -189,6 +189,20 @@
 >   segments**. Six suite runs to get there, and every red on the way is named
 >   in this block: two stalls on a renamed button, the GST card's own sentence,
 >   the busy machine once, the Accounts chip (#7), the lost style (#6), and #8.
+>   **PUSHED AND LIVE (`ee3a2c7`), read back off the deployment rather than
+>   assumed:** Vercel's own list for THIS sha, QUEUED → BUILDING → READY in three
+>   minutes (`deploy.js`, scratchpad — it triggers by hand if the webhook sleeps,
+>   the 21 Sep lesson) · **`stranger-smoke.ps1` 11/11 against
+>   `https://dancestudio-orcin.vercel.app`** — ⚠ after its own first-run bug: the
+>   organization pick, re-cut this morning, put the `subscriptions!inner` embed
+>   OUTSIDE `select=`, which PostgREST answers with a 400 that killed the whole
+>   smoke; a smoke nobody has run is a smoke that dies on line one ·
+>   **`shoot-tiles.js` 148/148 against the live host**. ⚠⚠ **And the WIP commit
+>   `f02a0c3` went out FIRST**: `git commit -F -` given a here-string takes it as
+>   a PATHSPEC, not stdin, so the commit did not happen and the `git push` on the
+>   same line pushed the WIP that was already ahead of origin. `ee3a2c7` followed
+>   within a minute and Vercel built both in order; the half-cut tree was live
+>   for about three minutes. **`git commit -m @'…'@` is the shape, never `-F -`.**
 >   ⚠ Five shoot reds on the way were all the script: the register opens on
 >   Published and the Publish pill is on the Draft segment; the Inbox's log is on
 >   the Requests desk's SENT side; the organization sheet's button reads "Open

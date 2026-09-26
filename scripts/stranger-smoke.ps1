@@ -94,7 +94,8 @@ $crew = Rows "crews?select=id,name&deleted_at=is.null&limit=1"
 # 26 Sep 2026: an organization is a BUSINESS (type org) with its own GST number - the organization
 # login is retired. A PUBLIC one also needs its own live mandate (org_is_public), so the pick
 # joins the subscription rather than taking the first row with a number.
-$org = Rows "businesses?select=id,name&type=eq.org&deleted_at=is.null&gstin_verified_at=not.is.null&subscriptions!inner(kind,status)&subscriptions.kind=eq.org&subscriptions.status=eq.active&limit=1"
+# !! the embed goes INSIDE select= - outside it PostgREST answers 400 and the whole smoke dies (26 Sep 2026, its first run)
+$org = Rows "businesses?select=id,name,subscriptions!inner(kind,status)&type=eq.org&deleted_at=is.null&gstin_verified_at=not.is.null&subscriptions.kind=eq.org&subscriptions.status=eq.active&limit=1"
 # !! AN ARTIST IS A LIVE PLAN **ON A LIVE PROFILE** - the first cut took the first
 # active artist subscription and got one whose profile is gone, so `/person/{id}`
 # answered 307 and the check read as a broken rule rather than a bad pick. A
