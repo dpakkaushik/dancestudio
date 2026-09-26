@@ -143,7 +143,6 @@ export function OrganizationPublicPage({
                   initialFollowers={followers}
                   accent={tint}
                   signedIn={signedIn}
-                  variant="chip"
                 />
                 <ProfileShare path={`/org/${org.id}`} name={org.name} />
                 <ProfileLink path={`/org/${org.id}`} name={org.name} />

@@ -2,6 +2,45 @@
 
 ## LAST SESSION (27 Sep 2026) — replaced on every push (Rule 13)
 
+> ### AND THEN THE CHECK THAT SHOULD HAVE CAUGHT IT (27 Sep 2026, after the push) — BUILT, no migration
+> The user: *"suggest next changes and fix issues."* So the two defect SHAPES
+> found earlier the same day were hunted for siblings, and the hunt paid three
+> times.
+> * ⚠⚠ **`shoot-invert` WAS 16/16 THROUGHOUT THE SIX DAYS THE BUTTON WAS
+>   INVISIBLE, AND THAT IS THE FINDING.** The script exists to catch unreadable
+>   text on an inverted ground, and it measured the panel's ground, a shelf
+>   count, a card's name and a class tile's headline — **never a CONTROL**. A
+>   card inherits its ink from the tokens and survives the palette swap for
+>   free; a BUTTON states both sides itself, so it is the thing most likely to
+>   carry a hand-written pair. It measures one now, in both themes: **17.22:1
+>   and 18.97:1**, `--solid` on `--text`. Before the fix that read `--bg` on
+>   `--text` — about **1.06:1** — so the new check would have caught it.
+>   **18/18.**
+> * ⚠⚠ **`FollowToggle`'s `pill` BRANCH HAD RENDERED NOWHERE FOR A WEEK, AND IT
+>   WAS HIDING A REAL DIFFERENCE.** C27 made all five callers pass
+>   `variant="chip"` on 20 Sep and the prop went on DEFAULTING to `pill`. The
+>   branch is gone — and taking it out is what showed that **a failed follow
+>   said nothing at all**: the pill printed `error` under itself and the chip
+>   never did, so a refusal from the door left a 44px bell that simply did not
+>   change. ⚠ The message goes in the ACCESSIBLE NAME, the tooltip and a red
+>   edge rather than under the chip, because that chip sits between the QR and
+>   Stats and a sentence there would re-lay-out the whole figures row — the same
+>   treatment `cannotFollow` already gets. ⚠ **`smallBox` did NOT go with it**:
+>   four other buttons wear it, and "unused here" is not "unused".
+> * ⚠⚠ **AND THE TAB BAR CARRIED A FOURTH ICON FOR TWELVE DAYS.** `TAB_ICONS`
+>   and `TAB_TINT` were `Record<string, …>` — the exact widening that made two
+>   Home tiles draw an empty chip that morning — so a fourth tab added without
+>   an icon would have been a blank square in the bar with everything green.
+>   Both are `satisfies` now and the label is typed off them (`TabLabel`), which
+>   is what made the compiler list the map's contents: **a `Stats` icon, dead
+>   since C1 took Stats off the bar on 15 Sep.** Deleted. **A type that says
+>   which keys exist is the only thing that can find the key nobody draws.**
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-invert`
+>   18/18** (16 before) · **`shoot-hero` 178/178** · **`shoot-tiles` 155/155** ·
+>   **`qr-proof` 12/12**. ⚠ **`shoot-org` is clean but for the Maps demo key's
+>   daily quota, for the FOURTH time** (#7 / #0a3) — it is no longer theoretical:
+>   a check now goes red on a quiet day, and for a real user it is an outage.
+
 > ### THE USER'S FIFTEEN, AND THE THREE THINGS ONLY A PAIR OF EYES COULD HAVE SEEN (27 Sep 2026) — ⚠ ONE MIGRATION APPLIED (`20260926140000`), ⚠⚠ ONE WRITTEN, DRY-RUN **30/30** AND **HELD FOR THE USER'S WORD**
 > The user answered the six-item "pending at your end" list — *"1. fix 2. authorize
 > 3. re seed the demo world 4. delete them 5. leave for now 6. fix"* — and added

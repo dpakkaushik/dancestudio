@@ -142,7 +142,6 @@ export function CrewPublicPage({
                     initialFollowers={followers}
                     accent={RC}
                     signedIn={signedIn}
-                    variant="chip"
                   />
                 ) : null}
                 <StatsChip href={`${path}/stats`} />

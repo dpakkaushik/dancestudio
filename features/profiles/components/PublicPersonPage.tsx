@@ -192,7 +192,6 @@ export function PublicPersonPage({
                     initialFollowers={person.followers}
                     accent={RC}
                     signedIn={signedIn}
-                    variant="chip"
                   />
                 )}
                 {/* ⚠ ONE ADDRESS, WHOEVER IS LOOKING (22 Sep 2026). This was

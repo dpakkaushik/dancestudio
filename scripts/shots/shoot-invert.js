@@ -97,6 +97,24 @@ const PROBE = (sel) => {
     const tile = await page.evaluate(PROBE, '[data-testid="class-tile-style"], a[href^="/c/"]');
     if (tile) check(tile.ratio >= 3, `[${theme}] a class tile's headline is readable on the panel`, `${tile.ratio}:1 ${tile.ink} on ${tile.ground}`);
     else console.log(`  ..     [${theme}] no class in this city to measure`);
+
+    /** ⚠⚠ AND THE CONTROL, WHICH IS THE ONE THIS FILE MISSED (27 Sep 2026).
+     *
+     *  `EnrollButton`'s primary pill was `background: var(--text)` with
+     *  `color: var(--bg)` — and `InvertedPanel` swaps `--text` and deliberately
+     *  leaves `--bg` alone, so INSIDE THE PANEL those two are the same colour by
+     *  construction. "Book a spot" was a blank pill on Discover, in both themes,
+     *  for six days — and this script was 16/16 the whole time, because it
+     *  measured the panel's ground, a shelf count, a card's name and a tile's
+     *  headline, and never a BUTTON.
+     *
+     *  A check that exists to catch invisible text on an inverted ground has to
+     *  measure the thing most likely to carry a hand-written colour pair, which
+     *  is a control: cards inherit their ink from the tokens and survive the
+     *  swap for free, while a button states both sides itself. */
+    const btn = await page.evaluate(PROBE, '[data-testid="class-tile"] button, [data-testid="class-tile"] a[href^="/c/"] ~ * button, .dos-invert button, .dos-invert a[href="/login"]');
+    if (btn) check(btn.ratio >= 4.5, `[${theme}] a CONTROL on the panel is readable — the six-day bug`, `${btn.ratio}:1 ${btn.ink} on ${btn.ground}`);
+    else console.log(`  ..     [${theme}] no control inside the panel to measure`);
   }
 
   /* ── THE PAGE'S OWN THREE TIERS, ON THE WARM GROUND (21 Sep 2026) ──────────

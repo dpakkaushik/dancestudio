@@ -83,7 +83,9 @@ function DosMark({ size = 28 }: { size?: number }) {
    each carry their section's own accent. ── */
 const ICON_STROKE = { fill: "none", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
-const TAB_ICONS: Record<string, (c: string) => ReactNode> = {
+/* ⚠ `satisfies`, never `: Record<string, …>` — see TAB_SET below for what that
+   one word costs when it is the other way round */
+const TAB_ICONS = {
   Home: (c) => (
     <svg width="20" height="20" viewBox="0 0 24 24" stroke={c} {...ICON_STROKE}>
       <path d="M3 10.5 12 3l9 7.5" />
@@ -96,31 +98,38 @@ const TAB_ICONS: Record<string, (c: string) => ReactNode> = {
       <path d="m15 9-2 4.2L9 15l2-4.2z" />
     </svg>
   ),
-  Stats: (c) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" stroke={c} {...ICON_STROKE}>
-      <path d="M4 19.5h16" />
-      <path d="M5 16.5V12M9.5 16.5V8.5M14 16.5v-6" />
-      <path d="m18.5 16.5-.01-9" />
-      <path d="m16.4 6.6 2.1-2.1 2.1 2.1" />
-    </svg>
-  ),
+  /* ⚠ THE `Stats` ICON WAS HERE UNTIL 27 Sep 2026 — dead since 15 Sep, when C1
+     took Stats off the bar for a chip beside the QR. Nothing drew it for twelve
+     days, and it was only found because typing the label against this map made
+     the compiler list what the map holds. A bar of three icons was carrying
+     four. */
   Inbox: (c) => (
     <svg width="20" height="20" viewBox="0 0 24 24" stroke={c} {...ICON_STROKE}>
       <path d="M3.5 13.5h4l1.4 2.6h6.2l1.4-2.6h4" />
       <path d="M3.5 13.5 6.2 5.2h11.6l2.7 8.3V18a1.8 1.8 0 0 1-1.8 1.8H5.3A1.8 1.8 0 0 1 3.5 18z" />
     </svg>
   ),
-};
+} satisfies Record<string, (c: string) => ReactNode>;
 
-const TAB_TINT: Record<string, string> = {
+const TAB_TINT = {
   Home: "#5AC8FA",
   Discover: "#22C55E",
   Inbox: "#8B5CF6",
-};
+} satisfies Record<string, string>;
 
-/* the three that are places of their own — the eye to the account's public page
-   sits on Home's hero since 19 Sep 2026, not here */
-const TAB_SET: Array<{ label: string; href: string }> = [
+/** the three that are places of their own — the eye to the account's public page
+ *  sits on Home's hero since 19 Sep 2026, not here.
+ *
+ *  ⚠ THE LABEL IS TYPED AGAINST THE TWO MAPS (27 Sep 2026), which is not
+ *  tidiness. Both were `Record<string, …>`, and that is exactly how two Home
+ *  tiles came to draw an EMPTY CHIP the same day: a key the map does not have
+ *  compiles, looks up `undefined`, and renders nothing — typecheck, lint and
+ *  `next build` all green. A fourth tab added without an icon would have been a
+ *  blank square in the bar, and nothing but a pair of eyes would have said so.
+ *  With `satisfies` on the maps and this label typed off them, that tab fails
+ *  to compile instead. */
+type TabLabel = keyof typeof TAB_ICONS & keyof typeof TAB_TINT;
+const TAB_SET: Array<{ label: TabLabel; href: string }> = [
   { label: "Home", href: "/" },
   { label: "Discover", href: "/discover" },
   { label: "Inbox", href: "/inbox" },
@@ -334,7 +343,7 @@ export function AppChrome({
      the shelf: an organization reading Discover gets the sentence in place of
      Book, and `guard_person_only` is the rule behind it. Discover is a DOOR out
      of the entity, never a lit tab here — pressing it leaves for the main bar. ── */
-  const bar = entity
+  const bar: Array<{ label: TabLabel; href: string }> = entity
     ? [
         { label: "Home", href: entity.home },
         { label: "Discover", href: "/discover" },

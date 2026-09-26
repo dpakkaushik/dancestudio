@@ -219,7 +219,6 @@ export function PublicProfile({
                     initialFollowers={profile.followers}
                     accent={RC}
                     signedIn={signedIn}
-                    variant="chip"
                   />
                 )}
                 <StatsChip href={`/studio/${tenant.id}/stats`} />

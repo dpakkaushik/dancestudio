@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { setCrewFollowAction, setFollowAction, setPersonFollowAction, type FollowActionResult } from "@/features/follows/server-actions/follows";
-import { SUB } from "@/lib/design/tokens";
 import { PROFILE_CHIP } from "./profile-band";
-import { smallBox } from "./profile-kit";
 
 /** FOLLOW · FOLLOWING, ONE CONTROL FOR EVERY PROFILE PAGE (19 Sep 2026, the user:
  *  "Follow with Following toggle for all" — an organization, a studio, an
@@ -35,7 +33,6 @@ export function FollowToggle({
   initialFollowers = null,
   accent,
   signedIn,
-  variant = "pill",
   cannotFollow = null,
 }: {
   target: FollowTarget;
@@ -45,12 +42,17 @@ export function FollowToggle({
   /** the page's own colour — the lit edge of a Following button */
   accent: string;
   signedIn: boolean;
-  /** ⚠ `chip` is the BELL beside the QR and Stats in the figures row (20 Sep
-   *  2026, the user: "Follow button to be a bell with qr code and stats"). It is
-   *  a variant rather than a second component on purpose: two controls for one
-   *  fact is how Follow came to exist twice before, one carrying a count and one
-   *  not (19 Sep). Same state, same action, same accessible name. */
-  variant?: "pill" | "chip";
+  /** ⚠⚠ `variant` IS GONE (27 Sep 2026). It carried `pill` — the prototype's
+   *  Follow button with its word and its star — and `chip`, the bell beside the
+   *  QR and Stats that C27 made every surface use on 20 Sep. **Every one of the
+   *  five callers has passed `"chip"` since that day**, so the `pill` branch has
+   *  rendered nowhere for a week while still defaulting to itself, which is this
+   *  repo's own worst shape: a branch nobody draws is where a defect hides, and
+   *  this one was hiding a real difference — the pill printed `error` and the
+   *  chip did not. The bell is the control, and the star glyph went with the
+   *  branch. ⚠ `smallBox` did NOT — it still dresses four other buttons
+   *  (the Followers sheet, a crew's Manage, a studio's) and is only unused
+   *  HERE, which is a different thing from unused. */
   /** when the database would refuse this follow, the chip is still DRAWN and
    *  says why rather than vanishing — "available to all" is about the control
    *  being there, never about promising a press that would be refused (R31).
@@ -66,12 +68,6 @@ export function FollowToggle({
   const [followers, setFollowers] = useState<number | null>(initialFollowers);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const star = (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill={following ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m12 3.6 2.5 5.1 5.6.8-4 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-4 5.6-.8z" />
-    </svg>
-  );
 
   /* ⚠ DEFINED BEFORE THE FIRST `return`, not after it. The chip branch below
      returns early, and a `const` arrow declared after that point is in the
@@ -100,66 +96,47 @@ export function FollowToggle({
     </svg>
   );
 
-  if (variant === "chip") {
-    /* the database would refuse it — drawn, disabled, and it says why */
-    if (cannotFollow) {
-      return (
-        <button type="button" disabled aria-label={cannotFollow} title={cannotFollow} data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={{ ...PROFILE_CHIP, opacity: 0.45, cursor: "not-allowed" }}>
-          {bell(false)}
-        </button>
-      );
-    }
-    if (!signedIn) {
-      return (
-        <Link href="/login" aria-label="Follow" title="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={PROFILE_CHIP}>
-          {bell(false)}
-        </Link>
-      );
-    }
+  /* the database would refuse it — drawn, disabled, and it says why */
+  if (cannotFollow) {
     return (
-      <button
-        type="button"
-        disabled={busy}
-        aria-pressed={following}
-        aria-label={following ? "Following" : "Follow"}
-        title={following ? "Following" : "Follow"}
-        data-testid="follow-toggle"
-        data-followers={followers ?? undefined}
-        onClick={() => void toggle()}
-        style={{ ...PROFILE_CHIP, cursor: busy ? "wait" : "pointer", background: following ? accent : "var(--text)" }}
-      >
-        {bell(following)}
+      <button type="button" disabled aria-label={cannotFollow} title={cannotFollow} data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={{ ...PROFILE_CHIP, opacity: 0.45, cursor: "not-allowed" }}>
+        {bell(false)}
       </button>
     );
   }
-
-  /* the figures moved to their own line under the hero (`FollowFigures`, later
-     on 19 Sep 2026: "follow following counts visible on every profile") — the
-     button is the word alone again, and `followers` rides as data */
   if (!signedIn) {
     return (
-      <Link href="/login" aria-label="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={smallBox(false, accent)}>
-        <span style={{ flexShrink: 0, lineHeight: 0, color: SUB }}>{star}</span>Follow
+      <Link href="/login" aria-label="Follow" title="Follow" data-testid="follow-toggle" data-followers={initialFollowers ?? undefined} style={PROFILE_CHIP}>
+        {bell(false)}
       </Link>
     );
   }
-
+  /** ⚠ A FAILED FOLLOW SAID NOTHING AT ALL UNTIL 27 Sep 2026, and removing the
+   *  dead branch is what surfaced it. The old `pill` shape printed `error` under
+   *  itself; the CHIP never did — so a refusal from the door (suspended, not on
+   *  DanceOS, your own crew) left a 44px bell that simply did not change, which
+   *  reads as a broken button rather than as a rule.
+   *
+   *  ⚠ It goes in the ACCESSIBLE NAME and the tooltip rather than under the
+   *  chip, because this control sits in the figures row between the QR and
+   *  Stats: a sentence rendered there would move three chips and the figures
+   *  beside them. The same treatment `cannotFollow` already gets, for the same
+   *  reason — and it is the one place the chip can speak without relaying out
+   *  the row it lives in. */
+  const word = following ? "Following" : "Follow";
   return (
-    <>
-      <button
-        type="button"
-        disabled={busy}
-        aria-pressed={following}
-        aria-label={following ? "Following" : "Follow"}
-        data-testid="follow-toggle"
-        data-followers={followers ?? undefined}
-        onClick={() => void toggle()}
-        style={{ ...smallBox(following, accent), cursor: busy ? "wait" : "pointer" }}
-      >
-        <span style={{ flexShrink: 0, lineHeight: 0, color: following ? accent : SUB }}>{star}</span>
-        {following ? "Following" : "Follow"}
-      </button>
-      {error ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 5 }}>{error}</div> : null}
-    </>
+    <button
+      type="button"
+      disabled={busy}
+      aria-pressed={following}
+      aria-label={error ? `${word} — ${error}` : word}
+      title={error ?? word}
+      data-testid="follow-toggle"
+      data-followers={followers ?? undefined}
+      onClick={() => void toggle()}
+      style={{ ...PROFILE_CHIP, cursor: busy ? "wait" : "pointer", background: following ? accent : "var(--text)", border: error ? "1.5px solid #F87171" : PROFILE_CHIP.border }}
+    >
+      {bell(following)}
+    </button>
   );
 }
