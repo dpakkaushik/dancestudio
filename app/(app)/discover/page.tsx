@@ -12,6 +12,7 @@ import { PlaceChip } from "@/features/discovery/components/PlaceChip";
 import { StudioCard } from "@/features/discovery/components/StudioCard";
 import { ArtistI, ClassI, DosFollowers, EventI, StudioI } from "@/features/discovery/components/discover-kit";
 import { filterClasses, filterCrews, filterEvents, filterTenants, filtersToParams, parseFilters, radiusOf } from "@/features/discovery/filters";
+import { EventBookButton } from "@/features/events/components/EventBookButton";
 import { EventCard } from "@/features/events/components/EventCard";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { DOS_STYLE_NAMES } from "@/lib/constants/styles";
@@ -25,10 +26,11 @@ import { findClassArtists, findClassesWithArtist } from "@/repositories/claims";
 import { findPublishedClasses, findPublishedStylesByTenant } from "@/repositories/classes";
 import { findCrewsByCity } from "@/repositories/crews";
 import { findDiscoverArtists, findNearbyTenants, findTenantCardFacts, type DiscoverArtist, type TenantCardFacts } from "@/repositories/discovery";
-import { findPublishedEvents } from "@/repositories/events";
+import { findMyEventBookings, findPublishedEvents } from "@/repositories/events";
 import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/repositories/follows";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { findEventHostCards, type EventHostCard } from "@/repositories/publicOrganization";
+import { entriesOf, entryCapacityOf, seatCapacityOf, seatsSoldOf } from "@/types/event";
 import type { ClassArtist } from "@/types/claim";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findProfileById } from "@/repositories/profiles";
@@ -210,11 +212,26 @@ export default async function DiscoverPage({
      may not read `profiles`, so that map is empty for them and the card falls
      back to the style square; the class is still ON the shelf, because the
      filter above asked a question anon can answer. */
-  const [hosts, counts, classArtists] = await Promise.all([
+  const [hosts, counts, classArtists, myTickets] = await Promise.all([
     tab === "events" ? findEventHostCards(supabase, events.map((e) => e.tenantId)) : Promise.resolve(new Map<string, EventHostCard>()),
     tab === "classes" ? countEnrolledBySession(supabase, classes.map((c) => c.session?.id).filter(Boolean) as string[]) : Promise.resolve(new Map<string, number>()),
     tab === "classes" ? findClassArtists(supabase, classes.map((c) => c.id)) : Promise.resolve(new Map<string, ClassArtist>()),
+    /* ⚠ WHAT THIS PERSON ALREADY HOLDS (27 Sep 2026) — the event card's button
+       is `EnrollButton`'s twin now, and the one thing it can usefully say from
+       the shelf that the page cannot is "you are already in". ONE read for the
+       whole shelf, the way `findClassArtists` is one read for the class one —
+       never one per card. It is already scoped `user_id = me` and `status =
+       booked` inside, which is the rule RLS is a ceiling for, not a scope. */
+    tab === "events" && user ? findMyEventBookings(supabase, user.id).catch(() => []) : Promise.resolve([]),
   ]);
+  /* eventId → which side(s) of it they hold */
+  const heldByEvent = new Map<string, { participant: boolean; spectator: boolean }>();
+  myTickets.forEach((t) => {
+    const at = heldByEvent.get(t.eventId) ?? { participant: false, spectator: false };
+    if (t.kind === "participant") at.participant = true;
+    else at.spectator = true;
+    heldByEvent.set(t.eventId, at);
+  });
   const businesses = wantsBusinesses ? filterTenants(nearby, filters, stylesByTenant) : [];
   const followed = following.filter((f) => f.tenantType === "studio");
   /* an artist narrows by style through THEIR OWN styles — the ones on their profile */
@@ -405,7 +422,29 @@ export default async function DiscoverPage({
       {tab === "events" &&
         events.map((e) => {
           const h = hosts.get(e.tenantId);
-          return <EventCard key={e.id} event={e} href={`/e/${e.shareSlug}`} host={h ? { name: h.name, photo: photoUrl(h.photoPath ?? undefined), href: h.orgId ? `/org/${h.orgId}` : null } : null} />;
+          /* SOLD OUT is both sides gone, not one — the 19 Sep bug was exactly
+             this conflation, one side's state taking the other's button away */
+          const seatsGone = seatCapacityOf(e) > 0 && seatsSoldOf(e) >= seatCapacityOf(e);
+          const floorGone = entryCapacityOf(e) > 0 && entriesOf(e) >= entryCapacityOf(e);
+          const noSeats = seatCapacityOf(e) === 0;
+          const noFloor = entryCapacityOf(e) === 0;
+          return (
+            <EventCard
+              key={e.id}
+              event={e}
+              href={`/e/${e.shareSlug}`}
+              host={h ? { name: h.name, photo: photoUrl(h.photoPath ?? undefined), href: h.orgId ? `/org/${h.orgId}` : null } : null}
+              actions={
+                <EventBookButton
+                  shareSlug={e.shareSlug}
+                  isSignedIn={Boolean(user)}
+                  held={heldByEvent.get(e.id) ?? null}
+                  soldOut={(noSeats || seatsGone) && (noFloor || floorGone)}
+                  canBook={canBook(profile?.role)}
+                />
+              }
+            />
+          );
         })}
 
       {/* the shelf's foot: one page at a time (18 Sep 2026) */}

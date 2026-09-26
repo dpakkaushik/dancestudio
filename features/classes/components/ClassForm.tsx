@@ -500,11 +500,14 @@ export function ClassForm({
                 </div>
                 {whereKind === "studio" ? (
                   <>
-                    <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
-                      {ownVenue
-                        ? "Your own studio — the room is yours without asking, and this class can be published straight away."
-                        : "The studio is asked for its room. The class is saved as a draft and you can publish once they accept."}
-                    </div>
+                    {/* ⚠ NO PARAGRAPH HERE (27 Sep 2026, the user: *"less details
+                        in creation forms for everything should mostly just be
+                        headings"*). What it said is on the screen twice already:
+                        the chip under a studio you own reads "Your studio · no
+                        request needed", and the bar's own button reads "Save &
+                        ask them" for one you do not. This is C4c's rule — helper
+                        text only where the control cannot speak — applied to the
+                        forms rather than to the Edit sheets. */}
                     {venue ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, background: EL, border: `1.5px solid ${INK}`, borderRadius: 14, padding: "11px 13px", marginBottom: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -560,9 +563,8 @@ export function ClassForm({
                         ⚠ AND IT IS THE ONLY MAPS LOAD ON THIS FORM, so an artist
                         who teaches at their own place never waits for the Maps
                         script (and never meets the demo key's daily quota). ── */}
-                    <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
-                      A studio that is not on DanceOS, or your own space. Paste its Google Maps link — that is what students get directions from.
-                    </div>
+                    {/* the placeholder below IS the instruction, and the error
+                        line under it teaches the rule at the moment it is broken */}
                     <input
                       value={mapsUrl}
                       onChange={(e) => setMapsUrl(e.target.value)}
@@ -604,10 +606,6 @@ export function ClassForm({
                     the app's one people search; the person is ASKED and answers in
                     their Inbox; the class stays a draft until they say yes ── */}
                 <div style={labelStyle}>5 · WHO IS TAKING IT</div>
-                <div style={{ fontSize: 12, color: SUB, marginBottom: 7, lineHeight: 1.5 }}>
-                  Any user or artist on DanceOS. They are asked to confirm — the class stays a draft until they do, and their name goes on it once they have.
-                  {meId ? " Or take it yourself — nobody has to confirm that." : ""}
-                </div>
                 {/* ⚠ THE OWNER TAKES IT THEMSELVES (26 Sep 2026, the user: "when
                     the same user is creating classes from studio … no
                     verification is required but keeps a log in the inbox"). The
@@ -651,10 +649,14 @@ export function ClassForm({
                   <>
                     <div style={labelStyle}>WHAT A SESSION PAYS THEM</div>
                     <input type="number" min={0} max={200000} step={50} value={artistPayInr} aria-label="What a session pays the artist" onChange={(e) => setArtistPayInr(Math.max(0, Number(e.target.value) || 0))} style={inputStyle} />
-                    <div style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>₹ per session. Leave it at 0 if this one is on the house. You settle it yourself and record it on the earnings desk — DanceOS does not move the money.</div>
+                    {/* ⚠ ONE CLAUSE KEPT, AND IT IS A MONEY CLAIM — Step 13's own
+                        limit, which nothing else on this screen states: the number
+                        is a record, not a transfer. The rest of the paragraph said
+                        what "₹" and "0" already say. */}
+                    <div style={{ fontSize: 11.5, color: SUB, marginTop: 6 }}>₹ per session · 0 = free. You settle it — DanceOS does not move the money.</div>
                   </>
                 )}
-                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 14, lineHeight: 1.5 }}>Assistants are added from the class page once it exists — by you, or by whoever takes it.</div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 14, lineHeight: 1.5 }}>Assistants are added from the class page once it exists.</div>
               </>
             ) : (
               <div style={{ background: CARD, borderRadius: 14, padding: "12px 14px", marginTop: 18, fontSize: 12, color: SUB, lineHeight: 1.5 }}>
@@ -686,13 +688,14 @@ export function ClassForm({
                 the Policy block on the class's own page says the same thing to
                 whoever is about to book. ── */}
             <div style={labelStyle}>{isArtist ? "7" : "8"} · MEMBERSHIPS</div>
-            <div style={{ fontSize: 12, color: SUB, marginBottom: 8, lineHeight: 1.5 }}>Whose pass can pay for a seat in this class.</div>
+            {/* the two switch NAMES are the whole answer to "whose pass" — the
+                paragraph over them and the sub-line under each said it twice more */}
             {(
               [
-                ["Studio memberships", allowsStudioMem, setAllowsStudioMem, "A pass sold by the studio running this class"],
-                ["Artist memberships", allowsArtistMem, setAllowsArtistMem, "A pass sold by the artist taking it"],
+                ["Studio memberships", allowsStudioMem, setAllowsStudioMem],
+                ["Artist memberships", allowsArtistMem, setAllowsArtistMem],
               ] as const
-            ).map(([word, on, set, sub]) => (
+            ).map(([word, on, set]) => (
               <button
                 key={word}
                 type="button"
@@ -702,10 +705,7 @@ export function ClassForm({
                 onClick={() => set(!on)}
                 style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: CARD, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "11px 12px", marginBottom: 8, cursor: "pointer", fontFamily: "inherit", color: INK }}
               >
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{word}</span>
-                  <span style={{ display: "block", fontSize: 11, color: SUB, marginTop: 2 }}>{sub}</span>
-                </span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800 }}>{word}</span>
                 <span style={{ flexShrink: 0, width: 38, height: 22, borderRadius: 999, background: on ? "#22C55E" : EL, position: "relative", transition: "background .15s" }}>
                   <span style={{ position: "absolute", top: 3, left: on ? 19 : 3, width: 16, height: 16, borderRadius: 999, background: "#fff", transition: "left .15s" }} />
                 </span>
@@ -729,7 +729,8 @@ export function ClassForm({
                 );
               })}
             </div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>Left unchosen, a class draws its own from its name — so it always says the right thing. Tap a chosen design again to go back to that.</div>
+            {/* no note: the label already says "optional", and a class that
+                chooses none is DRAWN one anyway — the default is on the screen */}
           </>
         )}
 

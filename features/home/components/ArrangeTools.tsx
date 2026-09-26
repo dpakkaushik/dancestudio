@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { ToolGlyph, ToolGrid, type Tile } from "@/features/home/components/home-kit";
 import { setToolOrderAction } from "@/features/home/server-actions/toolOrder";
 import { arrangeTiles, moveTile, orderOf } from "@/features/home/toolOrder";
+import { useEditMode } from "@/features/profiles/components/EditMode";
 import { CARD, DOS_DISPLAY, INK, LINE, SUB } from "@/lib/design/tokens";
 
 /** ARRANGING THE TOOL GRID (22 Sep 2026) — the control on top of the storage
@@ -27,6 +28,20 @@ import { CARD, DOS_DISPLAY, INK, LINE, SUB } from "@/lib/design/tokens";
  *  heading on top nothing else"*), which is why the plan badge was deleted rather
  *  than moved. Directly under the grid it arranges is the next most findable
  *  place, and it is the only one that does not re-open a settled question.
+ *
+ *  ⚠⚠ **AND IT IS BEHIND THE PENCIL SINCE 27 Sep 2026** (the user: *"arrange
+ *  tools on home also part of edit on top right"*). Arranging the grid IS
+ *  editing the home, so it belongs with the disc's ⊕, the styles ＋ and Edit
+ *  details rather than standing on a read-only screen — which is what C60
+ *  decided for every other editor the day before and this one alone kept doing.
+ *  All four homes already wrap their grid in `EditModeProvider`, so the gate is
+ *  complete rather than partial.
+ *
+ *  ⚠ The open list is DERIVED (`open && editing`) rather than closed by an
+ *  effect — this repo's lint forbids a setState in one, and more to the point a
+ *  remount would throw away `order`, which is the only place the arrangement
+ *  somebody just made lives until the next server read. Leaving edit mode hides
+ *  the list; pressing the pencil again returns to it, which is where they were.
  *
  *  ⚠ **EVERY MOVE IS WRITTEN, one whole order at a time**, exactly as the two
  *  roster desks write theirs — `set_my_layout` is atomic (`jsonb_set` in one
@@ -56,6 +71,7 @@ export function ArrangeTools({
       kind of control this file has deleted three times */
   arranged?: boolean;
 }) {
+  const { editing } = useEditMode();
   const [order, setOrder] = useState<Tile[]>(tiles);
   const [open, setOpen] = useState(false);
   const [isStored, setIsStored] = useState(arranged);
@@ -79,11 +95,11 @@ export function ArrangeTools({
      the same stored state rather than an empty array pretending to be a choice. */
   const reset = () => save(arrangeTiles(order, defaultOrder), false);
 
-  if (!open) {
+  if (!(open && editing)) {
     return (
       <>
         <ToolGrid tiles={order} />
-        {layoutKey ? (
+        {layoutKey && editing ? (
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
             <button type="button" onClick={() => setOpen(true)} style={quietBtn}>
               Arrange tools

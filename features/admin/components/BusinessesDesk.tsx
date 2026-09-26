@@ -83,7 +83,10 @@ export function BusinessesDesk({
      nothing, and the studio goes public if its organization is verified */
   const grant = (b: AdminBusiness) =>
     start(async () => {
-      const out = await grantSubscriptionAction({ kind: "studio", subjectId: b.id, months, note: reason.trim() || null });
+      /* ⚠ THE KIND IS THE BUSINESS'S, NOT THE WORD "studio" (27 Sep 2026) — an
+         organization takes `org_monthly` at ₹5,000 and a studio `studio_monthly`
+         at ₹1,200, and the RPC picks the plan from this argument */
+      const out = await grantSubscriptionAction({ kind: b.type === "org" ? "org" : "studio", subjectId: b.id, months, note: reason.trim() || null });
       if (out.error) return fire(out.error);
       closeSheets();
       fire(`${b.name} is subscribed for ${months} month${months === 1 ? "" : "s"} — nothing charged, the owner has been told`);
@@ -280,9 +283,30 @@ export function BusinessesDesk({
                     </div>
                   </div>
                 ) : isOrg ? (
-                  <div style={{ fontSize: 10.5, color: MUTED, marginTop: 9, lineHeight: 1.45 }}>
-                    An organization is public while its GST number is verified and its own mandate is live — both are its owner&apos;s, from
-                    its home. Ending or comping an organization&apos;s mandate from here is not built yet.
+                  /* ⚠ AN ORGANIZATION HAS ITS TWO MONEY CONTROLS NOW (27 Sep
+                     2026, the user's "fix"): `admin_grant_subscription` and
+                     `admin_end_subscription` learned the third kind in
+                     `20260927090000`, so the sentence that said this was "not
+                     built yet" is the buttons it described. What is still NOT
+                     offered is the visibility switch, and that is correct: an
+                     organization's row is unlisted for ever and its public face
+                     is `org_is_public` — the GST number AND this mandate. */
+                  <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={{ fontSize: 10.5, color: MUTED, lineHeight: 1.4, flex: "1 1 100%" }}>
+                      {b.verifiedAt ? "GST verified" : "GST not verified yet — its owner does that from its Settings"}
+                      {subLive ? " · the mandate is live, so its page and its events are public." : " · no live mandate, so it is private."}
+                    </span>
+                    {!b.ownerSuspended ? (
+                      subLive ? (
+                        <button type="button" onClick={() => { closeSheets(); setEnding(b.id); }} style={{ ...btn, color: "#B42318" }} aria-label={`End ${b.name}'s subscription`}>
+                          End subscription
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => { closeSheets(); setMonths(12); setGranting(b.id); }} style={{ ...btn, color: "#15803D" }} aria-label={`Grant ${b.name} a subscription`}>
+                          Grant subscription
+                        </button>
+                      )
+                    ) : null}
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>

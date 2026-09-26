@@ -385,12 +385,17 @@ test("cashfree subscription webhook, in the shapes Cashfree really sends: the au
   // a studio is born PRIVATE (10 Sep 2026)
   expect(tenant.visibility).toBe("unlisted");
 
-  /* ⚠ AND SINCE 14 SEP 2026 IT IS ALSO BORN UNVERIFIED, and `subscribe()`
-     refuses one: "DanceOS has not verified this studio yet — the badge comes
-     first, then the subscription puts it on Discover." The badge is an admin's
+  /* ⚠ AND SINCE 14 SEP 2026 IT IS ALSO BORN UNVERIFIED. The badge is an admin's
      decision, which this spec has no admin for and is not what it is testing —
-     so the service role stamps it, exactly as the proof scripts do. Without
-     this the whole mandate story stops at its first line. */
+     so the service role stamps it, exactly as the proof scripts do.
+     ⚠⚠ THE REASON CHANGED ON 27 Sep 2026 AND THE STEP DID NOT. It used to be
+     that `subscribe()` REFUSED an unverified studio ("the badge comes first"),
+     so without this the story stopped at its first line; the user chose "pay at
+     creation, verify after" and `20260927100000` took that refusal out. What
+     still needs the badge is the LISTING further down: the authorisation
+     webhook's branch carries `and business_is_verified(t.id)`, so an unverified
+     studio would pay and stay dark — which is the rule, and would read here as
+     a broken assertion rather than as the rule. */
   const badged = await fetch(`${supabaseUrl}/rest/v1/businesses?id=eq.${tenant.id}`, {
     method: "PATCH",
     headers: serviceHeaders,

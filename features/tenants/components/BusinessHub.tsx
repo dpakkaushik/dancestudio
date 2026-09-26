@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { StudioVerificationStrip } from "@/features/tenants/components/StudioVerificationStrip";
@@ -153,6 +154,7 @@ export function BusinessHub({
     setToast(m);
     setTimeout(() => setToast(null), 2800);
   };
+  const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
@@ -189,6 +191,40 @@ export function BusinessHub({
         setPhone("");
         setEmail("");
         if (result.note) setToast(result.note);
+        /** ⚠ PAY AT CREATION (27 Sep 2026 — the user's item 8, and their own
+         *  answer when asked which of three orders they meant: *"Pay at
+         *  creation, verify after"*). The sheet used to close onto this hub and
+         *  leave the money as a second errand somebody had to go and find, which
+         *  is what they were describing. It goes straight to the new studio's
+         *  own Subscription screen instead — the price, what it buys, and the
+         *  Pay button, in the same breath as creating it.
+         *
+         *  ⚠ A PUSH, not a replace: back returns to the hub, where the studio is
+         *  now listed. Paying is offered and never forced — a studio created and
+         *  not paid for is exactly what it has always been, private until it is.
+         *  `20260927100000` is what lets the payment happen before the badge;
+         *  `guard_business_visibility` still decides Discover.
+         *
+         *  ⚠⚠ AND IT WAITS FOR THE CLOSE, WHICH IS NOT A FLOURISH — it is the
+         *  19 Sep race, met again and caught by `shoot-tiles` rather than by
+         *  reading: closing the sheet SPENDS its history entry with a
+         *  `history.back()` (`useCloseOnBack`), that back resolves as a POPSTATE
+         *  (asynchronously), and any navigation issued before it lands is
+         *  undone by it. The script read `/business` where it expected the
+         *  Subscription screen, three checks over — and a `setTimeout(…, 0)`
+         *  did NOT fix it, because one macrotask is still inside the popstate's
+         *  own window.
+         *
+         *  ⚠ 700 ms IS THIS CODEBASE'S OWN NUMBER, not a guess: `CrewForm` has
+         *  navigated forward out of a sheet on exactly that delay since 22 Sep,
+         *  and matching it beats inventing a second mechanism for one screen.
+         *  A PUSH rather than the crew's `replace`, and deliberately: the crew
+         *  LEAVES for the thing it made, while here the hub is where you came
+         *  from and where the new studio is now listed, so back should be it. */
+        if (result.businessId) {
+          const to = `/business/${result.businessId}/subscription`;
+          setTimeout(() => router.push(to), 700);
+        }
       }
       return result;
     },
@@ -569,11 +605,12 @@ export function BusinessHub({
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>{isStudio ? "New studio" : "Your artist page"}</b>
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
-              {isStudio
-                ? "One studio = one location. Opening another branch later? Create it as its own studio — it gets its own profile page and calendar. It stays private until you subscribe it; then it is on Discover."
-                : "The page people find you by — your classes, your bookings and your earnings live behind it."}
-            </div>
+            {/* ⚠ ONE CLAUSE (27 Sep 2026, "less details in creation forms for
+                everything should mostly just be headings"). What is kept is the
+                only thing somebody cannot discover by pressing on: that a studio
+                is born PRIVATE. The branch advice and the list of what lives
+                behind a page were describing the app to somebody already in it. */}
+            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>{isStudio ? "One studio = one location. It stays private until it is verified and subscribed." : "One page, and your classes and earnings live behind it."}</div>
 
             <form action={formAction}>
               <input type="hidden" name="rooms" value={JSON.stringify(isStudio ? rooms : [])} />
@@ -615,15 +652,13 @@ export function BusinessHub({
                       }
                     }}
                   />
-                  <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>
-                    {picked ? "This is what Discover measures from when somebody looks for studios near them." : "Without a pin the studio sits at the centre of its city and Discover cannot say how far away it is."}
-                  </div>
+                  {/* only the CONSEQUENCE OF NOT DOING IT is worth a line — a
+                      pin that has been placed is visible on the map above it */}
+                  {picked ? null : <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Without a pin, Discover cannot say how far away this studio is.</div>}
                 </>
               ) : null}
 
-              <div style={{ fontSize: 12, color: SUB, margin: "14px 0 4px" }}>
-                Area{isStudio ? " — filled from the address; edit it if it reads wrong" : " (optional)"}
-              </div>
+              <div style={{ fontSize: 12, color: SUB, margin: "14px 0 4px" }}>Area{isStudio ? "" : " (optional)"}</div>
               <input
                 name="area"
                 value={area}

@@ -33,7 +33,9 @@ const priceSchema = z.object({
 });
 
 const grantSchema = z.object({
-  kind: z.enum(["artist", "studio"]),
+  /* "org" since 27 Sep 2026 — `admin_grant_subscription` learned the third kind
+     in `20260927090000`, and the RPC re-checks it (Rule 6: the door validates) */
+  kind: z.enum(["artist", "studio", "org"]),
   subjectId: z.string().uuid(),
   months: z.number().int().min(1).max(36),
   note: z.string().trim().max(300).nullable().optional(),

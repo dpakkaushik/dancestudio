@@ -7,7 +7,7 @@ import {
   enrollAction,
   type EnrollActionState,
 } from "@/features/enrollments/server-actions/enrollments";
-import { GOLD, GREEN, INK, LILAC } from "@/lib/design/tokens";
+import { GOLD, GREEN, INK, SOLID } from "@/lib/design/tokens";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import { NO_BOOKING_FOR_AN_ORGANIZATION } from "@/types/profile";
 
@@ -23,6 +23,28 @@ const chip = (color: string): React.CSSProperties => ({
   color,
 });
 
+/** ⚠⚠ THE INK BUTTON'S TEXT IS `--solid`, NEVER `--bg` (27 Sep 2026) — and that
+ *  one token is why the primary control on every class card on Discover was
+ *  INVISIBLE, in both themes.
+ *
+ *  `INK` is `var(--text)` and `LILAC` is `var(--bg)`. At page level those two are
+ *  opposites, so `background: INK; color: LILAC` reads perfectly — which is why
+ *  it survived unnoticed. But `InvertedPanel` (21 Sep, C39) redeclares
+ *  `--solid --card --el --text --sub --muted` for its subtree and DELIBERATELY
+ *  leaves `--bg` alone, because `--bg` is the BODY's and nothing inside a panel
+ *  has business reading it. So inside the panel the ground flipped to the other
+ *  theme's ink and the label did not: `var(--text)` on `var(--bg)`, which is the
+ *  same colour by construction in both themes — 1:1, not a near miss.
+ *
+ *  Discover's shelf has been inside that panel since 21 Sep, so "Book a spot",
+ *  "Book this class" and "Sign in to book" have all been blank pills there for
+ *  six days. `SOLID` is `var(--solid)` — the page surface the panel DOES swap —
+ *  which is what every other inked control in the app already pairs with
+ *  (`pillBtn` on the Inbox, Done in ArrangeTools, the desks' `bizBtn`).
+ *
+ *  ⚠ The identity is the tell and it is worth carrying: two tokens that are
+ *  equal at page level are not a colour pair, they are a coincidence. Anything
+ *  that may ever be drawn inside a panel pairs `--text` with `--solid`. */
 const btn = (solid: boolean): React.CSSProperties => ({
   flex: 1,
   fontSize: 11.5,
@@ -32,7 +54,7 @@ const btn = (solid: boolean): React.CSSProperties => ({
   cursor: "pointer",
   border: solid ? "none" : `1.5px solid ${EL}`,
   background: solid ? INK : "transparent",
-  color: solid ? LILAC : "#F87171",
+  color: solid ? SOLID : "#F87171",
   textAlign: "center",
 });
 

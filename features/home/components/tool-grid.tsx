@@ -23,7 +23,23 @@ const I = (p: ReactNode) => (
   </svg>
 );
 
-export const GLYPH: Record<string, ReactNode> = {
+/** ⚠ `satisfies`, NOT `: Record<string, ReactNode>` (27 Sep 2026) — and that one
+ *  word is the whole of why two tiles drew an EMPTY chip for a day.
+ *
+ *  `Tile.k` is `keyof typeof GLYPH`. Annotated as `Record<string, ReactNode>`
+ *  that key type is `string`, so `k: "organizations"` and `k: "subscription"`
+ *  both compiled, both looked up `undefined`, and both rendered a black square
+ *  with nothing in it — on EVERY person's Home (two of them), on a studio's own
+ *  home and on an organization's. Typecheck, lint and `next build` were all
+ *  green through it, because a missing key in a `Record<string, …>` is not a
+ *  type error; only a pair of eyes on the screen could see it.
+ *
+ *  With `satisfies` the key type is the union of what is actually drawn here, so
+ *  a tile that names a glyph nobody wrote FAILS TO COMPILE. This is the repo's
+ *  own recurring shape one more time — a field that exists and a screen that
+ *  never reads it — met from the other side: a screen that reads a field nobody
+ *  wrote. The fix is to let the type say which keys exist. */
+export const GLYPH = {
   calendar: I(
     <>
       <rect x="3.5" y="4.5" width="17" height="16" rx="3" />
@@ -96,7 +112,30 @@ export const GLYPH: Record<string, ReactNode> = {
       <path d="M4 7.5l8 4 8-4M12 11.5v9" />
     </>
   ),
-};
+  /* AN ORGANIZATION IS A THING WITH PARTS UNDER IT (27 Sep 2026) — the org
+     chart: one box over two, joined. It has to be legible at 20px BESIDE
+     `studios`, which is one building with its windows (StudioI), and beside
+     `team`, which is people-shaped; boxes-and-lines is neither, and nothing
+     else on any grid uses a connector. */
+  organizations: I(
+    <>
+      <rect x="9" y="3" width="6" height="5" rx="1.5" />
+      <rect x="3" y="16" width="6" height="5" rx="1.5" />
+      <rect x="15" y="16" width="6" height="5" rx="1.5" />
+      <path d="M12 8v4M6 16v-2.5h12V16" />
+    </>
+  ),
+  /* A SUBSCRIPTION IS THE ONE THING ON THE GRID THAT COMES BACK (27 Sep 2026):
+     the recurring arrows. ⚠ Deliberately NOT a card — `memberships` is a card
+     with a stripe and `earn` a card with a circle, and a third card on the same
+     grid is three tiles nobody can tell apart. */
+  subscription: I(
+    <>
+      <path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" />
+      <path d="M18.5 3v3.6h-3.6M5.5 21v-3.6h3.6" />
+    </>
+  ),
+} satisfies Record<string, ReactNode>;
 
 export interface Tile {
   name: string;

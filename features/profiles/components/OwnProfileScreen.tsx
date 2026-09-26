@@ -6,6 +6,7 @@ import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople,
 import { findStudiosAttended } from "@/repositories/enrollments";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
+import { findOrganizationsNaming } from "@/repositories/organizationTeam";
 import { findPublicPerson, type PublicPerson } from "@/repositories/publicPerson";
 import { findMyArtistPlan } from "@/repositories/plans";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -49,7 +50,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      is the chrome's now — so the layout reads them once for every page instead
      of this page reading them for one. Two fewer reads here, and the two they
      replaced in the layout ride a batch that was already being awaited. */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, trainsAt] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, trainsAt, organizations] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -73,6 +74,12 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
        yourself and on nobody else's view of you. An organization books nothing
        (R11), so it is not asked. */
     role === "org" ? Promise.resolve([]) : findStudiosAttended(supabase, userId).catch(() => []),
+    /* ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026) — on YOUR OWN tab this
+       carries the private ones too, because a person's own rows are theirs to
+       read whatever `org_is_public` says. That is deliberate and it is the same
+       shape "Your studios" has: your own page shows what you are part of, and a
+       stranger's view of it shows only what those organizations have published. */
+    findOrganizationsNaming(supabase, userId),
     /* ⚠ `findMyOrgTenantId` LEFT THIS LIST (26 Sep 2026) with the organization
        login: `my_org_business()` is dropped, and every profile here is a person's */
   ]);
@@ -115,6 +122,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       businesses={businesses}
       memberships={memberships}
       trainsAt={trainsAt}
+      organizations={organizations}
       eventsHostId={null}
       plan={plan}
     />

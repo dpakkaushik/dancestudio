@@ -432,6 +432,9 @@ test.describe.serial("DanceOS, end to end", () => {
        900 s here — which is how the wrong name cost a fifteen-minute stall
        before it cost a failure (26 Sep 2026) */
     await owner.getByRole("button", { name: "Open organization" }).click();
+    /* the same hand-off a new studio gets (27 Sep 2026) — see the studio above */
+    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 30_000 });
+    await owner.goto("/organizations");
     await expect(owner.getByText(orgName, { exact: true })).toBeVisible();
     const orgRows = (await (await fetch(`${supabaseUrl}/rest/v1/businesses?name=eq.${encodeURIComponent(orgName)}&type=eq.org&deleted_at=is.null&select=id`, { headers: adminHeaders })).json()) as Array<{ id: string }>;
     eventsHostId = orgRows[0]?.id ?? null;
@@ -512,7 +515,20 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await owner.getByRole("button", { name: "Create studio" }).click();
 
-    // the action refreshes the hub in place — the new studio is a row now
+    /* ⚠ CREATING LANDS ON PAYMENT (27 Sep 2026 — the user's item 8, and their
+       own answer: "Pay at creation, verify after"). The sheet used to close
+       onto the hub in place; it goes straight to the new studio's own
+       Subscription screen, so the money is part of creating. Asserted here
+       rather than navigated around — and note SUBSCRIBE IS OFFERED while the
+       studio is still unverified, which is the whole of the new order:
+       `20260927100000` took `subscribe`'s badge refusal out, and
+       `guard_business_visibility` still decides Discover. */
+    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 30_000 });
+    await expect(owner.getByText("What it buys")).toBeVisible({ timeout: 15_000 });
+    await expect(owner.getByRole("button", { name: /^Subscribe · / })).toBeVisible({ timeout: 15_000 });
+    await owner.goto("/business");
+
+    // the hub lists the new studio as a row
     const studioRow = owner.getByText(studioName, { exact: true });
     await expect(studioRow).toBeVisible();
 
@@ -520,17 +536,24 @@ test.describe.serial("DanceOS, end to end", () => {
     // The user: "the user will upload 5-10 images and social media for the
     // studio, then admin will verify the studio, then the studio will get badge,
     // then it will subscribe to go live." Under the row: the strip says Not
-    // verified, and Subscribe is NOT offered yet.
+    // verified — and since 27 Sep 2026 Subscribe IS offered beside it, because
+    // paying comes first and the badge is what puts it on Discover.
     const verifyStrip = owner.getByTestId("studio-verification");
     await expect(verifyStrip).toHaveAttribute("aria-label", "Studio verification: Not verified");
-    /* ⚠ AND SUBSCRIBE IS NOT OFFERED ANYWHERE YET — asked on /subscription, which
-       is where a studio's subscription lives since 20 Sep 2026 (the user: "remove
-       … subscription from just the home tab … as already being handled from
-       settings"). Reading it off the hub, as this line used to, could only ever
-       pass: the strip has never been there. */
+    /* ⚠⚠ AND SUBSCRIBE **IS** OFFERED, BEFORE THE BADGE (27 Sep 2026). This
+       asserted `toHaveCount(0)` and was right until the user chose "pay at
+       creation, verify after": `20260927100000` took `subscribe`'s badge
+       refusal out, so a strip that still hid the button would be the screen
+       refusing what the database allows. What verification decides is DISCOVER,
+       and that is asserted where it belongs — the studio is still not listed
+       after the badge lands, further down, and `guard_business_visibility` is
+       proven by `rls-proof-studio-verification` check 7.
+       Asked on /subscription, which is where a studio's subscription lives
+       since 20 Sep 2026; reading it off the hub, as this line used to, could
+       only ever pass because the strip has never been there. */
     await owner.goto("/subscription");
     await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName })).toBeVisible();
-    await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName }).getByRole("button", { name: /^Subscribe/ })).toHaveCount(0);
+    await expect(owner.getByTestId("studio-subscription").filter({ hasText: studioName }).getByRole("button", { name: /^Subscribe/ })).toBeVisible();
     await owner.goto("/business");
     // 14 Sep 2026: the strip IS the form — the links are typed in it beside each
     // platform's own mark, the photos go under them, and ONE Submit saves the
@@ -910,8 +933,11 @@ test.describe.serial("DanceOS, end to end", () => {
     // the Inbox opens on All, which counts what waits; the cards with their two
     // answers live on the Requests desk (S_chats)
     await pressPill(trainer, /^Requests — \d+ waiting/);
-    await trainer.getByRole("button", { name: `Confirm ${classTitle}` }).click();
-    await expect(trainer.getByText(/Confirmed · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
+    // ⚠ ACCEPT, not Confirm (27 Sep 2026, the user: "class and event requests
+    // should have same cards with accept and reject buttons") — a class ask is
+    // an ASK, and the invitations to join are a second section with Join/Decline
+    await trainer.getByRole("button", { name: `Accept ${classTitle}` }).click();
+    await expect(trainer.getByText(/Accepted · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
     // now the owner publishes from the register — the door the form no longer is
     await owner.goto(`/business/${tenantId}/classes`);
     await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
@@ -1338,10 +1364,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto("/inbox");
     // the desk counts everything waiting on them — an earlier class ask included — so the crew
     // ask is found by its own words rather than by the total
-    await expect(trainer.getByRole("button", { name: `Open the a crew member request from ${learnerName}` })).toBeVisible();
+    // ⚠ AN INVITATION, NOT A REQUEST (27 Sep 2026, the user: "other team join,
+    // crew join, studio join, organization join for invites should also be
+    // different in style and should be card style but segregated in a different
+    // section now") — the combined desk calls it one, and the Requests desk
+    // draws it as a JOIN card under its own heading with Join / Decline
+    await expect(trainer.getByRole("button", { name: `Open the invitation to join from ${learnerName}` })).toBeVisible();
     await pressPill(trainer, /^Requests — \d+ waiting/);
-    await expect(trainer.getByText(`wants to add you to ${crewName}`)).toBeVisible();
-    await trainer.getByRole("button", { name: `Confirm ${crewName}` }).click();
+    await expect(trainer.getByText(`invited by ${learnerName}`)).toBeVisible();
+    await trainer.getByRole("button", { name: `Join ${crewName}` }).click();
     /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
        requests don't get removed after accepting") — the row wears its answer
        and its buttons are gone; it used to vanish.
@@ -1354,10 +1385,10 @@ test.describe.serial("DanceOS, end to end", () => {
        machine, which is a coin toss rather than a test. Worse, once the crew was
        confirmed the desk held TWO of that sentence, so the bare locator was one
        green run away from a strict-mode violation. The row is the unit here. */
-    const crewAsk = trainer.getByTestId("request-row").filter({ hasText: `wants to add you to ${crewName}` });
-    await expect(crewAsk.getByText("✅ Confirmed — you said yes")).toBeVisible({ timeout: 15_000 });
-    await expect(crewAsk.getByRole("button", { name: `Confirm ${crewName}` })).toHaveCount(0);
-    await expect(crewAsk.getByRole("button", { name: `Reject ${crewName}` })).toHaveCount(0);
+    const crewAsk = trainer.getByTestId("request-row").filter({ hasText: crewName }).filter({ hasText: `invited by ${learnerName}` });
+    await expect(crewAsk.getByText("✅ Joined — you said yes")).toBeVisible({ timeout: 15_000 });
+    await expect(crewAsk.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0);
+    await expect(crewAsk.getByRole("button", { name: `Decline ${crewName}` })).toHaveCount(0);
     await learner.reload();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("2");
     await expect(learner.getByText("Member", { exact: true })).toBeVisible();
@@ -2668,8 +2699,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await pressPill(learner, /^Requests — \d+ waiting/);
     await expect(learner.getByText(`wants to list you as the artist on Salsa · All levels`)).toBeVisible({ timeout: 15_000 });
     // and they say yes, so the only thing left in the way is the room
-    await learner.getByRole("button", { name: "Confirm Salsa · All levels" }).click();
-    await expect(learner.getByText(/Confirmed · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
+    await learner.getByRole("button", { name: "Accept Salsa · All levels" }).click();
+    await expect(learner.getByText(/Accepted · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
 
     await owner.goto(`/business/${tenantId}/classes`);
     await owner.getByRole("button", { name: /^Draft, \d+ classes$/ }).click();
@@ -2734,16 +2765,19 @@ test.describe.serial("DanceOS, end to end", () => {
     // (the ask names the organization BUSINESS, so the sentence carries its name)
     await learner.goto("/inbox");
     await pressPill(learner, /^Requests — \d+ waiting/);
-    await expect(learner.getByText(`wants to name you as an owner of ${orgName}`)).toBeVisible({ timeout: 15_000 });
-    await learner.getByRole("button", { name: `Confirm ${orgName}` }).click();
+    // ⚠ A JOIN CARD SINCE 27 Sep 2026 — the role is a chip and the sentence names
+    // who invited them; the whole point of the ask (the organization's NAME being
+    // readable, which `20260926140000` fixed) is now the card's own heading
+    await expect(learner.getByText(`invited by ${orgName}`)).toBeVisible({ timeout: 15_000 });
+    await learner.getByRole("button", { name: `Join ${orgName}` }).click();
     /* the answered ask stays on the desk, wearing its answer (19 Sep 2026).
        ⚠ Scoped to THIS row for the reason written out at the crews segment: every
        answered ask wears the same sentence, so `.first()` dodged strict mode by
        matching whichever row came first — proving nothing here and waiting for
        nothing, which left the count below racing the server action. */
-    const ownerAsk = learner.getByTestId("request-row").filter({ hasText: `wants to name you as an owner of ${orgName}` });
-    await expect(ownerAsk.getByText("✅ Confirmed — you said yes")).toBeVisible({ timeout: 15_000 });
-    await expect(ownerAsk.getByRole("button", { name: `Confirm ${orgName}` })).toHaveCount(0);
+    const ownerAsk = learner.getByTestId("request-row").filter({ hasText: `invited by ${orgName}` });
+    await expect(ownerAsk.getByText("✅ Joined — you said yes")).toBeVisible({ timeout: 15_000 });
+    await expect(ownerAsk.getByRole("button", { name: `Join ${orgName}` })).toHaveCount(0);
     // the desk counts one owner; the public page prints them under OWNER, with a door to their profile
     await owner.reload();
     await expect(owner.getByTestId("org-team-tile-owners")).toHaveText("1");
@@ -2752,8 +2786,20 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(ownerRow).toBeVisible();
     await expect(ownerRow).toHaveAttribute("href", `/person/${learnerId}`);
     await expect(ownerRow).toContainText("Owner");
-    // and the Stats chip on somebody else's organization page opens THAT organization's standing
-    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveAttribute("href", `/org/${eventsHostId}/stats`);
+    /* ⚠⚠ NO STATS CHIP ON AN ORGANIZATION'S PAGE (26 Sep 2026) — this line read
+       `toHaveAttribute("href", "/org/{id}/stats")` and was RIGHT when it was
+       written: the chip opened the board its STUDIOS stood on. An organization
+       runs no studios since the login was retired, so the chip went and
+       `/org/{id}/stats` redirects back here.
+       ⚠ IT WENT RED TODAY BECAUSE IT FINALLY RAN. It sits BEHIND the ask above,
+       which was the suite's one red on 26 Sep (the migration hole
+       `20260926140000` closed) — so this segment has stopped here for a day and
+       the two lines under it never executed. **A serial suite only reports its
+       first failure, and the lines behind it are not passing — they are not
+       running.** Both ends asserted, so the removal cannot quietly come back. */
+    await expect(trainer.getByRole("link", { name: "Stats", exact: true })).toHaveCount(0);
+    const orgStats = await trainer.request.get(`/org/${eventsHostId}/stats`, { maxRedirects: 0 });
+    expect([307, 308]).toContain(orgStats.status());
     /* ⚠ AN ORGANIZATION RUNS NO STUDIOS (26 Sep 2026): its page lists none, and
        the studio the same person owns is theirs, not the organization's */
     await expect(trainer.getByText("Studios", { exact: true })).toHaveCount(0);

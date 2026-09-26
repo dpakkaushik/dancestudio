@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale } from "@/repositories/memberships";
+import type { PersonOrganization } from "@/repositories/organizationTeam";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { Tenant } from "@/types/tenant";
 import { photoUrl } from "@/lib/media/photo";
@@ -58,6 +59,7 @@ export function PersonBody({
   beforeGroups = null,
   omitStudioSeats = false,
   trainsAt = [],
+  organizations = [],
 }: {
   person: PublicPerson;
   isMe: boolean;
@@ -87,11 +89,30 @@ export function PersonBody({
    *  unlisted ones too. Drawn both ways, the same studio appeared twice on one
    *  screen, which is the very duplication this file exists to end. */
   omitStudioSeats?: boolean;
+  /** ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026, the user: "all profiles
+   *  should only showcase according to how the team sections are managed for
+   *  each profile and their associations linked properly"). The link ran one way
+   *  only: an organization's Team desk names somebody and prints them on its
+   *  page with a door to here, and here said nothing back.
+   *  `findOrganizationsNaming` has the whole reason, including why it needs no
+   *  migration. Empty for a screen that does not pass it. */
+  organizations?: PersonOrganization[];
 }) {
   const { profile } = person;
-  /* "Studios taught at" — the studios, never their own artist page listed as a
-     place they teach (R24) */
-  const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio");
+  /** ⚠ NEVER THEIR OWN ARTIST PAGE as a place they teach (R24) — but a class
+   *  taught at SOMEBODY ELSE'S artist page is a real thing, and the old filter
+   *  (`tenantType === "studio"`) was broader than the rule it cited, so it
+   *  dropped those too. `person_teaches_at` returns artist pages with no type
+   *  filter, so what has to go is the ONE page they own.
+   *
+   *  ⚠⚠ AND THE TEST IS `artistPageId`, NOT `runs` — caught by reading this back
+   *  rather than by a run, which is the second time today. `runs` comes from
+   *  `business_members`, and RLS admits that table to a business's OWN MEMBERS:
+   *  for a stranger it is EMPTY, so `!runs.some(…)` would be true of everything
+   *  and every visitor would have seen the person's own page listed under Teach —
+   *  R24's exact bug, for the majority of viewers, introduced by the fix for a
+   *  smaller one. `artistPageId` is a definer read that answers anybody. */
+  const studiosTaughtAt = person.teachesAt.filter((t) => t.tenantType === "studio" || t.tenantId !== person.artistPageId);
   /* ⚠ WHERE THEY ARE SEATED (20 Sep 2026, the user's list E) — a different fact
      from the one above, which counts PUBLISHED CLASSES: somebody asked onto a
      team who has not taught yet is associated and teaches at nothing. Their own
@@ -209,6 +230,27 @@ export function PersonBody({
               title={a.tenantName}
               sub={a.city ?? ""}
               right={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
+            />
+          ))}
+        </Group>
+      ) : null}
+
+      {/* ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026) — the other end of the
+          link an organization's Team desk makes. Its page has printed these
+          people with a door to here since push 2; this is the door back. The
+          label is the organization's own word for the seat, so the two screens
+          cannot disagree about what somebody is. */}
+      {organizations.length ? (
+        <Group title="Organizations" n={organizations.length}>
+          {organizations.map((o) => (
+            <Row
+              key={o.orgId}
+              href={`/org/${o.orgId}`}
+              markName={o.name}
+              photo={o.photoPath ? photoUrl(o.photoPath) : null}
+              title={o.name}
+              sub={o.city ?? ""}
+              right={o.role === "owner" ? "Owner" : "Event team"}
             />
           ))}
         </Group>

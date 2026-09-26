@@ -12,6 +12,10 @@ export interface OrganizationActionState {
   created?: boolean;
   /** what the toast says once the sheet has closed */
   note?: string;
+  /** PAY AT CREATION (27 Sep 2026, the user's item 8) — the new organization's
+   *  id, so the sheet can go straight to its own Subscription screen instead of
+   *  leaving the money as a second errand. See `BusinessHub` for the whole of it. */
+  businessId?: string;
 }
 
 /** OPEN AN ORGANIZATION (26 Sep 2026, the user: "make organization a tab on home
@@ -93,5 +97,7 @@ export async function createOrganizationAction(_prev: OrganizationActionState, f
 
   revalidatePath("/organizations");
   revalidatePath("/");
-  return { error: null, created: true, note: note ?? "Organization opened — verify its GST number from its Settings, then subscribe it to go public." };
+  /* ⚠ the sentence follows the order the user chose: paying comes first now,
+     and the GST number is what makes it public afterwards */
+  return { error: null, created: true, businessId: orgId, note: note ?? "Organization opened. Subscribe it here, then verify its GST number from its Settings to go public." };
 }

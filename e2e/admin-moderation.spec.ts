@@ -229,6 +229,11 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.getByLabel("Room 1 name").fill("Studio A");
     await owner.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await owner.getByRole("button", { name: "Create studio" }).click();
+    /* creating lands on the new studio's own Subscription screen (27 Sep 2026,
+       "pay at creation, verify after") — this spec is about moderation, so it
+       comes straight back to the hub */
+    await owner.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 30_000 });
+    await owner.goto("/business");
     await expect(owner.getByText(studioName, { exact: true })).toBeVisible();
     // under the row: the STUDIO's own review (11 Sep 2026) — a public link,
     // five photos, the ask, the admin's badge — and only then Subscribe

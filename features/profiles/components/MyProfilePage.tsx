@@ -17,6 +17,7 @@ import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
+import type { PersonOrganization } from "@/repositories/organizationTeam";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
@@ -67,6 +68,7 @@ export function MyProfilePage({
   businesses = [],
   memberships = [],
   trainsAt = [],
+  organizations = [],
   eventsHostId = null,
   plan,
 }: {
@@ -94,6 +96,10 @@ export function MyProfilePage({
    *  booking is private, so where somebody has taken classes is drawn on their
    *  own tab and never on the public page `PersonBody` also serves. */
   trainsAt?: Tenant[];
+  /** the organizations whose Team desk names this person (27 Sep 2026) — on
+   *  their OWN tab this carries the private ones too, because their own rows are
+   *  theirs to read; a stranger's view of the same group is public-only */
+  organizations?: PersonOrganization[];
   /** an ORGANIZATION's own event-hosting row (R15) — where an enquiry to it
    *  lands, and the one id the button row needs that `person` cannot carry */
   eventsHostId?: string | null;
@@ -330,6 +336,7 @@ export function MyProfilePage({
           signedIn
           memberships={memberships}
           trainsAt={trainsAt}
+          organizations={organizations}
           scheduleHref={scheduleHref}
           accent={RC}
           /* an organization's only seats are the owner rows on its own studios,

@@ -345,7 +345,9 @@ export function EventForm({ tenantId, existing, cityCentres = [], sheet = false 
                 hand and checked by nobody. The point is saved too, so an event
                 can be found by distance the way a studio can. ── */}
             <div style={{ height: 12 }} />
-            <div style={{ fontSize: 12, color: "var(--sub)", marginBottom: 6 }}>Where it is — it writes the address, the city and the map link</div>
+            {/* no line here (27 Sep 2026, "mostly just be headings"): the picker
+                FILLS the address and the city in front of you, so a sentence
+                promising it does is the screen describing what the screen does */}
             <LocationPicker
               value={{ lat: geo?.lat ?? null, lng: geo?.lng ?? null, area: addr || null }}
               centre={centreOf(cityCentres, city)}
@@ -486,7 +488,10 @@ export function EventForm({ tenantId, existing, cityCentres = [], sheet = false 
 
                 {/* ENTRIES AND TICKETS ARE TWO DIFFERENT THINGS (16070) */}
                 <Head n="2">FOR HOW MUCH, AND HOW MANY</Head>
-                <div style={{ fontSize: 11, color: "var(--sub)", margin: "-2px 0 9px", lineHeight: 1.5 }}>Set by what people enter as. Which of these are open is decided by who competes, above.</div>
+                {/* ⚠ KEPT, SHORTENED — this is a DEPENDENCY between two controls,
+                which is the one thing a control genuinely cannot say about
+                itself: the row above decides which of these exist at all */}
+            <div style={{ fontSize: 11, color: "var(--sub)", margin: "-2px 0 9px", lineHeight: 1.5 }}>Which are open is decided by who competes, above.</div>
                 {ENTRY_KEYS.filter((k) => entry === "all" || entry === k || entryTiers[k].on).map((k) => {
                   const row = entryTiers[k];
                   const on = row.on;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { PlanRights } from "@/features/settings/components/PlanRights";
 import { BizPage } from "@/features/settings/components/settings-kit";
 import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -52,15 +53,29 @@ export default async function BusinessSubscriptionPage({ params }: { params: Pro
   return (
     <BizPage title="Subscription" sub={`${tenant.name} · ${isOrg ? "an organization's own mandate" : "one studio, one mandate"}`} grad="linear-gradient(135deg,#0369A1,#22D3EE)">
       {state ? (
-        <StudioSubscriptionStrip tenantId={tenantId} tenantName={tenant.name} verified={verified} state={state} studioPrice={price} heading={tenant.name} />
+        <StudioSubscriptionStrip tenantId={tenantId} tenantName={tenant.name} state={state} studioPrice={price} heading={tenant.name} />
       ) : (
         <div style={{ fontSize: 12, color: "var(--sub)", fontWeight: 700 }}>Where this subscription stands could not be read just now. Try again in a moment.</div>
       )}
+      {/* ⚠ NOT A BLOCKER ANY MORE (27 Sep 2026 — the user chose "pay at creation,
+          verify after", and `20260927100000` removed `subscribe`'s two refusals).
+          It said "verify first, THEN the subscription can be started here", which
+          is now the opposite of what the door does. What is still true, and is
+          the whole of why verification matters, is that it decides whether this
+          is ever PUBLIC — so that is what it says. */}
       {!verified ? (
         <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "2px 2px 10px" }}>
-          {isOrg ? "Verify the organization's GST number first — Settings › GST number — then the subscription can be started here." : "DanceOS verifies the studio first — Settings › Verification — then the subscription can be started here."}
+          {isOrg
+            ? "You can subscribe now. Its page and its events go public once its GST number is verified — Settings › GST number."
+            : "You can subscribe now. It goes on Discover once DanceOS has verified it — Settings › Verification — and it is listed the moment that lands."}
         </div>
       ) : null}
+      {/* ⚠ WHAT THE MONEY BUYS, on the screen that asks for it (27 Sep 2026, the
+          user: "correct descriptions and rights you get once you subscribe for
+          any of the following — artist, studio, organization"). This page had a
+          price and nothing beside it; the artist's had a list that promised a
+          0.9% fee nobody charges and events an artist cannot host. */}
+      <PlanRights kind={isOrg ? "org" : "studio"} />
     </BizPage>
   );
 }

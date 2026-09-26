@@ -9,6 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { amIPlatformAdmin } from "@/repositories/admin";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
+import { findOrganizationsNaming } from "@/repositories/organizationTeam";
 import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
 import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/tenants";
 
@@ -103,7 +104,7 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      address is not where an ORGANIZATION is followed — its public face is
      /org/{id}, which draws its own bell — and you do not follow yourself. */
   const canAskToFollow = !isMe && !isOrg;
-  const [following, header, memberships] = await Promise.all([
+  const [following, header, memberships, organizations] = await Promise.all([
     canAskToFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist, ten for an organization (19 Sep 2026) */
@@ -111,7 +112,12 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
     /* WHAT THIS ARTIST SELLS (19 Sep 2026): the live memberships of the page
        behind them — bought from this page, exactly as a studio's are from its */
     person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId) : Promise.resolve([]),
+    /* WHICH ORGANIZATIONS NAME THEM (27 Sep 2026) — the other end of a link that
+       ran one way: an organization's page has printed these people since push 2
+       and this page said nothing back. RLS hands a stranger the PUBLIC ones
+       only, so it publishes exactly what those pages already print. */
+    findOrganizationsNaming(supabase, userId),
   ]);
 
-  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} />;
+  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} organizations={organizations} />;
 }

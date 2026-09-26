@@ -212,6 +212,11 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await org.getByLabel("Room 1 name").fill("Floor 1");
     await org.getByLabel("Add a dance style").selectOption("Hip-Hop");
     await org.getByRole("button", { name: "Create studio" }).click();
+    /* creating lands on the new studio's own Subscription screen (27 Sep 2026,
+       "pay at creation, verify after") — this spec is about support, so it
+       comes straight back to the hub */
+    await org.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 30_000 });
+    await org.goto("/business");
     await expect(org.getByText(studioName, { exact: true })).toBeVisible();
     await expect(org.getByTestId("studio-verification")).toHaveAttribute("aria-label", "Studio verification: Not verified");
     await showSpace(await studioIdOf(studioName), orgId as string);

@@ -108,8 +108,20 @@ export function PublicProfile({
   const faculty = profile.team.filter((m) => m.role === "trainer");
   const visiting = profile.team.filter((m) => m.role === "visiting_faculty");
   const assistants = profile.team.filter((m) => m.role === "assistant");
-  /* the owner is an organization more often than not — its row opens the organization's page */
-  const teamRow = (m: PublicTeamMember, sub: string) => <Row key={m.userId} href={m.isOrg ? `/org/${m.userId}` : `/person/${m.userId}`} title={m.name} sub={sub} photo={photoUrl(m.photoPath)} />;
+  /** ⚠⚠ EVERY TEAM ROW OPENS A PERSON (27 Sep 2026, the user: *"all profiles
+   *  should only showcase according to how the team sections are managed … and
+   *  their associations linked properly"*).
+   *
+   *  This read `m.isOrg ? \`/org/${m.userId}\` : …`, and that link was BROKEN in
+   *  two ways at once. `m.userId` is a `profiles` id, while `/org/{id}` has
+   *  taken a BUSINESS id since 26 Sep — so the href pointed at a page that
+   *  resolves by a different key and answered `notFound()`. And `isOrg` is
+   *  computed as `profiles.role = 'org'`, a role the same migration RETIRED, so
+   *  the branch is false for everything created since and true only for a
+   *  surviving legacy row — which is exactly the row it 404s on.
+   *
+   *  A studio's owner is a PERSON now, always, so there is one destination. */
+  const teamRow = (m: PublicTeamMember, sub: string) => <Row key={m.userId} href={`/person/${m.userId}`} title={m.name} sub={sub} photo={photoUrl(m.photoPath)} />;
   /* ⚠ DRAWN FOR THE TEAM TOO, AND DISABLED (20 Sep 2026, the user: "Viewing your
      own profile should show same buttons which you see on discover it should
      look the same way"). `ActionRow` is a grid sized by its cell count, so

@@ -122,6 +122,55 @@ export async function findMyPendingOrganizationAsks(supabase: SupabaseClient, st
   }));
 }
 
+/** WHICH ORGANIZATIONS NAME THIS PERSON (27 Sep 2026, the user: *"all profiles
+ *  should only showcase according to how the team sections are managed for each
+ *  profile and their associations linked properly"*).
+ *
+ *  ⚠⚠ **THE LINK RAN ONE WAY ONLY, AND IT WAS THE ONE THE USER IS ASKING
+ *  ABOUT.** An organization's Team desk names somebody Owner or Event team, its
+ *  public page prints them with a door to `/person/{id}` — and that page said
+ *  nothing at all about the organization. `findPublicPerson` never read this
+ *  table and `person_associations` reads `business_members` only, so the
+ *  association existed in one direction: org → person, never back.
+ *
+ *  ⚠ **NO MIGRATION, AND THE REASON IS THE POLICY THAT IS ALREADY THERE.**
+ *  `20260920150000` gave `organization_members` a SELECT policy for
+ *  `anon, authenticated` over confirmed, non-`member` rows of a PUBLIC
+ *  organization — so what a stranger may read here is already exactly what the
+ *  organization's own page prints, and this read publishes nothing new. It says
+ *  `role <> 'member'` out loud anyway: RLS is a ceiling, not a scope, and a
+ *  front-desk seat is the organization's own note (R36).
+ *
+ *  ⚠ The list therefore DIFFERS BY VIEWER, correctly: the person's own rows are
+ *  readable by them, so on their own Profile tab a private organization that has
+ *  named them appears, and on a stranger's view of the same page it does not —
+ *  the same shape `person_associations` has for an unlisted studio. */
+export interface PersonOrganization {
+  orgId: string;
+  name: string;
+  city: string | null;
+  photoPath: string | null;
+  role: OrgTeamRole;
+}
+
+export async function findOrganizationsNaming(supabase: SupabaseClient, userId: string): Promise<PersonOrganization[]> {
+  const { data, error } = await supabase
+    .from("organization_members")
+    .select("org_id, role, org:businesses!organization_members_org_id_fkey (name, city, profile_photo_path)")
+    .eq("user_id", userId)
+    .eq("status", "confirmed")
+    .neq("role", "member")
+    .is("deleted_at", null)
+    .order("sort", { ascending: true })
+    .limit(40);
+  /* ⚠ SWALLOWED, like `person_associations`' own mapping: a profile must never
+     fail to render over a group it can simply not draw */
+  if (error) return [];
+  return ((data ?? []) as unknown as Array<{ org_id: string; role: OrgTeamRole; org: { name: string; city: string | null; profile_photo_path: string | null } | null }>)
+    .filter((r) => r.org)
+    .map((r) => ({ orgId: r.org_id, name: r.org!.name, city: r.org!.city, photoPath: r.org!.profile_photo_path, role: r.role }));
+}
+
 /** The asks these ORGANIZATIONS are still waiting on (the desk's SENT side, and
  *  the owner's Inbox). Takes the list of the caller's OWNED organizations;
  *  `org_id in (…)` is said out loud — RLS is a ceiling, not a scope. */

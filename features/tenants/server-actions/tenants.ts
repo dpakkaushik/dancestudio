@@ -15,6 +15,14 @@ export interface TenantActionState {
   /** something true about what was just made that is not an error — the sheet
    *  closes on `created`, so this is what the toast says */
   note?: string;
+  /** ⚠ PAY AT CREATION (27 Sep 2026, the user's item 8 and their own answer when
+   *  asked which of three orders they meant). The sheet used to close onto the
+   *  hub and leave paying as a second errand somebody had to find; the new
+   *  studio's id comes back so the flow can go straight to its own Subscription
+   *  screen, where the price and the Pay button are. Nothing about the DATABASE
+   *  order changes here — `20260927100000` is what lets the payment happen
+   *  before verification; this is only where the person is put next. */
+  businessId?: string;
 }
 
 /** The rooms the New-studio sheet collects (prototype 2675-2683): a name and a
@@ -211,6 +219,6 @@ export async function createTenantAction(
   // client state open — refresh the list and let the sheet close itself instead
   revalidatePath("/business");
   revalidatePath("/");
-  return { error: null, created: true, note };
+  return { error: null, created: true, note, businessId: tenantId };
 }
 

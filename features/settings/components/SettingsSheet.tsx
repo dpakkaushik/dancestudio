@@ -93,9 +93,8 @@ function Tile({ icon, children, href, onClick, badge, ariaLabel, pressed, disabl
     return (
       <Link
         href={href}
-        /* a tile's navigation REPLACES the sheet's `?settings=1` entry (19 Sep
-           2026): back from the desk it opens returns to the page under the
-           sheet, not to the sheet re-opening itself */
+        /* a tile PUSHES (27 Sep 2026 — see `go`): back from the desk it opens
+           returns to the settings list, which is where the press was made */
         onClick={
           onNavigate
             ? (e) => {
@@ -162,12 +161,26 @@ export function SettingsSheet({
   isAdmin?: boolean;
 }) {
   const router = useRouter();
-  /* LEAVING THE SHEET FOR A DESK (19 Sep 2026): the sheet's open state is the
-     `?settings=1` entry the gear pushed, so a tile REPLACES that entry with the
-     desk it opens — back from the desk is the page under the sheet, never the
-     sheet re-opening itself. (Closing first and pushing raced the router: the
-     close is `router.back()`, and the push was cancelled by it.) */
-  const go = (href: string) => router.replace(href);
+  /** ⚠⚠ LEAVING THE SHEET FOR A DESK **PUSHES** (27 Sep 2026, the user: *"fix
+   *  back swipe while going in and out from setting menu all items"*) — and this
+   *  REVERSES the 19 Sep decision, deliberately.
+   *
+   *  That day a tile REPLACED the `?settings=1` entry, on the reasoning that
+   *  back from a desk should be "the page under the sheet, never the sheet
+   *  re-opening itself". The second half of that sentence is the mistake: the
+   *  sheet re-opening is not a loop, it is the way BACK — it is where you were
+   *  standing when you pressed the tile. What replace actually bought was this:
+   *  every single item cost a re-open of the menu (gear → tile → back → gear →
+   *  tile → back), which is what "in and out from setting menu all items" is
+   *  describing, and there is no way at all to step back into the list.
+   *
+   *  ⚠ A push is safe here for the same reason the sheet needs no sentinel: its
+   *  open state IS the URL. Navigating to a desk drops `?settings=1`, so the
+   *  sheet closes itself with no state to race; going back restores the param,
+   *  and the chrome draws the sheet again. Nothing closes first, so the 19 Sep
+   *  race (a `router.back()` cancelling a push in the same tick) cannot happen —
+   *  that bug was about closing AND pushing, not about pushing. */
+  const go = (href: string) => router.push(href);
   const [enqOpen, setEnqOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [pending, start] = useTransition();

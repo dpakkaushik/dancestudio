@@ -154,13 +154,30 @@ try {
   Check 6 "No link: '$noLink'. No photos: '$noPhotos'. Another person's photo: '$notMine'. A file outside the owner's folder: '$wrongFolder'. Another person's ask: '$bAsks'. Then the ask files once ($req1) and is idempotent" (
     ($noLink -match "link") -and ($noPhotos -match "5 photos") -and ($notMine -match "owner") -and ($wrongFolder -match "folder") -and ($bAsks -match "owner") -and $req1 -and ($req1 -eq $req2) -and ($reqRow[0].status -eq "pending") -and ($reqRow[0].business_id -eq $ta.id))
 
-  # ── 6. no badge, no subscription; the badge is DanceOS's to give ──
-  $noBadge = Fails { Rpc (Api $a.token) "subscribe" @{ p_plan_key = "studio_monthly"; p_business_id = $ta.id } }
+  # -- 6. PAYING COMES FIRST NOW, and the badge is still DanceOS's to give.
+  #    Re-cut 27 Sep 2026: this asserted that `subscribe` REFUSED an unverified
+  #    studio ("the badge comes first"), which was right until the user chose
+  #    "pay at creation, verify after" and 20260927100000 took that refusal out.
+  #    A test that describes a DECISION is the thing that changes when the
+  #    decision does - so it proves the rule that replaced it, at BOTH ends:
+  #    the mandate may be started, and it buys nothing public.
+  try { Rpc (Api $a.token) "subscribe" @{ p_plan_key = "studio_monthly"; p_business_id = $ta.id } | Out-Null } catch { }
+  $subRow = Get-Rows $svcH "subscriptions?business_id=eq.$($ta.id)&kind=eq.studio&deleted_at=is.null&select=status,plan_key"
   $handBadge = Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers (Api $a.token) -Body (@{ verified_at = [DateTime]::UtcNow.ToString("o") } | ConvertTo-Json) }
-  $tick0 = Get-Rows $svcH "businesses?id=eq.$($ta.id)&select=verified_at"
+  $tick0 = Get-Rows $svcH "businesses?id=eq.$($ta.id)&select=verified_at,visibility"
   $why0 = Rpc (Api $a.token) "why_no_studio" @{ p_business_id = $ta.id }
-  Check 7 "Subscribe before the badge is refused ('$noBadge'); the owner's own PATCH of the badge leaves it null ('$handBadge'); the hub's sentence: '$why0'" (
-    ($noBadge -match "badge") -and ($null -eq $tick0[0].verified_at) -and ($why0 -match "checking this studio"))
+  # and listing it anyway does not happen - the half that matters.
+  # WARNING the refusal is SILENT: 20260913100000 closed the column-less update
+  # policy, so the owner's PATCH of `visibility` is refused by the POLICY (0
+  # rows) and never reaches guard_business_visibility to raise anything. Reading
+  # the message would assert '' for ever and pass whatever the door did - the
+  # 11 Sep lesson. READ THE COLUMN BACK instead.
+  Fails { Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/businesses?id=eq.$($ta.id)" -Headers (Api $a.token) -Body (@{ visibility = "listed" } | ConvertTo-Json) } | Out-Null
+  $after = Get-Rows $svcH "businesses?id=eq.$($ta.id)&select=verified_at,visibility"
+  Check 7 "An unverified studio may start its mandate (status '$(if ($subRow.Count) { $subRow[0].status } else { 'none' })'), and it buys nothing public: '$($tick0[0].visibility)' before and '$($after[0].visibility)' after its owner tried to list it; the owner's own PATCH of the badge leaves it null ('$handBadge'); the hub's sentence: '$why0'" (
+    ($subRow.Count -eq 1) -and ($subRow[0].status -eq "pending_auth") -and ($subRow[0].plan_key -eq "studio_monthly") -and
+    ($tick0[0].visibility -eq "unlisted") -and ($after[0].visibility -eq "unlisted") -and
+    ($null -eq $after[0].verified_at) -and ($why0 -match "checking this studio"))
 
   # a platform admin, named through the service role - never self-serve
   $adm = New-Person "sv-admin-$stamp@example.com" "SV Admin $stamp"; $made += $adm.id

@@ -5,6 +5,7 @@
    could never CALL dosPosterAuto itself (found by the e2e, 28 Aug 2026) */
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { PosterBlock, dosPosterAuto } from "@/features/classes/components/poster";
 import { DOS_DISPLAY, DOS_UI } from "@/lib/design/tokens";
 import {
@@ -40,7 +41,28 @@ export interface EventCardHost {
   href: string | null;
 }
 
-export function EventCard({ event: e, href, compact = false, host = null }: { event: DanceEvent; href?: string; compact?: boolean; host?: EventCardHost | null }) {
+/** ⚠ AN EVENT CARD TAKES ACTIONS, LIKE A CLASS CARD (27 Sep 2026, the user:
+ *  *"fix the buttons for all class and event cards"*). `ClassTile` has had an
+ *  `actions` slot since the parity audit and this card never grew one, so on
+ *  Discover a class offered "Book a spot" and an event — one tab away, in the
+ *  same shelf — offered nothing at all but the whole card as a link. The slot is
+ *  `ClassTile`'s geometry exactly (`gap: 7, padding: "0 10px 10px", wrap`), and
+ *  ⚠ the actions sit OUTSIDE the `<Link>` for the reason that file records: a
+ *  button inside an anchor is interactive inside interactive, and pressing it
+ *  navigates instead. */
+export function EventCard({
+  event: e,
+  href,
+  compact = false,
+  host = null,
+  actions,
+}: {
+  event: DanceEvent;
+  href?: string;
+  compact?: boolean;
+  host?: EventCardHost | null;
+  actions?: ReactNode;
+}) {
   const tint = EV_TINT[e.cat];
   const price = eventPriceLabel(e);
   const isFree = price === "Free";
@@ -141,6 +163,22 @@ export function EventCard({ event: e, href, compact = false, host = null }: { ev
     textDecoration: "none",
     fontFamily: DOS_UI,
   };
+  /* with actions the card is the shell and the LINK wraps the body alone, so a
+     button in the row below is pressable — `ClassTile`'s own arrangement */
+  if (actions) {
+    return (
+      <div style={{ ...style, marginBottom: 9 }}>
+        {href ? (
+          <Link href={href} aria-label={`${e.title} — ${TYPE_LABEL[e.cat]}`} style={{ display: "block", color: "var(--text)", textDecoration: "none" }}>
+            {body}
+          </Link>
+        ) : (
+          body
+        )}
+        <div style={{ display: "flex", gap: 7, padding: "0 10px 10px", flexWrap: "wrap" }}>{actions}</div>
+      </div>
+    );
+  }
   return href ? (
     <Link href={href} aria-label={`${e.title} — ${TYPE_LABEL[e.cat]}`} style={{ ...style, cursor: "pointer" }}>
       {body}

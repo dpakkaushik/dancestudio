@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { SubscribeButton } from "@/features/payments/components/SubscribeButton";
 import { cancelSubscriptionAction } from "@/features/payments/server-actions/subscriptions";
+import { PlanRights } from "@/features/settings/components/PlanRights";
 import { activateArtistPlanAction } from "@/features/settings/server-actions/plans";
 import { StudioSubscriptionStrip } from "@/features/tenants/components/StudioSubscriptionStrip";
 import { priceWords, type PlanCatalogRow } from "@/repositories/plans";
@@ -25,14 +26,6 @@ import { BizPage, BizToast, bizBtn, bizCard, dateWords } from "./settings-kit";
  *  is retired, so every reader of this screen is a person. What they OWN —
  *  each studio and each organization, with its own mandate — is listed under
  *  their plan, priced by kind. */
-
-const FEATURES: Array<[string, string, string]> = [
-  ["🏠", "Business home", "earnings, sessions & student metrics at a glance"],
-  ["🗓", "Publish classes & events", "create, share, manage attendance and check-in"],
-  ["👥", "Students & rosters", "track retention, packs and assistants"],
-  ["💰", "Earnings & payouts", "per-session fees, settlements, refunds · 0.9% payments"],
-  ["📩", "Gig enquiries", "quotes, advances and bookings in your Inbox"],
-];
 
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
@@ -108,7 +101,10 @@ export function SubscriptionScreen({
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 900 }}>DanceOS Pro · Artist</div>
-                    <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2 }}>teaching tools on your own profile · 0.9% payments</div>
+                    {/* ⚠ "· 0.9% payments" WAS HERE TOO, on the card somebody
+                        already paying reads (27 Sep 2026). DanceOS charges no
+                        platform fee — see `planRights.ts` for the whole of it. */}
+                    <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2 }}>teaching tools on your own profile</div>
                   </div>
                   <span style={{ fontSize: 9.5, fontWeight: 900, padding: "3px 10px", borderRadius: 999, background: `${w.tone}22`, color: w.tone, whiteSpace: "nowrap" }}>{w.title.toUpperCase()}</span>
                 </div>
@@ -178,17 +174,7 @@ export function SubscriptionScreen({
               <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 10 }}>Your last plan ended on {dateWords(subscription.currentPeriodEnd)} — the tools are locked until you subscribe again.</div>
             ) : null}
           </div>
-          <div style={bizCard}>
-            {FEATURES.map(([ic, t, s2], i) => (
-              <div key={t} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 0", borderBottom: i === FEATURES.length - 1 ? "none" : "1.5px solid var(--el)" }}>
-                <span style={{ fontSize: 17, flexShrink: 0 }}>{ic}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 800 }}>{t}</div>
-                  <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 1 }}>{s2}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <PlanRights kind="artist" />
           {pick ? (
             pick.priceInr > 0 ? (
               <SubscribeButton planKey={pick.key} label={`Subscribe · ${priceWords(pick.priceInr, pick.period)}`} onDone={fire} style={{ width: "100%", padding: 13, fontSize: 13.5, borderRadius: 999, display: "block" }} />
@@ -226,7 +212,7 @@ export function SubscriptionScreen({
           </div>
           {studios.map((t) =>
             t.state ? (
-              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} verified={t.verified} state={t.state} studioPrice={studioPrice} heading={t.name} />
+              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} state={t.state} studioPrice={studioPrice} heading={t.name} />
             ) : null
           )}
         </div>
@@ -249,7 +235,7 @@ export function SubscriptionScreen({
           </div>
           {orgs.map((t) =>
             t.state ? (
-              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} verified={t.verified} state={t.state} studioPrice={orgPrice} heading={t.name} />
+              <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} state={t.state} studioPrice={orgPrice} heading={t.name} />
             ) : null
           )}
         </div>

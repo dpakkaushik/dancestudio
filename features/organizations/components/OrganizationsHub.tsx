@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { createOrganizationAction, type OrganizationActionState } from "@/features/organizations/server-actions/organizations";
@@ -84,6 +85,7 @@ export function OrganizationsHub({
     setToast(m);
     setTimeout(() => setToast(null), 2800);
   };
+  const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
@@ -101,6 +103,17 @@ export function OrganizationsHub({
       setPhone("");
       setEmail("");
       if (result.note) fire(result.note);
+      /* PAY AT CREATION (27 Sep 2026) — the same hand-off a new studio gets:
+         straight to this organization's own Subscription screen, where the
+         ₹5,000 and what it buys are. A push, so back is this hub.
+         ⚠ It WAITS for the close, on the 700 ms `CrewForm` has used since
+         22 Sep — the reason is written out in `BusinessHub`: the close spends
+         the sheet's history entry with a `back()`, that lands as a popstate,
+         and anything navigated before it is undone. */
+      if (result.businessId) {
+        const to = `/business/${result.businessId}/subscription`;
+        setTimeout(() => router.push(to), 700);
+      }
     }
     return result;
   }, initialState);
@@ -225,9 +238,10 @@ export function OrganizationsHub({
           <div role="dialog" aria-modal="true" aria-label="New organization" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "18px 16px 28px", width: "100%", maxWidth: 430, boxSizing: "border-box", maxHeight: "88vh", overflowY: "auto", color: INK, animation: SHEET_ANIMATION }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
             <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>New organization</b>
-            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>
-              An organization puts on events and names its team. It stays private until its GST number is verified and it is subscribed; then its page and its events are in front of the public.
-            </div>
+            {/* ⚠ ONE CLAUSE (27 Sep 2026, "mostly just be headings") — the part
+                nothing else says is that it is born PRIVATE. "Puts on events and
+                names its team" is what the tiles behind it are for. */}
+            <div style={{ fontSize: 11.5, color: SUB, margin: "3px 0 14px", lineHeight: 1.5 }}>It stays private until its GST number is verified and it is subscribed.</div>
             <form action={formAction}>
               <div style={{ fontSize: 12, color: SUB, margin: "0 0 4px" }}>Organization name</div>
               <input name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. EEE Dance Company" style={inp} />
@@ -248,7 +262,8 @@ export function OrganizationsHub({
               <div style={{ fontSize: 12, color: SUB, margin: "14px 0 4px" }}>Email — the organization&apos;s</div>
               <input name="contact_email" type="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hello@example.com" style={inp} />
               {email.trim() && !emailOk ? <div style={{ fontSize: 10.5, color: "#F87171", marginTop: 4 }}>That is not an email address.</div> : null}
-              <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.45 }}>Both are shown on its page as Call and Mail, and both are yours to change from its Settings.</div>
+              {/* the labels already say "the organization's", which is the whole
+                  point of the pair (they are not the person's own) */}
 
               {state.error ? <div style={{ fontSize: 12, color: "#EF4444", fontWeight: 700, marginTop: 12 }}>{state.error}</div> : null}
               <button

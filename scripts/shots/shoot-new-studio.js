@@ -123,8 +123,10 @@ const rest = async (method, url, body) => {
       check(area.trim().length > 0, "Area filled itself from the address");
       check(/pune/i.test(city), `City filled itself from the Google address (${city})`);
       check(lat !== "", "the pin rides in as lat/lng");
-      /* exact: the Area label says "filled from the address" too, and a
-         substring match would count it */
+      /* exact, and still worth keeping: the Area label USED to read "filled
+         from the address" as well, so a substring match counted two. The label
+         is the bare word now (27 Sep 2026, "mostly just be headings") and the
+         one hit is the city picker's — which is the one this asserts. */
       check((await sheet.getByText("from the address", { exact: true }).count()) === 1, "City says it came from the address");
       check((await sheet.getByRole("searchbox", { name: /Search your city/i }).count()) === 0, "the city search is out of the way once the address named it");
       await page.screenshot({ path: path.join(OUT, "newstudio-3-filled.png"), fullPage: true });

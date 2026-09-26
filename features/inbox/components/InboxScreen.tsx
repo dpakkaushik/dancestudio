@@ -8,7 +8,8 @@ import { respondToVenueRequestAction } from "@/features/classes/server-actions/c
 import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { respondToOrganizationAskAction, withdrawOrganizationAskAction } from "@/features/organization/server-actions/team";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
-import { DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
+import { FigureHead } from "@/components/ui/FigureHead";
+import { DOS_DISPLAY, DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
 import {
   ENQ_STAGES,
   ENQ_STAGE_WORD,
@@ -75,7 +76,35 @@ export interface RequestItem {
 
 const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room", orgteam: "organization" };
 
+/** ⚠⚠ TWO KINDS OF THING WERE WEARING ONE CARD (27 Sep 2026, the user:
+ *  *"class and event requests should have same cards with accept and reject
+ *  buttons"* and *"other team join, crew join, studio join, organization join
+ *  for invites should also be different in style and should be card style but
+ *  segregated in a different section now"*).
+ *
+ *  All six kinds drew the same violet row with the same Confirm/Reject pair, and
+ *  they are not the same question:
+ *
+ *  · **AN ASK is about ONE OCCASION** — a class you are being put on, a room
+ *    somebody wants for one afternoon, a duet for one battle. Answering yes
+ *    commits you to that thing and nothing else, and saying no costs nothing.
+ *  · **A JOIN is about BELONGING** — a studio's team, a crew's roster, an
+ *    organization's page. Answering yes puts your name somewhere for as long as
+ *    the seat lasts, and it is the answer this app has always taken most care
+ *    over ("nobody is put on a roster without saying yes", 1792).
+ *
+ *  So they are two sections with two cards now: an ask keeps the violet row with
+ *  its meta table and reads **Accept · Reject**; a join is a WIDER, quieter card
+ *  in the ENTITY'S OWN colour, leading with what you would be joining rather
+ *  than with who is asking, and reads **Join · Decline** — because "confirm" is
+ *  not what a person does with an invitation. */
+const JOIN_KINDS: ReadonlySet<RequestItem["kind"]> = new Set(["invite", "crew", "orgteam"]);
+const isJoin = (r: RequestItem) => JOIN_KINDS.has(r.kind);
+
 const REQ_TINT = "#8B5CF6";
+/* a join wears the colour of the thing you would be joining, so the three
+   sections of the app it can come from are told apart at a glance */
+const JOIN_TINT: Partial<Record<RequestItem["kind"], string>> = { invite: "#0EA5E9", crew: "#DC2626", orgteam: "#701A75" };
 
 const Row = ({ children, c, testId }: { children: React.ReactNode; c: string; testId?: string }) => (
   <div data-testid={testId} style={{ background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10 }}>{children}</div>
@@ -159,10 +188,12 @@ export function InboxScreen({
     ...requestsIn.map((r) => ({
       key: `${r.kind}-${r.id}`,
       who: r.who,
-      what: `${r.what} request`,
+      /* an invitation is not a request, and the combined desk should not call
+         it one — it is the word the section below it uses (27 Sep 2026) */
+      what: isJoin(r) ? `invitation to join` : `${r.what} request`,
       note: r.subjectTitle,
       at: r.at,
-      tint: REQ_TINT,
+      tint: isJoin(r) ? JOIN_TINT[r.kind] ?? REQ_TINT : REQ_TINT,
       href: null as string | null,
     })),
     ...newIn.map((e) => ({
@@ -272,16 +303,16 @@ export function InboxScreen({
             <button
               type="button"
               disabled={busy}
-              aria-label={`Confirm ${r.subjectTitle}`}
+              aria-label={`Accept ${r.subjectTitle}`}
               onClick={() =>
                 void run(
                   () => answer(r, true),
-                  `✅ Confirmed · you are ${r.what} on ${r.subjectTitle}`
+                  `✅ Accepted · you are ${r.what} on ${r.subjectTitle}`
                 )
               }
               style={{ flex: 1.3, textAlign: "center", padding: 11, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
             >
-              Confirm
+              Accept
             </button>
           </div>
         ) : (
@@ -311,6 +342,112 @@ export function InboxScreen({
       </Row>
     );
   };
+
+  /** THE JOIN CARD — an invitation to belong somewhere, not an ask about an
+   *  occasion. Deliberately a different shape from the row above: the thing you
+   *  would be joining LEADS, in its own colour, at display size; who asked is
+   *  the line under it; there is no meta table, because a seat has no "when".
+   *  ⚠ Same test id — a request is a request to the harness, and scoping to a
+   *  row is what `request-row` is for (20 Sep). */
+  const joinCard = (r: RequestItem) => {
+    const c = JOIN_TINT[r.kind] ?? REQ_TINT;
+    const answered = r.status && r.status !== "asked";
+    return (
+      <div
+        key={`${r.kind}-${r.id}`}
+        data-testid="request-row"
+        style={{ background: "var(--card)", border: `1.5px solid ${c}55`, borderRadius: 18, padding: "13px 14px", marginBottom: 10, boxShadow: `0 2px 10px ${c}14` }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
+          <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: `${c}1f`, border: `1.5px solid ${c}66`, color: c, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900 }}>+</span>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: c, textTransform: "uppercase" }}>Invitation · {r.subjectKind}</span>
+          <span style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--muted)" }}>{agoWords(r.at, nowIso)}</span>
+        </div>
+
+        {/* WHAT YOU WOULD BE JOINING, first and biggest */}
+        <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.15, fontFamily: DOS_DISPLAY, overflowWrap: "anywhere" }}>{r.subjectTitle}</div>
+        {/* ⚠ THE ROLE IS A CHIP, NOT A CLAUSE. `RequestItem.what` is the app's
+            one vocabulary for these labels and two of its five values are not
+            grammatical inside a sentence ("on the team", "its event team") —
+            writing "join as its event team" to make the others read well would
+            be the kind of near-English this file has had to undo before. A chip
+            is a label, so every value fits without rewording the source. */}
+        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginTop: 5 }}>
+          <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, padding: "3px 9px", borderRadius: 999, background: `${c}1e`, border: `1.5px solid ${c}55`, color: c, textTransform: "uppercase" }}>{r.what}</span>
+          <span style={{ fontSize: 11.5, color: "var(--sub)" }}>
+            {r.dir === "in" ? (
+              <>
+                invited by <b style={{ color: "var(--text)" }}>{r.who}</b>
+              </>
+            ) : (
+              <>
+                you invited <b style={{ color: "var(--text)" }}>{r.who}</b>
+              </>
+            )}
+          </span>
+        </div>
+        {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>{r.note}</div> : null}
+        {r.href ? (
+          <Link href={r.href} aria-label={`View ${r.subjectTitle}`} style={{ display: "inline-block", marginTop: 7, fontSize: 10.5, fontWeight: 800, color: c, textDecoration: "none" }}>
+            Have a look first ›
+          </Link>
+        ) : null}
+
+        {answered ? (
+          <div style={{ marginTop: 11, fontSize: 11, fontWeight: 900, color: r.status === "confirmed" ? "#22C55E" : "#F87171" }}>
+            {r.status === "confirmed" ? (r.dir === "in" ? "✅ Joined — you said yes" : `✅ Joined by ${r.who}`) : r.dir === "in" ? "✕ Declined — you said no" : `✕ Declined by ${r.who}`}
+          </div>
+        ) : r.dir === "in" ? (
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button
+              type="button"
+              disabled={busy}
+              aria-label={`Decline ${r.subjectTitle}`}
+              onClick={() => void run(() => answer(r, false), `Declined · ${r.who} has been told`)}
+              style={{ flex: 1, textAlign: "center", padding: 11, borderRadius: 999, background: "transparent", color: "var(--sub)", fontWeight: 800, fontSize: 12.5, cursor: "pointer", border: "1.5px solid var(--el)", fontFamily: "inherit" }}
+            >
+              Decline
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              aria-label={`Join ${r.subjectTitle}`}
+              onClick={() => void run(() => answer(r, true), `✅ Joined ${r.subjectTitle} — ${r.what}`)}
+              style={{ flex: 1.3, textAlign: "center", padding: 11, borderRadius: 999, background: c, color: "#fff", fontWeight: 900, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
+            >
+              Join
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 10.5, color: "#F59E0B", margin: "10px 0 0", fontWeight: 800 }}>⏳ Waiting on {r.who}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
+              <button
+                type="button"
+                disabled={busy}
+                aria-label={`Withdraw ${r.subjectTitle}`}
+                onClick={() => void run(() => withdraw(r), `Withdrawn — ${r.who} is no longer being asked`)}
+                style={{ flex: 1, textAlign: "center", padding: 11, borderRadius: 999, background: "var(--el)", color: "var(--text)", fontWeight: 800, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
+              >
+                Withdraw
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  /** the heading over each section — drawn only when the OTHER section has
+      something too, because one heading over the only list on the screen is a
+      label nobody needs (the app's own "no figure, no rule" rule, one level up) */
+  const sectionHead = (title: string, n: number) => (
+    <FigureHead
+      margin="2px 0 9px"
+      title={<span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", textTransform: "uppercase" }}>{title}</span>}
+      figure={<span style={{ fontFamily: DOS_MONO, fontSize: 10.5, fontWeight: 600, color: "var(--sub)" }}>{n}</span>}
+    />
+  );
 
   /* ── enquiries desk ── */
   const side = enqSide === "out" ? enquiriesOut : enquiriesIn;
@@ -413,7 +550,24 @@ export function InboxScreen({
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{rqSide === "in" ? "Nobody is asking you to confirm anything right now." : "You have not asked anybody to confirm anything."}</div>
               </div>
             ) : null}
-            {(rqSide === "in" ? requestsIn : requestsOut).map(requestCard)}
+            {/* TWO SECTIONS (27 Sep 2026): what somebody wants you for, then what
+                somebody wants you to belong to. Headings only when both are on
+                the screen — one heading over the only list there is is noise. */}
+            {(() => {
+              const list = rqSide === "in" ? requestsIn : requestsOut;
+              const asks = list.filter((r) => !isJoin(r));
+              const joins = list.filter(isJoin);
+              const both = asks.length > 0 && joins.length > 0;
+              return (
+                <>
+                  {both ? sectionHead("Classes & events", asks.length) : null}
+                  {asks.map(requestCard)}
+                  {both ? <div style={{ height: 6 }} /> : null}
+                  {both ? sectionHead("Invitations to join", joins.length) : null}
+                  {joins.map(joinCard)}
+                </>
+              );
+            })()}
           </>
         ) : null}
 

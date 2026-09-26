@@ -31,15 +31,18 @@ const MUTED = "var(--muted)";
 export function StudioSubscriptionStrip({
   tenantId,
   tenantName,
-  verified,
   state,
   studioPrice,
   heading,
 }: {
   tenantId: string;
   tenantName: string;
-  /** the badge — Subscribe is offered only once DanceOS has verified the studio */
-  verified: boolean;
+  /** ⚠ `verified` IS GONE (27 Sep 2026). It existed to gate Subscribe on the
+   *  badge, and the user's "pay at creation, verify after" removed that gate —
+   *  and the standing LINE never read it: it prints `state.whyNotPublic`, the
+   *  database's own sentence from `why_not_public`, which already says which
+   *  half is missing. Kept as a prop it would have been a dead one, which this
+   *  file calls a lie to the next reader (C4). Caught by lint, not by a run. */
   state: StudioSubscriptionState;
   studioPrice: PlanCatalogRow | null;
   /** which studio this is, when several stack on one screen — on a page about
@@ -90,7 +93,12 @@ export function StudioSubscriptionStrip({
       <div style={{ fontSize: 11, color: SUB, marginTop: 6, lineHeight: 1.5 }}>{standing.line}</div>
 
       <div style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-        {!live && studioPrice && verified ? (
+        {/* ⚠ THE BADGE NO LONGER GATES THIS BUTTON (27 Sep 2026): the user chose
+            "pay at creation, verify after", and `20260927100000` took the two
+            refusals out of `subscribe` — so a gate here would be the screen
+            refusing what the database allows, which is the drift this file
+            spends most of its time undoing, in the other direction. */}
+        {!live && studioPrice ? (
           <SubscribeButton
             planKey={studioPrice.key}
             tenantId={tenantId}

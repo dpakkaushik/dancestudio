@@ -110,8 +110,23 @@ async function arrangeGrid(page, who, url) {
   });
 
   const before = await read();
+  /** ⚠ ARRANGING IS BEHIND THE PENCIL SINCE 27 Sep 2026 (C64, the user: "arrange
+   *  tools on home also part of edit on top right"). Both ends are asserted,
+   *  because a check that only looks at the new place cannot tell you the old
+   *  one was cleared: the control is ABSENT in read mode, and appears when the
+   *  corner pencil is pressed — with the ⊕s and the ＋s, which is the point of
+   *  one toggle rather than a control per editor. */
   const arrange = page.getByRole("button", { name: "Arrange tools", exact: true });
-  check(await arrange.isVisible().catch(() => false), `${who} · the grid offers "Arrange tools" at its foot, not on the head (C34)`);
+  check((await arrange.count()) === 0, `${who} · read mode offers no "Arrange tools" — the home has no control on it`);
+  /* the corner pencil TOGGLES, and a reload puts the home back in read mode —
+     so every press of Arrange tools below opens edit mode again first */
+  const openEdit = async () => {
+    await page.getByRole("button", { name: "Edit profile", exact: true }).click();
+    await page.waitForTimeout(300);
+  };
+  await openEdit();
+  await page.waitForTimeout(300);
+  check(await arrange.isVisible().catch(() => false), `${who} · the pencil brings it out, at the grid's foot and not on its head (C34, C64)`);
   await arrange.click();
 
   /* the arranging list is ONE COLUMN, which is why the arrows are honest: in a
@@ -139,6 +154,7 @@ async function arrangeGrid(page, who, url) {
      arranged once somebody has arranged them — so it stored exactly the right
      thing and the list did not move until the next navigation. Reset is only
      honest if it is visible before a reload. */
+  await openEdit();
   await page.getByRole("button", { name: "Arrange tools", exact: true }).click();
   await page.getByRole("button", { name: "Reset to default", exact: true }).click();
   await page.waitForTimeout(600);
@@ -150,6 +166,7 @@ async function arrangeGrid(page, who, url) {
   const reset = await read();
   check(reset.join("|") === before.join("|"), `${who} · Reset puts the code's own order back, and that survives a reload too`);
   /* nothing to reset, so nothing is offered — a control that can only be a no-op */
+  await openEdit();
   await page.getByRole("button", { name: "Arrange tools", exact: true }).click();
   check((await page.getByRole("button", { name: "Reset to default", exact: true }).count()) === 0, `${who} · and Reset is not offered when there is nothing to reset`);
   await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -182,6 +199,28 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.getByLabel("Room 1 name").fill("Floor 1");
   await page.getByLabel("Add a dance style").selectOption("Hip-Hop");
   await page.getByRole("button", { name: "Create studio" }).click();
+  /** ⚠ CREATING NOW LANDS ON PAYMENT (27 Sep 2026 — the user's item 8, and their
+   *  own answer when three orders were put to them: "Pay at creation, verify
+   *  after"). The sheet used to close onto this hub; it goes straight to the new
+   *  studio's own Subscription screen, so the money is part of creating rather
+   *  than a second errand somebody has to go and find. Asserted rather than
+   *  merely navigated around — this IS the feature, and the hub checks below
+   *  would otherwise quietly pass on whatever page they landed on. */
+  await page.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 20_000 }).catch(() => {});
+  check(/\/subscription$/.test(page.url()), `${who} · creating a studio lands on its own Subscription screen (${page.url().replace(BASE, "")})`);
+  /* ⚠ WAITS, NOT ONE-SHOT COUNTS — the page streams behind a loading boundary,
+     so the URL changes before its content arrives; a bare `.count()` here read
+     zero three times and looked like a missing feature (19 Sep's own lesson) */
+  const buys = page.getByText("What it buys");
+  await buys.first().waitFor({ timeout: 15_000 }).catch(() => {});
+  check(await buys.first().isVisible().catch(() => false), `${who} · with what the money buys beside the price`);
+  /* ⚠ AND SUBSCRIBE IS LIVE WHILE IT IS STILL UNVERIFIED, which is the whole of
+     the new order: the badge decides Discover, never whether you may pay */
+  const subBtn = page.getByRole("button", { name: /^Subscribe · / });
+  await subBtn.first().waitFor({ timeout: 15_000 }).catch(() => {});
+  check(await subBtn.first().isVisible().catch(() => false), `${who} · and Subscribe is offered before DanceOS has verified it`);
+  /* back to the hub for the checks that are about the hub */
+  await page.goto(`${BASE}/business`, { waitUntil: "networkidle" });
   const card = page.getByTestId("studio-card").filter({ hasText: name });
   await card.waitFor({ timeout: 20_000 }).catch(() => {});
   check(await card.isVisible().catch(() => false), `${who} · the studio is a card under YOUR STUDIOS`);
@@ -215,7 +254,13 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.goto(`${BASE}/subscription`, { waitUntil: "networkidle" });
   const subTxt = await page.locator("body").innerText().catch(() => "");
   check(subTxt.includes("YOUR STUDIOS") && subTxt.includes(name), `${who} · /subscription lists the studio under YOUR STUDIOS, beside the person's own plan`);
-  check((await page.getByTestId("studio-subscription").filter({ hasText: name }).getByRole("button", { name: /^Subscribe/ }).count()) === 0, `${who} · and Subscribe is NOT offered before the badge`);
+  /* ⚠ THIS ASSERTED THE OPPOSITE UNTIL 27 Sep 2026, and it was right then: the
+     badge came first and `subscribe` refused an unverified studio. The user
+     chose "pay at creation, verify after", `20260927100000` took that refusal
+     out, and a strip that still hid the button would be the screen refusing
+     what the database allows. What verification decides is DISCOVER, and that
+     is asserted where it belongs — `guard_business_visibility`, in the proofs. */
+  check((await page.getByTestId("studio-subscription").filter({ hasText: name }).getByRole("button", { name: /^Subscribe/ }).count()) > 0, `${who} · and Subscribe IS offered before the badge — paying comes first now`);
 
   /* the owner takes their own class: nobody is asked, Publish is open at once, the Inbox keeps the line */
   await page.goto(`${BASE}/business/${studioId}/classes?new=1`, { waitUntil: "networkidle" });
@@ -363,6 +408,14 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p3.locator('input[name="contact_email"]').fill(`tiles.org.biz.${stamp}@example.com`);
     /* "Open organization" — the sheet's own word (a studio's is "Create studio") */
     await p3.getByRole("button", { name: "Open organization" }).click();
+    /* ⚠ AND AN ORGANIZATION LANDS ON PAYMENT TOO (27 Sep 2026) — the same
+       hand-off a new studio gets, for the same reason */
+    await p3.waitForURL(/\/business\/[0-9a-f-]{36}\/subscription$/, { timeout: 20_000 }).catch(() => {});
+    check(/\/subscription$/.test(p3.url()), `org · opening one lands on its own Subscription screen (${p3.url().replace(BASE, "")})`);
+    const orgBuys = p3.getByText("What it buys");
+    await orgBuys.first().waitFor({ timeout: 15_000 }).catch(() => {});
+    check(await orgBuys.first().isVisible().catch(() => false), "org · with what the ₹5,000 buys beside it");
+    await p3.goto(`${BASE}/organizations`, { waitUntil: "networkidle" });
     await p3.getByText(orgName, { exact: true }).first().waitFor({ timeout: 20_000 }).catch(() => {});
     const orgRows = await rest("GET", `/rest/v1/businesses?name=eq.${encodeURIComponent(orgName)}&type=eq.org&deleted_at=is.null&select=id,visibility`);
     const hostId = (orgRows && orgRows[0] && orgRows[0].id) || "";
