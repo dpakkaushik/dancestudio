@@ -212,8 +212,21 @@
 > * **Verified:** typecheck 0 · lint 0 · `next build` green · **the happy path
 >   20/20** · **the other seven specs 38/38**, so all 58 across the two runs ·
 >   **`shoot-tiles` 155/155** · **`shoot-hero` 178/178**.
+>   **PUSHED AND LIVE (`e1a6b99`), read back off the deployment rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-tiles.js` 155/155 against the live host**, the whole acting-as
+>   gate and the three Inbox desks driven end to end on it.
 >   ⚠ **A stale `next start` from 07:47 was holding :3100** — the 21 Sep lesson
 >   met for the FOURTH time; stopped before the fresh bundle was started.
+> * ⚠⚠ **AND NOTHING WAS APPLIED: FOUR MIGRATIONS ARE PENDING AND NONE IS
+>   AUTHORISED.** `20260927110000`, `120000`, `130000` (#0ap, dry-run 16/16 and
+>   15/15) and `20260927140000` (#0at, crew Practice — **not even dry-run**,
+>   because `npm i -D pg` failed with ERESOLVE). `db-push` applies EVERY pending
+>   file, so #0ap's command block now says in words to **move `140000` to the
+>   scratchpad first** and re-run the dry run until it lists exactly three — the
+>   trap this file recorded on 27 Sep, when a second held file nearly rode in
+>   with an approved one.
 > * ⚠ **AND EVERY RED ON THE WAY WAS A TEST DESCRIBING A DECISION THAT CHANGED,
 >   WHICH IS THE RIGHT KIND — EXCEPT ONE, WHICH WAS THE PRODUCT.** The one that
 >   was real: `happy-path:1139` could not press Level because **the portalled
