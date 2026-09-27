@@ -148,10 +148,31 @@ export function LocationButton({ query, href }: { query?: string; href?: string 
  *  ⚠ The cells stay EQUAL (`1fr`) and the geometry is untouched — 38px tall,
  *  11px type, radius 11 (the prototype's own 10875-10888). What changed is how
  *  many of them share a line. */
+/** ⚠⚠ AND IT IS `position: relative`, WHICH IS WHAT MAKES THE −6 ABOVE VISIBLE
+ *  RATHER THAN DESTRUCTIVE (28 Sep 2026, the user: *"the top part of contact
+ *  buttons getting cut on home and profile"*).
+ *  `IdentityHero` is `position: relative` with an opaque background, this row is
+ *  its next SIBLING, and a positioned element paints ABOVE a later static one
+ *  whatever the DOM order says — so the hero's last 6px of wash was painted over
+ *  the top 6px of every button: its top border and both top corners, on all
+ *  eight surfaces that draw this row, from the day the margin went negative.
+ *  ⚠ MEASURED, because a rect cannot see it: `getBoundingClientRect` reported a
+ *  perfectly correct 38px box 8px below the links — which is why the 27 Sep
+ *  "re-measured at 8px" was true and the screen still read 14 with the buttons
+ *  clipped. `document.elementFromPoint` at each button's own top edge is the
+ *  question a rect cannot answer, and it named the hero on home and profile at
+ *  430 AND 360, with the button's first own pixel 6px down.
+ *  ⚠⚠ AND DELIBERATELY NO `zIndex`. Positioned + `z-index: auto` creates NO
+ *  stacking context, so tree order alone puts this row over the hero and nothing
+ *  else moves. A `zIndex: 1` here would WORK and would also make this row a
+ *  stacking context — and `EnquirySheet` is a cell of it that renders its own
+ *  `position: fixed` scrim at 930 IN PLACE, unportalled, so that sheet would be
+ *  trapped inside a 38px row. That is the 16 Sep lesson this repo has now paid
+ *  for four times: z-index is only comparable inside ONE stacking context. */
 export function ActionRow({ children, gap = 6, marginTop = -6 }: { children: ReactNode; gap?: number; marginTop?: number }) {
   /* `Children.toArray` drops the nulls a `cond ? <X/> : null` leaves behind */
   const cells = Children.toArray(children);
   if (cells.length === 0) return null;
   const cols = cells.length <= 4 ? cells.length : Math.ceil(cells.length / 2);
-  return <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap, marginTop }}>{cells}</div>;
+  return <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap, marginTop, position: "relative" }}>{cells}</div>;
 }

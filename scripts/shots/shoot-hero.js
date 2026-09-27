@@ -795,7 +795,19 @@ const enterEdit = async (page) => {
        the check reads the painted box instead of arguing about the CSS.
        ⚠ Twice — at the app's own 430px and again at 360px, the narrowest phone
        this is really read on, because 430 was only ever a hair short and 360 is
-       where the word lost half its letters. */
+       where the word lost half its letters.
+
+       ⚠⚠ AND THE OTHER AXIS, WHICH A RECT CANNOT SEE (28 Sep 2026, the same
+       person hours later: *"the top part of contact buttons getting cut on home
+       and profile"*). The row is pulled up 6px under `IdentityHero` by
+       `marginTop: -6`, the hero is `position: relative` with an opaque
+       background, and a positioned element paints above a later STATIC sibling
+       — so the top 6px of every button was painted over, on all eight surfaces,
+       from the day that margin went negative. Every rect in the place was
+       right: the box is 38px tall and sits 8px below the links, which is why
+       the 27 Sep "re-measured at 8px" was true of a screen that still read 14.
+       `document.elementFromPoint` at the button's own top edge is the question
+       a rect cannot answer, so that is what is asked. */
     const measureContacts = () =>
       org.evaluate(() => {
         const btn = [...document.querySelectorAll("a,button")].find((el) => (el.getAttribute("aria-label") || "") === "Message");
@@ -807,11 +819,23 @@ const enterEdit = async (page) => {
           .map((c) => [...c.querySelectorAll("span")].find((s) => !s.querySelector("svg") && s.textContent.trim().length > 1))
           .filter(Boolean)
           .map((s) => ({ word: s.textContent.trim(), over: Math.round(s.scrollWidth - s.clientWidth) }));
+        /* WHO IS PAINTED AT EACH BUTTON'S TOP EDGE — hit testing follows paint
+           order, so the answer is what the eye sees there */
+        const tops = cells.map((c) => {
+          const b = c.getBoundingClientRect();
+          const at = document.elementFromPoint(Math.round(b.left + b.width / 2), Math.round(b.top) + 2);
+          return {
+            label: c.getAttribute("aria-label") || "?",
+            ownsTop: !!at && (c === at || c.contains(at)),
+            covering: at ? at.tagName.toLowerCase() : "nothing",
+          };
+        });
         return {
           cells: cells.length,
           cols: getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length,
           rowW: Math.round(grid.getBoundingClientRect().width),
           words,
+          tops,
         };
       });
     for (const w of [430, 360]) {
@@ -823,6 +847,8 @@ const enterEdit = async (page) => {
       const cut = cr.words.filter((x) => x.over > 0);
       check(cut.length === 0, `contact row @${w}: NOT ONE label is cut — ${cr.words.map((x) => x.word).join(" · ")}${cut.length ? ` (cut: ${cut.map((x) => `${x.word} by ${x.over}px`).join(", ")})` : ""}`);
       check(cr.cols <= 4, `contact row @${w}: at most four to a line — ${cr.cells} buttons over ${cr.cols} columns in ${cr.rowW}px`);
+      const covered = cr.tops.filter((t) => !t.ownsTop);
+      check(covered.length === 0, `contact row @${w}: every button owns its own TOP edge — nothing is painted over it${covered.length ? ` (covered: ${covered.map((t) => `${t.label} by a <${t.covering}>`).join(", ")})` : ""}`);
     }
     await org.setViewportSize({ width: 430, height: 932 });
     /* …and the other end: the Enquiries DESK, opened the way its tile opens it —
