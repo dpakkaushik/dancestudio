@@ -79,8 +79,21 @@
 >   desk's own `<h1>`, the disclosure, and the switch under it) · **the whole e2e
 >   suite 58/58 in one run, 16.3 min on one worker, no red at any point**, all
 >   against a fresh bundle.
+>   **PUSHED AND LIVE (`1020bb7`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-tiles.js` 155/155 against the live host, no page error** — every
+>   tile of all four grids pressed on the deployment, the Enquiries tile among
+>   them.
 >   ⚠ **A stale `next start` from 16:27 was holding :3100 — the FIFTH time** — and
 >   was stopped before the new bundle went up.
+> * ⚠ **AND `git commit -m @'…'@` FAILED, WHICH THIS FILE SAYS IS THE SHAPE.** A
+>   here-string carrying **double quotes** is re-split by PowerShell 5.1 when it
+>   is handed to a native exe, so git took the message's own words as PATHSPECS
+>   and committed nothing. **Rule 17's real answer applies to a commit message
+>   too: write it with the Write tool and pass the FILE** — `git commit -F <path>`,
+>   which is a real file and NOT the `-F -` stdin shape that silently pushed a WIP
+>   commit on 26 Sep. Quoting the user inside a commit message is the trap.
 > * ⚠ **THE ONE RED ON THE WAY WAS A STALE ASSERTION OF MINE, WHICH IS THE RIGHT
 >   KIND**: `shoot-hero:761` asked for the Take-enquiries switch in the contact ⊕,
 >   which is exactly where it stopped being an hour earlier. ⚠ It is re-cut to
@@ -6204,6 +6217,15 @@ summary; the report has the evidence.
    living in the member sheet (the ROW is the manage control there).
 
 0ar. **⚠ WHAT IS PENDING AT THE USER'S END AFTER 27 Sep 2026**, and it is short:
+   * ⚠ **THE FIRST THING IS A SWEEP THAT IS NOW POSSIBLE AND WAS NOT THIS
+     MORNING.** `20260927110000` dropped the four `auth.users` FKs, so an account
+     that has ever acted as a platform admin deletes at last — which means the
+     `sv-admin-*` throwaways the verification proof has left on production since
+     **14 Sep**, one per run, can finally be cleared, and the third retired login
+     (`jishnu.nanda@gmail.com`, refused with `23503` over ONE audit row) deletes
+     cleanly if it is ever wanted. The log still says who acted, off
+     `actor_label`. Not run: it is production data and the kept set goes in front
+     of the user first, as always.
    * **A real ₹5,000 Cashfree mandate on Deepak's organization**, if one is
      wanted. It is PUBLIC now on a ₹0 admin COMP (granted to 27 Sep 2027), which
      is what the panel's grant is for; a real mandate is their own browser with
@@ -7543,7 +7565,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   link, and a link that opens the wrong screen fails nothing.**
   **typecheck 0 · lint 0 · build green · 5/5 proofs · `shoot-tiles` 155/155 ·
   `shoot-hero` 181/181 · the whole e2e suite 58/58 in one run, 16.3 min on one
-  worker, no red at any point.**
+  worker, no red at any point. PUSHED AND LIVE (`1020bb7`), read back off the
+  deployment:** Vercel's own list for THIS sha BUILDING → READY ·
+  **`stranger-smoke.ps1` 11/11** · **`shoot-tiles.js` 155/155 against the live
+  host**.
 - **EVERY DROPDOWN IS AN IN-APP SHEET, AND EXTRACTING THE FIRST ONE FOUND THE BUG
   IN IT — 27 Sep 2026, no step number — BUILT, no migration.** The user: *"fix
   all remaining in this / fix what is left"*. ⚠⚠ **Not one native `<select>` is
