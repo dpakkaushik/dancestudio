@@ -136,11 +136,30 @@
 >   and a crew's page had its own fourth row component. `Row` has had the two
 >   slots all along — `sub` is WHERE, `right` is WHAT — and all four use them the
 >   same way now; `CrewPublicPage`'s local `Person` is `Row`.
-> * **Verified so far:** typecheck 0 · lint 0 · `next build` green · the three
->   dry runs **16/16**, **15/15** and (the audit one) rolled back with the ACL
->   multiset, anon's executable set and the policy count asserted unchanged.
+> * **Verified, AND PUSHED AND LIVE (`226275a`):** typecheck 0 · lint 0 ·
+>   `next build` green · the two dry runs **16/16** and **15/15**, rolled back,
+>   with the ACL multiset, anon's executable set and the policy count asserted
+>   unchanged · **33/33 proofs** · **`shoot-tiles` 155/155** · **`shoot-hero`
+>   178/178** · **the happy path 20/20 in 11.2 min and the other 38 green** in
+>   the suite run before it, so all 58 are green across the two · read back off
+>   the DEPLOYMENT rather than assumed — Vercel's own list for THIS sha,
+>   BUILDING → READY, then **`stranger-smoke.ps1` 11/11** and **`shoot-tiles`
+>   155/155 against the live host, no page error**.
 >   ⚠ **A stale `next start` from 04:37 was holding :3100** — the 21 Sep lesson
 >   met for the third time; stopped before the fresh bundle.
+> * ⚠ **SIX REDS ON THE WAY AND EVERY ONE WAS A STALE ASSERTION OF MINE**, which
+>   is the right kind and is worth listing because they are one shape: a check
+>   that described a decision the user then changed. The Earnings paragraph, the
+>   "How points work" card, the owner's Followers button, `/'s profile$/` on a
+>   crew's roster, "wants to list you as the artist on …" (the ask row's own
+>   sentence, gone with the row), and **the Stats one that WAS the old rule** —
+>   `toHaveCount(0)` on the small cards, written to prove "a zero is not drawn".
+>   ⚠⚠ **And one red was me breaking a correct line**: I re-cut
+>   `happy-path:648` to say the studio strip no longer carries *"Each studio has
+>   its own subscription"* — but that sentence is `why_not_public`'s RETURN
+>   VALUE, the database's own refusal, not a paragraph on a page. **A refusal in
+>   the database's words is not an explanation to be tidied away**, and reading
+>   one as the other is how a correct line gets "fixed".
 > * ⚠ **AND I BROKE RULE 17 TWICE IN ONE SESSION, ON THE RULE'S OWN TERMS.** A
 >   one-line `Set-Content -Encoding utf8` to rename `m.memberRole` added a BOM to
 >   `PersonBody.tsx` (content intact — checked by reading HEAD's bytes through
@@ -7101,7 +7120,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   `poster_path` before its migration broke every class and event read** — found
   by `shoot-tiles` as React #441 on a studio's own home; the two SELECTs are
   held back one line each. **typecheck 0 · lint 0 · `next build` green ·
-  33/33 proofs · `shoot-tiles` 155/155 · `shoot-hero` 178/178.**
+  33/33 proofs · `shoot-tiles` 155/155 · `shoot-hero` 178/178 · the happy path
+  20/20 and the other 38 green across two suite runs. PUSHED AND LIVE
+  (`226275a`), read back off Vercel's own list for the sha — `stranger-smoke`
+  11/11 and `shoot-tiles` 155/155 against the deployment.**
 - **THE USER'S FIFTEEN — 27 Sep 2026, no step number ⚠ (Rule 9: the held
   migration is money and admin authority; the plan-rights fix is a money claim) —
   ONE MIGRATION APPLIED (`20260926140000`), ONE HELD (dry run 30/30).** Their six
