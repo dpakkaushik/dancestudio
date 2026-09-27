@@ -85,6 +85,17 @@ export const DOS_TOOLS = {
      has not been a tile on any grid since 18 Sep — it is the chip beside the QR
      — so the two are never side by side. */
   enquiries: { name: "Enquiries", c: "#7E22CE" },
+  /* PRACTICE (27 Sep 2026, the user: "crew should also get an option on home tab
+     called Practice"). A CREW-ONLY tile, so the only grid it has to clear is a
+     crew's — Team #9A3412 (22°), Events #F59E0B (38°), Enquiries #7E22CE (275°)
+     and Calendar #06B6D4 (187°), which joins it in the same breath. A deep green
+     at 142° is the widest empty band on that grid: 104° from Calendar's cyan and
+     133° from Enquiries' purple, and nothing warm to collide with.
+     ⚠ It shares a hue with Earnings' #22C55E and that is NOT a clash by R20's own
+     test, which is per-GRID: a crew has no Earnings tile — it takes no money —
+     so the two are never drawn side by side, and this one is a full step darker
+     besides, which is this list's way of separating a shared band. */
+  practice: { name: "Practice", c: "#15803D" },
   /* `managed` ("Manage", violet) left this list on 19 Sep 2026 — the user: "just
      need to remove manage as the tile in tools, nothing else changes". The
      /managed page stays; nothing paints a tile for it any more */

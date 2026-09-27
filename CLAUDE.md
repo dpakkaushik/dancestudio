@@ -2,7 +2,86 @@
 
 ## LAST SESSION (27 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE FOURTH MIGRATION GOES IN AT LAST, AND SIX THINGS THE USER PRESSED (27 Sep 2026, latest) — ⚠ THE HELD MIGRATION APPLIED (dry run **37/37**, rolled back first)
+> ### A CREW PRACTISES — THE APP SIDE THE APPLIED MIGRATION HAD BEEN WAITING FOR (27 Sep 2026, latest) — no new migration
+> The user: *"push live whatever is left  just leave four sanbox items"*, and
+> `20260927140000` had gone in an hour earlier with **three tables and eleven
+> functions that nothing called**. This is the half that calls them, built to the
+> user's own sentence from the morning: *"crew should also get an option on home
+> tab called Practice — which allows crew leader to create practice which sends
+> invite to members and leader can mange attendace like how its done class for
+> the same. practice also get added to calendar. crews should also have a
+> calendar tab."*
+> * **TWO TILES ON A CREW'S GRID — Practice and Calendar.** ⚠ The tool needed a
+>   COLOUR and a GLYPH, and both were checked rather than picked: a deep green at
+>   142° is the widest empty band on a crew's grid (104° from Calendar's cyan,
+>   133° from Enquiries' purple, nothing warm to collide with), and ⚠ it shares a
+>   hue with Earnings' green **which is not a clash by R20's own test**, because
+>   that test is per-GRID and a crew has no Earnings tile — it takes no money. The
+>   glyph is a **stopwatch**, deliberately not a fourth rectangle: `calendar` is a
+>   grid with a bar and `memberships` a card with a stripe, and a round face with
+>   hands is the only one of its shape on any grid at 20px.
+> * **THE DESK IS THE LEADER'S, AND THE REGISTER IS READ ON THE PRESS.** A crew
+>   with twenty practices would otherwise cost twenty roster reads per visit for a
+>   panel most people never open — the same reasoning `loadFollowersAction` is
+>   built on, and it makes the desk cheaper than drawing them all. ⚠ **The member
+>   can answer on the desk too**, not only in their Inbox: a confirmed member
+>   reads this screen (the policy admits the whole crew), and a practice shown
+>   with no way to answer it is a door that is not a door.
+> * ⚠⚠ **THE ASK LANDS ON **REQUESTS**, NOT INVITES, AND THAT IS C68'S SPLIT
+>   WORKING BY OMISSION.** `JOIN_KINDS` is `invite · crew · orgteam` — things
+>   about BELONGING — so a practice, which is about ONE EVENING, falls in the
+>   Accept · Reject group without a line being added to decide it. ⚠ And the
+>   `Record<RequestItem["kind"], string>` behind the desk's own vocabulary **failed
+>   to compile** until the word was written, which is the `GLYPH` lesson of the
+>   same morning working the right way round: a kind the desk cannot name cannot
+>   ship.
+> * **A PRACTICE IS THE THIRD HALF OF THE CALENDAR**, beside Classes and Events —
+>   neither a fourth `CalendarSide` (Train · Teach · Assist are class ideas, and
+>   nobody trains at their own crew's rehearsal) nor a kind of event. ⚠ It carries
+>   the same five fields every view groups and counts through, so the schedule,
+>   the day rail, the week and the month grid did not have to change — exactly as
+>   adding events did not on 18 Sep. **A crew's calendar IS its practices** and is
+>   never offered the switch, the way an organization's IS its events.
+> * ⚠ **A ROW IS NOT A CLASS TILE OR AN EVENT CARD**, on purpose: a practice has
+>   no poster, no price, no seats and no teacher, so either card would be mostly
+>   empty boxes — which is the Inbox's own lesson from that morning read the other
+>   way round.
+> * ⚠⚠ **AND DRIVING IT FOUND TWO REAL ORDERING BUGS IN MY OWN FORM THAT NOTHING
+>   TYPED COULD SEE.** `scripts/shots/shoot-practice.js` (new, **27/27**) runs the
+>   whole loop with two real accounts. (1) I called `router.refresh()` BEFORE
+>   `router.back()` — so the refresh re-read the route the SHEET is on and the
+>   desk you landed on was the cached one: the practice you had just arranged was
+>   not there. The four other sheets have done it the other way round since
+>   22 Sep. (2) Then the timeout was `0` where those four use **600**, and the
+>   sheet stopped closing at all — because the CONFIRM owns its own history entry
+>   and spends it on a microtask, so a `back()` in the same tick races it. **Both
+>   are invisible to typecheck, lint and the build, and both took one run.**
+> * ⚠ **AND ONE OF THE FOUR REDS WAS THE CHECK, not the product**: after the fix
+>   the shoot still read "the practice is not on the desk", because it asserted on
+>   the tick the URL changed and `refresh()` is a round trip behind it. It waits
+>   for the row now — the same shape as every "a click before hydration is not a
+>   click" in this file.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green (both new routes) ·
+>   **`shoot-practice` 27/27** · **`shoot-hero` 183/183** · **`shoot-tiles`
+>   155/155** — ⚠ unchanged, and that is correct rather than suspicious: it
+>   presses a USER's and an ARTIST's grid by name and never makes a crew, so the
+>   two new tiles are `shoot-practice`'s to cover, which it does at both ends —
+>   · **the whole e2e suite 54 passed / 1 failed / 3 did not run in 14.8 min**,
+>   then **the happy path 20/20 alone in 11.3 min on the same bundle**, so all 58
+>   are green across the two and NO file changed between them.
+> * ⚠ **AND THAT ONE RED WAS THE MACHINE, which is what re-running is for.**
+>   `happy-path:2776` — the class form's ROOM ALREADY BUSY segment, which this
+>   slice touches nowhere — timed out waiting for a `Continue` button that never
+>   appeared; ⚠ **no "intercepts pointer events" in the call log**, so it was not
+>   a scrim, it was simply not there, and the same segment passed in the
+>   20/20 run. The 11 Sep rule held again: a red on a busy machine is not
+>   evidence until the spec has been run by itself.
+> * ⚠ **AND THE BACKGROUND RUNNER KEPT ONLY TEN LINES OF THE REPORTER** — the
+>   trap this file has recorded twice — so the failure was legible only because
+>   the whole reporter had been piped to a FILE. **Always the file, and grep
+>   that.**
+
+> ### THE FOURTH MIGRATION GOES IN AT LAST, AND SIX THINGS THE USER PRESSED (27 Sep 2026, earlier) — ⚠ THE HELD MIGRATION APPLIED (dry run **37/37**, rolled back first)
 > The user: *"push live whatever is left  just leave four sanbox items"*, then,
 > mid-run, a list of six: *"following list not opening properly crew and
 > organization, user and artist should see settings for only their profiles not
@@ -6276,8 +6355,19 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0at. **✅ APPLIED 27 Sep 2026 (dry run 37/37, rolled back first) — ⚠⚠ AND ITS APP
-   SIDE IS STILL NOT BUILT, WHICH IS THE WHOLE OF WHAT IS LEFT HERE.**
+0at. **✅ APPLIED AND BUILT 27 Sep 2026 — the migration (dry run 37/37, rolled
+   back first) and then its whole app side, which the top block records.** The
+   tiles, the desk, the register, the Inbox ask and the calendar's third half are
+   in; `scripts/shots/shoot-practice.js` drives the loop end to end, 27/27.
+   ⚠ **WHAT IS DELIBERATELY NOT BUILT, so it is not re-proposed:** a practice is
+   never PUBLIC (no anon policy, no anon grant — a crew's page shows its roster
+   and its battle record, and a rehearsal schedule is the crew's own business);
+   there is no recurring/weekly practice (each is arranged on its own, which is
+   what the user asked for); nobody is paid for one and no room is held, which is
+   the whole reason it does not ride on `classes`; and a member who does not LEAD
+   the crew cannot open the desk, so their calendar row opens the crew's public
+   page instead of a screen that would bounce them.
+   **The record of the migration as it went in, and what the dry run caught:**
    `20260927140000_a_crew_practises.sql` went in on the user's *"push live
    whatever is left"*, after the dry run `#0at` had demanded finally ran (`pg`
    was already in the scratchpad; `npm i -D pg` had failed with ERESOLVE the day
@@ -6289,21 +6379,15 @@ summary; the report has the evidence.
    5 policies.** ⚠ Its first death was the harness: `crews.updated_by` is NOT
    NULL and `set_updated_at` is a BEFORE **UPDATE** trigger, so it never fires on
    an insert.
-   ⚠⚠ **WHAT IS OWED NOW IS THE WHOLE APP SIDE, and until it exists three tables
-   and eleven functions sit on production that nothing calls** — harmless (no
-   screen reads them, no policy admits anon, `anon 45 → 45`) and incomplete. The
-   user's own sentence is the spec: **a Practice tile on a crew's home** (the
-   leader arranges one, `save_crew_practice` asks every confirmed member), **a
-   register** (`check_in_practice` / `undo_practice_check_in`, the class
-   register's own shape), **the ask answered somewhere** — the Inbox's Requests
-   desk is the app's place for "an ask waiting on you", and a practice is one
-   OCCASION so it falls in the ask group rather than the invitations one
-   (`JOIN_KINDS` already decides that by omission) — **practices on the
-   calendar**, which needs a third `Row` variant beside class and event and a
-   third value on the Classes/Events switch, and **a Calendar tile on the crew's
-   grid**. ⚠ `DOS_TOOLS` has no `practice` entry and `GLYPH` no `practice` glyph;
-   the colour must clear R20's per-grid rule against the crew's four existing
-   tiles (Team 22°, Events 38°, Enquiries 275°, Calendar 187°).
+   ✅ **AND THE APP SIDE WENT IN THE SAME EVENING** — the tiles, the desk, the
+   register, the Inbox ask and the calendar's third half. It was written to this
+   paragraph's own list, and every prediction in it held: the ask fell in the ask
+   group without a line being added (`JOIN_KINDS` decides by omission), the
+   calendar took a third `Row` variant without the schedule, the day rail, the
+   week or the month grid changing, and the colour cleared R20 against the crew's
+   four existing tiles (Team 22°, Events 38°, Enquiries 275°, Calendar 187°) at
+   142° — with Earnings' green NOT a clash, because R20's test is per-GRID and a
+   crew has no Earnings tile.
    **The migration as it went in:** ⚠ Rule 9: RLS, three new
    tables. The user: *"crew should also get an option on home tab called
    Practice — which allows crew leader to create practice which sends invite to
@@ -7691,6 +7775,20 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A CREW PRACTISES — THE APP SIDE — 27 Sep 2026, no step number — BUILT, no new
+  migration.** The half `20260927140000` had been applied without: two tiles on a
+  crew's grid (Practice and Calendar), the leader's desk with the register read
+  ON THE PRESS, the ask in every member's Inbox — ⚠ on **Requests**, because
+  `JOIN_KINDS` puts things about BELONGING on Invites and a practice is about one
+  evening, so C68's split decides it by omission — and a **third half of the
+  calendar** beside Classes and Events, on a person's and on the crew's own.
+  ⚠ The tool's colour and glyph were checked against R20's per-grid rule rather
+  than picked. ⚠⚠ **Driving it found two real ordering bugs in my own form that
+  nothing typed could see**: `router.refresh()` called BEFORE `router.back()` (so
+  the desk you land on is the cached one) and a `0` timeout where the four other
+  sheets use 600 (so the confirm's own history entry races the sheet's and it
+  never closes). **typecheck 0 · lint 0 · build green · a new `shoot-practice`
+  27/27 · `shoot-hero` 183/183 · `shoot-tiles` 155/155.**
 - **THE FOURTH MIGRATION GOES IN, AND SIX THINGS THE USER PRESSED — 27 Sep 2026,
   no step number ⚠ (Rule 9: RLS, three new tables) — THE HELD MIGRATION APPLIED
   (dry run **37/37**, rolled back first).** On *"push live whatever is left  just
@@ -12066,6 +12164,7 @@ Home. **Do not "restore parity" on these.**
 | C69 | R43 (21 Sep 2026): a person's associations are **Train · Teach · Assist · Manage** for studios and **Leader · Member** for crews, each a full-width `Row` | **A PERSON IS A CHIP, AND A PERSON'S PAGE IS FOUR GROUPS** (27 Sep 2026): **Crew · Studios · Artists · Organizations**, each row a squircle face, the name, and **the title beside it**, two to a line (`PersonChip`, `PeopleGroup`) — the same treatment on a studio's, an organization's and a crew's page, with a section per role there. ⚠ **This reverses R43 at the same person's word, and it fixes what R43 caused**: three groups over one fact meant a studio appeared up to THREE times on one page. ⚠ **Nothing is lost** — a SEAT outranks a class, so the row reads the seat's word, and where there is no seat it says "Teaches here" / "Assists here". ⚠ **Train stays, own tab only**: it is where somebody LEARNS, not a team title, and it is a private booking (their own 21 Sep scoping). `CrewRow` is deleted | 27 Sep 2026, the user: *"on all profile pages should only show 1. User and artist- Crew with Postion, Organization with team title, Studios with team Title, Artist with team Title, 2. Studio, Crew and Organization- Simply should show the Team with position. make sure to not take full row for each name here and make squircle boxes with name and role in the right section. all roles should have a seprate section according to profile."* |
 | C70 | C68 (27 Sep 2026, that morning): **Enquiries is the fourth TAB** on the bottom bar, with the Inbox keeping what somebody has asked OF you | **ENQUIRIES IS A TOOL, NOT A TAB — ON ALL FOUR GRIDS** (27 Sep 2026, the same evening): off the bar for a person AND off the entity bar, and a tile on a person's, a studio's, an organization's and a crew's tool grid. ⚠ **The glyph MOVED to `GLYPH.enquiries` rather than being left in `TAB_ICONS`** — the `Stats` lesson from that same morning (an icon nothing drew, found twelve days later only because a type listed the keys), applied within the hour instead. ⚠ **The tile carries `?as=`**, because one desk serves the whole account: without it an owner of two studios would press two tiles onto one undivided list, and the settings would have no subject. Same pointer as the Discover booking gate, re-resolved on the page — **a pointer is never an authority** — and an unresolvable one means "everything you are entitled to", the permissive answer, since narrowing is presentation and the reads are RLS-bounded either way. ⚠⚠ **AND THE SETTINGS MOVED WITH IT**: the Take-enquiries switch and the kinds chips left the contact ⊕ for the desk. They were right in the ⊕ while Enquiries was a BUTTON somebody makes and unmakes; it is a TOOL now, and what you take is the first thing its desk is about. ⚠ `d.enquiry` / `d.kinds` STAY in `ContactEditor` with no control on them — `update_business_profile` takes the whole profile, so a Save there that omitted them would EMPTY the column the desk had just set (the 26 Sep rule, and exactly what `accepts` has done since the Payments desk took those switches). ⚠ A crew gets the tile and NO settings: `send_enquiry` fixes its three kinds and `crews` has no such column | 27 Sep 2026, the user: *"enquiries should not be on navbar a tab in tools for all"*, then *"with its setting as well manged from there"*. ⚠⚠ **And it found a door that had been dead since that morning**: the Earnings ledger's Enquiries revenue row pointed at `/inbox`, which stopped holding enquiries when C68 split them out — found by grepping what the word still points at, not by a run, because **no test presses a revenue row's link and a link that opens the wrong screen fails nothing** |
 | C71 | R43 (21 Sep 2026) gave a person's page a **Train** column — where they have TAKEN classes — and C69 (27 Sep) kept it when the other three collapsed into one: *"Train stays, own tab only"*, because it is where somebody LEARNS rather than a team title | **NO PROFILE DRAWS TRAIN.** The group is gone from `PersonBody`, the `trainsAt` prop with it, and the read (`findStudiosAttended`) off `OwnProfileScreen` — one fewer 300-row query per visit to your own profile. ⚠ The FUNCTION stays: the Studios hub's "STUDIOS YOU HAVE LEARNT AT" (R22) is its other caller, which **typecheck** is what said out loud after a grep scoped to `repositories/` reported it dead | 27 Sep 2026, the user: *"Train section to be removed from profiles"*. It was the one group on the page that was not an association with anybody — a studio you bought a class from is a receipt, not a relationship, and beside four groups of people it read as a fifth kind of team. ⚠ The e2e's existing `Train` absence check on the public page is now true on BOTH screens and says so |
+| R53 | The prototype's crew manager (S_crewmanage 16318) had **Practice** among its segments and **removed it**, along with Bookings, Payroll and Chats — its own words, and this app has honoured that since Step 22 | **A CREW PRACTISES**: `crew_practices` · `crew_practice_people` · `crew_practice_attendance` (`20260927140000`), a Practice tile and a Calendar tile on a crew's grid, the leader's desk with its register, the ask in every confirmed member's Inbox, and practices as a **third half of the calendar** beside Classes and Events. ⚠ Not public: no anon policy, no anon grant — a crew's page shows its roster and its battle record, and a rehearsal schedule is the crew's own business | 27 Sep 2026, the user: *"crew should also get an option on home tab called Practice — which allows crew leader to create practice which sends invite to members and leader can mange attendace like how its done class for the same. practice also get added to calendar. crews should also have a calendar tab"*, and, asked whose practices reach a person's own home: *"Only their crews'"*. ⚠⚠ **It deliberately does NOT ride on `classes`**, which was the obvious shortcut: a class is SOLD — a price, a room the database defends against double-booking, an artist paid per session, seats, a waitlist, a refund window, a Cashfree order — and reusing it would mean a class with a null price and a `status` meaning something else, with every one of the twenty-odd functions reading `classes` having to learn to skip it. What it DOES borrow is this app's own grammar: asked → confirmed (1792), and one live attendance row per person, soft-deleted to check out (Step 10) |
 | C72 | 8 Sep 2026 (R9) gave an ORGANIZATION's own Profile tab a **"Your studios"** group — every studio it ran, public or not — and nobody else | **"What you run", drawn for EVERYBODY**, off the OWNER seat: studios, the artist page **and organizations**, carrying the not-yet-public ones with "Not verified yet" on them. ⚠ The badge is only claimed for the two kinds that are REVIEWED — an artist page is reviewed by nobody, so "Not verified yet" on one would be an alarm about a state that does not exist, and `Tenant` carries no `visibility` for a listed/unlisted claim | 27 Sep 2026, the user: *"user and artist profiles dont show what they own on their profile"*. ⚠⚠ The cause was a RETIREMENT, not an omission: the block was gated on `isOrg`, and **R48 retired that role on 26 Sep**, so from that migration onward nobody matched it and every person's profile silently stopped showing what they had opened — the dead booking gate of the same day, in a third place. ⚠ The tab's alone, because `findMyMemberships` is the caller's own read; a stranger's view of you never draws it |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten

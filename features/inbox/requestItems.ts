@@ -5,6 +5,7 @@ import type { findMyPendingInvites, findPendingInvites } from "@/repositories/in
 import type { MyOrgTeamAsk, OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam";
 import { askToTileClass, type MyClaimAsk } from "@/types/claim";
 import type { CrewMember, MyCrewAsk, PartnerAsk } from "@/types/crew";
+import { practiceWhen, type CrewPractice } from "@/types/crewPractice";
 import type { DanceEvent } from "@/types/event";
 
 /** THE REQUESTS DESK'S ROWS, BUILT ONCE (18 Sep 2026). The person's Inbox has
@@ -26,6 +27,11 @@ export const CREW_WORDS = { what: "a crew member", verb: "add you to" } as const
 export const PARTNER_WORDS = { what: "your entry partner", verb: "enter with you into" } as const;
 /* 18 Sep 2026: an artist asks a studio for one of its rooms — the class waits for the answer */
 export const VENUE_WORDS = { what: "the room for a class", verb: "hold a class in" } as const;
+/* 27 Sep 2026: a crew arranges a practice and asks everybody confirmed on it.
+   ⚠ It is an ASK, not an invitation — it is about ONE OCCASION, like a class ask
+   or a duet, rather than about BELONGING, so it falls in the Accept · Reject
+   group and `JOIN_KINDS` leaves it out by omission (C61's split). */
+export const PRACTICE_WORDS = { what: "at the practice", verb: "have you at a practice of" } as const;
 /* push 2 (19 Sep 2026): an organization names a person on its public page — as its owner, or on its team */
 /* ⚠ THREE LABELS SINCE 26 Sep 2026: `studio_owner` went with the studios an
    organization no longer runs, and the database refuses the word. */
@@ -63,6 +69,12 @@ export interface RequestSources {
   invitesOut?: SentInvite[];
   crewOut?: Array<CrewMember & { crewName: string }>;
   partnerOut?: PartnerAsk[];
+  /** the practices this person has been asked to and not answered (27 Sep 2026).
+   *  ⚠ There is no `practiceOut`: a practice is asked of the whole roster at
+   *  once by the leader, and who has answered is the REGISTER on its own desk —
+   *  a Sent row per person per practice would be the desk again, in a list that
+   *  cannot act on any of it. */
+  practiceIn?: CrewPractice[];
   /** push 2: an organization's asks — to the person (in), and the ones the organization is waiting on (out) */
   orgIn?: MyOrgTeamAsk[];
   orgOut?: Array<OrgTeamMember & { orgName: string }>;
@@ -167,6 +179,27 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       bookingId: p.bookingId,
       status: askStatus(p.status),
       event: s.events?.get(p.eventId) ?? null,
+    })),
+    /* a practice your crew has arranged (27 Sep 2026) — an ask about ONE
+       EVENING, answered here or on the crew's own desk, whichever you reach
+       first. ⚠ The leader is never in this list: they arranged it, and
+       `save_crew_practice` does not ask them. */
+    ...(s.practiceIn ?? []).map((p): RequestItem => ({
+      kind: "practice",
+      id: p.id,
+      dir: "in",
+      who: p.crewName,
+      what: PRACTICE_WORDS.what,
+      verb: PRACTICE_WORDS.verb,
+      subjectKind: "PRACTICE",
+      subjectTitle: p.crewName,
+      when: practiceWhen(p.startsAt),
+      href: `/crew/${p.crewId}`,
+      at: p.startsAt,
+      note: `${p.place}${p.note ? ` · ${p.note}` : ""} — ${p.going} of ${p.asked} coming`,
+      practiceId: p.id,
+      crewId: p.crewId,
+      status: askStatus(p.myStatus),
     })),
     /* an organization's page is public, so being named on it is a claim about you */
     ...(s.orgIn ?? []).map((o): RequestItem => ({

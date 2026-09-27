@@ -184,6 +184,18 @@ export const GLYPH = {
       <path d="M10 9.2h4M10 11.6h4M13 9.2c0 2.3-1.3 2.4-3 2.4l3.2 3" />
     </>
   ),
+  /* A PRACTICE IS A TIMED SESSION YOU REPEAT (27 Sep 2026) — the stopwatch: the
+     body, the hands, the crown and the button on top. ⚠ Deliberately NOT another
+     rectangle: `calendar` is a grid with a bar, `memberships` a card with a
+     stripe, `earn` a card with a circle, and a fourth box on a grid that already
+     carries Calendar beside it is two tiles nobody can tell apart at 20px. A
+     round face with hands is the only one of its shape on any grid. */
+  practice: I(
+    <>
+      <circle cx="12" cy="13.8" r="6.8" />
+      <path d="M12 10v4l2.6 1.7M9.5 3.5h5M12 3.5v3.4M18.9 7.6l1.4-1.4" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export interface Tile {

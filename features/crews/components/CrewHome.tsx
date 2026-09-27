@@ -57,6 +57,16 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, f
        kinds are fixed in `send_enquiry` — so the desk shows it no settings, and
        says so rather than drawing an empty block. */
     { name: DOS_TOOLS.enquiries.name, href: `/enquiries?as=${encodeURIComponent(`crew-${crew.id}`)}`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
+    /* ⚠ PRACTICE AND CALENDAR (27 Sep 2026, the user: "crew should also get an
+       option on home tab called Practice … practice also get added to calendar.
+       crews should also have a calendar tab"). Both are the LEADER's desks —
+       `requireLedCrew` fronts every route under `/crews/{id}/manage`, and the
+       database asks again on every write. ⚠ A crew's calendar IS its practices:
+       it teaches no class and hosts no event of its own, so it is never offered
+       the Classes · Events · Practice switch, exactly as an organization's
+       calendar IS its events. */
+    { name: DOS_TOOLS.practice.name, href: `/crews/${crew.id}/manage/practice`, k: "practice", c: DOS_TOOLS.practice.c },
+    { name: DOS_TOOLS.calendar.name, href: `/crews/${crew.id}/manage/calendar`, k: "calendar", c: DOS_TOOLS.calendar.c },
   ];
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
   const whatsapp = whatsappHrefOf(crew.socials);

@@ -242,9 +242,14 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/crews$/, "Crews"],
   [/^\/crews\/new$/, "Create crew"],
   [/^\/crews\/[^/]+\/manage$/, "Crew"],
-  /* the crew's two desks (18 Sep 2026) — the crew home is an entity page above */
+  /* the crew's desks (18 Sep 2026; Practice and Calendar 27 Sep) — the crew home
+     is an entity page above. ⚠ A drill page with no entry here falls back to the
+     PATH SEGMENT, so a missing line is a screen headed "practice", lowercase —
+     which is exactly what `/enquiries` was for an hour that morning. */
   [/^\/crews\/[^/]+\/manage\/team$/, "Team"],
   [/^\/crews\/[^/]+\/manage\/events$/, "Events"],
+  [/^\/crews\/[^/]+\/manage\/practice$/, "Practice"],
+  [/^\/crews\/[^/]+\/manage\/calendar$/, "Calendar"],
   [/^\/crews\/[^/]+\/inbox$/, "Inbox"],
   [/^\/crew\/[^/]+$/, "Crew"],
   [/^\/notifications$/, "Notifications"],

@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/claims";
 import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/classes";
 import { findAskedForMyCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
+import { findMyCrewPractices } from "@/repositories/crewPractices";
 import { findEventsByIds } from "@/repositories/events";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
 import { findAskedByOrganizations, findMyPendingOrganizationAsks } from "@/repositories/organizationTeam";
@@ -86,6 +87,14 @@ export default async function InboxPage() {
      usually there are none, and then it is not a round trip at all. */
   const events = await findEventsByIds(supabase, [...partnerIn, ...partnerOut].map((p) => p.eventId));
 
+  /* ⚠ THE PRACTICES THIS PERSON HAS BEEN ASKED TO (27 Sep 2026). Only the ones
+     still AHEAD: a rehearsal that has happened is not a yes or a no you owe
+     anybody, and the Inbox counts what waits on you. ⚠ The leader's own are
+     filtered out because the database never asks them — `my_status` is `leader`
+     — so the list is asks and nothing else. It answers an empty list rather than
+     throwing; an Inbox must not fail over a crew's rehearsals. */
+  const practiceIn = (await findMyCrewPractices(supabase, { from: stampNowIso() })).filter((p) => p.myStatus !== "leader" && p.status !== "cancelled");
+
   const { requestsIn, requestsOut } = buildRequests({
     events,
     venueIn,
@@ -93,6 +102,7 @@ export default async function InboxPage() {
     invitesIn,
     crewIn,
     partnerIn,
+    practiceIn,
     orgIn,
     venueOut,
     claimsOut,

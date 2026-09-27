@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
 import { respondToVenueRequestAction } from "@/features/classes/server-actions/classes";
 import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
+import { respondToPracticeAction } from "@/features/crews/server-actions/practices";
 import { respondToOrganizationAskAction, withdrawOrganizationAskAction } from "@/features/organization/server-actions/team";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
 import { ClassTile } from "@/features/classes/components/ClassTile";
@@ -49,7 +50,10 @@ export interface RequestItem {
   /** Step 22 added crew asks and duet-partner asks to the two Step 18 kinds;
    *  18 Sep 2026 added the VENUE ask — an artist asking a studio for a room;
    *  push 2 (19 Sep 2026) the ORGANIZATION TEAM ask — a label on its public page */
-  kind: "claim" | "invite" | "crew" | "partner" | "venue" | "orgteam";
+  /** ⚠ and 27 Sep 2026 the PRACTICE ask — a crew's rehearsal, which is about ONE
+   *  OCCASION and so falls in the Accept · Reject group rather than the
+   *  invitations one; `JOIN_KINDS` leaves it out by omission */
+  kind: "claim" | "invite" | "crew" | "partner" | "venue" | "orgteam" | "practice";
   id: string;
   dir: "in" | "out";
   /** in: who is asking; out: who is being asked */
@@ -58,7 +62,7 @@ export interface RequestItem {
   what: string;
   /** DOS_LINK_WHAT verb: "list you as the artist on" */
   verb: string;
-  subjectKind: "CLASS" | "STUDIO" | "CREW" | "EVENT" | "ORGANIZATION";
+  subjectKind: "CLASS" | "STUDIO" | "CREW" | "EVENT" | "ORGANIZATION" | "PRACTICE";
   subjectTitle: string;
   when: string | null;
   href: string | null;
@@ -74,6 +78,8 @@ export interface RequestItem {
   bookingId?: string;
   /** a venue ask is keyed on the CLASS that wants the room */
   classId?: string;
+  /** a practice ask is keyed on the practice (27 Sep 2026) */
+  practiceId?: string;
   /** THE ASK'S OWN STATE (19 Sep 2026, the user: "enquiries and requests don't
    *  get removed after accepting"): an answered ask stays on the desk with its
    *  answer on it; only an `asked` row carries the buttons. Absent = asked. */
@@ -90,7 +96,11 @@ export interface RequestItem {
   event?: DanceEvent | null;
 }
 
-const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room", orgteam: "organization" };
+/* ⚠ A `Record` KEYED ON THE UNION, which is the point: adding `practice` to
+   `RequestItem["kind"]` made this line fail to COMPILE until the word was
+   written, so a kind the desk cannot name cannot ship. That is the `GLYPH`
+   lesson of the same morning working the right way round. */
+const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room", orgteam: "organization", practice: "practice" };
 
 /** ⚠⚠ TWO KINDS OF THING WERE WEARING ONE CARD (27 Sep 2026, the user:
  *  *"class and event requests should have same cards with accept and reject
@@ -280,7 +290,9 @@ export function InboxScreen({
             ? respondToVenueRequestAction({ classId: r.classId!, accept })
             : r.kind === "orgteam"
               ? respondToOrganizationAskAction({ memberId: r.memberId!, accept })
-              : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
+              : r.kind === "practice"
+                ? respondToPracticeAction({ practiceId: r.practiceId!, accept, crewId: r.crewId })
+                : respondToPartnerAskAction({ bookingId: r.bookingId!, accept });
   const withdraw = (r: RequestItem) =>
     r.kind === "claim"
       ? withdrawClaimAction({ claimId: r.claimId! })

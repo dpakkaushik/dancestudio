@@ -17,7 +17,8 @@ import {
   monthShortOf,
 } from "@/lib/format/month";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import type { CalendarEntry, CalendarEventEntry, CalendarMonth, CalendarSide } from "@/types/calendar";
+import type { CalendarEntry, CalendarEventEntry, CalendarMonth, CalendarPracticeEntry, CalendarSide } from "@/types/calendar";
+import { PRACTICE_TINT, PRACTICE_WORD, practiceClock, practiceWhen } from "@/types/crewPractice";
 import type { DanceClass } from "@/types/class";
 
 /** The calendar, lifted from prototype S_profiletab in its `calendarOnly` dress
@@ -55,6 +56,9 @@ const SIDE_KEYS: CalendarSide[] = ["attending", "assisting", "hosting"];
 /* the events half wears the Events tool's own amber, so the switch says which
    half you are in before you read the words (DOS_TOOLS.events) */
 const EVENTS_TINT = "#F59E0B";
+/* and the practices half wears the Practice tool's own green, for the same
+   reason: the switch says which half you are in before you read the words */
+const PRACTICE_C = "#15803D";
 
 type View = "sched" | "day" | "week" | "month";
 const VIEWS: Array<[View, string]> = [
@@ -131,7 +135,12 @@ const emptyCard: React.CSSProperties = {
  *  ideas, and nobody assists a battle. */
 type Row =
   | { k: "class"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: string | null; side: CalendarSide; e: CalendarEntry }
-  | { k: "event"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: null; side: null; e: CalendarEventEntry };
+  | { k: "event"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: null; side: null; e: CalendarEventEntry }
+  /* ⚠ A PRACTICE IS A THIRD KIND (27 Sep 2026) — see `CalendarPracticeEntry` for
+     why it is neither of the other two. It carries the same five fields every
+     view groups, filters and counts through, so adding it did not have to touch
+     the schedule, the day rail, the week or the month grid either. */
+  | { k: "practice"; id: string; dayKey: string; hour: number; startsAt: string; style: string; room: null; side: null; e: CalendarPracticeEntry };
 
 const classRow = (e: CalendarEntry): Row => ({
   k: "class",
@@ -155,13 +164,66 @@ const eventRow = (e: CalendarEventEntry): Row => ({
   side: null,
   e,
 });
+const practiceRow = (e: CalendarPracticeEntry): Row => ({
+  k: "practice",
+  id: e.practiceId,
+  dayKey: e.dayKey,
+  hour: e.hour,
+  startsAt: e.startsAt,
+  style: e.style,
+  room: null,
+  side: null,
+  e,
+});
+
+/** ONE PRACTICE ON THE CALENDAR (27 Sep 2026) — the crew, when, where, and what
+ *  you said. ⚠ Deliberately NOT `ClassTile` or `EventCard`: a practice has no
+ *  poster, no price, no seats and no teacher, so either of those cards would be
+ *  mostly empty boxes, and the Inbox's own lesson from this morning is that a
+ *  card describing a thing the app knows nothing about is worse than a row that
+ *  says the four facts there are. */
+function PracticeRowCard({ e }: { e: CalendarPracticeEntry }) {
+  const tint = PRACTICE_TINT[e.standing];
+  return (
+    <Link
+      href={e.href}
+      aria-label={`${e.crewName} practice, ${practiceWhen(e.startsAt)}`}
+      style={{
+        display: "block",
+        textDecoration: "none",
+        color: INK,
+        background: CARD,
+        border: `1.5px solid ${LINE}`,
+        borderLeft: `4px solid ${e.cancelled ? LINE : PRACTICE_C}`,
+        borderRadius: 16,
+        padding: "11px 13px",
+        marginBottom: 10,
+        opacity: e.cancelled ? 0.65 : 1,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <b style={{ fontSize: 13.5 }}>{e.crewName}</b>
+        <span style={{ fontSize: 11, color: SUB }}>{practiceClock(e.startsAt)}</span>
+        <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 900, letterSpacing: 0.6, padding: "3px 7px", borderRadius: 999, background: `${tint}22`, color: tint }}>
+          {e.cancelled ? "CALLED OFF" : PRACTICE_WORD[e.standing].toUpperCase()}
+        </span>
+      </div>
+      <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>
+        Practice · {e.place}
+      </div>
+    </Link>
+  );
+}
 
 export interface CalendarScreenProps {
   /** personal: a person's own, classes AND events; studio: the venue's classes,
    *  drafts included; org: the events it hosts, drafts included — it teaches no
    *  class, so there is nothing else to show; public: the prototype's
    *  `pubSchedule` — published classes still to come, one view */
-  mode: "personal" | "studio" | "org" | "public";
+  /** ⚠ `crew` JOINED THE LIST (27 Sep 2026, the user: "crews should also have a
+   *  calendar tab") — a crew teaches no class and hosts no event of its own, so
+   *  its calendar IS its practices, exactly as an organization's IS its events. */
+  mode: "personal" | "studio" | "org" | "crew" | "public";
   months: CalendarMonth[];
   /** "2026-08-28" in IST — the clock is the server's, handed in */
   todayKey: string;
@@ -170,6 +232,9 @@ export interface CalendarScreenProps {
    *  organization's own. Absent on a studio's (a studio hosts no event, R15)
    *  and on a public schedule */
   events?: CalendarEventEntry[];
+  /** the crew practices on this calendar: every crew this person leads or is
+   *  confirmed on, or — on a crew's own tab — that one crew's */
+  practices?: CalendarPracticeEntry[];
   /** where an empty day sends you: Discover for a person, the class form for a studio */
   emptyHref: string;
   /** studio only: the compose button's destination */
@@ -178,9 +243,10 @@ export interface CalendarScreenProps {
   title?: string;
 }
 
-export function CalendarScreen({ mode, months, todayKey, entries, events = [], emptyHref, composeHref, title: pageTitle }: CalendarScreenProps) {
+export function CalendarScreen({ mode, months, todayKey, entries, events = [], practices = [], emptyHref, composeHref, title: pageTitle }: CalendarScreenProps) {
   const isPublic = mode === "public";
   const isOrg = mode === "org";
+  const isCrew = mode === "crew";
   const idx = (monthKey: string) => months.findIndex((m) => m.key === monthKey);
   const inWindow = (dayKey: string) => idx(monthOfDay(dayKey)) >= 0;
 
@@ -189,9 +255,13 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
   /* THE PROTOTYPE'S CLASSES/EVENTS SWITCH, finally real (18 Sep 2026). An
      organization has no classes, so it is never offered the choice — its
      calendar IS its events. */
-  const [kind, setKind] = useState<"classes" | "events">(isOrg ? "events" : "classes");
-  const showEvents = isOrg || kind === "events";
-  /* a person is offered the switch whenever both halves can exist; a studio and
+  /* ⚠ A THIRD VALUE SINCE 27 Sep 2026. A crew's calendar IS its practices, the
+     way an organization's IS its events, so neither is ever offered the switch —
+     each opens on the only half it has. */
+  const [kind, setKind] = useState<"classes" | "events" | "practices">(isOrg ? "events" : isCrew ? "practices" : "classes");
+  const showEvents = isOrg || (!isCrew && kind === "events");
+  const showPractices = isCrew || (!isOrg && kind === "practices");
+  /* a person is offered the switch whenever every half can exist; a studio and
      a public schedule have classes only */
   const canSwitch = mode === "personal";
   const [sel, setSel] = useState(todayKey);
@@ -212,9 +282,11 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
   const isToday = (dayKey: string) => dayKey === todayKey;
   /* the half this tab is showing: one axis at a time, never both mixed, because
      a day with a class and a battle on it answers two different questions */
-  const half: Row[] = showEvents ? events.map(eventRow) : entries.map(classRow);
+  const half: Row[] = showPractices ? practices.map(practiceRow) : showEvents ? events.map(eventRow) : entries.map(classRow);
   const roomScoped = half.filter((r) => room === null || r.room === room);
-  const passes = (r: Row) => r.k === "event" || side === "all" || r.side === side;
+  /* ⚠ THE SIDES ARE A CLASS IDEA and neither an event nor a practice has one —
+     nobody assists a battle, and nobody trains at their own crew's rehearsal */
+  const passes = (r: Row) => r.k !== "class" || side === "all" || r.side === side;
   const byDay = new Map<string, Row[]>();
   for (const r of roomScoped) {
     if (!passes(r)) continue;
@@ -246,6 +318,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
     SIDE_KEYS.map((k) => [k, classScoped.filter((e) => e.side === k).length])
   ) as Record<CalendarSide, number>;
   const eventsInScope = events.filter((e) => inScope(e.dayKey)).length;
+  const practicesInScope = practices.filter((e) => inScope(e.dayKey)).length;
   const scopeLabel =
     view === "day"
       ? `${dayNumberOf(sel)} ${monthShortOf(monthOfDay(sel))}`
@@ -414,6 +487,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
         </div>
       );
     }
+    if (r.k === "practice") return <PracticeRowCard key={r.id} e={r.e} />;
     const e = r.e;
     return (
       <ClassTile
@@ -456,9 +530,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
        that half comes from — an organization is sent to its events desk, never
        to Discover to book a class the database refuses it (guard_person_only) */
     <div style={emptyCard}>
-      {showEvents ? (isOrg ? "No events on " : "No events on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
+      {showPractices ? (isCrew ? "Nothing arranged on " : "No practice on — ") : showEvents ? (isOrg ? "No events on " : "No events on — ") : mode === "personal" ? "Nothing booked — " : "Nothing scheduled — "}
       <Link href={emptyHref} style={{ color: PINK, fontWeight: 800, textDecoration: "none" }}>
-        {isOrg ? "open the events desk →" : showEvents ? "find one →" : mode === "personal" ? "find a class →" : "add a class →"}
+        {showPractices ? (isCrew ? "arrange one →" : "open your crew →") : isOrg ? "open the events desk →" : showEvents ? "find one →" : mode === "personal" ? "find a class →" : "add a class →"}
       </Link>
     </div>
   );
@@ -661,11 +735,15 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], e
         {/* ── CLASSES · EVENTS (the prototype's own switch above the sides, 6836).
             One axis at a time: the sides below belong to classes, and an event
             is not something you train in, teach or assist on. ── */}
+        {/* ⚠ AND PRACTICE IS THE THIRD (27 Sep 2026) — a rehearsal is neither a
+            class nor an event, so it is neither a fourth side nor a kind of
+            event; the switch is the prototype's own answer to exactly this and
+            it takes a third value the way it took a second. */}
         {canSwitch ? (
           <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            {([["classes", "Classes", entries.length], ["events", "Events", eventsInScope]] as const).map(([k, label, n]) => {
+            {([["classes", "Classes", entries.length], ["events", "Events", eventsInScope], ["practices", "Practice", practicesInScope]] as const).map(([k, label, n]) => {
               const on = kind === k;
-              const tint = k === "events" ? EVENTS_TINT : TOOL_COLOUR;
+              const tint = k === "events" ? EVENTS_TINT : k === "practices" ? PRACTICE_C : TOOL_COLOUR;
               return (
                 <div
                   key={k}

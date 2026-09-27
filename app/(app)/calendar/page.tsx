@@ -3,6 +3,7 @@ import { CalendarScreen } from "@/features/calendar/components/CalendarScreen";
 import { dayKeyOf, monthStartIso, monthsWindow, shiftMonthKey } from "@/lib/format/month";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyCalendar, findMyCalendarEvents } from "@/repositories/calendar";
+import { findMyCrewPractices, practiceToCalendar } from "@/repositories/crewPractices";
 import { findMyTenants } from "@/repositories/tenants";
 
 /* the clock lives outside the component (react-hooks/purity) */
@@ -40,9 +41,16 @@ export default async function CalendarPage() {
   const businesses = await findMyTenants(supabase);
   const tenantIds = businesses.map((t) => t.id);
 
-  const [entries, events] = await Promise.all([
+  const [entries, events, practices] = await Promise.all([
     findMyCalendar(supabase, user.id, fromIso, toIso),
     findMyCalendarEvents(supabase, user.id, tenantIds, fromIso, toIso),
+    /* ⚠ AND THE PRACTICES OF EVERY CREW THIS PERSON IS ON (27 Sep 2026, the
+       user: "practice also get added to calendar"). `my_crew_practices` is
+       scoped to `auth.uid()` inside its own SQL and takes no user id, so this
+       can only ever be the caller's own — and it answers an EMPTY LIST rather
+       than throwing, because a crew's rehearsals must never be the reason
+       somebody's whole calendar refuses to render. */
+    findMyCrewPractices(supabase, { from: fromIso, to: toIso }),
   ]);
 
   return (
@@ -52,6 +60,7 @@ export default async function CalendarPage() {
       todayKey={todayKey}
       entries={entries}
       events={events}
+      practices={practices.map(practiceToCalendar)}
       emptyHref="/discover"
     />
   );

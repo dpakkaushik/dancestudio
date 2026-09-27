@@ -1,4 +1,5 @@
 import type { ClassArtist } from "@/types/claim";
+import type { PracticeStanding } from "@/types/crewPractice";
 import type { ClassLevel, ClassStatus } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
 import type { DanceEvent } from "@/types/event";
@@ -71,6 +72,39 @@ export interface CalendarEventEntry {
   roleLabel: string;
   href: string;
   event: DanceEvent;
+}
+
+/** ⚠ A CREW PRACTICE ON THE CALENDAR (27 Sep 2026, the user: *"practice also get
+ *  added to calendar. crews should also have a calendar tab."*).
+ *
+ *  A THIRD kind beside the class and the event, for the same reason the event was
+ *  not a fourth `CalendarSide`: Train · Teach · Assist are class ideas, and
+ *  nobody trains at a rehearsal — what a practice asks is whether you are COMING.
+ *  It is not an event either: an event is a thing with tickets and entries that
+ *  can run for days, and a practice is two hours in a room on one evening.
+ *
+ *  ⚠ ONE DAY, ALWAYS. Unlike an event, a practice is not expanded per day — the
+ *  database's own CHECK is `ends_at > starts_at` and the form asks for one date
+ *  and two times, so a practice cannot span midnight by construction. */
+export interface CalendarPracticeEntry {
+  practiceId: string;
+  crewId: string;
+  crewName: string;
+  style: string;
+  startsAt: string;
+  endsAt: string;
+  /** "2026-09-30" in IST — the day this row belongs to */
+  dayKey: string;
+  /** the IST hour it starts — the day view's rail */
+  hour: number;
+  place: string;
+  note: string | null;
+  cancelled: boolean;
+  /** what the reader is to it — Coming · Not answered · Not coming · You arranged it */
+  standing: PracticeStanding;
+  going: number;
+  asked: number;
+  href: string;
 }
 
 /** One month of the calendar's window, with what a Monday-first grid needs. */
