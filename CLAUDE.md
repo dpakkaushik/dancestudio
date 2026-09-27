@@ -106,6 +106,12 @@
 >   **`shoot-tiles` 155/155**, no page error · **the happy path 20/20** and **the
 >   other 38 specs green** in the whole-suite run on the same bundle, so all 58
 >   across the two, and **the only file changed between them is the spec**.
+>   **PUSHED AND LIVE (`cc54f9b`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-tiles.js` 155/155 against the live host**, no page error · and the
+>   gap **re-measured on the deployment at 8px** on a studio's page, an
+>   organization's and an artist's — the same three that read 14 before it.
 > * ⚠ **BOTH REDS ON THE WAY WERE TESTS DESCRIBING DECISIONS THE USER HAD JUST
 >   CHANGED, WHICH IS THE RIGHT KIND.** `happy-path:1215` asserted the Enquiry-types
 >   disclosure on the UNSCOPED desk — re-cut to assert **both ends** (gone there,
