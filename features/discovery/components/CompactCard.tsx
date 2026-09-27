@@ -1,22 +1,25 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { dosStyleColor } from "@/lib/constants/styles";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
 import { DOS_DISPLAY, INK } from "@/lib/design/tokens";
-import { DosStyleTile } from "./DiscoverFilters";
 import { DosWhere, initialsOf } from "./discover-kit";
 
 const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase" };
 
-/** AN ARTIST IS A FACE AND WHAT THEY DANCE — the prototype's CompactCard
- *  (4376-4423), two to a row: THE FACE, AT THE SIZE OF A FACE — a full-column
- *  square with what they are written across its bottom-left in a translucent
- *  blurred chip; THE NAME GETS THE WHOLE COLUMN; where they are as one fact;
- *  one line of their styles, scrolled, not wrapped; and the figure at the foot.
- *  The Crews tab wears the same card with CREW in the chip and the roster size
- *  where the follower count would be — and no tick, because a crew is not a
- *  business DanceOS verifies. */
+/** AN ARTIST IS A FACE AND A NAME — the prototype's CompactCard (4376-4423),
+ *  two to a row: THE FACE, AT THE SIZE OF A FACE — a full-column square with
+ *  what they are written across its bottom-left in a translucent blurred chip;
+ *  THE NAME GETS THE WHOLE COLUMN; where they are as one fact; and the figure at
+ *  the foot. The Crews tab wears the same card with CREW in the chip and the
+ *  roster size where the follower count would be — and no tick, because a crew is
+ *  not a business DanceOS verifies.
+ *
+ *  ⚠ NO STYLE TILES (27 Sep 2026, the user: "remove dance styles from studio,
+ *  artist and crew discover cards"). A `styles` prop is not kept unread either:
+ *  a dead prop is a lie to the next reader, and both callers dropped theirs in
+ *  the same edit. The styles are on the person's or the crew's own page, and the
+ *  style RAIL above the shelf is how you narrow by one. */
 export function CompactCard({
   href,
   ariaLabel,
@@ -26,7 +29,6 @@ export function CompactCard({
   grad,
   city,
   km,
-  styles,
   foot,
   verified = false,
 }: {
@@ -38,7 +40,6 @@ export function CompactCard({
   grad: [string, string];
   city: string;
   km?: string | null;
-  styles: string[];
   foot: ReactNode;
   verified?: boolean;
 }) {
@@ -61,15 +62,6 @@ export function CompactCard({
           <DosWhere city={city} km={km ?? null} size={10.5} />
         </div>
       </div>
-      {styles.length ? (
-        <div style={{ display: "flex", gap: 5, minWidth: 0, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 1 }}>
-          {styles.map((s) => (
-            <span key={s} style={{ flexShrink: 0, display: "inline-flex" }}>
-              <DosStyleTile label={s} color={dosStyleColor(s)} small />
-            </span>
-          ))}
-        </div>
-      ) : null}
       {foot}
     </Link>
   );

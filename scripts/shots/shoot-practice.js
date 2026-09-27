@@ -232,7 +232,46 @@ const tomorrowIst = () => {
     check(await member.getByText(/Practice · Studio 4, Baner/).first().isVisible().catch(() => false), "…and the practice is on it");
     check(await member.getByText("COMING", { exact: true }).first().isVisible().catch(() => false), "…wearing what they said");
 
-    /* ── 6 · CALLING IT OFF SAYS SO ── */
+    /* ── 6 · THE MEMBER CAN SEE IT AND ANSWER IT (28 Sep 2026, the user: *"no
+       way to check practices you have been a part of fix that"*).
+       ⚠ This is a gap I WROTE DOWN AND SHIPPED — `#0at` said in so many words
+       that a member who does not lead the crew cannot open the desk and their
+       calendar row goes to the crew's public page instead. A backlog row naming
+       a defect is not a decision to accept it. ── */
+    await member.goto(`${BASE}/crews`, { waitUntil: "networkidle" });
+    check(await member.getByTestId("my-practices").isVisible().catch(() => false), "the Crews hub carries YOUR PRACTICES for somebody who only BELONGS to a crew");
+    check(await member.getByText("Studio 4, Baner").first().isVisible().catch(() => false), "…with the practice on it, where and when");
+    check(await member.getByText(crewName).first().isVisible().catch(() => false), "…and WHICH CREW, because this list can hold three crews' practices in one evening");
+    check((await member.getByRole("button", { name: /^Coming to/ }).count()) === 1, "…and the answer pair, so a member can change their mind from the one screen that shows it");
+    check((await member.getByRole("button", { name: /^Register for/ }).count()) === 0, "⚠ and NO register — that is the leader's, and a member is not offered a control the database would refuse");
+    /* change the answer HERE, which is the whole point of the screen */
+    await member.getByRole("button", { name: /^Cannot make/ }).first().click();
+    await member.waitForTimeout(2200);
+    await member.reload({ waitUntil: "networkidle" });
+    check(await member.getByText("NOT COMING").first().isVisible().catch(() => false), "answering on the hub really writes — the standing changes and the page says so");
+    await member.getByRole("button", { name: /^Coming to/ }).first().click();
+    await member.waitForTimeout(2200);
+
+    /* the leader's own hub shows the same practice with the door to the register
+       instead of an answer they were never asked for */
+    await leader.goto(`${BASE}/crews`, { waitUntil: "networkidle" });
+    check(await leader.getByTestId("my-practices").isVisible().catch(() => false), "the leader's hub carries it too — one list, every crew");
+    check((await leader.getByRole("link", { name: /^Open the register for/ }).count()) === 1, "…with Register › to their own desk");
+    check((await leader.getByRole("button", { name: /^Coming to/ }).count()) === 0, "…and no answer pair, because they arranged it");
+
+    /* ⚠ AND THE CALENDAR ROW NOW OPENS A SCREEN THAT CAN ACT ON IT. A member's
+       used to carry the crew's PUBLIC page — true, and useless: that page says
+       nothing about practices and can answer none. */
+    await member.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
+    await member.getByRole("button", { name: /^Practice: 1$/ }).click();
+    await member.waitForTimeout(800);
+    const memberHref = await member.evaluate(() => {
+      const a = [...document.querySelectorAll("a")].find((x) => /Studio 4, Baner/.test(x.textContent || ""));
+      return a ? a.getAttribute("href") : null;
+    });
+    check(memberHref === "/crews", `a member's calendar row opens the hub, which can answer it — it reads ${memberHref}`);
+
+    /* ── 7 · CALLING IT OFF SAYS SO ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage/practice`, { waitUntil: "networkidle" });
     await leader.getByRole("button", { name: /^Call off/ }).first().click();
     await leader.waitForTimeout(2000);

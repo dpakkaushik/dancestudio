@@ -98,11 +98,16 @@ export function practiceToCalendar(p: CrewPractice): CalendarPracticeEntry {
     standing: p.myStatus,
     going: p.going,
     asked: p.asked,
-    /* the crew's own Practice desk — the one screen that can act on it. ⚠ A
-       member who does not LEAD the crew cannot open that desk (`requireLedCrew`),
-       so their row carries the crew's public page instead: a link that bounces is
-       worse than a link somewhere true. */
-    href: p.iLead ? `/crews/${p.crewId}/manage/practice` : `/crew/${p.crewId}`,
+    /* ⚠ A ROW OPENS A SCREEN THAT CAN ACT ON IT (27 Sep 2026, the user: "no way
+       to check practices you have been a part of"). The leader's goes to their
+       own desk, which has the register and Call it off. A member's went to the
+       crew's PUBLIC page — a link that was true and useless, since that page says
+       nothing about practices and can answer none — and goes to the Crews hub
+       now, where `MyPractices` carries the same card with the same two buttons.
+       A member cannot open `/crews/{id}/manage/practice` at all: `requireLedCrew`
+       fronts every route under `manage`, and a link that bounces is worse than a
+       link somewhere true. */
+    href: p.iLead ? `/crews/${p.crewId}/manage/practice` : "/crews",
   };
 }
 

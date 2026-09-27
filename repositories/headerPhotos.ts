@@ -72,6 +72,80 @@ export async function findTenantHeaderPhotos(supabase: SupabaseClient, tenantId:
   );
 }
 
+/** THE SAME PICTURES, FOR A WHOLE SHELF (27 Sep 2026, the user: *"Studio Cards
+ *  on discover should have swipable photos in top section which are used in
+ *  posters … view photo should be same as how it was cut"*).
+ *
+ *  ⚠ ONE QUERY AND ONE SIGNING CALL FOR THE PAGE, never one per card. Discover's
+ *  Studios shelf draws up to fifty of them, so `findTenantHeaderPhotos`'s per-
+ *  business RPC would be fifty round trips plus fifty signings — the shape
+ *  `findClassArtists` exists to avoid and the reason the class shelf is one read.
+ *
+ *  ⚠ IT READS THE ROWS DIRECTLY rather than through `business_header_photos`,
+ *  and that is safe for exactly the reason the definer exists: `20260915090000`
+ *  gave `studio_photos` a SELECT policy admitting anon and authenticated to a
+ *  LISTED studio's rows (or its own team's), and `20260915100000` gave anon the
+ *  table GRANT that policy needed to do anything at all. So the ceiling here is
+ *  the same ceiling the RPC enforces, kept by the database rather than restated.
+ *  ⚠ STUDIOS ONLY: an artist page's header is its OWNER's `profile_header_photos`
+ *  in the public bucket, and the Studios shelf is `type = 'studio'` by the search
+ *  it comes from — a caller with anything else gets nothing rather than a wrong
+ *  folder.
+ *
+ *  A signing failure is an empty list for that studio, never a throw: a shelf
+ *  that 500s over a picture is worse than a card with none. */
+export async function findStudioHeaderPhotosMany(supabase: SupabaseClient, businessIds: string[], perBusiness = 6): Promise<Map<string, HeaderPhoto[]>> {
+  const ids = [...new Set(businessIds)];
+  const out = new Map<string, HeaderPhoto[]>();
+  if (ids.length === 0) {
+    return out;
+  }
+  const { data, error } = await supabase
+    .from("studio_photos")
+    .select("id, path, business_id, sort, created_at")
+    .in("business_id", ids)
+    .is("deleted_at", null)
+    .order("sort", { ascending: true })
+    .order("created_at", { ascending: true })
+    /* a hard ceiling on the whole read, not a page: the cap below is what each
+       card actually draws, and this only stops one studio with a hundred rows
+       from deciding how big the response is */
+    .limit(ids.length * Math.max(1, perBusiness) + 50);
+  if (error) {
+    return out;
+  }
+  const rows = (data ?? []) as Array<{ id: string; path: string; business_id: string }>;
+  const kept: Array<{ id: string; path: string; businessId: string }> = [];
+  rows.forEach((r) => {
+    const already = out.get(r.business_id)?.length ?? 0;
+    if (already >= perBusiness) return;
+    out.set(r.business_id, [...(out.get(r.business_id) ?? []), { id: r.id, path: r.path, url: null, signed: true }]);
+    kept.push({ id: r.id, path: r.path, businessId: r.business_id });
+  });
+  if (kept.length === 0) {
+    return out;
+  }
+  const signed = await supabase.storage.from(PROOF_BUCKET).createSignedUrls(
+    kept.map((r) => r.path),
+    PROOF_URL_SECONDS
+  );
+  if (signed.error) {
+    out.clear();
+    return out;
+  }
+  const urlByPath = new Map<string, string>();
+  (signed.data ?? []).forEach((s) => {
+    if (s.path && s.signedUrl) urlByPath.set(s.path, s.signedUrl);
+  });
+  out.forEach((list, key) => {
+    out.set(
+      key,
+      list.map((p) => ({ ...p, url: urlByPath.get(p.path) ?? null })).filter((p) => p.url !== null)
+    );
+  });
+  return out;
+}
+
 /** A CREW'S HEADER PICTURES (19 Sep 2026, the user: "Artist and Crews — 5"):
  *  up to five, in the crew's own folder of the public bucket, readable by
  *  anyone (a crew is public), added and removed by its leader through the Edit

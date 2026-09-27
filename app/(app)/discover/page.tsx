@@ -28,6 +28,7 @@ import { findCrewsByCity } from "@/repositories/crews";
 import { findDiscoverArtists, findNearbyTenants, findTenantCardFacts, type DiscoverArtist, type TenantCardFacts } from "@/repositories/discovery";
 import { findMyEventBookings, findPublishedEvents } from "@/repositories/events";
 import { findFollowerCounts, findMyFollowedPeople, findMyFollowing } from "@/repositories/follows";
+import { findStudioHeaderPhotosMany, type HeaderPhoto } from "@/repositories/headerPhotos";
 import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 import { findEventHostCards, type EventHostCard } from "@/repositories/publicOrganization";
 import { entriesOf, entryCapacityOf, seatCapacityOf, seatsSoldOf } from "@/types/event";
@@ -255,10 +256,18 @@ export default async function DiscoverPage({
   const artists = wantsArtists ? artistsRaw.filter((a) => filters.styles.length === 0 || a.styles.some((s) => filters.styles.includes(s))) : [];
   /* the follower count sits at the foot of every card — a number, never a name (Step 15);
      the faces come from the businesses themselves (the nearby RPC carries none) */
-  const [followerCounts, facts, personCounts] = await Promise.all([
+  /* ⚠⚠ AND THE POSTERS THE CARD SWIPES THROUGH (27 Sep 2026, the user: "Studio
+     Cards on discover should have swipable photos in top section which are used
+     in posters"). ONE query and ONE signing call for the whole shelf — fifty
+     cards through `findTenantHeaderPhotos` would be fifty RPCs and fifty
+     signings, which is the per-card shape `findClassArtists` exists to avoid.
+     They are the studio's own `studio_photos`, the same rows its poster rail
+     draws, under the policy that makes a LISTED studio's pictures public. */
+  const [followerCounts, facts, personCounts, shotsByTenant] = await Promise.all([
     wantsBusinesses ? findFollowerCounts(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, number>()),
     wantsBusinesses ? findTenantCardFacts(supabase, [...businesses.map((t) => t.id), ...followed.map((f) => f.tenantId)]) : Promise.resolve(new Map<string, TenantCardFacts>()),
     wantsArtists ? findPersonFollowerCounts(supabase, artists.map((a) => a.id)) : Promise.resolve(new Map<string, { followers: number; following: number }>()),
+    wantsBusinesses ? findStudioHeaderPhotosMany(supabase, businesses.map((t) => t.id)) : Promise.resolve(new Map<string, HeaderPhoto[]>()),
   ]);
   /* the face and the tick reach the cards together — one read, two facts (D7).
      The pin used to ride along for the map view; the map went on 18 Sep 2026. */
@@ -347,9 +356,23 @@ export default async function DiscoverPage({
           cities. The title keeps the line above it, because a 27px display
           heading and a chip cannot share a line on a 430px phone without the
           heading losing words. */}
+      {/* ⚠ BIGGER, AND CLOSER TO THE CHIP (27 Sep 2026, the user: "fix the gap
+          between location drop down and Dance near you. bigger discover
+          heading"). 34px is not a new size — it is `DOS_TYPE.display`, what a
+          person's name is set at on their own profile — so Discover's title now
+          reads at the scale every other title in the app does. The chip's
+          `marginTop` is 5, which is not a taste call: MEASURED in a browser in
+          both themes, the eyebrow-to-title gap is 5px, so the head's three rows
+          now sit at one rhythm and read as one block instead of a title with
+          something floating under it. ⚠ The first cut of this was 2 and the
+          probe said so — 2 put the chip against the heading's descenders. The
+          27 Sep band fix is the method: measure the painted boxes, do not argue
+          about the CSS. ⚠ They stay on separate lines (C45's own finding): a
+          display heading and a chip cannot share one on a 430px phone without
+          the heading losing words, and it is bigger now, not smaller. */}
       <div style={{ marginTop: 5, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 27, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1, lineHeight: 1.05, color: INK }}>Dance near you</span>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 8, minWidth: 0, flexWrap: "wrap" }}>
+        <span data-testid="discover-title" style={{ display: "block", fontSize: 34, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.1, lineHeight: 1.05, color: INK }}>Dance near you</span>
+        <div data-testid="discover-place-row" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 5, minWidth: 0, flexWrap: "wrap" }}>
           <PlaceChip city={city} cities={cities.map((c) => c.city)} tab={tab} extra={{ ...filtersToParams(filters), ...(asRaw ? { as: asRaw } : {}) }} near={near !== null} offerNearMe={wantsBusinesses} />
         </div>
       </div>
@@ -408,7 +431,19 @@ export default async function DiscoverPage({
           );
         })}
 
-      {tab === "studios" && businesses.map((t) => <StudioCard key={t.id} tenant={t} followers={followerCounts.get(t.id) ?? 0} styles={stylesByTenant.get(t.id) ?? []} />)}
+      {/* ⚠ `stylesByTenant` is still READ and still narrows the shelf — it just no
+          longer reaches the card (27 Sep 2026, "remove dance styles from studio,
+          artist and crew discover cards"). A style filter is answered by the same
+          map it always was. */}
+      {tab === "studios" &&
+        businesses.map((t) => (
+          <StudioCard
+            key={t.id}
+            tenant={t}
+            followers={followerCounts.get(t.id) ?? 0}
+            shots={(shotsByTenant.get(t.id) ?? []).filter((p) => p.url).map((p) => ({ key: p.id, src: p.url as string, signed: p.signed }))}
+          />
+        ))}
 
       {/* artists draw the CompactCard, two to a row (4376-4423, 4815) — each one
           a PERSON with a live plan, opening their profile (18 Sep 2026) */}
@@ -425,7 +460,6 @@ export default async function DiscoverPage({
               grad={gradientOf(a.name)}
               city={a.city ?? "—"}
               km={null}
-              styles={a.styles}
               verified={Boolean(a.verifiedAt)}
               foot={<DosFollowers n={personCounts.get(a.id)?.followers ?? 0} size={11} />}
             />

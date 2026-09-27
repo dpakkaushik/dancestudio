@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
 import { CREW_TINT, type CrewSummary } from "@/types/crew";
+import type { CrewPractice } from "@/types/crewPractice";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
+import { MyPractices } from "./MyPractices";
 import { CrewI, dosToolPaint } from "./crew-kit";
 
 /** The Crews hub — prototype S_bizhub with kind="crews" (2585-2691): TWO LISTS,
@@ -37,7 +39,23 @@ function Row({ crew, own, sub }: { crew: CrewSummary; own: boolean; sub: string 
 
 const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
 
-export function CrewsHub({ led, member }: { led: CrewSummary[]; member: Array<CrewSummary & { since: string }> }) {
+export function CrewsHub({
+  led,
+  member,
+  practices,
+  todayIso,
+}: {
+  led: CrewSummary[];
+  member: Array<CrewSummary & { since: string }>;
+  /** ⚠ EVERY PRACTICE OF EVERY CREW YOU ARE ON (27 Sep 2026, the user: "no way to
+   *  check practices you have been a part of fix that"). The leader had a desk
+   *  and a member had nothing — their calendar row pointed at the crew's public
+   *  page, which says nothing about practices and can act on none. It is the hub
+   *  because a practice belongs to a CREW and this is the screen about yours;
+   *  `MyPractices` carries the reasoning for why it is not a tile. */
+  practices: CrewPractice[];
+  todayIso: string;
+}) {
   const accent = CREW_TINT;
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
@@ -67,6 +85,11 @@ export function CrewsHub({ led, member }: { led: CrewSummary[]; member: Array<Cr
             ))}
           </div>
         ) : null}
+        {/* ⚠ DRAWN ONLY WHEN THERE IS A CREW TO HAVE ONE. Somebody with no crew
+            at all would otherwise read "Nothing arranged yet" under a heading
+            about a thing they have no way to be part of — an empty state for a
+            question they never asked. */}
+        {led.length || member.length ? <MyPractices practices={practices} todayIso={todayIso} /> : null}
       </div>
     </div>
   );

@@ -1,8 +1,153 @@
 # CLAUDE.md — DanceOS
 
-## LAST SESSION (27 Sep 2026) — replaced on every push (Rule 13)
+## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### A CREW PRACTISES — THE APP SIDE THE APPLIED MIGRATION HAD BEEN WAITING FOR (27 Sep 2026, latest) — no new migration
+> ### A CARD IS ITS PICTURES, A MEMBER CAN SEE THEIR PRACTICES, AND BOTH "OWED" MIGRATIONS TURNED OUT NOT TO BE (28 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (dry run **21/21**, rolled back first)
+> The user, in one message: *"no way to check practices you have been a part of
+> fix that. Studio Cards on discover should have swipable photos in top section
+> which are used in posters. and bottom part should contain profile pic and other
+> details. view photo should be same as how it was cut. fix this for using the
+> photo in studio poster and discover as they should be the same. remove dance
+> styles from studio , artist and crew discover cards. fix the gap between
+> location drop down and Dance near you . bigger discover heading. fix the other 2
+> you mentioned as well and push to live directlt"* — and then, because my
+> previous turn had died with **"Prompt is too long"** and they had had no answer
+> at all: *"check again what i said earlier"*. ⚠ **So the first act was to read
+> their words out of the TRANSCRIPT rather than out of a summary of it** — a
+> script over the session's own `.jsonl` — which also settled what "the other 2"
+> named, against what I actually wrote rather than what I remembered writing.
+> * ⚠⚠ **AND NEITHER OF "THE OTHER 2" WAS WHAT I HAD TOLD THEM IT WAS, WHICH
+>   READING THE LIVE CATALOG BEFORE WRITING A LINE IS WHAT SHOWED.**
+>   **`save_membership` ALREADY CARRIES ITS BUSINESS-TYPE CHECK** — `if v_type not
+>   in ('studio','artist_page') then raise 'a membership is a studio''s or an
+>   artist''s'` — so **#0al was closed in the database while my backlog row still
+>   said it was owed, and I had repeated that to the user the night before.** And
+>   **R52 cannot be restored, because there is nothing left to refuse**:
+>   `guard_person_only` asks `profiles.role = 'org'`, the live histogram is
+>   **`user: 48`** and nothing else, and the rule that replaced it — a studio or an
+>   organization does not book, a crew enters events only — is about the profile
+>   you are ACTING AS, which is a URL parameter. **The database has no notion of
+>   it and must not grow one: the same human, from their own profile, is genuinely
+>   entitled to that booking.** It is a presentation gate over nothing, because
+>   there is no longer anything underneath to gate.
+> * ⚠ **SO THE MIGRATION REMOVES THE DEAD BRANCH RATHER THAN PRETENDING TO REPAIR
+>   IT** (`20260928090000`). What it fixes is a FALSE PROMISE IN THE CATALOG: the
+>   function's comment said it *"refuses a row that names an organization
+>   account"*, and it refused nothing of the sort. ⚠ **Zero behaviour change on
+>   every reachable input, and that is walked rather than asserted**: the
+>   service-role exemption, the null column, the **SUSPENDED** refusal (live,
+>   untouched, and the reason all eight triggers stay) and `return new` all end
+>   where they ended; the `business_members` owner exemption goes with it because
+>   it existed ONLY to jump over the branch below it. **Dry run 21/21 rolled
+>   back** — the oid preserved, all eight triggers still bound, no function added
+>   or dropped, not one ACL moved, anon's set unchanged, no policy touched, a
+>   suspended account still refused a booking / a crew seat / an enquiry, a live
+>   one still let through, the service role still exempt.
+> * ⚠⚠ **AND THE SWEEP THAT FOUND IT FOUND EIGHT MORE READERS OF THE RETIRED
+>   WORD, EVERY ONE DEAD AND HARMLESS — WHICH IS WHY NONE IS REWRITTEN.**
+>   `admin_dashboard` (`orgs` and `verified_orgs` read 0 for ever and are ADDED to
+>   other figures, so the arithmetic is already right), `ask_class_person`,
+>   `set_person_follow`, `add_my_header_photo`, `search_dance_os`,
+>   `update_my_profile`, `public_studio_team.is_org`, and the `profiles` SELECT
+>   policy. **Recorded rather than swept**: rewriting eight functions on a live
+>   database for zero visible change is risk without benefit, and
+>   `public_studio_team` would need a RETURNS TABLE change — the drop-and-recreate
+>   pattern that loses an ACL — for a column nothing reads.
+> * ⚠⚠ **A STUDIO'S CARD SHOWED THE WRONG PICTURE IN THE WRONG SHAPE, AND DREW
+>   INITIALS WHERE THE RIGHT ONE BELONGED.** It painted `profile_photo_path` —
+>   the studio's DISC — across a 150px-tall full-width strip under
+>   `objectFit: cover`, and put INITIALS in the 56px face below it. Every upload
+>   in this app is cut **1:1** (`HERO_HEAD_W === HERO_HEAD_H === 206`), so a 2.6:1
+>   strip threw away the top and bottom of what somebody had framed. The top is a
+>   **swipeable rail of the studio's POSTERS** now — its own `studio_photos`, the
+>   same rows its profile's rail draws — at `aspectRatio: 1 / 1`, which is the
+>   crop exactly; the bottom carries the **profile picture, drawn**, in the app's
+>   own squircle. ⚠ **There is no second crop and no second aspect ratio anywhere
+>   in that path, which is the whole of "they should be the same"** — measured at
+>   both ends: **206×206 on the studio's page, 352×352 on the card, ratio 1.00 in
+>   both.** The size differs on purpose; a hero is a hero and a card is a card.
+> * ⚠ **ONE QUERY AND ONE SIGNING CALL FOR THE WHOLE SHELF** —
+>   `findStudioHeaderPhotosMany`. Fifty cards through the per-business RPC would
+>   be fifty round trips plus fifty signings, the shape `findClassArtists` exists
+>   to avoid. ⚠ It reads `studio_photos` DIRECTLY and that is safe for the reason
+>   the definer exists: `20260915090000` gave the rows a SELECT policy admitting
+>   anon to a LISTED studio's, and `20260915100000` gave anon the table GRANT that
+>   policy needed — the ceiling is the database's, not restated here.
+> * ⚠⚠ **AND NOT ONE LISTED STUDIO ON PRODUCTION HAS A HEADER PHOTO**, counted
+>   rather than assumed — so the rail is correct and INVISIBLE there, and every
+>   card falls back to the empty gradient square until somebody uploads. **That is
+>   why `scripts/shots/shoot-discover.js` exists** (new, **27/27**): it builds a
+>   listed, subscribed studio in **Kolkata — the one registry city with zero
+>   listed studios**, so the shelf is exactly what it put there — uploads three
+>   real objects into the private bucket, and measures. ⚠ It asserts the pictures
+>   **really LOADED** (`naturalWidth > 0`), so a signed URL that 404s fails
+>   instead of passing as "an img exists".
+> * **NO STYLE TILES ON A STUDIO, ARTIST OR CREW CARD**, and the `styles` prop is
+>   deleted from `CompactCard` rather than left unread — a dead prop is a lie to
+>   the next reader. ⚠ `stylesByTenant` is still READ and still narrows the shelf;
+>   it just no longer reaches the card. ⚠ **Asserted at BOTH ENDS**, because the
+>   style RAIL above the shelf still carries the word and a naive "the page does
+>   not say Kathak" would pass on the wrong element.
+> * ⚠ **THE HEADING IS 34px AND THE GAP WAS MEASURED, NOT ARGUED ABOUT.** 34 is
+>   not a new size — it is `DOS_TYPE.display`, what a person's name is set at —
+>   and the chip's margin is **5**, which is the eyebrow-to-title gap read off the
+>   painted boxes, so the head's three rows sit at one rhythm. ⚠ **My first cut
+>   was 2 and the probe said so**: 2 put the chip against the heading's
+>   descenders. They stay on separate lines (C45's own finding) and it is bigger
+>   now, not smaller.
+> * ⚠⚠ **A MEMBER COULD NOT SEE THEIR OWN PRACTICES, AND I HAD WRITTEN THAT DOWN
+>   AND SHIPPED IT.** `#0at` said it in so many words — *"a member who does not
+>   LEAD the crew cannot open the desk, so their calendar row opens the crew's
+>   public page"* — which is C46's lesson met a second time: **a backlog row
+>   naming a defect is not a decision to accept it.** The Crews hub carries
+>   **YOUR PRACTICES** now, every crew you lead or are on, with the answer pair on
+>   anything you were asked to and **Register ›** on anything you lead; the
+>   member's calendar row opens `/crews` instead of a page that can act on
+>   nothing. ⚠ **The card is EXTRACTED, not copied** (`practice-card.tsx`) — this
+>   repo has paid that bill three times — and what differs between the two screens
+>   is a `foot` slot.
+> * ⚠ **IT IS NOT A TILE, and the reason is R20's own test.** Practice is
+>   `#15803D` — hue 142° at 71% saturation — and **Earnings is `#22C55E`: hue
+>   142°, saturation 71%, sixteen points lighter.** That pair is fine on a CREW's
+>   grid, which has no Earnings tile (the test is per-GRID), and would be two
+>   greens on a person's. Giving the tool a second colour for one grid would break
+>   the rule that a tile and the desk it opens read one vocabulary.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · dry run **21/21
+>   rolled back**, then applied · live read-back **10/10** · **`shoot-discover`
+>   27/27** (new) · **`shoot-practice` 37/37** (27 before — the ten new ones are
+>   the member's own screen, both ends) · **`shoot-hero` 183/183** ·
+>   **`shoot-tiles` 155/155** · **6/6 proofs** on the migrated schema.
+> * ⚠ **AND FOUR REDS ON THE WAY WERE THE CHECK, WHICH IS WORTH LISTING BECAUSE
+>   THEY ARE FOUR DIFFERENT WAYS TO MEASURE THE WRONG THING.** (1) The dry run
+>   asserted `profiles.role = 'user'` with no `deleted_at` filter and read the
+>   **64 soft-deleted `org` rows** — the retirement soft-deleted those profiles,
+>   it did not rewrite the column, so the honest statement is "no LIVE profile can
+>   match". (2) Three refusal checks came back *"violates row-level security
+>   policy"* — **those eight tables have NO INSERT POLICY at all**, so a direct
+>   insert as `authenticated` is refused before the BEFORE trigger ever runs;
+>   they stay as the owner with a non-service-role JWT claim instead. (3) Then
+>   five died on a foreign key, because I took the two newest `auth.users` and
+>   every column the guard reads references **`profiles`**. (4) And the plant
+>   itself died on *"invalid input syntax for type json"* — `auth.uid()` parses
+>   `request.jwt.claims`, an unset one is the EMPTY STRING, and `'{}'` is what
+>   nobody looks like. **This file recorded that last one on 19 Sep and it still
+>   cost a run.**
+> * ⚠ **AND THE LIVE READ-BACK'S ONE RED WAS A NUMBER CARRIED FORWARD WITHOUT ITS
+>   SCOPE, FOR THE THIRD TIME.** It asserted "public policies 103" and read
+>   **108** — 103 was true after the three migrations of 27 Sep MORNING, and
+>   `20260927140000` added five that evening. 108 is what unchanged looks like;
+>   this migration adds none, which the dry run proved by comparing before to
+>   after inside the transaction.
+> * ⚠ **AND THE DISCOVER SHOOT'S TWO REDS WERE THE SAME SHAPE ONE LAYER DOWN**:
+>   it measured the poster rail's slide WRAPPER — 414×244, which is the 206
+>   square plus `HeroRail`'s own `padding: "24px 0 14px"` — and called a square
+>   picture non-square. **A check that measures the wrong box reports a bug that
+>   is not there**, which is the 27 Sep gap probe's lesson verbatim. It measures
+>   the `<img>` now.
+> * ⚠ **A stale `next start` from 22:28 the night before was holding :3100 — the
+>   SEVENTH time**, and was stopped before anything was measured against it.
+
+> ### A CREW PRACTISES — THE APP SIDE THE APPLIED MIGRATION HAD BEEN WAITING FOR (27 Sep 2026) — no new migration
 > The user: *"push live whatever is left  just leave four sanbox items"*, and
 > `20260927140000` had gone in an hour earlier with **three tables and eleven
 > functions that nothing called**. This is the half that calls them, built to the
@@ -6362,18 +6507,55 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0au. **✅ APPLIED 28 Sep 2026 — `20260928090000_a_role_nobody_has_guards_nobody`**
+   (dry run **21/21**, rolled back first; live read-back **10/10**), on the user's
+   *"fix the other 2 you mentioned as well and push to live directlt"*. ⚠ The
+   complete list went in front of them as a visible message BEFORE `db-push`,
+   which is the standing rule and is why "directly" did not become "silently".
+   **What is worth carrying forward is that neither of "the other 2" was a hole:**
+   `save_membership` already had its check, and `guard_person_only`'s branch had
+   nothing left to refuse — so the migration deletes dead code and corrects a
+   comment, and both backlog rows are corrected rather than acted on.
+   ⚠ **WHAT IS DELIBERATELY NOT DONE, so it is not re-proposed:** the **eight
+   other readers of `profiles.role = 'org'`** found by the same sweep
+   (`admin_dashboard`, `ask_class_person`, `set_person_follow`,
+   `add_my_header_photo`, `search_dance_os`, `update_my_profile`,
+   `public_studio_team.is_org`, and the `profiles` SELECT policy). Each was
+   triaged: every one is unreachable and every one's unreachable behaviour is the
+   CORRECT behaviour post-R48 — a refusal nobody can trigger, a narrowing that
+   narrows nobody, a cap no person needs, two figures that read 0 and are ADDED
+   to others. Rewriting eight functions on a live database for zero visible
+   change is risk without benefit, and `public_studio_team` would need a RETURNS
+   TABLE change — drop-and-recreate, the pattern that loses an ACL — for a column
+   the app stopped reading on 27 Sep. ⚠ **The hazard they leave is named rather
+   than hidden:** if anybody ever re-introduces `role = 'org'` for a new reason,
+   those eight branches come alive with their OLD meanings.
+   ⚠ **AND `profiles_role_check` STILL ADMITS `'org'`** — deliberately. Narrowing
+   it to `user` would make the retirement structural, and it would also refuse
+   any UPDATE of the **64 soft-deleted `org` profiles** that still carry the word,
+   which is a sweep-blocking trap for no gain.
+
 0at. **✅ APPLIED AND BUILT 27 Sep 2026 — the migration (dry run 37/37, rolled
    back first) and then its whole app side, which the top block records.** The
    tiles, the desk, the register, the Inbox ask and the calendar's third half are
-   in; `scripts/shots/shoot-practice.js` drives the loop end to end, 27/27.
+   in; `scripts/shots/shoot-practice.js` drives the loop end to end, **37/37**
+   (27 on 27 Sep; the ten new ones are the member's own screen).
    ⚠ **WHAT IS DELIBERATELY NOT BUILT, so it is not re-proposed:** a practice is
    never PUBLIC (no anon policy, no anon grant — a crew's page shows its roster
    and its battle record, and a rehearsal schedule is the crew's own business);
    there is no recurring/weekly practice (each is arranged on its own, which is
-   what the user asked for); nobody is paid for one and no room is held, which is
-   the whole reason it does not ride on `classes`; and a member who does not LEAD
-   the crew cannot open the desk, so their calendar row opens the crew's public
-   page instead of a screen that would bounce them.
+   what the user asked for); and nobody is paid for one and no room is held,
+   which is the whole reason it does not ride on `classes`.
+   ⚠⚠ **AND THE ONE THING THIS ROW USED TO LIST AS NOT-BUILT WAS A DEFECT, NOT A
+   DECISION — CLOSED 28 Sep 2026 (row R54).** It read: *"a member who does not
+   LEAD the crew cannot open the desk, so their calendar row opens the crew's
+   public page instead of a screen that would bounce them."* The user found it
+   the next morning — *"no way to check practices you have been a part of fix
+   that"* — and they were right: a link that is true and useless is not an
+   answer. The Crews hub carries **YOUR PRACTICES** now, and the member's
+   calendar row opens `/crews`. **C46's lesson met a second time: a backlog row
+   naming a defect is not a decision to accept it, and writing one down is not
+   the same as having decided it.**
    **The record of the migration as it went in, and what the dry run caught:**
    `20260927140000_a_crew_practises.sql` went in on the user's *"push live
    whatever is left"*, after the dry run `#0at` had demanded finally ran (`pg`
@@ -6939,13 +7121,17 @@ summary; the report has the evidence.
    memberships, a visiting teacher and an assistant no longer see a studio's
    students (row R44), and `/managed` is a redirect (row C52). **What each answer
    LEAVES is recorded in the parity backlog**, and two are worth naming here:
-   * ⚠ **THE ORGANIZATION-MEMBERSHIP RULE IS THE APP'S, NOT THE DATABASE'S.**
-     `save_membership` still admits the owner of any business with no type check,
-     so a direct RPC call by an organization could make one — nothing can BUY it
-     (the hosting row is `unlisted` for ever) and no screen offers it, but the
-     refusal belongs in SQL. **A `p_business_id` type check is one clause in the
-     next migration that touches memberships**; it is not its own migration,
-     because the list goes in front of the user before every `db push`.
+   * ~~⚠ **THE ORGANIZATION-MEMBERSHIP RULE IS THE APP'S, NOT THE DATABASE'S.**~~
+     ✅ **CLOSED, AND THIS ROW WAS STALE — read off the LIVE catalog 28 Sep 2026.**
+     `save_membership` carries its own type check and has for some time:
+     `select b.type into v_type … ; if v_type not in ('studio','artist_page')
+     then raise 'a membership is a studio''s or an artist''s'`. ⚠⚠ **And the row
+     being stale cost something real**: on 27 Sep I told the user this was still
+     owed, and they replied *"fix the other 2 you mentioned as well"* — so the
+     first act of that work was to read the catalog and find there was nothing to
+     fix. **A backlog row is a claim about the code, and a claim nobody
+     re-measures is a claim that goes wrong quietly.** Re-check before repeating
+     one to somebody.
    * ⚠ **INVOICES STILL HAS NO DOOR ON A STUDIO'S HOME.** The ask was Refunds and
      that is what was built; `/business/{id}/invoices` is the other half of the
      same question (that studio's money, admitting any MEMBER) and is still
@@ -7782,6 +7968,35 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **A CARD IS ITS PICTURES, A MEMBER SEES THEIR PRACTICES, AND BOTH "OWED"
+  MIGRATIONS TURNED OUT NOT TO BE — 28 Sep 2026, no step number ⚠ (Rule 9: a
+  trigger on eight tables including `orders`) — ONE MIGRATION APPLIED (dry run
+  **21/21**, rolled back first).** The user's eight-part list, read out of the
+  TRANSCRIPT rather than a summary of it after my previous turn died with "Prompt
+  is too long". ⚠⚠ **Neither of the two I had flagged was what I told them:**
+  `save_membership` already carries its business-type check (#0al was closed in
+  the database while my backlog row still said it was owed), and **R52 cannot be
+  restored because there is nothing left to refuse** — `profiles.role` is
+  `user: 48` and the acting-as gate is a URL parameter the database has no notion
+  of and must not grow one for. So the migration **removes the dead branch**
+  rather than pretending to repair it, fixing a FALSE PROMISE IN THE CATALOG;
+  zero behaviour change on every reachable path, walked rather than asserted.
+  ⚠ A sweep found **eight more readers of the retired word**, every one dead and
+  harmless, **recorded rather than rewritten**. ⚠⚠ **A studio's Discover card
+  showed the wrong picture in the wrong shape** — the DISC stretched across a
+  2.6:1 strip while the 56px face drew initials — and is a **swipeable rail of
+  the studio's own posters at `aspectRatio: 1/1`**, the crop exactly, with the
+  profile picture drawn below: **206×206 on the page, 352×352 on the card, ratio
+  1.00 in both.** ⚠ Not one listed studio on production has a header photo, which
+  is why `shoot-discover.js` (new, **27/27**) builds one in **Kolkata**, the one
+  city with zero listed studios. No style tiles on a studio, artist or crew card
+  (asserted at both ends). The heading is 34px and the gap is **5px, measured**.
+  ⚠⚠ **And a crew MEMBER could not see their own practices — a gap I wrote down
+  and shipped**; the Crews hub carries **YOUR PRACTICES** now, the card
+  EXTRACTED rather than copied. Deviation rows **C73**, **C74**, **R54**.
+  **typecheck 0 · lint 0 · build green · live read-back 10/10 ·
+  `shoot-practice` 37/37 · `shoot-hero` 183/183 · `shoot-tiles` 155/155 · 6/6
+  proofs.**
 - **A CREW PRACTISES — THE APP SIDE — 27 Sep 2026, no step number — BUILT, no new
   migration.** The half `20260927140000` had been applied without: two tiles on a
   crew's grid (Practice and Calendar), the leader's desk with the register read
@@ -7879,8 +8094,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   `profiles.role === 'org'`, a role R48 retired, so it allowed everybody and
   nothing failed because what it withholds is a sentence; `guard_person_only`'s
   matching branch is dead for the same reason, so **the database does not
-  enforce it either** (R52 — the SQL clause is owed to the next migration that
-  touches those tables). Rebuilt on the profile you are ACTING AS, carried by
+  enforce it either** (R52 — ⚠ **and 28 Sep settled that nothing is owed in SQL:
+  `20260928090000` REMOVES that branch, because the acting-as gate cannot be a
+  database rule and there is no organization account left to refuse**). Rebuilt
+  on the profile you are ACTING AS, carried by
   `?as=` and threaded through every href on Discover: ⚠ a tap on the Classes tab
   would otherwise have handed the button straight back. **Enquiries is a fourth
   TAB and the Inbox is Requests · Invites · Done** (C68), "accepted" a stamp
@@ -12166,13 +12383,16 @@ Home. **Do not "restore parity" on these.**
 | C66 | Every list is a native `<select>` — the prototype has about a dozen (the city 2670 / 4525 / 9556 / 15979, the time 3536, the role 3809, the enquiry fields 5141, the age 11382, the class times 15322, the asset and expense types 16733 / 16799, a routine's style and level 17134-17136) | **ONE IN-APP SHEET, `components/ui/PickSheet.tsx`, AND NOT ONE NATIVE `<select>` LEFT IN THE APP** (27 Sep 2026). A trigger that keeps the select's exact accessible name over a PORTALLED bottom sheet — `dosSheetUp`, a scrim, `useCloseOnBack`, `role="listbox"`/`role="option"`, a search past twelve rows. The options, the values and the callbacks are unchanged at all eight call sites; only what a press opens is different | 27 Sep 2026, the user: *"fix all list drop downs should be within the app only not open a seprate screen"*. ⚠ **A native `<select>` on a PHONE is literally a separate screen** — Android and iOS answer one with a full-screen OS picker in the system's own type, with the system's own Cancel, and nothing of DanceOS visible; on a laptop it is a small popup and reads fine, which is why twelve of them survived four months. ⚠ **`navigates` is the one thing a caller must declare**: a sheet spends its history entry on close, and two pickers `router.replace` on pick, where a `back()` would race the router (`useCloseOnBack` rule 2). ⚠ `DosStylePicker` is NOT folded into it — it is the prototype's own control (3548-3612), already an in-app list, with a coin per row and the "All styles" rule |
 | C67 | The prototype has one studio, so one Team screen; C49 (21 Sep 2026) levelled the three desks' hero, add control, sheet styles and faces | **AND THE REST OF IT** (27 Sep 2026): a studio's roster cards are `bizCard` like the other two (they were local and **borderless**), a waiting row's face is a 36px squircle like the member row above it (it was a 38px circle — the 21 Sep pass missed it), the error line carries `role="alert"`, the toast is `crew-kit`'s rather than a byte-identical copy, and all three empty states are the app's own dashed centred card. The crew's add sheet is headed 17px in the display face like the other two. ⚠ **The §10.9 footnote is deleted** — the prototype's line 18434 lifted verbatim, naming a section in a document this app does not have | 27 Sep 2026, the user: *"fix team layout for all types of profiles should be clean"*, and their standing ask that the app stop explaining itself. ⚠ **Three differences are left standing on purpose** and are named in the session record: the `PeoplePicker`'s accessible name (the default is the prototype's own string — Rule 2), an organization's roster having no ▲▼ (there is no `reorder_organization_members` RPC — a schema difference), and a studio's profile door living in the member sheet (the ROW is the manage control there) |
 
-| R52 | R31 (19 Sep 2026): `canBook(role)` refuses an ORGANIZATION ACCOUNT, over `guard_person_only`'s own `role = 'org'` test | ⚠⚠ **THE GATE KEYS ON THE PROFILE YOU ARE ACTING AS** (27 Sep 2026) — `canBookClass` / `canBookEvent` over `ActingAs`, resolved from `?as=` (the entity bar's Discover link) against the businesses this account is on the team of and the crews it leads. **A studio and an organization book neither; a CREW enters events and takes no classes.** ⚠⚠ **It replaces rather than restores, because the old test had been DEAD SINCE 26 Sep**: R48 retired `profiles.role = 'org'`, so `role !== "org"` answered "yes" for everybody and nothing failed — what the gate withholds is a sentence, not an exception. ⚠ The same word is dead in `guard_person_only`, so **the DATABASE does not enforce this either**; the SQL clause is owed to the next migration that touches those eight tables | 27 Sep 2026, the user: *"studio and organization profiles should not be able book classes and events from discover breaking now"*, *"crew can only take part in events and should not be able to book classes"* and *"studio and organization cannot book anything from classes and events"*. ⚠ **A pointer is never an authority**: `?as=` is a REQUEST, and an unresolvable one means "yourself" — the permissive answer on purpose, since failing a presentation gate closed would take a booking from somebody entitled to one. ⚠ And it had to be threaded through every href on Discover (the pager, the place chip, the tab tiles, the filter sheet, Clear filters, both cards): a tap on Classes would otherwise have handed the button back |
+| R52 | R31 (19 Sep 2026): `canBook(role)` refuses an ORGANIZATION ACCOUNT, over `guard_person_only`'s own `role = 'org'` test | ⚠⚠ **THE GATE KEYS ON THE PROFILE YOU ARE ACTING AS** (27 Sep 2026) — `canBookClass` / `canBookEvent` over `ActingAs`, resolved from `?as=` (the entity bar's Discover link) against the businesses this account is on the team of and the crews it leads. **A studio and an organization book neither; a CREW enters events and takes no classes.** ⚠⚠ **It replaces rather than restores, because the old test had been DEAD SINCE 26 Sep**: R48 retired `profiles.role = 'org'`, so `role !== "org"` answered "yes" for everybody and nothing failed — what the gate withholds is a sentence, not an exception. ⚠ The same word was dead in `guard_person_only` too, and **28 Sep 2026 settled what that means: NOTHING IS OWED IN SQL, and `20260928090000` removes the branch rather than replacing it.** There is no organization ACCOUNT left to refuse (`profiles.role` is `user: 48`), and the acting-as gate CANNOT be a database rule — `?as=` is a URL parameter, the database has no notion of it, and the same human pressing the same button from their own profile is genuinely entitled to that booking. It is a presentation gate over nothing, because there is no longer anything underneath to gate; what the migration fixes is the function's COMMENT, which promised a guard that guarded nobody | 27 Sep 2026, the user: *"studio and organization profiles should not be able book classes and events from discover breaking now"*, *"crew can only take part in events and should not be able to book classes"* and *"studio and organization cannot book anything from classes and events"*. ⚠ **A pointer is never an authority**: `?as=` is a REQUEST, and an unresolvable one means "yourself" — the permissive answer on purpose, since failing a presentation gate closed would take a booking from somebody entitled to one. ⚠ And it had to be threaded through every href on Discover (the pager, the place chip, the tab tiles, the filter sheet, Clear filters, both cards): a tap on Classes would otherwise have handed the button back |
 | C68 | The Inbox is one screen with three desks — Requests · Invites · Enquiries (C61, 27 Sep 2026, earlier the same day) | **ENQUIRIES IS THE FOURTH TAB, AND THE INBOX IS REQUESTS · INVITES · DONE.** An Inbox row is a yes or a no you owe somebody; an enquiry is somebody wanting to BOOK you, and it has a life of its own — a quote, a revision, an advance, won or lost. Sharing a desk made the bar's badge count two unlike things as one number. ⚠ **ONE COMPONENT, TWO DESKS** (`InboxScreen desk=`), not a fork — the cards, the Received/Sent sides and the Done treatment are identical. **And `Done` holds what is over**: answered requests, answered invitations, won and lost enquiries, each desk its own kind. ⚠ It does NOT undo the 19 Sep rule that an answered ask stays — nothing is deleted, the rows MOVE, so a live desk holds only what still needs somebody. "Accepted" is a filled STAMP pill rather than a line of green text where the buttons were | 27 Sep 2026, the user: *"only enquiry becomes a new option in tab and is removed from inbox"* (their own answer when asked which of two readings of "inbox merged into a section on home tab" they meant), and *"sepreate section request , invites and enquiries which are already completed and change the way accepted looks like on cards for all these"*. ⚠ **Enquiry types left Settings with it** — three tiles and the whole BUSINESS block — for the contact ⊕, where the button they govern is made; and the sheet behind them was DELETED, because with the tiles gone nothing could open it and lint cannot see a branch whose parts still reference each other |
 | C69 | R43 (21 Sep 2026): a person's associations are **Train · Teach · Assist · Manage** for studios and **Leader · Member** for crews, each a full-width `Row` | **A PERSON IS A CHIP, AND A PERSON'S PAGE IS FOUR GROUPS** (27 Sep 2026): **Crew · Studios · Artists · Organizations**, each row a squircle face, the name, and **the title beside it**, two to a line (`PersonChip`, `PeopleGroup`) — the same treatment on a studio's, an organization's and a crew's page, with a section per role there. ⚠ **This reverses R43 at the same person's word, and it fixes what R43 caused**: three groups over one fact meant a studio appeared up to THREE times on one page. ⚠ **Nothing is lost** — a SEAT outranks a class, so the row reads the seat's word, and where there is no seat it says "Teaches here" / "Assists here". ⚠ **Train stays, own tab only**: it is where somebody LEARNS, not a team title, and it is a private booking (their own 21 Sep scoping). `CrewRow` is deleted | 27 Sep 2026, the user: *"on all profile pages should only show 1. User and artist- Crew with Postion, Organization with team title, Studios with team Title, Artist with team Title, 2. Studio, Crew and Organization- Simply should show the Team with position. make sure to not take full row for each name here and make squircle boxes with name and role in the right section. all roles should have a seprate section according to profile."* |
 | C70 | C68 (27 Sep 2026, that morning): **Enquiries is the fourth TAB** on the bottom bar, with the Inbox keeping what somebody has asked OF you | **ENQUIRIES IS A TOOL, NOT A TAB — ON ALL FOUR GRIDS** (27 Sep 2026, the same evening): off the bar for a person AND off the entity bar, and a tile on a person's, a studio's, an organization's and a crew's tool grid. ⚠ **The glyph MOVED to `GLYPH.enquiries` rather than being left in `TAB_ICONS`** — the `Stats` lesson from that same morning (an icon nothing drew, found twelve days later only because a type listed the keys), applied within the hour instead. ⚠ **The tile carries `?as=`**, because one desk serves the whole account: without it an owner of two studios would press two tiles onto one undivided list, and the settings would have no subject. Same pointer as the Discover booking gate, re-resolved on the page — **a pointer is never an authority** — and an unresolvable one means "everything you are entitled to", the permissive answer, since narrowing is presentation and the reads are RLS-bounded either way. ⚠⚠ **AND THE SETTINGS MOVED WITH IT**: the Take-enquiries switch and the kinds chips left the contact ⊕ for the desk. They were right in the ⊕ while Enquiries was a BUTTON somebody makes and unmakes; it is a TOOL now, and what you take is the first thing its desk is about. ⚠ `d.enquiry` / `d.kinds` STAY in `ContactEditor` with no control on them — `update_business_profile` takes the whole profile, so a Save there that omitted them would EMPTY the column the desk had just set (the 26 Sep rule, and exactly what `accepts` has done since the Payments desk took those switches). ⚠ A crew gets the tile and NO settings: `send_enquiry` fixes its three kinds and `crews` has no such column | 27 Sep 2026, the user: *"enquiries should not be on navbar a tab in tools for all"*, then *"with its setting as well manged from there"*. ⚠⚠ **And it found a door that had been dead since that morning**: the Earnings ledger's Enquiries revenue row pointed at `/inbox`, which stopped holding enquiries when C68 split them out — found by grepping what the word still points at, not by a run, because **no test presses a revenue row's link and a link that opens the wrong screen fails nothing** |
 | C71 | R43 (21 Sep 2026) gave a person's page a **Train** column — where they have TAKEN classes — and C69 (27 Sep) kept it when the other three collapsed into one: *"Train stays, own tab only"*, because it is where somebody LEARNS rather than a team title | **NO PROFILE DRAWS TRAIN.** The group is gone from `PersonBody`, the `trainsAt` prop with it, and the read (`findStudiosAttended`) off `OwnProfileScreen` — one fewer 300-row query per visit to your own profile. ⚠ The FUNCTION stays: the Studios hub's "STUDIOS YOU HAVE LEARNT AT" (R22) is its other caller, which **typecheck** is what said out loud after a grep scoped to `repositories/` reported it dead | 27 Sep 2026, the user: *"Train section to be removed from profiles"*. It was the one group on the page that was not an association with anybody — a studio you bought a class from is a receipt, not a relationship, and beside four groups of people it read as a fifth kind of team. ⚠ The e2e's existing `Train` absence check on the public page is now true on BOTH screens and says so |
 | R53 | The prototype's crew manager (S_crewmanage 16318) had **Practice** among its segments and **removed it**, along with Bookings, Payroll and Chats — its own words, and this app has honoured that since Step 22 | **A CREW PRACTISES**: `crew_practices` · `crew_practice_people` · `crew_practice_attendance` (`20260927140000`), a Practice tile and a Calendar tile on a crew's grid, the leader's desk with its register, the ask in every confirmed member's Inbox, and practices as a **third half of the calendar** beside Classes and Events. ⚠ Not public: no anon policy, no anon grant — a crew's page shows its roster and its battle record, and a rehearsal schedule is the crew's own business | 27 Sep 2026, the user: *"crew should also get an option on home tab called Practice — which allows crew leader to create practice which sends invite to members and leader can mange attendace like how its done class for the same. practice also get added to calendar. crews should also have a calendar tab"*, and, asked whose practices reach a person's own home: *"Only their crews'"*. ⚠⚠ **It deliberately does NOT ride on `classes`**, which was the obvious shortcut: a class is SOLD — a price, a room the database defends against double-booking, an artist paid per session, seats, a waitlist, a refund window, a Cashfree order — and reusing it would mean a class with a null price and a `status` meaning something else, with every one of the twenty-odd functions reading `classes` having to learn to skip it. What it DOES borrow is this app's own grammar: asked → confirmed (1792), and one live attendance row per person, soft-deleted to check out (Step 10) |
 | C72 | 8 Sep 2026 (R9) gave an ORGANIZATION's own Profile tab a **"Your studios"** group — every studio it ran, public or not — and nobody else | **"What you run", drawn for EVERYBODY**, off the OWNER seat: studios, the artist page **and organizations**, carrying the not-yet-public ones with "Not verified yet" on them. ⚠ The badge is only claimed for the two kinds that are REVIEWED — an artist page is reviewed by nobody, so "Not verified yet" on one would be an alarm about a state that does not exist, and `Tenant` carries no `visibility` for a listed/unlisted claim | 27 Sep 2026, the user: *"user and artist profiles dont show what they own on their profile"*. ⚠⚠ The cause was a RETIREMENT, not an omission: the block was gated on `isOrg`, and **R48 retired that role on 26 Sep**, so from that migration onward nobody matched it and every person's profile silently stopped showing what they had opened — the dead booking gate of the same day, in a third place. ⚠ The tab's alone, because `findMyMemberships` is the caller's own read; a stranger's view of you never draws it |
+| C73 | Discover's `StudioCard` is the prototype's (4306-4369): a **150px cover strip** with `{n} photos` in its corner, the 56px face **riding the cover's edge** on a negative margin, and the studio's styles as a scrolling row of the app's own tiles (audit rows D5, D8) | **THE TOP IS THE POSTERS, SQUARE; THE BOTTOM IS THE PROFILE PICTURE AND THE DETAILS.** A swipeable, scroll-snapped rail of the studio's own `studio_photos` — the same rows its profile's poster rail draws — at **`aspectRatio: 1 / 1`**, with dots over the picture's foot; then the face IN the bottom block, in the app's own squircle (`DISC_RADIUS`), **with the picture drawn in it**. ⚠⚠ Until now the card painted `profile_photo_path` — the DISC — across a 2.6:1 strip under `object-fit: cover`, and put INITIALS in the face: **the one picture on the card was the wrong picture, in the wrong shape.** Every upload in this app is cut 1:1 (`HERO_HEAD_W === HERO_HEAD_H === 206`), so the strip threw away the top and bottom of what somebody had framed. ⚠ **No style tiles**, and the `styles` prop is DELETED from `CompactCard` rather than left unread — a dead prop is a lie to the next reader. The `{n} photos` chip went with them: it existed because there was one static photo and no way to say there were more, and the dots under a real rail are that fact told properly | 28 Sep 2026, the user: *"Studio Cards on discover should have swipable photos in top section which are used in posters. and bottom part should contain profile pic and other details. view photo should be same as how it was cut. fix this for using the photo in studio poster and discover as they should be the same. remove dance styles from studio , artist and crew discover cards"*. ⚠ **There is no second crop and no second aspect ratio anywhere in that path**, which is the whole of "they should be the same" — measured at both ends: **206×206 on the studio's page, 352×352 on the card, ratio 1.00 in both.** The size differs on purpose; a hero is a hero and a card is a card. ⚠ One query and one signing call for the whole shelf (`findStudioHeaderPhotosMany`), never one per card |
+| C74 | Discover's head is the prototype's S_discover (4501-4531): the DISCOVER eyebrow, the title at **27px**, and the place chip on its own line below | **The title is `DOS_TYPE.display` — 34px — and the chip sits 5px under it.** 34 is not a new size: it is what a person's name is set at on their own profile, so Discover's title reads at the scale every other title in the app does. The 5 is not a taste call either — it is the eyebrow-to-title gap **read off the painted boxes in both themes**, so the head's three rows sit at one rhythm instead of a title with something floating under it | 28 Sep 2026, the user: *"fix the gap between location drop down and Dance near you . bigger discover heading"*. ⚠ **My first cut was `marginTop: 2` and the probe said so** — 2 put the chip against the heading's descenders. The 27 Sep band fix is the method: measure the painted boxes, do not argue about the CSS. ⚠ They stay on SEPARATE lines, which is C45's own finding (a display heading and a chip cannot share one on a 430px phone without the heading losing words) and it is bigger now, not smaller |
+| R54 | R53 (27 Sep 2026) built the practice desk behind `requireLedCrew`, and said in its own backlog row that a member who does not LEAD the crew cannot open it — *"their calendar row opens the crew's public page instead of a screen that would bounce them"* | **THE CREWS HUB CARRIES "YOUR PRACTICES"** — every practice of every crew you lead or are confirmed on, coming first then over, with the answer pair on anything you were ASKED to and **Register ›** on anything you lead. A member's calendar row opens `/crews` now instead of a page that can act on nothing. ⚠ The card is **EXTRACTED** into `practice-card.tsx`, not copied: this repo has paid that bill three times (`linkChip` twice, the figure row three times, three identity bands), and a card that says CALLED OFF in one place and nothing in the other is exactly that drift. What differs between the two screens is a `foot` slot | 28 Sep 2026, the user: *"no way to check practices you have been a part of fix that"*. ⚠⚠ **C46's lesson met a second time: a backlog row naming a defect is not a decision to accept it** — I wrote this gap down and shipped it the night before. ⚠ **It is NOT a tile, and the reason is R20's own test**: Practice is `#15803D`, hue 142° at 71% saturation, and **Earnings is `#22C55E` — hue 142°, saturation 71%, sixteen points lighter**. That pair is fine on a CREW's grid, which has no Earnings tile (R20's test is per-GRID), and would be two greens on a person's; a second colour for one grid would break the rule that a tile and the desk it opens read one vocabulary. ⚠ The leader gets a LINK, not a second register — two doors to one subject is the shape this file has paid for twice |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

@@ -1,34 +1,73 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { gradientOf } from "@/features/profiles/components/profile-kit";
-import { dosStyleColor } from "@/lib/constants/styles";
 import { VerifiedTick } from "@/features/settings/components/settings-kit";
-import { DOS_DISPLAY, INK } from "@/lib/design/tokens";
+import { DISC_RADIUS, DOS_DISPLAY, INK } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import { publicProfilePath } from "@/lib/routes/publicProfile";
 import type { NearbyTenant } from "@/repositories/discovery";
-import { DosStyleTile } from "./DiscoverFilters";
 import { DosFollowers, DosWhere, initialsOf, kmLabel } from "./discover-kit";
 
 const CARD = "var(--card)";
 const EL = "var(--el)";
+/** the profile picture on the bottom line — the same squircle share every other
+ *  face in the app is cut to (`DISC_RADIUS`), so one picture is one shape at
+ *  every size */
+const FACE = 56;
+
+/** One picture on a card, already signed by the server. */
+export interface CardShot {
+  key: string;
+  src: string;
+  /** a signed URL into the private bucket must skip the image optimizer, which
+   *  would fetch it server-side without the signature and get a 400 */
+  signed?: boolean;
+}
 
 /**
- * A STUDIO IS A ROOM YOU WALK INTO — the prototype's StudioCard (4306-4369):
- * a 150px cover strip (the studio's photo when it has put one up, else a quiet
- * field in its own colours), the count of photos in the corner, THE STUDIO'S
- * OWN FACE ON THE COVER'S EDGE half on and half off, the name at full size,
- * then the one foot line — where, as one fact ("Pune  2.4 km"), and the
- * follower count — and the studio's styles as the app's own tiles, one line
- * that scrolls. The card opens the business's public page. DanceOS's tick sits
- * beside the name where the prototype puts it (4348-4353) — the name keeps the
- * flex so a long one still truncates and the tick is never pushed off.
+ * A STUDIO IS A ROOM YOU WALK INTO — the prototype's StudioCard (4306-4369),
+ * re-cut 27 Sep 2026 to the user's own words: *"Studio Cards on discover should
+ * have swipable photos in top section which are used in posters. and bottom part
+ * should contain profile pic and other details. view photo should be same as how
+ * it was cut."*
+ *
+ * ⚠⚠ THE TOP IS THE POSTERS, AND IT IS SQUARE BECAUSE THE CROP IS SQUARE. Until
+ * today this card drew the studio's PROFILE PICTURE — one photo — stretched
+ * across a 150px-tall full-width strip, and put INITIALS in the face below it.
+ * So the one picture on the card was the wrong picture, shown in the wrong shape:
+ * every upload in this app is cut 1:1 by `PhotoCropper` (`HERO_HEAD_W` ===
+ * `HERO_HEAD_H` === 206), and `object-fit: cover` into a 2.6:1 strip threw away
+ * the top and bottom of what somebody had carefully framed. The rail is
+ * `aspectRatio: 1 / 1` now, which is the crop exactly — what you see here is what
+ * you saw in the cropper and what the studio's own poster rail (`HeroRail`)
+ * shows. ⚠ There is no second crop and no second aspect ratio anywhere in this
+ * path; that is the whole of "they should be the same".
+ *
+ * ⚠ AND THE BOTTOM IS THE PROFILE PICTURE, drawn rather than described. It rode
+ * the cover's edge on a negative margin before and only ever showed initials.
+ * It sits IN the bottom block now, in the app's own squircle, with the picture in
+ * it and the initials as the fallback they were meant to be.
+ *
+ * ⚠ NO STYLE TILES (27 Sep 2026, the user: "remove dance styles from studio,
+ * artist and crew discover cards"). The rail says what a studio is better than a
+ * row of words did, and the styles are on the studio's own page.
+ *
+ * The "{n} photos" chip went with them: it existed because there was one static
+ * photo and no way to say there were more, and the dots under a real rail are
+ * that fact told properly.
  */
-export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: NearbyTenant; followers?: number; styles?: string[] }) {
+export function StudioCard({ tenant, followers = 0, shots = [] }: { tenant: NearbyTenant; followers?: number; shots?: CardShot[] }) {
   const grad = gradientOf(tenant.name);
   const photo = photoUrl(tenant.photoPath);
-  const photos = photo ? 1 : 0;
   const place = tenant.city ?? tenant.area ?? "—";
+  const [idx, setIdx] = useState(0);
+  const [broken, setBroken] = useState<Record<string, true>>({});
+  const [faceBroken, setFaceBroken] = useState(false);
+  const live = shots.filter((s) => !broken[s.key]);
+  const many = live.length > 1;
 
   return (
     <Link
@@ -46,25 +85,75 @@ export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: Nea
       }}
     >
       <div style={{ position: "relative" }}>
-        <div style={{ height: 150, position: "relative", background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }}>
-          {photo ? <Image src={photo} alt="" fill sizes="(max-width: 430px) 100vw, 430px" style={{ objectFit: "cover" }} /> : null}
+        <div
+          role={many ? "region" : undefined}
+          aria-label={many ? `${tenant.name} — ${live.length} pictures, swipe sideways` : undefined}
+          data-testid="studio-card-rail"
+          onScroll={(e) => {
+            const n = e.currentTarget;
+            const i = Math.round(n.scrollLeft / Math.max(1, n.clientWidth));
+            if (i !== idx) setIdx(i);
+          }}
+          style={{
+            display: "flex",
+            overflowX: many ? "auto" : "hidden",
+            scrollSnapType: "x mandatory",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {live.length === 0 ? (
+            /* nothing put up yet: the studio's own two colours, and no initials —
+               the face on the line below already says who this is, and the same
+               letters twice is a stutter (`HeroRail`'s own rule) */
+            <div style={{ flex: "0 0 100%", aspectRatio: "1 / 1", background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }} />
+          ) : (
+            live.map((s) => (
+              <div key={s.key} style={{ flex: "0 0 100%", scrollSnapAlign: "center", position: "relative", aspectRatio: "1 / 1", background: `linear-gradient(140deg, ${grad[0]}55, ${grad[1]}33), var(--el)` }}>
+                <Image
+                  src={s.src}
+                  alt=""
+                  fill
+                  sizes="(max-width: 430px) 100vw, 430px"
+                  style={{ objectFit: "cover" }}
+                  unoptimized={Boolean(s.signed)}
+                  /* a signed URL past its half hour, or an object gone from the
+                     bucket, drops the slide rather than drawing a broken image */
+                  onError={() => setBroken((b) => ({ ...b, [s.key]: true }))}
+                />
+              </div>
+            ))
+          )}
         </div>
-        {photos > 0 ? (
-          <span aria-hidden="true" style={{ position: "absolute", right: 10, top: 10, fontSize: 9, fontWeight: 800, padding: "2px 8px", borderRadius: 999, background: "rgba(0,0,0,.5)", color: "rgba(255,255,255,.9)", fontVariantNumeric: "tabular-nums" }}>
-            {photos} photo{photos === 1 ? "" : "s"}
-          </span>
+        {many ? (
+          <div aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: 10, display: "flex", justifyContent: "center", gap: 5 }}>
+            {live.map((s, i) => (
+              <span
+                key={s.key}
+                style={{
+                  width: i === idx ? 16 : 5,
+                  height: 5,
+                  borderRadius: 3,
+                  background: i === idx ? "#fff" : "rgba(255,255,255,.45)",
+                  boxShadow: "0 1px 3px rgba(0,0,0,.4)",
+                  transition: "width .18s",
+                }}
+              />
+            ))}
+          </div>
         ) : null}
       </div>
 
-      {/* position:relative — the cover above is positioned and would otherwise paint over the face that overlaps it */}
-      <div style={{ padding: "0 13px 12px", minWidth: 0, display: "flex", flexDirection: "column", gap: 5, position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginTop: -26, marginBottom: 2, minWidth: 0 }}>
+      {/* THE BOTTOM: the profile picture and the other details (27 Sep 2026) */}
+      <div style={{ padding: "12px 13px", minWidth: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
           <span
             style={{
-              width: 56,
-              height: 56,
+              width: FACE,
+              height: FACE,
               flexShrink: 0,
-              borderRadius: 17,
+              position: "relative",
+              borderRadius: Math.round(FACE * DISC_RADIUS),
               overflow: "hidden",
               display: "inline-flex",
               alignItems: "center",
@@ -75,40 +164,28 @@ export function StudioCard({ tenant, followers = 0, styles = [] }: { tenant: Nea
               fontWeight: 900,
               letterSpacing: 0.5,
               fontFamily: DOS_DISPLAY,
-              border: "3px solid var(--card)",
-              boxSizing: "border-box",
-              boxShadow: "0 6px 16px -6px rgba(0,0,0,.7)",
+              boxShadow: "0 6px 16px -8px rgba(0,0,0,.6)",
             }}
           >
-            {initialsOf(tenant.name)}
+            {photo && !faceBroken ? <Image src={photo} alt="" fill sizes={`${FACE}px`} style={{ objectFit: "cover" }} onError={() => setFaceBroken(true)} /> : initialsOf(tenant.name)}
           </span>
-          <span style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
               <span style={{ flex: 1, minWidth: 0, fontWeight: 900, fontSize: 17, letterSpacing: -0.4, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
               {tenant.verifiedAt ? <VerifiedTick size={15} /> : null}
             </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, marginTop: 4 }}>
+              {/* A DISTANCE ONLY WHEN IT IS ONE (11 Sep 2026). Until a business has
+                  opened the location picker its lat/lng is its city's centroid, so
+                  "2.4 km" is the distance to the middle of town — the same number
+                  for every studio in the city, and a confident lie on a card that
+                  is asking somebody to travel. Where the point was never chosen the
+                  card says the place and stops. */}
+              <DosWhere city={place} km={tenant.located ? kmLabel(tenant.distanceKm) : null} />
+              <DosFollowers n={followers} />
+            </span>
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          {/* A DISTANCE ONLY WHEN IT IS ONE (11 Sep 2026). Until a business has
-              opened the location picker its lat/lng is its city's centroid, so
-              "2.4 km" is the distance to the middle of town — the same number
-              for every studio in the city, and a confident lie on a card that
-              is asking somebody to travel. Where the point was never chosen the
-              card says the place and stops. */}
-          <DosWhere city={place} km={tenant.located ? kmLabel(tenant.distanceKm) : null} />
-          <DosFollowers n={followers} />
-        </div>
-        {/* the app's own style tiles — one line that scrolls, not a block that wraps (4360-4366) */}
-        {styles.length ? (
-          <div style={{ display: "flex", gap: 6, marginTop: 1, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 1 }}>
-            {styles.map((s) => (
-              <span key={s} style={{ flexShrink: 0, display: "inline-flex" }}>
-                <DosStyleTile label={s} color={dosStyleColor(s)} small />
-              </span>
-            ))}
-          </div>
-        ) : null}
       </div>
     </Link>
   );

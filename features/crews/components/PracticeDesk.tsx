@@ -8,8 +8,9 @@ import { cancelCrewPracticeAction, respondToPracticeAction, setPracticeAttendanc
 import { findPracticePeopleAction } from "@/features/crews/server-actions/practicePeople";
 import { photoUrl } from "@/lib/media/photo";
 import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
-import { PRACTICE_TINT, PRACTICE_WORD, practiceClock, practiceWhen, type CrewPractice, type PracticePerson } from "@/types/crewPractice";
+import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen, type CrewPractice, type PracticePerson } from "@/types/crewPractice";
 import { CrewFace, Toast, bizBtn, bizCard, pressKey } from "./crew-kit";
+import { PRACTICE_HEAD, PracticeCard, splitPractices } from "./practice-card";
 
 const TINT = DOS_TOOLS.practice.c;
 
@@ -35,8 +36,7 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
   const [, start] = useTransition();
 
   const now = new Date(todayIso).getTime();
-  const coming = practices.filter((p) => new Date(p.endsAt).getTime() >= now && p.status !== "cancelled");
-  const over = practices.filter((p) => new Date(p.endsAt).getTime() < now || p.status === "cancelled");
+  const { coming, over } = splitPractices(practices, now);
 
   const say = (m: string) => {
     setToast(m);
@@ -89,39 +89,13 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
     const cancelled = p.status === "cancelled";
     const past = new Date(p.endsAt).getTime() < now;
     return (
-      <div key={p.id} style={{ ...bizCard, borderLeft: `4px solid ${cancelled ? "var(--el)" : TINT}`, opacity: cancelled ? 0.7 : 1 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <b style={{ fontSize: 14.5 }}>{practiceWhen(p.startsAt)}</b>
-          <span style={{ fontSize: 11, color: "var(--sub)" }}>to {practiceClock(p.endsAt)}</span>
-          {cancelled ? <span style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: "var(--el)", color: "var(--sub)" }}>CALLED OFF</span> : null}
-        </div>
-        <div style={{ fontSize: 12, color: "var(--sub)", marginTop: 3 }}>{p.place}</div>
-        {p.note ? <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{p.note}</div> : null}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-          <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.6, padding: "3px 8px", borderRadius: 999, background: `${PRACTICE_TINT[p.myStatus]}22`, color: PRACTICE_TINT[p.myStatus] }}>{PRACTICE_WORD[p.myStatus].toUpperCase()}</span>
-          <span style={{ fontSize: 11, color: "var(--muted)" }}>
-            {p.going} of {p.asked} coming
-          </span>
-        </div>
-
-        {/* ⚠ THE PERSON ASKED ANSWERS HERE TOO, not only in their Inbox. A
-            confirmed member reads this desk (the policy admits the whole crew),
-            and a practice they have not answered with no way to answer it on the
-            screen that shows it is the shape this repo calls a door that is not a
-            door. The Inbox keeps its row for the same ask — one fact, two places
-            you can act on it, exactly as a class ask is answerable from the Inbox
-            and from the class page. */}
-        {!cancelled && !past && p.myStatus !== "leader" ? (
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button type="button" onClick={() => answer(p.id, false)} aria-label={`Cannot make ${practiceWhen(p.startsAt)}`} style={{ ...bizBtn, flex: 1, borderStyle: "solid", opacity: p.myStatus === "rejected" ? 0.5 : 1 }}>
-              Cannot make it
-            </button>
-            <button type="button" onClick={() => answer(p.id, true)} aria-label={`Coming to ${practiceWhen(p.startsAt)}`} style={{ ...bizBtn, flex: 1, borderStyle: "solid", background: TINT, color: "#fff", borderColor: TINT, opacity: p.myStatus === "confirmed" ? 0.5 : 1 }}>
-              I am coming
-            </button>
-          </div>
-        ) : null}
-
+      <PracticeCard
+        key={p.id}
+        practice={p}
+        now={now}
+        onAnswer={answer}
+        foot={
+          <>
         {p.iLead ? (
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <button type="button" onClick={() => openRegister(p.id)} aria-expanded={isOpen} aria-label={`Register for ${practiceWhen(p.startsAt)}`} style={{ ...bizBtn, flex: 1, borderStyle: "solid" }}>
@@ -164,7 +138,9 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
             ))}
           </div>
         ) : null}
-      </div>
+          </>
+        }
+      />
     );
   };
 
@@ -184,14 +160,14 @@ export function PracticeDesk({ crewId, crewName, practices, todayIso }: { crewId
 
       {coming.length ? (
         <>
-          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", margin: "14px 0 8px" }}>COMING UP</div>
+          <div style={PRACTICE_HEAD}>COMING UP</div>
           {coming.map(card)}
         </>
       ) : null}
 
       {over.length ? (
         <>
-          <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.9, color: "var(--muted)", margin: "14px 0 8px" }}>OVER</div>
+          <div style={PRACTICE_HEAD}>OVER</div>
           {over.map(card)}
         </>
       ) : null}

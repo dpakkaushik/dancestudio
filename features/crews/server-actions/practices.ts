@@ -34,12 +34,14 @@ async function requireUser() {
 }
 
 /** ⚠ EVERY SCREEN A PRACTICE SHOWS ON. It is on the crew's desk, on the crew's
- *  calendar, on every member's own calendar and — while it is unanswered — in
- *  their Inbox, so a write that revalidated only the desk would leave the other
- *  three saying yesterday's thing. */
+ *  calendar, on every member's own calendar, on the CREWS HUB (27 Sep 2026 — the
+ *  one screen a member who does not lead the crew can act on it from) and, while
+ *  it is unanswered, in their Inbox. A write that revalidated only the desk would
+ *  leave the other four saying yesterday's thing. */
 function revalidatePractice(crewId?: string) {
   revalidatePath("/calendar");
   revalidatePath("/inbox");
+  revalidatePath("/crews");
   if (crewId) {
     revalidatePath(`/crews/${crewId}/manage/practice`);
     revalidatePath(`/crews/${crewId}/manage/calendar`);
