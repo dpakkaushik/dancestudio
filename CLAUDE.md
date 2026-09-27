@@ -116,7 +116,17 @@
 >   rolled back**, then applied · live read-back **10/10** · **`shoot-discover`
 >   27/27** (new) · **`shoot-practice` 37/37** (27 before — the ten new ones are
 >   the member's own screen, both ends) · **`shoot-hero` 183/183** ·
->   **`shoot-tiles` 155/155** · **6/6 proofs** on the migrated schema.
+>   **`shoot-tiles` 155/155** · **6/6 proofs** on the migrated schema · **the
+>   whole e2e suite 58/58 in one run, 16.2 min on one worker, no red at any
+>   point**.
+>   **PUSHED AND LIVE (`d3f09ad`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-discover.js` 27/27 ON THE DEPLOYMENT** — a real studio built in
+>   Kolkata on the live host, three real objects in the private bucket, the crop
+>   measured at both ends · **`shoot-practice.js` 37/37 on the deployment**, two
+>   real accounts through the whole loop including the member's own screen ·
+>   **`shoot-tiles.js` 155/155 against the live host**, no page error.
 > * ⚠ **AND FOUR REDS ON THE WAY WERE THE CHECK, WHICH IS WORTH LISTING BECAUSE
 >   THEY ARE FOUR DIFFERENT WAYS TO MEASURE THE WRONG THING.** (1) The dry run
 >   asserted `profiles.role = 'user'` with no `deleted_at` filter and read the
