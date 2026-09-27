@@ -153,6 +153,7 @@ export function InboxScreen({
   enquiriesIn,
   enquiriesOut,
   nowIso,
+  desk = "inbox",
 }: {
   /** the profile-tinted wash the rest of the app opens on (5681) */
   accent: string;
@@ -161,9 +162,19 @@ export function InboxScreen({
   enquiriesIn: Enquiry[];
   enquiriesOut: Enquiry[];
   nowIso: string;
+  /** ⚠⚠ WHICH DESK THIS IS (27 Sep 2026, the user: *"only enquiry becomes a new
+   *  option in tab and is removed from inbox"*).
+   *
+   *  Enquiries were the Inbox's third section. They are a TAB of their own now,
+   *  and the Inbox keeps what somebody has asked OF you. The two screens share
+   *  this component rather than forking it — the cards, the sides, the Done
+   *  treatment and the answer paths are identical, and a second copy is the bill
+   *  this repo has paid three times (`linkChip` twice, the figure row three
+   *  times, three identity bands). What differs is which pills are drawn. */
+  desk?: "inbox" | "enquiries";
 }) {
   const router = useRouter();
-  const [sect, setSect] = useState<"req" | "join" | "enq">("req");
+  const [sect, setSect] = useState<"req" | "join" | "enq" | "done">(desk === "enquiries" ? "enq" : "req");
   const [rqSide, setRqSide] = useState<"in" | "out">("in");
   const [enqSide, setEnqSide] = useState<"in" | "out">("in");
   const [enqType, setEnqType] = useState<"all" | EnquiryTypeKey>("all");
@@ -203,16 +214,44 @@ export function InboxScreen({
    *  one. **Requests** is what somebody wants you FOR (a class, a room, a
    *  duet); **Invites** is what somebody wants you to BELONG to; **Enquiries**
    *  is somebody wanting to book you. */
-  const askIn = requestsIn.filter((r) => !isJoin(r));
-  const askOut = requestsOut.filter((r) => !isJoin(r));
-  const joinIn = requestsIn.filter(isJoin);
-  const joinOut = requestsOut.filter(isJoin);
-  const SECT: Array<["req" | "join" | "enq", string, number, string]> = [
-    ["req", "Requests", askIn.length, "#DC2626"],
-    ["join", "Invites", joinIn.length, JOIN_TINT.invite ?? PINK],
-    ["enq", "Enquiries", newIn.length, "#EC4899"],
-  ];
-  const owed = requestsIn.length + newIn.length;
+  /** ⚠⚠ AND A FOURTH SECTION FOR WHAT IS OVER (27 Sep 2026, the user:
+   *  *"sepreate section request , invites and enquiries which are already
+   *  completed"*).
+   *
+   *  Since 19 Sep an answered ask STAYS on the desk wearing its answer — the
+   *  user's own rule then ("enquiries and requests don't get removed after
+   *  accepting"), and the right one: a decision you made is a record. What it
+   *  cost is that the live desks filled with rows carrying no buttons, so the
+   *  three lists stopped being lists of things to DO. Both rules hold if the
+   *  answered rows move rather than vanish: **Done** is where they go, and
+   *  nothing is deleted. */
+  const isDone = (r: RequestItem) => Boolean(r.status && r.status !== "asked");
+  const askIn = requestsIn.filter((r) => !isJoin(r) && !isDone(r));
+  const askOut = requestsOut.filter((r) => !isJoin(r) && !isDone(r));
+  const joinIn = requestsIn.filter((r) => isJoin(r) && !isDone(r));
+  const joinOut = requestsOut.filter((r) => isJoin(r) && !isDone(r));
+  /* both directions in one list: what is over is over, and "who asked whom" is
+     already on every card */
+  /* ⚠ each desk's Done holds its OWN kind. An answered class ask is not a
+     closed enquiry, and one "Done" list spanning two tabs would be a third
+     place to look for either. */
+  const onEnq = desk === "enquiries";
+  const doneReq = onEnq ? [] : [...requestsIn, ...requestsOut].filter(isDone);
+  const doneEnq = onEnq ? [...enquiriesIn, ...enquiriesOut].filter((e) => ["won", "lost"].includes(enquiryStage(e))) : [];
+  const doneN = doneReq.length + doneEnq.length;
+  const SECT: Array<["req" | "join" | "enq" | "done", string, number, string]> = onEnq
+    ? [
+        ["enq", "Enquiries", newIn.length, "#EC4899"],
+        ["done", "Done", doneN, "#22C55E"],
+      ]
+    : [
+        ["req", "Requests", askIn.length, "#DC2626"],
+        ["join", "Invites", joinIn.length, JOIN_TINT.invite ?? PINK],
+        /* ⚠ its badge counts what is IN it, not what waits on you — nothing here
+           waits on anybody, and a red 0 beside "Done" would say the opposite */
+        ["done", "Done", doneN, "#22C55E"],
+      ];
+  const owed = onEnq ? newIn.length : requestsIn.length;
 
   /* one answer per kind — the RPC behind each decides who may give it */
   const answer = (r: RequestItem, accept: boolean) =>
@@ -247,9 +286,36 @@ export function InboxScreen({
    *  card can wear them without a third copy. */
   const askActions = (r: RequestItem) => {
     if (r.status && r.status !== "asked") {
+      /** ⚠⚠ A STAMP, NOT A SENTENCE WHERE THE BUTTONS WERE (27 Sep 2026, the
+       *  user: *"change the way accepted looks like on cards for all these"*).
+       *  It was a line of green text sitting in the action row's slot — so an
+       *  answered card looked like a card whose buttons had failed to load, and
+       *  on the Done desk every row was a paragraph. A filled pill in the
+       *  answer's own colour reads as what it is: a decision, already made.
+       *  ⚠ The WORDS are unchanged, because they carry who answered — "you said
+       *  yes" and "Accepted by {who}" are two different facts and the desk shows
+       *  both directions in one list. */
+      const yes = r.status === "confirmed";
       return (
-        <div style={{ flex: 1, fontSize: 11, fontWeight: 900, padding: "4px 2px", color: r.status === "confirmed" ? "#22C55E" : "#F87171" }}>
-          {r.status === "confirmed" ? (r.dir === "in" ? "✅ Accepted — you said yes" : `✅ Accepted by ${r.who}`) : r.dir === "in" ? "✕ Rejected — you said no" : `✕ Rejected by ${r.who}`}
+        <div style={{ flex: 1, display: "flex", padding: "2px 0" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 999,
+              fontSize: 10.5,
+              fontWeight: 900,
+              letterSpacing: 0.2,
+              background: yes ? "rgba(34,197,94,.15)" : "rgba(248,113,113,.14)",
+              color: yes ? "#22C55E" : "#F87171",
+              border: `1.5px solid ${yes ? "rgba(34,197,94,.4)" : "rgba(248,113,113,.36)"}`,
+            }}
+          >
+            <span aria-hidden="true">{yes ? "✓" : "✕"}</span>
+            {yes ? (r.dir === "in" ? "Accepted — you said yes" : `Accepted by ${r.who}`) : r.dir === "in" ? "Rejected — you said no" : `Rejected by ${r.who}`}
+          </span>
         </div>
       );
     }
@@ -503,8 +569,29 @@ export function InboxScreen({
         ) : null}
 
         {answered ? (
-          <div style={{ marginTop: 11, fontSize: 11, fontWeight: 900, color: r.status === "confirmed" ? "#22C55E" : "#F87171" }}>
-            {r.status === "confirmed" ? (r.dir === "in" ? "✅ Joined — you said yes" : `✅ Joined by ${r.who}`) : r.dir === "in" ? "✕ Declined — you said no" : `✕ Declined by ${r.who}`}
+          /* ⚠ THE SAME STAMP THE ASK CARD WEARS (27 Sep 2026, the user: "change
+             the way accepted looks like on cards for ALL THESE") — a filled pill
+             in the answer's own colour, not a line of green text where the
+             buttons used to be. `askActions` carries the whole reason. */
+          <div style={{ marginTop: 11, display: "flex" }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 999,
+                fontSize: 10.5,
+                fontWeight: 900,
+                letterSpacing: 0.2,
+                background: r.status === "confirmed" ? "rgba(34,197,94,.15)" : "rgba(248,113,113,.14)",
+                color: r.status === "confirmed" ? "#22C55E" : "#F87171",
+                border: `1.5px solid ${r.status === "confirmed" ? "rgba(34,197,94,.4)" : "rgba(248,113,113,.36)"}`,
+              }}
+            >
+              <span aria-hidden="true">{r.status === "confirmed" ? "✓" : "✕"}</span>
+              {r.status === "confirmed" ? (r.dir === "in" ? "Joined — you said yes" : `Joined by ${r.who}`) : r.dir === "in" ? "Declined — you said no" : `Declined by ${r.who}`}
+            </span>
           </div>
         ) : r.dir === "in" ? (
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -661,8 +748,18 @@ export function InboxScreen({
   return (
     <div style={{ position: "relative", background: LILAC, color: "var(--text)", maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
       <div aria-hidden="true" style={{ position: "absolute", top: 0, left: 0, right: 0, height: 230, pointerEvents: "none", background: `linear-gradient(180deg, ${accent}5c 0%, ${accent}20 44%, transparent 100%)` }} />
-      <div style={{ padding: "10px 16px 0", position: "relative" }}>
-        <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.45, color: "var(--sub)", marginBottom: 12 }}>{owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}</div>
+      {/* ⚠⚠ THE HEADING WAS MISSING (27 Sep 2026, the user: "inbox heading is
+          missing"). The three-desk re-cut earlier the same day took the title
+          out with the paragraph beside it, and `/inbox` is a TAB — so the chrome
+          draws the wordmark rather than a drill title and nothing named the
+          screen at all. That is **no `<h1>` on the page**, the fourth time this
+          repo has found that exact shape (the desks 18 Sep, the studio Team desk
+          21 Sep, `EventForm` and `/rooms` 22 Sep), and the one thing a screen
+          reader has to move by. Discover's own head is the model: a display
+          heading with the count as its sub-line. */}
+      <div style={{ padding: "12px 16px 0", position: "relative" }}>
+        <h1 style={{ margin: 0, fontFamily: DOS_DISPLAY, fontSize: 27, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.08 }}>{onEnq ? "Enquiries" : "Inbox"}</h1>
+        <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.45, color: "var(--sub)", margin: "4px 0 12px" }}>{owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}</div>
       </div>
       <div style={{ display: "flex", gap: 7, overflowX: "auto", scrollbarWidth: "none", padding: "0 16px 12px", position: "relative" }}>
         {SECT.map(([k, l, n, tint]) => {
@@ -816,6 +913,28 @@ export function InboxScreen({
               </>
             ) : null}
           </>
+        ) : null}
+
+        {/* ── DONE — what is over, in one place (27 Sep 2026) ────────────────
+            Every answered ask and every closed enquiry, both directions, newest
+            first. ⚠ It draws the SAME three cards the live desks draw — a class
+            ask is still a class card, an invitation still the join card, an
+            enquiry still its own — because a decision you made should look like
+            the thing you decided about, not like a log line. What differs is
+            only that the action row is the stamp. ── */}
+        {sect === "done" ? (
+          doneN === 0 ? (
+            <div style={emptyBox}>
+              <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing finished yet</div>
+              <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Answered requests and invitations, and enquiries that are won or lost, stay here.</div>
+            </div>
+          ) : (
+            <>
+              {doneReq.filter((r) => !isJoin(r)).map(askCard)}
+              {doneReq.filter(isJoin).map(joinCard)}
+              {doneEnq.map(enquiryCard)}
+            </>
+          )
         ) : null}
       </div>
 

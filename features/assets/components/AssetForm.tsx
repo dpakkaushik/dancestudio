@@ -13,6 +13,7 @@ import {
   FormToast,
   formPrimary,
 } from "@/components/ui/FormPage";
+import { Pick } from "@/components/ui/PickSheet";
 import { saveAssetAction } from "@/features/assets/server-actions/assets";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { rupees } from "@/features/settings/components/settings-kit";
@@ -99,18 +100,17 @@ export function AssetForm({ businessId }: { businessId: string; businessName?: s
         <input value={name} onChange={(e) => setName(e.target.value.slice(0, 80))} placeholder="e.g. PA system" aria-label="Asset name" style={FORM_INPUT} />
 
         <div style={FORM_LABEL}>TYPE OF ASSET</div>
-        <select
+        {/* ⚠ THE APP'S OWN SHEET, NOT THE PHONE'S (27 Sep 2026) — this form opens
+            as a sheet over the Assets desk, and a native `<select>` inside it put
+            the OS's own full-screen picker over the whole app. Same fourteen
+            words, same value, same accessible name. */}
+        <Pick
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          aria-label="Type of asset"
-          style={{ ...FORM_INPUT, fontWeight: 700, WebkitAppearance: "none", appearance: "none" }}
-        >
-          {ASSET_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+          rows={ASSET_CATEGORIES.map((c) => ({ value: c, label: c }))}
+          onPick={setCategory}
+          ariaLabel="Type of asset"
+          style={{ ...FORM_INPUT, fontWeight: 700 }}
+        />
 
         <div style={FORM_LABEL}>WHAT IT IS WORTH</div>
         <input

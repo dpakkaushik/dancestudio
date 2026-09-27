@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Pick } from "@/components/ui/PickSheet";
 import { Toast, bizCard, sinceWords } from "@/features/crews/components/crew-kit";
 import {
   askOrganizationMemberAction,
@@ -108,7 +109,7 @@ export function OrgTeamDesk({ orgId, orgName, members }: { /** the ORGANIZATION 
         ))}
       </div>
       {/* the one fact the screen cannot show: what these labels are NOT */}
-      <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.45, margin: "0 2px 12px" }}>Owner and Team are labels on this organization&apos;s public page; Event team may run its events. Nobody here gets a login or a seat on any studio.</div>
+      <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.45, margin: "0 2px 12px" }}>Event team may run this organization&apos;s events. No label here is a login, or a seat on a studio.</div>
       {error ? (
         <div role="alert" style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>
           {error}
@@ -124,7 +125,13 @@ export function OrgTeamDesk({ orgId, orgName, members }: { /** the ORGANIZATION 
         }}
       />
 
-      {members.length === 0 ? <div style={{ fontSize: 12, color: "var(--sub)", padding: "8px 2px 14px" }}>Nobody named yet. Ask a user or an artist above — they are shown on your page once they say yes.</div> : null}
+      {/* the empty state all three Team desks wear: a dashed, centred `bizCard`
+          (27 Sep 2026 — this one was a bare sentence with no container) */}
+      {members.length === 0 ? (
+        <div style={{ ...bizCard, textAlign: "center", fontSize: 12, color: "var(--sub)", border: "1.5px dashed var(--el)", lineHeight: 1.5 }}>
+          Nobody named yet. Ask a user or an artist above — they are shown on your page once they say yes.
+        </div>
+      ) : null}
 
       {members.map((m) => {
         const rc = ROLE_TINT[m.role];
@@ -156,24 +163,30 @@ export function OrgTeamDesk({ orgId, orgName, members }: { /** the ORGANIZATION 
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 9, flexWrap: "wrap" }}>
               {/* a row only offers what it can actually change: a label moves only once they have said yes */}
-              {/* ⚠ THE LABEL IS A DROPDOWN (20 Sep 2026), not a toggle — a plain
-                  <select> so the whole list is one press on a phone. The studio
-                  rows it carried are gone with the studios (26 Sep 2026). */}
+              {/* ⚠ THE LABEL IS A DROPDOWN (20 Sep 2026), not a toggle — so the
+                  whole list is one press on a phone. The studio rows it carried
+                  are gone with the studios (26 Sep 2026).
+                  ⚠ AND IT IS THE APP'S OWN SHEET SINCE 27 Sep 2026: a native
+                  `<select>` on a roster row is a full-screen OS picker on a
+                  phone, which is the one thing the user asked to stop. Three
+                  words, one accessible name, unchanged. */}
               {!pending ? (
-                <select
-                  aria-label={`What ${m.name} is`}
+                <Pick
+                  ariaLabel={`What ${m.name} is`}
                   disabled={busy}
                   value={m.role}
-                  onChange={(e) => {
-                    const role = e.target.value as OrgTeamRole;
+                  rows={[
+                    { value: "owner", label: "Owner" },
+                    { value: "event_team", label: "Event team" },
+                    { value: "member", label: "Other team member" },
+                  ]}
+                  onPick={(v) => {
+                    const role = v as OrgTeamRole;
+                    if (role === m.role) return;
                     void run(() => setOrganizationMemberRoleAction({ memberId: m.id, role, orgId }), `${m.name} → ${ROLE_WORD[role]}`);
                   }}
-                  style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, cursor: "pointer", background: "var(--el)", color: "var(--text)", border: "none", fontFamily: "inherit" }}
-                >
-                  <option value="owner">Owner</option>
-                  <option value="event_team">Event team</option>
-                  <option value="member">Other team member</option>
-                </select>
+                  style={{ fontSize: 10, fontWeight: 800, padding: "6px 10px", borderRadius: 999, background: "var(--el)", color: "var(--text)", border: "none" }}
+                />
               ) : null}
               <button
                 type="button"

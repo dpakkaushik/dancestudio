@@ -11,6 +11,7 @@ import type { StudioLinkTarget } from "@/features/tenants/components/StudioLinks
 import { INK, MUTED, SUB } from "@/lib/design/tokens";
 import type { Crew } from "@/types/crew";
 import type { Profile, SocialLink } from "@/types/profile";
+import { enquiryTypesFor } from "@/types/enquiry";
 import { useEditMode } from "./EditMode";
 import { linkChip } from "./profile-band";
 import { Sheet, fieldInput, fieldLabel, sheetBtn } from "./profile-kit";
@@ -119,6 +120,14 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
     whatsapp: whatsappBox(socials),
     /* null on the record means every type the kind allows; an empty list means none — no button */
     enquiry: !(Array.isArray(enquiryTypes) && enquiryTypes.length === 0),
+    /* the kinds it takes — null on the record is EVERY kind, so the chips open
+       all-on, which is what the record means rather than what it literally holds */
+    kinds:
+      target.kind === "business"
+        ? Array.isArray(enquiryTypes) && enquiryTypes.length
+          ? enquiryTypes
+          : enquiryTypesFor(target.tenant.type).map((t) => t.k)
+        : ([] as string[]),
   });
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -133,9 +142,22 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
     if (typeof nextSocials === "string") return setErr(nextSocials);
     const phone = d.phone.trim() || null;
     const email = d.email.trim() || null;
-    /* an enquiry switched off is an EMPTY list of accepted types; switched back
-       on it is "every type" (null) unless a narrower list was kept in Settings */
-    const enqNext = (was: string[] | null): string[] | null => (d.enquiry ? (Array.isArray(was) && was.length ? was : null) : []);
+    /** ⚠⚠ THE KINDS ARE HERE NOW, NOT IN SETTINGS (27 Sep 2026, the user:
+     *  *"enquiries should be removed from settings"*). Which kinds a business
+     *  takes is what its Enquiry BUTTON offers, so it belongs beside the switch
+     *  that draws the button, not two screens away under MONEY — and having it
+     *  in both places was the two-doors-to-one-subject shape this file has
+     *  recorded the cost of three times.
+     *  ⚠ NULL AND A FULL LIST ARE THE SAME ANSWER and the column's own rule:
+     *  null means "every kind this type allows", so a business that ticks them
+     *  all is stored as null rather than as a list that would silently stop
+     *  growing the day a sixth kind is added. Off is an EMPTY list — no button. */
+    const enqNext = (): string[] | null => {
+      if (!d.enquiry) return [];
+      const all = enquiryTypesFor(target.kind === "business" ? target.tenant.type : "studio").map((t) => t.k);
+      const picked = all.filter((k) => d.kinds.includes(k));
+      return picked.length === 0 || picked.length === all.length ? null : picked;
+    };
     start(async () => {
       setErr(null);
       let error: string | null = null;
@@ -145,7 +167,7 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
         error = out.error;
       } else if (target.kind === "business") {
         const t = target.tenant;
-        const out = await updateTenantProfileAction({ tenantId: t.id, styles: lists.styles, socials: nextSocials, foundedYear: t.foundedYear, phone, contactEmail: email, accepts: t.accepts, enquiryTypes: enqNext(t.enquiryTypes) });
+        const out = await updateTenantProfileAction({ tenantId: t.id, styles: lists.styles, socials: nextSocials, foundedYear: t.foundedYear, phone, contactEmail: email, accepts: t.accepts, enquiryTypes: enqNext() });
         error = out.error;
       } else {
         const c = target.crew;
@@ -168,11 +190,59 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
 
   const who = target.kind === "person" ? "your page" : target.kind === "business" ? "its page" : "the crew's page";
 
+  /** the row as the page will draw it, in the page's own order. ⚠ Call obeys
+   *  the SWITCH as well as the box, because that is the rule the page keeps —
+   *  a number with the switch off reaches nobody, and a chip that lit anyway
+   *  would be the preview disagreeing with the thing it previews. */
+  const callOn = Boolean(d.phone.trim()) && (!hasSwitch || d.phonePublic);
+  const preview: Array<[string, boolean]> = [
+    ...(hasEnquiry || (target.kind === "person" && target.isArtist) ? ([["Enquiry", hasEnquiry ? d.enquiry : true] as [string, boolean]]) : []),
+    ["Call", callOn],
+    ["Mail", Boolean(d.email.trim())],
+    ["Message", Boolean(d.whatsapp.trim())],
+    ...(target.kind === "business" ? ([["Location", true] as [string, boolean]]) : []),
+  ];
+
   return (
     <Portal>
       <Sheet label="Contact buttons" onClose={onClose} maxHeight="88vh">
         <b style={{ fontSize: 16.5, letterSpacing: -0.2 }}>Contact buttons</b>
-        <div style={{ fontSize: 11.5, color: SUB, marginTop: 4, lineHeight: 1.45 }}>Each button is drawn while its box is filled — empty a box to take the button off {who}.</div>
+
+        {/* ⚠⚠ THE FORM SHOWS WHAT IT IS BUILDING (27 Sep 2026, the user: *"fix
+            add contact buttons form in a better way on all profiles"*).
+            It was a flat stack of boxes under one sentence — *"each button is
+            drawn while its box is filled"* — which is a rule you have to hold in
+            your head while you type, on a sheet whose whole subject is a ROW OF
+            BUTTONS you cannot see from it. So the row is here, live: a chip per
+            button, lit when it will be drawn and dim when it will not, in the
+            order the page draws them. Empty a box and its chip goes out while
+            you watch, which is the sentence made unnecessary rather than
+            reworded — C4c's rule (*helper text only where the control cannot
+            speak*) applied to a control that could speak all along. */}
+        <div aria-hidden="true" style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 2px" }}>
+          {preview.map(([label, on]) => (
+            <span
+              key={label}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "6px 11px",
+                borderRadius: 999,
+                fontSize: 10.5,
+                fontWeight: 900,
+                background: on ? "var(--text)" : "var(--card)",
+                color: on ? "var(--solid)" : MUTED,
+                border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
+                opacity: on ? 1 : 0.65,
+              }}
+            >
+              {on ? "●" : "○"} {label}
+            </span>
+          ))}
+        </div>
+        {/* the one thing the chips cannot say: WHOSE page they land on */}
+        <div style={{ fontSize: 10.5, color: MUTED, margin: "6px 0 0" }}>on {who}</div>
 
         <div style={fieldLabel}>Call · mobile</div>
         <input aria-label="Phone" type="tel" inputMode="tel" value={d.phone} onChange={(e) => setD((x) => ({ ...x, phone: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
@@ -187,37 +257,61 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
 
         <div style={fieldLabel}>Message · WhatsApp</div>
         <input aria-label="WhatsApp" type="tel" inputMode="tel" value={d.whatsapp} onChange={(e) => setD((x) => ({ ...x, whatsapp: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
-        <div style={{ fontSize: 10.5, color: MUTED, marginTop: 4 }}>Opens a WhatsApp chat. It is also a chip in the links row.</div>
 
         {hasEnquiry ? (
           <>
             <div style={fieldLabel}>Enquiry</div>
             <Switch on={d.enquiry} label="Take enquiries" onClick={() => setD((x) => ({ ...x, enquiry: !x.enquiry }))} />
-            <div style={{ fontSize: 10.5, color: MUTED, marginTop: 2 }}>Which kinds you take is Settings › Enquiry types.</div>
-          </>
-        ) : target.kind === "person" && target.isArtist ? (
-          <>
-            <div style={fieldLabel}>Enquiry</div>
-            <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.45 }}>Enquiries reach your artist page — which kinds, or none, is Settings › Enquiry types.</div>
+            {/* the kinds, only while the button is on — a list of what you take
+                under a switch that says you take none is a control with nothing
+                to govern */}
+            {d.enquiry ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
+                {enquiryTypesFor(target.kind === "business" ? target.tenant.type : "studio").map((t) => {
+                  const on = d.kinds.includes(t.k);
+                  return (
+                    <button
+                      key={t.k}
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={t.label}
+                      onClick={() => setD((x) => ({ ...x, kinds: on ? x.kinds.filter((k) => k !== t.k) : [...x.kinds, t.k] }))}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "7px 12px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        background: on ? "var(--text)" : "var(--card)",
+                        color: on ? "var(--solid)" : SUB,
+                        border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
+                      }}
+                    >
+                      {on ? "✓" : "＋"} {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </>
         ) : null}
 
-        <div style={fieldLabel}>Location</div>
-        <div style={{ fontSize: 11.5, color: SUB, lineHeight: 1.45 }}>
-          {target.kind === "business" ? (
-            <>
-              The pin on the map, from{" "}
-              <Link href={target.detailsHref} scroll={false} style={{ color: INK, fontWeight: 800 }}>
-                Edit details
-              </Link>
-              .
-            </>
-          ) : target.kind === "person" ? (
-            "Your city, from Edit details. A person's page carries no map."
-          ) : (
-            "The crew's city, from Edit details."
-          )}
-        </div>
+        {/* ⚠ LOCATION IS NOT A FIELD HERE AND NEVER WAS (27 Sep 2026). It had a
+            `fieldLabel` and a paragraph in place of a control — a heading with
+            nothing under it, which reads as a box that failed to render. The pin
+            is Edit details' and the chip above says the button is on; what is
+            left is the door, one line, where a door belongs. */}
+        {target.kind === "business" ? (
+          <div style={{ marginTop: 14 }}>
+            <Link href={target.detailsHref} scroll={false} style={{ fontSize: 11.5, fontWeight: 900, color: INK, textDecoration: "none" }}>
+              The pin on the map is in Edit details ›
+            </Link>
+          </div>
+        ) : null}
 
         {err ? <div role="alert" style={{ fontSize: 12, color: "#F87171", marginTop: 10 }}>{err}</div> : null}
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>

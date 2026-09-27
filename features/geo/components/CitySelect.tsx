@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
+import { PickSheet, type PickRow } from "@/components/ui/PickSheet";
 import { INK, SUB } from "@/lib/design/tokens";
 import { DosPinIcon } from "@/features/discovery/components/discover-kit";
 
@@ -18,17 +18,17 @@ const MUTED = "var(--muted)";
  *  native select over the registry with a search behind it, the forms carried
  *  a Places search field, Stats had a plain select, and onboarding and the
  *  Edit profile sheet were free-text boxes. This is the chip's mechanism made
- *  into the control for all of them: a NATIVE `<select>`, invisible and
- *  full-size over the field, listing THE CITIES DANCEOS SERVES — read from the
- *  database's `cities` registry, never a constant in this file — with the
- *  current value always among the options, because a picker must never fail
- *  to show its own value. The "Search another city…" the first cut carried is
- *  gone with the user's closed list: a city outside it is not a place this app
- *  serves yet, and a form must not be able to name one.
+ *  into the control for all of them: one trigger, invisible and full-size over
+ *  the field, listing THE CITIES DANCEOS SERVES — read from the database's
+ *  `cities` registry, never a constant in this file — with the current value
+ *  always among the options, because a picker must never fail to show its own
+ *  value. The "Search another city…" the first cut carried is gone with the
+ *  user's closed list: a city outside it is not a place this app serves yet,
+ *  and a form must not be able to name one.
  *
- *  A platform picker is still the best way to choose one of eight things on a
- *  phone. Two dresses: the FIELD (a form row with its label) and the CHIP
- *  (Discover's 34px pill). Same options, same words.
+ *  Two dresses: the FIELD (a form row with its label) and the CHIP (Discover's
+ *  34px pill). Same options, same words. ⚠ It was a NATIVE `<select>` until
+ *  27 Sep 2026 — the block below says what it is now and why.
  *
  *  ⚠ AND ONE ROW ABOVE THE CITIES THAT IS NOT A CITY (`lead`, 21 Sep 2026, the
  *  user: "merge near me and city filter on discover"). Discover asked WHERE
@@ -68,6 +68,7 @@ export function CitySelect({
   allowNone = false,
   noneLabel = "Everywhere",
   lead = null,
+  navigates = false,
 }: {
   /** the city as it stands, or null */
   value: string | null;
@@ -89,6 +90,10 @@ export function CitySelect({
   noneLabel?: string;
   /** a first row that is not a city (Discover's Near me) */
   lead?: CityLead | null;
+  /** ⚠ picking NAVIGATES (Discover's place chip, the Stats city both
+   *  `router.replace`) — the sheet must not spend its history entry, or the
+   *  back() races the router. `PickSheet` says why at length. */
+  navigates?: boolean;
 }) {
   /* whatever city is being shown is always in the list, even if the registry
      has not got to it — a picker must never fail to show its own value */
@@ -99,7 +104,6 @@ export function CitySelect({
   const selectValue = lead?.active ? lead.value : (value ?? NONE);
   const shown = lead?.active ? lead.label : (value ?? placeholder);
   const [open, setOpen] = useState(false);
-  useCloseOnBack(() => setOpen(false), open);
 
   /** ⚠⚠ AN IN-APP SHEET, NOT A NATIVE `<select>` (27 Sep 2026, the user: *"fix
    *  all list drop downs should be within the app only not open a seprate
@@ -113,19 +117,33 @@ export function CitySelect({
    *  which is why it survived four months.
    *
    *  So it is the app's own bottom sheet now — the same shape every other list
-   *  in DanceOS opens in, `dosSheetUp`, a scrim, `useCloseOnBack` so the phone's
-   *  back gesture closes it. The OPTIONS are unchanged, the callbacks are
-   *  unchanged and every caller is untouched: what changed is what a press
-   *  opens.
+   *  in DanceOS opens in. The OPTIONS are unchanged, the callbacks are unchanged
+   *  and every caller is untouched: what changed is what a press opens.
    *
    *  ⚠ The trigger is a real `<button>` with the same accessible name the
-   *  select carried, so every locator that found "Choose a city" still does. */
+   *  select carried, so every locator that found "Choose a city" still does.
+   *
+   *  ⚠⚠ AND THE SHEET IS `PickSheet` NOW RATHER THAN A COPY HERE — which is not
+   *  tidiness, it is a BUG FIX. This file's own sheet was `position: fixed` and
+   *  not portalled, and half of this control's callers draw it inside a
+   *  `FormPage sheet` (the New-studio sheet, the crew form, the event form)
+   *  whose panel carries `animation` AND `overflow: hidden`: an animated panel
+   *  makes its own containing block for a fixed child and then clips it, so the
+   *  city list opened INSIDE the form panel and was cut off at its edges. The
+   *  shared sheet is portalled to the body, where its z-index means what it
+   *  says. */
   const pick = (v: string) => {
     setOpen(false);
     if (lead && v === lead.value) lead.onPick();
     else if (v === NONE) onChange(null, null);
     else onChange(v, null);
   };
+
+  const rows: PickRow[] = [
+    ...(lead ? [{ value: lead.value, label: lead.option }] : []),
+    ...(allowNone || !value ? [{ value: NONE, label: allowNone ? noneLabel : placeholder }] : []),
+    ...options.map((c) => ({ value: c, label: c })),
+  ].map((r) => ({ ...r, icon: <DosPinIcon size={13} color={r.value === selectValue ? INK : "var(--sub)"} /> }));
 
   const trigger = (
     <button
@@ -139,41 +157,7 @@ export function CitySelect({
     />
   );
 
-  const sheet = open ? (
-    <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 680 }}>
-      <div
-        role="listbox"
-        aria-label={ariaLabel}
-        onClick={(e) => e.stopPropagation()}
-        style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: "var(--text)", maxHeight: "72vh", overflowY: "auto", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}
-      >
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
-        {(
-          [
-            ...(lead ? [[lead.value, lead.option] as const] : []),
-            ...(allowNone || !value ? [[NONE, allowNone ? noneLabel : placeholder] as const] : []),
-            ...options.map((c) => [c, c] as const),
-          ] as ReadonlyArray<readonly [string, string]>
-        ).map(([v, l]) => {
-          const on = v === selectValue;
-          return (
-            <button
-              key={v}
-              type="button"
-              role="option"
-              aria-selected={on}
-              onClick={() => pick(v)}
-              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "13px 12px", marginBottom: 6, borderRadius: 14, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: on ? 900 : 700, background: on ? EL : CARD, border: `1.5px solid ${on ? INK : EL}`, color: INK }}
-            >
-              <DosPinIcon size={13} color={on ? INK : "var(--sub)"} />
-              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</span>
-              {on ? <span aria-hidden="true" style={{ color: INK, fontSize: 13 }}>✓</span> : null}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  ) : null;
+  const sheet = open ? <PickSheet ariaLabel={ariaLabel} rows={rows} value={selectValue} onPick={pick} onClose={() => setOpen(false)} searchPlaceholder="Search cities…" navigates={navigates} /> : null;
 
   const select = (
     <>

@@ -9,7 +9,7 @@ import { ProfileLink, ProfileShare } from "@/features/profiles/components/Profil
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { Group, Row, smallBox } from "@/features/profiles/components/profile-kit";
+import { Group, PeopleGroup, PersonChip, smallBox } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -52,8 +52,12 @@ const monthDay = (iso: string) => {
  *  which is exactly the gap. It is `Row` now: same face, same title, the CITY
  *  in `sub` and the ROLE in `right`, like a studio's team and an
  *  organization's. */
-function Person({ m, role }: { m: CrewMember; role: string }) {
-  return <Row key={m.id} href={`/person/${m.userId}`} title={m.name} sub={m.city ?? ""} right={role} photo={photoUrl(m.avatarPath)} />;
+/** ⚠ A CHIP, NOT A ROW (27 Sep 2026) — `PersonChip`'s note has the reason, and
+ *  a crew's roster is the clearest case for it: nine dancers were nine
+ *  full-width rows whose only distinguishing mark, the position, sat in a
+ *  sub-line under a city. */
+function Person({ m, role, tint }: { m: CrewMember; role: string; tint: string }) {
+  return <PersonChip key={m.id} href={`/person/${m.userId}`} name={m.name} role={role} roleColour={tint} photo={photoUrl(m.avatarPath)} />;
 }
 
 export function CrewPublicPage({
@@ -187,15 +191,15 @@ export function CrewPublicPage({
 
         {/* ── THE ASSOCIATIONS, in one language: a row per person, the group headed with a count ── */}
         {lead.length ? (
-          <Group title="Crew leader" n={lead.length}>
+          <PeopleGroup title="Crew leader" n={lead.length}>
             {lead.map((m) => (
-              <Person key={m.id} m={m} role="Crew leader" />
+              <Person key={m.id} m={m} role="Crew leader" tint={RC} />
             ))}
-          </Group>
+          </PeopleGroup>
         ) : null}
-        <Group title="Crew members" n={rest.length}>
-          {rest.length ? rest.map((m) => <Person key={m.id} m={m} role={m.role === "trainee" ? "Trainee" : "Member"} />) : <div style={{ fontSize: 11.5, color: MUTED, padding: "10px 0" }}>Nobody else in the crew yet.</div>}
-        </Group>
+        <PeopleGroup title="Crew members" n={rest.length}>
+          {rest.length ? rest.map((m) => <Person key={m.id} m={m} role={m.role === "trainee" ? "Trainee" : "Member"} tint={RC} />) : <div style={{ gridColumn: "1 / -1", fontSize: 11.5, color: MUTED, padding: "10px 0" }}>Nobody else in the crew yet.</div>}
+        </PeopleGroup>
 
         {entries.length ? (
           <Group title="Battle record" n={entries.length}>

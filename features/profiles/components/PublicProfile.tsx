@@ -18,7 +18,7 @@ import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
-import { Group, PROFILE_RING, Row, SchedIcon, bigWhite, smallBox } from "./profile-kit";
+import { PROFILE_RING, PeopleGroup, PersonChip, SchedIcon, bigWhite, smallBox } from "./profile-kit";
 
 /** A STUDIO'S PUBLIC PAGE, lifted from prototype S_profiletab with
  *  `publicEntity="studio"` (10565-11060): THE PROFILE, LIT LIKE A PLAYER — the
@@ -126,7 +126,13 @@ export function PublicProfile({
      person's own page and an organization's have always used for it. `sub` is
      where somebody IS, so it carries the business's own place here, the way a
      city does on every other Row in the app. */
-  const teamRow = (m: PublicTeamMember, word: string) => <Row key={m.userId} href={`/person/${m.userId}`} title={m.name} sub={place} right={word} photo={photoUrl(m.photoPath)} />;
+  /** ⚠ A CHIP, NOT A ROW (27 Sep 2026) — `PersonChip`'s own note has the whole
+   *  reason. The `sub` this used to carry was the STUDIO's place repeated under
+   *  every name, which said nothing about the person; the role takes that slot
+   *  now, which is what the user asked to see beside a name. */
+  const teamChip = (m: PublicTeamMember, word: string) => (
+    <PersonChip key={m.userId} href={`/person/${m.userId}`} name={m.name} role={word} roleColour={RC} photo={photoUrl(m.photoPath)} />
+  );
   /* ⚠ DRAWN FOR THE TEAM TOO, AND DISABLED (20 Sep 2026, the user: "Viewing your
      own profile should show same buttons which you see on discover it should
      look the same way"). `ActionRow` is a grid sized by its cell count, so
@@ -307,12 +313,17 @@ export function PublicProfile({
             public; who holds one never is ── */}
         <MembershipsOnSale memberships={memberships} businessName={tenant.name} accent={RC} signedIn={signedIn} canBuy={!isMember} />
 
-        {/* ── THE ASSOCIATIONS, in one language (11000-11060): a row per person,
-            each group headed with a count — Owner · Faculty · Visiting faculty ── */}
-        {owners.length ? <Group title="Owner" n={owners.length}>{owners.map((m) => teamRow(m, m.isOrg ? "Organization" : "Owner"))}</Group> : null}
-        {faculty.length ? <Group title="Faculty" n={faculty.length}>{faculty.map((m) => teamRow(m, "Faculty"))}</Group> : null}
-        {visiting.length ? <Group title="Visiting faculty" n={visiting.length}>{visiting.map((m) => teamRow(m, "Visiting faculty"))}</Group> : null}
-        {assistants.length ? <Group title="Assistants" n={assistants.length}>{assistants.map((m) => teamRow(m, "Assistant"))}</Group> : null}
+        {/* ── THE TEAM, A SECTION PER ROLE (11000-11060; re-cut 27 Sep 2026 to
+            the user's *"Studio, Crew and Organization — simply should show the
+            Team with position … all roles should have a seprate section
+            according to profile"*). The grouping is what it always was; what
+            changed is the row: a person is a CHIP with their position beside
+            them, two to a line, so a studio with nine people is a block you can
+            read rather than nine full-width rows. ── */}
+        {owners.length ? <PeopleGroup title="Owner" n={owners.length}>{owners.map((m) => teamChip(m, m.isOrg ? "Organization" : "Owner"))}</PeopleGroup> : null}
+        {faculty.length ? <PeopleGroup title="Faculty" n={faculty.length}>{faculty.map((m) => teamChip(m, "Faculty"))}</PeopleGroup> : null}
+        {visiting.length ? <PeopleGroup title="Visiting faculty" n={visiting.length}>{visiting.map((m) => teamChip(m, "Visiting faculty"))}</PeopleGroup> : null}
+        {assistants.length ? <PeopleGroup title="Assistants" n={assistants.length}>{assistants.map((m) => teamChip(m, "Assistant"))}</PeopleGroup> : null}
       </div>
       {/* the quiet control at the foot of a public page (10 Sep 2026) — not for
           its own members, who have the hub for anything that is wrong */}

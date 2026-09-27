@@ -7,6 +7,7 @@ import { useState, useSyncExternalStore } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { QRBlock } from "@/components/ui/QRBlock";
 import { dosKey } from "@/features/classes/components/ShareSheet";
+import { Toast, bizCard } from "@/features/crews/components/crew-kit";
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { money as rupees } from "@/features/payouts/components/earnings-kit";
 import {
@@ -80,7 +81,14 @@ const CARD = "var(--card)";
 const EL = "var(--el)";
 const DOS_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace';
 
-const card: React.CSSProperties = { background: CARD, borderRadius: 16, padding: 14, marginBottom: 10 };
+/** ⚠ THE SHARED CARD, NOT A LOCAL ONE (27 Sep 2026, the user: *"fix team layout
+ *  for all types of profiles should be clean"*). This was declared here as
+ *  `{ background, borderRadius: 16, padding: 14 }` — no BORDER — while the
+ *  organization's and the crew's Team rows are `bizCard`, which has one. So a
+ *  studio's roster was the one of the three whose rows had no outline, and the
+ *  padding differed by a pixel either way. It keeps its name so the three call
+ *  sites below read as they did; what changed is where it comes from. */
+const card = bizCard;
 
 /* the page's own origin, read the sanctioned way (no impure render access) —
    the same pattern ShareSheet uses for the booking link */
@@ -350,7 +358,7 @@ export function StaffDesk({
                   key={m.userId}
                   aria-label={manageable ? `Manage ${m.name}` : undefined}
                   onClick={manageable ? () => setOpenMember(m) : undefined}
-                  style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "10px 12px", cursor: manageable ? "pointer" : "default" }}
+                  style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "11px 13px", cursor: manageable ? "pointer" : "default" }}
                 >
                   {/* DosTeamRow (18541-18592): the face, the name, the label in
                       its own colour, then what they are on DanceOS and what they
@@ -457,9 +465,14 @@ export function StaffDesk({
             {waiting.map((inv) => {
               const g = gradOf(inv.name);
               return (
-                <div key={inv.id} style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "10px 12px", opacity: inv.status === "declined" ? 0.75 : 1 }}>
+                <div key={inv.id} style={{ ...card, borderLeft: `4px solid ${L.colour}`, padding: "11px 13px", opacity: inv.status === "declined" ? 0.75 : 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 38, height: 38, borderRadius: 19, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
+                    {/* ⚠ 36px AND A SQUIRCLE, like the member row directly above
+                        it (27 Sep 2026). The 21 Sep pass fixed the MEMBER row and
+                        missed this one, so a group with somebody waiting drew two
+                        rows side by side with two different faces — the drift is
+                        hardest to see when it is inside one list. */}
+                    <span style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12.5, fontWeight: 900, background: `linear-gradient(135deg,${g[0]},${g[1]})` }}>
                       {initialsOf(inv.name)}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -508,31 +521,39 @@ export function StaffDesk({
           team desk does — labelling, ordering, paying — needs somebody other
           than the owner on it, so when there is nobody the desk says so and
           points at the one thing that changes it. */}
+      {/* ⚠ THE EMPTY STATE IS THE ONE SHAPE ALL THREE TEAM DESKS WEAR (27 Sep
+          2026): a dashed, centred `bizCard`, which is also what Assets, Invoices
+          and Refunds draw. This was a solid card with a coloured left edge — the
+          same paint as a ROSTER ROW — so on a team of one the "nobody here yet"
+          note read as a person. */}
       {isOwner && team.length === 1 && invites.length === 0 ? (
-        <div style={{ ...card, borderLeft: `3px solid ${DOS_TOOLS.team.c}`, padding: "12px 14px" }}>
+        <div style={{ ...card, textAlign: "center", border: "1.5px dashed var(--el)", padding: "18px 14px", lineHeight: 1.5 }}>
           <div style={{ fontSize: 12.5, fontWeight: 900 }}>Nobody else on the team yet</div>
-          <div style={{ fontSize: 11, color: SUB, marginTop: 3, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11.5, color: SUB, marginTop: 4 }}>
             Ask somebody on, and you can label them, put them in order and record what you pay them.
           </div>
         </div>
       ) : null}
 
-      {/* the footnote, verbatim (18434) */}
-      <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.55 }}>
-        Payout approval is owner-only and can&rsquo;t be granted (§10.9) · attachments are consent-based: invite
-        → accept.
-      </div>
+      {/* ⚠ THE §10.9 FOOTNOTE IS GONE (27 Sep 2026, the user: the app stops
+          explaining itself). It was the prototype's own line (18434) lifted
+          verbatim — and verbatim is what made it wrong here: "§10.9" is a
+          section number in a document this app does not have, "attachments" is
+          not a word DanceOS uses, and the rule it stated (consent before a seat)
+          is said where it happens, in the add sheet. Neither of the other two
+          Team desks carries a footnote. */}
 
-      {/* ⚠ the dashed row that used to sit here is the pill at the TOP now; what
-          stays is the sentence for somebody who cannot invite, because its job
-          was never the button — it was saying why there isn't one */}
+      {/* what stays is the sentence for somebody who cannot invite, because its
+          job was never the button — it was saying why there isn't one */}
       {isOwner ? null : (
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
           Only the owner can invite or remove people.
         </div>
       )}
 
-      {error && <div style={{ fontSize: 11.5, color: "#EF4444", fontWeight: 700, marginTop: 10 }}>{error}</div>}
+      {/* ⚠ `role="alert"`, like the other two desks: a refusal that is only a
+          red line is a refusal a screen reader never hears */}
+      {error && <div role="alert" style={{ fontSize: 11.5, color: "#F87171", fontWeight: 700, marginTop: 10 }}>{error}</div>}
 
       {/* ── invite: name, email, what they may do ── */}
       {addOpen && (
@@ -1105,13 +1126,11 @@ export function StaffDesk({
         </div>
       )}
 
-      {toast && (
-        <div
-          role="status" aria-live="polite" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", boxShadow: "0 6px 24px rgba(0,0,0,.45)", color: "var(--text)", padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650 }}
-        >
-          {toast}
-        </div>
-      )}
+      {/* ⚠ THE SHARED TOAST (27 Sep 2026) — this was a byte-identical copy of
+          `crew-kit`'s, declared inline, which is the same shape as the sheet
+          styles 21 Sep found here: a copy that matches today and drifts the day
+          one of the two is touched. */}
+      <Toast msg={toast} />
     </div>
   );
 }

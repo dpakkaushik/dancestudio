@@ -14,7 +14,8 @@ import { CityPicker } from "@/features/geo/components/CityPicker";
 import { LocationPicker } from "@/features/geo/components/LocationPicker";
 import { createTenantAction, type TenantActionState } from "@/features/tenants/server-actions/tenants";
 import { centreOf } from "@/repositories/cities";
-import { DOS_STYLE_NAMES, dosStyleColor } from "@/lib/constants/styles";
+import { DosStylePicker } from "@/components/ui/DosStyleKit";
+import { dosStyleColor } from "@/lib/constants/styles";
 import { DOS_DISPLAY, DOS_UI, INK, LILAC, MUTED, SUB } from "@/lib/design/tokens";
 
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
@@ -718,23 +719,26 @@ export function BusinessHub({
                     ))}
                     {styles.length === 0 ? <span style={{ fontSize: 12, color: SUB }}>Pick what this studio teaches.</span> : null}
                   </div>
+                  {/* ⚠⚠ THE APP'S ONE STYLE PICKER, NOT A SECOND LIST OF STYLES
+                      (27 Sep 2026, the user: "fix all list drop downs should be
+                      within the app only not open a seprate screen").
+                      This was a native `<select>` over all 66 style names — a
+                      full-screen OS picker on a phone, and, worse, the SECOND
+                      control in the app for choosing a style. Parity row W2 made
+                      `DosStylePicker` the one picker on the class, crew and event
+                      forms on 30 Aug and never came back for this one, so a
+                      studio picked its styles one way at birth and another way
+                      from its own band (`StylesRowEditor`, which opens this same
+                      picker). It searches, which is what 66 rows need. */}
                   {styles.length < 12 ? (
-                    <select
-                      aria-label="Add a dance style"
+                    <DosStylePicker
                       value=""
-                      onChange={(e) => {
-                        const s = e.target.value;
+                      ariaLabel="Add a dance style"
+                      placeholder="＋ Add a dance style…"
+                      onChange={(s) => {
                         if (s) setStyles((x) => (x.includes(s) ? x : [...x, s]));
                       }}
-                      style={inp}
-                    >
-                      <option value="">＋ Add a dance style…</option>
-                      {DOS_STYLE_NAMES.filter((s) => !styles.includes(s)).map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   ) : null}
                 </>
               )}

@@ -125,11 +125,16 @@ function WhySheet({ onClose }: { onClose: () => void }) {
         <b style={{ fontSize: 11.5, color: INK, display: "block", marginBottom: 7 }}>What happens next</b>
         {/* the numbers are drawn, not left to list markers — the app's reset
             strips those, and four steps without their numbers read as prose */}
+        {/* ⚠ THE ORDER CHANGED ON 27 Sep 2026 (R51, the user's item 8): a studio
+            is paid for at creation and verified after, so this list used to end
+            on an errand that is already done. What the badge buys is the
+            AUDIENCE — `guard_business_visibility` still refuses to list a studio
+            without it, whatever has been paid. */}
         {[
           `You submit your links and ${PROOF_MIN}–${PROOF_MAX} photos.`,
           "A DanceOS admin looks — usually within a day.",
           "The badge lands, and you are told either way.",
-          "Subscribe the studio and it goes live on Discover.",
+          "With the subscription running, the badge is what puts it on Discover.",
         ].map((step, i) => (
           <div key={step} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginBottom: 6 }}>
             <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: "var(--text)", color: "var(--solid)", fontSize: 10, fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
@@ -265,7 +270,7 @@ export function StudioVerificationStrip({
           <b style={{ fontSize: 12, color: INK }}>A DanceOS admin is looking</b>
         </div>
         <div style={{ fontSize: 10.5, color: SUB, marginTop: 5, lineHeight: 1.5 }}>
-          Usually within a day. The badge lands, then you subscribe it to Discover.
+          Usually within a day. Once the badge lands, a studio with its subscription running is on Discover.
         </div>
         <Link
           href={state.requestId ? `/support?request=${state.requestId}` : "/support"}

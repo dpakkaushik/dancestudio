@@ -119,10 +119,18 @@ async function deleteUser(id: string) {
  *  the City field is a Google city search; the typed name is always the last
  *  option, so a test never depends on Google answering. */
 /** the one city dropdown (19 Sep 2026): always through "Search another city…" */
+/** Every dropdown is an in-app sheet since 27 Sep 2026, PORTALLED to the body —
+ *  so the trigger is pressed in `scope` and the option is found on the PAGE.
+ *  `role="option"` is `PickSheet`'s; `role="button"` is `DosStylePicker`'s. */
+async function pick(scope: Page | Locator, label: string, option: string) {
+  const page: Page = "context" in scope ? scope : scope.page();
+  await scope.getByRole("button", { name: label, exact: true }).first().click();
+  const row = page.getByRole("option", { name: option, exact: true });
+  await row.or(page.getByRole("button", { name: option, exact: true })).first().click();
+}
 async function pickCity(page: Page | Locator, city: string) {
   /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
-  await page.getByLabel("Choose a city").first().click();
-  await page.getByRole("option", { name: city, exact: true }).click();
+  await pick(page, "Choose a city", city);
 }
 
 async function studioIdOf(name: string): Promise<string> {
@@ -211,7 +219,7 @@ test.describe("the admin panel: support, trust, accountability", () => {
     await org.locator('input[name="phone"]').fill("+919876543210");
     await org.locator('input[name="contact_email"]').fill(`panel-studio-${stamp}@example.com`);
     await org.getByLabel("Room 1 name").fill("Floor 1");
-    await org.getByLabel("Add a dance style").selectOption("Hip-Hop");
+    await pick(org, "Add a dance style", "Hip-Hop");
     await org.getByRole("button", { name: "Create studio" }).click();
     /* creating lands on the new studio's own Subscription screen (27 Sep 2026,
        "pay at creation, verify after") — this spec is about support, so it

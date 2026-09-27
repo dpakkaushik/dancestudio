@@ -34,8 +34,9 @@ import { entriesOf, entryCapacityOf, seatCapacityOf, seatsSoldOf } from "@/types
 import type { ClassArtist } from "@/types/claim";
 import { countEnrolledBySession, findMyEnrolledSessionIds } from "@/repositories/enrollments";
 import { findProfileById } from "@/repositories/profiles";
+import { resolveActingAs, withAs } from "@/repositories/actingAs";
 import type { EnrollmentStatus } from "@/types/enrollment";
-import { canBook } from "@/types/profile";
+import { canBookClass, canBookEvent, noBookingWords } from "@/types/profile";
 
 /** ONE PAGE OF A SHELF (18 Sep 2026, the user: "should give option for second
  *  page after that"). The radius search answered 50 rows and stopped, so a city
@@ -110,10 +111,26 @@ export default async function DiscoverPage({
      business in it, busiest first. It fills itself the first time somebody
      opens a studio somewhere new, so there is no constant to edit and no
      thirteenth city that cannot be named. */
-  const [profile, cities] = await Promise.all([
+  /* ⚠⚠ WHICH PROFILE IS READING THIS SHELF (27 Sep 2026, the user: "studio and
+     organization profiles should not be able book classes and events from
+     discover breaking now", and "crew can only take part in events and should
+     not be able to book classes").
+     Discover belongs to no profile, so the ENTITY BAR's Discover link carries
+     the one you pressed it from (`?as=`) and this resolves it against what the
+     account actually belongs to — a pointer is never an authority. Unresolvable
+     means "yourself", which is the permissive answer on purpose: this is a
+     presentation gate, and failing it closed would take a booking away from
+     somebody entitled to one. */
+  const [profile, cities, actingAs] = await Promise.all([
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     findDiscoverCities(supabase),
+    user ? resolveActingAs(supabase, params.as) : Promise.resolve(null),
   ]);
+  /* the raw value, kept only to carry onto the cards' own hrefs so the page a
+     card opens agrees with the card that sent you */
+  const asRaw = actingAs ? (params.as ?? null) : null;
+  const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs, "class") : null;
+  const noEvent = actingAs && !canBookEvent(actingAs) ? noBookingWords(actingAs, "event") : null;
   /* asked for, else where this person says they are, else wherever is busiest */
   const city: string = asCity(params.city) ?? asCity(profile?.city) ?? cities[0]?.city ?? "";
   const tab = TABS.some(([k]) => k === params.tab) ? (params.tab as string) : "studios";
@@ -283,6 +300,9 @@ export default async function DiscoverPage({
     const q = new URLSearchParams({ city, tab, ...filtersToParams(filters) });
     if (params.near) q.set("near", params.near);
     if (n > 1) q.set("page", String(n));
+    /* ⚠ the acting profile rides every link off this page (27 Sep 2026) —
+       dropping it on page 2 would hand back the Book button it removed */
+    if (asRaw) q.set("as", asRaw);
     return `/discover?${q.toString()}`;
   };
   const pageFoot: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: INK, textDecoration: "none", padding: "9px 14px", borderRadius: 999, border: `1.5px solid ${EL}`, background: "var(--card)" };
@@ -292,7 +312,9 @@ export default async function DiscoverPage({
   const tabTiles = (
     <DiscoverTabs
       active={tab}
-      tabs={TABS.map(([k, word, Icon]) => ({ key: k, word, href: `/discover?city=${encodeURIComponent(city)}&tab=${k}`, icon: <Icon size={26} /> }))}
+      /* ⚠ the acting profile rides the tab links too (27 Sep 2026) — a tap on
+         Classes must not be the way a studio gets its Book button back */
+      tabs={TABS.map(([k, word, Icon]) => ({ key: k, word, href: withAs(`/discover?city=${encodeURIComponent(city)}&tab=${k}`, asRaw), icon: <Icon size={26} /> }))}
     />
   );
 
@@ -328,12 +350,12 @@ export default async function DiscoverPage({
       <div style={{ marginTop: 5, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 27, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1, lineHeight: 1.05, color: INK }}>Dance near you</span>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 8, minWidth: 0, flexWrap: "wrap" }}>
-          <PlaceChip city={city} cities={cities.map((c) => c.city)} tab={tab} extra={filtersToParams(filters)} near={near !== null} offerNearMe={wantsBusinesses} />
+          <PlaceChip city={city} cities={cities.map((c) => c.city)} tab={tab} extra={{ ...filtersToParams(filters), ...(asRaw ? { as: asRaw } : {}) }} near={near !== null} offerNearMe={wantsBusinesses} />
         </div>
       </div>
 
       {/* the search box, the five tabs, the style rail, Filters + quick chips, the filter sheet (Step 23) */}
-      <DiscoverFilters tab={tab} city={city} filters={filters} styleOrder={styleOrder} tabs={tabTiles} />
+      <DiscoverFilters tab={tab} city={city} filters={filters} styleOrder={styleOrder} tabs={tabTiles} as={asRaw} />
 
       {/* "Followed by you" (FollowedRow 4112, mounted 4767) — Studios and Artists, for a signed-in person */}
       {wantsFollows ? <FollowedShelf rows={followedTiles} /> : null}
@@ -368,7 +390,7 @@ export default async function DiscoverPage({
               filled={filled}
               artist={classArtists.get(c.id) ?? null}
               city={c.tenantCity}
-              href={`/c/${c.shareSlug}`}
+              href={withAs(`/c/${c.shareSlug}`, asRaw)}
               actions={
                 c.session ? (
                   <EnrollButton
@@ -378,7 +400,7 @@ export default async function DiscoverPage({
                     mine={mine.get(c.session.id) ?? null}
                     priceInr={c.priceInr}
                     shareSlug={c.shareSlug}
-                    canBook={canBook(profile?.role)}
+                    cannotBookWhy={noClass}
                   />
                 ) : null
               }
@@ -432,7 +454,7 @@ export default async function DiscoverPage({
             <EventCard
               key={e.id}
               event={e}
-              href={`/e/${e.shareSlug}`}
+              href={withAs(`/e/${e.shareSlug}`, asRaw)}
               host={h ? { name: h.name, photo: photoUrl(h.photoPath ?? undefined), href: h.orgId ? `/org/${h.orgId}` : null } : null}
               actions={
                 <EventBookButton
@@ -440,7 +462,8 @@ export default async function DiscoverPage({
                   isSignedIn={Boolean(user)}
                   held={heldByEvent.get(e.id) ?? null}
                   soldOut={(noSeats || seatsGone) && (noFloor || floorGone)}
-                  canBook={canBook(profile?.role)}
+                  cannotBookWhy={noEvent}
+                  as={asRaw}
                 />
               }
             />
@@ -483,7 +506,7 @@ export default async function DiscoverPage({
             <>
               <div style={{ fontSize: 26 }}>🕺</div>
               <div style={{ fontWeight: 700, color: INK, marginTop: 6 }}>Nothing in {city} matches that</div>
-              <Link href={`/discover?city=${encodeURIComponent(city)}&tab=${tab}`} style={{ display: "inline-block", marginTop: 7, fontSize: 11.5, fontWeight: 800, color: SUB, textDecoration: "none" }}>
+              <Link href={withAs(`/discover?city=${encodeURIComponent(city)}&tab=${tab}`, asRaw)} style={{ display: "inline-block", marginTop: 7, fontSize: 11.5, fontWeight: 800, color: SUB, textDecoration: "none" }}>
                 Clear filters
               </Link>
             </>

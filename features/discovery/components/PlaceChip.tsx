@@ -90,6 +90,10 @@ export function PlaceChip({
         placeholder="Anywhere"
         ariaLabel="Where to look"
         disabled={busy}
+        /* ⚠ picking REPLACES the address below, so the sheet must not spend its
+           own history entry on the way out — the back() would race the router
+           (useCloseOnBack rule 2, the 19 Sep bug) */
+        navigates
         lead={
           offerNearMe
             ? {

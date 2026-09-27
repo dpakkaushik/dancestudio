@@ -109,12 +109,23 @@ const TAB_ICONS = {
       <path d="M3.5 13.5 6.2 5.2h11.6l2.7 8.3V18a1.8 1.8 0 0 1-1.8 1.8H5.3A1.8 1.8 0 0 1 3.5 18z" />
     </svg>
   ),
+  /* ⚠ ENQUIRIES IS THE FOURTH TAB (27 Sep 2026, the user: "only enquiry becomes
+     a new option in tab and is removed from inbox"). The speech bubble with the
+     rupee in it, because an enquiry is somebody asking what it would cost — the
+     one thing on the bar that is about MONEY coming in. */
+  Enquiries: (c) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" stroke={c} {...ICON_STROKE}>
+      <path d="M20.5 12.2c0 3.9-3.8 7-8.5 7a9.7 9.7 0 0 1-2.6-.35L4.2 20.3l1.3-3.3A6.6 6.6 0 0 1 3.5 12.2c0-3.9 3.8-7 8.5-7s8.5 3.1 8.5 7z" />
+      <path d="M10 9.2h4M10 11.6h4M13 9.2c0 2.3-1.3 2.4-3 2.4l3.2 3" />
+    </svg>
+  ),
 } satisfies Record<string, (c: string) => ReactNode>;
 
 const TAB_TINT = {
   Home: "#5AC8FA",
   Discover: "#22C55E",
   Inbox: "#8B5CF6",
+  Enquiries: "#EC4899",
 } satisfies Record<string, string>;
 
 /** the three that are places of their own — the eye to the account's public page
@@ -133,6 +144,7 @@ const TAB_SET: Array<{ label: TabLabel; href: string }> = [
   { label: "Home", href: "/" },
   { label: "Discover", href: "/discover" },
   { label: "Inbox", href: "/inbox" },
+  { label: "Enquiries", href: "/enquiries" },
 ];
 
 /** ONE ROW OF THE PROFILE SWITCHER — a home this account can go to. Built by the
@@ -163,12 +175,14 @@ interface Entity {
   kind: "studio" | "crew";
   home: string;
   inbox: string;
+  /** what the Discover link carries so the shelf knows who is reading it */
+  as: string;
 }
 const entityOf = (pathname: string): Entity | null => {
   const s = pathname.match(STUDIO_HOME_RE);
-  if (s) return { kind: "studio", home: `/business/${s[1]}`, inbox: `/business/${s[1]}/inbox` };
+  if (s) return { kind: "studio", home: `/business/${s[1]}`, inbox: `/business/${s[1]}/inbox`, as: s[1]! };
   const c = pathname.match(CREW_HOME_RE);
-  if (c) return { kind: "crew", home: `/crews/${c[1]}/manage`, inbox: `/crews/${c[1]}/inbox` };
+  if (c) return { kind: "crew", home: `/crews/${c[1]}/manage`, inbox: `/crews/${c[1]}/inbox`, as: `crew-${c[1]}` };
   return null;
 };
 
@@ -340,14 +354,27 @@ export function AppChrome({
      class or event"). A studio's own pages had Home · Inbox, so the one thing
      the user named as allowed was the one thing missing from them. Booking is
      what is refused, and it is refused where the button is drawn, not by hiding
-     the shelf: an organization reading Discover gets the sentence in place of
-     Book, and `guard_person_only` is the rule behind it. Discover is a DOOR out
-     of the entity, never a lit tab here — pressing it leaves for the main bar. ── */
+     the shelf: a business reading Discover gets the sentence in place of Book.
+     Discover is a DOOR out of the entity, never a lit tab here — pressing it
+     leaves for the main bar.
+     ⚠⚠ AND THE LINK CARRIES WHICH PROFILE PRESSED IT (`?as=`, 27 Sep 2026).
+     Until today the gate was `profiles.role === "org"`, and R48 retired that
+     role — so it refused nobody from 26 Sep and nothing said so, because what
+     it withholds is a sentence rather than an exception. There is no
+     organization ACCOUNT left to test; what there is is the profile you
+     switched into, and `/discover` belongs to none by itself. ⚠ It is a
+     REQUEST, not an authority: the page looks it up among the businesses this
+     account is on the team of and the crews it leads before believing it. ── */
   const bar: Array<{ label: TabLabel; href: string }> = entity
     ? [
         { label: "Home", href: entity.home },
-        { label: "Discover", href: "/discover" },
+        { label: "Discover", href: `/discover?as=${encodeURIComponent(entity.as)}` },
         { label: "Inbox", href: entity.inbox },
+        /* ⚠ an entity's enquiries are ITS enquiries (27 Sep 2026): a studio's
+           reach the studio and a crew's its leader, so the tab is the account's
+           own desk either way — the reads there are already scoped to what this
+           account's businesses and crews were asked */
+        { label: "Enquiries", href: "/enquiries" },
       ]
     : TAB_SET;
   const lit = entity ? (pathname === entity.home ? "Home" : pathname === entity.inbox ? "Inbox" : null) : activeTab;

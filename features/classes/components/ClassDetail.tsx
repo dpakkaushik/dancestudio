@@ -33,7 +33,6 @@ import { ClassRoutines } from "@/features/routines/components/ClassRoutines";
 import type { Routine } from "@/repositories/routines";
 import { bookWithMembershipAction } from "@/features/memberships/server-actions/memberships";
 import type { PassForSession } from "@/repositories/memberships";
-import { NO_BOOKING_FOR_AN_ORGANIZATION } from "@/types/profile";
 import type { ClassClaim } from "@/types/claim";
 import type { PublicClassListing } from "@/types/class";
 import type { EnrollmentStatus } from "@/types/enrollment";
@@ -186,6 +185,10 @@ export interface ClassDetailProps {
    *  database has refused it since 8 Sep (`guard_person_only`); this is the
    *  screen finally saying so instead of offering a press that gets refused. */
   viewerCanBook?: boolean;
+  /** ⚠ the reason, in the acting profile's own words (27 Sep 2026) — the
+   *  constant it replaced said "an organization", and an organization is not an
+   *  account any more */
+  cannotBookWhy?: string | null;
   /** THE PASSES THIS VIEWER CAN SPEND HERE (19 Sep 2026): their own live
    *  memberships that this class admits, with a unit still on them. The database
    *  decides the list (`passes_for_session` reads the class's two switches), so a
@@ -218,6 +221,7 @@ export function ClassDetail({
   myRoutines = [],
   canSetRoutines = false,
   viewerCanBook = true,
+  cannotBookWhy = null,
   passes = [],
 }: ClassDetailProps) {
   const col = dosStyleColor(c.style);
@@ -1577,12 +1581,12 @@ export function ClassDetail({
               Sign in to book
             </Link>
           ) : !viewerCanBook && !booked ? (
-            /* AN ORGANIZATION DOES NOT BOOK (19 Sep 2026). It reads the page —
-               this is its own studio's class as often as not — and the bar says
-               what the database would say if the button were pressed. */
+            /* A BUSINESS DOES NOT BOOK (19 Sep 2026). It reads the page — this
+               is its own studio's class as often as not — and the bar says so
+               rather than offering a press that would be refused. */
             <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
               <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
-              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{NO_BOOKING_FOR_AN_ORGANIZATION}</div>
+              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{cannotBookWhy ?? "This profile does not book classes. Switch to your own to take a place."}</div>
             </div>
           ) : soldOut && !booked ? (
             <div

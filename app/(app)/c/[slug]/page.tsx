@@ -5,8 +5,8 @@ import { ClassDetail } from "@/features/classes/components/ClassDetail";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findArtistPageOwner } from "@/repositories/publicOrganization";
 import { findPassesForSession } from "@/repositories/memberships";
-import { findProfileById } from "@/repositories/profiles";
-import { canBook } from "@/types/profile";
+import { canBookClass, noBookingWords } from "@/types/profile";
+import { resolveActingAs } from "@/repositories/actingAs";
 import { canSetClassRoutines, findClassRoutines, findMyRoutines } from "@/repositories/routines";
 import { findClassRegister } from "@/repositories/attendance";
 import { findClaimsByClass } from "@/repositories/claims";
@@ -57,8 +57,19 @@ const phaseOf = (startsAt: string | undefined, endsAt: string | undefined): "upc
   return "upcoming";
 };
 
-export default async function ClassSharePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ClassSharePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  /** ⚠ `?as=` — the profile the shelf that sent you here was being read as
+     (27 Sep 2026). Carried by Discover's cards so this page cannot offer a
+     button the card beside it just refused. A REQUEST, resolved against what
+     the account belongs to; anything else reads as "yourself". */
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { slug } = await params;
+  const { as } = await searchParams;
   if (!SLUG_RE.test(slug)) {
     notFound();
   }
@@ -99,7 +110,7 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
      published classes only); and, for an artist's class, WHOSE profile the
      place row opens — the person behind the artist page, so the link never
      goes through the /artist redirect. */
-  const [receipt, register, paidUserIds, claims, room, ownerId, routines, myRoutines, canSetRoutines, passes, viewerProfile] = await Promise.all([
+  const [receipt, register, paidUserIds, claims, room, ownerId, routines, myRoutines, canSetRoutines, passes, actingAs] = await Promise.all([
     myBooking && danceClass.priceInr > 0 ? findPaidReceiptByEnrollment(supabase, myBooking.id) : Promise.resolve(null),
     canManage ? findClassRegister(supabase, danceClass.id) : Promise.resolve(null),
     canManage && sessionId && danceClass.priceInr > 0 ? findPaidUserIdsBySession(supabase, sessionId) : Promise.resolve(new Set<string>()),
@@ -117,8 +128,10 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
        the class's two switches, so the bar never offers a pass the RPC refuses;
        nothing is asked for a viewer who is not signed in or has no seat to take. */
     user && sessionId && !myBooking ? findPassesForSession(supabase, sessionId).catch(() => []) : Promise.resolve([]),
-    /* WHO IS READING: an organization account books nothing (19 Sep 2026) */
-    user ? findProfileById(supabase, user.id).catch(() => null) : Promise.resolve(null),
+    /* WHICH PROFILE IS READING: a business books nothing (19 Sep 2026; the test
+       moved off `profiles.role` on 27 Sep, when R48 left that role with no
+       holders and the gate silently open) */
+    user ? resolveActingAs(supabase, as) : Promise.resolve(null),
   ]);
   const myClaim = user ? claims.find((cl) => cl.userId === user.id) ?? null : null;
 
@@ -167,8 +180,11 @@ export default async function ClassSharePage({ params }: { params: Promise<{ slu
       routines={routines}
       myRoutines={myRoutines}
       canSetRoutines={canSetRoutines}
-      /* an organization reads this page and books nothing (19 Sep 2026) */
-      viewerCanBook={canBook(viewerProfile?.role)}
+      /* a business reads this page and books nothing (19 Sep 2026, re-cut
+         27 Sep onto the profile you are acting as — the role it tested was
+         retired by R48 and the gate had been dead for a day) */
+      viewerCanBook={canBookClass(actingAs)}
+      cannotBookWhy={actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs, "class") : null}
       passes={passes}
     />
   );

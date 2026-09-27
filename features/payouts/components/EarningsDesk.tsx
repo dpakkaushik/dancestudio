@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Pick } from "@/components/ui/PickSheet";
 import {
   recordPayoutAction,
   setPayoutStatusAction,
@@ -458,30 +459,24 @@ export function EarningsDesk({
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <select
-              aria-label="Method"
+            {/* ⚠ IN-APP SHEETS (27 Sep 2026) — this pair sits inside the
+                record-a-payment sheet, so a native `<select>` put the OS picker
+                over a sheet that was already over the desk. Same four methods,
+                same four states, same two accessible names. */}
+            <Pick
+              ariaLabel="Method"
               value={method}
-              onChange={(e) => setMethod(e.target.value as PayoutMethod)}
+              rows={METHODS.map((m) => ({ value: m, label: PAYOUT_METHOD_LABEL[m] }))}
+              onPick={(v) => setMethod(v as PayoutMethod)}
               style={{ ...inputStyle, flex: 1 }}
-            >
-              {METHODS.map((m) => (
-                <option key={m} value={m}>
-                  {PAYOUT_METHOD_LABEL[m]}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="State"
+            />
+            <Pick
+              ariaLabel="State"
               value={status}
-              onChange={(e) => setStatus(e.target.value as PayoutStatus)}
+              rows={STATUSES.map((s) => ({ value: s, label: PAYOUT_STATUS_LABEL[s] }))}
+              onPick={(v) => setStatus(v as PayoutStatus)}
               style={{ ...inputStyle, flex: 1 }}
-            >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {PAYOUT_STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <input
             aria-label="Reference"

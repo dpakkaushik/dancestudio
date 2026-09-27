@@ -30,13 +30,27 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  *
  *  `page` is wherever the picker lives — the page, or the dialog it is in, so
  *  a sheet's own field is not confused with the page's behind it. */
-/** THE ONE CITY DROPDOWN (19 Sep 2026): a native select over the registry with
- *  "Search another city…" behind it. The helper always goes through the search,
- *  so it does not depend on which cities the registry holds today. */
+/** ⚠⚠ EVERY DROPDOWN IN THE APP IS AN IN-APP SHEET NOW (27 Sep 2026) — so
+ *  `selectOption` is gone from this suite, and the option is NOT inside the
+ *  scope its trigger is in: `PickSheet` is PORTALLED to `document.body`, which
+ *  is the whole point (an animated form panel clips a `position: fixed` child).
+ *  So the trigger is clicked in `scope` and the option is found on the PAGE.
+ *
+ *  Two pickers answer to this: `Pick`/`PickSheet` names its rows `role="option"`,
+ *  and the app's own style picker (`DosStylePicker`, the prototype's 3548, which
+ *  draws its list INLINE) names its rows `role="button"`. One locator takes
+ *  either, so a test does not have to know which control a screen wears. */
+async function pick(scope: Page | Locator, label: string, option: string) {
+  const page: Page = "context" in scope ? scope : scope.page();
+  await scope.getByRole("button", { name: label, exact: true }).first().click();
+  const row = page.getByRole("option", { name: option, exact: true });
+  await row.or(page.getByRole("button", { name: option, exact: true })).first().click();
+}
+
+/** THE ONE CITY DROPDOWN (19 Sep 2026), an in-app sheet since 27 Sep. */
 async function pickCity(page: Page | Locator, city: string) {
   /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
-  await page.getByLabel("Choose a city").first().click();
-  await page.getByRole("option", { name: city, exact: true }).click();
+  await pick(page, "Choose a city", city);
 }
 const adminHeaders = {
   apikey: serviceKey,
@@ -513,7 +527,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByLabel("Room 1 name").fill("Studio A");
     // a studio says what it dances, at birth (19 Sep 2026) — the database
     // refuses one without a style, so Create is disabled until there is one
-    await owner.getByLabel("Add a dance style").selectOption("Hip-Hop");
+    await pick(owner, "Add a dance style", "Hip-Hop");
     await owner.getByRole("button", { name: "Create studio" }).click();
 
     /* ⚠ CREATING LANDS ON PAYMENT (27 Sep 2026 — the user's item 8, and their
@@ -604,9 +618,15 @@ test.describe.serial("DanceOS, end to end", () => {
        (the user: "subscriptions also become an option on home tab for all
        profiles and is removed from settings for all … edit profile to be
        removed from all profiles settings"): both are the studio's own home's */
-    for (const tile of ["Verification", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
+    for (const tile of ["Verification", "Invoices", "Refunds", "Payments"]) {
       await expect(studioSettings.getByText(tile, { exact: true })).toBeVisible();
     }
+    /* ⚠ AND ENQUIRY TYPES IS NOT HERE ANY MORE (27 Sep 2026, the user:
+       "enquiries should be removed from settings") — it is the contact ⊕ on the
+       studio's own home, beside the switch that draws the Enquiry button. Both
+       halves are asserted, because a check that only looks at the new place
+       cannot tell you the old one was cleared. */
+    await expect(studioSettings.getByText("Enquiry types", { exact: true })).toHaveCount(0);
     await expect(studioSettings.getByText("Subscription", { exact: true })).toHaveCount(0);
     await expect(studioSettings.getByRole("link", { name: "Edit studio", exact: true })).toHaveCount(0);
     /* ⚠ and NOT the account's own plan switch — a sheet that mixes the two is
@@ -701,11 +721,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(admin.getByRole("navigation", { name: "Main" })).toHaveCount(0);
     // and the owner's own PROFILE names the studio under the seats they hold
     // (26 Sep 2026: the owner is a person, so their profile is `/person/{id}` —
-    // C40 — and the group is "Manage", the user's own word for it, R43; the
-    // organization-only "Your studios" group went with the login). A person's
-    // page carries the Followers figure like everybody's — none yet, and a button
+    // C40; the organization-only "Your studios" group went with the login).
+    // ⚠ THE GROUP IS "Studios" SINCE 27 Sep 2026 — Teach, Assist and Manage
+    // collapsed into one, at the user's own word, with the title on each row
+    // instead of over it, because a studio was appearing up to three times.
+    // A person's page carries the Followers figure like everybody's — none yet
     await owner.goto(`/person/${ownerId}`);
-    await expect(owner.getByText("Manage", { exact: true })).toBeVisible();
+    await expect(owner.getByText("Studios", { exact: true })).toBeVisible();
     await expect(owner.getByRole("link", { name: new RegExp(`Open ${studioName}`) }).first()).toBeVisible();
     await expect(owner.getByRole("button", { name: "0 followers" })).toHaveCount(1);
 
@@ -939,8 +961,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // ---- THE TEACHER SAYS YES, AND ONLY THEN CAN IT GO LIVE ----------------
     await trainer.goto("/inbox");
     // the Inbox opens on Requests — what somebody wants you FOR, which a class
-    // ask is (S_chats; the three desks are Requests · Invites · Enquiries since
-    // 27 Sep 2026, and "All" is gone with them)
+    // ask is (S_chats; the desks are Requests · Invites · Done since 27 Sep 2026,
+    // "All" is gone and Enquiries is a tab of its own)
     await pressPill(trainer, /^Requests — \d+ waiting/);
     // ⚠ ACCEPT, not Confirm (27 Sep 2026, the user: "class and event requests
     // should have same cards with accept and reject buttons") — a class ask is
@@ -1159,10 +1181,10 @@ test.describe.serial("DanceOS, end to end", () => {
     await enqSheet.getByText("Private Sessions", { exact: true }).click();
     const inTenDays = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await enqSheet.getByLabel("Date of event").fill(inTenDays);
-    await enqSheet.getByLabel("Session format").selectOption("One-on-one");
-    await enqSheet.getByLabel("Dance style").selectOption("Bollywood");
-    await enqSheet.getByLabel("Level").selectOption("Beginner");
-    await enqSheet.getByLabel("Where they train").selectOption("At the studio");
+    await pick(enqSheet, "Session format", "One-on-one");
+    await pick(enqSheet, "Dance style", "Bollywood");
+    await pick(enqSheet, "Level", "Beginner");
+    await pick(enqSheet, "Where they train", "At the studio");
     /* the sheet's city is the CityPicker — a Google city search with the typed
        name as the way out; the old two clicks opened a hand-rolled dropdown */
     await pickCity(enqSheet, "Pune");
@@ -1171,9 +1193,12 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(enqSheet.getByText("Enquiry sent")).toBeVisible();
     await enqSheet.getByRole("button", { name: "Done" }).click();
 
-    await owner.goto("/inbox");
+    /* ⚠ ENQUIRIES IS ITS OWN TAB SINCE 27 Sep 2026 (the user: "only enquiry
+       becomes a new option in tab and is removed from inbox") — the Inbox keeps
+       what somebody has asked OF you; this is somebody wanting to BOOK you */
+    await owner.goto("/enquiries");
+    await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
     await expect(owner.getByText("1 waiting on you")).toBeVisible();
-    await pressPill(owner, /^Enquiries — 1 waiting/);
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
@@ -1182,8 +1207,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.getByRole("button", { name: "Send this quote" }).click();
     await expect(owner.getByTestId("enquiry-stage")).toHaveText("Quoted");
 
-    await learner.goto("/inbox");
-    await pressPill(learner, /^Enquiries/);
+    await learner.goto("/enquiries");
     await learner.getByRole("button", { name: "Sent enquiries" }).click();
     await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
@@ -1401,13 +1425,27 @@ test.describe.serial("DanceOS, end to end", () => {
        assertion and had 5 seconds to beat a server action that takes ~4 s on this
        machine, which is a coin toss rather than a test. Worse, once the crew was
        confirmed the desk held TWO of that sentence, so the bare locator was one
-       green run away from a strict-mode violation. The row is the unit here. */
+       green run away from a strict-mode violation. The row is the unit here.
+       ⚠⚠ AND THE ROW IS ON **DONE** NOW (27 Sep 2026, the user: "sepreate
+       section request, invites and enquiries which are already completed").
+       Answered rows still exist — the 19 Sep rule is untouched, nothing is
+       deleted — they have simply moved off the live desk, which is what stops
+       Invites filling with rows that carry no buttons. So the check presses Done
+       first; that it is NOT on Invites any more is asserted straight after,
+       because a check that only looks at the new place cannot tell you the old
+       one was cleared. */
+    await expect(trainer.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0, { timeout: 15_000 });
+    await pressPill(trainer, /^Done/);
     const crewAsk = trainer.getByTestId("request-row").filter({ hasText: crewName }).filter({ hasText: `invited by ${learnerName}` });
-    await expect(crewAsk.getByText("✅ Joined — you said yes")).toBeVisible({ timeout: 15_000 });
+    await expect(crewAsk.getByText("Joined — you said yes")).toBeVisible({ timeout: 15_000 });
     await expect(crewAsk.getByRole("button", { name: `Join ${crewName}` })).toHaveCount(0);
     await expect(crewAsk.getByRole("button", { name: `Decline ${crewName}` })).toHaveCount(0);
     await learner.reload();
     await expect(learner.getByTestId("crew-tile-members")).toHaveText("2");
+    /* ⚠ the crew DESK's roster row, not a profile group — "Member" is the word
+       `CREW_ROLE_WORD` puts on the row, and the desk is untouched by the 27 Sep
+       profile re-cut (I changed this line to "Crew" by mistake and the run said
+       so within five minutes) */
     await expect(learner.getByText("Member", { exact: true })).toBeVisible();
 
     // the public page prints the confirmed roster; the hub knows which list the trainer belongs on
@@ -1643,26 +1681,26 @@ test.describe.serial("DanceOS, end to end", () => {
     /* "Artist", not "ARTIST" — the eyebrow uppercases in CSS (20 Sep 2026, C29),
        and it carries the account number against it (C28) */
     await expect(learner.getByTestId("person-hero").getByText(/^Artist(-\d{6})?$/)).toBeVisible();
-    /* ⚠ AND THE STUDIO IS ON THIS PAGE TWICE SINCE 20 Sep 2026, ON PURPOSE.
-       "Studios taught at" counts PUBLISHED CLASSES; "Studios associated with"
-       counts the SEAT they hold (`person_associations`, the user's list E).
-       Both are true of this trainer — they accepted the class in segment 1 AND
-       that acceptance seated them as visiting faculty — so a bare locator for
-       the studio's door is now a strict-mode violation rather than a check.
-       Assert what the slice actually promises: both groups, one door each.
-       ⚠ AND THE HEADINGS ARE THE USER'S FOUR COLUMNS SINCE 21 Sep 2026
-       ("Studios Should Have 3 Columns - Train Teach & Assist", plus their own
-       word for the fourth: Manage). "Studios taught at" split on the `kinds`
-       the read has always carried — this trainer is the class's ARTIST, so
-       **Teach** — and "Studios associated with" is **Manage**. ⚠ **Train** is
-       deliberately NOT here: it is where somebody has TAKEN classes, which is a
-       private booking, so it is drawn on their own tab and never on a stranger's
-       view of them. The check asserts its absence as well as the two that are
-       right, because a group that is only missing from this page by accident
-       would look exactly the same. */
-    await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toHaveCount(2);
-    await expect(learner.getByText("Teach", { exact: true })).toBeVisible();
-    await expect(learner.getByText("Manage", { exact: true })).toBeVisible();
+    /* ⚠⚠ AND THE STUDIO IS ON THIS PAGE ONCE — WHICH IS THE CHANGE (27 Sep
+       2026). It was TWICE on purpose from 20 Sep: "Studios taught at" counted
+       PUBLISHED CLASSES and "Studios associated with" counted the SEAT, and
+       both are true of this trainer (they accepted the class in segment 1, and
+       accepting is what seated them as visiting faculty). The user asked for one
+       group with the team title on the row — *"Studios with team Title"* — so
+       the two facts are one row, keyed by the studio's id, and the SEAT's word
+       is what it reads because a seat is what the studio calls you.
+       ⚠ **Train** is still deliberately not here: it is where somebody has TAKEN
+       classes, which is a private booking, so it is their own tab's alone and
+       never on a stranger's view of them. The check asserts its absence too,
+       because a group only missing by accident would look the same. */
+    await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toHaveCount(1);
+    /* ⚠ ONE "Studios" GROUP SINCE 27 Sep 2026, with the title on the row. The
+       two facts this pair used to assert separately — they TEACH here and they
+       hold a SEAT here — are one row now, and a seat outranks a class, so the
+       row reads the seat's word. ⚠ TRAIN is still the OWN TAB's alone, which is
+       what the third line has always been for. */
+    await expect(learner.getByText("Studios", { exact: true })).toBeVisible();
+    await expect(learner.getByText("Teach", { exact: true })).toHaveCount(0);
     await expect(learner.getByText("Train", { exact: true })).toHaveCount(0);
     // the crew they confirmed into is on their page, and it opens the crew
     await expect(learner.getByRole("link", { name: `Open ${crewName}` })).toBeVisible();
@@ -1998,14 +2036,14 @@ test.describe.serial("DanceOS, end to end", () => {
        the gear on every screen, so the way out is one tap from anywhere rather
        than two taps inside the Profile tab. */
     await expect(settings.getByRole("button", { name: /Log out/ })).toHaveCount(0);
-    /* Enquiry types is the prototype's own sheet (9000-9030). Since 18 Sep 2026 the
-       trainer OWNS an artist page — Home provisioned it the moment their plan was
-       live — and the Profile tab configures THAT business first. An artist takes
-       all five kinds, judge included (4934); a studio would take four. */
-    await settings.getByRole("button", { name: /Enquiry types/ }).click();
-    const enqTypes = trainer.getByRole("dialog", { name: "Enquiry types" });
-    await expect(enqTypes.getByText("5 of 5 switched on")).toBeVisible();
-    await enqTypes.getByRole("button", { name: "Done" }).click();
+    /* ⚠ ENQUIRY TYPES HAS LEFT SETTINGS (27 Sep 2026, the user: "enquiries
+       should be removed from settings"). It was the prototype's own sheet
+       (9000-9030) behind a tile here; the kinds a business takes are now chips
+       under the Take-enquiries switch in the contact ⊕ on its own home, which is
+       where the button they govern is made. The whole BUSINESS block went with
+       the tile rather than leaving a heading over nothing. */
+    await expect(settings.getByText("Enquiry types", { exact: true })).toHaveCount(0);
+    await expect(settings.getByText("BUSINESS", { exact: true })).toHaveCount(0);
     // Payments is a real screen now (S_payments 16531): the trainer's goes to their OWN page's desk
     await settings.getByRole("link", { name: /Payments & verification/ }).click();
     await expect(trainer).toHaveURL(/\/business\/[0-9a-f-]+\/payments$/);
@@ -2082,7 +2120,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto(`/business/${tenantId}?edit=1`);
     const bizEdit = owner.getByRole("dialog", { name: "Edit business" });
     await expect(bizEdit.getByLabel("About")).toHaveCount(0);
-    await bizEdit.getByLabel("Since").selectOption("2016");
+    await pick(bizEdit, "Since", "2016");
     /* ⚠ NO PHONE IN THE SHEET (26 Sep 2026) — the number is the ⊕ beside the buttons */
     await expect(bizEdit.getByLabel("Phone", { exact: true })).toHaveCount(0);
     await bizEdit.getByRole("button", { name: "Save" }).click();
@@ -2258,16 +2296,14 @@ test.describe.serial("DanceOS, end to end", () => {
     await bizSheet.getByLabel("Phone", { exact: true }).fill("+91 90000 11111");
     await bizSheet.getByRole("button", { name: "Save" }).click();
     await expect(bizSheet).toHaveCount(0);
-    await learner.goto("/inbox");
-    await pressPill(learner, /^Enquiries/);
+    await learner.goto("/enquiries");
     await learner.getByRole("button", { name: "Sent enquiries" }).click();
     await learner.getByRole("link", { name: `Private Sessions enquiry to ${studioName}` }).click();
     await learner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(learner.getByRole("link", { name: `Call ${studioName}` })).toHaveAttribute("href", "tel:+919000011111");
     // the business's side is unchanged: this enquiry carried no mobile, so it still
     // says so rather than offering a dead button
-    await owner.goto("/inbox");
-    await owner.getByRole("button", { name: /^Enquiries/ }).click();
+    await owner.goto("/enquiries");
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();
@@ -2393,12 +2429,12 @@ test.describe.serial("DanceOS, end to end", () => {
        2026, the user: "Membership on profiles to have a better pay button and
        should take to payment option"). A free one says "no payment" in the same
        sheet rather than pretending there is a step to take. ── */
-    await learner.getByRole("button", { name: `Take ${passName}` }).click();
+    await learner.getByRole("button", { name: `Buy ${passName}` }).click();
     const payStep = learner.getByRole("dialog", { name: "Confirm — no payment" });
     await expect(payStep).toBeVisible();
     await expect(payStep.getByText("2 classes")).toBeVisible();
     await expect(payStep.getByText("Free")).toBeVisible();
-    await payStep.getByRole("button", { name: "Take it" }).click();
+    await payStep.getByRole("button", { name: "Buy now" }).click();
     await expect(learner.getByText("find it under Memberships")).toBeVisible({ timeout: 20_000 });
 
     // ── which is exactly where it is: the tools' own Memberships section, with
@@ -2414,8 +2450,8 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(held.getByTestId("pass-progress")).toHaveAttribute("aria-label", "0 of 2 used");
     // and they may not take a second one while one is live — the database's rule
     await learner.goto(`/studio/${tenantId}`);
-    await learner.getByRole("button", { name: `Take ${passName}` }).click();
-    await learner.getByRole("dialog", { name: "Confirm — no payment" }).getByRole("button", { name: "Take it" }).click();
+    await learner.getByRole("button", { name: `Buy ${passName}` }).click();
+    await learner.getByRole("dialog", { name: "Confirm — no payment" }).getByRole("button", { name: "Buy now" }).click();
     await expect(learner.getByText("use it up first")).toBeVisible({ timeout: 20_000 });
 
     // ── THE SELLER TRACKS IT, per class and per student (the user's own words).
@@ -2493,7 +2529,7 @@ test.describe.serial("DanceOS, end to end", () => {
       await expect(owner.getByRole("heading", { level: 1, name: "Assets" })).toBeVisible();
       // ── THE THREE FIELDS AND NOTHING ELSE (the user's own list)
       await sheet.getByLabel("Asset name").fill(name);
-      await sheet.getByLabel("Type of asset").selectOption(type);
+      await pick(sheet, "Type of asset", type);
       await sheet.getByLabel("What it is worth — 0 means you already had it").fill(worth);
       await sheet.getByRole("button", { name: "Add asset" }).click();
       await owner.getByRole("button", { name: "Add it" }).click();
@@ -2725,7 +2761,7 @@ test.describe.serial("DanceOS, end to end", () => {
        question is asked and the sheet answers it. */
     await owner.goto(`/business/${tenantId}/classes/new`);
     await owner.getByLabel("Class date").fill(when.date);
-    await owner.getByLabel("Starts").selectOption(when.time);
+    await pick(owner, "Starts", when.time);
     await owner.getByLabel("Dance style", { exact: true }).click();
     await owner.getByRole("button", { name: "Salsa", exact: true }).click();
     await owner.getByRole("button", { name: "Hold it in Studio A" }).click();
@@ -2831,14 +2867,17 @@ test.describe.serial("DanceOS, end to end", () => {
     // readable, which `20260926140000` fixed) is now the card's own heading
     await expect(learner.getByText(`invited by ${orgName}`)).toBeVisible({ timeout: 15_000 });
     await learner.getByRole("button", { name: `Join ${orgName}` }).click();
-    /* the answered ask stays on the desk, wearing its answer (19 Sep 2026).
+    /* the answered ask stays — on DONE since 27 Sep 2026, which is where an
+       answered row goes so the live desk holds only what still needs you
+       (nothing is deleted; the 19 Sep rule is untouched).
        ⚠ Scoped to THIS row for the reason written out at the crews segment: every
        answered ask wears the same sentence, so `.first()` dodged strict mode by
        matching whichever row came first — proving nothing here and waiting for
        nothing, which left the count below racing the server action. */
+    await expect(learner.getByRole("button", { name: `Join ${orgName}` })).toHaveCount(0, { timeout: 15_000 });
+    await pressPill(learner, /^Done/);
     const ownerAsk = learner.getByTestId("request-row").filter({ hasText: `invited by ${orgName}` });
-    await expect(ownerAsk.getByText("✅ Joined — you said yes")).toBeVisible({ timeout: 15_000 });
-    await expect(ownerAsk.getByRole("button", { name: `Join ${orgName}` })).toHaveCount(0);
+    await expect(ownerAsk.getByText("Joined — you said yes")).toBeVisible({ timeout: 15_000 });
     // the desk counts one owner; the public page prints them under OWNER, with a door to their profile
     await owner.reload();
     await expect(owner.getByTestId("org-team-tile-owners")).toHaveText("1");
@@ -3038,12 +3077,21 @@ test.describe.serial("DanceOS, end to end", () => {
     // what is still asserted is that the organization's Team desk offers the
     // three that remain and never a studio.
     await owner.goto(`/business/${eventsHostId}/team`);
-    const label = owner.getByRole("combobox", { name: `What ${learnerName} is` });
+    /* ⚠ A BUTTON OVER A PORTALLED SHEET SINCE 27 Sep 2026, not a combobox — so
+       the options exist only while it is open, and they are at the body's root
+       rather than inside the trigger. Closing it with BACK is the contract
+       `useCloseOnBack` exists for, so it is asserted here rather than assumed. */
+    const labelName = `What ${learnerName} is`;
+    const label = owner.getByRole("button", { name: labelName, exact: true });
     await expect(label).toBeVisible({ timeout: 15_000 });
-    await expect(label.getByRole("option", { name: "Owner", exact: true })).toHaveCount(1);
-    await expect(label.getByRole("option", { name: "Event team" })).toHaveCount(1);
-    await expect(label.getByRole("option", { name: "Other team member" })).toHaveCount(1);
-    await expect(label.getByRole("option", { name: /Studio owner/ })).toHaveCount(0);
+    await label.click();
+    const labelList = owner.getByRole("listbox", { name: labelName });
+    await expect(labelList.getByRole("option", { name: "Owner", exact: true })).toHaveCount(1);
+    await expect(labelList.getByRole("option", { name: "Event team", exact: true })).toHaveCount(1);
+    await expect(labelList.getByRole("option", { name: "Other team member", exact: true })).toHaveCount(1);
+    await expect(labelList.getByRole("option", { name: /Studio owner/ })).toHaveCount(0);
+    await owner.goBack();
+    await expect(labelList).toHaveCount(0, { timeout: 15_000 });
     await trainer.goto(`/org/${eventsHostId}`);
     await expect(trainer.getByText("Studio owners", { exact: true })).toHaveCount(0);
 
@@ -3065,10 +3113,10 @@ test.describe.serial("DanceOS, end to end", () => {
     // ── 5. A SEAT IS NOT A CLASS TAUGHT — the user's answer 5. Two groups, two
     // different facts: where somebody is on the team, and where they have published.
     await trainer.goto(`/person/${learnerId}`);
-    /* "Manage" since 21 Sep 2026 — the user's own word for the group that was
-       headed "Studios associated with"; the fact under it is unchanged (a SEAT
-       held, which is what this check is about) */
-    await expect(trainer.getByText("Manage", { exact: true })).toBeVisible({ timeout: 15_000 });
+    /* "Studios" since 27 Sep 2026 — one group with the title on the row, where
+       21 Sep had four headings; the fact under it is unchanged (a SEAT held,
+       which is what this check is about) */
+    await expect(trainer.getByText("Studios", { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(trainer.getByRole("link", { name: new RegExp(`Open ${studioName}`) }).first()).toBeVisible();
 
     // ── 6. DELETED 26 Sep 2026: "moving the label away puts back what it replaced"
@@ -3076,7 +3124,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // there is no seat to put back. The relabel that remains is a WORD: the
     // organization changes it and the studio's desk does not move.
     await owner.goto(`/business/${eventsHostId}/team`);
-    await label.selectOption("event_team");
+    await pick(owner, labelName, "Event team");
     await owner.goto(`/business/${tenantId}/staff`);
     const backRow = owner.getByRole("button", { name: `Manage ${learnerName}` });
     await expect(backRow).toBeVisible({ timeout: 15_000 });

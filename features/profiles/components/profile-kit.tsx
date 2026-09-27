@@ -364,6 +364,79 @@ export function Group({ title, n, children }: { title: string; n: number; childr
   );
 }
 
+/** ⚠⚠ A PERSON IS A CHIP, NOT A ROW (27 Sep 2026, the user: *"make sure to not
+ *  take full row for each name here and make squircle boxes with name and role
+ *  in the right section"*).
+ *
+ *  `Row` is right for an ENTITY — a studio, an organization, a crew — because
+ *  the row is a door to a whole page and the name may be long. It is wrong for
+ *  a ROSTER: a studio with nine people made nine full-width rows, so the one
+ *  thing the section is for (how many, and who) took a screen to read, and the
+ *  role — the thing that distinguishes them — sat in a sub-line nobody scans.
+ *
+ *  So a person is a chip: the squircle face, the name, and THE ROLE BESIDE IT,
+ *  two to a line. ⚠ The face is `EntityMark` at the roster size the three Team
+ *  DESKS already draw (36/11, C49's own number), so a person looks the same
+ *  wherever DanceOS draws one.
+ *
+ *  ⚠ THE ROLE IS A CHIP, NOT A CLAUSE — the 27 Sep Inbox lesson in a second
+ *  place: these words ("Visiting faculty", "Other team member") do not read as
+ *  a sentence under a name, and rewording them to make them read is the
+ *  near-English this file has had to undo before. */
+export function PersonChip({ href, name, role, roleColour, photo }: { href?: string; name: string; role?: string | null; roleColour?: string; photo?: string | null }) {
+  const body = (
+    <>
+      <EntityMark name={name} photo={photo} size={36} radius={11} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 12.5, fontWeight: 800, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+        {role ? (
+          <span style={{ display: "block", fontSize: 9, fontWeight: 900, letterSpacing: 0.4, textTransform: "uppercase", color: roleColour ?? "var(--muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{role}</span>
+        ) : null}
+      </span>
+    </>
+  );
+  const style: CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    minWidth: 0,
+    padding: "7px 10px 7px 7px",
+    borderRadius: 14,
+    background: "var(--card)",
+    border: "1.5px solid var(--el)",
+    color: "var(--text)",
+    textDecoration: "none",
+  };
+  return href ? (
+    <Link href={href} aria-label={`Open ${name}`} style={style}>
+      {body}
+    </Link>
+  ) : (
+    <div style={style}>{body}</div>
+  );
+}
+
+/** the chips, two to a line — a grid rather than a wrap, so two short names and
+ *  two long ones line up instead of ragging */
+export function PeopleGrid({ children }: { children: ReactNode }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>{children}</div>;
+}
+
+/** a `Group` for PEOPLE: the same counted head, and no card around it — the
+ *  chips carry their own ground, so a card would be a box inside a box */
+export function PeopleGroup({ title, n, children }: { title: string; n: number; children: ReactNode }) {
+  return (
+    <div style={{ marginTop: 18 }}>
+      <FigureHead
+        margin="0 0 8px"
+        title={<span style={{ ...TYPE.shelf, color: "var(--text)" }}>{title}</span>}
+        figure={<span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>{n}</span>}
+      />
+      <PeopleGrid>{children}</PeopleGrid>
+    </div>
+  );
+}
+
 export function Row({ href, title, sub, subColor, right, photo, markName }: { href?: string; title: string; sub?: string; subColor?: string; right?: string; photo?: string | null; markName?: string }) {
   const body = (
     <>

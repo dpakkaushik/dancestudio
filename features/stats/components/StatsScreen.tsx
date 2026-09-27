@@ -668,7 +668,9 @@ export function StatsScreen({
               })}
             </div>
             <div style={{ marginBottom: 8 }}>
-              <CitySelect value={city} cities={cities} ariaLabel="City" allowNone noneLabel="Everywhere" placeholder="Everywhere" onChange={(c) => router.replace(chartHref({ city: c }), { scroll: false })} />
+              {/* ⚠ `navigates` — picking replaces the address, so the sheet must
+                  not spend its history entry (useCloseOnBack rule 2) */}
+              <CitySelect value={city} cities={cities} ariaLabel="City" allowNone noneLabel="Everywhere" placeholder="Everywhere" navigates onChange={(c) => router.replace(chartHref({ city: c }), { scroll: false })} />
             </div>
             {chartStyles.length > 0 ? (
               <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 6, marginBottom: 8 }}>

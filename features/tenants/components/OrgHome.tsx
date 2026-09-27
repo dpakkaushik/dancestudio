@@ -6,7 +6,7 @@ import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEdit
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityBand } from "@/features/profiles/components/profile-band";
+import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
@@ -54,6 +54,7 @@ export function OrgHome({
   editable = null,
   since = null,
   followers = 0,
+  followingN = null,
   tiles,
   order = null,
   editOpen = false,
@@ -72,6 +73,9 @@ export function OrgHome({
   since?: string | null;
   /** how many follow it — a business follow, aggregate-only */
   followers?: number;
+  /** what the ACCOUNT THAT OWNS it follows (27 Sep 2026) — a business has
+   *  nothing to follow with of its own; null draws no figure */
+  followingN?: number | null;
   tiles: Tile[];
   /** this member's own arrangement of THIS organization's tools, keyed by it */
   order?: string[] | null;
@@ -137,8 +141,15 @@ export function OrgHome({
             figures={
               <>
                 <FollowerFigure n={followers} kind="business" id={tenant.id} name={tenant.name} testId="org-followers" />
-                {/* ⚠ NO FOLLOWING FIGURE: a business follows nothing, and the login
-                    that used to follow on an organization's behalf is retired */}
+                {/* ⚠ THE SECOND FIGURE IS THE OWNER'S (27 Sep 2026, the user:
+                    "following section for organization and crews is missing on
+                    home"). This said "NO FOLLOWING FIGURE: a business follows
+                    nothing" — true of the BUSINESS, and the wrong answer to the
+                    question, because a studio's home has printed exactly this
+                    figure since 20 Sep and an organization's is the same kind of
+                    screen. What is counted is what the account that RUNS it
+                    follows. Null draws nothing, never 0. */}
+                <Figure n={followingN} label="Following" testId="org-following" />
               </>
             }
             /* QR · SHARE — no Follow bell on your own home, and no Stats chip: the

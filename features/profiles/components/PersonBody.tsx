@@ -8,7 +8,7 @@ import type { Tenant } from "@/types/tenant";
 import { photoUrl } from "@/lib/media/photo";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
-import { Group, Row, SchedIcon, bigWhite } from "./profile-kit";
+import { Group, PeopleGroup, PersonChip, Row, SchedIcon, bigWhite } from "./profile-kit";
 import type { ReactNode } from "react";
 
 /** EVERYTHING UNDER A PERSON'S HERO — WRITTEN ONCE (20 Sep 2026).
@@ -148,17 +148,51 @@ export function PersonBody({
      ⚠ A studio where somebody does BOTH is in BOTH groups, deliberately: it is
      two true statements about one place, and picking one would make the other
      disappear. */
-  const teachesAt = studiosTaughtAt.filter((t) => t.kinds.includes("Artist"));
-  const assistsAt = studiosTaughtAt.filter((t) => t.kinds.includes("Assistant"));
+  /** ⚠⚠ ONE STUDIO, ONE ROW, ONE TITLE (27 Sep 2026 — the user's "Studios with
+   *  team Title"). Three groups became one, so the merge has to decide what a
+   *  row SAYS, and the order is the point: a SEAT outranks a class, because a
+   *  seat is what the studio calls you and a class is what you did there. With
+   *  no seat the row says what they actually do, which is the fact that would
+   *  otherwise have left the page with the Teach and Assist groups.
+   *  ⚠ Keyed by id, so a studio where somebody teaches AND assists AND holds a
+   *  seat is one row rather than three — which is the duplication the collapse
+   *  exists to end. */
+  const studios = (() => {
+    const byId = new Map<string, { id: string; name: string; photo: string | null; title: string }>();
+    studiosWith.forEach((a) => {
+      byId.set(a.tenantId, {
+        id: a.tenantId,
+        name: a.tenantName,
+        photo: a.photoPath ? photoUrl(a.photoPath) : null,
+        /* ⚠ a seat they have LEFT says so rather than disappearing (20 Sep
+           2026) — the years somebody taught somewhere are part of who they are */
+        title: a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role],
+      });
+    });
+    studiosTaughtAt.forEach((t) => {
+      if (byId.has(t.tenantId)) return;
+      const teaches = t.kinds.includes("Artist");
+      const assists = t.kinds.includes("Assistant");
+      byId.set(t.tenantId, {
+        id: t.tenantId,
+        name: t.tenantName,
+        photo: null,
+        title: teaches && assists ? "Teaches · assists" : teaches ? "Teaches here" : "Assists here",
+      });
+    });
+    return [...byId.values()];
+  })();
 
-  /* the crews, split by whether they are yours to run (21 Sep 2026, the user:
-     "Crews - should have 2 columns Leader & Member") */
-  const crewsLed = person.crews.filter((c) => c.role === "leader");
-  const crewsIn = person.crews.filter((c) => c.role !== "leader");
+  /** ⚠ THE CREWS ARE ONE GROUP WITH THE POSITION ON THE ROW (27 Sep 2026, the
+   *  user: "Crew with Postion"). They were Leader and Member, two groups — the
+   *  distinction is real (S_bizhub 2596) and it is a WORD, not a heading, which
+   *  is what the position chip now carries. */
+  const crews = person.crews;
 
   return (
     <>
       {/* ── THE ONE WHITE BAR THE PAGE IS FOR (10919), AND IT IS ALWAYS FIRST ── */}
+      {/* (the Studios merge is computed above the return — see `studios`) */}
       {scheduleHref ? (
         <div style={{ marginTop: 8 }}>
           <Link href={scheduleHref} aria-label="Schedule" style={bigWhite}>
@@ -193,63 +227,42 @@ export function PersonBody({
         </Group>
       ) : null}
 
-      {/* TEACH — published classes where they are the artist */}
-      {teachesAt.length ? (
-        <Group title="Teach" n={teachesAt.length}>
-          {teachesAt.map((t) => (
-            <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[`${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
+      {/* ⚠⚠ STUDIOS ARE ONE GROUP WITH A TITLE ON EACH ROW (27 Sep 2026, the
+          user: *"User and artist — Crew with Postion, Organization with team
+          title, Studios with team Title, Artist with team Title"*, and *"on all
+          profile pages should only show"* those).
+          They were THREE — Teach · Assist · Manage (R43, 21 Sep) — which put one
+          studio on the page up to three times over, once per fact, so a person
+          who teaches and assists at the same studio read as two associations.
+          ⚠ NOTHING IS LOST: the seat word is the title where there is a seat,
+          and where there is none the row says what they actually do there — a
+          visiting artist teaches a studio's class without being on its team, and
+          dropping the classes entirely would have taken that off the page.
+          ⚠ TRAIN keeps its own group above: it is not a team title, it is where
+          somebody LEARNS, and it is their own profile's alone (21 Sep). */}
+      {studios.length ? (
+        <PeopleGroup title="Studios" n={studios.length}>
+          {studios.map((s) => (
+            <PersonChip key={s.id} href={`/studio/${s.id}`} name={s.name} role={s.title} roleColour={accent} photo={s.photo} />
           ))}
-        </Group>
-      ) : null}
-
-      {/* ASSIST — published classes where they are on the floor with somebody */}
-      {assistsAt.length ? (
-        <Group title="Assist" n={assistsAt.length}>
-          {assistsAt.map((t) => (
-            <Row key={t.tenantId} href={`/studio/${t.tenantId}`} markName={t.tenantName} title={t.tenantName} sub={[`${t.classes} class${t.classes === 1 ? "" : "es"}`, t.city].filter(Boolean).join(" · ")} />
-          ))}
-        </Group>
-      ) : null}
-
-      {/* MANAGE — the SEATS they hold, which is a different fact from the
-          classes above: somebody asked onto a team who has not taught yet
-          manages a studio and teaches at nothing. */}
-      {studiosWith.length ? (
-        <Group title="Manage" n={studiosWith.length}>
-          {studiosWith.map((a) => (
-            <Row
-              key={a.tenantId}
-              href={`/studio/${a.tenantId}`}
-              markName={a.tenantName}
-              photo={a.photoPath ? photoUrl(a.photoPath) : null}
-              title={a.tenantName}
-              sub={a.city ?? ""}
-              /* ⚠ a seat they have LEFT says so rather than disappearing
-                 (20 Sep 2026) — the years somebody taught somewhere are part of
-                 who they are, and a page that forgets them the day they leave is
-                 not a record */
-              right={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
-            />
-          ))}
-        </Group>
+        </PeopleGroup>
       ) : null}
 
       {artistsWith.length ? (
-        <Group title="Artists associated with" n={artistsWith.length}>
+        <PeopleGroup title="Artists" n={artistsWith.length}>
           {artistsWith.map((a) => (
             /* an artist page IS the person behind it (18 Sep 2026) — open them
                directly rather than the address that only redirects */
-            <Row
+            <PersonChip
               key={a.tenantId}
               href={a.ownerId ? `/person/${a.ownerId}` : `/artist/${a.tenantId}`}
-              markName={a.tenantName}
+              name={a.tenantName}
               photo={a.photoPath ? photoUrl(a.photoPath) : null}
-              title={a.tenantName}
-              sub={a.city ?? ""}
-              right={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
+              role={a.ended ? `${MEMBER_ROLE_WORD[a.role]} · past` : MEMBER_ROLE_WORD[a.role]}
+              roleColour={accent}
             />
           ))}
-        </Group>
+        </PeopleGroup>
       ) : null}
 
       {/* ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026) — the other end of the
@@ -258,66 +271,67 @@ export function PersonBody({
           label is the organization's own word for the seat, so the two screens
           cannot disagree about what somebody is. */}
       {organizations.length ? (
-        <Group title="Organizations" n={organizations.length}>
+        <PeopleGroup title="Organizations" n={organizations.length}>
           {organizations.map((o) => (
-            <Row
+            <PersonChip
               key={o.orgId}
               href={`/org/${o.orgId}`}
-              markName={o.name}
+              name={o.name}
               photo={o.photoPath ? photoUrl(o.photoPath) : null}
-              title={o.name}
-              sub={o.city ?? ""}
-              right={o.role === "owner" ? "Owner" : "Event team"}
+              role={o.role === "owner" ? "Owner" : "Event team"}
+              roleColour={accent}
             />
           ))}
-        </Group>
+        </PeopleGroup>
       ) : null}
 
       {/* ⚠ THE OTHER END OF "Artists associated with" (27 Sep 2026) — the people
           seated on this artist's own page, named the way a studio's page has
           named its faculty since 19 Sep. Same read, same words, same seats. */}
-      {teamFaculty.length ? (
-        <Group title="Faculty" n={teamFaculty.length}>
-          {teamFaculty.map((m) => (
-            <Row key={m.userId} href={`/person/${m.userId}`} markName={m.name} photo={m.photoPath ? photoUrl(m.photoPath) : null} title={m.name} sub="" right={m.role === "visiting_faculty" ? "Visiting faculty" : "Faculty"} />
+      {/* ⚠ THE PEOPLE ON THIS ARTIST'S OWN PAGE — one group with the position on
+          the row (27 Sep 2026: *"Studio, Crew and Organization — simply should
+          show the Team with position"*, and an artist page is a profile kind
+          like the other three). It was Faculty and Assistants, two headings for
+          what is one roster. */}
+      {teamFaculty.length + teamAssistants.length ? (
+        <PeopleGroup title="Team" n={teamFaculty.length + teamAssistants.length}>
+          {[...teamFaculty, ...teamAssistants].map((m) => (
+            <PersonChip
+              key={m.userId}
+              href={`/person/${m.userId}`}
+              name={m.name}
+              photo={m.photoPath ? photoUrl(m.photoPath) : null}
+              role={m.role === "visiting_faculty" ? "Visiting faculty" : m.role === "assistant" ? "Assistant" : "Faculty"}
+              roleColour={accent}
+            />
           ))}
-        </Group>
-      ) : null}
-      {teamAssistants.length ? (
-        <Group title="Assistants" n={teamAssistants.length}>
-          {teamAssistants.map((m) => (
-            <Row key={m.userId} href={`/person/${m.userId}`} markName={m.name} photo={m.photoPath ? photoUrl(m.photoPath) : null} title={m.name} sub="" right="Assistant" />
-          ))}
-        </Group>
+        </PeopleGroup>
       ) : null}
 
       {/* the crews they are IN — confirmed only (Step 22), in the user's own two
           columns (21 Sep 2026). A crew you LEAD and a crew you dance in are not
           the same object with a flag on it — the prototype says so at S_bizhub
           2596, and this is that distinction said on the profile too. */}
-      {crewsLed.length ? (
-        <Group title="Leader" n={crewsLed.length}>
-          {crewsLed.map((c) => (
-            <CrewRow key={c.crewId} c={c} right="Leads this crew" />
+      {crews.length ? (
+        <PeopleGroup title="Crew" n={crews.length}>
+          {crews.map((c) => (
+            <PersonChip
+              key={c.crewId}
+              href={`/crew/${c.crewId}`}
+              name={c.name}
+              photo={c.photo ? photoUrl(c.photo) : null}
+              role={c.role === "leader" ? "Leader" : CREW_ROLE_WORD[c.role]}
+              roleColour={accent}
+            />
           ))}
-        </Group>
-      ) : null}
-
-      {crewsIn.length ? (
-        <Group title="Member" n={crewsIn.length}>
-          {crewsIn.map((c) => (
-            <CrewRow key={c.crewId} c={c} right={CREW_ROLE_WORD[c.role]} />
-          ))}
-        </Group>
+        </PeopleGroup>
       ) : null}
     </>
   );
 }
 
-/** One crew row, drawn identically in Leader and in Member — the two groups say
- *  WHICH they are, so the row must not differ beyond the word on its right. */
-function CrewRow({ c, right }: { c: PublicPerson["crews"][number]; right: string }) {
-  return <Row href={`/crew/${c.crewId}`} markName={c.name} photo={c.photo ? photoUrl(c.photo) : null} title={c.name} sub={`${c.style} · ${c.city} · since ${sinceWords(c.since)}`} right={right} />;
-}
-
-const sinceWords = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short", year: "numeric" }).format(new Date(iso));
+/* ⚠ `CrewRow` IS DELETED (27 Sep 2026). The crews are one group of chips with
+   the position on each, so the full-width row — and the "{style} · {city} ·
+   since {month}" sub-line it carried — has no caller. This repo has twice paid
+   for a component nothing renders (`PencilIcon`, the `FollowToggle` pill), so
+   it goes rather than standing; `sinceWords` went with it, its only reader. */

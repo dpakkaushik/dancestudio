@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Pick } from "@/components/ui/PickSheet";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
 import { CityPicker } from "@/features/geo/components/CityPicker";
 import { DOS_UI } from "@/lib/design/tokens";
@@ -402,14 +403,17 @@ export function EnquirySheet({
               <div key={f.k}>
                 <Lab>{f.label}</Lab>
                 {f.t === "select" ? (
-                  <select aria-label={f.label} value={String(vals[f.k] ?? "")} onChange={(e) => setV(f.k, e.target.value)} style={{ ...inp, WebkitAppearance: "none", appearance: "none" }}>
-                    <option value="">Choose…</option>
-                    {f.opts.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
+                  /* ⚠ IN-APP (27 Sep 2026) — an enquiry sheet is already a sheet
+                     over a profile page, so each of these threw the OS's own
+                     full-screen picker over both. The type's own options, in the
+                     type's own order, under the field's own label. */
+                  <Pick
+                    ariaLabel={f.label}
+                    value={String(vals[f.k] ?? "")}
+                    rows={[{ value: "", label: "Choose…" }, ...f.opts.map((o) => ({ value: o, label: o }))]}
+                    onPick={(v) => setV(f.k, v)}
+                    style={inp}
+                  />
                 ) : f.t === "count" ? (
                   <Count f={f} />
                 ) : (

@@ -101,19 +101,27 @@ export function MembershipsOnSale({
           </span>
           <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 900 }}>{m.priceInr === 0 ? "Free" : rupees(m.priceInr)}</span>
           {!signedIn ? (
-            <a href="/login" aria-label={`Take ${m.name}`} style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: accent, textDecoration: "none" }}>
-              Take it ›
+            <a href="/login" aria-label={`Buy ${m.name}`} style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: accent, textDecoration: "none" }}>
+              Buy now ›
             </a>
           ) : canBuy && m.leftCount > 0 ? (
             /* A REAL BUTTON, AND IT OPENS THE PAYMENT STEP (19 Sep 2026) */
             <button
               type="button"
               disabled={pending}
-              aria-label={m.priceInr === 0 ? `Take ${m.name}` : `Buy ${m.name} for ${rupees(m.priceInr)}`}
+              /* ⚠ the accessible name follows the visible one (27 Sep 2026) — a
+                 button that reads "Buy now" and is announced "Take …" is the
+                 22 Sep mismatch, where a screen reader heard a different verb
+                 from the one on the screen */
+              aria-label={m.priceInr === 0 ? `Buy ${m.name}` : `Buy ${m.name} for ${rupees(m.priceInr)}`}
               onClick={() => { setNote(null); setPaying(m); }}
               style={{ flexShrink: 0, fontSize: 11, fontWeight: 900, color: "#fff", background: accent, border: "none", borderRadius: 999, padding: "8px 14px", cursor: pending ? "wait" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", boxShadow: `0 3px 10px ${accent}44` }}
             >
-              {m.priceInr === 0 ? "Take it" : `Buy · ${rupees(m.priceInr)}`}
+              {/* ⚠ "BUY NOW", NOT "TAKE IT" (27 Sep 2026, the user's own word).
+                  A free pass reads "Buy now" too: what the button does is the
+                  same act, and two verbs for one act is what this file has had
+                  to undo before — the price beside it already says it is free. */}
+              {m.priceInr === 0 ? "Buy now" : `Buy · ${rupees(m.priceInr)}`}
             </button>
           ) : (
             /* ⚠ SAY WHY, NOT "—" (19 Sep 2026, found by the e2e). The only
@@ -162,7 +170,7 @@ export function MembershipsOnSale({
                 Cancel
               </button>
               <button type="button" disabled={pending} onClick={() => take(paying)} style={{ flex: 1.4, padding: 13, borderRadius: 999, background: accent, border: "none", color: "#fff", fontWeight: 900, fontSize: 13, cursor: pending ? "wait" : "pointer", fontFamily: "inherit" }}>
-                {pending ? "Opening…" : paying.priceInr === 0 ? "Take it" : `Pay ${rupees(paying.priceInr)}`}
+                {pending ? "Opening…" : paying.priceInr === 0 ? "Buy now" : `Pay ${rupees(paying.priceInr)}`}
               </button>
             </div>
             {/* the rule that decides the money, said where the money is asked for */}

@@ -17,7 +17,7 @@ import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
 import { DeskHero, SheetHandle, sheetBody, sheetWrap } from "@/features/tenants/components/biz-kit";
 import { photoUrl } from "@/lib/media/photo";
-import { DOS_UI, INK, LILAC } from "@/lib/design/tokens";
+import { DOS_DISPLAY, DOS_UI, INK, LILAC } from "@/lib/design/tokens";
 import { CREW_ROLE_TINT, CREW_ROLE_WORD, type Crew, type CrewEntry, type CrewMember } from "@/types/crew";
 import { EV_TINT } from "@/types/event";
 import { Toast, bizBtn, bizCard, sinceWords } from "./crew-kit";
@@ -235,8 +235,11 @@ export function CrewManager({ crew, members, entries, todayKey, section }: { cre
               <div onClick={() => setAdd(false)} style={sheetWrap}>
                 <div role="dialog" aria-modal="true" aria-label="Add a team member" onClick={(e) => e.stopPropagation()} style={sheetBody}>
                   <SheetHandle />
-                  <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 4 }}>Add a team member</div>
-                  <div style={{ fontSize: 11.5, color: "var(--sub)", marginBottom: 12, lineHeight: 1.5 }}>
+                  {/* ⚠ 17px AND THE DISPLAY FACE (27 Sep 2026) — the studio's and
+                      the organization's add sheets both head themselves that way,
+                      and this one was 16px in the UI face. One sheet, one title. */}
+                  <b style={{ fontSize: 17, fontFamily: DOS_DISPLAY }}>Add a team member</b>
+                  <div style={{ fontSize: 11.5, color: "var(--sub)", margin: "3px 0 12px", lineHeight: 1.5 }}>
                     They accept before their name is on the crew&rsquo;s page — nobody is put on a roster without saying yes.
                   </div>
                   <PeoplePicker

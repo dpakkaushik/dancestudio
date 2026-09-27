@@ -14,7 +14,7 @@ import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { openCashfreeCheckout, type CashfreeCheckoutResult } from "@/lib/cashfree/checkout-client";
 import { DOS_DISPLAY, DOS_UI, GOLD, GREEN } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
-import { NO_BOOKING_FOR_AN_ORGANIZATION, type Profile } from "@/types/profile";
+import { type Profile } from "@/types/profile";
 import {
   EVENT_CRITERIA,
   EV_TINT,
@@ -148,12 +148,16 @@ export interface EventPageProps {
    *  its page; null when the host is not public, and then the venue line
    *  prints the name alone as it always did */
   host?: EventCardHost | null;
-  /** ⚠ false for an ORGANIZATION account (19 Sep 2026) — it runs events, it does
-   *  not take a place at one. `guard_person_only` is the real rule. */
+  /** ⚠ false for a profile that does not book — a studio or an organization
+   *  RUNS events (19 Sep 2026; re-cut 27 Sep off the profile you are acting as,
+   *  because the `profiles.role` it tested was retired by R48). A CREW may
+   *  enter, which is what a crew is for. */
   viewerCanBook?: boolean;
+  /** the reason, in that profile's own words */
+  cannotBookWhy?: string | null;
 }
 
-export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, ledCrews = [], todayKey, host: hostCard = null, viewerCanBook = true }: EventPageProps) {
+export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, ledCrews = [], todayKey, host: hostCard = null, viewerCanBook = true, cannotBookWhy = null }: EventPageProps) {
   const router = useRouter();
   const cat = ev.cat;
   const col = EV_TINT[cat];
@@ -342,6 +346,26 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
   const canEnter = !isMember && takesEntries(cat) && open.length > 0 && !heldEntry;
   const canSeat = tick && !allGone && !heldSeat;
   const showBar = !isDraft && (canEnter || canSeat || !held);
+  /* ⚠ WHY THE OTHER SIDE IS NOT ON THE BAR (27 Sep 2026). Exactly one side
+     drawn is a correct state with several causes, and none of them was said —
+     so it read as a button that had gone missing. Null when both are offered or
+     neither is (the dashed card below covers that case in full). */
+  const oneSideOnly: string | null =
+    canEnter && !canSeat
+      ? heldSeat
+        ? "You already hold a seat — your ticket is below."
+        : !tick
+          ? "No spectator tickets are on sale for this one."
+          : "Every spectator tier is sold out."
+      : canSeat && !canEnter
+        ? heldEntry
+          ? "You are already entered — your entry is below."
+          : !takesEntries(cat)
+            ? "A showcase is watched — its line-up is the host's to build."
+            : open.length === 0
+              ? "No way in has been opened for competitors yet."
+              : "Entries are closed."
+        : null;
   const mapsHref = /^https?:\/\//i.test(ev.mapsUrl) ? ev.mapsUrl : `https://maps.google.com/?q=${encodeURIComponent([ev.venue, ev.address ?? ev.city].filter(Boolean).join(", "))}`;
   const prizePool = ev.prizes.reduce((a, x) => a + (x || 0), 0);
   const PL = ["1st", "2nd", "3rd"];
@@ -667,13 +691,13 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
               Sign in to book
             </Link>
           ) : !viewerCanBook && mine.length === 0 ? (
-            /* AN ORGANIZATION DOES NOT BOOK (19 Sep 2026, the user: "should not
-               be able to book any class or event"). `guard_person_only` has
-               refused an organization an event booking since 8 Sep; the bar
-               says it now instead of letting the press be refused. */
+            /* A STUDIO OR AN ORGANIZATION DOES NOT BOOK (19 Sep 2026, "should
+               not be able to book any class or event") — the bar says so
+               instead of letting the press be refused. ⚠ A CREW is not refused
+               here: entering an event as a crew is exactly what a crew does. */
             <div data-testid="org-cannot-book" style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "var(--card)", border: "1.5px solid var(--el)" }}>
               <span aria-hidden="true" style={{ flexShrink: 0, fontSize: 15 }}>🏛</span>
-              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{NO_BOOKING_FOR_AN_ORGANIZATION}</div>
+              <div style={{ fontSize: 11, color: "var(--sub)", lineHeight: 1.45 }}>{cannotBookWhy ?? "This profile runs events — it does not book them. Switch to your own to take a place."}</div>
             </div>
           ) : allGone && !canEnter ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 16, background: "rgba(239,68,68,.12)", border: "1.5px solid rgba(239,68,68,.4)" }}>
@@ -687,6 +711,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
               </div>
             </div>
           ) : (
+            <>
             <div style={{ display: "flex", gap: 9 }}>
               {/* YOU DO NOT REGISTER YOURSELF FOR A SHOWCASE (13245) — canEnter is false for one */}
               {canEnter ? (
@@ -746,6 +771,20 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
                 </div>
               ) : null}
             </div>
+            {/* ⚠⚠ WHEN ONE SIDE IS MISSING, SAY WHY (27 Sep 2026, the user: "on
+                events option to book as spectator and participant both should be
+                visible which is not happening").
+                Both sides have been counted apart since 19 Sep and the bar draws
+                each independently — so when only one button appears the other is
+                genuinely closed. What the bar never did is SAY SO, and a missing
+                button with no reason beside it is indistinguishable from a
+                broken one, which is exactly what it was reported as. This is the
+                Enquiry button's own treatment (the reason travels with the
+                refusal), one row lower. */}
+            {oneSideOnly ? (
+              <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.45, marginTop: 8, textAlign: "center" }}>{oneSideOnly}</div>
+            ) : null}
+            </>
           )}
         </div>
       ) : null}

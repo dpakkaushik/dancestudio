@@ -6,6 +6,7 @@ import { dayKeyOf } from "@/lib/format/month";
 import { findCrewEntries, findCrewMembers } from "@/repositories/crews";
 import { findCrewFollowerCount } from "@/repositories/follows";
 import { findCrewHeaderPhotos } from "@/repositories/headerPhotos";
+import { findPersonFollowerCounts } from "@/repositories/publicPerson";
 
 const stampNowIso = (): string => new Date().toISOString();
 
@@ -26,7 +27,7 @@ export default async function CrewManagePage({ params, searchParams }: { params:
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [members, entries, header, followers, order] = await Promise.all([
+  const [members, entries, header, followers, order, myCounts] = await Promise.all([
     findCrewMembers(supabase, crewId),
     findCrewEntries(supabase, crewId),
     findCrewHeaderPhotos(supabase, crewId),
@@ -35,6 +36,23 @@ export default async function CrewManagePage({ params, searchParams }: { params:
        rides the batch, and `getUser` above is free: the server client memoises
        it per request (19 Sep 2026), so `requireLedCrew` has already paid for it */
     user ? findMyToolOrder(supabase, user.id, toolsLayoutKey("crew", crewId)) : Promise.resolve(null),
+    /* ⚠ WHAT THE LEADER FOLLOWS (27 Sep 2026, the user: "following section for
+       organization and crews is missing on home") — a crew follows nothing of
+       its own, so the figure is the account's that leads it, exactly as a
+       studio's home has drawn its owner's since 20 Sep. It rides the batch. */
+    user ? findPersonFollowerCounts(supabase, [user.id]).catch(() => new Map()) : Promise.resolve(new Map()),
   ]);
-  return <CrewHome crew={crew} members={members} entries={entries} header={header} followers={followers ?? 0} order={order} editOpen={editOpen} todayKey={dayKeyOf(stampNowIso())} />;
+  return (
+    <CrewHome
+      crew={crew}
+      members={members}
+      entries={entries}
+      header={header}
+      followers={followers ?? 0}
+      followingN={user ? (myCounts.get(user.id)?.following ?? null) : null}
+      order={order}
+      editOpen={editOpen}
+      todayKey={dayKeyOf(stampNowIso())}
+    />
+  );
 }

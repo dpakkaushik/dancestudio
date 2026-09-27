@@ -52,10 +52,18 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  *  `page` is wherever the picker lives — the page, or the dialog it is in, so
  *  a sheet's own field is not confused with the page's behind it. */
 /** the one city dropdown (19 Sep 2026): always through "Search another city…" */
+/** Every dropdown is an in-app sheet since 27 Sep 2026, PORTALLED to the body —
+ *  so the trigger is pressed in `scope` and the option is found on the PAGE.
+ *  `role="option"` is `PickSheet`'s; `role="button"` is `DosStylePicker`'s. */
+async function pick(scope: Page | Locator, label: string, option: string) {
+  const page: Page = "context" in scope ? scope : scope.page();
+  await scope.getByRole("button", { name: label, exact: true }).first().click();
+  const row = page.getByRole("option", { name: option, exact: true });
+  await row.or(page.getByRole("button", { name: option, exact: true })).first().click();
+}
 async function pickCity(page: Page | Locator, city: string) {
   /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
-  await page.getByLabel("Choose a city").first().click();
-  await page.getByRole("option", { name: city, exact: true }).click();
+  await pick(page, "Choose a city", city);
 }
 const adminHeaders = {
   apikey: serviceKey,
@@ -228,7 +236,7 @@ test.describe.serial("the admin panel: businesses and reports", () => {
     await owner.locator('input[name="phone"]').fill("+919876543210");
     await owner.locator('input[name="contact_email"]').fill(`mod-studio-${stamp}@example.com`);
     await owner.getByLabel("Room 1 name").fill("Studio A");
-    await owner.getByLabel("Add a dance style").selectOption("Hip-Hop");
+    await pick(owner, "Add a dance style", "Hip-Hop");
     await owner.getByRole("button", { name: "Create studio" }).click();
     /* creating lands on the new studio's own Subscription screen (27 Sep 2026,
        "pay at creation, verify after") — this spec is about moderation, so it

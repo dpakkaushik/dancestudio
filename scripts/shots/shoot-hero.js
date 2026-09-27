@@ -191,7 +191,9 @@ const enterEdit = async (page) => {
     await org.locator('input[name="phone"]').fill("+919876543210");
     await org.locator('input[name="contact_email"]').fill(`hero-studio-${stamp}@example.com`);
     await org.getByLabel("Room 1 name").fill("Studio A");
-    await org.getByLabel("Add a dance style").selectOption("Hip-Hop");
+    /* the app's one style picker, never a native select (parity F4/W2) */
+    await org.getByRole("button", { name: "Add a dance style", exact: true }).click();
+    await org.getByRole("button", { name: "Hip-Hop", exact: true }).click();
     await org.getByRole("button", { name: "Create studio" }).click();
     await org.getByText("EEE Dance Studio").first().waitFor();
     const rows = await rest(`business_members?user_id=eq.${orgId}&member_role=eq.owner&deleted_at=is.null&select=business_id,businesses(type)`);
@@ -361,9 +363,14 @@ const enterEdit = async (page) => {
        added lets the thing it replaced live on. */
     check((await org.getByRole("link", { name: "Open the studio's public page", exact: true }).count()) === 0, "studio home: the disc is no longer a link to the public page — the eye is that door (20 Sep 2026)");
     check((await org.getByRole("button", { name: "EEE Dance Studio — profile picture" }).count()) === 0, "studio home: and with no picture yet the disc is not a button either — there is nothing to open");
-    /* Discover joined the entity's bar the same day: allowed, while booking is not */
+    /* Discover joined the entity's bar on 19 Sep 2026: allowed, while booking is
+       not. ⚠ ENQUIRIES IS THE FOURTH SINCE 27 Sep 2026 — the user asked for the
+       enquiry desk off Settings and out of the Inbox ("enquiries should be
+       removed from settings and inbox merged into a section on home tab"), and
+       chose the tab over a section. Asserted by NAME as well as by count, so a
+       fifth tab added without one cannot pass this line. */
     const studioBar = org.getByRole("navigation", { name: "Studio" });
-    check((await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 && (await studioBar.getByRole("link").count()) === 3, "studio bar: Home · Discover · Inbox — three (19 Sep 2026)");
+    check((await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 && (await studioBar.getByRole("link", { name: "Enquiries" }).count()) === 1 && (await studioBar.getByRole("link").count()) === 4, "studio bar: Home · Discover · Inbox · Enquiries — four (27 Sep 2026)");
     await shot("studio-initials");
 
     /* ⚠⚠ THE MEMBERSHIPS TILE OPENS A DESK, NOT A SHRUG (21 Sep 2026, the user:
@@ -654,7 +661,7 @@ const enterEdit = async (page) => {
     const bar = org.getByRole("navigation", { name: "Main" });
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
     check((await bar.getByRole("link", { name: "Public view" }).count()) === 0, "bar: the eye left the bar (19 Sep 2026, the user: 'remove profile tab from navbar')");
-    check((await bar.getByRole("link").count()) === 3, "bar: Home · Discover · Inbox — three");
+    check((await bar.getByRole("link", { name: "Enquiries" }).count()) === 1 && (await bar.getByRole("link").count()) === 4, "bar: Home · Discover · Inbox · Enquiries — four (27 Sep 2026)");
     /* 19 Sep 2026: the corner is the EYE alone — the pencil went into Settings
        ("all edit profile options to be removed from home and profile pages") and
        the DISC became the door to both picture sections ("should be able to click

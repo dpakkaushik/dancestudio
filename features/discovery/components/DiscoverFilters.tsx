@@ -76,7 +76,7 @@ export function DosStyleTile({ label, color, on, tap, aria, small }: { label: st
   );
 }
 
-export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab: string; city: string; filters: DiscoverFilters; styleOrder: string[]; tabs?: React.ReactNode }) {
+export function DiscoverFilters({ tab, city, filters, styleOrder, tabs, as = null }: { tab: string; city: string; filters: DiscoverFilters; styleOrder: string[]; tabs?: React.ReactNode; /** ⚠ WHICH PROFILE IS READING THIS SHELF — carried through every href this control builds (27 Sep 2026). Dropping it on a style tap would have quietly restored the Book button a studio is not supposed to have: the gate is only as durable as the least careful link on the page. */ as?: string | null }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [searchOn, setSearchOn] = useState(false);
@@ -107,7 +107,7 @@ export function DiscoverFilters({ tab, city, filters, styleOrder, tabs }: { tab:
   const searching = term.length >= 2 && answer.term !== term;
 
   const go = (next: DiscoverFilters) => {
-    const p = new URLSearchParams({ city, tab, ...filtersToParams(next) });
+    const p = new URLSearchParams({ city, tab, ...filtersToParams(next), ...(as ? { as } : {}) });
     router.replace(`/discover?${p.toString()}`, { scroll: false });
   };
   const toggleStyle = (s: string) => {

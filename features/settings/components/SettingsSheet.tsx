@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type CSSProperties, type ReactNode } from "react";
-import { updateTenantProfileAction } from "@/features/settings/server-actions/plans";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { DOS_UI, INK, MUTED, RED, SUB } from "@/lib/design/tokens";
-import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { ArtistPlan } from "@/repositories/plans";
-import { enquiryTypesFor } from "@/types/enquiry";
 import type { Profile, ProfileRole } from "@/types/profile";
 import type { Tenant } from "@/types/tenant";
 
@@ -181,19 +178,17 @@ export function SettingsSheet({
    *  race (a `router.back()` cancelling a push in the same tick) cannot happen —
    *  that bug was about closing AND pushing, not about pushing. */
   const go = (href: string) => router.push(href);
-  const [enqOpen, setEnqOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  /* NO sentinel of its own (19 Sep 2026): this sheet's open state IS the URL
-     (`?settings=1`, pushed by the gear), so the entry the system back pops is
-     that one — `onClose` on the Profile tab is `router.back()`. Registering a
-     second, same-URL entry here is what made back re-open Settings. The
-     nested Enquiry-types sheet is ordinary and keeps the hook. */
-  useCloseOnBack(() => setEnqOpen(false), enqOpen);
   const fire = (m: string) => {
     setToast(m);
     setTimeout(() => setToast(null), 2400);
   };
+  /* ⚠ NO NESTED SHEET ANY MORE (27 Sep 2026): Enquiry types was the only one,
+     and with it gone `useCloseOnBack` has nothing here to close. This sheet
+     registers NO entry of its own and never did — its open state IS the URL
+     (`?settings=1`, pushed by the gear), so the entry system-back pops is that
+     one; a second, same-URL entry here is what made back re-open Settings on
+     19 Sep. The toast state stays: it is what a failed navigation would say. */
   if (!open) return null;
 
   /* ── WHAT THIS PROFILE IS, in the four shapes the sheet has to draw ── */
@@ -215,19 +210,8 @@ export function SettingsSheet({
      sheet with the plan's tiles, and `/subscription` — the Subscription tile on
      Home — is where the plan is taken and ended */
 
-  /* ENQUIRIES YOU ACCEPT — null on the record means every type the kind allows (9010) */
-  const enqAll = biz ? enquiryTypesFor(biz.type) : [];
-  const enqOn = (k: string) => !biz?.enquiryTypes || biz.enquiryTypes.includes(k);
-  const flipEnq = (k: string) => {
-    if (!biz) return;
-    const next = enqAll.map((t) => t.k).filter((kk) => (kk === k ? !enqOn(kk) : enqOn(kk)));
-    start(async () => {
-      const out = await updateTenantProfileAction({ tenantId: biz.id, foundedYear: biz.foundedYear, phone: biz.phone, socials: biz.socials, enquiryTypes: next.length === enqAll.length ? null : next, accepts: biz.accepts });
-      if (out.error) return fire(out.error);
-      router.refresh();
-    });
-  };
-  const enqCount = enqAll.filter((t) => enqOn(t.k)).length;
+  /* ⚠ ENQUIRIES YOU ACCEPT moved to the contact ⊕ on the business's own home
+     (27 Sep 2026) — see the note where its sheet used to be drawn */
 
   const desk = biz ? `/business/${biz.id}` : null;
   /* a person with no page of their own reads their OWN money screens; a studio
@@ -294,9 +278,12 @@ export function SettingsSheet({
               <Tile icon={ICONS.payments("#22C55E")} href={`${desk}/payments`} onNavigate={go}>
                 Payments
               </Tile>
-              <Tile icon={ICONS.enquiries("#8B5CF6")} onClick={() => setEnqOpen(true)} badge={<span style={badgeStyle(enqCount > 0)}>{enqCount} of {enqAll.length}</span>}>
-                Enquiry types
-              </Tile>
+              {/* ⚠ ENQUIRY TYPES IS GONE FROM SETTINGS (27 Sep 2026, the user:
+                  *"enquiries should be removed from settings"*). Which kinds a
+                  business takes is what its Enquiry BUTTON offers, so it is
+                  beside the switch that draws that button — the ⊕ under the
+                  button row on the business's own home — rather than two screens
+                  away under MONEY, which it never had anything to do with. */}
             </div>
           </>
         ) : null}
@@ -328,9 +315,8 @@ export function SettingsSheet({
               <Tile icon={ICONS.payments("#22C55E")} href={`${desk}/payments`} onNavigate={go}>
                 Payments
               </Tile>
-              <Tile icon={ICONS.enquiries("#8B5CF6")} onClick={() => setEnqOpen(true)} badge={<span style={badgeStyle(enqCount > 0)}>{enqCount} of {enqAll.length}</span>}>
-                Enquiry types
-              </Tile>
+              {/* ⚠ Enquiry types is the contact ⊕ on this organization's own
+                  home now — see the studio block above for the reason */}
             </div>
           </>
         ) : null}
@@ -386,18 +372,13 @@ export function SettingsSheet({
           </Tile>
         </div>
 
-        {/* ── BUSINESS: what the ARTIST PAGE you own accepts. A studio's and an
-            organization's are in their own blocks above, so it is not drawn twice. ── */}
-        {biz ? (
-          <>
-            <div style={head}>BUSINESS</div>
-            <div style={grid}>
-              <Tile icon={ICONS.enquiries("#8B5CF6")} onClick={() => setEnqOpen(true)} badge={<span style={badgeStyle(enqCount > 0)}>{enqCount} of {enqAll.length}</span>}>
-                Enquiry types
-              </Tile>
-            </div>
-          </>
-        ) : null}
+        {/* ⚠⚠ THE WHOLE `BUSINESS` BLOCK IS GONE (27 Sep 2026, the user:
+            *"enquiries should be removed from settings"*). It held one tile —
+            Enquiry types for the ARTIST PAGE you own — so removing the tile
+            removes the head with it rather than leaving a heading over nothing.
+            An artist's kinds are the contact ⊕ on their own home now, beside the
+            Enquiry switch that draws the button; a studio's and an
+            organization's are on theirs. */}
         </>
         ) : null}
 
@@ -428,38 +409,15 @@ export function SettingsSheet({
             way out went from being two taps inside the Profile tab to one tap
             from anywhere. Nothing is orphaned, which is the test C31 sets. */}
 
-        {/* ── ENQUIRIES YOU ACCEPT (9000-9030) ── */}
-        {enqOpen && biz ? (
-          <div onClick={() => setEnqOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.66)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 940 }}>
-            <div role="dialog" aria-modal="true" aria-label="Enquiry types" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", color: INK, borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
-              <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
-              <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: MUTED }}>ENQUIRIES YOU ACCEPT</div>
-              <div style={{ fontSize: 17, fontWeight: 900, marginBottom: 2 }}>Enquiry types</div>
-              <div style={{ fontSize: 11, color: SUB, marginBottom: 12 }}>Only the types you switch on appear when someone taps Enquiry on {biz.name}&apos;s profile.</div>
-              {enqAll.map((t) => {
-                const on = enqOn(t.k);
-                return (
-                  <button type="button" key={t.k} role="switch" aria-checked={on} aria-label={t.label} disabled={pending} onClick={() => flipEnq(t.k)} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 0", borderBottom: "1.5px solid var(--el)", cursor: "pointer", width: "100%", background: "none", border: "none", borderBottomStyle: "solid", fontFamily: "inherit", color: INK, textAlign: "left" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 4, background: t.c, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{t.label}</span>
-                      <span style={{ display: "block", fontSize: 10, color: SUB, marginTop: 1 }}>{t.sub}</span>
-                    </span>
-                    <span aria-hidden="true" style={{ width: 42, height: 24, borderRadius: 12, flexShrink: 0, background: on ? "#22C55E" : "var(--el)", position: "relative", display: "inline-block" }}>
-                      <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .15s" }} />
-                    </span>
-                  </button>
-                );
-              })}
-              <div style={{ fontSize: 10.5, color: MUTED, margin: "10px 0 14px" }}>
-                {enqCount} of {enqAll.length} switched on
-              </div>
-              <button type="button" onClick={() => setEnqOpen(false)} style={{ textAlign: "center", padding: 14, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 14, cursor: "pointer", border: "none", fontFamily: "inherit", width: "100%" }}>
-                Done
-              </button>
-            </div>
-          </div>
-        ) : null}
+        {/* ⚠⚠ THE ENQUIRY-TYPES SHEET IS DELETED (27 Sep 2026), not left behind
+            the tile that used to open it. With the three tiles gone nothing
+            could set `enqOpen`, so the sheet, its state, `enqOn`, `flipEnq` and
+            the counts were a branch NO SCREEN RENDERS — which lint cannot see,
+            because they still referenced each other, and which this repo's own
+            rule says is where a defect hides (the dead "Where you stand with
+            DanceOS ›" link of 21 Sep survived exactly that way for ten days).
+            The control it held lives on in `ContactEditor`, beside the switch
+            that decides whether the button exists at all. */}
 
         {toast ? <div role="status" style={{ position: "fixed", bottom: 26, left: "50%", transform: "translateX(-50%)", background: "var(--solid)", border: "1.5px solid #0EA5E9", color: INK, padding: "11px 18px", borderRadius: 999, fontSize: 13, fontWeight: 700, maxWidth: 360, textAlign: "center", zIndex: 650, boxShadow: "0 6px 24px rgba(0,0,0,.45)" }}>{toast}</div> : null}
       </div>

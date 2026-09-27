@@ -52,7 +52,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
 
   if (tenant.type === "org") {
     /* ── AN ORGANIZATION'S HOME (26 Sep 2026) ── */
-    const [photos, row, followerCounts, toolOrder] = await Promise.all([
+    const [photos, row, followerCounts, toolOrder, myCounts] = await Promise.all([
       /* its header pictures — `studio_photos` rows in the private bucket, the same
          read a studio's home makes; the owner and, once public, anyone may sign them */
       findStudioProofPhotos(supabase, tenantId),
@@ -62,6 +62,13 @@ export default async function StudioHomePage({ params, searchParams }: { params:
       findFollowerCounts(supabase, [tenantId]).catch(() => new Map<string, number>()),
       /* keyed by the ORGANIZATION (`tools:org:{id}`): one account may own several */
       findMyToolOrder(supabase, user.id, toolsLayoutKey("org", tenantId)),
+      /* ⚠ WHAT THE ACCOUNT THAT RUNS IT FOLLOWS (27 Sep 2026, the user:
+         "following section for organization and crews is missing on home") — the
+         figure a studio's home has carried since 20 Sep, and this one did not.
+         A business follows nothing of its own, so the honest number is its
+         OWNER's, which is what `StudioHome`'s own note says at length. Null
+         draws no figure; it never reads as 0. */
+      findPersonFollowerCounts(supabase, [user.id]).catch(() => new Map()),
     ]);
     /* AN ORGANIZATION'S GRID: Events · Team · Earnings · Assets · Subscription —
        the owner's alone where the desk behind the tile is the owner's, so a door
@@ -89,6 +96,7 @@ export default async function StudioHomePage({ params, searchParams }: { params:
         since={row?.createdAt ?? null}
         editOpen={editOpen}
         followers={followerCounts.get(tenantId) ?? 0}
+        followingN={isOwner ? (myCounts.get(user.id)?.following ?? null) : null}
         tiles={tiles}
         order={toolOrder}
       />

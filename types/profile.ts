@@ -11,24 +11,49 @@ export type PersonKind = "user" | "artist" | "org";
 export const kindOf = (role: ProfileRole, isArtist: boolean): PersonKind =>
   role === "org" ? "org" : isArtist ? "artist" : "user";
 
-/** ⚠ AN ORGANIZATION DOES NOT BOOK (19 Sep 2026, the user: "studio and
- *  organizations can have Discover in navbar but should not be able to book any
- *  class or event — make sure it is applied in all logics").
+/** ⚠⚠ A BUSINESS DOES NOT BOOK — AND THE OLD TEST FOR IT DIED ON 26 Sep 2026.
  *
- *  This has been the DATABASE's rule since 8 Sep 2026 — `guard_person_only`
- *  refuses an organization account a class seat, an assistant seat, an event
- *  booking, a crew, an enquiry and an order across eight tables (R11) — and the
- *  screens went on offering the button anyway, so the only way to learn it was
- *  to press Book and be refused. This is that rule, said where the button is
- *  drawn. A STUDIO is not an account: browsing as an organization is how a
- *  studio's people reach Discover, so one test covers both.
+ *  The rule is the user's, twice: *"studio and organizations … should not be
+ *  able to book any class or event"* (19 Sep) and *"crew can only take part in
+ *  events and should not be able to book classes"* (27 Sep).
  *
- *  It is a PRESENTATION gate over a real one. Nothing here is the enforcement;
- *  the RPCs are, and they refuse a forged press exactly as they always did. */
-export const canBook = (role: ProfileRole | null | undefined): boolean => role !== "org";
+ *  ⚠⚠ WHAT BROKE, AND IT BROKE IN SILENCE. Until today this was
+ *  `role !== "org"` — a test on `profiles.role`, which was the right test while
+ *  an organization was a LOGIN. **R48 retired that role**: every account is
+ *  `user` now, so the predicate answered "yes, you may book" for everybody from
+ *  the moment that migration applied, and nothing failed, because the check it
+ *  replaced is a sentence rather than an exception. ⚠ The same word is dead one
+ *  layer down — `guard_person_only`'s `if v_role = 'org'` branch, the DATABASE's
+ *  own enforcement, refuses nobody for the same reason (its SUSPENDED branch is
+ *  untouched and still live). **A value retired from one column leaves every
+ *  reader of that value quietly answering the wrong question.**
+ *
+ *  ⚠ SO THE TEST IS NOT RESTORED, IT IS REPLACED. There is no organization
+ *  account left to refuse; what there is instead is the profile you are ACTING
+ *  AS — your own, or a studio, an organization or a crew you switched into.
+ *  That is the profile switcher's question, and the entity bar's Discover link
+ *  carries the answer (`?as=`), because `/discover` belongs to no profile by
+ *  itself. A pointer is never an authority: the page it lands on looks the
+ *  business up among the ones this account actually belongs to before it
+ *  believes a word of it. */
+export type ActingAs = { kind: "studio" | "org" | "crew"; name: string } | null;
 
-/** What a page says in place of the button, in the rule's own words. */
-export const NO_BOOKING_FOR_AN_ORGANIZATION = "An organization runs classes and events — it does not book them. Sign in as yourself to take a place.";
+/** May the profile you are acting as take a CLASS SEAT? Only you can. */
+export const canBookClass = (as: ActingAs): boolean => as === null;
+
+/** May it enter an EVENT? A crew can — that is what a crew is for (a crew entry
+ *  is made by the person who leads it, R22) — and a studio or an organization
+ *  cannot: it RUNS events. */
+export const canBookEvent = (as: ActingAs): boolean => as === null || as.kind === "crew";
+
+/** What a card says in place of the button, in the rule's own words. One
+ *  sentence per kind, naming the profile you are in, because "you cannot book"
+ *  with no reason on a screen you reached by pressing Discover is the kind of
+ *  refusal somebody reads as a broken button. */
+export const noBookingWords = (as: NonNullable<ActingAs>, what: "class" | "event"): string =>
+  as.kind === "crew"
+    ? `${as.name} is a crew — it enters events, it does not take classes. Switch to your own profile to book one.`
+    : `${as.name} ${as.kind === "org" ? "runs" : "teaches"} ${what === "class" ? "classes" : "events"} — it does not book them. Switch to your own profile to take a place.`;
 
 /** One link where else to find a person (S_profiletab 10760): a known
  *  platform's name, or a short custom label, and the URL. Order is the

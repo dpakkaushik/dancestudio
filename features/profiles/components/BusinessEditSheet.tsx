@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { Pick } from "@/components/ui/PickSheet";
 import { Portal } from "@/components/ui/Portal";
 import { LocationPicker, type PickedLocation } from "@/features/geo/components/LocationPicker";
 import { setTenantLocationAction } from "@/features/geo/server-actions/location";
@@ -204,14 +205,18 @@ export function BusinessEditSheet({
           one day the column stayed and was read but never written; it is dropped
           now, so there is nothing to keep and nothing to pass back. */}
       <div style={fieldLabel}>Since</div>
-      <select aria-label="Since" value={founded} onChange={(e) => setFounded(e.target.value)} style={fieldInput}>
-        <option value="">Not shown</option>
-        {years.map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </select>
+      {/* ⚠ AN IN-APP SHEET (27 Sep 2026) — and the one that most needed its
+          search: this is ~77 years, and a painted list with no type-ahead would
+          have been WORSE than the native picker it replaces. `PickSheet` turns
+          the search on past twelve rows. */}
+      <Pick
+        ariaLabel="Since"
+        value={founded}
+        rows={[{ value: "", label: "Not shown" }, ...years.map((y) => ({ value: String(y), label: String(y) }))]}
+        onPick={setFounded}
+        style={fieldInput}
+        searchPlaceholder="Search years…"
+      />
       {/* ⚠ THE PHONE AND THE EMAIL LEFT THIS SHEET (26 Sep 2026): the ⊕ beside
           the buttons on the business's own home is where Call, Mail, Message and
           Enquiry are made — and unmade — like the styles and the links */}

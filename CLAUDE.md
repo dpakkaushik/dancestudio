@@ -2,7 +2,246 @@
 
 ## LAST SESSION (27 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE INBOX IS THREE DESKS, A POSTER IS A PICTURE, AN ARTIST HAS A TEAM, AND THE APP STOPS EXPLAINING ITSELF (27 Sep 2026, latest) — BUILT; ⚠⚠ THREE MIGRATIONS WRITTEN, DRY-RUN **16/16**, **15/15** AND HELD FOR THE USER'S WORD (NEXT TO DO #0ap)
+> ### EVERY DROPDOWN IS AN IN-APP SHEET, A DEAD BOOKING GATE, AND THE INBOX SPLITS IN TWO (27 Sep 2026, latest) — BUILT, ⚠⚠ FOUR MIGRATIONS HELD
+> Two halves in one push. First *"fix all remaining in this / fix what is left"*
+> — the app-side of what the previous push handed back. Then a long list from
+> the same person, of which the first item was a REGRESSION and the rest were
+> the profile pages, the homes and the Inbox. ⚠ **The four migrations stay HELD**
+> (#0ap, #0at): the list goes in front of the user before every `db push`, every
+> time, and "push to live" has never been the word that applies one.
+> * ⚠⚠ **0 · THE BOOKING GATE HAD BEEN DEAD FOR A DAY, AT BOTH LAYERS, AND
+>   NOTHING SAID SO.** The user: *"studio and organization profiles should not be
+>   able book classes and events from discover breaking now"*, and later *"crew
+>   can only take part in events and should not be able to book classes"*.
+>   `canBook` was `role !== "org"` — a test on `profiles.role`, which was right
+>   while an organization was a LOGIN. **R48 retired that role on 26 Sep**, so
+>   from the moment that migration applied the predicate answered "yes, you may
+>   book" for everybody, and nothing failed, **because what it withholds is a
+>   SENTENCE rather than an exception**. ⚠ The same word is dead one layer down:
+>   `guard_person_only`'s `if v_role = 'org'` branch — the DATABASE's own
+>   enforcement across eight tables — refuses nobody for the same reason (its
+>   SUSPENDED branch is untouched and still live). **A value retired from one
+>   column leaves every reader of that value quietly answering the wrong
+>   question**, which is the 19 Sep "a value added to one table's vocabulary does
+>   not reach the tables that feed it" lesson running backwards.
+> * ⚠⚠ **SO THE TEST IS REPLACED, NOT RESTORED.** There is no organization
+>   ACCOUNT left to refuse; what there is is the profile you are ACTING AS.
+>   `repositories/actingAs.ts` resolves `?as=` — carried by the entity bar's
+>   Discover link — against the businesses this account is on the team of and the
+>   crews it leads. ⚠ **A pointer is never an authority** (the `?business=`
+>   precedent of 21 Sep); an unresolvable value means "yourself", the PERMISSIVE
+>   answer, on purpose — this is a presentation gate and failing it closed would
+>   take a booking from somebody entitled to one. `canBookClass` and
+>   `canBookEvent` are two predicates because a **crew enters events**, which is
+>   what a crew is for, and takes no classes.
+> * ⚠⚠ **AND THE GATE IS ONLY AS DURABLE AS THE LEAST CAREFUL LINK ON THE PAGE.**
+>   `?as=` had to be threaded through the pager, the place chip, the tab tiles,
+>   the filter sheet's `router.replace`, "Clear filters" and both card hrefs —
+>   because a tap on the Classes tab would otherwise have handed the Book button
+>   straight back. Found by reading the href builders rather than by a run.
+> * **THE EVENT BAR SAYS WHY A SIDE IS MISSING** (*"on events option to book as
+>   spectator and participant both should be visible which is not happening"*).
+>   ⚠ Both sides HAVE been counted apart since 19 Sep and each draws
+>   independently — so one button means the other side is genuinely closed. What
+>   the bar never did is say so, and a missing button with no reason beside it is
+>   indistinguishable from a broken one, which is exactly how it was reported.
+> * ⚠⚠ **THE INBOX IS TWO SCREENS NOW** (*"only enquiry becomes a new option in
+>   tab and is removed from inbox"*, the user's own answer when asked). Enquiries
+>   is the **fourth tab**; the Inbox keeps what somebody has asked OF you. They
+>   are not the same question — every Inbox row is a yes or a no you owe
+>   somebody, while an enquiry has a life (a quote, a revision, an advance, won
+>   or lost) — and sharing a desk made the bar's badge count two unlike things as
+>   one number. ⚠ **One component, two desks** (`InboxScreen desk=`), not a fork:
+>   the cards, the sides and the Done treatment are identical, and a second copy
+>   is this repo's own recurring bill. ⚠ The Inbox route lost three enquiry reads
+>   and a crews lookup, so it costs less than it did.
+> * **AND A FOURTH DESK, `Done`** (*"sepreate section request, invites and
+>   enquiries which are already completed"*). ⚠ It does NOT undo the 19 Sep rule
+>   that an answered ask stays — nothing is deleted; the answered rows MOVE, so
+>   the live desks stop filling with rows that carry no buttons. Each desk's Done
+>   holds its own kind. And "accepted" is a **filled stamp pill** rather than a
+>   line of green text where the buttons were, on the ask card and the join card
+>   alike (*"for all these"*).
+> * ⚠ **ENQUIRY TYPES LEFT SETTINGS, AND THE SHEET BEHIND IT WAS DELETED.** Three
+>   tiles and the whole BUSINESS block went; the kinds are chips under the
+>   Take-enquiries switch in the contact ⊕, where the button they govern is made.
+>   ⚠⚠ **With the tiles gone nothing could set `enqOpen`, so the sheet, its state,
+>   `enqOn`, `flipEnq` and the counts were a branch NO SCREEN RENDERS — which
+>   LINT CANNOT SEE, because they still referenced each other.** Deleted, on this
+>   file's own rule that such a branch is where a defect hides.
+> * **THE PROFILE PAGES, RE-CUT TO THE USER'S OWN LIST.** A person is a **chip**
+>   now — squircle face, name, role beside it, two to a line — not a full-width
+>   row, on a studio's, an organization's, a crew's and a person's page, with a
+>   section per role (`PersonChip`, `PeopleGroup`). ⚠ **And a person's ten groups
+>   became four** — Crew · Studios · Artists · Organizations, each with the title
+>   on the row. **This reverses R43** (Teach · Assist · Manage, 21 Sep) at the
+>   same person's word, and it fixes something R43 caused: one studio appeared up
+>   to THREE times, once per fact. ⚠ Nothing is lost — a seat outranks a class
+>   and, where there is no seat, the row says "Teaches here" / "Assists here";
+>   **Train stays, own tab only**, because it is where somebody LEARNS rather
+>   than a team title. `CrewRow` is deleted.
+> * **FOLLOWING IS ON THE ORGANIZATION'S AND THE CREW'S HOME.** The org's said
+>   *"NO FOLLOWING FIGURE: a business follows nothing"* — true of the BUSINESS
+>   and the wrong answer to the question, since a studio's home has printed its
+>   OWNER's since 20 Sep. Both read the account's that runs them.
+> * ⚠⚠ **THE INBOX HAD NO `<h1>` AT ALL** (*"inbox heading is missing"*). The
+>   three-desk re-cut earlier the same day took the title out with the paragraph
+>   beside it, and `/inbox` is a TAB — so the chrome draws the wordmark and
+>   nothing named the screen. **The fourth time this repo has found that exact
+>   shape** (the desks 18 Sep, the studio Team desk 21 Sep, `EventForm` and
+>   `/rooms` 22 Sep).
+> * **THE CONTACT FORM SHOWS WHAT IT IS BUILDING** (*"fix add contact buttons
+>   form in a better way"*) — a lit chip per button, in the page's own order, so
+>   *"empty a box to take the button off"* is watched rather than read; the rule
+>   is deleted, not reworded. ⚠ The fake **Location** field — a `fieldLabel` with
+>   a paragraph where a control belongs — is a door again.
+> * **AND THE THREE TEAM DESKS ARE LEVELLED THE REST OF THE WAY** (C67).
+>   StaffDesk's card had **no border** where the other two use `bizCard`; ⚠ its
+>   WAITING row was still a 38px CIRCLE beside a 36px squircle **in the same
+>   group** (21 Sep fixed the member row and missed the one under it — the
+>   hardest kind to see, because it is inside one list); its error had no
+>   `role="alert"`; its toast was a byte-identical copy; and its empty state wore
+>   **a roster row's paint**, so "nobody here yet" read as a person. The §10.9
+>   footnote is gone — the prototype's line 18434 lifted verbatim, naming a
+>   section in a document this app does not have.
+> * **"Buy now" on memberships**, accessible name following the visible one.
+> * ⚠⚠ **1 · NOT ONE NATIVE `<select>` IS LEFT IN THE APP.** The push before this
+>   moved `CitySelect` (which is on every screen) and Stats' Metric, and named
+>   the rest as untouched: eight more, in seven files. They are one shared
+>   control now — **`components/ui/PickSheet.tsx`** (`Pick` + `PickSheet`) — the
+>   dance style, the asset type, a class's Starts and Ends, a payout's Method and
+>   State, a team member's label, a business's Since, and the five per-type
+>   enquiry fields. **Nothing about any of them changed but what a press opens**:
+>   the same options, the same values, the same callbacks and the same ACCESSIBLE
+>   NAME, so `<select aria-label="Starts">` is `<button aria-label="Starts">` and
+>   a screen reader still finds one control by that name.
+> * ⚠⚠ **AND EXTRACTING IT IS WHAT FOUND THE BUG IN THE ONE ALREADY SHIPPED.**
+>   `CitySelect`'s own sheet was `position: fixed` and **NOT PORTALLED** — and
+>   half its callers draw it inside a `FormPage sheet` (the New-studio sheet, the
+>   New-organization sheet, the crew form, the event form), whose panel carries
+>   `animation: dosSheetUp` AND `overflow: hidden`. **An animated panel is a
+>   containing block for a fixed child and then CLIPS it** — the 16 Sep
+>   stacking-context lesson for the fourth time, and the reason `FormConfirm` and
+>   `FormToast` are portalled ALWAYS. So the city list opened INSIDE the form
+>   panel and was cut off at its edges, on four create flows, in the push that
+>   shipped the same morning. The shared sheet is portalled always, above the
+>   panel (600), its confirm (660) and its toast (670).
+> * ⚠⚠ **AND ONE THE EXTRACTION WOULD OTHERWISE HAVE INTRODUCED, CAUGHT BY
+>   READING `useCloseOnBack` RATHER THAN BY A RUN.** A sheet SPENDS its own
+>   history entry when it closes — one `history.back()` on a microtask — and two
+>   of these pickers **NAVIGATE** on pick (Discover's place chip and the Stats
+>   city both `router.replace` the address the list is read from). **A `back()`
+>   racing the router is the 19 Sep bug by name**, and the hook's own rule 2
+>   names the case: such a closer passes `spend: false`. A `navigates` prop says
+>   so at those two call sites and nowhere else — ⚠ **it is NOT the default**,
+>   because an unspent entry per open is how back came to "do nothing once per
+>   sheet ever opened" before that rewrite.
+> * ⚠ **A LIST LONG ENOUGH TO SCROLL GETS A SEARCH**, past twelve rows. The one
+>   thing a native select gives you that a painted list does not is the
+>   platform's type-ahead, and 66 dance styles or 77 years in a sheet without one
+>   is WORSE than what it replaced. The app's own style picker has searched its
+>   list since 30 Aug, so this is that precedent rather than a new idea.
+> * ⚠ **AND THE STYLE `<select>` ON THE NEW-STUDIO SHEET WAS A SECOND STYLE
+>   CONTROL, WHICH PARITY ROW W2 MISSED.** `DosStylePicker` is "THE ONE STYLE
+>   PICKER" and has been since 30 Aug — on the class, crew and event forms —
+>   while a studio picked its styles at birth from a native list of all 66 names.
+>   It is the same picker now. ⚠ **`style` stays the CALLER's on purpose**: these
+>   eight controls wear eight different paints (a form field, a narrow time box,
+>   a 999-radius pill on a roster row), and a picker that imposed one would be a
+>   redesign of eight screens rather than a fix to a dropdown.
+> * ⚠⚠ **2 · THE HARNESS: `selectOption` IS GONE, AND THE OPTION IS NOT WHERE THE
+>   TRIGGER IS.** Eleven call sites across three specs and three shoot scripts.
+>   One `pick(scope, label, option)` helper — press the trigger IN the scope,
+>   find the option on the **PAGE**, because the sheet is portalled to the body
+>   and a scoped `enqSheet.getByRole("option")` finds nothing. ⚠ It takes EITHER
+>   role: `PickSheet` names its rows `role="option"`, `DosStylePicker` (whose
+>   list is inline) names them `role="button"`, so a test does not have to know
+>   which control a screen wears. ⚠ **All four copies of `pickCity` went through
+>   it** — they made the same scoped read and would have broken the same way. And
+>   the org-team assertion that read a `combobox`'s `<option>`s re-cut to open the
+>   sheet, read its rows and **close it with BACK**, which asserts the contract
+>   `useCloseOnBack` exists for instead of assuming it.
+> * ⚠⚠ **3 · TWO SENTENCES STILL DESCRIBED THE ORDER THE USER REVERSED THIS
+>   MORNING.** The verification sheet's "What happens next" ended on *"Subscribe
+>   the studio and it goes live on Discover"* and its UNDER REVIEW line read
+>   *"The badge lands, then you subscribe it to Discover"* — and since **R51** a
+>   studio is paid for at creation and verified after, so both told somebody to
+>   run an errand they had already run, and got the order backwards. It is the
+>   `planRights` finding of two days ago in a second place: **a claim about money
+>   and sequence left standing in prose after the rule under it moved.** What the
+>   badge buys is the AUDIENCE, and that is what they say now.
+> * ⚠ **AND THE OTHER TWO SCREENS ON THAT LIST WERE ALREADY CLEAN**, which is
+>   what checking is for rather than trimming on a memory of them: `InvoicesScreen`
+>   and `RefundsLedger` carry no standing paragraph at all — only their empty
+>   states, which are the honest exception (a screen with nothing on it must say
+>   why).
+> * ⚠⚠ **4 · THE THREE TEAM DESKS, LEVELLED THE REST OF THE WAY** (*"fix team
+>   layout for all types of profiles should be clean"*). C49 levelled the chrome
+>   on 21 Sep and **StaffDesk was still the odd one out in five ways nothing
+>   typed could see**: its card was declared locally with **no border** while the
+>   other two are `bizCard`, so a studio's roster was the one with no outline;
+>   ⚠ **the WAITING row was still a 38px CIRCLE beside a 36px squircle in the
+>   same group** — the 21 Sep pass fixed the member row and missed the one under
+>   it, which is the hardest kind to see because it is inside one list; its error
+>   line had no `role="alert"`; its toast was a **byte-identical copy** of
+>   `crew-kit`'s declared inline (the same shape as the sheet styles 21 Sep found
+>   in that very file); and its empty state was a solid card with a coloured left
+>   edge — **the same paint as a roster row**, so "nobody here yet" read as a
+>   person. ⚠ The crew's add sheet was headed 16px in the UI face where the other
+>   two are 17px in the display one, and the organization's empty state was a
+>   bare sentence with no container.
+> * ⚠ **AND THE §10.9 FOOTNOTE IS GONE** — "the app stops explaining itself" in
+>   its last place. It was the prototype's own line (18434) lifted **verbatim**,
+>   and verbatim is what made it wrong here: "§10.9" is a section number in a
+>   document this app does not have, "attachments" is not a word DanceOS uses,
+>   and the rule it stated (consent before a seat) is said where it happens, in
+>   the add sheet. Neither of the other two Team desks carries a footnote.
+> * ⚠ **WHAT IS DELIBERATELY NOT LEVELLED, so it is not re-proposed:** the
+>   `PeoplePicker`'s accessible name differs on one desk of the three — the
+>   default is the PROTOTYPE'S OWN string (16419), which is Rule 2, and
+>   StaffDesk's override is documented and reasoned; unifying it would change
+>   three files and a test for a string nobody sees. An organization's roster has
+>   no ▲▼ because there is **no `reorder_organization_members` RPC** — a schema
+>   difference, not a drift. And a studio's profile door stays inside the member
+>   sheet, because the ROW is the manage control there (C49's own decision).
+> * ⚠ **AND ONE TRAP CHECKED RATHER THAN ASSUMED:** a `<select name="x">` inside
+>   a form contributes to FormData and a `<button>` does not, so a conversion can
+>   silently empty a field on submit. All eight were read: `ClassForm` and
+>   `BusinessHub` already post through hidden inputs, `CitySelect` carries its
+>   own, and the other five are state handed to an action.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **the happy path
+>   20/20** · **the other seven specs 38/38**, so all 58 across the two runs ·
+>   **`shoot-tiles` 155/155** · **`shoot-hero` 178/178**.
+>   ⚠ **A stale `next start` from 07:47 was holding :3100** — the 21 Sep lesson
+>   met for the FOURTH time; stopped before the fresh bundle was started.
+> * ⚠ **AND EVERY RED ON THE WAY WAS A TEST DESCRIBING A DECISION THAT CHANGED,
+>   WHICH IS THE RIGHT KIND — EXCEPT ONE, WHICH WAS THE PRODUCT.** The one that
+>   was real: `happy-path:1139` could not press Level because **the portalled
+>   `PickSheet` sat at z-index 680 and `EnquirySheet` is 930** — so the app's one
+>   dropdown rendered UNDER a sheet it can legitimately be opened from, and the
+>   failure read as "the button intercepts pointer events" rather than as a
+>   stacking bug. It is 960 now, above the app's own 950 ceiling, with the two
+>   numbers named in a comment beside it. The four stale ones were mine and each
+>   names a decision from this same push: three profile groups renamed (Manage →
+>   Studios, and a studio that now appears ONCE rather than twice, because
+>   `PersonBody` merges a seat with what is taught there), an answered crew
+>   invite that moved to **Done**, and the same move in `shoot-tiles`' Sent-requests
+>   check. ⚠⚠ **And one "fix" of mine was itself the error**: `happy-path:1448`
+>   reads the crew DESK's roster row (`CREW_ROLE_WORD`), not a profile group, so
+>   changing "Member" to "Crew" there was wrong — reverted, with a comment saying
+>   which of the two vocabularies that line is in.
+> * ⚠ **`shoot-hero`'s two reds were the bar's own COUNT**, which is the check
+>   working: it asserted three links and the bar has four since Enquiries became
+>   a tab. Both lines assert the new tab BY NAME as well as by count now, so a
+>   fifth tab added without one cannot pass them.
+> * ⚠ **`admin-support` was red three times in the whole-suite run and 5/5 alone
+>   in 1.4 min** — the 11 Sep rule again, and the 26 Sep shape exactly: a spec
+>   that is not `describe.serial` gets a NEW WORKER after a failure, re-runs its
+>   describe body with a fresh stamp, and every later test then looks for names
+>   that no longer exist. **A red after a red in a non-serial spec is a cascade,
+>   not three findings.**
+
+> ### THE INBOX IS THREE DESKS, A POSTER IS A PICTURE, AN ARTIST HAS A TEAM, AND THE APP STOPS EXPLAINING ITSELF (27 Sep 2026, earlier) — BUILT; ⚠⚠ THREE MIGRATIONS WRITTEN, DRY-RUN **16/16**, **15/15** AND HELD FOR THE USER'S WORD (NEXT TO DO #0ap)
 > Two rounds. First the user's own answers to a "what is left" question — *"an
 > artist's team, both ways"*, *"Posters"*, *"Warn the admin, one press to end
 > it"*, *"Delete the 3 real retired logins too"*, and a write-in: *"1. fix inbox
@@ -5802,6 +6041,68 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0at. **⚠⚠ A FOURTH MIGRATION WRITTEN AND HELD — AND, UNLIKE THE OTHER THREE, NOT
+   DRY-RUN. `20260927140000_a_crew_practises.sql`.** ⚠ Rule 9: RLS, three new
+   tables. The user: *"crew should also get an option on home tab called
+   Practice — which allows crew leader to create practice which sends invite to
+   members and leader can mange attendace like how its done class for the same.
+   practice also get added to calendar. crews should also have a calendar tab."*
+   Asked how to scope it they chose **full** (invite + attendance + calendar);
+   asked whose practice appears on a user's and an artist's home they chose
+   **only their crews'** — so a practice always belongs to a crew and there is no
+   solo practice.
+   **THE WHOLE OF THE FILE:**
+   * **THREE NEW TABLES.** `crew_practices` (crew, when, where as free text, a
+     note, `scheduled | cancelled`), `crew_practice_people` (asked → confirmed |
+     rejected, one live row per person per practice) and
+     `crew_practice_attendance` (one LIVE row = present; checking out
+     soft-deletes, which is Step 10's rule verbatim).
+   * ⚠⚠ **IT DOES NOT RIDE ON `classes`, AND THAT IS THE DESIGN.** A class is
+     SOLD — a price, a room the database defends against double-booking, an
+     artist paid per session, seats, a waitlist, a refund window, a Cashfree
+     order. A practice has none of it. Reusing the table would mean a class with
+     a null price and a `status` meaning something else, and every one of the
+     twenty-odd functions reading `classes` would have to learn to skip it.
+   * ⚠ **NOT PUBLIC.** No anon policy on any of the three and no table grant to
+     anon: a crew's page prints its roster and its battle record, and a rehearsal
+     schedule is the crew's own business.
+   * **TEN FUNCTIONS**, all authenticated-only: `is_on_crew`, `leads_practice`,
+     `save_crew_practice` (creating ASKS every confirmed member; ⚠ the LEADER is
+     not asked, and ⚠ MOVING re-asks nobody — they are TOLD), `cancel_crew_practice`
+     (a STATUS, never a delete), `respond_to_practice` (the person asked, only),
+     `check_in_practice` / `undo_practice_check_in` (the leader's register),
+     `my_crew_practices` (scoped to `auth.uid()` inside — no `p_user_id` to aim
+     at anybody), `practice_people`, and the two notify triggers.
+   * ⚠ **The audit columns carry NO foreign key into `auth.users`** — the 19 Sep
+     defect that made an account undeletable, and the shape `20260927110000` is
+     still waiting to undo on four admin columns.
+   ⚠⚠ **WHAT IS OWED BEFORE IT COULD EVER BE APPLIED, said plainly: THE DRY
+   RUN.** `scripts`-side the checks are written (`dryrunPractice.js`, scratchpad —
+   33 checks including the ACL multiset, anon's executable set, the policy count
+   and "no audit FK"), and **it has not run**, because `npm i -D pg` failed with
+   ERESOLVE on this machine. Every migration since 16 Sep has gone in behind a
+   rolled-back `BEGIN … ROLLBACK`; this one has not, so it is **written, not
+   proven**. ⚠ **AND NO APP SIDE IS BUILT** — the Practice tile, the crew's
+   Calendar tab and the register are the slice after the apply, so the file in
+   the repo changes nothing until somebody pushes it.
+
+0as. **⚠ THE APP-SIDE "WHAT IS LEFT" LIST IS CLOSED (27 Sep 2026, latest).** All
+   four items are done and verified: every native `<select>` is an in-app sheet
+   (**zero left in the app** — grep `<select[ \n>]` over `*.tsx` and every hit is
+   a comment), the harness lost `selectOption` entirely, the two remaining
+   explanations were checked rather than trimmed on memory (two screens were
+   already clean; the third had a **stale claim about money and order** that is
+   now corrected), and the three Team desks are levelled. ⚠ **What is NOT done,
+   and is nobody's to fix: the three migrations stay HELD** (#0ap) — the list
+   goes in front of the user before every `db push`, every time, however
+   thoroughly it was dry-run. Applying `20260927130000` is also what puts
+   `poster_path` back into `CLASS_COLUMNS` / `EVENT_SELECT` (two lines).
+   ⚠ **And three Team-desk differences are left standing ON PURPOSE** so they are
+   not re-proposed: the `PeoplePicker`'s accessible name on one desk (the default
+   is the prototype's own string — Rule 2), an organization's roster having no ▲▼
+   (there is no `reorder_organization_members` RPC), and a studio's profile door
+   living in the member sheet (the ROW is the manage control there).
+
 0ar. **⚠ WHAT IS PENDING AT THE USER'S END AFTER 27 Sep 2026**, and it is short:
    * **A real ₹5,000 Cashfree mandate on Deepak's organization**, if one is
      wanted. It is PUBLIC now on a ₹0 admin COMP (granted to 27 Sep 2027), which
@@ -6032,8 +6333,14 @@ summary; the report has the evidence.
    and the event manager, `PosterBlock`'s image branch). **On apply, put
    `poster_path` back into the two select strings and the feature is live.**
    **On the user's word:**
+   ⚠⚠ **THE DRY RUN NOW LISTS FOUR, AND THE FOURTH IS NOT APPROVED AND NOT
+   DRY-RUN.** `20260927140000` (crew Practice, #0at) is pending too, and
+   `db-push` applies **every** pending file — the trap this file recorded on
+   27 Sep, when a second held file nearly rode in with an approved one. **Move
+   `20260927140000_a_crew_practises.sql` to the scratchpad first**, re-run the
+   dry run until it lists exactly the three below, apply, then put the file back:
 ```
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260927110000, 20260927120000, 20260927130000
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260927110000, 20260927120000, 20260927130000 — HOLD 140000 ASIDE
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
    # ⚠ then RELOAD POSTGREST'S SCHEMA CACHE — two new columns the app will select (19 Sep lesson)
    # then put poster_path back into CLASS_COLUMNS and EVENT_SELECT, rebuild, and:
@@ -7088,6 +7395,52 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **EVERY DROPDOWN IS AN IN-APP SHEET, AND EXTRACTING THE FIRST ONE FOUND THE BUG
+  IN IT — 27 Sep 2026, no step number — BUILT, no migration.** The user: *"fix
+  all remaining in this / fix what is left"*. ⚠⚠ **Not one native `<select>` is
+  left in the app**: the eight the previous push named as untouched are one
+  shared `PickSheet` now, with the same options, values, callbacks and accessible
+  names. ⚠⚠ **And extracting it found a live bug in the one already shipped** —
+  `CitySelect`'s sheet was `position: fixed` and NOT PORTALLED, so inside a
+  `FormPage sheet` (four create flows) an animated panel with `overflow: hidden`
+  **clipped it**: the 16 Sep stacking-context lesson for the fourth time. ⚠⚠ **And
+  one the extraction would otherwise have introduced**, caught by reading
+  `useCloseOnBack` rather than by a run: a sheet spends its history entry on
+  close and two of these pickers `router.replace` on pick, which is the 19 Sep
+  back()-races-the-router bug by name — a `navigates` prop at exactly those two
+  call sites. The harness lost `selectOption` entirely (11 sites, one `pick()`
+  helper that finds the option on the PAGE because the sheet is portalled).
+  ⚠ **Two sentences in the verification sheet still described the order R51
+  reversed this morning** — paid at creation, verified after — which is the
+  `planRights` finding in a second place. The three Team desks are levelled the
+  rest of the way (a borderless local card, a 38px circle beside a 36px squircle
+  **in the same list**, a copied toast, a missing `role="alert"`, an empty state
+  painted like a roster row) and the §10.9 footnote is gone. Deviation rows
+  **C66** and **C67**.
+  **AND THEN THE SAME PERSON'S LONGER LIST, IN THE SAME PUSH.** ⚠⚠ **The booking
+  gate had been dead for a day at BOTH layers** — `canBook` tested
+  `profiles.role === 'org'`, a role R48 retired, so it allowed everybody and
+  nothing failed because what it withholds is a sentence; `guard_person_only`'s
+  matching branch is dead for the same reason, so **the database does not
+  enforce it either** (R52 — the SQL clause is owed to the next migration that
+  touches those tables). Rebuilt on the profile you are ACTING AS, carried by
+  `?as=` and threaded through every href on Discover: ⚠ a tap on the Classes tab
+  would otherwise have handed the button straight back. **Enquiries is a fourth
+  TAB and the Inbox is Requests · Invites · Done** (C68), "accepted" a stamp
+  rather than a green sentence; **Enquiry types left Settings** and ⚠⚠ **the
+  sheet behind it was a branch no screen rendered, which lint cannot see**. **A
+  person is a CHIP and a person's page is four groups** (C69 — reversing R43 at
+  the user's word, and fixing what R43 caused: one studio appearing three
+  times). **Following on the organization's and the crew's home**; ⚠⚠ **the
+  Inbox had no `<h1>` at all**, the fourth time this repo has found that shape;
+  the contact form **shows the row it is building**; "Buy now" on memberships.
+  ⚠ **A fourth migration is written and HELD and, unlike the other three, NOT
+  DRY-RUN** (`20260927140000`, crew Practice — `npm i -D pg` failed with
+  ERESOLVE; #0at says what is owed).
+  **typecheck 0 · lint 0 · `next build` green · `shoot-tiles` 155/155 ·
+  `shoot-hero` 178/178 · `admin-support` 5/5 alone** (its three reds in a
+  whole-suite run were the busy machine and its restarted-worker shadow — the
+  11 Sep rule holding again).
 - **THE INBOX IS THREE DESKS, A POSTER IS A PICTURE, AN ARTIST HAS A TEAM, AND
   THE APP STOPS EXPLAINING ITSELF — 27 Sep 2026, no step number ⚠ (Rule 9: one
   held migration widens what a stranger reads, one drops four `auth.users`
@@ -11353,6 +11706,13 @@ Home. **Do not "restore parity" on these.**
 | C65 | Every creation form carries an explanatory paragraph under each heading | **MOSTLY JUST HEADINGS** — six paragraphs gone from the class form, the event form, the New studio sheet and the New organization sheet, on C4c's own rule (*helper text only where the control cannot speak*). ⚠ What is KEPT is what nothing else on the screen says: the money claim (Step 13's "DanceOS does not move the money"), an absence (assistants are added from the class page later), a dependency between two controls (which entry formats exist is decided by the row above), and that a studio and an organization are born PRIVATE | 27 Sep 2026, the user: *"less details in creation forms for everything should mostly just be headings"*. ⚠ A confirm sheet's summary is NOT touched — it is a recap of what was typed, and it is the last thing read before committing |
 | R50 | A person's page lists the studios and artists whose teams they are seated on (`person_associations`, R37); an organization's page lists the people it names (`public_organization_team`, R28/R36) | **AND THE PERSON'S PAGE NAMES THE ORGANIZATIONS BACK** — an **Organizations** group on the shared `PersonBody`, labelled with the organization's own word for the seat (Owner / Event team), each row a door to `/org/{id}` | 27 Sep 2026, the user: *"all profiles should only showcase according to how the team sections are managed for each profile and their associations linked properly"*. The link ran one way: the organization's page printed you with a door to your page, and your page said nothing back. ⚠ **No migration** — `20260920150000` already admits `anon, authenticated` to confirmed non-`member` rows of a PUBLIC organization, so this publishes exactly what those pages print. ⚠ The list differs by viewer, correctly: your own rows are yours to read, so a private organization that names you appears on your own tab and on nobody else's view of it — the same shape `person_associations` has for an unlisted studio |
 | C60 | C22 (19 Sep 2026): Edit profile is Settings' first tile and no home carries a pencil; C58 (23 Sep): a studio's and a crew's Edit is a Settings tile too; the disc's ⊕, the posters' ⊕, the styles ＋ and the links ＋ are always drawn for whoever may edit; the number and the email are fields in every Edit sheet | **THE PENCIL IS BACK ON EVERY HOME'S CORNER, OVER THE DOOR, AND IT TOGGLES EDIT MODE** (`EditMode.tsx`: a context the page provides and every editor reads). Read mode is the home with NO control on it; the pencil (`aria-pressed`) makes them all appear at once — the disc's ⊕, the posters' ⊕, the styles ＋, the links ＋ (`StylesRowEditor`, `LinksRowEditor`: one row each for a person, a business and a crew, with the DOOR passed in), an **Edit details** chip beside the name for the words a form still holds (name · date of birth · city; a business's name · Since · the pin; a crew's name · city · first style — `?edit=1` on the entity's home, C54's grammar, or the person's sheet in place), and a **＋ Contact buttons** ⊕ under the button row (`ContactEditor`) where Call (with an artist's and a crew's switch), Mail, Message (a WhatsApp number, stored as the `socials` entry it always was, `wa.me`) and a business's Enquiry are made and UNMADE — an empty box takes the button off. **The number, the switch and the email left all three Edit sheets** (sent back unchanged, because two of the doors take the whole profile). **Settings has no Edit tile of any kind** — no YOU block, no Edit studio, no Edit organization, no Edit crew — and no Subscription or Artist tools either: **Subscription is a tile on every home** (a person's `/subscription` takes and ends the Artist plan and lists the studios and organizations they own; a studio's and an organization's `/business/{id}/subscription` is its own mandate). ⚠ A `Message` button is drawn wherever the row is (five homes, four public pages) | 26 Sep 2026, the user: *"it should be possible to edit everything in the edit profile option on the home page for every profile. should give edit plus button like profile pic for every part on the home tab which is editable. so fix that clicking on the edit pencil button from top right on every profile should open the option to edit everything from the home tab thats when the button to edits need to appear … all buttons like email, location, phone, message, enquiry on home tab should also be like social media and dance style edit style to add or remove and those options can be removed from edit profile. edit profile to be removed from all profiles settings and should be a button on top right with public page view right now. for user subscription should show option to subscribe to become an artist should not be a separate tab in settings like artist tools. studio and organization subscription managed separately … subscriptions also become an option on home tab for all profiles and is removed from settings for all."* ⚠ This SUPERSEDES C22 and C58 on the user's own later word; what those rows got right — one door to the words, the sheet as an address — is kept |
+| C66 | Every list is a native `<select>` — the prototype has about a dozen (the city 2670 / 4525 / 9556 / 15979, the time 3536, the role 3809, the enquiry fields 5141, the age 11382, the class times 15322, the asset and expense types 16733 / 16799, a routine's style and level 17134-17136) | **ONE IN-APP SHEET, `components/ui/PickSheet.tsx`, AND NOT ONE NATIVE `<select>` LEFT IN THE APP** (27 Sep 2026). A trigger that keeps the select's exact accessible name over a PORTALLED bottom sheet — `dosSheetUp`, a scrim, `useCloseOnBack`, `role="listbox"`/`role="option"`, a search past twelve rows. The options, the values and the callbacks are unchanged at all eight call sites; only what a press opens is different | 27 Sep 2026, the user: *"fix all list drop downs should be within the app only not open a seprate screen"*. ⚠ **A native `<select>` on a PHONE is literally a separate screen** — Android and iOS answer one with a full-screen OS picker in the system's own type, with the system's own Cancel, and nothing of DanceOS visible; on a laptop it is a small popup and reads fine, which is why twelve of them survived four months. ⚠ **`navigates` is the one thing a caller must declare**: a sheet spends its history entry on close, and two pickers `router.replace` on pick, where a `back()` would race the router (`useCloseOnBack` rule 2). ⚠ `DosStylePicker` is NOT folded into it — it is the prototype's own control (3548-3612), already an in-app list, with a coin per row and the "All styles" rule |
+| C67 | The prototype has one studio, so one Team screen; C49 (21 Sep 2026) levelled the three desks' hero, add control, sheet styles and faces | **AND THE REST OF IT** (27 Sep 2026): a studio's roster cards are `bizCard` like the other two (they were local and **borderless**), a waiting row's face is a 36px squircle like the member row above it (it was a 38px circle — the 21 Sep pass missed it), the error line carries `role="alert"`, the toast is `crew-kit`'s rather than a byte-identical copy, and all three empty states are the app's own dashed centred card. The crew's add sheet is headed 17px in the display face like the other two. ⚠ **The §10.9 footnote is deleted** — the prototype's line 18434 lifted verbatim, naming a section in a document this app does not have | 27 Sep 2026, the user: *"fix team layout for all types of profiles should be clean"*, and their standing ask that the app stop explaining itself. ⚠ **Three differences are left standing on purpose** and are named in the session record: the `PeoplePicker`'s accessible name (the default is the prototype's own string — Rule 2), an organization's roster having no ▲▼ (there is no `reorder_organization_members` RPC — a schema difference), and a studio's profile door living in the member sheet (the ROW is the manage control there) |
+
+| R52 | R31 (19 Sep 2026): `canBook(role)` refuses an ORGANIZATION ACCOUNT, over `guard_person_only`'s own `role = 'org'` test | ⚠⚠ **THE GATE KEYS ON THE PROFILE YOU ARE ACTING AS** (27 Sep 2026) — `canBookClass` / `canBookEvent` over `ActingAs`, resolved from `?as=` (the entity bar's Discover link) against the businesses this account is on the team of and the crews it leads. **A studio and an organization book neither; a CREW enters events and takes no classes.** ⚠⚠ **It replaces rather than restores, because the old test had been DEAD SINCE 26 Sep**: R48 retired `profiles.role = 'org'`, so `role !== "org"` answered "yes" for everybody and nothing failed — what the gate withholds is a sentence, not an exception. ⚠ The same word is dead in `guard_person_only`, so **the DATABASE does not enforce this either**; the SQL clause is owed to the next migration that touches those eight tables | 27 Sep 2026, the user: *"studio and organization profiles should not be able book classes and events from discover breaking now"*, *"crew can only take part in events and should not be able to book classes"* and *"studio and organization cannot book anything from classes and events"*. ⚠ **A pointer is never an authority**: `?as=` is a REQUEST, and an unresolvable one means "yourself" — the permissive answer on purpose, since failing a presentation gate closed would take a booking from somebody entitled to one. ⚠ And it had to be threaded through every href on Discover (the pager, the place chip, the tab tiles, the filter sheet, Clear filters, both cards): a tap on Classes would otherwise have handed the button back |
+| C68 | The Inbox is one screen with three desks — Requests · Invites · Enquiries (C61, 27 Sep 2026, earlier the same day) | **ENQUIRIES IS THE FOURTH TAB, AND THE INBOX IS REQUESTS · INVITES · DONE.** An Inbox row is a yes or a no you owe somebody; an enquiry is somebody wanting to BOOK you, and it has a life of its own — a quote, a revision, an advance, won or lost. Sharing a desk made the bar's badge count two unlike things as one number. ⚠ **ONE COMPONENT, TWO DESKS** (`InboxScreen desk=`), not a fork — the cards, the Received/Sent sides and the Done treatment are identical. **And `Done` holds what is over**: answered requests, answered invitations, won and lost enquiries, each desk its own kind. ⚠ It does NOT undo the 19 Sep rule that an answered ask stays — nothing is deleted, the rows MOVE, so a live desk holds only what still needs somebody. "Accepted" is a filled STAMP pill rather than a line of green text where the buttons were | 27 Sep 2026, the user: *"only enquiry becomes a new option in tab and is removed from inbox"* (their own answer when asked which of two readings of "inbox merged into a section on home tab" they meant), and *"sepreate section request , invites and enquiries which are already completed and change the way accepted looks like on cards for all these"*. ⚠ **Enquiry types left Settings with it** — three tiles and the whole BUSINESS block — for the contact ⊕, where the button they govern is made; and the sheet behind them was DELETED, because with the tiles gone nothing could open it and lint cannot see a branch whose parts still reference each other |
+| C69 | R43 (21 Sep 2026): a person's associations are **Train · Teach · Assist · Manage** for studios and **Leader · Member** for crews, each a full-width `Row` | **A PERSON IS A CHIP, AND A PERSON'S PAGE IS FOUR GROUPS** (27 Sep 2026): **Crew · Studios · Artists · Organizations**, each row a squircle face, the name, and **the title beside it**, two to a line (`PersonChip`, `PeopleGroup`) — the same treatment on a studio's, an organization's and a crew's page, with a section per role there. ⚠ **This reverses R43 at the same person's word, and it fixes what R43 caused**: three groups over one fact meant a studio appeared up to THREE times on one page. ⚠ **Nothing is lost** — a SEAT outranks a class, so the row reads the seat's word, and where there is no seat it says "Teaches here" / "Assists here". ⚠ **Train stays, own tab only**: it is where somebody LEARNS, not a team title, and it is a private booking (their own 21 Sep scoping). `CrewRow` is deleted | 27 Sep 2026, the user: *"on all profile pages should only show 1. User and artist- Crew with Postion, Organization with team title, Studios with team Title, Artist with team Title, 2. Studio, Crew and Organization- Simply should show the Team with position. make sure to not take full row for each name here and make squircle boxes with name and role in the right section. all roles should have a seprate section according to profile."* |
+
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
 Rule 2 says the prototype's UI is the spec. These are the known, deliberate gaps

@@ -10,19 +10,26 @@ import {
   findMyEnrolledSessionIds,
 } from "@/repositories/enrollments";
 import type { EnrollmentStatus } from "@/types/enrollment";
-import { canBook } from "@/types/profile";
+import { canBookClass, noBookingWords } from "@/types/profile";
+import { resolveActingAs } from "@/repositories/actingAs";
 
 /** Learner class listing — lifted from the prototype's Discover "Upcoming classes"
  *  shelf (DanceOSApp.jsx:4771-4809). City/style filters arrive with Step 5. */
-export default async function ClassesPage() {
+export default async function ClassesPage({
+  searchParams,
+}: {
+  /** `?as=` — the profile the shelf is read as (27 Sep 2026); see Discover */
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { as } = await searchParams;
 
   const classes = await findPublishedClasses(supabase);
   const sessionIds = classes.map((c) => c.session?.id).filter(Boolean) as string[];
-  const [counts, mine, profile, artists] = await Promise.all([
+  const [counts, mine, profile, artists, actingAs] = await Promise.all([
     countEnrolledBySession(supabase, sessionIds),
     user
       ? findMyEnrolledSessionIds(supabase)
@@ -30,9 +37,11 @@ export default async function ClassesPage() {
     user ? findProfileById(supabase, user.id) : Promise.resolve(null),
     /* the teacher each card wears in its centre — one read for the whole shelf */
     findClassArtists(supabase, classes.map((c) => c.id)),
+    user ? resolveActingAs(supabase, as) : Promise.resolve(null),
   ]);
   /* the shelf counts what is IN the viewer's city (4787) — everywhere else, plainly */
   const city = profile?.city ?? null;
+  const noClass = actingAs && !canBookClass(actingAs) ? noBookingWords(actingAs, "class") : null;
 
   return (
     <div
@@ -81,7 +90,7 @@ export default async function ClassesPage() {
                   mine={mine.get(c.session.id) ?? null}
                   priceInr={c.priceInr}
                   shareSlug={c.shareSlug}
-                  canBook={canBook(profile?.role)}
+                  cannotBookWhy={noClass}
                 />
               ) : null
             }

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { GREEN, INK, SOLID } from "@/lib/design/tokens";
-import { NO_BOOKING_FOR_AN_ORGANIZATION } from "@/types/profile";
 
 const EL = "var(--el)";
 
@@ -53,7 +52,8 @@ export function EventBookButton({
   held,
   soldOut,
   isPast = false,
-  canBook = true,
+  cannotBookWhy = null,
+  as = null,
 }: {
   shareSlug: string;
   isSignedIn: boolean;
@@ -63,11 +63,14 @@ export function EventBookButton({
   soldOut: boolean;
   /** over — the page draws its final figures rather than a bar */
   isPast?: boolean;
-  /** false for an ORGANIZATION account — `guard_person_only` has refused it a
-   *  seat and an entry since 8 Sep 2026 (R31) */
-  canBook?: boolean;
+  /** ⚠ THE REASON, NOT A BOOLEAN — `EnrollButton` carries the whole story. Null
+   *  means you may book; a crew may, a studio and an organization may not. */
+  cannotBookWhy?: string | null;
+  /** the profile the shelf was read as, carried on so the page agrees with the
+   *  card that sent you (`?as=`) */
+  as?: string | null;
 }) {
-  const href = `/e/${shareSlug}`;
+  const href = as ? `/e/${shareSlug}?as=${encodeURIComponent(as)}` : `/e/${shareSlug}`;
 
   if (isPast) {
     return (
@@ -96,13 +99,13 @@ export function EventBookButton({
     );
   }
 
-  /* an organization browses and books nothing — said, not refused after the
-     press. Only where there is nothing held, so a row written before the guard
-     existed keeps its way in (EnrollButton's own rule). */
-  if (!canBook) {
+  /* a business browses and books nothing — said, not refused after the press.
+     Only where there is nothing held, so an entry made before the person
+     switched profiles keeps its way in (EnrollButton's own rule). */
+  if (cannotBookWhy) {
     return (
       <div data-testid="org-cannot-book" style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted)", lineHeight: 1.45, padding: "4px 2px" }}>
-        {NO_BOOKING_FOR_AN_ORGANIZATION}
+        {cannotBookWhy}
       </div>
     );
   }

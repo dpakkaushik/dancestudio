@@ -131,8 +131,11 @@ const rest = async (method, url, body) => {
   const search = page.getByRole("searchbox", { name: /Search an address or landmark/i });
   await search.fill("Shivajinagar Pune");
   await page.waitForTimeout(2500);
-  /* scoped to the search's own listbox: the Edit sheet also has a `Since`
-     year <select>, whose <option>s carry the same role */
+  /* scoped to the search's own listbox. ⚠ It had to be: the Edit sheet's `Since`
+     was a native <select>, and a <select>'s <option>s are in the a11y tree
+     whether or not it is open. Since 27 Sep 2026 every dropdown here is a sheet
+     that renders no option until it is opened, so the scope is belt and braces
+     rather than load-bearing — kept, because one open picker would bring it back */
   const options = page.getByRole("listbox").getByRole("option");
   const n = await options.count();
   check(n > 0, `Places Autocomplete answered (${n} suggestions)`);

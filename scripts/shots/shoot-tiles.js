@@ -203,7 +203,10 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.locator('input[name="phone"]').fill("+919876543210");
   await page.locator('input[name="contact_email"]').fill(`tiles.${who}.studio.${stamp}@example.com`);
   await page.getByLabel("Room 1 name").fill("Floor 1");
-  await page.getByLabel("Add a dance style").selectOption("Hip-Hop");
+  /* the app's one style picker, never a native select (parity F4/W2) — and
+     since 27 Sep 2026 nothing in the app opens an OS picker at all */
+  await page.getByRole("button", { name: "Add a dance style", exact: true }).click();
+  await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
   await page.getByRole("button", { name: "Create studio" }).click();
   /** ⚠ CREATING NOW LANDS ON PAYMENT (27 Sep 2026 — the user's item 8, and their
    *  own answer when three orders were put to them: "Pay at creation, verify
@@ -293,10 +296,13 @@ async function personOpensAStudio(page, who, acc, stamp) {
   const publish = page.getByRole("button", { name: "Publish", exact: true });
   await publish.first().waitFor({ timeout: 15_000 }).catch(() => {});
   check((await publish.count()) >= 1, `${who} · the register offers Publish with nothing in its way — nobody was asked (${(await page.getByRole("button", { name: /^Publish/ }).allTextContents().catch(() => [])).join(" | ") || "no Publish pill at all"})`);
-  /* the log: the Requests desk's SENT side — an ask the studio made and its answer */
+  /* the log: an ask the studio made and its answer. ⚠ ON **DONE** SINCE 27 Sep
+     2026 (the user: "sepreate section request, invites and enquiries which are
+     already completed") — an answered ask still exists, which is the 19 Sep
+     rule and the whole point of this check; it has simply moved off the live
+     desk so Requests holds only what still needs somebody. */
   await page.goto(`${BASE}/inbox`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /^Requests/ }).click().catch(() => {});
-  await page.getByRole("button", { name: "Sent requests" }).click().catch(() => {});
+  await page.getByRole("button", { name: /^Done/ }).click().catch(() => {});
   const inbox = await page.locator("body").innerText().catch(() => "");
   /* ⚠ "Accepted", not "Confirmed" (27 Sep 2026): a class ask is drawn as the
      app's own class card with Accept / Reject under it, so the answer it wears
@@ -529,9 +535,12 @@ async function personOpensAStudio(page, who, acc, stamp) {
     const sTxt = await sheet.innerText();
     check(sTxt.includes("THIS STUDIO"), "studio · Settings is THE STUDIO'S — the block is headed THIS STUDIO");
     check(sTxt.includes(studio.name), "studio · and it says whose settings these are");
-    for (const want of ["Verification", "Invoices", "Refunds", "Payments", "Enquiry types"]) {
+    for (const want of ["Verification", "Invoices", "Refunds", "Payments"]) {
       check(sTxt.includes(want), `studio · Settings carries ${want}`);
     }
+    /* ⚠ and NOT Enquiry types (27 Sep 2026) — it is the contact ⊕ on the
+       studio's own home now, beside the switch that draws the button */
+    check(!sTxt.includes("Enquiry types"), "studio · Enquiry types has LEFT Settings");
     /* ⚠⚠ NO EDIT TILE AND NO SUBSCRIPTION TILE HERE (26 Sep 2026, the user: "edit
        profile to be removed from all profiles settings and should be a button on
        top right … subscriptions also become an option on home tab for all

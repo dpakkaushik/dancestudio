@@ -102,7 +102,9 @@ async function signUp(page, email) {
     await page.locator('input[name="phone"]').fill("+919876543210");
     await page.locator('input[name="contact_email"]').fill(`shots-studio-${stamp}@example.com`);
     await page.getByLabel("Room 1 name").fill("Studio A");
-    await page.getByLabel("Add a dance style").selectOption("Hip-Hop");
+    /* the app's one style picker, never a native select (parity F4/W2) */
+    await page.getByRole("button", { name: "Add a dance style", exact: true }).click();
+    await page.getByRole("button", { name: "Hip-Hop", exact: true }).click();
     await shot("new-studio-sheet");
     await page.getByRole("button", { name: "Create studio" }).click();
     await page.getByText("EEE Dance Studio").first().waitFor();

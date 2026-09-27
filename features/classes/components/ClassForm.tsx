@@ -16,6 +16,7 @@ import {
    this form entirely. */
 import { PeoplePicker } from "@/features/people/components/PeoplePicker";
 import { DosStylePicker } from "@/components/ui/DosStyleKit";
+import { Pick } from "@/components/ui/PickSheet";
 import {
   FORM_LABEL,
   FORM_INPUT,
@@ -416,35 +417,37 @@ export function ClassForm({
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Starts</div>
-                <select
+                {/* ⚠ THE CLOCK IS AN IN-APP SHEET NOW (27 Sep 2026) — and this is
+                    the pair that most needed it: the form is itself a sheet over
+                    the register, so a native `<select>` here threw the OS picker
+                    over the whole app twice in a row while somebody was still
+                    filling in one screen. The times, the "Ends follows Starts"
+                    rule and both accessible names are untouched. */}
+                <Pick
                   value={startTime}
-                  onChange={(e) => {
-                    const v = e.target.value;
+                  rows={TIMES.slice(0, -1).map((t) => ({ value: t, label: t }))}
+                  onPick={(v) => {
                     setStartTime(v);
                     if (endTime <= v) {
                       const next = TIMES.find((t) => t > v);
                       if (next) setEndTime(next);
                     }
                   }}
-                  aria-label="Starts"
-                  style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
-                >
-                  {TIMES.slice(0, -1).map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                  ariaLabel="Starts"
+                  style={{ ...inputStyle, cursor: "pointer" }}
+                  searchPlaceholder="Search times…"
+                />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, color: SUB, marginBottom: 4 }}>Ends</div>
-                <select value={endTime} onChange={(e) => setEndTime(e.target.value)} aria-label="Ends" style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}>
-                  {TIMES.filter((t) => t > startTime).map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                <Pick
+                  value={endTime}
+                  rows={TIMES.filter((t) => t > startTime).map((t) => ({ value: t, label: t }))}
+                  onPick={setEndTime}
+                  ariaLabel="Ends"
+                  style={{ ...inputStyle, cursor: "pointer" }}
+                  searchPlaceholder="Search times…"
+                />
               </div>
             </div>
 

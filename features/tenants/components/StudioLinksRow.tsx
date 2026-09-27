@@ -5,6 +5,7 @@ import { updateTenantProfileAction } from "@/features/settings/server-actions/pl
 import { LinksRowEditor } from "@/features/profiles/components/LinksRowEditor";
 import { useRecordLists } from "@/features/profiles/components/RecordLists";
 import type { SocialLink } from "@/types/profile";
+import type { TenantType } from "@/types/tenant";
 
 /** A STUDIO'S LINKS, EDITED WHERE A PERSON'S ARE (20 Sep 2026, the user: "edit
  *  profile for studio not consistent with how its done for Artist and users. for
@@ -30,6 +31,11 @@ import type { SocialLink } from "@/types/profile";
  *  the RPC then refuses. This is the contract, so the compiler checks it. */
 export interface StudioLinkTarget {
   id: string;
+  /** ⚠ WHAT KIND OF BUSINESS (27 Sep 2026) — not sent by the links row, but the
+   *  contact editor shares this contract and the ENQUIRY KINDS it now offers are
+   *  decided by the type (`enquiryTypesFor`). Added here rather than casting at
+   *  the call site, for the reason the note above gives. */
+  type: TenantType;
   socials: SocialLink[];
   styles: string[];
   foundedYear: number | null;

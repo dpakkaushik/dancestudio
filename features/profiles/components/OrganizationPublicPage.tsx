@@ -8,7 +8,7 @@ import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { Group, PROFILE_RING, Row, TYPE } from "@/features/profiles/components/profile-kit";
+import { PROFILE_RING, PeopleGroup, PersonChip, TYPE } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, INK, LILAC, MUTED } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -171,22 +171,28 @@ export function OrganizationPublicPage({
         {/* ── THE ASSOCIATIONS (push 2: "Organization: Owner (one of the users added
             from team)"): Owner · Event team · Events. ⚠ NO STUDIOS GROUP since
             26 Sep 2026 — an organization runs none. ── */}
+        {/* ⚠ A CHIP PER PERSON, A SECTION PER ROLE (27 Sep 2026) — the same
+            treatment a studio's and a crew's page wear, so the three entity
+            pages name their people one way. The `sub` these rows carried
+            ("Artist · Pune") is gone: the user asked for the NAME and the
+            POSITION, and the kind word was the third thing competing for a line
+            that now holds two. */}
         {owners.length ? (
-          <Group title="Owner" n={owners.length}>
+          <PeopleGroup title="Owner" n={owners.length}>
             {owners.map((m) => (
-              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} right="Owner" />
+              <PersonChip key={m.memberId} href={`/person/${m.userId}`} name={m.name} role="Owner" roleColour={tint} photo={photoUrl(m.photoPath)} />
             ))}
-          </Group>
+          </PeopleGroup>
         ) : null}
         {/* ⚠ EVENT TEAM CARRIES ITS WORD TOO (27 Sep 2026) — the Owner group
             above has had one since push 2 and this one had none, so one group
             on one screen was labelled and the other was not. */}
         {eventTeam.length ? (
-          <Group title="Event team" n={eventTeam.length}>
+          <PeopleGroup title="Event team" n={eventTeam.length}>
             {eventTeam.map((m) => (
-              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} right="Event team" />
+              <PersonChip key={m.memberId} href={`/person/${m.userId}`} name={m.name} role="Event team" roleColour={tint} photo={photoUrl(m.photoPath)} />
             ))}
-          </Group>
+          </PeopleGroup>
         ) : null}
 
         <div style={{ marginTop: 18 }}>
