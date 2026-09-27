@@ -24,8 +24,8 @@ interface ClassRow {
   room: string | null;
   room_id: string | null;
   poster: PosterChoice | null;
-  /** ⚠ OPTIONAL until `20260927130000` is applied and the select asks for it */
-  poster_path?: string | null;
+  /** The uploaded flyer, since `20260927130000`. Null means the DRAWN poster. */
+  poster_path: string | null;
   price_inr: number;
   capacity: number;
   status: ClassStatus;
@@ -59,7 +59,7 @@ const venueOf = (row: PublicClassRow) => ({
 
 /* no `title` in the read: the label is derived from style and level (types/class.ts) */
 const CLASS_COLUMNS =
-  "id, business_id, share_slug, style, level, room, room_id, poster, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, class_sessions (id, starts_at, ends_at)";
+  "id, business_id, share_slug, style, level, room, room_id, poster, poster_path, price_inr, capacity, status, venue_business_id, venue_status, lat, lng, maps_url, allows_studio_memberships, allows_artist_memberships, class_sessions (id, starts_at, ends_at)";
 
 const firstSession = (rows: SessionRow[] | null) => {
   const live = [...(rows ?? [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -77,10 +77,7 @@ const toClass = (row: ClassRow): DanceClass => ({
   room: row.room,
   roomId: row.room_id,
   poster: row.poster,
-  /* ⚠ `poster_path` IS NOT IN THE SELECT ABOVE until `20260927130000` is
-     applied — see the note at the head of this file. `?? null` is what every
-     row reads as meanwhile, and the drawn sleeve is drawn. */
-  posterPath: (row as { poster_path?: string | null }).poster_path ?? null,
+  posterPath: row.poster_path,
   priceInr: row.price_inr,
   capacity: row.capacity,
   status: row.status,

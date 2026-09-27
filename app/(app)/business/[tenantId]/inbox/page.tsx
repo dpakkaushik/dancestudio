@@ -5,7 +5,6 @@ import { gradientOf } from "@/features/profiles/components/profile-kit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findAskedClaimsForTenants } from "@/repositories/claims";
 import { findVenueRequestsForTenants } from "@/repositories/classes";
-import { findReceivedEnquiries } from "@/repositories/enquiries";
 import { findPendingInvites } from "@/repositories/invites";
 import { findAskedByOrganizations } from "@/repositories/organizationTeam";
 import { findMyMemberships } from "@/repositories/tenants";
@@ -43,8 +42,16 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ te
   }
   const isOrg = tenant.type === "org";
 
-  const [enquiriesIn, venueIn, claimsOut, invitesOut, orgAsked] = await Promise.all([
-    findReceivedEnquiries(supabase, [tenantId]),
+  /* ⚠⚠ THIS DESK STOPPED READING ENQUIRIES (27 Sep 2026). They left the Inbox
+     that morning for a desk of their own, and `InboxScreen desk="inbox"` draws
+     neither an Enquiries section nor an enquiry in its Done — so the read was
+     still being made on every visit by every member of the team and its result
+     was drawn NOWHERE. That is this repo's own recurring shape (a field that
+     exists and a screen that never reads it) met from the other side, and the
+     kind of thing nothing fails on: the page was correct, just paying for a
+     query it threw away. A studio's enquiries are the Enquiries TOOL on its own
+     home, scoped to it by `?as=`. */
+  const [venueIn, claimsOut, invitesOut, orgAsked] = await Promise.all([
     isOrg ? Promise.resolve([]) : findVenueRequestsForTenants(supabase, [tenantId]).catch(() => []),
     isOrg ? Promise.resolve([]) : findAskedClaimsForTenants(supabase, [tenantId]),
     isOrg ? Promise.resolve([]) : findPendingInvites(supabase, tenantId).then((rows) => rows.map((i) => ({ ...i, tenantName: tenant.name }))),
@@ -52,5 +59,5 @@ export default async function StudioInboxPage({ params }: { params: Promise<{ te
   ]);
   const { requestsIn, requestsOut } = buildRequests({ venueIn, claimsOut, invitesOut, orgOut: orgAsked.map((m) => ({ ...m, orgName: tenant.name })) });
 
-  return <InboxScreen accent={gradientOf(tenant.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} enquiriesIn={enquiriesIn} enquiriesOut={[]} nowIso={stampNowIso()} />;
+  return <InboxScreen accent={gradientOf(tenant.name)[1]} requestsIn={requestsIn} requestsOut={requestsOut} enquiriesIn={[]} enquiriesOut={[]} nowIso={stampNowIso()} />;
 }

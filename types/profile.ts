@@ -36,7 +36,7 @@ export const kindOf = (role: ProfileRole, isArtist: boolean): PersonKind =>
  *  itself. A pointer is never an authority: the page it lands on looks the
  *  business up among the ones this account actually belongs to before it
  *  believes a word of it. */
-export type ActingAs = { kind: "studio" | "org" | "crew"; name: string } | null;
+export type ActingAs = { kind: "studio" | "org" | "crew"; name: string; id: string } | null;
 
 /** May the profile you are acting as take a CLASS SEAT? Only you can. */
 export const canBookClass = (as: ActingAs): boolean => as === null;

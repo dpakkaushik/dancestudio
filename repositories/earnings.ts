@@ -247,7 +247,15 @@ export async function findBusinessEarnings(
          money was recorded by the business as received (nothing moved through
          DanceOS), and an ASSET falls in the period it was ADDED because an
          asset carries no purchase date. */
-      { key: "enquiries", label: "Enquiries", by: enquiries, href: "/inbox" },
+      /* ⚠ THIS LINK WAS DEAD FOR A DAY (fixed 27 Sep 2026, evening). It pointed
+         at `/inbox`, and enquiries LEFT the Inbox that morning — so the one row
+         on the ledger that says where this money came from opened a desk that no
+         longer holds any of it. Found by grepping for what the word "Enquiries"
+         still points at while moving the tab to a tool, not by a run: no test
+         presses a revenue row's link, and a link that opens the wrong screen
+         fails nothing. ⚠ It carries `?as=` when the ledger is one business's, so
+         the desk it opens is scoped the way the tile's is. */
+      { key: "enquiries", label: "Enquiries", by: enquiries, href: one ? `/enquiries?as=${encodeURIComponent(one)}` : "/enquiries" },
     ],
     [
       { key: "pay", label: "What you paid your people", by: pay, href: one ? `/business/${one}/earnings` : undefined },

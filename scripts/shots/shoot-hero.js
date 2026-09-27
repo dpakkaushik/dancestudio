@@ -370,7 +370,16 @@ const enterEdit = async (page) => {
        chose the tab over a section. Asserted by NAME as well as by count, so a
        fifth tab added without one cannot pass this line. */
     const studioBar = org.getByRole("navigation", { name: "Studio" });
-    check((await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 && (await studioBar.getByRole("link", { name: "Enquiries" }).count()) === 1 && (await studioBar.getByRole("link").count()) === 4, "studio bar: Home · Discover · Inbox · Enquiries — four (27 Sep 2026)");
+    /* ⚠ THREE AGAIN (27 Sep 2026, evening): Enquiries was the fourth tab for a
+       few hours this morning and is a TOOL TILE now, on this studio's own grid.
+       The count alone would pass on the wrong three, so the absent one is named
+       as well as the present ones. */
+    check(
+      (await studioBar.getByRole("link", { name: "Discover" }).count()) === 1 &&
+        (await studioBar.getByRole("link", { name: "Enquiries" }).count()) === 0 &&
+        (await studioBar.getByRole("link").count()) === 3,
+      "studio bar: Home · Discover · Inbox — three, and Enquiries is NOT on it (27 Sep 2026)"
+    );
     await shot("studio-initials");
 
     /* ⚠⚠ THE MEMBERSHIPS TILE OPENS A DESK, NOT A SHRUG (21 Sep 2026, the user:
@@ -661,7 +670,7 @@ const enterEdit = async (page) => {
     const bar = org.getByRole("navigation", { name: "Main" });
     check((await bar.getByRole("link", { name: "Stats" }).count()) === 0 && (await bar.getByRole("link", { name: "Profile" }).count()) === 0, "bar: neither Stats nor Profile is a tab any more");
     check((await bar.getByRole("link", { name: "Public view" }).count()) === 0, "bar: the eye left the bar (19 Sep 2026, the user: 'remove profile tab from navbar')");
-    check((await bar.getByRole("link", { name: "Enquiries" }).count()) === 1 && (await bar.getByRole("link").count()) === 4, "bar: Home · Discover · Inbox · Enquiries — four (27 Sep 2026)");
+    check((await bar.getByRole("link", { name: "Enquiries" }).count()) === 0 && (await bar.getByRole("link").count()) === 3, "bar: Home · Discover · Inbox — three, Enquiries off it (27 Sep 2026)");
     /* 19 Sep 2026: the corner is the EYE alone — the pencil went into Settings
        ("all edit profile options to be removed from home and profile pages") and
        the DISC became the door to both picture sections ("should be able to click
@@ -749,13 +758,28 @@ const enterEdit = async (page) => {
     await org.getByRole("button", { name: "Edit contact buttons" }).click();
     const bizContacts = org.getByRole("dialog", { name: "Contact buttons" });
     await bizContacts.waitFor();
-    check((await bizContacts.getByRole("switch", { name: "Take enquiries" }).count()) === 1, "studio contact ⊕: Enquiry is a switch here — a business's to take off its page");
+    /* ⚠ THE TAKE-ENQUIRIES SWITCH IS NOT HERE ANY MORE (27 Sep 2026). It was, and
+       rightly, while Enquiries was a BUTTON somebody makes and unmakes — the ⊕ is
+       where the button row is built. It is a TOOL now, so the switch and the kinds
+       moved to its desk, and BOTH ENDS are asserted: gone from here, present
+       there. A check that only looks at the new place cannot tell you the old one
+       was cleared. */
+    check((await bizContacts.getByRole("switch", { name: "Take enquiries" }).count()) === 0, "studio contact ⊕: the Take-enquiries switch has LEFT it — the ⊕ draws the button row and nothing else (27 Sep 2026)");
     await bizContacts.getByLabel("WhatsApp", { exact: true }).fill("+91 98765 00001");
     await bizContacts.getByRole("button", { name: "Save" }).click();
     await bizContacts.waitFor({ state: "detached", timeout: 15000 });
     const msg = org.getByRole("link", { name: "Message", exact: true });
     await msg.waitFor({ timeout: 15000 }).catch(() => {});
     check((await msg.count()) === 1 && (await msg.getAttribute("href")) === "https://wa.me/919876500001", "studio contact ⊕: a WhatsApp number becomes the Message button, a wa.me link (26 Sep 2026)");
+    /* …and the other end: the Enquiries DESK, opened the way its tile opens it —
+       `?as={studio}`, because one screen serves the whole account and the settings
+       would otherwise have no subject at all. */
+    await org.goto(`${BASE}/enquiries?as=${studioId}`, { waitUntil: "networkidle" });
+    check(await org.getByRole("heading", { name: "Enquiries", exact: true }).isVisible().catch(() => false), "enquiries desk: it is a DRILL page with its own title, not a tab under the wordmark (27 Sep 2026)");
+    const enqTypes = org.getByRole("button", { name: /^Enquiry types/ }).first();
+    check((await enqTypes.count()) === 1, "enquiries desk: the studio's own What-you-take disclosure is here — the settings moved with the tool");
+    await enqTypes.click();
+    check((await org.getByRole("switch", { name: "Take enquiries" }).count()) === 1, "enquiries desk: and the Take-enquiries switch is the first thing under it");
     await org.goto(`${BASE}/`);
     await shot("org-home");
 

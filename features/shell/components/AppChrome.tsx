@@ -109,23 +109,19 @@ const TAB_ICONS = {
       <path d="M3.5 13.5 6.2 5.2h11.6l2.7 8.3V18a1.8 1.8 0 0 1-1.8 1.8H5.3A1.8 1.8 0 0 1 3.5 18z" />
     </svg>
   ),
-  /* ⚠ ENQUIRIES IS THE FOURTH TAB (27 Sep 2026, the user: "only enquiry becomes
-     a new option in tab and is removed from inbox"). The speech bubble with the
-     rupee in it, because an enquiry is somebody asking what it would cost — the
-     one thing on the bar that is about MONEY coming in. */
-  Enquiries: (c) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" stroke={c} {...ICON_STROKE}>
-      <path d="M20.5 12.2c0 3.9-3.8 7-8.5 7a9.7 9.7 0 0 1-2.6-.35L4.2 20.3l1.3-3.3A6.6 6.6 0 0 1 3.5 12.2c0-3.9 3.8-7 8.5-7s8.5 3.1 8.5 7z" />
-      <path d="M10 9.2h4M10 11.6h4M13 9.2c0 2.3-1.3 2.4-3 2.4l3.2 3" />
-    </svg>
-  ),
+  /* ⚠ THE `Enquiries` ICON WAS HERE FOR ONE DAY (27 Sep 2026). It was the fourth
+     tab that morning and a TOOL TILE by the evening, at the same person's word
+     ("enquiries should not be on navbar a tab in tools for all"), so the glyph
+     MOVED to `GLYPH.enquiries` in tool-grid rather than being left here — which
+     is the `Stats` lesson from earlier the same day, applied in the same hour
+     instead of twelve days later: an icon nothing draws is found by nothing but
+     the type that lists the keys. */
 } satisfies Record<string, (c: string) => ReactNode>;
 
 const TAB_TINT = {
   Home: "#5AC8FA",
   Discover: "#22C55E",
   Inbox: "#8B5CF6",
-  Enquiries: "#EC4899",
 } satisfies Record<string, string>;
 
 /** the three that are places of their own — the eye to the account's public page
@@ -144,7 +140,6 @@ const TAB_SET: Array<{ label: TabLabel; href: string }> = [
   { label: "Home", href: "/" },
   { label: "Discover", href: "/discover" },
   { label: "Inbox", href: "/inbox" },
-  { label: "Enquiries", href: "/enquiries" },
 ];
 
 /** ONE ROW OF THE PROFILE SWITCHER — a home this account can go to. Built by the
@@ -239,6 +234,11 @@ const DRILL_TITLES: Array<[RegExp, string]> = [
   [/^\/org\/[^/]+$/, "Organization"],
   [/^\/(studio|artist)\/[^/]+\/schedule$/, "Schedule"],
   [/^\/inbox\/enquiries\/[^/]+$/, "Enquiry"],
+  /* ⚠ THE DESK ITSELF NEEDS A TITLE AGAIN (27 Sep 2026): it was a TAB for a few
+     hours, so the chrome drew the wordmark over it; a tool tile opens a DRILL
+     page, and a drill page with no entry here falls back to the path segment —
+     which would have read "enquiries", lowercase, as its own heading. */
+  [/^\/enquiries$/, "Enquiries"],
   [/^\/crews$/, "Crews"],
   [/^\/crews\/new$/, "Create crew"],
   [/^\/crews\/[^/]+\/manage$/, "Crew"],
@@ -370,11 +370,10 @@ export function AppChrome({
         { label: "Home", href: entity.home },
         { label: "Discover", href: `/discover?as=${encodeURIComponent(entity.as)}` },
         { label: "Inbox", href: entity.inbox },
-        /* ⚠ an entity's enquiries are ITS enquiries (27 Sep 2026): a studio's
-           reach the studio and a crew's its leader, so the tab is the account's
-           own desk either way — the reads there are already scoped to what this
-           account's businesses and crews were asked */
-        { label: "Enquiries", href: "/enquiries" },
+        /* ⚠ ENQUIRIES LEFT THIS BAR THE SAME DAY IT JOINED IT (27 Sep 2026, the
+           user: "enquiries should not be on navbar a tab in tools for all"). It
+           is a TILE on this entity's own tool grid now, carrying `?as=` so the
+           desk it opens is scoped to the profile whose grid was pressed. */
       ]
     : TAB_SET;
   const lit = entity ? (pathname === entity.home ? "Home" : pathname === entity.inbox ? "Inbox" : null) : activeTab;

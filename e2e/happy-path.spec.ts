@@ -962,7 +962,7 @@ test.describe.serial("DanceOS, end to end", () => {
     await trainer.goto("/inbox");
     // the Inbox opens on Requests — what somebody wants you FOR, which a class
     // ask is (S_chats; the desks are Requests · Invites · Done since 27 Sep 2026,
-    // "All" is gone and Enquiries is a tab of its own)
+    // "All" is gone and Enquiries is a desk of its own, behind a Tools tile)
     await pressPill(trainer, /^Requests — \d+ waiting/);
     // ⚠ ACCEPT, not Confirm (27 Sep 2026, the user: "class and event requests
     // should have same cards with accept and reject buttons") — a class ask is
@@ -1193,12 +1193,27 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(enqSheet.getByText("Enquiry sent")).toBeVisible();
     await enqSheet.getByRole("button", { name: "Done" }).click();
 
-    /* ⚠ ENQUIRIES IS ITS OWN TAB SINCE 27 Sep 2026 (the user: "only enquiry
+    /* ⚠ ENQUIRIES IS ITS OWN DESK SINCE 27 Sep 2026 (the user: "only enquiry
        becomes a new option in tab and is removed from inbox") — the Inbox keeps
-       what somebody has asked OF you; this is somebody wanting to BOOK you */
+       what somebody has asked OF you; this is somebody wanting to BOOK you. It
+       was the bar's fourth TAB for a few hours that morning and is a TOOL TILE
+       by the evening ("enquiries should not be on navbar a tab in tools for
+       all"); `shoot-tiles` presses the tile on all four grids, so what this
+       segment drives is the desk behind it. */
     await owner.goto("/enquiries");
     await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
     await expect(owner.getByText("1 waiting on you")).toBeVisible();
+    /* ⚠⚠ AND THE SETTINGS ARE ON IT (the user: "with its setting as well manged
+       from there") — the kinds left the contact ⊕ for the desk the same evening.
+       Closed, the disclosure states the standing without opening anything; the
+       studio takes every kind its type allows, which is what a null column
+       MEANS rather than what it holds. */
+    /* ⚠ the count is the TYPE's, not a constant: a studio is offered four kinds
+       (judging is a person's job), an artist page five, an organization three —
+       and this owner may hold more than one business, so the assertion is that
+       a real count is stated rather than which one. */
+    await expect(owner.getByRole("button", { name: /^Enquiry types/ }).first()).toBeVisible();
+    await expect(owner.getByText(/^\d+ of \d+ kinds$/).first()).toBeVisible();
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();

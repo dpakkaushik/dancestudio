@@ -62,8 +62,8 @@ interface EventRow {
   status: EventStatus;
   share_slug: string;
   poster: string | null;
-  /** ⚠ OPTIONAL until `20260927130000` is applied and the select asks for it */
-  poster_path?: string | null;
+  /** The uploaded flyer, since `20260927130000`. Null means the DRAWN poster. */
+  poster_path: string | null;
   businesses: { name: string; city: string | null } | null;
   event_entry_tiers: EntryTierRow[] | null;
   event_ticket_tiers: TicketTierRow[] | null;
@@ -108,7 +108,7 @@ interface MyBookingRow extends BookingRow {
 }
 
 const EVENT_SELECT =
-  "id, business_id, category, title, style, start_date, end_date, start_time, venue, address, city, maps_url, lat, lng, about, entry_format, bracket, rounds, prizes, tickets_on, status, share_slug, poster, businesses (name, city), event_entry_tiers (id, format, fee_inr, capacity, deleted_at), event_ticket_tiers (id, name, price_inr, capacity, sort, deleted_at)";
+  "id, business_id, category, title, style, start_date, end_date, start_time, venue, address, city, maps_url, lat, lng, about, entry_format, bracket, rounds, prizes, tickets_on, status, share_slug, poster, poster_path, businesses (name, city), event_entry_tiers (id, format, fee_inr, capacity, deleted_at), event_ticket_tiers (id, name, price_inr, capacity, sort, deleted_at)";
 const BOOKING_SELECT =
   "id, event_id, user_id, kind, ticket_tier_id, entry_format, qty, entrant_name, partner_name, partner_id, partner_status, crew_id, amount_inr, status, checked_in_at, created_at, profiles!event_bookings_user_id_fkey (full_name), event_ticket_tiers (name)";
 
@@ -139,8 +139,7 @@ const toEvent = (r: EventRow, counts: CountRow[]): DanceEvent => ({
   status: r.status,
   shareSlug: r.share_slug,
   poster: r.poster,
-  /* ⚠ not in the select until `20260927130000` is applied — see classes.ts */
-  posterPath: (r as { poster_path?: string | null }).poster_path ?? null,
+  posterPath: r.poster_path,
   entryTiers: (r.event_entry_tiers ?? [])
     .filter((t) => !t.deleted_at)
     .sort((a, b) => ["solo", "duo", "crew"].indexOf(a.format) - ["solo", "duo", "crew"].indexOf(b.format))

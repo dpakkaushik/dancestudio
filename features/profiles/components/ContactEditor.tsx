@@ -72,7 +72,11 @@ const withWhatsapp = (socials: SocialLink[], box: string): SocialLink[] | string
   return [...rest, { platform: WA, url: `https://wa.me/${d}` }];
 };
 
-function Switch({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
+/** ⚠ EXPORTED SINCE 27 Sep 2026 so the Enquiries desk's settings wear the SAME
+ *  switch rather than a second one three pixels different — this repo has paid
+ *  for a copied control four times (`linkChip` twice, the figure row three
+ *  times, three copies of the identity band, a toast declared inline). */
+export function Switch({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
   return (
     <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 0 2px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", color: "var(--text)", textAlign: "left" }}>
       <span style={{ flex: 1, fontSize: 12, fontWeight: 800 }}>{label}</span>
@@ -258,47 +262,20 @@ function ContactSheet({ target, onClose }: { target: ContactTarget; onClose: () 
         <div style={fieldLabel}>Message · WhatsApp</div>
         <input aria-label="WhatsApp" type="tel" inputMode="tel" value={d.whatsapp} onChange={(e) => setD((x) => ({ ...x, whatsapp: e.target.value }))} placeholder="+91 98765 43210" style={fieldInput} />
 
-        {hasEnquiry ? (
-          <>
-            <div style={fieldLabel}>Enquiry</div>
-            <Switch on={d.enquiry} label="Take enquiries" onClick={() => setD((x) => ({ ...x, enquiry: !x.enquiry }))} />
-            {/* the kinds, only while the button is on — a list of what you take
-                under a switch that says you take none is a control with nothing
-                to govern */}
-            {d.enquiry ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
-                {enquiryTypesFor(target.kind === "business" ? target.tenant.type : "studio").map((t) => {
-                  const on = d.kinds.includes(t.k);
-                  return (
-                    <button
-                      key={t.k}
-                      type="button"
-                      aria-pressed={on}
-                      aria-label={t.label}
-                      onClick={() => setD((x) => ({ ...x, kinds: on ? x.kinds.filter((k) => k !== t.k) : [...x.kinds, t.k] }))}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 5,
-                        padding: "7px 12px",
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                        background: on ? "var(--text)" : "var(--card)",
-                        color: on ? "var(--solid)" : SUB,
-                        border: `1.5px solid ${on ? "var(--text)" : "var(--el)"}`,
-                      }}
-                    >
-                      {on ? "✓" : "＋"} {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-          </>
-        ) : null}
+        {/* ⚠⚠ THE ENQUIRY SWITCH AND ITS KINDS LEFT THIS SHEET (27 Sep 2026, the
+            user: *"with its setting as well manged from there"*). Enquiries is a
+            TOOL with a desk of its own since the same evening, and what you take
+            is the first thing that desk is about — so the control moved to it
+            and this sheet keeps the row of buttons it is named after.
+
+            ⚠ `d.enquiry` and `d.kinds` STAY, with no control on them, and that
+            is deliberate rather than leftover: `update_business_profile` takes
+            the WHOLE profile, so a Save here that omitted the kinds would empty
+            the column the desk had just set. They are a round-trip carrier now,
+            exactly as `accepts` has been since the Payments desk took those
+            switches — the 26 Sep rule that a door taking the whole record makes
+            every caller a writer of every field. */}
+        {hasEnquiry ? <div style={{ fontSize: 10.5, color: MUTED, marginTop: 10 }}>Which kinds of enquiry it takes is set on the Enquiries tool.</div> : null}
 
         {/* ⚠ LOCATION IS NOT A FIELD HERE AND NEVER WAS (27 Sep 2026). It had a
             `fieldLabel` and a paragraph in place of a control — a heading with

@@ -76,6 +76,11 @@ export default async function StudioHomePage({ params, searchParams }: { params:
     const desk = (path: string) => `/business/${tenantId}/${path}`;
     const tiles: Tile[] = [
       { name: DOS_TOOLS.events.name, href: desk("events"), k: "events", c: DOS_TOOLS.events.c },
+      /* ⚠ AN ORGANIZATION TAKES ENQUIRIES TOO (27 Sep 2026) — `send_enquiry` has
+         admitted an org host since 19 Sep for celebration · corporate · collab,
+         and until today the only door was the bar's tab. Every member, for the
+         same reason as a studio's; `?as=` names which organization. */
+      { name: DOS_TOOLS.enquiries.name, href: `/enquiries?as=${encodeURIComponent(tenantId)}`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
       ...(isOwner
         ? ([
             { name: DOS_TOOLS.team.name, href: desk("team"), k: "team", c: DOS_TOOLS.team.c },
@@ -163,6 +168,16 @@ export default async function StudioHomePage({ params, searchParams }: { params:
         ] as Tile[])
       : []),
     { name: DOS_TOOLS.rooms.name, href: desk("rooms"), k: "rooms", c: DOS_TOOLS.rooms.c },
+    /* ⚠ ENQUIRIES IS THIS STUDIO'S (27 Sep 2026, the user: "enquiries should not
+       be on navbar a tab in tools for all"). ⚠ `?as=` is what makes the tile say
+       WHICH studio — the desk is one screen for the whole account, so without it
+       an owner of two studios would press two tiles onto one undivided list. It
+       is the same pointer the Discover gate uses and is re-resolved on the page
+       against the businesses this account is on the team of (a pointer is never
+       an authority). EVERY member gets the tile, not just the owner: staff
+       answer the phone, which is Step 12's rule and is why `is_enquiry_member`
+       admits the whole team. */
+    { name: DOS_TOOLS.enquiries.name, href: `/enquiries?as=${encodeURIComponent(tenantId)}`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
     /* THE STUDIO'S OWN MANDATE IS A TILE ON ITS HOME (26 Sep 2026, the user:
        "studio and organization subscription managed separately from their
        subscription options … subscriptions also become an option on home tab

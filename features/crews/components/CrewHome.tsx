@@ -47,6 +47,15 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, f
   const tiles: Tile[] = [
     { name: DOS_TOOLS.team.name, href: `/crews/${crew.id}/manage/team`, k: "team", c: DOS_TOOLS.team.c },
     { name: DOS_TOOLS.events.name, href: `/crews/${crew.id}/manage/events`, k: "events", c: DOS_TOOLS.events.c },
+    /* ⚠ A CREW TAKES ENQUIRIES (18 Sep 2026, `20260918160000`) and this is its
+       first tile for them (27 Sep 2026, the user: "enquiries should not be on
+       navbar a tab in tools for all"). `as=crew-{id}` is the crew half of the
+       same pointer the Discover gate uses; this home is the LEADER's already
+       (`requireLedCrew`), and the leader is exactly who `is_enquiry_member`
+       admits for a crew. ⚠ A crew keeps no enquiry-type preferences — its three
+       kinds are fixed in `send_enquiry` — so the desk shows it no settings, and
+       says so rather than drawing an empty block. */
+    { name: DOS_TOOLS.enquiries.name, href: `/enquiries?as=${encodeURIComponent(`crew-${crew.id}`)}`, k: "enquiries", c: DOS_TOOLS.enquiries.c },
   ];
   const shots: HeroShot[] = header.filter((h) => h.url).map((h, i) => ({ key: h.id, src: h.url as string, alt: `Header picture ${i + 1} of ${crew.name}`, signed: h.signed }));
   const whatsapp = whatsappHrefOf(crew.socials);

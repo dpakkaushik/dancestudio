@@ -73,6 +73,18 @@ export const DOS_TOOLS = {
      settings for all") — a deep blue, 15° off Studios' and a full step darker,
      since the two sit on the same grid */
   subscription: { name: "Subscription", c: "#0369A1" },
+  /* ENQUIRIES IS A TOOL, NOT A TAB (27 Sep 2026, the user: "enquiries should not
+     be on navbar a tab in tools for all"). It wore #EC4899 for the few hours it
+     was on the bar and CANNOT keep it: Routines is that exact pink and the two
+     would sit on one grid. A deep purple instead, checked against every grid it
+     lands on rather than picked — 33° off Rooms' indigo (a studio's grid), 24°
+     off Organizations' plum and 58° off Routines' pink (a person's), and 20° off
+     Media's fuchsia but a full step darker, which is this list's own way of
+     separating a crowded band (Events bright amber, Memberships dark bronze).
+     ⚠ It shares a hue family with Stats' violet, and that is not a clash: Stats
+     has not been a tile on any grid since 18 Sep — it is the chip beside the QR
+     — so the two are never side by side. */
+  enquiries: { name: "Enquiries", c: "#7E22CE" },
   /* `managed` ("Manage", violet) left this list on 19 Sep 2026 — the user: "just
      need to remove manage as the tile in tools, nothing else changes". The
      /managed page stays; nothing paints a tile for it any more */

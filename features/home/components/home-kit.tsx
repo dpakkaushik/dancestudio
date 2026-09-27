@@ -110,6 +110,13 @@ export const tilesFor = (kind: HomeKind, pageId: string | null): Tile[] => {
        a class they turned up to. The making side says whose tool it is rather
        than offering a form the database would refuse. */
     { name: DOS_TOOLS.routines.name, href: "/routines", k: "routines", c: DOS_TOOLS.routines.c },
+    /* ⚠ ENQUIRIES IS A TILE, NOT A TAB (27 Sep 2026, the user: "enquiries should
+       not be on navbar a tab in tools for all"). It was the bar's fourth tab for
+       a few hours that morning and is a tool by the evening, on all four grids.
+       It sits in `person`, which is the shared half, because "for all" is the
+       whole of the ask: a plain user has a Sent side — every enquiry in the app
+       is SENT by a person — and an artist has both. */
+    { name: DOS_TOOLS.enquiries.name, href: "/enquiries", k: "enquiries", c: DOS_TOOLS.enquiries.c },
   ];
   /* ⚠ A PLAIN USER HAS EARNINGS TOO (21 Sep 2026, the user: "lets fix earnings
      for all profile types"). Their 18 Sep list had no Earnings tile, and the

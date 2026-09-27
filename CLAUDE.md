@@ -2,7 +2,94 @@
 
 ## LAST SESSION (27 Sep 2026) — replaced on every push (Rule 13)
 
-> ### EVERY DROPDOWN IS AN IN-APP SHEET, A DEAD BOOKING GATE, AND THE INBOX SPLITS IN TWO (27 Sep 2026, latest) — BUILT, ⚠⚠ FOUR MIGRATIONS HELD
+> ### THE THREE HELD MIGRATIONS GO IN, A POSTER BECOMES A PICTURE, AND ENQUIRIES LEAVES THE BAR IT JOINED THIS MORNING (27 Sep 2026, latest) — ⚠ THREE MIGRATIONS APPLIED, THE FOURTH STILL HELD
+> The user: *"apply to database and push to live"*, then, mid-run,
+> *"enquiries should not be on navbar a tab in tools for all"* and *"with its
+> setting as well manged from there"*.
+> * ⚠⚠ **THE DRY RUN LISTED FOUR AND ONLY THREE WERE APPROVED, SO THE FOURTH WAS
+>   HELD ASIDE RATHER THAN EXPLAINED AFTERWARDS.** `db-push` applies EVERY pending
+>   file, and `20260927140000` (crew Practice, #0at) is neither approved nor
+>   dry-run — this file's own instruction, written that morning after a second
+>   held file nearly rode in with an approved one. It was moved to the scratchpad,
+>   the dry run re-run until it listed exactly three, the three applied on the
+>   FIRST try, and the held file put straight back. **An approval for three files
+>   is not an approval for four.**
+> * **READ BACK OFF THE LIVE CATALOG, 14/14** (`readback27.js`): all three
+>   recorded · `admin_audit.actor_label` with **1673 of 1673** rows carrying the
+>   snapshot · **the four `auth.users` FKs gone**, so an account that has acted as
+>   a platform admin can be deleted at last · `public_studio_team` reading
+>   `b.type in ('studio','artist_page')` · `poster_path` on both tables with **0**
+>   backfilled · both poster doors · **3** storage poster policies · **anon 45** ·
+>   and PostgREST's cache reloaded in the same script, because an apply does not
+>   do it (19 Sep).
+> * ⚠⚠ **AND ONE CHECK WENT RED, AND IT WAS THE CHECK — MEASURED, NOT ASSUMED.**
+>   It asserted "policies 121" and read **103**. A second script counted four ways
+>   instead of guessing: the recorded 121 is **public PLUS storage** (103 + 18).
+>   Public alone was 103 before and 103 after — unchanged, exactly as all three
+>   migrations promised — and storage went **18 → 21**, which is precisely the
+>   three new poster policies. The two are counted apart now. **A number carried
+>   forward without its scope will go red on a correct migration, and the only way
+>   to tell which is which is to measure.**
+> * **A POSTER IS A PICTURE NOW, WHICH IS WHAT THE APPLY TURNED ON.** The push
+>   before this deliberately held `poster_path` out of `CLASS_COLUMNS` and
+>   `EVENT_SELECT` — with it in, every class and event read answered *"column
+>   events.poster_path does not exist"* and the streamed boundary surfaced it as
+>   React #441. Both select strings ask for it again, the two `?? null` casts are
+>   gone and the field is non-optional on both interfaces. Step 11's oldest open
+>   row is closed. ⚠ **The DRAWN poster stays** — `poster_path` null MEANS the
+>   drawn design, and all 31 classes on production still wear one.
+> * ⚠⚠ **THEN ENQUIRIES CAME OFF THE BAR IT HAD BEEN ON SINCE THE MORNING.** It is
+>   a **tile on all four tool grids** — a person's, a studio's, an organization's
+>   and a crew's. ⚠ **The glyph MOVED to `GLYPH.enquiries`** rather than being left
+>   in `TAB_ICONS`: that is the `Stats` lesson from the same morning (an icon
+>   nothing drew, found twelve days later only because a type listed the keys),
+>   applied within the hour instead of a fortnight later.
+> * ⚠⚠ **AND THE TILE HAD TO SAY WHOSE DESK IT OPENS.** One screen serves the
+>   whole account, so without `?as=` an owner of two studios would press two tiles
+>   onto one undivided list — and the settings would have had no subject at all.
+>   It is the same pointer the Discover booking gate carries, resolved the same
+>   way: **a pointer is never an authority**, and an unresolvable one means
+>   "everything you are entitled to", the permissive answer, because narrowing is
+>   a presentation choice and every read underneath is RLS-bounded either way.
+>   `ActingAs` carries the RESOLVED id now — never the one the URL asked for.
+> * **THE SETTINGS MOVED WITH THE TOOL** (*"with its setting as well manged from
+>   there"*). The Take-enquiries switch and the kinds left the contact ⊕ for the
+>   desk: they were right in the ⊕ while Enquiries was a BUTTON somebody makes and
+>   unmakes, and it is a TOOL now, whose desk is first of all about what you take.
+>   ⚠ **`d.enquiry` and `d.kinds` STAY in `ContactEditor` with no control on
+>   them** — `update_business_profile` takes the whole profile, so a Save there
+>   that omitted them would EMPTY the column the desk had just set. That is the
+>   26 Sep rule out loud, and exactly what `accepts` has done since the Payments
+>   desk took those switches. ⚠ A crew gets the tile and **no settings**: its three
+>   kinds are fixed in `send_enquiry` and `crews` has no such column, so the desk
+>   says so rather than drawing an empty block.
+> * ⚠⚠ **AND IT FOUND A DOOR THAT HAD BEEN DEAD SINCE THAT MORNING.** The Earnings
+>   ledger's **Enquiries** revenue row pointed at `/inbox` — and enquiries left the
+>   Inbox in the previous push, so the one row that says where that money came from
+>   opened a desk holding none of it. Found by grepping what the word still points
+>   at while moving the tab, **not by a run: no test presses a revenue row's link,
+>   and a link that opens the wrong screen fails nothing.** It carries `?as=` now.
+> * ⚠ **`/enquiries` NEEDED ITS TITLE BACK.** It was a TAB, so the chrome drew the
+>   wordmark over it; a tool tile opens a DRILL page, and a drill page with no
+>   entry in the title table falls back to the path segment — it would have been
+>   headed "enquiries", lowercase.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · **the five proofs
+>   these migrations touch 5/5** · **`shoot-tiles` 155/155** · **`shoot-hero`
+>   181/181** (178 before — the three new ones drive the far side of the move: the
+>   desk's own `<h1>`, the disclosure, and the switch under it) · **the whole e2e
+>   suite 58/58 in one run, 16.3 min on one worker, no red at any point**, all
+>   against a fresh bundle.
+>   ⚠ **A stale `next start` from 16:27 was holding :3100 — the FIFTH time** — and
+>   was stopped before the new bundle went up.
+> * ⚠ **THE ONE RED ON THE WAY WAS A STALE ASSERTION OF MINE, WHICH IS THE RIGHT
+>   KIND**: `shoot-hero:761` asked for the Take-enquiries switch in the contact ⊕,
+>   which is exactly where it stopped being an hour earlier. ⚠ It is re-cut to
+>   assert **BOTH ENDS** — gone from the ⊕, present on the desk — because a check
+>   that only looks at the new place cannot tell you the old one was cleared.
+>   ⚠ And `admin-support`'s three reds in an earlier whole-suite run were **5/5
+>   alone in 1.5 min**: the 11 Sep rule, and the non-serial cascade of 26 Sep.
+
+> ### EVERY DROPDOWN IS AN IN-APP SHEET, A DEAD BOOKING GATE, AND THE INBOX SPLITS IN TWO (27 Sep 2026, earlier) — BUILT, ⚠⚠ FOUR MIGRATIONS HELD
 > Two halves in one push. First *"fix all remaining in this / fix what is left"*
 > — the app-side of what the previous push handed back. Then a long list from
 > the same person, of which the first item was a REGRESSION and the rest were
@@ -6295,11 +6382,38 @@ summary; the report has the evidence.
    **3** (`node scripts/demo-data.js wipe` then `seed`) and **4** (delete the 14
    retired organizations' auth accounts).
 
-0ap. **⚠⚠ THREE MIGRATIONS WRITTEN, DRY-RUN AND HELD — THE LIST, FOR THE USER'S
-   WORD.** ⚠ Rule 9: one widens what a stranger reads, one drops four foreign
-   keys, one adds a storage folder. All three were applied inside `BEGIN …
-   ROLLBACK` against production and checked as real roles; each dry run asserts
-   the ACL multiset, anon's executable set and the policy count unchanged.
+0ap. **~~THREE MIGRATIONS WRITTEN, DRY-RUN AND HELD~~ — ✅ ALL THREE APPLIED
+   27 Sep 2026** on the user's *"apply to database and push to live"*, after the
+   list below had been in front of them. ⚠ Rule 9: one widens what a stranger
+   reads, one drops four foreign keys, one adds a storage folder. All three had
+   been applied inside `BEGIN … ROLLBACK` against production first and checked as
+   real roles; each dry run asserts the ACL multiset, anon's executable set and
+   the policy count unchanged.
+   ⚠⚠ **AND THE FOURTH FILE WAS HELD ASIDE RATHER THAN EXPLAINED AFTERWARDS**, which
+   is this file's own instruction one line below and the trap it recorded earlier
+   the same day: `db-push` applies EVERY pending file, the dry run listed **four**,
+   and `20260927140000` (crew Practice, #0at) is neither approved nor dry-run. It
+   was moved to the scratchpad, the dry run re-run until it listed exactly three,
+   the three applied on the FIRST try, and the held file put straight back.
+   **Read back off the LIVE catalog rather than off the apply's own output
+   (`readback27.js`, scratchpad — 14 checks, 14 ok):** all three recorded;
+   `admin_audit.actor_label` present with **1673 of 1673** rows carrying the
+   snapshot; **the four `auth.users` FKs gone**; `log_admin_action` executable by
+   no client role; `public_studio_team` carrying `b.type in ('studio',
+   'artist_page')`; `poster_path` on BOTH tables with **0** rows backfilled; both
+   poster doors; **3** storage poster policies; **anon 45**; and PostgREST's schema
+   cache reloaded in the same script (the 19 Sep lesson — an apply does not do it).
+   ⚠⚠ **AND ONE CHECK WENT RED, AND IT WAS THE CHECK RATHER THAN THE MIGRATION —
+   MEASURED, NOT ASSUMED.** It asserted "policies 121" and read **103**. A second
+   script (`polcheck.js`) counted four ways instead of guessing: the recorded 121
+   is **public PLUS storage together** (103 + 18). Public alone was 103 before and
+   103 after — *unchanged, exactly as all three migrations promised* — and storage
+   went **18 → 21**, which is precisely the three new poster policies and nothing
+   else. The two are counted APART now, with the reason written beside them.
+   **A number carried forward without its scope is a number that will go red on a
+   correct migration**, and the only way to tell which is which is to measure.
+   ⚠ `rate_limits` and `webhook_events` still carry no policy at all, which is
+   deliberate and documented in their own migrations.
    * **`20260927110000_an_admin_who_acted_can_still_be_deleted`** (dry-run
      **16/16**). ⚠ **Any account that has ever acted as a platform admin is
      permanently undeletable today** — four columns carry an FK into
@@ -6337,30 +6451,25 @@ summary; the report has the evidence.
      `set_event_poster` that re-check the same prefix. ⚠ Keyed on the BUSINESS,
      not the uploader. ⚠ **The drawn poster stays** and is still what every one
      of the 31 classes on production wears.
-   ⚠⚠ **AND THE APP IS HELD BACK ONE LINE EACH FOR THE POSTER ONE.** The moment
-   `poster_path` went into `CLASS_COLUMNS` and `EVENT_SELECT`, every class and
-   event read answered `column events.poster_path does not exist` and the
-   streamed boundary surfaced it as React #441 — found by `shoot-tiles` on a
-   studio's own home. So the two SELECTs do NOT ask for it yet and everything
-   else stands (the doors, the storage policies, the picker on the class page
-   and the event manager, `PosterBlock`'s image branch). **On apply, put
-   `poster_path` back into the two select strings and the feature is live.**
-   **On the user's word:**
-   ⚠⚠ **THE DRY RUN NOW LISTS FOUR, AND THE FOURTH IS NOT APPROVED AND NOT
-   DRY-RUN.** `20260927140000` (crew Practice, #0at) is pending too, and
-   `db-push` applies **every** pending file — the trap this file recorded on
-   27 Sep, when a second held file nearly rode in with an approved one. **Move
-   `20260927140000_a_crew_practises.sql` to the scratchpad first**, re-run the
-   dry run until it lists exactly the three below, apply, then put the file back:
-```
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260927110000, 20260927120000, 20260927130000 — HOLD 140000 ASIDE
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
-   # ⚠ then RELOAD POSTGREST'S SCHEMA CACHE — two new columns the app will select (19 Sep lesson)
-   # then put poster_path back into CLASS_COLUMNS and EVENT_SELECT, rebuild, and:
-   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 studio-verification profile-pages person-pages classes events
-```
+   ⚠⚠ **AND THE POSTER FEATURE IS LIVE NOW, WHICH IS THE ONE THING THE APPLY HAD
+   TO TURN ON.** The push before this held `poster_path` out of `CLASS_COLUMNS`
+   and `EVENT_SELECT` on purpose — the moment it went in, every class and event
+   read answered `column events.poster_path does not exist` and the streamed
+   boundary surfaced it as React #441, found by `shoot-tiles` on a studio's own
+   home. Both select strings ask for it again, the two `?? null` casts that stood
+   in for it are gone and the field is non-optional on both interfaces, so a
+   studio with a real flyer has somewhere to put it at last (Step 11's oldest
+   open row). ⚠ **The DRAWN poster stays** and is still what all 31 classes on
+   production wear — `poster_path` null MEANS the drawn design.
+   **Verified after the apply, in this order:** typecheck 0 · lint 0 · `next
+   build` green · **the five proofs these three touch 5/5** (`classes`, `events`,
+   `person-pages`, `profile-pages`, `studio-verification`) · **`shoot-tiles`
+   155/155** and **`shoot-hero` 178/178** against a FRESH bundle on `:3100`.
+   ⚠ **A stale `next start` from 16:27 was holding the port — the FIFTH time** —
+   and was stopped before the new bundle went up; a probe against a stale bundle
+   is how a feature that works reads as broken.
    Then the third retired login deletes cleanly, and the `sv-admin-*` pile can
-   be swept at last.
+   be swept at last (#0ar).
 
 0ao. **~~ONE MIGRATION WRITTEN, DRY-RUN 16/16 AND HELD~~ — ✅ APPLIED 27 Sep 2026**
    on the user's *"fix"*. `db-push -DryRun` listed exactly the one file, the apply
@@ -7408,6 +7517,33 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE THREE HELD MIGRATIONS GO IN, AND ENQUIRIES LEAVES THE BAR IT JOINED THIS
+  MORNING — 27 Sep 2026, no step number ⚠ (Rule 9: one widens what a stranger
+  reads, one drops four `auth.users` foreign keys, one adds a storage folder) —
+  THREE MIGRATIONS APPLIED (dry runs 16/16 and 15/15, rolled back first), THE
+  FOURTH STILL HELD.** On the user's *"apply to database and push to live"*.
+  ⚠⚠ **The dry run listed FOUR and only three were approved, so the fourth was
+  held aside** — `db-push` applies every pending file, which is this file's own
+  instruction after a second held file nearly rode in with an approved one that
+  same morning. Read back off the live catalog **14/14**: `admin_audit.actor_label`
+  on **1673 of 1673** rows, the four FKs gone (an admin who has acted is
+  deletable at last), `public_studio_team` admitting an artist page, `poster_path`
+  on both tables with 0 backfilled, anon **45**, and PostgREST's cache reloaded.
+  ⚠⚠ **One check went red and it was the CHECK, measured rather than assumed:**
+  the recorded "121 policies" is public PLUS storage (103 + 18); public was
+  unchanged at 103 and storage went 18 → 21, exactly the three poster policies.
+  **A poster is a real picture now** — the two SELECTs ask for `poster_path`
+  again, closing Step 11's oldest open row. ⚠ **Then Enquiries came off the bar**
+  (C70) for a **tile on all four tool grids**, carrying `?as=` so the desk says
+  whose it is, with the Take-enquiries switch and the kinds moved onto it from the
+  contact ⊕ — and the glyph MOVED rather than left behind, which is the `Stats`
+  lesson applied within the hour. ⚠⚠ **And it found a door dead since that
+  morning:** the Earnings ledger's Enquiries row still pointed at `/inbox`, found
+  by grepping the word rather than by a run — **no test presses a revenue row's
+  link, and a link that opens the wrong screen fails nothing.**
+  **typecheck 0 · lint 0 · build green · 5/5 proofs · `shoot-tiles` 155/155 ·
+  `shoot-hero` 181/181 · the whole e2e suite 58/58 in one run, 16.3 min on one
+  worker, no red at any point.**
 - **EVERY DROPDOWN IS AN IN-APP SHEET, AND EXTRACTING THE FIRST ONE FOUND THE BUG
   IN IT — 27 Sep 2026, no step number — BUILT, no migration.** The user: *"fix
   all remaining in this / fix what is left"*. ⚠⚠ **Not one native `<select>` is
@@ -11725,6 +11861,7 @@ Home. **Do not "restore parity" on these.**
 | R52 | R31 (19 Sep 2026): `canBook(role)` refuses an ORGANIZATION ACCOUNT, over `guard_person_only`'s own `role = 'org'` test | ⚠⚠ **THE GATE KEYS ON THE PROFILE YOU ARE ACTING AS** (27 Sep 2026) — `canBookClass` / `canBookEvent` over `ActingAs`, resolved from `?as=` (the entity bar's Discover link) against the businesses this account is on the team of and the crews it leads. **A studio and an organization book neither; a CREW enters events and takes no classes.** ⚠⚠ **It replaces rather than restores, because the old test had been DEAD SINCE 26 Sep**: R48 retired `profiles.role = 'org'`, so `role !== "org"` answered "yes" for everybody and nothing failed — what the gate withholds is a sentence, not an exception. ⚠ The same word is dead in `guard_person_only`, so **the DATABASE does not enforce this either**; the SQL clause is owed to the next migration that touches those eight tables | 27 Sep 2026, the user: *"studio and organization profiles should not be able book classes and events from discover breaking now"*, *"crew can only take part in events and should not be able to book classes"* and *"studio and organization cannot book anything from classes and events"*. ⚠ **A pointer is never an authority**: `?as=` is a REQUEST, and an unresolvable one means "yourself" — the permissive answer on purpose, since failing a presentation gate closed would take a booking from somebody entitled to one. ⚠ And it had to be threaded through every href on Discover (the pager, the place chip, the tab tiles, the filter sheet, Clear filters, both cards): a tap on Classes would otherwise have handed the button back |
 | C68 | The Inbox is one screen with three desks — Requests · Invites · Enquiries (C61, 27 Sep 2026, earlier the same day) | **ENQUIRIES IS THE FOURTH TAB, AND THE INBOX IS REQUESTS · INVITES · DONE.** An Inbox row is a yes or a no you owe somebody; an enquiry is somebody wanting to BOOK you, and it has a life of its own — a quote, a revision, an advance, won or lost. Sharing a desk made the bar's badge count two unlike things as one number. ⚠ **ONE COMPONENT, TWO DESKS** (`InboxScreen desk=`), not a fork — the cards, the Received/Sent sides and the Done treatment are identical. **And `Done` holds what is over**: answered requests, answered invitations, won and lost enquiries, each desk its own kind. ⚠ It does NOT undo the 19 Sep rule that an answered ask stays — nothing is deleted, the rows MOVE, so a live desk holds only what still needs somebody. "Accepted" is a filled STAMP pill rather than a line of green text where the buttons were | 27 Sep 2026, the user: *"only enquiry becomes a new option in tab and is removed from inbox"* (their own answer when asked which of two readings of "inbox merged into a section on home tab" they meant), and *"sepreate section request , invites and enquiries which are already completed and change the way accepted looks like on cards for all these"*. ⚠ **Enquiry types left Settings with it** — three tiles and the whole BUSINESS block — for the contact ⊕, where the button they govern is made; and the sheet behind them was DELETED, because with the tiles gone nothing could open it and lint cannot see a branch whose parts still reference each other |
 | C69 | R43 (21 Sep 2026): a person's associations are **Train · Teach · Assist · Manage** for studios and **Leader · Member** for crews, each a full-width `Row` | **A PERSON IS A CHIP, AND A PERSON'S PAGE IS FOUR GROUPS** (27 Sep 2026): **Crew · Studios · Artists · Organizations**, each row a squircle face, the name, and **the title beside it**, two to a line (`PersonChip`, `PeopleGroup`) — the same treatment on a studio's, an organization's and a crew's page, with a section per role there. ⚠ **This reverses R43 at the same person's word, and it fixes what R43 caused**: three groups over one fact meant a studio appeared up to THREE times on one page. ⚠ **Nothing is lost** — a SEAT outranks a class, so the row reads the seat's word, and where there is no seat it says "Teaches here" / "Assists here". ⚠ **Train stays, own tab only**: it is where somebody LEARNS, not a team title, and it is a private booking (their own 21 Sep scoping). `CrewRow` is deleted | 27 Sep 2026, the user: *"on all profile pages should only show 1. User and artist- Crew with Postion, Organization with team title, Studios with team Title, Artist with team Title, 2. Studio, Crew and Organization- Simply should show the Team with position. make sure to not take full row for each name here and make squircle boxes with name and role in the right section. all roles should have a seprate section according to profile."* |
+| C70 | C68 (27 Sep 2026, that morning): **Enquiries is the fourth TAB** on the bottom bar, with the Inbox keeping what somebody has asked OF you | **ENQUIRIES IS A TOOL, NOT A TAB — ON ALL FOUR GRIDS** (27 Sep 2026, the same evening): off the bar for a person AND off the entity bar, and a tile on a person's, a studio's, an organization's and a crew's tool grid. ⚠ **The glyph MOVED to `GLYPH.enquiries` rather than being left in `TAB_ICONS`** — the `Stats` lesson from that same morning (an icon nothing drew, found twelve days later only because a type listed the keys), applied within the hour instead. ⚠ **The tile carries `?as=`**, because one desk serves the whole account: without it an owner of two studios would press two tiles onto one undivided list, and the settings would have no subject. Same pointer as the Discover booking gate, re-resolved on the page — **a pointer is never an authority** — and an unresolvable one means "everything you are entitled to", the permissive answer, since narrowing is presentation and the reads are RLS-bounded either way. ⚠⚠ **AND THE SETTINGS MOVED WITH IT**: the Take-enquiries switch and the kinds chips left the contact ⊕ for the desk. They were right in the ⊕ while Enquiries was a BUTTON somebody makes and unmakes; it is a TOOL now, and what you take is the first thing its desk is about. ⚠ `d.enquiry` / `d.kinds` STAY in `ContactEditor` with no control on them — `update_business_profile` takes the whole profile, so a Save there that omitted them would EMPTY the column the desk had just set (the 26 Sep rule, and exactly what `accepts` has done since the Payments desk took those switches). ⚠ A crew gets the tile and NO settings: `send_enquiry` fixes its three kinds and `crews` has no such column | 27 Sep 2026, the user: *"enquiries should not be on navbar a tab in tools for all"*, then *"with its setting as well manged from there"*. ⚠⚠ **And it found a door that had been dead since that morning**: the Earnings ledger's Enquiries revenue row pointed at `/inbox`, which stopped holding enquiries when C68 split them out — found by grepping what the word still points at, not by a run, because **no test presses a revenue row's link and a link that opens the wrong screen fails nothing** |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 
@@ -11744,7 +11881,8 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
-| **The user's fifteen, what they left (27 Sep 2026):** ⚠⚠ **SIX MORE SITES PAIR `var(--text)` WITH `var(--bg)`** — the identity that made the class card's button invisible inside `InvertedPanel`: `components/ui/FormPage.tsx:311`, `features/classes/components/ClassForm.tsx` (three), `features/classes/components/ClassesManager.tsx` (two) and `features/notifications/components/NotificationsScreen.tsx:219`. **All six are correct TODAY** — they are portalled dialogs or plain page grounds, where the two tokens coincide — so they are recorded rather than swept, because a sweep of six correct call sites is six chances to break one. **The day any of them is drawn inside a panel it is a blank button**, and the rule is one line: anything that may be is `--text` on `--solid`. ⚠ **`EventBookButton` HAS NO E2E**: `shoot-tiles` presses tiles and the suite books from the event PAGE, so the card's new action row is verified by typecheck, lint and the build alone until a shoot drives it. ⚠ **An event card's action row is on DISCOVER only** — `/my-events`' ticket rows and the assisting cards are untouched, and the Home deck's event card still carries its role chip UNDER the card rather than in an action row. ⚠ **The Inbox's two sections have no e2e for the SENT side** (both re-cut segments drive RECEIVED), and the combined "All" desk still draws one row shape for both kinds — it is a list of what waits, not the desk, so it was left. ⚠ **`PLAN_RIGHTS` is prose checked by a person, not by a test**: every line names the rule it rests on in a comment, and nothing asserts that the rule still says that — the next migration to change `why_no_class` or `guard_business_visibility` has to come back here. ⚠ **The Organizations group is not on a CREW's or a STUDIO's page** (a business has no organization membership) and **an artist page's team is still invisible from the artist's side** — `public_studio_team` is hard-gated to `b.type = 'studio'`, so an assistant on somebody's artist page names them and is not named back; closing it is a migration and a privacy decision, not a component change. ⚠ **`staff` ("Other team member") has zero public surface on either side**, which is symmetric and deliberate, and **an ended seat** is kept on the person's page and not on the studio's | S_chats 5757-5810; S_class 12456; settings 11402-11440; S_classform 15108 | a shoot for the event card's row; the artist-page team when the user asks; the six token sites only when one moves into a panel |
+| **Enquiries as a tool, what it left (27 Sep 2026):** ⚠ **`?as=` IS NOT REMEMBERED** — the desk is scoped by the tile that opened it and by nothing else, so a reload keeps it (it is in the URL) and a press of the Enquiries tile on a DIFFERENT profile's grid silently re-scopes; there is no control ON the desk to switch subject, which a person who owns two studios will want. ⚠ **THE SENT SIDE IS NEVER SCOPED**, deliberately: an enquiry is sent BY A PERSON (`guard_person_only` keeps a business out of that seat), so "the studio's sent enquiries" is not a thing — but on a scoped desk the Received side is one studio's and the Sent side is the whole account's, and only the sub-line says so. ⚠ **A TRAINER OR FRONT DESK SEES THE DESK AND NO SETTINGS** and is told nothing about why — `update_business_profile` is the owner's, so the control is simply absent, which is the same silent bounce the Earnings tile has. ⚠ **THE SETTINGS SAVE ON EVERY PRESS** (one chip, one round trip) with no undo and no toast — the disclosure's own count is the only confirmation. ⚠ **`ContactEditor` STILL CARRIES `d.enquiry` / `d.kinds` WITH NO CONTROL ON THEM**: they are a round-trip carrier for a door that takes the whole profile, and two screens open at once can still write a stale pair (the same window `accepts` has had since the Payments desk). ⚠ **A CREW HAS NO SETTINGS AT ALL** — its three kinds are fixed in `send_enquiry` and `crews` carries no `enquiry_types` column, so giving a crew the choice is a migration and a decision. ⚠ **AND THE ENQUIRY DETAIL PAGE IS STILL AT `/inbox/enquiries/{id}`** — an address handed out before the split (Rule 14), so it stays; it means the one screen an enquiry opens lives under a desk that no longer holds enquiries | S_chats 5617-6098; settings 9000-9030 | a subject switcher on the desk when somebody owns two; a crew's kinds only if asked |
+| **The user's fifteen, what they left (27 Sep 2026):** ⚠⚠ **SIX MORE SITES PAIR `var(--text)` WITH `var(--bg)`** — the identity that made the class card's button invisible inside `InvertedPanel`: `components/ui/FormPage.tsx:311`, `features/classes/components/ClassForm.tsx` (three), `features/classes/components/ClassesManager.tsx` (two) and `features/notifications/components/NotificationsScreen.tsx:219`. **All six are correct TODAY** — they are portalled dialogs or plain page grounds, where the two tokens coincide — so they are recorded rather than swept, because a sweep of six correct call sites is six chances to break one. **The day any of them is drawn inside a panel it is a blank button**, and the rule is one line: anything that may be is `--text` on `--solid`. ⚠ **`EventBookButton` HAS NO E2E**: `shoot-tiles` presses tiles and the suite books from the event PAGE, so the card's new action row is verified by typecheck, lint and the build alone until a shoot drives it. ⚠ **An event card's action row is on DISCOVER only** — `/my-events`' ticket rows and the assisting cards are untouched, and the Home deck's event card still carries its role chip UNDER the card rather than in an action row. ⚠ **The Inbox's two sections have no e2e for the SENT side** (both re-cut segments drive RECEIVED), and the combined "All" desk still draws one row shape for both kinds — it is a list of what waits, not the desk, so it was left. ⚠ **`PLAN_RIGHTS` is prose checked by a person, not by a test**: every line names the rule it rests on in a comment, and nothing asserts that the rule still says that — the next migration to change `why_no_class` or `guard_business_visibility` has to come back here. ⚠ **The Organizations group is not on a CREW's or a STUDIO's page** (a business has no organization membership). ~~an artist page's team is invisible from the artist's side~~ — **CLOSED 27 Sep 2026** by `20260927120000` (`public_studio_team` admits `artist_page` now); ⚠ what the dry run found still stands and is the thing to watch: **nobody is seated on a listed artist page on production**, because the team was unreadable for so long that nothing ever put anybody on one, so the group is correct and empty until somebody does. ⚠ **`staff` ("Other team member") has zero public surface on either side**, which is symmetric and deliberate, and **an ended seat** is kept on the person's page and not on the studio's | S_chats 5757-5810; S_class 12456; settings 11402-11440; S_classform 15108 | a shoot for the event card's row; the artist-page team when the user asks; the six token sites only when one moves into a panel |
 | **Edit mode, the contact ⊕ and the crew's rows, what they left (26 Sep 2026):** ⚠ **EDIT MODE IS COMPONENT STATE, NOT THE URL** — a reload, a sheet's `?edit=1` Cancel (which goes BACK an entry) and a navigation all put the home back in read mode, so the pencil is pressed again after each; deliberate, because `?editing=1` in the address would be a request the harness could hand anybody, and the mode grants nothing anyway — every editor re-checks its own door. **The pencil's `aria-pressed` is the only signal** a screen reader gets that the home changed state; nothing is announced. ⚠ **A PLAIN USER can store a WhatsApp number and never sees a Message button** — a user's page draws no buttons (the 19 Sep list), so the entry shows as a chip in the links row only; the sheet says so. **Message is a `wa.me` link built from digits**, so a WhatsApp URL pasted on 29 Aug as a profile link still draws the button (and the chip), and a number typed here lands in the links row too — one list, two readings, which is right and is the one place a "remove" has two doors. ⚠ **Location is not in the contact sheet**: a business's pin is its Edit details map and a person's city is theirs, said in words rather than drawn as a second map. **An artist's Enquiry cannot be switched off from the contact sheet** — their enquiries land on the artist PAGE, whose kinds are Settings › Enquiry types (every kind off takes the button off, through `EnquiryButton`'s new empty-list rule); a business's Enquiry IS a switch there. ⚠ **`EnquiryButton` returns null for an EMPTY types list** on every surface that passes one, and the person surfaces (`PublicPersonPage`, `MyProfilePage`, Home) pass none — so an artist page with every kind off still draws Enquiry on the person's page, which opens a sheet with nothing in it; the read that would close it (the page's `enquiry_types` beside `artist_page_of`) is a repository change. **The crew's first style is still the Edit details sheet's picker AND the first of the band's list** — the trigger keeps them equal, so the sheet's picker is the band's ＋ in a second coat and could go. ⚠ **`shift-studio-owner.js` has no job** and stays. **No e2e drives the contact sheet's WhatsApp field or a crew's links** — `shoot-hero` drives the first and the proofs the RPC of the second. ⚠ **`RecordListsProvider` holds a home's styles and links ONCE and never re-adopts the server's read** — right while every writer is inside it, and the day a new editor of either list is drawn OUTSIDE the provider (a sheet reached by navigation writes fresh props, which is fine; a same-page sibling does not), it is the stale-copy race again. `BusinessEditFromUrl` (`?edit=1`) is reached by navigation and still reads its props, which is why it is not inside | S_profiletab 10613, 11364; 10875-10888 | a URL mode only if a real person loses it; the artist-page read when somebody asks; an `aria-live` line |
 | **The admin desks after the organization login went, what the app-side re-cut left (26 Sep 2026):** ⚠ **FOUR THINGS IN THE DATABASE STILL SPEAK THE RETIRED ROLE, and each is one clause in the next admin migration** — `admin_org_standing(uuid[])` answers only for `profiles.role = 'org'` and so answers nobody (dead; drop it); `admin_dashboard()` counts `orgs` and `verified_orgs` by that role (both 0 for ever, no longer drawn) and has NO organizations figure, so the Businesses desk counts its organizations off the list it reads (a second `admin_businesses` read only while a search term narrows the first); `admin_grant_subscription` knows `studio` and `artist` and not `org`, so **an admin cannot comp an organization's ₹5,000 mandate** — the desk says so in a line where the button would be; and `admin_accounts` still returns `role`, which every row prints as USER. **The Verified tab reads owner names off `admin_businesses` at its 200-row cap** — a 201st business's owner would print as nobody on that tab (the page itself pages correctly); one more argument for a definer read keyed on ids. **The suspend note still says "every studio the account owns"** and `admin_suspend_account` was written for an organization's studios — whether it also unlists an organization BUSINESS a suspended person owns was not checked tonight. ⚠ **`shoot-admin` is the only thing that opens the Verified tab**, and its last run before tonight was 11 Sep: a desk tab no e2e drives is a tab that can 500 for fifteen days | — (the prototype has no admin) | one admin migration: drop the dead RPC, an organizations figure on the dashboard, the `org` kind on the grant, a by-id owner read |
 | **A person opens a studio, and an organization is a business — what the two migrations left (26 Sep 2026):** ~~an organization keeps its own Add studio door~~ — **answered the same day**: the organization login is retired (R48) and an organization's home has no studio door at all. **The two studio SHIFTS were never run** — every studio the retired organizations owned went with them at the user's word, so `scripts/shift-studio-owner.js` is a tool with no job today; it stays because a shift will be asked for again. **The person's `/subscription` lists studios and organizations by owner seat** while `findMyTenants` still returns every seat, so the page makes one extra read. ⚠ **`scripts/demo-data.js` was re-cut to open an organization as a business, and has NOT been re-seeded** since the retirement took the demo world's four organizations, five studios and everything under them — the live catalog holds the six real accounts, the two test-phone accounts (the owner now a user with "Proof Owner Org"), Deepak's organization and whatever the runs leave; `demo-data.js wipe` + `seed` is the next thing to run when a demo world is wanted. ⚠ **A retired organization's auth account still exists** — its profile is soft-deleted, so signing in lands on onboarding, which makes a fresh USER profile on that account; nothing stops that and nothing needs to. **No e2e segment yet** drives a person's studio or an organization end to end from the tiles; `shoot-tiles` presses every tile of both and the proofs cover the doors. **An artist's own-page class still raises no notification** (it never asked, by construction since 18 Sep) — only the two cases that would otherwise have been an ask are logged. **The 15-studio cap is per account** whoever it is. ⚠ **`org_is_public` needs BOTH the GST number and the mandate**, so Deepak's organization — verified, unsubscribed — is private until its ₹5,000 mandate is authorised on the sandbox, which is the user's to do from its Subscription tile | — (the prototype has one studio and one kind of owner) | a re-seed when a demo world is wanted; a segment when the story next grows |

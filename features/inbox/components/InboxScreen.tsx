@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { respondToClaimAction, withdrawClaimAction } from "@/features/claims/server-actions/claims";
 import { respondToVenueRequestAction } from "@/features/classes/server-actions/classes";
 import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
@@ -154,6 +154,8 @@ export function InboxScreen({
   enquiriesOut,
   nowIso,
   desk = "inbox",
+  deskSub = null,
+  settings = null,
 }: {
   /** the profile-tinted wash the rest of the app opens on (5681) */
   accent: string;
@@ -172,6 +174,17 @@ export function InboxScreen({
    *  this repo has paid three times (`linkChip` twice, the figure row three
    *  times, three identity bands). What differs is which pills are drawn. */
   desk?: "inbox" | "enquiries";
+  /** ⚠ WHOSE DESK THIS IS, when a tool tile named one (27 Sep 2026). The
+   *  Enquiries tile on a studio's, an organization's or a crew's grid carries
+   *  `?as=`, and the heading has to say which — a list narrowed to one subject
+   *  with nothing on screen naming it reads as a list that lost rows. Null is
+   *  the account's whole desk, which needs no sub-line. */
+  deskSub?: string | null;
+  /** ⚠ WHAT YOU TAKE, SET FROM HERE (27 Sep 2026, the user: *"with its setting
+   *  as well manged from there"*) — a slot rather than a component, because the
+   *  Inbox desk has no settings and this file should not learn what an
+   *  `enquiry_types` column is to draw one. */
+  settings?: ReactNode;
 }) {
   const router = useRouter();
   const [sect, setSect] = useState<"req" | "join" | "enq" | "done">(desk === "enquiries" ? "enq" : "req");
@@ -759,7 +772,14 @@ export function InboxScreen({
           heading with the count as its sub-line. */}
       <div style={{ padding: "12px 16px 0", position: "relative" }}>
         <h1 style={{ margin: 0, fontFamily: DOS_DISPLAY, fontSize: 27, fontWeight: 900, letterSpacing: -0.6, lineHeight: 1.08 }}>{onEnq ? "Enquiries" : "Inbox"}</h1>
-        <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.45, color: "var(--sub)", margin: "4px 0 12px" }}>{owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}</div>
+        {/* ⚠ WHOSE DESK, when a tool tile named one (27 Sep 2026). A list
+            narrowed to one studio with nothing on screen saying so reads as a
+            list that has lost rows — the same reason every tool hero names the
+            business an organization is standing in. */}
+        <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.45, color: "var(--sub)", margin: "4px 0 12px" }}>
+          {deskSub ? `${deskSub} · ` : ""}
+          {owed > 0 ? `${owed} waiting on you` : "Nothing waiting on you"}
+        </div>
       </div>
       <div style={{ display: "flex", gap: 7, overflowX: "auto", scrollbarWidth: "none", padding: "0 16px 12px", position: "relative" }}>
         {SECT.map(([k, l, n, tint]) => {
@@ -807,6 +827,13 @@ export function InboxScreen({
 
         {sect === "enq" ? (
           <>
+            {/* ⚠ WHAT YOU TAKE, ABOVE WHAT CAME IN (27 Sep 2026). It is a
+                disclosure rather than a block — closed it is one line saying the
+                state ("3 of 5 kinds"), which is the whole of what a desk needs to
+                say when nothing is being changed, and the rows underneath are
+                what the screen is for. The same treatment the Stats points card
+                got when it stood full-width between the controls and the board. */}
+            {settings}
             <div style={{ display: "flex", gap: 2, background: "var(--el)", borderRadius: 12, padding: 3, marginBottom: 9 }}>
               {(
                 [

@@ -171,6 +171,19 @@ export const GLYPH = {
       <path d="M18.5 3v3.6h-3.6M5.5 21v-3.6h3.6" />
     </>
   ),
+  /* AN ENQUIRY IS SOMEBODY ASKING WHAT IT WOULD COST (27 Sep 2026) — the speech
+     bubble with a rupee in it. ⚠ Not a new drawing: this is the glyph that spent
+     the morning on the tab bar, MOVED here when the user made Enquiries a tool
+     rather than a tab, so the icon is not left behind in `TAB_ICONS` where only
+     a type could ever find it again (the `Stats` lesson, same day). It is the
+     one glyph on any grid that is about money coming IN — `earn` is the card
+     with the coin, which is money already counted. */
+  enquiries: I(
+    <>
+      <path d="M20.5 12.2c0 3.9-3.8 7-8.5 7a9.7 9.7 0 0 1-2.6-.35L4.2 20.3l1.3-3.3A6.6 6.6 0 0 1 3.5 12.2c0-3.9 3.8-7 8.5-7s8.5 3.1 8.5 7z" />
+      <path d="M10 9.2h4M10 11.6h4M13 9.2c0 2.3-1.3 2.4-3 2.4l3.2 3" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export interface Tile {

@@ -22,7 +22,15 @@ import type { ActingAs } from "@/types/profile";
  *  somebody who is entitled to one.
  *
  *  ⚠ AND IT IS SHAPED SO A FORGED VALUE GAINS NOTHING even if it did resolve:
- *  what it returns can only ever REMOVE a button. */
+ *  what it returns can only ever REMOVE a button.
+ *
+ *  ⚠ IT CARRIES THE RESOLVED `id` SINCE 27 Sep 2026, because the Enquiries tool
+ *  tile uses the same pointer to say WHICH profile's desk it opens — and that id
+ *  is the one this lookup just proved the caller belongs to, never the one the
+ *  URL asked for. A desk NARROWED by it shows less, not more, and the reads
+ *  underneath are RLS-bounded either way, so the rule above still holds: an
+ *  unresolvable value means "yourself", which here is every subject you are
+ *  entitled to and not a refusal. */
 const CREW = "crew-";
 
 /** the value the entity bar puts on its Discover link */
@@ -39,7 +47,7 @@ export async function resolveActingAs(supabase: SupabaseClient, raw: string | nu
     const id = v.slice(CREW.length);
     const crews = await findMyLedCrews(supabase).catch(() => []);
     const crew = crews.find((c) => c.id === id);
-    return crew ? { kind: "crew", name: crew.name } : null;
+    return crew ? { kind: "crew", name: crew.name, id: crew.id } : null;
   }
 
   const mine = await findMyMemberships(supabase).catch(() => []);
@@ -48,5 +56,5 @@ export async function resolveActingAs(supabase: SupabaseClient, raw: string | nu
   /* an ARTIST PAGE is the person's own public face, not a profile they switch
      into — they book as themselves there, so it is not a business for this */
   if (m.tenant.type === "artist_page") return null;
-  return { kind: m.tenant.type === "org" ? "org" : "studio", name: m.tenant.name };
+  return { kind: m.tenant.type === "org" ? "org" : "studio", name: m.tenant.name, id: m.tenant.id };
 }
