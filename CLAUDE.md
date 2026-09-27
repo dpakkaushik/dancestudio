@@ -56,6 +56,14 @@
 >   which is what proves the sheet still opens from a cell of a now-positioned row.
 >   ⚠ The one page error in `shoot-hero` is the **Maps demo key** (#0a3), which has
 >   been there since 18 Sep and is nothing to do with this.
+>   **PUSHED AND LIVE (`af0b2f4`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-hero.js` 191/191 ON THE DEPLOYMENT**, the top edge measured at 430
+>   AND 360 on the live bundle with all five buttons owning their own · and ⚠ **the
+>   two surfaces the user actually NAMED measured on the live host too** — a real
+>   account's own **home** and its **profile**, at both widths, every button owning
+>   its top edge where the hero owned it before.
 
 > ### FIVE THINGS THAT WERE CUT, DOUBLED, REPEATED OR THE WRONG WAY UP (28 Sep 2026, earlier) — BUILT, no migration
 > The user, in one message: *"contact buttons getting cut on all profiles.
@@ -8169,7 +8177,10 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   this shape. **typecheck 0 · lint 0 · build green · `shoot-hero` 191/191** (189
   before; the two new ones were RED before the fix) **· `shoot-tiles` 155/155 ·
   `shoot-discover` 43/43 · the whole e2e suite 58/58 in one run, 16.8 min on one
-  worker, no red at any point.**
+  worker, no red at any point.** **PUSHED AND LIVE (`af0b2f4`)** — Vercel's own
+  list for THIS sha BUILDING → READY, `stranger-smoke.ps1` 11/11 and
+  **`shoot-hero` 191/191 against the deployment**, plus home and profile measured
+  on the live host at both widths.
 - **FIVE THINGS THAT WERE CUT, DOUBLED, REPEATED OR THE WRONG WAY UP — 28 Sep
   2026, no step number — BUILT, no migration.** The user's five-item list, plus
   two mid-build narrowings of the fourth. ⚠⚠ **The contact buttons were cut
