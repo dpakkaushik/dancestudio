@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { deleteLeadAction } from "@/features/leads/server-actions/leads";
 import { DeskAddButton } from "@/features/settings/components/settings-kit";
-import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DeskHero } from "@/features/tenants/components/biz-kit";
 import { FigureHead } from "@/components/ui/FigureHead";
 import { DOS_UI, INK, LILAC, SUB } from "@/lib/design/tokens";
@@ -327,6 +326,3 @@ function InviteSheet({
     </div>
   );
 }
-
-/* the tool's own paint, so the desk and the tile that opens it agree */
-export const STUDENTS_TINT = DOS_TOOLS.students.c;

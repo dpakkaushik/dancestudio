@@ -49,17 +49,6 @@ export interface InvitePreview {
   isForMe: boolean;
 }
 
-/** The prototype prints a LEVEL beside each person (18428-18432): Admin for the
- *  people who run the place, Staff for the rest. Our roles are the real thing
- *  underneath; this is only the word on the badge. */
-export const MEMBER_LEVEL: Record<MemberRole, string> = {
-  owner: "Admin",
-  trainer: "Admin",
-  staff: "Staff",
-  visiting_faculty: "Faculty",
-  assistant: "Staff",
-};
-
 /** and the line under the name — what this role may actually do (18428-18429).
  *  18 Sep 2026: classes are the OWNER's to create and edit; faculty teach them,
  *  run the register and see their students. */
@@ -179,49 +168,13 @@ export const rolesFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<
 export const labelsFor = (type: "studio" | "artist_page" | "org"): ReadonlyArray<readonly [MemberRole, string]> =>
   [["owner", "Owner"] as const, ...rolesFor(type)];
 
-/** WHAT EACH LABEL ACTUALLY CARRIES — the permissions section beside the labels
- *  (19 Sep 2026). One line per thing a seat may do, so the owner reads the
- *  consequence rather than the word. These are the rules the database keeps, not
- *  a wish list: every one of them is enforced by a policy or an RPC. */
-export const MEMBER_POWERS: Record<InvitableRole | "owner", ReadonlyArray<readonly [string, boolean]>> = {
-  owner: [
-    ["Create and edit classes", true],
-    ["Run any register", true],
-    ["See and settle refunds", true],
-    ["Pay the team", true],
-    ["Change what the business says", true],
-  ],
-  trainer: [
-    ["Create and edit classes", false],
-    ["Run any register", true],
-    ["See and settle refunds", false],
-    ["Pay the team", false],
-    ["Change what the business says", false],
-  ],
-  visiting_faculty: [
-    ["Create and edit classes", false],
-    ["Run any register", false],
-    ["See and settle refunds", false],
-    ["Pay the team", false],
-    ["Change what the business says", false],
-  ],
-  assistant: [
-    ["Create and edit classes", false],
-    ["Run any register", false],
-    ["See and settle refunds", false],
-    ["Pay the team", false],
-    ["Change what the business says", false],
-  ],
-  staff: [
-    ["Create and edit classes", false],
-    ["Run any register", false],
-    ["See and settle refunds", false],
-    ["Pay the team", false],
-    ["Change what the business says", false],
-  ],
-};
+/* ⚠ `MEMBER_POWERS` — the ticked five-line permissions table — was here and is
+   gone (28 Sep 2026). It was the data behind the PERMISSIONS block the Team
+   desk stopped drawing on 20 Sep ("NO PERMISSIONS BLOCK", StaffDesk:606), so it
+   had been a table nothing rendered for eight days. The sentence below is what
+   the desk actually prints; the rules themselves are the database's, unchanged. */
 
-/** the one line under a label that says what is NOT on the list above */
+/** the one line under a label — what this seat may do, in the desk's own words */
 export const MEMBER_POWER_NOTE: Record<InvitableRole | "owner", string> = {
   owner: "The owner's seat cannot be given away.",
   trainer: "Runs the register on this business's classes and sees its students.",

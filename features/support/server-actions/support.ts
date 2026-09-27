@@ -6,7 +6,6 @@ import { LIMITS, withinLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   adminOpenSupportThread,
-  markSupportRead,
   openSupportThread,
   postSupportMessage,
   setSupportThreadStatus,
@@ -99,16 +98,6 @@ export async function adminOpenSupportThreadAction(input: unknown): Promise<{ er
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not start that", threadId: null };
   }
-}
-
-export async function markSupportReadAction(input: unknown): Promise<{ error: string | null }> {
-  const parsed = z.object({ threadId: z.string().uuid() }).safeParse(input);
-  if (!parsed.success) {
-    return { error: "Invalid input" };
-  }
-  const supabase = await createSupabaseServerClient();
-  await markSupportRead(supabase, parsed.data.threadId);
-  return { error: null };
 }
 
 export async function setSupportThreadStatusAction(input: unknown): Promise<{ error: string | null }> {

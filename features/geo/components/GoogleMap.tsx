@@ -129,8 +129,6 @@ function loadMaps(): Promise<MapsLibraries> {
   return window.__dosMapsPromise;
 }
 
-export const isMapsConfigured = (): boolean => Boolean(MAPS_KEY);
-
 /** THE PIN DOES NOT MOVE; THE MAP MOVES UNDER IT (11 Sep 2026).
  *
  *  Every delivery app in India picks a location this way, and it is not a

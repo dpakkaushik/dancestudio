@@ -137,10 +137,3 @@ export async function findArtistPageOwner(supabase: SupabaseClient, businessId: 
   if (error) return null;
   return (data as string | null) ?? null;
 }
-
-/** the listed artist page behind a person, for the Enquiry on their profile */
-export async function findArtistPageOf(supabase: SupabaseClient, userId: string): Promise<string | null> {
-  const { data, error } = await supabase.rpc("artist_page_of", { p_user_id: userId });
-  if (error) return null;
-  return (data as string | null) ?? null;
-}

@@ -63,24 +63,6 @@ export async function findDiscoverCities(supabase: SupabaseClient): Promise<Disc
   }));
 }
 
-/** Put a city on the map the first time somebody is in it. Returns the CANONICAL
- *  name it was stored under — Bengaluru for "Bangalore" — which is the name the
- *  caller should then write onto its own row, so grouping holds. */
-export async function rememberCity(
-  supabase: SupabaseClient,
-  input: { city: string; lat: number; lng: number }
-): Promise<string | null> {
-  const { data, error } = await supabase.rpc("remember_city", {
-    p_name: input.city,
-    p_lat: input.lat,
-    p_lng: input.lng,
-  });
-  if (error) {
-    throw new Error(error.message);
-  }
-  return (data as string | null) ?? null;
-}
-
 /** The centre a city's radius search starts from. Null when nobody has been
  *  there yet — the caller then has a point of its own (the picker's) or falls
  *  back to the country. */

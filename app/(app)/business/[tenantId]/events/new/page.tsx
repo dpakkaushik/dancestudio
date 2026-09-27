@@ -6,7 +6,12 @@ import { findWhyNoEvent } from "@/repositories/gst";
 import { findMyMembershipRole, findMyTenants } from "@/repositories/tenants";
 
 /** Add event (prototype S_eventform). Owners and trainers create; the RPC
- *  enforces it too. */
+ *  enforces it too.
+ *
+ *  ⚠ NO DOOR — nothing in the app links here, confirmed by a sweep on 28 Sep
+ *  2026. Since C54 (22 Sep) the events desk opens this same form as a SHEET at
+ *  `?new=1` on its own URL. The route stays under Rule 14 and still renders the
+ *  form full page; `shoot-tiles.js` asserts both ends. Do not delete it. */
 export default async function NewEventPage({ params }: { params: Promise<{ tenantId: string }> }) {
   const { tenantId } = await params;
   const supabase = await createSupabaseServerClient();

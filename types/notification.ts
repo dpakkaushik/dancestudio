@@ -13,9 +13,6 @@ export const NOTIF_KINDS: Array<{ k: NotificationKind; label: string; tint: stri
   { k: "event", label: "Events", tint: "#F59E0B" },
   { k: "class", label: "Classes", tint: "#5AC8FA" },
 ];
-export const NOTIF_TINT: Record<NotificationKind, string> = Object.fromEntries(NOTIF_KINDS.map((k) => [k.k, k.tint])) as Record<NotificationKind, string>;
-export const NOTIF_LABEL: Record<NotificationKind, string> = Object.fromEntries(NOTIF_KINDS.map((k) => [k.k, k.label])) as Record<NotificationKind, string>;
-
 export interface AppNotification {
   id: string;
   kind: NotificationKind;

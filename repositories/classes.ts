@@ -190,33 +190,6 @@ export async function findClassesByTenant(
   return (data as unknown as ClassRow[]).map(toClass);
 }
 
-/** Every class of every business in the list, drafts included — the read behind
- *  "everything you manage" (S_managed). The caller passes the ids of the
- *  businesses the person BELONGS to (findMyTenants says `user_id = auth.uid()`
- *  out loud), so the query is scoped by membership and RLS is only the ceiling:
- *  a person who can also read published classes of every listed studio must not
- *  see them here as things they run. Empty list, empty result, no query. */
-export async function findClassesByTenants(
-  supabase: SupabaseClient,
-  tenantIds: string[]
-): Promise<DanceClass[]> {
-  if (tenantIds.length === 0) {
-    return [];
-  }
-  const { data, error } = await supabase
-    .from("classes")
-    .select(CLASS_COLUMNS)
-    .in("business_id", tenantIds)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-  if (error) {
-    throw new Error(`classes.findByTenants failed: ${error.message}`);
-  }
-  return (data as unknown as ClassRow[]).map(toClass);
-}
-
 /** One class by id (members only via RLS) — for the edit form. */
 export async function findClassById(
   supabase: SupabaseClient,
@@ -466,19 +439,6 @@ export async function findPublishedStylesByTenant(
     out.set(r.business_id, cur);
   });
   return out;
-}
-
-/** AN UPLOADED POSTER (27 Sep 2026) — the other half of the sheet above. The
- *  path is already in `media/posters/{business}/…` by the time this is called
- *  (the browser uploads with the person's own session, as every picture in this
- *  app does); what this records is which class it belongs to, through a door
- *  that re-checks the folder. `null` takes it down and the drawn sleeve comes
- *  back — it is a fallback, not a second field. */
-export async function setClassPosterPath(supabase: SupabaseClient, classId: string, path: string | null): Promise<void> {
-  const { error } = await supabase.rpc("set_class_poster", { p_class_id: classId, p_path: path });
-  if (error) {
-    throw new Error(error.message);
-  }
 }
 
 /** One field, from the class page's own poster sheet (prototype 11812 → 12768-12780):

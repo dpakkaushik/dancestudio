@@ -22,7 +22,6 @@
 
 /** three letters, then five digits */
 export const GSTIN_SHAPE = /^[A-Z]{3}[0-9]{5}$/;
-export const GSTIN_LENGTH = 8;
 export const GSTIN_EXAMPLE = "ABC12345";
 
 /** What a person types is rarely what the register holds: spaces, lower case,

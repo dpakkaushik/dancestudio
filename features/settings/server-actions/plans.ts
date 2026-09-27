@@ -4,10 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { isCashfreeConfigured } from "@/lib/cashfree/api";
-import { cancelCashfreeSubscription } from "@/lib/cashfree/subscriptions";
 import { activateArtistPlan } from "@/repositories/plans";
-import { cancelMySubscription, findMyArtistSubscription } from "@/repositories/subscriptions";
 import { updateTenantProfile } from "@/repositories/tenants";
 
 /** DanceOS Pro · Artist (S_subscr 16935): the plan's two doors, and the
@@ -39,34 +36,6 @@ export async function activateArtistPlanAction(input: { plan: "monthly" | "yearl
     return { error: null, until: out.until };
   } catch (error: unknown) {
     return { error: error instanceof Error ? error.message : "Could not start the plan", until: null };
-  }
-}
-
-export async function endArtistPlanAction(): Promise<{ error: string | null }> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  try {
-    const live = await findMyArtistSubscription(supabase);
-    if (!live || live.status === "expired") {
-      return { error: null };
-    }
-    const row = await cancelMySubscription(supabase, live.id);
-    if (row.providerSubscriptionId && !row.granted && isCashfreeConfigured()) {
-      try {
-        await cancelCashfreeSubscription(row.providerSubscriptionId);
-      } catch {
-        /* our row already says it will not renew; the nightly clock ends it on the date */
-      }
-    }
-    revalidatePath("/subscription");
-    revalidatePath("/profile");
-    revalidatePath("/");
-    return { error: null };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not end the plan" };
   }
 }
 

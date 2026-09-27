@@ -371,26 +371,6 @@ export async function findMyCalendarEvents(
   return out.sort(byStart);
 }
 
-/** A BUSINESS's own events, for the organiser's calendar — drafts INCLUDED, for
- *  the reason a studio's calendar includes draft classes: this is the plan, not
- *  the shop window, and something you have not published yet is exactly what you
- *  open a calendar to find. */
-export async function findBusinessCalendarEvents(
-  supabase: SupabaseClient,
-  tenantIds: string[],
-  fromIso: string,
-  toIso: string
-): Promise<CalendarEventEntry[]> {
-  if (!tenantIds.length) return [];
-  const events = await findEventsByTenants(supabase, tenantIds);
-  const out: CalendarEventEntry[] = [];
-  for (const ev of events) {
-    const role = ev.status === "draft" ? "Draft" : ev.status === "completed" ? "Over" : "Running";
-    out.push(...eventEntries(ev, role, `/business/${ev.tenantId}/events/${ev.id}`, fromIso, toIso));
-  }
-  return out.sort(byStart);
-}
-
 /** A business's PUBLIC schedule (prototype `pubSchedule`, 8902-8907): published
  *  classes that have not happened yet, and nothing else — not drafts, not what
  *  is over. "A public schedule is an offer — a list of classes somebody can

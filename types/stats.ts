@@ -6,7 +6,6 @@
  *  does not host one, they TEACH" — the same three sides the calendar uses. */
 export type Side = "conducted" | "assisted" | "attended";
 
-export const SIDE_WORD: Record<Side, string> = { conducted: "Conducted", assisted: "Assisted", attended: "Attended" };
 export const SIDE_VERB: Record<Side, string> = { conducted: "Taught", assisted: "Assisted", attended: "Danced" };
 /* the record's three colours (10031-10040): amber for taught, violet for assisted, blue for trained */
 export const SIDE_TINT: Record<Side, string> = { conducted: "#F59E0B", assisted: "#8B5CF6", attended: "#3B82F6" };

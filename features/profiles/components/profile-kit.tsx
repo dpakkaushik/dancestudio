@@ -66,8 +66,6 @@ export const DOS_TIERS = {
   bronze: { k: "bronze", label: "Bronze", ring: ["#E9B183", "#8A4A22"], text: "#D08A5A" },
   blue: { k: "blue", label: "Ranked", ring: ["#7DD3FC", "#2563EB"], text: "#7DD3FC" },
 } as const;
-export const tierOf = (rank: number) => DOS_TIERS[rank <= 3 ? "gold" : rank <= 10 ? "silver" : rank <= 50 ? "bronze" : "blue"];
-
 export const initialsOf = (name: string) => name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "D";
 
 /* ── brand marks: one square tile silhouette, each brand's real glyph inside (8518) ── */
@@ -295,9 +293,6 @@ const hashOf = (s: string) => {
 };
 export const gradientOf = (name: string): [string, string] => GRADS[hashOf(name) % GRADS.length];
 
-/** "1.2k" — the prototype's fmtF (4189) */
-export const fmtFollowers = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n));
-
 /* ── the place, underlined in the line's own grey, and it opens Maps (10694-10698;
    dosOpenMaps 206 builds the same URL) ── */
 export const mapsHref = (place: string) => `https://maps.google.com/?q=${encodeURIComponent(place)}`;
@@ -485,7 +480,6 @@ export const smallBox = (on: boolean, accent: string): CSSProperties => ({
   fontFamily: "inherit",
   textDecoration: "none",
 });
-export const actionRow = (n: number, small: boolean): CSSProperties => ({ display: "grid", gridTemplateColumns: `repeat(${n},1fr)`, gap: small ? 6 : 8 });
 export const bigWhite: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, height: 42, borderRadius: 12, cursor: "pointer", fontWeight: 900, fontSize: 12.5, boxSizing: "border-box", padding: "0 6px", whiteSpace: "nowrap", overflow: "hidden", background: "var(--text)", color: "var(--solid)", border: "1.5px solid var(--text)", textDecoration: "none" };
 export const SchedIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -493,13 +487,6 @@ export const SchedIcon = () => (
     <path d="M3.5 9.5h17M8.5 4.5v-2M15.5 4.5v-2" />
   </svg>
 );
-export const StatsIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-    <path d="M4 20h16" />
-    <path d="M6.5 20v-6M12 20V8.5M17.5 20V4.5" />
-  </svg>
-);
-
 /* ── the badge hung bottom-right of a follower's face (11353-11355): an 18px
    circle in the account type's tint with the type's glyph on it. Three small
    marks drawn here — a dancer mid-step, an artist with an arm raised, a studio as

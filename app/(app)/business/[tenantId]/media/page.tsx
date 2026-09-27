@@ -6,7 +6,14 @@ import { findMyMemberships } from "@/repositories/tenants";
 
 /** /business/{tenantId}/media — THE MEDIA DESK (15 Sep 2026): a studio's
  *  profile picture and its header pictures, for its team. Only a studio has
- *  one — an artist page's pictures are the artist's own, on the Profile tab. */
+ *  one — an artist page's pictures are the artist's own, on the Profile tab.
+ *
+ *  ⚠ NO DOOR — nothing in the app links here, confirmed by a sweep on 28 Sep
+ *  2026. The Media TILE came off every grid on 21 Sep (C48) because the disc's
+ *  ⊕ and the posters' ⊕ ARE the editor now, on the home itself. The route
+ *  stays under Rule 14 (a link handed out is a promise, and the installed TWA
+ *  reopens on the last URL it showed), and `shoot-hero.js` drives it BY URL so
+ *  it cannot rot behind the removed tile. Do not delete it as "unused". */
 export default async function StudioMediaPage({ params }: { params: Promise<{ tenantId: string }> }) {
   const { tenantId } = await params;
   const supabase = await createSupabaseServerClient();

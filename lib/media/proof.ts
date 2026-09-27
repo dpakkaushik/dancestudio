@@ -39,13 +39,3 @@ export interface ProofPhoto {
   url: string | null;
 }
 
-/** What an organization still has to do about its photos, in a sentence — or
- *  null when it has enough. The same arithmetic in the button, the timeline and
- *  the admin's queue. */
-export const proofShortfall = (count: number): string | null => {
-  if (count >= PROOF_MIN) return null;
-  const short = PROOF_MIN - count;
-  return count === 0
-    ? `Add ${PROOF_MIN} photos of your space`
-    : `${short} more photo${short === 1 ? "" : "s"} — DanceOS needs at least ${PROOF_MIN}`;
-};

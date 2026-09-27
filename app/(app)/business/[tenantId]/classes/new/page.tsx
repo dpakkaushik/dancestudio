@@ -8,7 +8,12 @@ import { findMyMemberships } from "@/repositories/tenants";
  *  create form on behalf of a studio"; asked who creates and edits: "Owner
  *  alone") — the RPC refuses anybody else, and so does this page, in the same
  *  breath. A studio's form offers its rooms; an artist's offers a studio to ask
- *  or a place of their own. */
+ *  or a place of their own.
+ *
+ *  ⚠ NO DOOR — nothing in the app links here, confirmed by a sweep on 28 Sep
+ *  2026. Since C54 (22 Sep) the register opens this same form as a SHEET at
+ *  `?new=1` on its own URL. The route stays under Rule 14 and still renders the
+ *  form full page; `shoot-tiles.js` asserts both ends. Do not delete it. */
 export default async function NewClassPage({
   params,
 }: {

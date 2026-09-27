@@ -111,8 +111,6 @@ export const eventDays = (startDate: string, endDate: string): string[] => {
   return out.length ? out : ["—"];
 };
 
-export const moneyWords = (n: number) => (n === 0 ? "Free" : `₹${n.toLocaleString("en-IN")}`);
-
 /* the same hash the class pass uses (InvoiceSheet dosHash), so an event code
    reads like a class code — DOS-EV-1234 beside DOS-CL-1234 */
 const evHash = (s: string): number => {

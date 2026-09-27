@@ -31,8 +31,6 @@ export interface DiscoverFilters {
   q: string;
 }
 
-export const DEFAULT_FILTERS: DiscoverFilters = { styles: [], sort: "near", dist: "any", when: "any", dur: "any", prices: [], cats: [], fmt: "all", q: "" };
-
 const oneOf = <T extends string>(v: string | undefined, allowed: readonly T[], fallback: T): T => (allowed as readonly string[]).includes(v ?? "") ? (v as T) : fallback;
 const listOf = <T extends string>(v: string | undefined, allowed: readonly T[]): T[] =>
   [...new Set((v ?? "").split(",").map((s) => s.trim()).filter((s) => (allowed as readonly string[]).includes(s)))] as T[];

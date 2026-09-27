@@ -117,18 +117,6 @@ export async function findSupportThread(
   return { thread, messages };
 }
 
-/** How many messages are waiting on the caller, across every thread — the
- *  number the hub's door and the admin nav wear. */
-export async function countSupportUnread(supabase: SupabaseClient): Promise<number> {
-  try {
-    const threads = await findSupportThreads(supabase);
-    return threads.reduce((n, t) => n + t.unread, 0);
-  } catch {
-    /* a badge is decoration on somebody's actual work — never an error page */
-    return 0;
-  }
-}
-
 export async function openSupportThread(
   supabase: SupabaseClient,
   input: { subject: string; body: string; requestId?: string | null }

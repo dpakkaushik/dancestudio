@@ -179,20 +179,6 @@ export async function findMyMemberships(supabase: SupabaseClient): Promise<MyPas
   }));
 }
 
-export async function findPassUses(supabase: SupabaseClient, passId: string): Promise<PassUse[]> {
-  const { data, error } = await supabase.rpc("pass_uses", { p_pass_id: passId });
-  if (error) return [];
-  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
-    classId: String(r.class_id),
-    shareSlug: String(r.share_slug),
-    style: String(r.style),
-    level: String(r.level),
-    businessName: String(r.business_name ?? ""),
-    startsAt: String(r.starts_at),
-    units: n(r.units),
-  }));
-}
-
 /** which of my passes this session takes — the booking sheet's one question */
 export async function findPassesForSession(supabase: SupabaseClient, sessionId: string): Promise<PassForSession[]> {
   const { data, error } = await supabase.rpc("passes_for_session", { p_session_id: sessionId });
@@ -259,9 +245,3 @@ export async function bookWithMembership(supabase: SupabaseClient, sessionId: st
   return String((data as { id: string }).id);
 }
 
-/** the sentence between somebody and a membership, or null when they may have it */
-export async function findWhyNoMembership(supabase: SupabaseClient, membershipId: string): Promise<string | null> {
-  const { data, error } = await supabase.rpc("why_no_membership", { p_membership_id: membershipId });
-  if (error) return null;
-  return (data as string | null) ?? null;
-}

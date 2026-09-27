@@ -2,7 +2,77 @@
 
 ## LAST SESSION (28 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE TOP OF EVERY CONTACT BUTTON WAS PAINTED OVER, AND EVERY RECT IN THE PLACE SAID IT WAS FINE (28 Sep 2026, latest) — BUILT, no migration
+> ### THE DEAD-CODE SWEEP, AND THE ONE IT NEARLY KILLED THAT WAS HOLDING UP AUTH (28 Sep 2026, latest) — BUILT, no migration, ⚠ ZERO BEHAVIOUR CHANGE BY CONSTRUCTION
+> The user asked for an audit — *"look for duplicate pages, look for dead pages,
+> suggest me things which can have a better fix"* — then, on the list it
+> produced: *"clear point 2 and 3 first then lets look at others"*, and
+> *"make sure doesnt affect the app at all in this."*
+> * ⚠⚠ **THE SWEEP'S FIRST ANSWER WAS WRONG, AND IT WOULD HAVE SIGNED EVERY USER
+>   OUT.** `lib/supabase/middleware.ts` came back as a file NOTHING IMPORTS — and
+>   it is `updateSession`, the auth-cookie refresh that runs on **every request in
+>   the app**. `proxy.ts` imports it, and **`proxy.ts` lives at the REPO ROOT**,
+>   outside the seven folders the scan walked (`app features components lib
+>   repositories services types`). Its own doc comment says *"called from
+>   proxy.ts"* — so the file told the truth and the tool did not. **Caught by
+>   reading the file before deleting it**, which is the rule, and the scan now
+>   includes every root-level `.ts`. ⚠ **A reachability tool is only as wide as
+>   its root set, and the most important file in a Next app is the one at the
+>   top.**
+> * ⚠⚠ **AND THE SECOND FINDING IS A SHAPE, NOT A LIST: FOUR OF THE "DEAD" SERVER
+>   ACTIONS WERE SECOND DOORS.** `endArtistPlanAction`, `setClaimPayAction`,
+>   `markSupportReadAction` and `removeProofPhotoAction` all looked like lost
+>   capabilities — can nobody cancel the Artist plan? can no owner set a rate? —
+>   and every one turned out to be a duplicate: the LIVE path calls the repository
+>   function directly (`cancelSubscriptionAction`, `services/classPeople.ts`, the
+>   two support routes, `studioVerification.ts`). **Checked one by one before
+>   anything was removed**, because "an export nothing calls" and "a feature
+>   nobody can reach" look identical from a grep and are opposite problems.
+> * **WHAT WENT: three files and 31 exports.** `NotBuiltYet.tsx` (no caller since
+>   21 Sep), `repositories/orgStats.ts` (the org dashboard's read, orphaned by
+>   R48), `features/orgs/server-actions/proof.ts` (its one action was a second
+>   door, so the file had no exports left at all), plus the four actions above,
+>   `findClassesByTenants` (`/managed`'s read), `setClassPosterPath`,
+>   `MEMBER_POWERS` + `MEMBER_LEVEL` (the permissions table StaffDesk stopped
+>   drawing on 20 Sep — dead for eight days), and twenty more.
+> * ⚠ **LINT IS WHAT FINISHED IT.** Removing an export orphans its imports and its
+>   private helpers, and `no-unused-vars` named all twelve — which is also how
+>   `proof.ts` turned out to be empty rather than merely lighter.
+> * ⚠⚠ **NOT ONE ROUTE WAS DELETED, AND THAT IS RULE 14 RATHER THAN CAUTION.**
+>   Six are genuinely doorless — `/managed`, `/business/{id}/media`, both
+>   `…/new` forms and the org tombstones — and every one is a promise somebody may
+>   be holding, so the three that did not already say so now carry **`⚠ NO DOOR`**
+>   with the date, the reason and "do not delete it as unused". A route nothing
+>   links to is invisible to everybody including the next sweep.
+> * ⚠ **TWO THINGS ARE LEFT ON PURPOSE, BECAUSE THEY ARE THE USER'S CALL AND NOT
+>   DEAD CODE AT ALL.** `deleteMembershipAction` is unused because **no screen can
+>   take a membership off sale** — the RPC, the repository read and the action all
+>   exist and nothing offers it — and the leads cluster (`createLeadAction`,
+>   `LEAD_STAGES`, `LEAD_TINT`, `LEAD_SOURCES`) is unused because **a studio can no
+>   longer add a walk-in student**. Deleting either would bury a missing feature
+>   rather than remove clutter. Both are named in the backlog.
+> * **Verified — and the point of the verification is that NOTHING MOVED:**
+>   typecheck 0 · lint 0 · `next build` green · the dead-code scan re-run and down
+>   to **exactly the four names deliberately kept** · **`shoot-hero` 191/191** and
+>   **`shoot-tiles` 155/155**, the SAME tallies as before the sweep, which is what
+>   "does not affect the app" looks like when it is measured rather than asserted
+>   · **the whole e2e suite 55 passed / 3 failed**, then **`admin-support` 5/5
+>   ALONE in 1.1 min** — so all 58 green across the two runs, with no app file
+>   changed between them.
+> * ⚠⚠ **AND THOSE THREE REDS WERE CHECKED RATHER THAN WAVED AWAY, BECAUSE I HAD
+>   JUST DELETED CODE FROM THE SUPPORT FEATURE.** The 11 Sep rule says a red on a
+>   busy machine is not evidence, and this very spec has flaked this very way
+>   twice (26 and 27 Sep) — but "it is the machine" is exactly what somebody says
+>   before shipping a regression. Two of the three were the known non-serial
+>   CASCADE (a restarted worker re-runs the describe body with a fresh stamp, so
+>   later tests hunt names that no longer exist). The first was the unread badge —
+>   the one place my sweep could plausibly have broken — so it was traced rather
+>   than re-run: the `N unread` link is built from `findSupportThreads`' own
+>   `t.unread` in `SupportThreads.tsx`, and the admin's badge reimplements the sum
+>   INLINE at `adminGuard.ts:44`, **which is precisely why `countSupportUnread`
+>   was dead in the first place**. Nothing deleted feeds it, and `markSupportRead`
+>   — the repository function the two routes call directly — was never touched.
+
+> ### THE TOP OF EVERY CONTACT BUTTON WAS PAINTED OVER, AND EVERY RECT IN THE PLACE SAID IT WAS FINE (28 Sep 2026, earlier) — BUILT, no migration
 > The user, hours after the row below stopped clipping its LABELS: *"the top part
 > of contact buttons getting cut on home and profile fix that"*.
 > * ⚠⚠ **IT IS PAINT ORDER, NOT LAYOUT, AND THAT IS WHY A MEASUREMENT MISSED IT.**
@@ -8157,6 +8227,28 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE DEAD-CODE SWEEP — 28 Sep 2026, no step number — BUILT, no migration,
+  ⚠ zero behaviour change.** On the user's *"clear point 2 and 3 first"* and
+  *"make sure doesnt affect the app at all"*. Three files and 31 dead runtime
+  exports gone; **no route deleted** (Rule 14 — the six doorless ones are
+  promises somebody may hold, and three now carry a `⚠ NO DOOR` marker so the
+  next sweep does not take them). ⚠⚠ **The scan's first answer would have signed
+  every user out**: it called `lib/supabase/middleware.ts` dead, and that is
+  `updateSession`, the auth refresh on every request — `proxy.ts` imports it and
+  **`proxy.ts` is at the REPO ROOT**, outside the folders the scan walked.
+  Reading the file before deleting it is what caught it. ⚠⚠ And four "dead"
+  server actions were **second doors**, not lost features — the live path calls
+  the repository directly — which is only visible by checking each one.
+  ⚠ Two unused names are KEPT deliberately, because each marks a missing
+  feature rather than clutter: nothing can take a **membership off sale**, and a
+  studio cannot add a **walk-in student**. **typecheck 0 · lint 0 · build green ·
+  the scan re-run and down to exactly those four names · `shoot-hero` 191/191 and
+  `shoot-tiles` 155/155, the SAME tallies as before the sweep · the e2e suite
+  55/3, then `admin-support` 5/5 alone**, so all 58 across the two runs — ⚠ and
+  those three reds were TRACED, not waved away, because the sweep had touched the
+  support feature: two were the non-serial cascade, and the unread badge is built
+  from `findSupportThreads` with the admin's sum reimplemented inline, which is
+  why `countSupportUnread` was dead to begin with.
 - **THE TOP OF EVERY CONTACT BUTTON WAS PAINTED OVER — 28 Sep 2026, no step
   number — BUILT, no migration.** The user, hours after the labels stopped being
   cut: *"the top part of contact buttons getting cut on home and profile"*.
@@ -12661,6 +12753,9 @@ nothing to lift.
 
 | Gap | Prototype ref | Closes with |
 |-----|--------------|-------------|
+| ⚠⚠ **A MEMBERSHIP CANNOT BE TAKEN OFF SALE (found 28 Sep 2026 by the dead-code sweep).** `delete_membership` exists in the database, `deleteMembership` in the repository and `deleteMembershipAction` as a server action — and **no screen offers any of them**, so once a seller creates a membership it is on their public page for ever. `total_count` counts passes SOLD rather than passes live, so it cannot be used to close one either. ⚠ The action is KEPT unused on purpose rather than swept, because deleting it would bury the gap | S_memberships 16846 | a Remove / Take off sale control on the memberships desk — one button, the door already exists all the way down |
+| ⚠⚠ **A STUDIO CANNOT ADD A WALK-IN STUDENT (R44's own leftover, re-confirmed 28 Sep 2026).** The students desk is a CONSEQUENCE — checked in here, or holding a pass — so a person who is not on DanceOS cannot be recorded at all. `createLeadAction`, `updateLeadAction`, `LEAD_STAGES`, `LEAD_TINT` and `LEAD_SOURCES` all survive with no caller; the `leads` rows, columns and both write doors are intact. ⚠ Kept unused on purpose, for the same reason as the row above | S_people 17293 | put the add form back (R44 says it is one screen), or delete the half that is pretending to be there — the user's call |
+| **The doorless routes, recorded so a sweep does not take them (28 Sep 2026):** six routes nothing in the app links to — `/managed`, `/business/{id}/media`, `/business/{id}/classes/new`, `/business/{id}/events/new`, `/business/earnings` and the org tombstones. ⚠ **All correct under Rule 14** (a handed-out link is a promise, and the installed TWA reopens on its last URL); `/media` and both `…/new` forms are driven BY URL by `shoot-hero` / `shoot-tiles` so they cannot rot. Each now carries a `⚠ NO DOOR` header with the date and the reason | — | nothing; the markers are the fix |
 | **The contact row's top edge, what the fix left (28 Sep 2026):** ⚠ **the 6px OVERLAP is still there** — `marginTop: -6` is what puts the row 8px under the links, and all the fix changed is which of the two paints on top, so the buttons now sit over the hero's last 6px of wash (`LILAC` at that stop, the page's own ground, so nothing is covered that anybody can see). If that tail of the gradient is ever made dark or busy, the buttons will be standing ON it rather than clear of it. ⚠ **The row is a positioned element now**, so anything absolutely positioned inside a cell would position against the ROW rather than the page — nothing does today, and `EnquirySheet`'s scrim is `position: fixed`, which `position: relative` does not capture. ⚠ **Only a studio's home is CHECKED** (`shoot-hero`, five buttons at 430 and 360); the other seven surfaces are right by construction — one component — rather than by a check of their own | ContactButtons.tsx `ActionRow` | a wider check only if a caller ever stops using the shared row |
 | **The five-item list, what it left (28 Sep 2026):** ⚠ **the contact row's ellipsis is a FLOOR, not a fix** — at four cells it fits from 360px up, and narrower than that "Location" truncates with a `…` rather than mid-glyph; there is no way for a caller to force one row, and `ActionRow` has no idea how wide it actually is (the wrap is a count, not a measurement). ⚠ **`CONTACT_BOX` is now imported by a `"use client"` module**, so `ContactButtons` is in the client bundle — tiny, and worth knowing before anything server-only is ever added to that file. ⚠ **The membership price is only in the row's own span**, so a screen reader landing on the BUTTON alone hears `Buy {name}` and reads the price from the text beside it; the payment sheet still says `Pay ₹X`, which is right where the money is asked for. ⚠ **"Dance near you" is `SUB` on a translucent wash and nothing measures its contrast** — `shoot-invert` measures the panel, the shelf count, a card's name and a class tile's headline, not the head — and it is static, so it does not say "measured from you" while Near me is on. ⚠⚠ **The calendar's pills carry no `EnrollButton`**, so cancelling a booking is one tap further (the class page the pill opens, and Home's deck, both still carry it), and they print no price, no seats left and no teacher; a studio's pill shows the room only when the class has one. ⚠ **The `Today` jump button is drawn even when you are already on today** — harmless, and a control that disappears is worse — so the word is on screen once as a control and once as the schedule's divider, which are different jobs. ⚠ The month's `TODAY` badge and the schedule's divider still both exist; they never share a screen, so the word can appear twice across a VIEW SWITCH but never at once | S_discover 4501-4531; S_profiletab calendarOnly 10530; 10875-10888 | a measured wrap if a narrower phone ever matters; the head's contrast next time `shoot-invert` is opened; a cancel on the pill only if a real person misses it |
 | **Enquiries as a tool, what it left (27 Sep 2026):** ⚠ **`?as=` IS NOT REMEMBERED** — the desk is scoped by the tile that opened it and by nothing else, so a reload keeps it (it is in the URL) and a press of the Enquiries tile on a DIFFERENT profile's grid silently re-scopes; there is no control ON the desk to switch subject, which a person who owns two studios will want. ⚠ **THE SENT SIDE IS NEVER SCOPED**, deliberately: an enquiry is sent BY A PERSON (`guard_person_only` keeps a business out of that seat), so "the studio's sent enquiries" is not a thing — but on a scoped desk the Received side is one studio's and the Sent side is the whole account's, and only the sub-line says so. ⚠ **A TRAINER OR FRONT DESK SEES THE DESK AND NO SETTINGS** and is told nothing about why — `update_business_profile` is the owner's, so the control is simply absent, which is the same silent bounce the Earnings tile has. ⚠ **THE SETTINGS SAVE ON EVERY PRESS** (one chip, one round trip) with no undo and no toast — the disclosure's own count is the only confirmation. ⚠ **`ContactEditor` STILL CARRIES `d.enquiry` / `d.kinds` WITH NO CONTROL ON THEM**: they are a round-trip carrier for a door that takes the whole profile, and two screens open at once can still write a stale pair (the same window `accepts` has had since the Payments desk). ⚠ **A CREW HAS NO SETTINGS AT ALL** — its three kinds are fixed in `send_enquiry` and `crews` carries no `enquiry_types` column, so giving a crew the choice is a migration and a decision. ⚠ **AND THE ENQUIRY DETAIL PAGE IS STILL AT `/inbox/enquiries/{id}`** — an address handed out before the split (Rule 14), so it stays; it means the one screen an enquiry opens lives under a desk that no longer holds enquiries | S_chats 5617-6098; settings 9000-9030 | a subject switcher on the desk when somebody owns two; a crew's kinds only if asked |

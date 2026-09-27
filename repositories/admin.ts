@@ -124,28 +124,6 @@ export async function findVerificationQueue(supabase: SupabaseClient): Promise<V
 }
 
 
-/** THE ORGANIZATION'S OWN VIEW: its latest request, or null if it never asked.
- *  Says `org_id = me` out loud — an admin's client would otherwise read every
- *  organization's requests here. */
-export async function findMyVerificationRequest(supabase: SupabaseClient): Promise<VerificationRequest | null> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data, error } = await supabase
-    .from("studio_verification_requests")
-    .select(REQUEST_SELECT)
-    .eq("org_id", user.id)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) {
-    throw new Error(`verification.mine failed: ${error.message}`);
-  }
-  return data ? toRequest(data as unknown as RequestRow) : null;
-}
-
 /* ── THE DESK, PAGED (11 Sep 2026) ──────────────────────────────────────────
  *
  *  The user's objection, exactly: "how am I gonna scroll down if there are 2k

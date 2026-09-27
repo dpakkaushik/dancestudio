@@ -33,9 +33,6 @@ import type { ActingAs } from "@/types/profile";
  *  entitled to and not a refusal. */
 const CREW = "crew-";
 
-/** the value the entity bar puts on its Discover link */
-export const asParam = (kind: "studio" | "org" | "crew", id: string): string => (kind === "crew" ? `${CREW}${id}` : id);
-
 /** carry it onto a card's own href, so the page agrees with the card that sent you */
 export const withAs = (href: string, as: string | null): string => (as ? `${href}${href.includes("?") ? "&" : "?"}as=${encodeURIComponent(as)}` : href);
 

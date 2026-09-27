@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { setClaimPay } from "@/repositories/claims";
 import { recordPayout, setPayoutStatus, voidPayout } from "@/repositories/payouts";
 
 /** ⚠ Money. Step 13's writes. Two rules the RPCs enforce rather than trust:
@@ -42,11 +41,6 @@ const statusSchema = z.object({
 });
 
 const payoutIdSchema = z.object({ payoutId: z.string().uuid() });
-
-const paySchema = z.object({
-  claimId: z.string().uuid(),
-  payPerSessionInr: z.number().int().min(0).max(200000),
-});
 
 async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -131,21 +125,7 @@ export async function voidPayoutAction(input: { payoutId: string }): Promise<Pay
   }
 }
 
-export async function setClaimPayAction(input: {
-  claimId: string;
-  payPerSessionInr: number;
-}): Promise<PayoutActionResult> {
-  const parsed = paySchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: "That is not a rate" };
-  }
-  const supabase = await requireUser();
-  try {
-    await setClaimPay(supabase, parsed.data.claimId, parsed.data.payPerSessionInr);
-    revalidateMoneySurfaces();
-    revalidatePath("/c/[slug]", "page");
-    return { error: null };
-  } catch (error: unknown) {
-    return { error: error instanceof Error ? error.message : "Could not set the rate" };
-  }
-}
+/* ⚠ `setClaimPayAction` was here and is gone (28 Sep 2026): it was a SECOND
+   door onto `setClaimPay`, and the live one is `services/classPeople.ts`, which
+   reconciles the class form's intent against the people on record. Nothing
+   called this; the rate is still set, on every path that sets it. */
