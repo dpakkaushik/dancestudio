@@ -5,8 +5,9 @@ import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
+import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
@@ -156,7 +157,13 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, f
                     and the honest answer to the question is what the account
                     that leads it follows, which is exactly what a studio's home
                     has printed since 20 Sep. Null draws nothing, never 0. */}
-                <Figure n={followingN} label="Following" testId="crew-following" />
+                {/* ⚠ AND IT OPENS ITS LIST (27 Sep 2026, the user: "following
+                    list not opening properly crew and organization"). It was a
+                    plain `Figure` — a dead number — while Followers beside it
+                    had been a door since that morning. The list is the LEADER's
+                    own, which is whose count this is; `FollowingFigure` says
+                    why it takes no argument. */}
+                <FollowingFigure n={followingN} testId="crew-following" />
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026). No Follow bell:

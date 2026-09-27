@@ -7,8 +7,9 @@ import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEdit
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
+import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
@@ -259,7 +260,11 @@ export function StudioHome({
                     so what is counted is what the account that RUNS it follows —
                     which is the honest answer to the question without inventing
                     a column. Null prints nothing at all. */}
-                <Figure n={followingN} label="Following" testId="studio-following" />
+                {/* ⚠ AND IT OPENS ITS LIST (27 Sep 2026) — the same dead number
+                    the user pressed on a crew's and an organization's home, and
+                    it is fixed on all three rather than on the two complained
+                    about (C36's lesson). The list is the OWNER's own. */}
+                <FollowingFigure n={followingN} testId="studio-following" />
               </>
             }
             /* the chips at the row's right edge (20 Sep 2026) — the studio's own

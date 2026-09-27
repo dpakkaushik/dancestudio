@@ -6,8 +6,9 @@ import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEdit
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { EntityBand } from "@/features/profiles/components/profile-band";
 import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
+import { FollowingFigure } from "@/features/profiles/components/FollowingFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
@@ -149,7 +150,11 @@ export function OrgHome({
                     figure since 20 Sep and an organization's is the same kind of
                     screen. What is counted is what the account that RUNS it
                     follows. Null draws nothing, never 0. */}
-                <Figure n={followingN} label="Following" testId="org-following" />
+                {/* ⚠ AND IT OPENS ITS LIST (27 Sep 2026) — it was a dead number
+                    while Followers beside it had been a door since that
+                    morning. The list is the OWNER's own, which is whose count
+                    this is, and the figure is passed only to an owner. */}
+                <FollowingFigure n={followingN} testId="org-following" />
               </>
             }
             /* QR · SHARE — no Follow bell on your own home, and no Stats chip: the

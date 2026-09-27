@@ -4,11 +4,14 @@ import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PersonOrganization } from "@/repositories/organizationTeam";
 import type { PublicTeamMember } from "@/types/publicProfile";
 import type { PublicPerson } from "@/repositories/publicPerson";
-import type { Tenant } from "@/types/tenant";
 import { photoUrl } from "@/lib/media/photo";
 import { CREW_ROLE_WORD } from "@/types/crew";
 import { MEMBER_ROLE_WORD } from "@/types/staff";
-import { Group, PeopleGroup, PersonChip, Row, SchedIcon, bigWhite } from "./profile-kit";
+/* ⚠ `Group` and `Row` went with the Train group (27 Sep 2026) — every group left
+   on this page is a `PeopleGroup` of chips, which is the user's own shape from
+   the same morning. `Tenant` went with them: nothing here is a business row any
+   more, only associations and chips. */
+import { PeopleGroup, PersonChip, SchedIcon, bigWhite } from "./profile-kit";
 import type { ReactNode } from "react";
 
 /** EVERYTHING UNDER A PERSON'S HERO — WRITTEN ONCE (20 Sep 2026).
@@ -59,7 +62,6 @@ export function PersonBody({
   accent,
   beforeGroups = null,
   omitStudioSeats = false,
-  trainsAt = [],
   organizations = [],
   artistTeam = [],
 }: {
@@ -75,14 +77,6 @@ export function PersonBody({
   /** a group only ONE of the two screens has — an organization's own studios,
    *  which nobody but itself reads (R9) */
   beforeGroups?: ReactNode;
-  /** ⚠ TRAIN IS YOUR OWN PROFILE'S ALONE (21 Sep 2026, the user's answer when
-   *  asked how far to take it: "Own profile only"). Where somebody has TAKEN
-   *  classes comes off their own bookings (`findStudiosAttended`), and a
-   *  booking is private — RLS admits it to the learner and to the studio, and
-   *  nobody else — so publishing it on `/person/{id}` would hand a stranger a
-   *  list of the places somebody dances. The tab passes it; the public page
-   *  never does, and the group is simply not drawn there. */
-  trainsAt?: Tenant[];
   /** ⚠ AN ORGANIZATION'S SEATS ARE ITS OWN STUDIOS (20 Sep 2026, and the e2e
    *  caught it in one line). "Studios associated with" is a person's SEATS on
    *  somebody else's studios; an organization's only seats are the owner rows on
@@ -217,15 +211,15 @@ export function PersonBody({
           classes of LISTED businesses). A studio's trainer who never took the
           Artist plan taught those classes, and the page says so on both screens
           or on neither. */}
-      {/* TRAIN — where they have taken classes. Their own profile only; the
-          comment on `trainsAt` says why. */}
-      {trainsAt.length ? (
-        <Group title="Train" n={trainsAt.length}>
-          {trainsAt.map((t) => (
-            <Row key={t.id} href={`/studio/${t.id}`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ")} />
-          ))}
-        </Group>
-      ) : null}
+      {/* ⚠⚠ TRAIN IS GONE (27 Sep 2026, the user: *"Train section to be removed
+          from profiles"*). It listed where somebody had TAKEN classes, on their
+          own tab alone, and it was the one group on this page that was not an
+          association with anybody — a studio you bought a class from is a
+          receipt, not a relationship, and it read as a fifth kind of team.
+          ⚠ Nothing else changes with it: the read (`findStudiosAttended`) went
+          from `OwnProfileScreen` in the same breath rather than being left
+          making a query nobody draws, which is this repo's own recurring shape
+          met from the other side. */}
 
       {/* ⚠⚠ STUDIOS ARE ONE GROUP WITH A TITLE ON EACH ROW (27 Sep 2026, the
           user: *"User and artist — Crew with Postion, Organization with team

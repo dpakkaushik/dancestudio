@@ -6,6 +6,7 @@ import { CitySelect } from "@/features/geo/components/CitySelect";
 import { useState } from "react";
 import { DosStyleTile } from "@/features/discovery/components/DiscoverFilters";
 import { dosStyleColor } from "@/lib/constants/styles";
+import { Sheet } from "@/features/profiles/components/profile-kit";
 import { CARD, DOS_DISPLAY, DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import type { CalendarEntry } from "@/types/calendar";
 import { CHART_METRICS, CHART_SEGMENTS, CREW_POINT_RULES, POINT_RULES, SIDE_TINT, SIDE_VERB, hoursWords, type ChartMetric, type ChartRow, type ChartSegment, type DanceStats, type HistoryRow, type Side } from "@/types/stats";
@@ -185,6 +186,13 @@ export function StatsScreen({
     ["Studios", studioRows.length, "#14B8A6", studioRows],
   ];
 
+  /** WHICH OF THE FOUR IS OPEN, AND ITS ROWS (27 Sep 2026). Derived from `open`
+   *  rather than held beside it, so the sheet cannot come to show one card's
+   *  heading over another's list — and a card whose rows change under it (the
+   *  side filter re-counts `small` on every render) keeps showing the right
+   *  ones. */
+  const openRows = open ? (small.find(([l]) => l === open) ?? null) : null;
+
   /* WHAT YOU DANCE MOST (10077): the styles, most-danced first, at most eight */
   const styleShelf = (() => {
     const by = new Map<string, number>();
@@ -325,45 +333,66 @@ export function StatsScreen({
               })}
             </div>
 
-            {/* TWO COLUMNS (10050): a name and a number do not need a whole line */}
+            {/* TWO COLUMNS (10050): a name and a number do not need a whole line.
+                ⚠⚠ AND A PRESS OPENS A SHEET, NOT THE GRID ITSELF (27 Sep 2026,
+                the user: *"the grid which show numbers for styles, assisted for,
+                trained under studios etc should open lists like follow following
+                instead of opening and closing inside the stats grid"*).
+                It used to expand IN PLACE — the pressed cell took
+                `gridColumn: "1 / -1"`, so opening one re-flowed the other three
+                around it and the row you had just pressed jumped under your
+                thumb; opening a second closed the first and the whole block
+                changed height twice. The Followers and Following figures three
+                screens away already answer a number with a sheet, and these are
+                the same gesture: a figure, pressed, showing the list behind it.
+                ⚠ The rows are IDENTICAL to what the drawer drew — the numbered
+                two-line row — so nothing about the list changed but where it
+                appears. */}
             {small.length > 0 ? (
               <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "4px 12px", display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 14 }}>
-                {small.map(([l, v, c, rowsFor]) => {
-                  const isOpen = open === l;
-                  return (
-                    <div key={l} style={{ gridColumn: isOpen ? "1 / -1" : "auto", borderBottom: `1.5px solid ${LINE}` }}>
-                      <div role="button" tabIndex={0} aria-label={`${l} — ${v}, open the list`} aria-expanded={isOpen} onKeyDown={pressKey(() => setOpen(isOpen ? null : l))} onClick={() => setOpen(isOpen ? null : l)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 0", cursor: "pointer" }}>
-                        <span style={{ width: 7, height: 7, borderRadius: 4, background: c, flexShrink: 0 }} />
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: 700, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</span>
-                        <span style={{ ...figure, fontSize: 14 }}>{v}</span>
-                        <span style={{ color: MUTED, fontSize: 12, transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .16s", display: "inline-block" }}>›</span>
-                      </div>
-                      {isOpen ? (
-                        <div style={{ padding: "0 0 10px" }}>
-                          {/* ⚠ A ZERO CARD OPENS ON NOTHING, and it has to SAY so
-                              (27 Sep 2026): now that a zero is drawn, pressing
-                              one used to expand a chevron onto an empty box,
-                              which reads as a broken control rather than as an
-                              empty list. */}
-                          {rowsFor.length === 0 ? (
-                            <div style={{ fontSize: 11.5, color: MUTED, padding: "8px 0 2px", borderTop: `1.5px solid ${LINE}` }}>Nothing here yet</div>
-                          ) : null}
-                          {rowsFor.map(([k, sub], i) => (
-                            <div key={k} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: `1.5px solid ${LINE}` }}>
-                              <span style={{ ...figure, fontSize: 10, color: MUTED, width: 18, flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
-                              <span style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{k}</span>
-                                <span style={{ display: "block", fontSize: 10, color: MUTED, marginTop: 1 }}>{sub}</span>
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
+                {small.map(([l, v, c]) => (
+                  <div key={l} style={{ borderBottom: `1.5px solid ${LINE}` }}>
+                    <div role="button" tabIndex={0} aria-label={`${l} — ${v}, open the list`} onKeyDown={pressKey(() => setOpen(l))} onClick={() => setOpen(l)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 0", cursor: "pointer" }}>
+                      <span style={{ width: 7, height: 7, borderRadius: 4, background: c, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: 700, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</span>
+                      <span style={{ ...figure, fontSize: 14 }}>{v}</span>
+                      <span style={{ color: MUTED, fontSize: 12, display: "inline-block" }}>›</span>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             ) : null}
+
+            {/* THE LIST BEHIND THE NUMBER (27 Sep 2026) — the same sheet the
+                Followers and Following figures open, so one gesture answers a
+                figure everywhere in the app. `Sheet` carries `useCloseOnBack`,
+                so system back closes it rather than leaving the page. */}
+            {openRows ? (
+              <Sheet label={openRows[0]} onClose={() => setOpen(null)} maxHeight="78vh">
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+                  <b style={{ fontSize: 16, fontFamily: DOS_DISPLAY }}>{openRows[0]}</b>
+                  <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: MUTED }}>{openRows[3].length}</span>
+                </div>
+                {/* ⚠ A ZERO OPENS ON NOTHING AND HAS TO SAY SO (27 Sep 2026, kept
+                    word for word from the drawer this replaced): now that a zero
+                    IS drawn, a press that opened an empty box read as a broken
+                    control rather than as an empty list. */}
+                {openRows[3].length === 0 ? <div style={{ fontSize: 12, color: SUB, padding: "14px 2px" }}>Nothing here yet</div> : null}
+                {openRows[3].map(([k, sub], i) => (
+                  <div key={k} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "9px 0", borderTop: `1.5px solid ${LINE}` }}>
+                    <span style={{ ...figure, fontSize: 10, color: MUTED, width: 18, flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 12.5, fontWeight: 800 }}>{k}</span>
+                      <span style={{ display: "block", fontSize: 10, color: MUTED, marginTop: 1 }}>{sub}</span>
+                    </span>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setOpen(null)} style={{ width: "100%", marginTop: 12, textAlign: "center", padding: 12, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}>
+                  Done
+                </button>
+              </Sheet>
+            ) : null}
+
             <div style={{ fontSize: 10.5, color: MUTED, lineHeight: 1.5, marginTop: 10 }}>
               Counted off your own sessions — a class you taught or assisted once its session had ended, and a class you were <b style={{ color: SUB }}>checked in</b> to. A booking nobody marked is not a session danced, so it is not counted here.
               {stats.firstSession ? ` Your record runs from ${monthWords(stats.firstSession)} to ${monthWords(stats.lastSession)}.` : " Nothing has happened yet — your first session will start it."}

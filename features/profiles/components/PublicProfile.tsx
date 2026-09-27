@@ -280,9 +280,11 @@ export function PublicProfile({
         {/* ── THE BUTTONS A STUDIO'S PAGE CARRIES (19 Sep 2026): Enquiry · Call · Mail ·
             Location — ONE BLOCK with Follow above them (the user, later that day:
             "all buttons placed together properly"); the Bio follows the block ── */}
-        {/* ⚠ 0 for a visitor (the hero's own 14px bottom padding IS the gap,
-            21 Sep 2026), 6 for the team — whose row follows the strip above. */}
-        <ActionRow marginTop={isMember ? 6 : 0}>
+        {/* ⚠ THE DEFAULT for a visitor, whose row follows the hero directly —
+            −6 since 27 Sep 2026, landing it 8px under the links, which is the
+            band's own step (`ActionRow` carries the measurement). 6 for the
+            team, whose row follows the strip above instead. */}
+        <ActionRow marginTop={isMember ? 6 : undefined}>
           {asksGoHere ? (
             <EnquiryButton
               tenantId={tenant.id}

@@ -110,7 +110,14 @@ export async function findMyEnrollments(supabase: SupabaseClient): Promise<MyEnr
  *  Every business behind one of your bookings, once each, most recent first —
  *  a booking you cancelled still means you were there, so status is not
  *  filtered; a business you can no longer read (unlisted, gone) simply does not
- *  come back through RLS. Says `user_id = auth.uid()` out loud. */
+ *  come back through RLS. Says `user_id = auth.uid()` out loud.
+ *
+ *  ⚠ IT LOST ONE OF ITS TWO CALLERS ON 27 Sep 2026 and KEEPS THE OTHER. The
+ *  Train group on a person's own Profile tab went at the user's word ("Train
+ *  section to be removed from profiles") and this was nearly deleted with it —
+ *  typecheck caught that the **Studios hub** (`/business`, R22's "STUDIOS YOU
+ *  HAVE LEARNT AT") reads it too, which a grep scoped to `repositories/` had
+ *  missed. A tile the user has not asked about is still a caller. */
 export async function findStudiosAttended(supabase: SupabaseClient, userId: string): Promise<Tenant[]> {
   const { data, error } = await supabase
     .from("class_bookings")

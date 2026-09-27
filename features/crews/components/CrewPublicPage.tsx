@@ -178,10 +178,12 @@ export function CrewPublicPage({
         {/* ── THE BUTTONS A CREW'S PAGE CARRIES (19 Sep 2026): Enquiry · Mail — the
             enquiry a celebration, a corporate show or a collaboration, answered by
             the leader from the crew's Inbox ── */}
-        {/* ⚠ 0 for a visitor (the hero's own 14px bottom padding IS the gap,
-            21 Sep 2026), 6 for the crew's own people, whose row follows the
-            strip above. */}
-        <ActionRow marginTop={viewer === "other" ? 0 : 6}>
+        {/* ⚠ THE DEFAULT for a visitor, whose row follows the hero directly —
+            and the default is −6 since 27 Sep 2026, which lands it 8px under the
+            links, the same step the band's own rows take (`ActionRow` carries
+            the measurement). 6 for the crew's own people, whose row follows the
+            strip above instead, and a strip pads nothing. */}
+        <ActionRow marginTop={viewer === "other" ? undefined : 6}>
           {viewer === "other" ? <EnquiryButton tenantId={crew.id} crewId={crew.id} tenantName={crew.name} tenantType="artist_page" signedIn={signedIn} accent={RC} /> : null}
           {/* CALL IS A SWITCH (push 2): the number reaches this page only while the leader's switch is on — the policy on crew_contacts is the switch */}
           {crew.phone && crew.phonePublic ? <CallButton phone={crew.phone} /> : null}

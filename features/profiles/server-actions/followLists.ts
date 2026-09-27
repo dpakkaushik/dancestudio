@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { findCrewFollowers, findTenantFollowers } from "@/repositories/follows";
+import { findCrewFollowers, findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findTenantFollowers } from "@/repositories/follows";
 
 /** ⚠⚠ THE FOLLOWER LIST, READ WHEN IT IS ASKED FOR (27 Sep 2026, the user:
  *  *"fix follow following for all profiles. list should open when clicked from
@@ -62,6 +62,56 @@ export async function loadFollowersAction(raw: unknown): Promise<FollowListResul
             href: `/person/${f.userId}`,
             photoPath: f.avatarPath,
           }));
+    return { error: null, rows };
+  } catch {
+    return { error: "That list could not be read just now.", rows: [] };
+  }
+}
+
+/** ⚠⚠ AND THE OTHER HALF OF THE SAME COMPLAINT (27 Sep 2026, the user:
+ *  *"following list not opening properly crew and organization"*).
+ *
+ *  `loadFollowersAction` above made the FOLLOWERS figure a door on all seven
+ *  surfaces that printed a dead number — and left FOLLOWING a dead number on the
+ *  three entity homes, which is the same bug one column to the right. A crew's
+ *  home, a studio's and an organization's each print a Following figure that is
+ *  the ACCOUNT's own (a crew follows nothing — `follows.follower_id` references
+ *  `profiles`, so there is nothing to follow WITH), and pressing it did nothing
+ *  at all.
+ *
+ *  ⚠ IT TAKES NO ARGUMENT, AND THAT IS THE WHOLE OF ITS SECURITY. There is no
+ *  `p_user_id` to aim at anybody: the four reads below are each scoped to
+ *  `auth.uid()` in their own SQL, so this can only ever answer with the caller's
+ *  own list. That is also why the three homes may draw the door — on every one of
+ *  them the viewer IS the account whose list it is (`requireLedCrew`, and the
+ *  studio and organization pages pass the figure only to an owner).
+ *
+ *  ⚠ THE PUBLIC PAGES DELIBERATELY KEEP A PLAIN FIGURE. On `/studio/{id}` and
+ *  `/person/{id}` the Following count belongs to somebody ELSE, and `follows` has
+ *  no public SELECT policy — so a door there could never open for anybody but
+ *  its owner, and a control that is always empty is worse than no control. Step
+ *  15's rule stands: the count is public, the list is not. */
+export async function loadFollowingAction(): Promise<FollowListResult> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: null, rows: [] };
+  try {
+    const [people, tenants, orgs, crews] = await Promise.all([
+      findMyFollowedPeople(supabase),
+      findMyFollowing(supabase),
+      findMyFollowedOrganizations(supabase).catch(() => []),
+      findMyFollowedCrews(supabase).catch(() => []),
+    ]);
+    /* the same four kinds the person's own sheet lists, in the same order, so
+       the two sheets cannot come to disagree about what "following" means */
+    const rows: FollowListResult["rows"] = [
+      ...people.map((f) => ({ id: f.followId, name: f.name, sub: f.city, href: `/person/${f.userId}`, photoPath: f.avatarPath })),
+      ...tenants.map((t) => ({ id: t.followId, name: t.tenantName, sub: t.tenantType === "studio" ? "Studio" : "Artist", href: `/${t.tenantType === "studio" ? "studio" : "artist"}/${t.tenantId}`, photoPath: null })),
+      ...orgs.map((o) => ({ id: o.followId, name: o.name, sub: "Organization", href: `/org/${o.orgId}`, photoPath: o.photoPath })),
+      ...crews.map((c) => ({ id: c.followId, name: c.name, sub: "Crew", href: `/crew/${c.crewId}`, photoPath: c.photo })),
+    ];
     return { error: null, rows };
   } catch {
     return { error: "That list could not be read just now.", rows: [] };

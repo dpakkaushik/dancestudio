@@ -3,7 +3,6 @@ import { MyProfilePage } from "@/features/profiles/components/MyProfilePage";
 import { headerMaxFor } from "@/lib/media/photo";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { findMyFollowedCrews, findMyFollowedOrganizations, findMyFollowedPeople, findMyFollowing, findMyPersonFollowers } from "@/repositories/follows";
-import { findStudiosAttended } from "@/repositories/enrollments";
 import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findOrganizationsNaming } from "@/repositories/organizationTeam";
@@ -51,7 +50,7 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      is the chrome's now — so the layout reads them once for every page instead
      of this page reading them for one. Two fewer reads here, and the two they
      replaced in the layout ride a batch that was already being awaited. */
-  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, trainsAt, organizations, artistTeam] = await Promise.all([
+  const [followers, followingPeople, followingTenants, followingOrgs, followingCrews, seats, plan, memberships, organizations, artistTeam] = await Promise.all([
     findMyPersonFollowers(supabase),
     findMyFollowedPeople(supabase),
     findMyFollowing(supabase),
@@ -69,12 +68,13 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
        of the five ways the two had drifted. A failed read is no block, never a
        profile that will not open. */
     person.artistPageId ? findMembershipsOnSale(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
-    /* ⚠ TRAIN — WHERE THEY HAVE TAKEN CLASSES (21 Sep 2026, the user's Studios
-       columns). Read HERE and not on the public page, on their own answer when
-       asked: a booking is private, so the group exists on your own view of
-       yourself and on nobody else's view of you. An organization books nothing
-       (R11), so it is not asked. */
-    role === "org" ? Promise.resolve([]) : findStudiosAttended(supabase, userId).catch(() => []),
+    /* ⚠ THE TRAIN READ IS GONE FROM THIS PAGE (27 Sep 2026, the user: "Train
+       section to be removed from profiles"). `findStudiosAttended` was this
+       screen's only reason to query 300 bookings on every visit, and with the
+       group gone it would have been a read nothing drew — the shape this repo
+       keeps finding from the other side (the two Inbox enquiry reads, the same
+       day). ⚠ The FUNCTION stays: the Studios hub still lists where you have
+       learnt (R22), which typecheck is what said out loud. One fewer read here. */
     /* ⚠ THE ORGANIZATIONS THAT NAME THEM (27 Sep 2026) — on YOUR OWN tab this
        carries the private ones too, because a person's own rows are theirs to
        read whatever `org_is_public` says. That is deliberate and it is the same
@@ -99,6 +99,18 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
      page. It is filtered out here so "Your studios" counts studios and the
      Schedule button never points at a page that does not exist. */
   const businesses = seats.filter((m) => m.tenant.type !== "org").map((m) => m.tenant);
+  /* ⚠⚠ WHAT YOU RUN (27 Sep 2026, the user: "user and artist profiles dont show
+     what they own on their profile"). The owner seat, so a studio somebody
+     merely teaches at is not in it — that one is an association and is listed as
+     one, with its seat word, further down the page.
+     ⚠ `type !== "org"` is NOT applied here, unlike `businesses` above: that
+     filter is R15's, written when an organization's only business row was an
+     unlisted EVENT-HOSTING row that had no page and no rooms. Since R48 an
+     organization IS a business a person opens, with a home and a desk of its
+     own, so leaving it out would hide exactly the thing the user could not
+     find. `businesses` keeps the filter because it feeds `scheduleHref`, and an
+     organization has no public schedule to point at. */
+  const owned = seats.filter((m) => m.memberRole === "owner").map((m) => m.tenant);
   /* ⚠ THE "WHICH BUSINESS" PICK LEFT THIS PAGE WITH SETTINGS (21 Sep 2026), and
      it is worth keeping the record of what it was: it read `businesses[0]` —
      the first business you are on the TEAM of — so a person who teaches
@@ -126,8 +138,8 @@ export async function OwnProfileScreen({ userId, loaded }: { userId: string; loa
       followingCrews={followingCrews}
       scheduleHref={scheduleHref}
       businesses={businesses}
+      owned={owned}
       memberships={memberships}
-      trainsAt={trainsAt}
       organizations={organizations}
       artistTeam={artistTeam}
       eventsHostId={null}

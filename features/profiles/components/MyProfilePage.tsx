@@ -24,6 +24,13 @@ import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { EntityBand, figureLabel, figureNum } from "./profile-band";
 import { Group, ROLE_RING, RoleBadge, Row, Sheet, followTint, initialsOf, type FollowGlyph } from "./profile-kit";
+import type { TenantType } from "@/types/tenant";
+
+/** What each kind of thing you run is CALLED on the "What you run" group
+ *  (27 Sep 2026). ⚠ `satisfies`, so a fourth `TenantType` cannot be added
+ *  without this map being told — the `GLYPH` lesson of this same morning, where
+ *  a `Record<string, …>` let two tiles name a key nobody had written. */
+const OWNED_WORD = { studio: "Studio", artist_page: "Artist page", org: "Organization" } satisfies Record<TenantType, string>;
 
 /** THE PROFILE TAB — prototype S_profiletab's OWN render (10565-11400), lifted
  *  whole: the profile lit like a player (the role's colour bleeding off the top;
@@ -67,8 +74,8 @@ export function MyProfilePage({
   followingCrews = [],
   scheduleHref,
   businesses = [],
+  owned = [],
   memberships = [],
-  trainsAt = [],
   organizations = [],
   artistTeam = [],
   eventsHostId = null,
@@ -88,16 +95,19 @@ export function MyProfilePage({
   followingOrgs?: FollowedOrganization[];
   followingCrews?: FollowedCrew[];
   scheduleHref: string | null;
-  /** every business this account runs — an ORGANIZATION's studios, under one hood (8 Sep 2026) */
+  /** every business this account is on the team of — what `scheduleHref` is
+   *  picked from, and nothing else since "What you run" took the list below */
   businesses?: Tenant[];
+  /** ⚠ THE BUSINESSES THIS ACCOUNT **OWNS** (27 Sep 2026) — studios, its artist
+   *  page and organizations alike, public or not yet. A different list from
+   *  `businesses`, which is every seat: the group is about what you RUN, and a
+   *  studio you teach at is not that. The tab's alone — `findMyMemberships` is
+   *  the caller's own read, so there is nothing here a stranger could be shown. */
+  owned?: Tenant[];
   /** what this artist has ON SALE (20 Sep 2026) — the public page has shown it
    *  since 19 Sep and this one showed nothing, which is one of the five ways the
    *  two screens had drifted */
   memberships?: MembershipOnSale[];
-  /** ⚠ THE **TRAIN** GROUP, AND IT IS THIS SCREEN'S ALONE (21 Sep 2026) — a
-   *  booking is private, so where somebody has taken classes is drawn on their
-   *  own tab and never on the public page `PersonBody` also serves. */
-  trainsAt?: Tenant[];
   /** the organizations whose Team desk names this person (27 Sep 2026) — on
    *  their OWN tab this carries the private ones too, because their own rows are
    *  theirs to read; a stranger's view of the same group is public-only */
@@ -339,26 +349,59 @@ export function MyProfilePage({
           isMe
           signedIn
           memberships={memberships}
-          trainsAt={trainsAt}
           organizations={organizations}
           artistTeam={artistTeam}
           scheduleHref={scheduleHref}
           accent={RC}
           /* an organization's only seats are the owner rows on its own studios,
-             and "Your studios" below lists those already — and more completely,
+             and "What you run" below lists those already — and more completely,
              because it carries the unlisted ones too */
           omitStudioSeats={isOrg}
           beforeGroups={
-            /* an ORGANIZATION's studios, under one hood (8 Sep 2026): every one it
-               runs, public or not yet, each a door to its desk. Nobody else sees
-               this list — they see each studio on its own page, and never the
-               organization behind it. */
-            isOrg ? (
-              <Group title="Your studios" n={businesses.length}>
-                {businesses.map((t) => (
-                  <Row key={t.id} href={`/business/${t.id}/classes`} markName={t.name} photo={t.photoPath ? photoUrl(t.photoPath) : null} title={t.name} sub={[t.area, t.city].filter(Boolean).join(", ") || "Studio"} right={t.verifiedAt ? "Verified" : "Not verified yet"} />
+            /* ⚠⚠ WHAT YOU RUN, AND IT IS DRAWN FOR EVERYBODY NOW (27 Sep 2026,
+               the user: *"user and artist profiles dont show what they own on
+               their profile"*).
+               They were right, and the cause is a retirement rather than an
+               omission: this block existed, it was headed "Your studios", and it
+               was gated on `isOrg` — a role **R48 retired on 26 Sep**, so from
+               that migration onward NOBODY matched it and every person's own
+               profile stopped showing the businesses they had opened. The same
+               shape as the dead booking gate found the same day: a value retired
+               from one column leaves every reader of it quietly answering the
+               wrong question.
+               ⚠ IT IS THE ONES YOU **OWN**, not the ones you are on the team of
+               — `owned` is filtered on the owner seat, so a studio you merely
+               teach at stays under "Studios" below with its seat word, where it
+               belongs. And it carries STUDIOS, ARTIST PAGES **and
+               ORGANIZATIONS**, because since R48 all three are businesses a
+               person opens; the old list filtered `type !== "org"` for R15's
+               hosting row, which no longer exists.
+               ⚠ THE UNLISTED ONES ARE HERE ON PURPOSE. This is your own tab and
+               `findMyMemberships` is your own read, so a studio waiting on its
+               badge shows with "Not public yet" on it — which is the one place
+               in the app that answers "where did the studio I just opened go?".
+               A stranger's view of you never draws this group at all. */
+            owned.length ? (
+              <Group title="What you run" n={owned.length}>
+                {owned.map((t) => (
+                  <Row
+                    key={t.id}
+                    href={t.type === "studio" || t.type === "org" ? `/business/${t.id}` : `/business/${t.id}/classes`}
+                    markName={t.name}
+                    photo={t.photoPath ? photoUrl(t.photoPath) : null}
+                    title={t.name}
+                    sub={[t.area, t.city].filter(Boolean).join(", ") || OWNED_WORD[t.type]}
+                    /* ⚠ THE BADGE IS ONLY A FACT FOR THE TWO KINDS THAT ARE
+                       REVIEWED. A studio needs an admin's tick and an
+                       organization a verified GST number before either is
+                       public; an ARTIST PAGE is reviewed by nobody, so
+                       "Not verified yet" on one would be an alarm about a state
+                       that does not exist. `Tenant` carries no `visibility`, so
+                       the badge is what it honestly can be rather than a
+                       listed/unlisted claim the type cannot make. */
+                    right={t.type === "artist_page" || t.verifiedAt ? OWNED_WORD[t.type] : "Not verified yet"}
+                  />
                 ))}
-                <Row href="/business" title="＋ Add studio" sub={businesses.length === 0 ? "Your first studio is opened from the hub" : "Opened from the hub — the same organization, another address"} />
               </Group>
             ) : null
           }

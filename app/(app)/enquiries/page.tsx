@@ -89,10 +89,23 @@ export default async function EnquiriesPage({ searchParams }: { searchParams: Pr
      ⚠ AN ARTIST PAGE IS IN THIS LIST on purpose: an enquiry to an artist is sent
      to the page behind them (`artist_page_of`, 18 Sep), so the kinds it takes —
      the judge one among them — are theirs to set, and this is the only screen
-     that offers it since the Profile tab's own sheet went. */
+     that offers it since the Profile tab's own sheet went.
+
+     ⚠⚠ AND UNSCOPED, IT IS YOUR OWN PROFILE'S AND NOTHING ELSE'S (27 Sep 2026,
+     the user: *"user and artist should see settings for only their profiles not
+     for other profiles created by them in their enquiries section"*). The tile
+     on a PERSON's own grid carries no `?as=`, and this listed every business
+     they owned — so somebody who had opened two studios and an organization
+     pressed their own Enquiries tile and was handed four settings blocks, three
+     of them about businesses with tiles and desks of their own.
+     ⚠ The narrowing is the SETTINGS' alone, deliberately: the unscoped LIST is
+     still everything you are entitled to (that is what a person's own tile
+     opens, and the comment above says so), so you still read a studio's
+     enquiries here — you just set that studio's kinds on that studio's desk,
+     where `?as=` names it. One subject per settings block, always. */
   const settingsFor = memberships
     .filter((m) => m.memberRole === "owner")
-    .filter((m) => !scopedBusiness || m.tenant.id === scopedBusiness)
+    .filter((m) => (scopedBusiness ? m.tenant.id === scopedBusiness : m.tenant.type === "artist_page"))
     .filter(() => !scopedCrew)
     .map((m) => m.tenant);
 

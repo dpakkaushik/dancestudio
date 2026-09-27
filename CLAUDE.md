@@ -2,7 +2,123 @@
 
 ## LAST SESSION (27 Sep 2026) — replaced on every push (Rule 13)
 
-> ### THE THREE HELD MIGRATIONS GO IN, A POSTER BECOMES A PICTURE, AND ENQUIRIES LEAVES THE BAR IT JOINED THIS MORNING (27 Sep 2026, latest) — ⚠ THREE MIGRATIONS APPLIED, THE FOURTH STILL HELD
+> ### THE FOURTH MIGRATION GOES IN AT LAST, AND SIX THINGS THE USER PRESSED (27 Sep 2026, latest) — ⚠ THE HELD MIGRATION APPLIED (dry run **37/37**, rolled back first)
+> The user: *"push live whatever is left  just leave four sanbox items"*, then,
+> mid-run, a list of six: *"following list not opening properly crew and
+> organization, user and artist should see settings for only their profiles not
+> for other profiles created by them in their enquiries section. Train section to
+> be removed from profiles. use and artist profiles dont show what they own on
+> their profile. fix gap between social media links and contact buttons on all
+> profiles. fix stats your records section — the grid which show numbers for
+> styles, assisted for, trained under studios etc should open lists like follow
+> following instead of opening and closing inside the stats grid."*
+> * ⚠⚠ **THE DRY RUN #0at SAID WAS OWED HAS RUN — 37/37, ROLLED BACK — AND TWO OF
+>   ITS THREE REDS WERE THE CHECK, WHICH IS THE 121-POLICIES LESSON IN A SECOND
+>   COAT ON THE SAME DAY.** `npm i -D pg` had failed with ERESOLVE, so
+>   `20260927140000` was the first migration since 16 Sep with no rolled-back
+>   `BEGIN … ROLLBACK` behind it; the module was already in the scratchpad and the
+>   run took one command. ⚠ Its first death was the HARNESS — `crews.updated_by`
+>   is NOT NULL and `set_updated_at` is a BEFORE **UPDATE** trigger, so it never
+>   fires on an insert and a raw plant has to say it out loud. Then it asserted
+>   **"exactly ten functions added"** and listed **eleven**, and **"exactly six
+>   policies"** against a measured **103 → 108**. Both numbers came from the
+>   migration's own header prose, which miscounted its own list (the two notify
+>   triggers are two functions, not one). **Counted off the file: 11 functions,
+>   5 policies** — and that is what the checks say now. ⚠ The 33 real checks were
+>   green from the first run: a member cannot arrange a practice, the leader can,
+>   the confirmed roster is asked and **the leader is not**, a member who has not
+>   confirmed their SEAT is not asked either, only the person asked answers,
+>   pressing check-in twice is one attendance, undo SOFT-deletes, somebody off the
+>   crew reads nothing of it, no insert policy, cancel is a STATUS, all three
+>   notifications land, **anon 45 → 45**, anon granted nothing on the three new
+>   tables, no existing ACL moved, and **no audit column references `auth.users`**.
+> * **APPLIED on the first try**, `db-push -DryRun` listing exactly the one file.
+>   ⚠⚠ **AND THE APP SIDE IS STILL NOT BUILT, WHICH IS SAID RATHER THAN LEFT TO BE
+>   DISCOVERED**: three tables and eleven functions now exist that nothing calls.
+>   Harmless — no screen reads them, no policy widens for anon — and incomplete:
+>   the Practice tile, the crew's Calendar tab and the register are the next slice
+>   (#0at carries what is left).
+> * ⚠⚠ **1 · THE FOLLOWING FIGURE WAS A DEAD NUMBER ON THREE HOMES, AND IT IS THE
+>   SAME BUG AS THIS MORNING'S ONE COLUMN TO THE RIGHT.** `loadFollowersAction`
+>   made FOLLOWERS a door on all seven surfaces that printed a number, and left
+>   FOLLOWING a plain `Figure` — pressing it did nothing at all. `FollowingFigure`
+>   is `FollowerFigure`'s twin. ⚠ **It takes NO ARGUMENT, and that is the whole of
+>   its security**: the four reads behind it are each scoped to `auth.uid()` in
+>   their own SQL, so it can only ever answer with the caller's own list — which
+>   is exactly whose count these homes print (a crew follows nothing; there is
+>   nothing to follow WITH). ⚠ **Fixed on a STUDIO's home too, not just the two
+>   complained about** (C36's lesson), and ⚠ **deliberately NOT on the public
+>   pages**: there the count is somebody else's, `follows` has no public SELECT
+>   policy, and a door that can never open for the person pressing it is worse
+>   than no door. Step 15's rule stands — the count is public, the list is not.
+> * ⚠ **2 · YOUR OWN ENQUIRIES DESK SETTLES YOUR OWN PROFILE'S KINDS.** Unscoped,
+>   `settingsFor` was every business you OWN, so somebody who had opened two
+>   studios and an organization pressed their own Enquiries tile and got four
+>   settings blocks — three about businesses with tiles and desks of their own.
+>   It is the artist page alone now. ⚠ **The LIST is deliberately NOT narrowed**:
+>   unscoped it is still everything you are entitled to, which is what a person's
+>   own tile opens; you just set a studio's kinds on that studio's desk, where
+>   `?as=` names it. One subject per settings block, always.
+> * **3 · TRAIN IS GONE FROM EVERY PROFILE.** It listed where somebody had TAKEN
+>   classes and was their own tab's alone. ⚠ The read went with it — one fewer
+>   300-row query per visit — and ⚠⚠ **nearly took a function that was not dead
+>   with it**: `findStudiosAttended` has a SECOND caller, the Studios hub's
+>   "STUDIOS YOU HAVE LEARNT AT" (R22), and **typecheck is what said so**, because
+>   my caller search was scoped to `repositories/`. A grep that is narrower than
+>   the codebase is a grep that will delete something.
+> * ⚠⚠ **4 · AND WHAT THEY OWN WAS MISSING BECAUSE OF A RETIREMENT, NOT AN
+>   OMISSION.** A person's own profile HAD this block — headed "Your studios" —
+>   and it was gated on `isOrg`, a `profiles.role` **R48 retired on 26 Sep**. So
+>   from that migration onward nobody matched it and every person's profile
+>   stopped showing the businesses they had opened. **That is the dead booking
+>   gate of the same day, in a third place**: a value retired from one column
+>   leaves every reader of it quietly answering the wrong question, and nothing
+>   fails, because what it withholds is a SECTION. It is **What you run** now, for
+>   everybody, off the OWNER seat — studios, the artist page **and organizations**,
+>   since R48 made all three businesses a person opens — carrying the unlisted
+>   ones with "Not verified yet" on them, which is the one place in the app that
+>   answers *"where did the studio I just opened go?"*
+> * ⚠⚠ **5 · THE GAP WAS MEASURED, NOT ARGUED ABOUT — AND IT WAS ALREADY
+>   CONSISTENT, WHICH IS WHY IT STILL LOOKED WRONG.** Two browser probes read the
+>   real painted boxes on a studio's page, an organization's, an artist's and both
+>   own homes: **14px on every one of them**. The 21 Sep fix had taken it from 26
+>   to 14 and stopped there, 14 being the hero's own `padding: "14px 16px"`. What
+>   nobody had measured is the row ABOVE: the band's own last step, styles → links,
+>   is **8px** — so the buttons sat nearly twice as far from the links as the links
+>   sit from the styles, and read as a block that had drifted off the bottom of the
+>   band. `ActionRow`'s default is **−6** now, landing it at 8, and it is negative
+>   because the 14 belongs to the HERO and is right for every page that ends there.
+>   **Re-measured after: 8px on all five surfaces.** ⚠ Two probe readings were
+>   artefacts and are recorded as such — a crew with no links (the probe found its
+>   STYLES row and called 52.6px a crew bug) and edit mode (`LinksRowEditor`
+>   renders `<button>` chips, not anchors, so the rail was not found at all).
+>   **A probe that finds the wrong element reports a bug that is not there.**
+> * **6 · THE RECORD GRID OPENS A SHEET.** The pressed cell used to take
+>   `gridColumn: "1 / -1"`, so opening one re-flowed the other three and the row
+>   you had just pressed jumped under your thumb. It is the same sheet the
+>   Followers and Following figures open three screens away. ⚠ The rows inside are
+>   IDENTICAL to what the drawer drew, and the zero card still opens an honest
+>   "Nothing here yet" rather than an empty box.
+> * **Verified:** typecheck 0 · lint 0 · `next build` green · the dry run **37/37
+>   rolled back**, then applied · **`shoot-hero` 183/183** (181 before — the two
+>   new ones assert the Following figure is a BUTTON and that pressing it opens
+>   the sheet, because a `count() === 1` is 1 for a dead number too) ·
+>   **`shoot-tiles` 155/155**, no page error · **the happy path 20/20** and **the
+>   other 38 specs green** in the whole-suite run on the same bundle, so all 58
+>   across the two, and **the only file changed between them is the spec**.
+> * ⚠ **BOTH REDS ON THE WAY WERE TESTS DESCRIBING DECISIONS THE USER HAD JUST
+>   CHANGED, WHICH IS THE RIGHT KIND.** `happy-path:1215` asserted the Enquiry-types
+>   disclosure on the UNSCOPED desk — re-cut to assert **both ends** (gone there,
+>   present at `?as={studio}`). And `happy-path:1664` clicked History straight
+>   after opening a record card, which worked while the card expanded IN PLACE and
+>   cannot once it is a modal: ⚠ **Playwright reported the scrim as "Target page,
+>   context or browser has been closed"**, which reads as a crash rather than as a
+>   covered link — the call log's `<div> intercepts pointer events` is the tell,
+>   and a probe driving all four sheets found **no console or page error at all**,
+>   which is what separated the two readings.
+> * ⚠ **A STALE `next start` FROM 18:11 WAS HOLDING :3100 — THE SIXTH TIME.**
+
+> ### THE THREE HELD MIGRATIONS GO IN, A POSTER BECOMES A PICTURE, AND ENQUIRIES LEAVES THE BAR IT JOINED THIS MORNING (27 Sep 2026, earlier) — ⚠ THREE MIGRATIONS APPLIED, THE FOURTH STILL HELD
 > The user: *"apply to database and push to live"*, then, mid-run,
 > *"enquiries should not be on navbar a tab in tools for all"* and *"with its
 > setting as well manged from there"*.
@@ -6154,8 +6270,35 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0at. **⚠⚠ A FOURTH MIGRATION WRITTEN AND HELD — AND, UNLIKE THE OTHER THREE, NOT
-   DRY-RUN. `20260927140000_a_crew_practises.sql`.** ⚠ Rule 9: RLS, three new
+0at. **✅ APPLIED 27 Sep 2026 (dry run 37/37, rolled back first) — ⚠⚠ AND ITS APP
+   SIDE IS STILL NOT BUILT, WHICH IS THE WHOLE OF WHAT IS LEFT HERE.**
+   `20260927140000_a_crew_practises.sql` went in on the user's *"push live
+   whatever is left"*, after the dry run `#0at` had demanded finally ran (`pg`
+   was already in the scratchpad; `npm i -D pg` had failed with ERESOLVE the day
+   the file was written). ⚠ Two of its three reds were the CHECK, not the
+   migration — "exactly ten functions" against a measured **eleven**, and
+   "exactly six policies" against a measured **103 → 108** — both numbers copied
+   from this row's own prose below, which miscounts its own list because the two
+   notify triggers are two functions. **Counted off the file: 11 functions,
+   5 policies.** ⚠ Its first death was the harness: `crews.updated_by` is NOT
+   NULL and `set_updated_at` is a BEFORE **UPDATE** trigger, so it never fires on
+   an insert.
+   ⚠⚠ **WHAT IS OWED NOW IS THE WHOLE APP SIDE, and until it exists three tables
+   and eleven functions sit on production that nothing calls** — harmless (no
+   screen reads them, no policy admits anon, `anon 45 → 45`) and incomplete. The
+   user's own sentence is the spec: **a Practice tile on a crew's home** (the
+   leader arranges one, `save_crew_practice` asks every confirmed member), **a
+   register** (`check_in_practice` / `undo_practice_check_in`, the class
+   register's own shape), **the ask answered somewhere** — the Inbox's Requests
+   desk is the app's place for "an ask waiting on you", and a practice is one
+   OCCASION so it falls in the ask group rather than the invitations one
+   (`JOIN_KINDS` already decides that by omission) — **practices on the
+   calendar**, which needs a third `Row` variant beside class and event and a
+   third value on the Classes/Events switch, and **a Calendar tile on the crew's
+   grid**. ⚠ `DOS_TOOLS` has no `practice` entry and `GLYPH` no `practice` glyph;
+   the colour must clear R20's per-grid rule against the crew's four existing
+   tiles (Team 22°, Events 38°, Enquiries 275°, Calendar 187°).
+   **The migration as it went in:** ⚠ Rule 9: RLS, three new
    tables. The user: *"crew should also get an option on home tab called
    Practice — which allows crew leader to create practice which sends invite to
    members and leader can mange attendace like how its done class for the same.
@@ -6179,7 +6322,12 @@ summary; the report has the evidence.
    * ⚠ **NOT PUBLIC.** No anon policy on any of the three and no table grant to
      anon: a crew's page prints its roster and its battle record, and a rehearsal
      schedule is the crew's own business.
-   * **TEN FUNCTIONS**, all authenticated-only: `is_on_crew`, `leads_practice`,
+   * **ELEVEN FUNCTIONS** — nine executable by `authenticated`, and the two
+     notify triggers by NOBODY. ⚠ This line said "TEN … all authenticated-only"
+     and was wrong twice; the dry run's own check copied it and went red on a
+     correct migration, which is the 121-policies lesson of the same morning in a
+     second coat. **Counted off the file, not off the prose:** `is_on_crew`,
+     `leads_practice`,
      `save_crew_practice` (creating ASKS every confirmed member; ⚠ the LEADER is
      not asked, and ⚠ MOVING re-asks nobody — they are TOLD), `cancel_crew_practice`
      (a STATUS, never a delete), `respond_to_practice` (the person asked, only),
@@ -6190,14 +6338,12 @@ summary; the report has the evidence.
      defect that made an account undeletable, and the shape `20260927110000` is
      still waiting to undo on four admin columns.
    ⚠⚠ **WHAT IS OWED BEFORE IT COULD EVER BE APPLIED, said plainly: THE DRY
-   RUN.** `scripts`-side the checks are written (`dryrunPractice.js`, scratchpad —
-   33 checks including the ACL multiset, anon's executable set, the policy count
-   and "no audit FK"), and **it has not run**, because `npm i -D pg` failed with
-   ERESOLVE on this machine. Every migration since 16 Sep has gone in behind a
-   rolled-back `BEGIN … ROLLBACK`; this one has not, so it is **written, not
-   proven**. ⚠ **AND NO APP SIDE IS BUILT** — the Practice tile, the crew's
-   Calendar tab and the register are the slice after the apply, so the file in
-   the repo changes nothing until somebody pushes it.
+   RUN — AND IT HAS RUN, 37/37, ROLLED BACK.** `dryrunPractice.js` (scratchpad)
+   applies the whole file inside `BEGIN … ROLLBACK` and checks it as real roles:
+   the ACL multiset, **anon's executable set 45 → 45**, anon granted nothing on
+   the three new tables, no existing function dropped or its ACL moved, the
+   policy count, "no audit FK", and 33 checks on the behaviour itself. Applied on
+   the first try afterwards, `db-push -DryRun` listing exactly the one file.
 
 0as. **⚠ THE APP-SIDE "WHAT IS LEFT" LIST IS CLOSED (27 Sep 2026, latest).** All
    four items are done and verified: every native `<select>` is an in-app sheet
@@ -7539,6 +7685,32 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE FOURTH MIGRATION GOES IN, AND SIX THINGS THE USER PRESSED — 27 Sep 2026,
+  no step number ⚠ (Rule 9: RLS, three new tables) — THE HELD MIGRATION APPLIED
+  (dry run **37/37**, rolled back first).** On *"push live whatever is left  just
+  leave four sanbox items"*, then a list of six. ⚠⚠ **The dry run `#0at` said was
+  owed finally ran** — `pg` was already in the scratchpad — and **two of its three
+  reds were the CHECK**, asserting ten functions where the file declares eleven
+  and six policies where it declares five, both numbers copied from the
+  migration's own prose: the 121-policies lesson of the same morning, in a second
+  coat. ⚠ **The app side is still not built** and that is said plainly rather than
+  left to be found: three tables and eleven functions nothing calls yet. Then the
+  six. ⚠⚠ **The Following figure was a dead number on three homes** — the twin of
+  this morning's Followers fix, one column to the right — and is a door now, taking
+  **no argument at all**, which is the whole of its security; ⚠ fixed on a studio's
+  home too, and deliberately NOT on the public pages, where the list is somebody
+  else's and could never open. **Your own Enquiries desk settles your own
+  profile's kinds**, not the four businesses you opened. **Train is gone from every
+  profile** — and ⚠⚠ nearly took `findStudiosAttended` with it, which **typecheck**
+  caught still serving the Studios hub. ⚠⚠ **And "what you run" was missing because
+  of a retirement**: the block existed, headed "Your studios", gated on `isOrg` —
+  the role **R48 retired on 26 Sep** — so nobody had matched it for a day. It is
+  **What you run** now, off the owner seat, carrying organizations and the
+  not-yet-public ones. ⚠⚠ **The gap was MEASURED** (14px, already consistent
+  everywhere) against the band's own 8px step and closed to 8; two probe readings
+  were artefacts and are recorded as such. **The record grid opens a sheet.**
+  **typecheck 0 · lint 0 · build green · dry run 37/37 · `shoot-hero` 183/183 ·
+  `shoot-tiles` 155/155 · the happy path 20/20 and the other 38 green, so all 58.**
 - **THE THREE HELD MIGRATIONS GO IN, AND ENQUIRIES LEAVES THE BAR IT JOINED THIS
   MORNING — 27 Sep 2026, no step number ⚠ (Rule 9: one widens what a stranger
   reads, one drops four `auth.users` foreign keys, one adds a storage folder) —
@@ -11887,6 +12059,8 @@ Home. **Do not "restore parity" on these.**
 | C68 | The Inbox is one screen with three desks — Requests · Invites · Enquiries (C61, 27 Sep 2026, earlier the same day) | **ENQUIRIES IS THE FOURTH TAB, AND THE INBOX IS REQUESTS · INVITES · DONE.** An Inbox row is a yes or a no you owe somebody; an enquiry is somebody wanting to BOOK you, and it has a life of its own — a quote, a revision, an advance, won or lost. Sharing a desk made the bar's badge count two unlike things as one number. ⚠ **ONE COMPONENT, TWO DESKS** (`InboxScreen desk=`), not a fork — the cards, the Received/Sent sides and the Done treatment are identical. **And `Done` holds what is over**: answered requests, answered invitations, won and lost enquiries, each desk its own kind. ⚠ It does NOT undo the 19 Sep rule that an answered ask stays — nothing is deleted, the rows MOVE, so a live desk holds only what still needs somebody. "Accepted" is a filled STAMP pill rather than a line of green text where the buttons were | 27 Sep 2026, the user: *"only enquiry becomes a new option in tab and is removed from inbox"* (their own answer when asked which of two readings of "inbox merged into a section on home tab" they meant), and *"sepreate section request , invites and enquiries which are already completed and change the way accepted looks like on cards for all these"*. ⚠ **Enquiry types left Settings with it** — three tiles and the whole BUSINESS block — for the contact ⊕, where the button they govern is made; and the sheet behind them was DELETED, because with the tiles gone nothing could open it and lint cannot see a branch whose parts still reference each other |
 | C69 | R43 (21 Sep 2026): a person's associations are **Train · Teach · Assist · Manage** for studios and **Leader · Member** for crews, each a full-width `Row` | **A PERSON IS A CHIP, AND A PERSON'S PAGE IS FOUR GROUPS** (27 Sep 2026): **Crew · Studios · Artists · Organizations**, each row a squircle face, the name, and **the title beside it**, two to a line (`PersonChip`, `PeopleGroup`) — the same treatment on a studio's, an organization's and a crew's page, with a section per role there. ⚠ **This reverses R43 at the same person's word, and it fixes what R43 caused**: three groups over one fact meant a studio appeared up to THREE times on one page. ⚠ **Nothing is lost** — a SEAT outranks a class, so the row reads the seat's word, and where there is no seat it says "Teaches here" / "Assists here". ⚠ **Train stays, own tab only**: it is where somebody LEARNS, not a team title, and it is a private booking (their own 21 Sep scoping). `CrewRow` is deleted | 27 Sep 2026, the user: *"on all profile pages should only show 1. User and artist- Crew with Postion, Organization with team title, Studios with team Title, Artist with team Title, 2. Studio, Crew and Organization- Simply should show the Team with position. make sure to not take full row for each name here and make squircle boxes with name and role in the right section. all roles should have a seprate section according to profile."* |
 | C70 | C68 (27 Sep 2026, that morning): **Enquiries is the fourth TAB** on the bottom bar, with the Inbox keeping what somebody has asked OF you | **ENQUIRIES IS A TOOL, NOT A TAB — ON ALL FOUR GRIDS** (27 Sep 2026, the same evening): off the bar for a person AND off the entity bar, and a tile on a person's, a studio's, an organization's and a crew's tool grid. ⚠ **The glyph MOVED to `GLYPH.enquiries` rather than being left in `TAB_ICONS`** — the `Stats` lesson from that same morning (an icon nothing drew, found twelve days later only because a type listed the keys), applied within the hour instead. ⚠ **The tile carries `?as=`**, because one desk serves the whole account: without it an owner of two studios would press two tiles onto one undivided list, and the settings would have no subject. Same pointer as the Discover booking gate, re-resolved on the page — **a pointer is never an authority** — and an unresolvable one means "everything you are entitled to", the permissive answer, since narrowing is presentation and the reads are RLS-bounded either way. ⚠⚠ **AND THE SETTINGS MOVED WITH IT**: the Take-enquiries switch and the kinds chips left the contact ⊕ for the desk. They were right in the ⊕ while Enquiries was a BUTTON somebody makes and unmakes; it is a TOOL now, and what you take is the first thing its desk is about. ⚠ `d.enquiry` / `d.kinds` STAY in `ContactEditor` with no control on them — `update_business_profile` takes the whole profile, so a Save there that omitted them would EMPTY the column the desk had just set (the 26 Sep rule, and exactly what `accepts` has done since the Payments desk took those switches). ⚠ A crew gets the tile and NO settings: `send_enquiry` fixes its three kinds and `crews` has no such column | 27 Sep 2026, the user: *"enquiries should not be on navbar a tab in tools for all"*, then *"with its setting as well manged from there"*. ⚠⚠ **And it found a door that had been dead since that morning**: the Earnings ledger's Enquiries revenue row pointed at `/inbox`, which stopped holding enquiries when C68 split them out — found by grepping what the word still points at, not by a run, because **no test presses a revenue row's link and a link that opens the wrong screen fails nothing** |
+| C71 | R43 (21 Sep 2026) gave a person's page a **Train** column — where they have TAKEN classes — and C69 (27 Sep) kept it when the other three collapsed into one: *"Train stays, own tab only"*, because it is where somebody LEARNS rather than a team title | **NO PROFILE DRAWS TRAIN.** The group is gone from `PersonBody`, the `trainsAt` prop with it, and the read (`findStudiosAttended`) off `OwnProfileScreen` — one fewer 300-row query per visit to your own profile. ⚠ The FUNCTION stays: the Studios hub's "STUDIOS YOU HAVE LEARNT AT" (R22) is its other caller, which **typecheck** is what said out loud after a grep scoped to `repositories/` reported it dead | 27 Sep 2026, the user: *"Train section to be removed from profiles"*. It was the one group on the page that was not an association with anybody — a studio you bought a class from is a receipt, not a relationship, and beside four groups of people it read as a fifth kind of team. ⚠ The e2e's existing `Train` absence check on the public page is now true on BOTH screens and says so |
+| C72 | 8 Sep 2026 (R9) gave an ORGANIZATION's own Profile tab a **"Your studios"** group — every studio it ran, public or not — and nobody else | **"What you run", drawn for EVERYBODY**, off the OWNER seat: studios, the artist page **and organizations**, carrying the not-yet-public ones with "Not verified yet" on them. ⚠ The badge is only claimed for the two kinds that are REVIEWED — an artist page is reviewed by nobody, so "Not verified yet" on one would be an alarm about a state that does not exist, and `Tenant` carries no `visibility` for a listed/unlisted claim | 27 Sep 2026, the user: *"user and artist profiles dont show what they own on their profile"*. ⚠⚠ The cause was a RETIREMENT, not an omission: the block was gated on `isOrg`, and **R48 retired that role on 26 Sep**, so from that migration onward nobody matched it and every person's profile silently stopped showing what they had opened — the dead booking gate of the same day, in a third place. ⚠ The tab's alone, because `findMyMemberships` is the caller's own read; a stranger's view of you never draws it |
 
 ### UI parity backlog — gaps vs the prototype, tracked so none is forgotten
 

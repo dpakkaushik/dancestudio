@@ -297,6 +297,22 @@ const enterEdit = async (page) => {
        so what is counted is what the account that RUNS it follows. The
        organization owning this studio exists, so the figure is drawn. */
     check((await hero.getByTestId("studio-following").count()) === 1, "studio home: the Following figure too — the owner's, since a studio has nothing to follow with (20 Sep 2026)");
+    /* ⚠⚠ AND IT OPENS ITS LIST (27 Sep 2026, the user: "following list not
+       opening properly crew and organization"). It was a plain `Figure` — a
+       DEAD NUMBER — while Followers beside it had been a door since that
+       morning, and the check above could not tell the difference because a
+       count is 1 either way. The thing to assert is that it is a BUTTON and
+       that pressing it opens the sheet, which is what the user pressed. */
+    const followingChip = hero.getByTestId("studio-following");
+    check((await followingChip.evaluate((el) => el.tagName)) === "BUTTON", "studio home: the Following figure is a DOOR, not a dead number (27 Sep 2026)");
+    await followingChip.click();
+    /* ⚠ the sheet is on the PAGE, not inside `hero`: it is `position: fixed`
+       over the whole screen, which is the same reason `pick()` looks for a
+       portalled option on the page rather than in its trigger's scope */
+    const followingSheet = org.getByRole("dialog", { name: "Following" });
+    check(await followingSheet.isVisible().catch(() => false), "studio home: pressing it opens the Following sheet, like Followers beside it");
+    await followingSheet.getByRole("button", { name: "Done" }).click();
+    await followingSheet.waitFor({ state: "detached", timeout: 10000 });
     /* ⚠ AND IN THE RIGHT ORDER — figures, THEN the styles (20 Sep 2026). The
        first cut of the band left a studio using `IdentityHero`'s own `styles`
        prop, which renders BEFORE children, so it read styles → figures → links

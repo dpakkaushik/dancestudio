@@ -1208,12 +1208,27 @@ test.describe.serial("DanceOS, end to end", () => {
        Closed, the disclosure states the standing without opening anything; the
        studio takes every kind its type allows, which is what a null column
        MEANS rather than what it holds. */
+    /* ⚠⚠ AND UNSCOPED THEY ARE YOUR OWN PROFILE'S, NOT YOUR STUDIOS' (27 Sep
+       2026, the user: *"user and artist should see settings for only their
+       profiles not for other profiles created by them in their enquiries
+       section"*). This line asserted the disclosure on the UNSCOPED desk and is
+       the decision that changed: a person's own Enquiries tile carries no
+       `?as=`, and it used to hand back a settings block for every business they
+       owned — so somebody who had opened two studios and an organization pressed
+       their own tile and got four of them, three about businesses with tiles and
+       desks of their own.
+       ⚠ BOTH ENDS ARE ASSERTED, because a check that only looks at the new place
+       cannot tell you the old one was cleared: gone from the unscoped desk, and
+       present on the studio's own — which is the address its tile opens. */
+    await expect(owner.getByRole("button", { name: /^Enquiry types/ })).toHaveCount(0);
+    await owner.goto(`/enquiries?as=${tenantId}`);
+    await expect(owner.getByRole("heading", { level: 1, name: "Enquiries" })).toBeVisible();
     /* ⚠ the count is the TYPE's, not a constant: a studio is offered four kinds
        (judging is a person's job), an artist page five, an organization three —
-       and this owner may hold more than one business, so the assertion is that
-       a real count is stated rather than which one. */
+       so the assertion is that a real count is stated rather than which one. */
     await expect(owner.getByRole("button", { name: /^Enquiry types/ }).first()).toBeVisible();
     await expect(owner.getByText(/^\d+ of \d+ kinds$/).first()).toBeVisible();
+    await owner.goto("/enquiries");
     await owner.getByRole("link", { name: `Private Sessions enquiry from ${learnerName}` }).click();
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("WHAT THEY ASKED FOR")).toBeVisible();
@@ -1644,8 +1659,23 @@ test.describe.serial("DanceOS, end to end", () => {
        ⚠ WHAT IS STILL REFUSED IS A RANK OF ZERO, which is a different claim and
        is asserted a few lines down on the board. */
     await expect(learner.getByRole("button", { name: /open the list/ })).toHaveCount(4);
+    /* ⚠⚠ AND A PRESS OPENS A SHEET, NOT THE GRID (27 Sep 2026, the user: *"the
+       grid which show numbers for styles, assisted for, trained under studios
+       etc should open lists like follow following instead of opening and closing
+       inside the stats grid"*). It used to expand IN PLACE — which is why the
+       next line could click History straight afterwards with the list still
+       open, and why this segment went red the moment the sheet arrived: the
+       scrim intercepted the click, and Playwright reported it as the page being
+       closed rather than as a covered link. The sheet IS the decision, so the
+       fix is to close it the way a person does.
+       ⚠ A ZERO CARD OPENS AN HONEST EMPTY SHEET rather than nothing — the rule
+       the drawer carried, kept word for word, and asserted here. */
     await learner.getByRole("button", { name: /^Styles — 0, open the list$/ }).click();
-    await expect(learner.getByText("Nothing here yet")).toBeVisible();
+    const stylesSheet = learner.getByRole("dialog", { name: "Styles" });
+    await expect(stylesSheet).toBeVisible();
+    await expect(stylesSheet.getByText("Nothing here yet")).toBeVisible();
+    await stylesSheet.getByRole("button", { name: "Done" }).click();
+    await expect(stylesSheet).toBeHidden();
     await learner.getByRole("link", { name: "History" }).click();
     await learner.waitForURL(/tab=history/);
     await expect(learner.getByText("Nothing on the record yet")).toBeVisible();
@@ -1704,16 +1734,18 @@ test.describe.serial("DanceOS, end to end", () => {
        group with the team title on the row — *"Studios with team Title"* — so
        the two facts are one row, keyed by the studio's id, and the SEAT's word
        is what it reads because a seat is what the studio calls you.
-       ⚠ **Train** is still deliberately not here: it is where somebody has TAKEN
-       classes, which is a private booking, so it is their own tab's alone and
-       never on a stranger's view of them. The check asserts its absence too,
-       because a group only missing by accident would look the same. */
+       ⚠ **Train** IS GONE FROM EVERY PROFILE (27 Sep 2026, the user: *"Train
+       section to be removed from profiles"*). It was where somebody had TAKEN
+       classes and it was their own tab's alone, because a booking is private —
+       the check below asserted its absence HERE for that reason, and it now
+       asserts something stronger for a simpler one: no profile draws it at all.
+       A studio you bought a class from is a receipt, not a relationship. */
     await expect(learner.getByRole("link", { name: new RegExp(`^Open ${studioName}`) })).toHaveCount(1);
     /* ⚠ ONE "Studios" GROUP SINCE 27 Sep 2026, with the title on the row. The
        two facts this pair used to assert separately — they TEACH here and they
        hold a SEAT here — are one row now, and a seat outranks a class, so the
-       row reads the seat's word. ⚠ TRAIN is still the OWN TAB's alone, which is
-       what the third line has always been for. */
+       row reads the seat's word. ⚠ And the third line is now true on BOTH
+       screens rather than on this one alone (see above). */
     await expect(learner.getByText("Studios", { exact: true })).toBeVisible();
     await expect(learner.getByText("Teach", { exact: true })).toHaveCount(0);
     await expect(learner.getByText("Train", { exact: true })).toHaveCount(0);

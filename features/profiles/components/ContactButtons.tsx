@@ -93,17 +93,28 @@ export function LocationButton({ query, href }: { query?: string; href?: string 
 /** As many equal cells as there are acts (10875) — nothing is drawn when there
  *  are none, so a page never carries an empty row.
  *
- *  ⚠ THE DEFAULT GAP IS 0, AND THAT IS THE ANSWER TO A REAL COMPLAINT (21 Sep
- *  2026, the user: "remove gap between social media links and buttons on home
- *  and profile for all"). Every one of the eight callers draws this row
- *  DIRECTLY AFTER `</IdentityHero>`, and the hero's own content sits in
- *  `padding: "14px 16px"` — so a `marginTop: 12` here put **26px** between the
- *  links row and the buttons where the band's own rows sit 12 apart. The 14 the
- *  hero already spends is the gap; anything this row adds is the gap twice.
- *  A caller whose row follows something ELSE (a member's "You are on this
- *  team" strip) passes its own small value, which is why this is a default
- *  rather than a constant. */
-export function ActionRow({ children, gap = 6, marginTop = 0 }: { children: ReactNode; gap?: number; marginTop?: number }) {
+ *  ⚠⚠ THE DEFAULT IS −6, AND IT IS THE SECOND ANSWER TO THE SAME COMPLAINT.
+ *  21 Sep 2026, the user: *"remove gap between social media links and buttons on
+ *  home and profile for all"* — the default went from 12 to 0, because every one
+ *  of the callers draws this row DIRECTLY AFTER `</IdentityHero>` whose content
+ *  sits in `padding: "14px 16px"`, so a `marginTop: 12` was spending the same
+ *  space twice and put 26px there.
+ *  27 Sep 2026, the same user: *"fix gap between social media links and contact
+ *  buttons on all profiles"* — because 0 left the hero's own **14px**, and it was
+ *  MEASURED at exactly 14 on a studio's page, an organization's, an artist's and
+ *  both own homes (`gap2.js` / `gap3.js`, scratchpad). Consistent, and still
+ *  wrong: the band's own last step — the styles row to the links row — is **8px**
+ *  (`LINKS_ROW.marginTop`), so the buttons sat nearly twice as far from the links
+ *  as the links sit from the styles, and read as a separate block that had
+ *  drifted off the bottom of the band rather than as its last row.
+ *  ⚠ So the number is not a taste: −6 lands the row at 8px below the links, which
+ *  is the rhythm of the row above it. It is negative because the 14 belongs to
+ *  the HERO and is right for every page that ends there — reducing the hero's own
+ *  padding would move every screen in the app to fix four.
+ *  A caller whose row follows something ELSE (a member's "You are on this team"
+ *  strip, which is outside the hero and pads nothing) passes its own small
+ *  positive value, which is why this is a default rather than a constant. */
+export function ActionRow({ children, gap = 6, marginTop = -6 }: { children: ReactNode; gap?: number; marginTop?: number }) {
   /* `Children.toArray` drops the nulls a `cond ? <X/> : null` leaves behind */
   const cells = Children.toArray(children);
   if (cells.length === 0) return null;
