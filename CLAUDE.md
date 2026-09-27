@@ -80,6 +80,13 @@
 >   trap this file has recorded twice — so the failure was legible only because
 >   the whole reporter had been piped to a FILE. **Always the file, and grep
 >   that.**
+>   **PUSHED AND LIVE (`79ca588`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-tiles.js` 155/155 against the live host**, no page error · and
+>   **`shoot-practice.js` 27/27 ON THE DEPLOYMENT** — two real accounts, a real
+>   crew, the practice arranged, asked, answered, checked in, undone, on both
+>   calendars and called off, all against the live bundle.
 
 > ### THE FOURTH MIGRATION GOES IN AT LAST, AND SIX THINGS THE USER PRESSED (27 Sep 2026, earlier) — ⚠ THE HELD MIGRATION APPLIED (dry run **37/37**, rolled back first)
 > The user: *"push live whatever is left  just leave four sanbox items"*, then,
