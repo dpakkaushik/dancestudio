@@ -8,8 +8,11 @@ import { respondToVenueRequestAction } from "@/features/classes/server-actions/c
 import { respondToCrewAskAction, respondToPartnerAskAction, withdrawCrewAskAction } from "@/features/crews/server-actions/crews";
 import { respondToOrganizationAskAction, withdrawOrganizationAskAction } from "@/features/organization/server-actions/team";
 import { acceptInviteAction, declineInviteAction, revokeInviteAction } from "@/features/staff/server-actions/staff";
-import { FigureHead } from "@/components/ui/FigureHead";
+import { ClassTile } from "@/features/classes/components/ClassTile";
+import { EventCard } from "@/features/events/components/EventCard";
 import { DOS_DISPLAY, DOS_UI, LILAC, PINK } from "@/lib/design/tokens";
+import type { DanceClass } from "@/types/class";
+import type { DanceEvent } from "@/types/event";
 import {
   ENQ_STAGES,
   ENQ_STAGE_WORD,
@@ -23,18 +26,21 @@ import {
   type EnquiryStatus,
   type EnquiryTypeKey,
 } from "@/types/enquiry";
-import { DOS_MONO, EnqIcon, agoWords, initialsOf, moneyShort, pressKey } from "./inbox-kit";
+import { DOS_MONO, EnqIcon, agoWords, dateWords, initialsOf, moneyShort, pressKey } from "./inbox-kit";
 
 /** The Inbox, lifted from prototype S_chats (5617-6098) after internal chat was
  *  removed from the product: "what remains is the work — something somebody has
  *  asked of you, and something somebody wants to book. The badge counts only
- *  what waits on YOU." Two desks — Requests and Enquiries — and All, which is
- *  every outstanding item across the two, newest first.
+ *  what waits on YOU." THREE desks (27 Sep 2026) — **Requests** (what somebody
+ *  wants you FOR: a class, a room, a duet), **Invites** (what somebody wants
+ *  you to BELONG to: a team, a crew, an organization) and **Enquiries**
+ *  (somebody wanting to book you).
  *
- *  Requests are rows that already exist: class claims (Step 11) and team invites
- *  (Step 12b), each with two sides. RECEIVED is somebody claiming YOU; SENT is
- *  what your business has asked of other people and is still waiting on.
- *  Enquiries are Step 18's own rows. Left out, tracked in the backlog: studio
+ *  Requests and Invites are rows that already exist: class claims (Step 11),
+ *  team invites (Step 12b), crew and duet asks (Step 22), room asks (18 Sep),
+ *  organization asks (push 2). Each has two sides: RECEIVED is somebody asking
+ *  YOU; SENT is what you or your business asked of other people and are still
+ *  waiting on. Enquiries are Step 18's own rows. Left out, tracked in the backlog: studio
  *  rental requests (S_rentals), the Remind button (needs notifications, Step
  *  24), and the inline quote controls on the list card — the prototype's own
  *  detail page supersedes them ("A QUOTE IS A CONVERSATION, NOT A FIELD"). */
@@ -72,6 +78,16 @@ export interface RequestItem {
    *  get removed after accepting"): an answered ask stays on the desk with its
    *  answer on it; only an `asked` row carries the buttons. Absent = asked. */
   status?: "asked" | "confirmed" | "rejected";
+  /** ⚠ THE THING ITSELF, SO THE DESK CAN DRAW ITS OWN CARD (27 Sep 2026, the
+   *  user: *"event and class request cards should also look like class and
+   *  event cards on discover with accept and reject buttons"*). A class ask and
+   *  a room ask carry the CLASS; a duet ask carries the EVENT. Both are the
+   *  same objects Discover draws, through the same two components — so an ask
+   *  about a class cannot end up describing it differently from the shelf it
+   *  came off. Absent only when the row could not be read, and then the card
+   *  falls back to the plain row. */
+  danceClass?: DanceClass | null;
+  event?: DanceEvent | null;
 }
 
 const KIND_WORD: Record<RequestItem["kind"], string> = { claim: "class", invite: "team", crew: "crew", partner: "duet", venue: "room", orgteam: "organization" };
@@ -147,7 +163,7 @@ export function InboxScreen({
   nowIso: string;
 }) {
   const router = useRouter();
-  const [sect, setSect] = useState<"all" | "req" | "enq">("all");
+  const [sect, setSect] = useState<"req" | "join" | "enq">("req");
   const [rqSide, setRqSide] = useState<"in" | "out">("in");
   const [enqSide, setEnqSide] = useState<"in" | "out">("in");
   const [enqType, setEnqType] = useState<"all" | EnquiryTypeKey>("all");
@@ -176,36 +192,27 @@ export function InboxScreen({
   };
 
   const newIn = enquiriesIn.filter((e) => enquiryStage(e) === "new");
-  const SECT: Array<["all" | "req" | "enq", string, number, string]> = [
-    ["all", "All", requestsIn.length + newIn.length, PINK],
-    ["req", "Requests", requestsIn.length, "#DC2626"],
+  /** ⚠⚠ THREE COLUMNS, AND NO "ALL" (27 Sep 2026, the user: *"fix inbox —
+   *  different columns for join team requests … remove column with all request
+   *  and enquiries together"*).
+   *
+   *  All was a fourth list that held a flattened copy of the other two, one row
+   *  shape for four different objects, and no way to answer anything from it —
+   *  you pressed a row to be taken to the desk that could. A desk you cannot
+   *  act on is a table of contents, and the three pills above it already are
+   *  one. **Requests** is what somebody wants you FOR (a class, a room, a
+   *  duet); **Invites** is what somebody wants you to BELONG to; **Enquiries**
+   *  is somebody wanting to book you. */
+  const askIn = requestsIn.filter((r) => !isJoin(r));
+  const askOut = requestsOut.filter((r) => !isJoin(r));
+  const joinIn = requestsIn.filter(isJoin);
+  const joinOut = requestsOut.filter(isJoin);
+  const SECT: Array<["req" | "join" | "enq", string, number, string]> = [
+    ["req", "Requests", askIn.length, "#DC2626"],
+    ["join", "Invites", joinIn.length, JOIN_TINT.invite ?? PINK],
     ["enq", "Enquiries", newIn.length, "#EC4899"],
   ];
   const owed = requestsIn.length + newIn.length;
-
-  /* ── the combined desk: every outstanding item from both desks, newest first ── */
-  const allItems = [
-    ...requestsIn.map((r) => ({
-      key: `${r.kind}-${r.id}`,
-      who: r.who,
-      /* an invitation is not a request, and the combined desk should not call
-         it one — it is the word the section below it uses (27 Sep 2026) */
-      what: isJoin(r) ? `invitation to join` : `${r.what} request`,
-      note: r.subjectTitle,
-      at: r.at,
-      tint: isJoin(r) ? JOIN_TINT[r.kind] ?? REQ_TINT : REQ_TINT,
-      href: null as string | null,
-    })),
-    ...newIn.map((e) => ({
-      key: `enq-${e.id}`,
-      who: e.fromName,
-      what: `${enquiryTypeOf(e.typeKey)?.label ?? e.typeKey} enquiry`,
-      note: e.message,
-      at: e.createdAt,
-      tint: ENQ_TINT[e.typeKey],
-      href: `/inbox/enquiries/${e.id}` as string | null,
-    })),
-  ].sort((a, b) => b.at.localeCompare(a.at));
 
   /* one answer per kind — the RPC behind each decides who may give it */
   const answer = (r: RequestItem, accept: boolean) =>
@@ -234,6 +241,108 @@ export function InboxScreen({
             : r.kind === "orgteam"
               ? withdrawOrganizationAskAction({ memberId: r.memberId! })
               : Promise.resolve({ error: "A duet entry is withdrawn from the event page" });
+
+  /** THE TWO ANSWERS, AS AN ACTION ROW UNDER A CARD (27 Sep 2026) — the same
+   *  buttons the row card carries, lifted out so the class card and the event
+   *  card can wear them without a third copy. */
+  const askActions = (r: RequestItem) => {
+    if (r.status && r.status !== "asked") {
+      return (
+        <div style={{ flex: 1, fontSize: 11, fontWeight: 900, padding: "4px 2px", color: r.status === "confirmed" ? "#22C55E" : "#F87171" }}>
+          {r.status === "confirmed" ? (r.dir === "in" ? "✅ Accepted — you said yes" : `✅ Accepted by ${r.who}`) : r.dir === "in" ? "✕ Rejected — you said no" : `✕ Rejected by ${r.who}`}
+        </div>
+      );
+    }
+    if (r.dir === "in") {
+      return (
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            aria-label={`Reject ${r.subjectTitle}`}
+            onClick={() => void run(() => answer(r, false), `Rejected · ${r.who} has been told`)}
+            style={{ flex: 1, textAlign: "center", padding: 11, borderRadius: 999, background: "var(--el)", color: "var(--text)", fontWeight: 800, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            aria-label={`Accept ${r.subjectTitle}`}
+            onClick={() => void run(() => answer(r, true), `✅ Accepted · you are ${r.what} on ${r.subjectTitle}`)}
+            style={{ flex: 1.3, textAlign: "center", padding: 11, borderRadius: 999, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
+          >
+            Accept
+          </button>
+        </>
+      );
+    }
+    return (
+      <>
+        <div style={{ flex: 1, fontSize: 10.5, color: "#F59E0B", fontWeight: 800, alignSelf: "center" }}>⏳ Waiting on {r.who}</div>
+        <button
+          type="button"
+          disabled={busy}
+          aria-label={`Withdraw ${r.subjectTitle}`}
+          onClick={() => void run(() => withdraw(r), `Withdrawn — ${r.who} is no longer being asked`)}
+          style={{ flexShrink: 0, textAlign: "center", padding: "11px 16px", borderRadius: 999, background: "var(--el)", color: "var(--text)", fontWeight: 800, fontSize: 12.5, cursor: "pointer", border: "none", fontFamily: "inherit" }}
+        >
+          Withdraw
+        </button>
+      </>
+    );
+  };
+
+  /** THE LINE THAT SAYS WHOSE ASK IT IS, over the card — a card says what the
+   *  class or the event IS and cannot say who is asking you to be on it. */
+  const askWho = (r: RequestItem) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7 }}>
+      <span style={{ width: 26, height: 26, borderRadius: 9, flexShrink: 0, background: "linear-gradient(135deg,#8B5CF6,#EC4899)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10.5, fontWeight: 900 }}>{initialsOf(r.who)}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--sub)", lineHeight: 1.4 }}>
+        {r.dir === "in" ? (
+          <>
+            <b style={{ color: "var(--text)" }}>{r.who}</b> wants you as <b style={{ color: REQ_TINT }}>{r.what}</b>
+          </>
+        ) : (
+          <>
+            you asked <b style={{ color: "var(--text)" }}>{r.who}</b> as <b style={{ color: REQ_TINT }}>{r.what}</b>
+          </>
+        )}
+      </span>
+      <span style={{ flexShrink: 0, fontSize: 9.5, color: "var(--muted)" }}>{agoWords(r.at, nowIso)}</span>
+    </div>
+  );
+
+  /** ⚠⚠ A CLASS ASK IS A CLASS CARD AND AN EVENT ASK IS AN EVENT CARD (27 Sep
+   *  2026, the user's own words). They were a violet row of the Inbox's own
+   *  invention — a meta table of What / When / Asked by — describing a thing
+   *  the app already knows how to draw. So the desk draws `ClassTile` and
+   *  `EventCard`, the same two components Discover uses, with Accept and
+   *  Reject as their action row. An ask about a class can no longer describe it
+   *  differently from the shelf it came off.
+   *  ⚠ The plain row survives as the FALLBACK for a card that could not be
+   *  read — never as the normal case. */
+  const askCard = (r: RequestItem) => {
+    if (r.danceClass) {
+      return (
+        <div key={`${r.kind}-${r.id}`} data-testid="request-row" style={{ marginBottom: 12 }}>
+          {askWho(r)}
+          <ClassTile danceClass={r.danceClass} href={r.href ?? undefined} roleLabel={r.what.toUpperCase()} actions={askActions(r)} />
+          {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", margin: "2px 2px 0", lineHeight: 1.45 }}>{r.note}</div> : null}
+        </div>
+      );
+    }
+    if (r.event) {
+      return (
+        <div key={`${r.kind}-${r.id}`} data-testid="request-row" style={{ marginBottom: 12 }}>
+          {askWho(r)}
+          <EventCard event={r.event} href={r.href ?? undefined} actions={askActions(r)} />
+          {r.note ? <div style={{ fontSize: 10.5, color: "var(--muted)", margin: "2px 2px 0", lineHeight: 1.45 }}>{r.note}</div> : null}
+        </div>
+      );
+    }
+    return requestCard(r);
+  };
 
   const requestCard = (r: RequestItem) => {
     const c = REQ_TINT;
@@ -438,16 +547,94 @@ export function InboxScreen({
     );
   };
 
-  /** the heading over each section — drawn only when the OTHER section has
-      something too, because one heading over the only list on the screen is a
-      label nobody needs (the app's own "no figure, no rule" rule, one level up) */
-  const sectionHead = (title: string, n: number) => (
-    <FigureHead
-      margin="2px 0 9px"
-      title={<span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", textTransform: "uppercase" }}>{title}</span>}
-      figure={<span style={{ fontFamily: DOS_MONO, fontSize: 10.5, fontWeight: 600, color: "var(--sub)" }}>{n}</span>}
-    />
+  /** RECEIVED · SENT, written once for the two columns that have two sides.
+   *  ⚠ `rqSide` is deliberately SHARED between Requests and Invites: they are
+   *  the same question about two kinds of thing, and a person reading their
+   *  sent asks who switches to Invites means the sent ones there too. */
+  const sideSwitch = (cur: "in" | "out", set: (s: "in" | "out") => void, nIn: number, nOut: number, noun: string, tint: string) => (
+    <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+      {(
+        [
+          ["in", "Received", nIn],
+          ["out", "Sent", nOut],
+        ] as Array<["in" | "out", string, number]>
+      ).map(([k, l, n]) => (
+        <div key={k} role="button" tabIndex={0} aria-pressed={cur === k} aria-label={`${l} ${noun}`} onKeyDown={pressKey(() => set(k))} onClick={() => set(k)} style={{ flex: 1, textAlign: "center", padding: "9px 6px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: cur === k ? "var(--text)" : "var(--card)", color: cur === k ? "var(--solid)" : "var(--sub)", border: "1.5px solid var(--el)" }}>
+          {l}
+          {n > 0 ? <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 900, padding: "1px 6px", borderRadius: 999, fontFamily: DOS_MONO, background: cur === k ? "var(--solid)" : tint, color: cur === k ? "var(--text)" : "#fff" }}>{n}</span> : null}
+        </div>
+      ))}
+    </div>
   );
+
+  /** ⚠⚠ AN ENQUIRY IS A CARD TOO (27 Sep 2026, the user: *"enquiries cards to
+   *  be also made in similar design"*), on the JOIN card's anatomy rather than
+   *  the class card's — because there IS no enquiry card elsewhere in the app
+   *  to borrow, and an enquiry is the same shape of thing as an invitation: a
+   *  proposal, in somebody's own words, that leads with WHAT and says who
+   *  underneath.
+   *
+   *  What it drops from the old row, deliberately: the **meta table of every
+   *  field**. An enquiry carries up to five, so the row was a wall of
+   *  label/value pairs on a list that is meant to be scanned — and the detail
+   *  page one tap away has WHAT THEY ASKED FOR in full, which is where a table
+   *  belongs. The card keeps the ONE field that says what this is (the first,
+   *  which every type makes its occasion) as the headline, and the rest as a
+   *  quiet line.
+   *  ⚠ The accessible name is unchanged, so every locator that found the old
+   *  row finds this. */
+  const enquiryCard = (e: Enquiry) => {
+    const stage = enquiryStage(e);
+    const tc = ENQ_TINT[e.typeKey];
+    const c = stage === "won" || stage === "confirmed" || stage === "advance_paid" ? "#22C55E" : stage === "lost" ? "#F87171" : stage === "quoted" ? "#F59E0B" : "#3B82F6";
+    const label = enquiryTypeOf(e.typeKey)?.label ?? e.typeKey;
+    const who = enqSide === "out" ? e.tenantName : e.fromName;
+    const value = enquiryValueInr(e);
+    /* the occasion — every type's first field is what the thing IS ("Wedding",
+       "Brand shoot", "One-on-one"); a type with none falls back to its label */
+    const fields = e.fields.filter(([k]) => k !== "Enquiry");
+    const headline = fields[0]?.[1] ?? label;
+    const rest = fields.slice(1).map(([k, v]) => `${k}: ${v}`);
+    const when = e.dates.length ? `${dateWords(e.dates[0])}${e.dates.length > 1 ? ` +${e.dates.length - 1}` : ""}` : null;
+    return (
+      <Link
+        key={e.id}
+        href={`/inbox/enquiries/${e.id}`}
+        aria-label={`${label} enquiry ${enqSide === "out" ? "to" : "from"} ${who}`}
+        style={{ display: "block", background: "var(--card)", border: `1.5px solid ${tc}55`, borderRadius: 18, padding: "13px 14px", marginBottom: 10, boxShadow: `0 2px 10px ${tc}14`, color: "var(--text)", textDecoration: "none" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 9 }}>
+          <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, background: `${tc}1f`, border: `1.5px solid ${tc}66`, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            <EnqIcon k={e.typeKey} size={15} color={tc} sw={2} />
+          </span>
+          <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.9, color: tc, textTransform: "uppercase" }}>Enquiry · {label}</span>
+          <span style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--muted)" }}>{agoWords(e.createdAt, nowIso)}</span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1.15, fontFamily: DOS_DISPLAY, overflowWrap: "anywhere" }}>{headline}</div>
+            <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 4 }}>
+              {enqSide === "out" ? "you asked " : "from "}
+              <b style={{ color: "var(--text)" }}>{who}</b>
+            </div>
+          </div>
+          {/* WHAT IT IS WORTH AND WHERE IT STANDS — the two figures a desk of
+              these is scanned for, set like figures (10683) */}
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 900, fontFamily: DOS_MONO, color: value ? c : "var(--muted)" }}>{value ? moneyShort(value) : "—"}</div>
+            <span style={{ display: "inline-block", marginTop: 3, fontSize: 9, fontWeight: 900, letterSpacing: 0.4, padding: "3px 8px", borderRadius: 999, background: `${c}1e`, border: `1.5px solid ${c}55`, color: c, textTransform: "uppercase" }}>{ENQ_STAGE_WORD[stage]}</span>
+          </div>
+        </div>
+
+        {when || e.whereText || rest.length ? (
+          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 7, lineHeight: 1.5 }}>{[when, e.whereText, ...rest].filter(Boolean).join(" · ")}</div>
+        ) : null}
+        <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 7, lineHeight: 1.45, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>“{e.message}”</div>
+        <span style={{ display: "inline-block", marginTop: 8, fontSize: 10.5, fontWeight: 800, color: tc }}>Open the conversation ›</span>
+      </Link>
+    );
+  };
 
   /* ── enquiries desk ── */
   const side = enqSide === "out" ? enquiriesOut : enquiriesIn;
@@ -493,81 +680,31 @@ export function InboxScreen({
       <div style={{ padding: "0 16px", position: "relative" }}>
         {error ? <div style={{ fontSize: 11.5, color: "#F87171", marginBottom: 10 }}>{error}</div> : null}
 
-        {sect === "all" ? (
-          allItems.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "46px 20px" }}>
-              <div style={{ fontSize: 30, marginBottom: 8 }}>✓</div>
-              <div style={{ fontSize: 14, fontWeight: 900 }}>Nothing waiting on you</div>
-              <div style={{ fontSize: 11.5, color: "var(--sub)", marginTop: 5 }}>Requests and enquiries land here as they arrive.</div>
-            </div>
-          ) : (
-            allItems.map((it) => {
-              const body = (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 5 }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, background: `${it.tint}22`, color: it.tint, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900 }}>{initialsOf(it.who)}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.who}</div>
-                      <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, color: it.tint, textTransform: "uppercase" }}>{it.what}</div>
-                    </div>
-                    <span style={{ fontSize: 9.5, color: "var(--muted)", flexShrink: 0 }}>{agoWords(it.at, nowIso)}</span>
-                  </div>
-                  {it.note && it.note !== it.who ? <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.note}</div> : null}
-                </>
-              );
-              const style: React.CSSProperties = { display: "block", background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${it.tint}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, cursor: "pointer", color: "var(--text)", textDecoration: "none" };
-              return it.href ? (
-                <Link key={it.key} href={it.href} aria-label={`Open the ${it.what} from ${it.who}`} style={style}>
-                  {body}
-                </Link>
-              ) : (
-                <div key={it.key} role="button" tabIndex={0} aria-label={`Open the ${it.what} from ${it.who}`} onKeyDown={pressKey(() => setSect("req"))} onClick={() => setSect("req")} style={style}>
-                  {body}
-                </div>
-              );
-            })
-          )
-        ) : null}
-
         {sect === "req" ? (
           <>
-            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-              {(
-                [
-                  ["in", "Received", requestsIn.length],
-                  ["out", "Sent", requestsOut.length],
-                ] as Array<["in" | "out", string, number]>
-              ).map(([k, l, n]) => (
-                <div key={k} role="button" tabIndex={0} aria-pressed={rqSide === k} aria-label={`${l} requests`} onKeyDown={pressKey(() => setRqSide(k))} onClick={() => setRqSide(k)} style={{ flex: 1, textAlign: "center", padding: "9px 6px", borderRadius: 12, cursor: "pointer", fontSize: 11.5, fontWeight: 800, background: rqSide === k ? "var(--text)" : "var(--card)", color: rqSide === k ? "var(--solid)" : "var(--sub)", border: "1.5px solid var(--el)" }}>
-                  {l}
-                  {n > 0 ? <span style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 900, padding: "1px 6px", borderRadius: 999, fontFamily: DOS_MONO, background: rqSide === k ? "var(--solid)" : REQ_TINT, color: rqSide === k ? "var(--text)" : "#fff" }}>{n}</span> : null}
-                </div>
-              ))}
-            </div>
-            {(rqSide === "in" ? requestsIn : requestsOut).length === 0 ? (
+            {sideSwitch(rqSide, setRqSide, askIn.length, askOut.length, "requests", REQ_TINT)}
+            {(rqSide === "in" ? askIn : askOut).length === 0 ? (
               <div style={emptyBox}>
                 <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>
-                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{rqSide === "in" ? "Nobody is asking you to confirm anything right now." : "You have not asked anybody to confirm anything."}</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{rqSide === "in" ? "Nobody has asked you onto a class, a room or a duet." : "You have not asked anybody onto a class, a room or a duet."}</div>
               </div>
-            ) : null}
-            {/* TWO SECTIONS (27 Sep 2026): what somebody wants you for, then what
-                somebody wants you to belong to. Headings only when both are on
-                the screen — one heading over the only list there is is noise. */}
-            {(() => {
-              const list = rqSide === "in" ? requestsIn : requestsOut;
-              const asks = list.filter((r) => !isJoin(r));
-              const joins = list.filter(isJoin);
-              const both = asks.length > 0 && joins.length > 0;
-              return (
-                <>
-                  {both ? sectionHead("Classes & events", asks.length) : null}
-                  {asks.map(requestCard)}
-                  {both ? <div style={{ height: 6 }} /> : null}
-                  {both ? sectionHead("Invitations to join", joins.length) : null}
-                  {joins.map(joinCard)}
-                </>
-              );
-            })()}
+            ) : (
+              (rqSide === "in" ? askIn : askOut).map(askCard)
+            )}
+          </>
+        ) : null}
+
+        {sect === "join" ? (
+          <>
+            {sideSwitch(rqSide, setRqSide, joinIn.length, joinOut.length, "invitations", JOIN_TINT.invite ?? REQ_TINT)}
+            {(rqSide === "in" ? joinIn : joinOut).length === 0 ? (
+              <div style={emptyBox}>
+                <div style={{ fontSize: 12.5, fontWeight: 800 }}>Nothing here</div>
+                <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>{rqSide === "in" ? "Nobody has invited you onto a team, a crew or an organization." : "You have not invited anybody onto a team, a crew or an organization."}</div>
+              </div>
+            ) : (
+              (rqSide === "in" ? joinIn : joinOut).map(joinCard)
+            )}
           </>
         ) : null}
 
@@ -675,44 +812,7 @@ export function InboxScreen({
                     <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 3 }}>Try a different type or stage.</div>
                   </div>
                 ) : null}
-                {filtered.map((e) => {
-                  const stage = st(e);
-                  const tc = ENQ_TINT[e.typeKey];
-                  const c = stage === "won" || stage === "confirmed" || stage === "advance_paid" ? "#22C55E" : stage === "lost" ? "#F87171" : stage === "quoted" ? "#F59E0B" : "#3B82F6";
-                  const label = enquiryTypeOf(e.typeKey)?.label ?? e.typeKey;
-                  const who = enqSide === "out" ? e.tenantName : e.fromName;
-                  const value = enquiryValueInr(e);
-                  return (
-                    <Link key={e.id} href={`/inbox/enquiries/${e.id}`} aria-label={`${label} enquiry ${enqSide === "out" ? "to" : "from"} ${who}`} style={{ display: "block", background: "var(--card)", border: "1.5px solid var(--el)", borderLeft: `4px solid ${c}`, borderRadius: 16, padding: "12px 14px", marginBottom: 10, color: "var(--text)", textDecoration: "none" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 11, background: `linear-gradient(135deg,${tc},#7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>{initialsOf(who)}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 900 }}>{who}</div>
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 3, padding: "3px 9px", borderRadius: 999, background: `${tc}1e`, border: `1.5px solid ${tc}55` }}>
-                            <EnqIcon k={e.typeKey} size={14} color={tc} sw={2} />
-                            <span style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.4, color: tc, textTransform: "uppercase" }}>{label}</span>
-                          </div>
-                          <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 3 }}>{agoWords(e.createdAt, nowIso)} · via profile enquiry</div>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 900, color: c }}>{value ? moneyShort(value) : "—"}</div>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: c }}>{ENQ_STAGE_WORD[stage]}</div>
-                        </div>
-                      </div>
-                      <div style={{ background: "var(--el)", borderRadius: 12, padding: "9px 11px", marginTop: 9 }}>
-                        {e.fields
-                          .filter(([k]) => k !== "Enquiry")
-                          .map(([k2, v], fi) => (
-                            <div key={`${k2}·${fi}`} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "3px 0", fontSize: 11.5 }}>
-                              <span style={{ color: "var(--sub)" }}>{k2}</span>
-                              <b>{v}</b>
-                            </div>
-                          ))}
-                        <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.45 }}>“{e.message}”</div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                {filtered.map(enquiryCard)}
               </>
             ) : null}
           </>

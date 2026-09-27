@@ -54,7 +54,8 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 /** the one city dropdown (19 Sep 2026): always through "Search another city…" */
 async function pickCity(page: Page | Locator, city: string) {
   /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
-  await page.getByLabel("Choose a city").first().selectOption(city);
+  await page.getByLabel("Choose a city").first().click();
+  await page.getByRole("option", { name: city, exact: true }).click();
 }
 const adminHeaders = {
   apikey: serviceKey,

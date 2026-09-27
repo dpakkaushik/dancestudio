@@ -3,7 +3,43 @@ import type { ReactNode } from "react";
 import { CrewI, dosToolPaint } from "@/features/crews/components/crew-kit";
 import { EventI } from "@/features/discovery/components/discover-kit";
 import { StudioI } from "@/features/shell/components/shell-glyphs";
+import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { DOS_DISPLAY } from "@/lib/design/tokens";
+
+/** ONE HEADING OVER EVERY TOOL GRID (18 Sep 2026), and the ARRANGE CONTROL
+ *  BESIDE IT (27 Sep 2026). Moved here from `home-kit` with the panel, so the
+ *  client component that draws the arranging can render its own head without
+ *  importing the kit that renders IT. */
+export type ToolsKind = "user" | "artist" | "org" | "studio" | "crew";
+export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", org: "Organization Tools", studio: "Studio Tools", crew: "Crew Tools" };
+
+/** ⚠⚠ THE HEAD CARRIES THE ARRANGE CONTROL NOW (27 Sep 2026, the user:
+ *  *"arrange tools options in top left with tools heading"*).
+ *
+ *  This REVERSES C34 — *"make sure only heading on top nothing else"*, 21 Sep —
+ *  and it is the same person saying so, which is what makes it a decision
+ *  rather than drift. The two are not the same question either: what C34 took
+ *  off the head was the PLAN BADGE, a second door to something Settings already
+ *  owned; what goes on it now is the control FOR THE THING THE HEAD NAMES. At
+ *  the foot it sat under a grid somebody had to scroll past to find it. */
+export function ToolsHead({ kind, right = null }: { kind: ToolsKind; right?: ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px" }}>
+      {/* `currentColor`, not INK (21 Sep 2026) — the panel below inverts the
+          theme, so the heading takes its colour from whatever ground it is on
+          rather than from the page's own ink, which would vanish into it */}
+      <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: "currentColor", fontFamily: DOS_DISPLAY }}>{TOOLS_HEADING[kind]}</span>
+      {right ? <div style={{ marginLeft: "auto" }}>{right}</div> : null}
+    </div>
+  );
+}
+
+/** THE TOOLS PANEL — ONE SQUIRCLE, INVERTED AGAINST THE THEME (21 Sep 2026).
+ *  `InvertedPanel` swaps the whole palette for its subtree, so every component
+ *  inside reads the tokens and is correct with no change of its own. */
+export function ToolsPanel({ kind, head, children }: { kind: ToolsKind; head?: ReactNode; children: ReactNode }) {
+  return <InvertedPanel head={<ToolsHead kind={kind} right={head} />}>{children}</InvertedPanel>;
+}
 
 /** THE TOOL TILE AND ITS GLYPHS, ON THEIR OWN (22 Sep 2026).
  *

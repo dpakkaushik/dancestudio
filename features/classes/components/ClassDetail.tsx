@@ -12,6 +12,7 @@ import {
 } from "@/features/attendance/server-actions/attendance";
 import { respondToClaimAction } from "@/features/claims/server-actions/claims";
 import { setClassPosterAction } from "@/features/classes/server-actions/classes";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import {
   cancelEnrollmentAction,
   enrollAction,
@@ -267,7 +268,7 @@ export function ClassDetail({
   const artist = claims.find((cl) => cl.kind === "artist" && cl.status === "confirmed") ?? null;
   const assistants = claims.filter((cl) => cl.kind === "assistant" && cl.status === "confirmed");
   const pendingAsks = isMember ? claims.filter((cl) => cl.status === "asked") : [];
-  const posterItem = { title: c.title, style: c.style, styleColor: col };
+  const posterItem = { title: c.title, style: c.style, styleColor: col, posterUrl: photoUrl(c.posterPath) };
   /* the team's own reading of the page (11822): a confirmed assistant who does not
      RUN the class sees what is theirs to do, and the register / refunds tabs say so */
   const assisting = !canManage && myClaim?.status === "confirmed" && myClaim.kind === "assistant";
@@ -1823,8 +1824,23 @@ export function ClassDetail({
           <div role="dialog" aria-modal="true" aria-label="Poster" onClick={(e) => e.stopPropagation()} style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: "var(--text)", maxHeight: "82vh", overflowY: "auto", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}>
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--el)", margin: "0 auto 12px" }} />
             <b style={{ fontSize: 16, fontFamily: DOS_DISPLAY }}>Poster</b>
-            <div style={{ fontSize: 11, color: "var(--sub)", margin: "3px 0 12px" }}>Drawn from the class itself, so it always says the right date. Pick a design.</div>
-            {/* your own picture sits first in the prototype (12772-12781) — uploads are the posters slice */}
+            {/* ⚠ YOUR OWN PICTURE SITS FIRST, as it does in the prototype
+                (12772-12781) — the posters slice landed 27 Sep 2026. Upload one
+                and it IS the poster everywhere the class is drawn; take it down
+                and the drawn sleeve comes back, which is why the designs stay
+                below rather than being replaced. */}
+            {canManage ? (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "0 0 8px" }}>YOUR OWN</div>
+                <PhotoPicker
+                  owner={{ kind: "poster", id: c.tenantId, subject: { kind: "class", id: c.id } }}
+                  hasPhoto={Boolean(c.posterPath)}
+                  label={c.posterPath ? "Change the picture" : "Upload a picture"}
+                  cropLabel="Poster"
+                  compact
+                />
+              </div>
+            ) : null}
             <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 0.8, color: "var(--muted)", margin: "0 0 8px" }}>A DRAWN ONE</div>
             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
               {DOS_POSTERS.map(([k, l]) => (

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
-import { ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import type { Tile } from "@/features/home/components/home-kit";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEditSheet";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { EntityBand } from "@/features/profiles/components/profile-band";
+import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
 import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
@@ -135,7 +136,7 @@ export function OrgHome({
           <EntityBand
             figures={
               <>
-                <Figure n={followers} label="Followers" testId="org-followers" />
+                <FollowerFigure n={followers} kind="business" id={tenant.id} name={tenant.name} testId="org-followers" />
                 {/* ⚠ NO FOLLOWING FIGURE: a business follows nothing, and the login
                     that used to follow on an organization's behalf is retired */}
               </>
@@ -173,9 +174,7 @@ export function OrgHome({
 
         {/* ORGANIZATION TOOLS — every door is THIS organization's */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC, marginTop: 14 }}>
-          <ToolsPanel kind="org">
-            <ArrangeTools tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={layoutKey} arranged={Boolean(order && order.length > 0)} />
-          </ToolsPanel>
+          <ArrangeTools kind="org" tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={layoutKey} arranged={Boolean(order && order.length > 0)} />
         </div>
       </div>
       {/* the form Settings sends you to, over the home it belongs to (C54's shape) */}

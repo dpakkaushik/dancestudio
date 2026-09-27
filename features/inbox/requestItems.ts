@@ -3,8 +3,9 @@ import { sessionDayLabel } from "@/lib/format/session";
 import type { VenueRequest } from "@/repositories/classes";
 import type { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
 import type { MyOrgTeamAsk, OrgTeamMember, OrgTeamRole } from "@/repositories/organizationTeam";
-import type { MyClaimAsk } from "@/types/claim";
+import { askToTileClass, type MyClaimAsk } from "@/types/claim";
 import type { CrewMember, MyCrewAsk, PartnerAsk } from "@/types/crew";
+import type { DanceEvent } from "@/types/event";
 
 /** THE REQUESTS DESK'S ROWS, BUILT ONCE (18 Sep 2026). The person's Inbox has
  *  turned the asks that already exist — class asks, team invites, crew asks,
@@ -65,6 +66,11 @@ export interface RequestSources {
   /** push 2: an organization's asks — to the person (in), and the ones the organization is waiting on (out) */
   orgIn?: MyOrgTeamAsk[];
   orgOut?: Array<OrgTeamMember & { orgName: string }>;
+  /** ⚠ THE EVENTS BEHIND THE DUET ASKS, read by id in ONE query by the page
+   *  that has them (27 Sep 2026), so the desk can draw the app's own event card
+   *  instead of a row of its own invention. A missing id simply falls back to
+   *  that row — a card that cannot be read must never cost somebody the ask. */
+  events?: Map<string, DanceEvent>;
 }
 
 const newestFirst = (a: RequestItem, b: RequestItem) => b.at.localeCompare(a.at);
@@ -93,6 +99,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: "Accepting holds the room for them; the class is theirs to publish, and its bookings are theirs.",
       classId: v.classId,
       status: askStatus(v.venueStatus),
+      danceClass: v.danceClass,
     })),
     ...(s.claimsIn ?? []).map((c): RequestItem => ({
       kind: "claim",
@@ -109,6 +116,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: c.payPerSessionInr > 0 ? `₹${c.payPerSessionInr.toLocaleString("en-IN")} a session` : null,
       claimId: c.id,
       status: askStatus(c.status),
+      danceClass: askToTileClass(c),
     })),
     ...(s.invitesIn ?? []).map((i): RequestItem => ({
       kind: "invite",
@@ -158,6 +166,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: "Their entry is in either way — this decides whether the organiser sees you as confirmed.",
       bookingId: p.bookingId,
       status: askStatus(p.status),
+      event: s.events?.get(p.eventId) ?? null,
     })),
     /* an organization's page is public, so being named on it is a claim about you */
     ...(s.orgIn ?? []).map((o): RequestItem => ({
@@ -199,6 +208,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: v.venueStatus === "declined" ? `${v.venueName} declined — pick another studio, or a place of your own, from the class's Edit form.` : v.venueStatus === "accepted" ? `${v.venueName} said yes — the room is held for the class.` : "The class stays a draft until the studio accepts.",
       classId: v.classId,
       status: askStatus(v.venueStatus),
+      danceClass: v.danceClass,
     })),
     ...(s.claimsOut ?? []).map((c): RequestItem => ({
       kind: "claim",
@@ -215,6 +225,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: null,
       claimId: c.id,
       status: askStatus(c.status),
+      danceClass: askToTileClass(c),
     })),
     ...(s.invitesOut ?? []).map((i): RequestItem => ({
       kind: "invite",
@@ -264,6 +275,7 @@ export function buildRequests(s: RequestSources): { requestsIn: RequestItem[]; r
       note: "Your entry holds whether or not they answer.",
       bookingId: p.bookingId,
       status: askStatus(p.status),
+      event: s.events?.get(p.eventId) ?? null,
     })),
     ...(s.orgOut ?? []).map((o): RequestItem => ({
       kind: "orgteam",

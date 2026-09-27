@@ -186,9 +186,7 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
           <div style={FORM_LABEL}>VIDEO · required</div>
           <input aria-label="Video link" value={f.videoUrl} onChange={(e) => setF((x) => ({ ...x, videoUrl: e.target.value }))} placeholder="YouTube / Drive / Instagram link" style={FORM_INPUT} />
 
-          <FormNote blockers={blockers.length ? blockers : undefined}>
-            A routine is yours, not a studio&rsquo;s — you carry it from one to the next. Attach it to a class from that class&rsquo;s own page.
-          </FormNote>
+          <FormNote blockers={blockers.length ? blockers : undefined} />
       </>
 
       <FormBar>
@@ -201,7 +199,6 @@ export function RoutineForm({ userId, sheet = false }: { userId: string; sheet?:
         <FormConfirm
           label="Save this routine?"
           title="Save this routine?"
-          sub="It goes on your own Routines desk. Everybody who can read a class you attach it to can play the song and the video."
           confirmWord={pending ? "Saving…" : "Save routine"}
           busy={pending}
           onCancel={() => setConfirm(false)}

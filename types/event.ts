@@ -91,6 +91,9 @@ export interface DanceEvent {
   status: EventStatus;
   shareSlug: string;
   poster: string | null;
+  /** AN UPLOADED POSTER, in media/posters/{business}/… (27 Sep 2026) — when it
+   *  is set the card draws the picture; null wears the drawn sleeve. */
+  posterPath?: string | null;
   entryTiers: EventEntryTier[];
   ticketTiers: EventTicketTier[];
 }

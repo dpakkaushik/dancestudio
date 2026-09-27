@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { INK, SUB } from "@/lib/design/tokens";
 import { DosPinIcon } from "@/features/discovery/components/discover-kit";
 
@@ -96,28 +98,88 @@ export function CitySelect({
      value, which is the only way a native select fires, and the only way back */
   const selectValue = lead?.active ? lead.value : (value ?? NONE);
   const shown = lead?.active ? lead.label : (value ?? placeholder);
+  const [open, setOpen] = useState(false);
+  useCloseOnBack(() => setOpen(false), open);
+
+  /** ⚠⚠ AN IN-APP SHEET, NOT A NATIVE `<select>` (27 Sep 2026, the user: *"fix
+   *  all list drop downs should be within the app only not open a seprate
+   *  screen"*).
+   *
+   *  This control was an invisible native `<select>` stretched over a painted
+   *  chip — and on a phone that is exactly what the ask describes: Android and
+   *  iOS answer a `<select>` with a FULL-SCREEN OS picker, in the system's own
+   *  type, with the system's own Cancel, over the app. Nothing in the app is
+   *  visible while it is open. On a laptop it is a small popup and reads fine,
+   *  which is why it survived four months.
+   *
+   *  So it is the app's own bottom sheet now — the same shape every other list
+   *  in DanceOS opens in, `dosSheetUp`, a scrim, `useCloseOnBack` so the phone's
+   *  back gesture closes it. The OPTIONS are unchanged, the callbacks are
+   *  unchanged and every caller is untouched: what changed is what a press
+   *  opens.
+   *
+   *  ⚠ The trigger is a real `<button>` with the same accessible name the
+   *  select carried, so every locator that found "Choose a city" still does. */
+  const pick = (v: string) => {
+    setOpen(false);
+    if (lead && v === lead.value) lead.onPick();
+    else if (v === NONE) onChange(null, null);
+    else onChange(v, null);
+  };
+
+  const trigger = (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => setOpen(true)}
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-label={ariaLabel}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: disabled ? "default" : "pointer", border: "none", background: "transparent", padding: 0 }}
+    />
+  );
+
+  const sheet = open ? (
+    <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 680 }}>
+      <div
+        role="listbox"
+        aria-label={ariaLabel}
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "var(--solid)", borderRadius: "24px 24px 0 0", padding: "16px 16px 26px", width: "100%", maxWidth: 430, boxSizing: "border-box", color: "var(--text)", maxHeight: "72vh", overflowY: "auto", animation: "dosSheetUp .28s cubic-bezier(.22,.9,.34,1)" }}
+      >
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: EL, margin: "0 auto 12px" }} />
+        {(
+          [
+            ...(lead ? [[lead.value, lead.option] as const] : []),
+            ...(allowNone || !value ? [[NONE, allowNone ? noneLabel : placeholder] as const] : []),
+            ...options.map((c) => [c, c] as const),
+          ] as ReadonlyArray<readonly [string, string]>
+        ).map(([v, l]) => {
+          const on = v === selectValue;
+          return (
+            <button
+              key={v}
+              type="button"
+              role="option"
+              aria-selected={on}
+              onClick={() => pick(v)}
+              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", padding: "13px 12px", marginBottom: 6, borderRadius: 14, cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: on ? 900 : 700, background: on ? EL : CARD, border: `1.5px solid ${on ? INK : EL}`, color: INK }}
+            >
+              <DosPinIcon size={13} color={on ? INK : "var(--sub)"} />
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l}</span>
+              {on ? <span aria-hidden="true" style={{ color: INK, fontSize: 13 }}>✓</span> : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
 
   const select = (
-    <select
-      value={selectValue}
-      disabled={disabled}
-      onChange={(e) => {
-        const v = e.target.value;
-        if (lead && v === lead.value) lead.onPick();
-        else if (v === NONE) onChange(null, null);
-        else onChange(v, null);
-      }}
-      aria-label={ariaLabel}
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: disabled ? "default" : "pointer", WebkitAppearance: "none", appearance: "none", border: "none", background: "transparent" }}
-    >
-      {lead ? <option value={lead.value}>{lead.option}</option> : null}
-      {allowNone || !value ? <option value={NONE}>{allowNone ? noneLabel : placeholder}</option> : null}
-      {options.map((c) => (
-        <option key={c} value={c}>
-          {c}
-        </option>
-      ))}
-    </select>
+    <>
+      {trigger}
+      {sheet}
+    </>
   );
 
   if (variant === "chip") {

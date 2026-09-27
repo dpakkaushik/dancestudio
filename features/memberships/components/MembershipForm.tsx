@@ -139,11 +139,12 @@ export function MembershipForm({
           <div style={FORM_LABEL}>HOW MANY MAY BE SOLD</div>
           <input aria-label="Total memberships" inputMode="numeric" value={f.total} onChange={(e) => setF((x) => ({ ...x, total: e.target.value }))} placeholder="e.g. 20" style={FORM_INPUT} />
 
-          <FormNote blockers={blockers.length ? blockers : undefined}>
-            {price > 0
-              ? `Sold from ${sellerName}'s page through the same payment window a class seat uses. A pass keeps the price it was bought at, so changing this later never rewrites what somebody already holds.`
-              : `Sold from ${sellerName}'s page. A free one is active the moment somebody takes it — there is no payment step to wait on.`}
-          </FormNote>
+          {/* ⚠ THE ONE RULE WORTH KEEPING is that a pass SNAPSHOTS its price, so
+              changing this later never rewrites what somebody already holds —
+              and it is the database's (`membership_passes` copies price, unit
+              and units at purchase), not something the seller has to be told
+              before they can name a price. Blockers only. */}
+          <FormNote blockers={blockers.length ? blockers : undefined} />
       </>
 
       <FormBar>
@@ -156,7 +157,6 @@ export function MembershipForm({
         <FormConfirm
           label="Put this on sale?"
           title="Put this on sale?"
-          sub={`It appears on ${sellerName}'s public page straight away. You can take it off sale any time from the Memberships desk.`}
           confirmWord={pending ? "Saving…" : "Put it on sale"}
           busy={pending}
           onCancel={() => setConfirm(false)}

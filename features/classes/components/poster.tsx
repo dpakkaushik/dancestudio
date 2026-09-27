@@ -53,6 +53,11 @@ export interface PosterItem {
   title: string;
   style: string;
   styleColor: string;
+  /** AN UPLOADED POSTER (27 Sep 2026) — a plain public URL off
+   *  `media/posters/{business}/…`. When it is here the picture IS the poster and
+   *  the drawn sleeve is not cut at all; the drawn one remains the default and
+   *  what every class without a picture wears. */
+  posterUrl?: string | null;
 }
 
 /** The drawn poster — a record sleeve, not a flyer: the style's colours cut the way
@@ -74,6 +79,26 @@ export function PosterBlock({
   const col = item.styleColor || "#3B82F6";
   const title = String(item.title || item.style || "Class").trim();
   const S = size;
+  /* ⚠ THE UPLOADED PICTURE WINS, AND NOTHING ELSE CHANGES (27 Sep 2026). Every
+     caller of this component — the card, the sleeve, the pass — gets the
+     picture in the same square, at the same size, with the same corners, so a
+     poster that is a photograph and a poster that is drawn are the same object
+     to every screen. A plain <img>: the source is a public bucket URL whose
+     dimensions this component already decides, and `next/image` would buy
+     nothing here and cost a loader on a square drawn 30 times on one shelf. */
+  if (item.posterUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={item.posterUrl}
+        alt={deco ? "" : `Poster for ${title}`}
+        {...(deco ? { role: "presentation", "aria-hidden": true } : {})}
+        width={S}
+        height={S}
+        style={{ width: S, height: S, objectFit: "cover", display: "block", flexShrink: 0, background: "#0B0B0C" }}
+      />
+    );
+  }
   const dark = "#0B0B0C";
   const mid = `pm${uid}`;
   return (

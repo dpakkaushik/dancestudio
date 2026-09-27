@@ -89,9 +89,7 @@ export function RoomForm({ tenantId, tenantName, defaultName }: { tenantId: stri
           style={FORM_INPUT}
         />
 
-        <FormNote blockers={blockers.length ? blockers : undefined}>
-          This caps every class held here, and no two published classes may share the room at the same hour — both are kept by the database, not by this form. Amenities are set on the room&rsquo;s own row.
-        </FormNote>
+        <FormNote blockers={blockers.length ? blockers : undefined} />
       </>
 
       <FormBar>
@@ -104,7 +102,6 @@ export function RoomForm({ tenantId, tenantName, defaultName }: { tenantId: stri
         <FormConfirm
           label="Add this room?"
           title="Add this room?"
-          sub="A new LOCATION is a new studio — this is another floor at the same address. You can rename it or change what it holds any time."
           confirmWord={pending ? "Adding…" : "Add it"}
           busy={pending}
           onCancel={() => setConfirm(false)}

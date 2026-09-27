@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
-import { ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import type { Tile } from "@/features/home/components/home-kit";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import { TodayShelf } from "@/features/home/components/TodayShelf";
 import { BusinessEditFromUrl } from "@/features/profiles/components/BusinessEditSheet";
@@ -8,6 +8,7 @@ import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
 import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { PROFILE_RING, EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
@@ -251,7 +252,7 @@ export function StudioHome({
           <EntityBand
             figures={
               <>
-                <Figure n={followers} label="Followers" testId="studio-followers" />
+                <FollowerFigure n={followers} kind="business" id={tenant.id} name={tenant.name} testId="studio-followers" />
                 {/* ⚠ THE SECOND FIGURE IS THE OWNER'S (20 Sep 2026, the user:
                     "Organization and Studio still dont have Following section in
                     profile and home"). A studio cannot follow anything itself,
@@ -360,11 +361,11 @@ export function StudioHome({
         {/* ── STUDIO TOOLS (7590-7620): the same tile language as Home's grid, and
             every door is THIS studio's ── */}
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-          <ToolsPanel kind="studio">
-            {/* arranged on the server so the first paint is already this
-                member's own order (22 Sep 2026) */}
-            <ArrangeTools tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("studio", tenant.id)} arranged={Boolean(order && order.length > 0)} />
-          </ToolsPanel>
+          {/* arranged on the server so the first paint is already this member's
+              own order (22 Sep 2026); the panel and its heading are
+              `ArrangeTools`' own since 27 Sep, so the Arrange control sits on
+              the head rather than under the grid */}
+          <ArrangeTools kind="studio" tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("studio", tenant.id)} arranged={Boolean(order && order.length > 0)} />
         </div>
       </div>
       {/* the form Settings sends you to, over the home it belongs to (C54's

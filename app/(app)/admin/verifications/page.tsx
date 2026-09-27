@@ -5,6 +5,7 @@ import { requireAdmin } from "@/features/admin/server/adminGuard";
 import { VerificationDesk, type VerificationTab } from "@/features/admin/components/VerificationDesk";
 import { countVerification, findVerificationRequestsPage, findVerifiedStudiosPage } from "@/repositories/admin";
 import { findStudioProofPhotos } from "@/repositories/studioVerification";
+import { findAdminSubscriptions } from "@/repositories/subscriptions";
 import type { ProofPhoto } from "@/lib/media/proof";
 
 export const metadata: Metadata = { title: "Verification queue — DanceOS" };
@@ -57,9 +58,28 @@ export default async function VerificationsPage({
     );
   }
 
+  /* ⚠ WHAT EACH WAITING STUDIO IS ALREADY PAYING (27 Sep 2026). Since
+     `20260927100000` the mandate comes BEFORE the review — the user's own order
+     — so every studio in this queue may be being charged for something that is
+     not on Discover, and rejecting it does not stop that. The desk needs the
+     fact to say so. Read only on the Pending tab, and only when there is
+     something waiting: one RPC for the whole page rather than one per card. */
+  const mandates: Record<string, { subscriptionId: string; priceInr: number; granted: boolean }> = {};
+  if (tab === "pending" && requests.length > 0) {
+    const ids = new Set(requests.map((r) => r.tenantId).filter(Boolean) as string[]);
+    for (const status of ["active", "past_due"] as const) {
+      const live = await findAdminSubscriptions(supabase, { status, limit: 500 }).catch(() => []);
+      for (const s of live) {
+        if (s.tenantId && ids.has(s.tenantId) && !mandates[s.tenantId]) {
+          mandates[s.tenantId] = { subscriptionId: s.id, priceInr: s.priceInr, granted: s.granted };
+        }
+      }
+    }
+  }
+
   return (
     <AdminShell badges={badges}>
-      <VerificationDesk tab={tab} q={q} page={page} counts={counts} requests={requests} studios={studios} total={listed.total} proof={proof} nowIso={nowIso} />
+      <VerificationDesk tab={tab} q={q} page={page} counts={counts} requests={requests} studios={studios} total={listed.total} proof={proof} mandates={mandates} nowIso={nowIso} />
     </AdminShell>
   );
 }

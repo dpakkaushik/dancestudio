@@ -117,6 +117,9 @@ export function StatsScreen({
   basePath: string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  /** the points rules on the Charts board — a disclosure since 27 Sep, where a
+   *  permanent full-width card stood between the controls and the board */
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [side, setSide] = useState<Side | "all">("all");
   const [styleSel, setStyleSel] = useState<string | null>(null);
   const [cvSide, setCvSide] = useState<Side>("attended");
@@ -161,15 +164,26 @@ export function StatsScreen({
   };
   const tabHref = (t: Tab) => (t === "charts" ? chartHref({}) : `${basePath}?tab=${t}`);
 
-  /* [label, figure, colour, the rows it opens] — the small cards; a zero is not drawn (10017) */
-  const small: Array<[string, number, string, Array<[string, string]>]> = (
-    [
-      ["Styles", styleRows.length, "#22C55E", styleRows],
-      ["Assisted for", assistedFor.length, "#0D9488", assistedFor],
-      ["Trained under", trainedUnder.length, "#EAB308", trainedUnder],
-      ["Studios", studioRows.length, "#14B8A6", studioRows],
-    ] as Array<[string, number, string, Array<[string, string]>]>
-  ).filter((c) => c[1] > 0);
+  /** ⚠⚠ A ZERO IS DRAWN NOW (27 Sep 2026, the user: *"show all metrics for
+   *  that particular profile type even if its 0"*), which REVERSES the
+   *  prototype's own rule at 10017 and the 29 Aug lift of it.
+   *
+   *  The old rule made a record read as a different SHAPE for every person: a
+   *  dancer who had not assisted saw three cards, somebody who had saw four,
+   *  and neither could tell whether the fourth was missing or zero. A metric
+   *  that belongs to this kind of profile is part of what the record IS, and
+   *  "0" is a measurement — the thing this file refuses to print is a RANK of
+   *  zero ("#0 is not a rank"), which is a different claim entirely and is
+   *  still refused, in EntityStatsPage and in the pinned you-row.
+   *
+   *  ⚠ The three BIG cards above have always drawn their zeros, so this also
+   *  ends a disagreement inside one screen. */
+  const small: Array<[string, number, string, Array<[string, string]>]> = [
+    ["Styles", styleRows.length, "#22C55E", styleRows],
+    ["Assisted for", assistedFor.length, "#0D9488", assistedFor],
+    ["Trained under", trainedUnder.length, "#EAB308", trainedUnder],
+    ["Studios", studioRows.length, "#14B8A6", studioRows],
+  ];
 
   /* WHAT YOU DANCE MOST (10077): the styles, most-danced first, at most eight */
   const styleShelf = (() => {
@@ -230,40 +244,42 @@ export function StatsScreen({
 
   return (
     <div style={{ background: LILAC, color: INK, maxWidth: 430, margin: "0 auto", fontFamily: DOS_UI, minHeight: "100vh", paddingBottom: 40 }}>
-      {tab === "charts" ? (
-        /* Charts has its own hero (9642-9647): violet into pink into amber */
-        <div style={{ margin: "12px 16px 0", borderRadius: 22, padding: "22px 18px 18px", background: "linear-gradient(135deg,#7C3AED,#EC4899 55%,#F59E0B)", color: "#fff", position: "relative", overflow: "hidden" }}>
-          <div aria-hidden="true" style={{ position: "absolute", right: -24, top: -24, width: 120, height: 120, borderRadius: 60, background: "rgba(255,255,255,.14)" }} />
-          <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 2, opacity: 0.85 }}>DANCEOS · CHARTS</div>
-          <div style={{ fontSize: 26, fontWeight: 900, marginTop: 2, fontFamily: DOS_DISPLAY }}>Global Rankings</div>
-          <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }} data-testid="stats-points">
-            Top {CHART_SEGMENTS.find((s) => s.k === segment)?.label.toLowerCase()} · counted live
-          </div>
-        </div>
-      ) : (
-        /* the room, lit in its own metal — the colour bleeds off the top (9866) */
-        <div style={{ margin: "0 0 4px", padding: "22px 16px 18px", background: `linear-gradient(180deg, ${GOLD}b0 0%, ${GOLD}55 45%, ${GOLD}18 74%, ${LILAC} 100%)` }}>
-          <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{tab === "history" ? "Your sessions" : "Your record"}</div>
-          <div style={{ fontSize: 30, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.2, lineHeight: 1.05, marginTop: 4 }}>{tab === "history" ? "History" : "Stats"}</div>
-          {tab === "history" ? (
-            <div style={{ fontSize: 11.5, color: SUB, margin: "2px 0 0" }}>Upcoming · completed — every filter, one page.</div>
-          ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: 13, marginTop: 14 }}>
-              <span style={{ width: 64, height: 64, borderRadius: 16, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", border: "2.5px solid rgba(255,255,255,.9)", boxShadow: "0 6px 18px rgba(0,0,0,.45)", background: `linear-gradient(135deg,#F9E27D,#B8860B)`, color: "#fff", fontSize: 24, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY }}>
-                {initialsOf(name)}
-              </span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 26, fontWeight: 900, letterSpacing: -0.8, lineHeight: 1.1, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: SUB, marginTop: 3 }} data-testid="stats-points">
-                  {stats.points} points{myPlace ? ` · #${myPlace.place} of ${myPlace.population} dancers` : ""}
-                </span>
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+      {/* ⚠⚠ ONE TOP HALF, ON ALL THREE (27 Sep 2026, the user: *"make top half
+          of stats page similar in all columns"*).
 
-      <div style={{ padding: `${tab === "charts" ? 14 : 0}px 16px 0` }}>
+          It was three: the record wore a gold bleed with a 64px squircle, a
+          name and a points line; History wore the same gold with NO figure at
+          all and a sentence instead; Charts wore a violet-pink-amber card of
+          its own with a decorative circle. Three tabs of one screen, and
+          switching between them redrew the page above the switch — which is
+          also why the tab bar sat at a different height on each.
+
+          Now the gold hero is the page's, the eyebrow and the title are the
+          tab's, and the identity row is drawn on all three. ⚠ The points line
+          says what the TAB is about: your record's total on the first two, your
+          place on THIS board on Charts — one line, three readings, so the same
+          pixels never mean two things. */}
+      <div style={{ margin: "0 0 4px", padding: "22px 16px 18px", background: `linear-gradient(180deg, ${GOLD}b0 0%, ${GOLD}55 45%, ${GOLD}18 74%, ${LILAC} 100%)` }}>
+        <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>{tab === "history" ? "Your sessions" : tab === "charts" ? "DanceOS · India" : "Your record"}</div>
+        <div style={{ fontSize: 30, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.2, lineHeight: 1.05, marginTop: 4 }}>{tab === "history" ? "History" : tab === "charts" ? "Rankings" : "Stats"}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 13, marginTop: 14 }}>
+          <span style={{ width: 64, height: 64, borderRadius: 16, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", border: "2.5px solid rgba(255,255,255,.9)", boxShadow: "0 6px 18px rgba(0,0,0,.45)", background: `linear-gradient(135deg,#F9E27D,#B8860B)`, color: "#fff", fontSize: 24, fontWeight: 900, letterSpacing: 0.5, fontFamily: DOS_DISPLAY }}>
+            {initialsOf(name)}
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 26, fontWeight: 900, letterSpacing: -0.8, lineHeight: 1.1, fontFamily: DOS_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+            <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: SUB, marginTop: 3 }} data-testid="stats-points">
+              {tab === "charts"
+                ? boardPlace
+                  ? `#${boardPlace.place} of ${boardPlace.population} · ${boardPlace.points} points`
+                  : `not on this board yet`
+                : `${stats.points} points${myPlace ? ` · #${myPlace.place} of ${myPlace.population} dancers` : ""}`}
+            </span>
+          </span>
+        </div>
+      </div>
+
+      <div style={{ padding: "0 16px" }}>
         {/* three dresses, one page */}
         <div style={{ display: "flex", gap: 2, background: LINE, borderRadius: 12, padding: 3, marginBottom: 12 }}>
           {(
@@ -324,6 +340,14 @@ export function StatsScreen({
                       </div>
                       {isOpen ? (
                         <div style={{ padding: "0 0 10px" }}>
+                          {/* ⚠ A ZERO CARD OPENS ON NOTHING, and it has to SAY so
+                              (27 Sep 2026): now that a zero is drawn, pressing
+                              one used to expand a chevron onto an empty box,
+                              which reads as a broken control rather than as an
+                              empty list. */}
+                          {rowsFor.length === 0 ? (
+                            <div style={{ fontSize: 11.5, color: MUTED, padding: "8px 0 2px", borderTop: `1.5px solid ${LINE}` }}>Nothing here yet</div>
+                          ) : null}
                           {rowsFor.map(([k, sub], i) => (
                             <div key={k} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: `1.5px solid ${LINE}` }}>
                               <span style={{ ...figure, fontSize: 10, color: MUTED, width: 18, flexShrink: 0 }}>{String(i + 1).padStart(2, "0")}</span>
@@ -625,21 +649,26 @@ export function StatsScreen({
                 );
               })}
             </div>
-            {/* the metric and the city (9654): two selects side by side — the address is
-                the state, and a change REPLACES it in place (19 Sep 2026: these were
-                full-page loads through window.location, one history entry each, and the
-                city is the one dropdown every city field in the app is now) */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <select aria-label="Metric" value={metric} onChange={(e) => router.replace(chartHref({ metric: e.target.value as ChartMetric }), { scroll: false })} style={{ flex: 1, minWidth: 0, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 12, padding: "10px 10px", color: INK, fontSize: 11.5, fontWeight: 700, outline: "none", appearance: "none", fontFamily: "inherit" }}>
-                {CHART_METRICS.map((m) => (
-                  <option key={m.k} value={m.k}>
-                    🏅 {m.label}
-                  </option>
-                ))}
-              </select>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <CitySelect value={city} cities={cities} ariaLabel="City" allowNone noneLabel="Everywhere" placeholder="Everywhere" onChange={(c) => router.replace(chartHref({ city: c }), { scroll: false })} />
-              </div>
+            {/* ⚠ THE METRIC IS A ROW OF CHIPS, NOT A NATIVE SELECT (27 Sep 2026,
+                the user: *"all list drop downs should be within the app only not
+                open a seprate screen"*). On a phone a `<select>` is answered by
+                a full-screen OS picker; there are five metrics and they fit on
+                one scrolling line, so the list IS the control and nothing
+                leaves the app. The city keeps `CitySelect`, which is a sheet
+                now for the same reason. The address is still the state, and a
+                change REPLACES it in place. */}
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", marginBottom: 8 }}>
+              {CHART_METRICS.map((m) => {
+                const on = metric === m.k;
+                return (
+                  <Link key={m.k} href={chartHref({ metric: m.k })} replace scroll={false} aria-pressed={on} style={{ flexShrink: 0, padding: "7px 12px", borderRadius: 999, fontSize: 11, fontWeight: 800, whiteSpace: "nowrap", textDecoration: "none", background: on ? INK : CARD, color: on ? LILAC : SUB, border: `1.5px solid ${on ? INK : LINE}` }}>
+                    {m.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              <CitySelect value={city} cities={cities} ariaLabel="City" allowNone noneLabel="Everywhere" placeholder="Everywhere" onChange={(c) => router.replace(chartHref({ city: c }), { scroll: false })} />
             </div>
             {chartStyles.length > 0 ? (
               <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 6, marginBottom: 8 }}>
@@ -655,43 +684,47 @@ export function StatsScreen({
               </div>
             ) : null}
 
-            {/* HOW POINTS WORK (9660) — and what it does not count, said here */}
-            <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 10 }}>
-              <div style={{ ...micro, letterSpacing: 1, color: MUTED }}>How points work</div>
-              <div style={{ marginTop: 8 }}>
+            {/* ⚠⚠ THE RANKINGS SECTION, RE-CUT (27 Sep 2026, the user: *"fix the
+                rankings section properly. make it better"*, and *"remove global
+                from name as only for india"*).
+
+                THREE THINGS WENT, and each was in the way of the board itself:
+                · **the word "Global"**, which was never true — every city on
+                  this board is an Indian city and the registry is the eight the
+                  user fixed on 19 Sep. The hero says "DanceOS · India" now.
+                · **the "How points work" CARD**, which stood between the
+                  controls and the board on every load, at the full width of the
+                  screen, saying the same four rules for ever. It is a Rules
+                  DISCLOSURE beside the count now — pressed when somebody
+                  actually asks "why am I here", closed the rest of the time.
+                · **the paragraph under those rules**, which was three sentences
+                  about what is NOT counted. What a board owes its reader is the
+                  denominator, and that is printed on every place.
+                · **the pinned "you" row**, which repeated the place the hero now
+                  prints for this exact board — and printed it in a third set of
+                  colours. Your own row is HIGHLIGHTED in the board instead, so
+                  where you stand is shown among the people you stand among. */}
+
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+              <span style={shelf}>{CHART_SEGMENTS.find((s) => s.k === segment)?.label}</span>
+              {/* the rules, beside the count, open only when asked */}
+              <button type="button" onClick={() => setRulesOpen((v) => !v)} aria-expanded={rulesOpen} style={{ marginLeft: "auto", fontSize: 10, fontWeight: 900, letterSpacing: 0.3, color: MUTED, background: "none", border: "none", padding: "2px 4px", cursor: "pointer", fontFamily: "inherit" }}>
+                {rulesOpen ? "Hide points" : "Points"}
+              </button>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: MUTED }} data-testid="chart-population">
+                {chart.length ? `${chart.length} of ${chart[0].population}` : "0"}
+              </span>
+            </div>
+            {rulesOpen ? (
+              <div style={{ background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "4px 12px", marginBottom: 8 }}>
                 {(isCrew ? CREW_POINT_RULES : POINT_RULES).map(([k, v, c]) => (
-                  <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: `1.5px solid ${LINE}` }}>
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: `1.5px solid ${LINE}` }}>
                     <span style={{ fontSize: 12, color: SUB }}>{k}</span>
                     <span style={{ fontSize: 11, fontWeight: 900, padding: "3px 10px", borderRadius: 999, background: `${c}1a`, color: c }}>{v}</span>
                   </div>
                 ))}
-                <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8, lineHeight: 1.5 }}>
-                  Counted live off real rows, not refreshed on a schedule. {isCrew ? "A crew ranks by the events it has entered and the size of its confirmed roster — a battle WIN would be worth more than either, and nothing records a score yet." : "A battle win would be +10; no table holds a score yet, so wins are not counted here."} A place is always printed with the number it is out of.
-                </div>
-              </div>
-            </div>
-
-            {/* the pinned "you" row (9674-9683): one person on record — where YOU stand on this board */}
-            {peopleBoard && boardPlace ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", marginBottom: 6, borderRadius: 14, background: "linear-gradient(120deg,#7C3AED22,#EC489922)", border: `1.5px solid ${LINE}` }} aria-label={`You — place ${boardPlace.place} of ${boardPlace.population}`}>
-                <span style={{ width: 30, fontSize: 20, fontWeight: 900, textAlign: "center", fontFamily: DOS_DISPLAY, background: "linear-gradient(120deg,#7C3AED,#EC4899)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>#{boardPlace.place}</span>
-                <span style={{ width: 40, height: 40, borderRadius: 20, flexShrink: 0, background: "linear-gradient(135deg,#7C3AED,#EC4899)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 15 }}>{initialsOf(name)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 900 }}>You</div>
-                  <div style={{ fontSize: 10.5, color: SUB }}>
-                    your {segment} ranking · {city ?? "everywhere"} · of {boardPlace.population}
-                  </div>
-                </div>
-                <span style={{ ...figure, fontSize: 13, flexShrink: 0 }}>{boardPlace.points}</span>
               </div>
             ) : null}
-
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-              <span style={shelf}>{CHART_SEGMENTS.find((s) => s.k === segment)?.label}</span>
-              <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: MUTED }} data-testid="chart-population">
-                {chart.length ? `${chart.length} of ${chart[0].population}` : "0"}
-              </span>
-            </div>
             {board.length === 0 ? (
               <div style={{ background: CARD, border: `1.5px dashed ${LINE}`, borderRadius: 18, padding: "36px 20px", textAlign: "center" }}>
                 <div style={{ fontSize: 13.5, fontWeight: 800, fontFamily: DOS_DISPLAY }}>No board here yet</div>
@@ -709,15 +742,24 @@ export function StatsScreen({
                         ? `${r.conducted} taught · ${r.assisted} assisted · ${hoursWords(r.hours)}`
                         : `${r.attended} danced · ${hoursWords(r.hours)}`;
                 const top3 = r.place <= 3;
+                /* ⚠ YOUR OWN ROW, IN THE BOARD (27 Sep 2026) — where the pinned
+                   card used to be. A ranking is a list of the people you are
+                   ranked among, and lifting one of them out of it to say the
+                   same place a third time is the duplication the rest of this
+                   session has been taking out. */
+                const isYou = peopleBoard && boardPlace != null && r.place === boardPlace.place;
                 return (
-                  <Link key={`${r.kind}-${r.id}`} href={href} aria-label={`${r.name} — place ${r.place} of ${r.population}`} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
+                  <Link key={`${r.kind}-${r.id}`} href={href} aria-label={`${isYou ? "You — " : ""}${r.name} — place ${r.place} of ${r.population}`} style={{ display: "flex", alignItems: "center", gap: 10, background: isYou ? "linear-gradient(120deg,#7C3AED22,#EC489922)" : CARD, border: `1.5px solid ${isYou ? "#7C3AED77" : LINE}`, borderRadius: 14, padding: "10px 12px", marginBottom: 7, color: INK, textDecoration: "none" }}>
                     {/* top-3 numerals in the charts' own gradient (9693-9694) */}
                     <span style={{ ...figure, fontSize: top3 ? 24 : 17, fontFamily: DOS_DISPLAY, fontWeight: 900, width: 30, textAlign: "center", flexShrink: 0, background: top3 ? "linear-gradient(120deg,#7C3AED,#EC4899)" : "none", WebkitBackgroundClip: top3 ? "text" : undefined, backgroundClip: top3 ? "text" : undefined, color: top3 ? "transparent" : MUTED }}>{r.place}</span>
                     <span style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(135deg,${dosStyleColor(r.style ?? "Hip-Hop")},#7C3AED)`, color: "#fff", fontSize: 13, fontWeight: 900, fontFamily: DOS_DISPLAY }}>
                       {initialsOf(r.name)}
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                      <span style={{ display: "block", fontSize: 13, fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.name}
+                        {isYou ? <span style={{ marginLeft: 6, fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "2px 6px", borderRadius: 999, background: "#7C3AED", color: "#fff", verticalAlign: "middle" }}>YOU</span> : null}
+                      </span>
                       <span style={{ display: "block", fontSize: 10, color: SUB, marginTop: 1 }}>{[r.city, r.style].filter(Boolean).join(" · ")}</span>
                       <span style={{ display: "block", fontSize: 9.5, color: MUTED, marginTop: 2 }}>{line}</span>
                     </span>

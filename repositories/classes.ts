@@ -24,6 +24,8 @@ interface ClassRow {
   room: string | null;
   room_id: string | null;
   poster: PosterChoice | null;
+  /** ⚠ OPTIONAL until `20260927130000` is applied and the select asks for it */
+  poster_path?: string | null;
   price_inr: number;
   capacity: number;
   status: ClassStatus;
@@ -75,6 +77,10 @@ const toClass = (row: ClassRow): DanceClass => ({
   room: row.room,
   roomId: row.room_id,
   poster: row.poster,
+  /* ⚠ `poster_path` IS NOT IN THE SELECT ABOVE until `20260927130000` is
+     applied — see the note at the head of this file. `?? null` is what every
+     row reads as meanwhile, and the drawn sleeve is drawn. */
+  posterPath: (row as { poster_path?: string | null }).poster_path ?? null,
   priceInr: row.price_inr,
   capacity: row.capacity,
   status: row.status,
@@ -465,6 +471,19 @@ export async function findPublishedStylesByTenant(
   return out;
 }
 
+/** AN UPLOADED POSTER (27 Sep 2026) — the other half of the sheet above. The
+ *  path is already in `media/posters/{business}/…` by the time this is called
+ *  (the browser uploads with the person's own session, as every picture in this
+ *  app does); what this records is which class it belongs to, through a door
+ *  that re-checks the folder. `null` takes it down and the drawn sleeve comes
+ *  back — it is a fallback, not a second field. */
+export async function setClassPosterPath(supabase: SupabaseClient, classId: string, path: string | null): Promise<void> {
+  const { error } = await supabase.rpc("set_class_poster", { p_class_id: classId, p_path: path });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 /** One field, from the class page's own poster sheet (prototype 11812 → 12768-12780):
  *  the design changes without dragging the whole edit form along. RLS-guarded like
  *  every other write here — no row comes back for anybody who may not. */
@@ -563,19 +582,17 @@ export interface VenueRequest {
   venueBusinessId: string;
   venueName: string;
   venueStatus: VenueStatus;
+  /** the class this ask is about, whole — the Inbox draws the app's one class
+   *  card for it (27 Sep 2026) rather than a row of its own invention */
+  danceClass: DanceClass;
 }
 
-interface VenueRow {
-  id: string;
-  style: string;
-  level: ClassLevel;
-  room: string | null;
-  share_slug: string;
+/** a venue ask IS a class row plus when it was asked (27 Sep 2026) — it extends
+ *  `ClassRow` so `toClass` can turn it into the card the Inbox draws */
+interface VenueRow extends ClassRow {
   created_at: string;
-  business_id: string;
   venue_business_id: string;
   venue_status: VenueStatus;
-  class_sessions: Array<{ starts_at: string; deleted_at: string | null }> | null;
 }
 
 /* two reads rather than one embed: `classes` has two keys into `businesses` now,
@@ -595,27 +612,38 @@ const toVenueRequests = async (supabase: SupabaseClient, rows: VenueRow[]): Prom
     supabase,
     rows.flatMap((r) => [r.business_id, r.venue_business_id])
   );
-  return rows.map((r) => ({
-    classId: r.id,
-    label: dosClassLabel(r.style, r.level),
-    style: r.style,
-    room: r.room,
-    startsAt:
-      [...(r.class_sessions ?? [])]
-        .filter((s) => !s.deleted_at)
-        .map((s) => s.starts_at)
-        .sort((a, b) => a.localeCompare(b))[0] ?? null,
-    shareSlug: r.share_slug,
-    createdAt: r.created_at,
-    artistBusinessId: r.business_id,
-    artistName: names.get(r.business_id) ?? "An artist",
-    venueBusinessId: r.venue_business_id,
-    venueName: names.get(r.venue_business_id) ?? "a studio",
-    venueStatus: r.venue_status,
-  }));
+  return rows.map((r) => {
+    /* the class itself, as every other read hands it over — so the Inbox can
+       draw the app's one class card instead of a sentence (27 Sep 2026) */
+    const danceClass = toClass(r);
+    return {
+      classId: r.id,
+      label: danceClass.title,
+      style: r.style,
+      room: r.room,
+      startsAt: danceClass.session?.startsAt ?? null,
+      shareSlug: r.share_slug,
+      createdAt: r.created_at,
+      artistBusinessId: r.business_id,
+      artistName: names.get(r.business_id) ?? "An artist",
+      venueBusinessId: r.venue_business_id,
+      venueName: names.get(r.venue_business_id) ?? "a studio",
+      venueStatus: r.venue_status,
+      danceClass,
+    };
+  });
 };
 
-const VENUE_SELECT = "id, style, level, room, share_slug, created_at, business_id, venue_business_id, venue_status, class_sessions (starts_at, deleted_at)";
+/** ⚠ THE WHOLE CLASS, NOT A LABEL (27 Sep 2026, the user: *"event and class
+ *  request cards should also look like class and event cards on discover with
+ *  accept and reject buttons"*). This read carried style, level, room and a
+ *  start — enough for a sentence, and four columns short of the card: no
+ *  price, no capacity, no status, no session id, no end. `CLASS_COLUMNS` is
+ *  what every other class read already selects, so the ask hands the Inbox a
+ *  real `DanceClass` and `ClassTile` draws it exactly as Discover does.
+ *  ⚠ `created_at` and the venue's own columns ride ON TOP of it — they are the
+ *  ASK's facts rather than the class's. */
+const VENUE_SELECT = `${CLASS_COLUMNS}, created_at`;
 
 /** The asks waiting on a set of STUDIOS for their rooms — the Requests desk's
  *  Received side for whoever runs them. Says which studios out loud. */

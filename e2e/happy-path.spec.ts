@@ -35,7 +35,8 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  *  so it does not depend on which cities the registry holds today. */
 async function pickCity(page: Page | Locator, city: string) {
   /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
-  await page.getByLabel("Choose a city").first().selectOption(city);
+  await page.getByLabel("Choose a city").first().click();
+  await page.getByRole("option", { name: city, exact: true }).click();
 }
 const adminHeaders = {
   apikey: serviceKey,
@@ -644,6 +645,13 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.goto("/subscription");
     const studioStrip = owner.getByTestId("studio-subscription").filter({ hasText: studioName });
     await expect(studioStrip.getByText("NOT LIVE", { exact: true })).toBeVisible();
+    /* ⚠ THIS SENTENCE IS THE DATABASE'S, NOT THE PAGE'S, and I broke this
+       assertion for one run by assuming otherwise (27 Sep 2026). The
+       explanations that came off the Subscription page were the app's own
+       paragraphs; THIS is `why_not_public`'s return value — the one sentence
+       between a studio and Discover, raised by the RPC and printed where the
+       Subscribe button is. A refusal in the database's own words is not an
+       explanation to be tidied away. */
     await expect(studioStrip).toContainText("Each studio has its own subscription");
     await expect(studioStrip.getByRole("button", { name: /^Subscribe · ₹1,200\/mo$/ })).toBeVisible();
     /* ⚠⚠ AND THE STUDIO'S OWN HOME CARRIES NEITHER STRIP — the third and final
@@ -930,8 +938,9 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // ---- THE TEACHER SAYS YES, AND ONLY THEN CAN IT GO LIVE ----------------
     await trainer.goto("/inbox");
-    // the Inbox opens on All, which counts what waits; the cards with their two
-    // answers live on the Requests desk (S_chats)
+    // the Inbox opens on Requests — what somebody wants you FOR, which a class
+    // ask is (S_chats; the three desks are Requests · Invites · Enquiries since
+    // 27 Sep 2026, and "All" is gone with them)
     await pressPill(trainer, /^Requests — \d+ waiting/);
     // ⚠ ACCEPT, not Confirm (27 Sep 2026, the user: "class and event requests
     // should have same cards with accept and reject buttons") — a class ask is
@@ -1015,7 +1024,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(trainer.getByRole("heading", { level: 1, name: "Earnings" })).toBeVisible();
     await expect(trainer.getByTestId("earn-revenue")).toHaveText("₹0");
     await expect(trainer.getByTestId("earn-expenses")).toHaveCount(0);
-    await expect(trainer.getByText(/DanceOS records it, it does not move the money/)).toBeVisible();
+    /* ⚠ WHAT IS LEFT IS THE FIGURE, NOT A SENTENCE (27 Sep 2026, the user:
+       "remove unessesary explanations from earnings … there should be no extra
+       details for everything in the app unless things are very important").
+       This asserted the paragraph under WHAT IS LEFT — "DanceOS records it, it
+       does not move the money" — which is now said in the code and not on the
+       screen. BOTH ENDS, because a check that only looks at the new place
+       cannot tell you the old one was cleared. */
+    await expect(trainer.getByTestId("earn-left")).toHaveText("₹0");
+    await expect(trainer.getByText(/DanceOS records it, it does not move the money/)).toHaveCount(0);
   });
 
   test("the class page, its share link, and a learner booking from it", async () => {
@@ -1360,17 +1377,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.mouse.click(10, 10); // the scrim closes it
     await expect(crewAdd).toHaveCount(0);
 
-    // the trainer answers from the Requests desk — only they can
+    // the trainer answers from the INVITES desk — only they can
     await trainer.goto("/inbox");
-    // the desk counts everything waiting on them — an earlier class ask included — so the crew
-    // ask is found by its own words rather than by the total
-    // ⚠ AN INVITATION, NOT A REQUEST (27 Sep 2026, the user: "other team join,
-    // crew join, studio join, organization join for invites should also be
-    // different in style and should be card style but segregated in a different
-    // section now") — the combined desk calls it one, and the Requests desk
-    // draws it as a JOIN card under its own heading with Join / Decline
-    await expect(trainer.getByRole("button", { name: `Open the invitation to join from ${learnerName}` })).toBeVisible();
-    await pressPill(trainer, /^Requests — \d+ waiting/);
+    // ⚠ A DESK OF ITS OWN, NOT A SECTION OF REQUESTS (27 Sep 2026, the user:
+    // "different columns for join team requests … other team join, crew join,
+    // studio join, organization join for invites should also be different in
+    // style and should be card style but segregated in a different section
+    // now"). It was a heading inside Requests for one morning; a crew ask is a
+    // question about BELONGING and now has its own column and its own card,
+    // reading Join / Decline. The class ask this trainer already accepted is on
+    // Requests and is not counted here, which is what the split is for.
+    await pressPill(trainer, /^Invites — \d+ waiting/);
     await expect(trainer.getByText(`invited by ${learnerName}`)).toBeVisible();
     await trainer.getByRole("button", { name: `Join ${crewName}` }).click();
     /* AN ANSWERED ASK STAYS ON THE DESK (19 Sep 2026, the user: "enquiries and
@@ -1395,10 +1412,22 @@ test.describe.serial("DanceOS, end to end", () => {
 
     // the public page prints the confirmed roster; the hub knows which list the trainer belongs on
     await trainer.goto(`/crew/${crewId}`);
-    /* the Members figure left the page (19 Sep 2026) — the roster IS the count: two rows, each opening a person */
-    await expect(trainer.getByRole("link", { name: /'s profile$/ })).toHaveCount(2);
+    /* the Members figure left the page (19 Sep 2026) — the roster IS the count: two rows, each opening a person.
+       ⚠ THE ROW IS THE APP'S OWN `Row` SINCE 27 Sep 2026 (the user: "the same
+       should reflect in profile pages for all profiles"), so its accessible
+       name is `Open {name}` like every other roster row rather than the crew
+       page's own `Open {name}'s profile` — and the ROLE is the gold right-hand
+       word now instead of being buried in the sub line beside the city. */
+    await expect(trainer.locator('a[href^="/person/"]')).toHaveCount(2);
     await expect(trainer.getByText("You are in this crew")).toBeVisible();
-    await expect(trainer.getByText("Crew leader", { exact: true })).toBeVisible();
+    /* ⚠ SCOPED TO THE ROW (27 Sep 2026). "Crew leader" is now BOTH the group's
+       heading and the leader's own right-hand word — the same shape a studio's
+       page has had all along (an Owner group over a row that says Owner), and
+       the word earns its place because the Crew members group beneath holds
+       two roles. A bare `getByText` therefore matched two nodes and was a
+       strict-mode violation; what the check means is "the leader's row says so",
+       so that is what it asks. */
+    await expect(trainer.getByRole("link", { name: `Open ${learnerName}`, exact: true })).toContainText("Crew leader");
     await trainer.goto("/crews");
     await expect(trainer.getByText("CREWS YOU ARE IN")).toBeVisible();
     await expect(trainer.getByRole("link", { name: `${crewName} — open the profile` })).toBeVisible();
@@ -1553,8 +1582,17 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.getByTestId("stats-points")).toBeVisible();
     await expect(learner.getByTestId("stat-attended")).toHaveText("0");
     await expect(learner.getByText(/Nothing has happened yet/)).toBeVisible();
-    // the numbers open into the lists behind them — with nothing on the record, none opens
-    await expect(learner.getByRole("button", { name: /open the list/ })).toHaveCount(0);
+    /* ⚠⚠ A ZERO IS DRAWN NOW (27 Sep 2026, the user: "show all metrics for that
+       particular profile type even if its 0"), which reverses the prototype's
+       own rule at 10017 — and this assertion was the rule written down. Until
+       today a record read as a different SHAPE for every person (three cards or
+       four) with no way to tell a missing metric from a zero one, while the
+       three BIG cards beside them had always drawn theirs.
+       ⚠ WHAT IS STILL REFUSED IS A RANK OF ZERO, which is a different claim and
+       is asserted a few lines down on the board. */
+    await expect(learner.getByRole("button", { name: /open the list/ })).toHaveCount(4);
+    await learner.getByRole("button", { name: /^Styles — 0, open the list$/ }).click();
+    await expect(learner.getByText("Nothing here yet")).toBeVisible();
     await learner.getByRole("link", { name: "History" }).click();
     await learner.waitForURL(/tab=history/);
     await expect(learner.getByText("Nothing on the record yet")).toBeVisible();
@@ -1562,7 +1600,13 @@ test.describe.serial("DanceOS, end to end", () => {
     // the charts: the crew the story made is on its board, with the denominator printed
     await learner.getByRole("link", { name: "Charts" }).click();
     await learner.waitForURL(/tab=charts/);
-    await expect(learner.getByText("How points work")).toBeVisible();
+    /* ⚠ THE POINTS RULES ARE A DISCLOSURE (27 Sep 2026, the user: "fix the
+       rankings section properly. make it better") — they stood full-width
+       between the controls and the board on every load. Both ends: not on the
+       screen until pressed, there after. */
+    await expect(learner.getByText("How points work")).toHaveCount(0);
+    await learner.getByRole("button", { name: "Points", exact: true }).click();
+    await expect(learner.getByRole("button", { name: "Hide points", exact: true })).toBeVisible();
     await learner.getByRole("link", { name: "Crews" }).click();
     await learner.waitForURL(/seg=crew/);
     // the crew board scores what a crew DID — no wins, because nothing records a score
@@ -1680,7 +1724,8 @@ test.describe.serial("DanceOS, end to end", () => {
     // the crew's public roster opens its people too, and the trainer's own page
     // says it is theirs rather than offering them a Follow button
     await trainer.goto(`/crew/${crewId}`);
-    await trainer.getByRole("link", { name: `Open ${trainerName}'s profile` }).click();
+    /* `Open {name}`, the shared row's name since 27 Sep — see the count above */
+    await trainer.getByRole("link", { name: `Open ${trainerName}`, exact: true }).click();
     await trainer.waitForURL(/\/person\/[0-9a-f-]+$/);
     /* ⚠⚠ RE-CUT 21 Sep 2026, AND IT IS A REAL CHANGE RATHER THAN A MOVED
        LOCATOR. `/person/{me}` drew the PUBLIC component with `isMe` until today —
@@ -2227,12 +2272,16 @@ test.describe.serial("DanceOS, end to end", () => {
     await owner.waitForURL(/\/inbox\/enquiries\/[0-9a-f-]+$/);
     await expect(owner.getByText("No number on this enquiry — quote them here instead")).toBeVisible();
 
-    // ── B6: who follows you is a list, for the owner and nobody else — a small
-    // button in the owner's row since 19 Sep 2026, no count on it (the number is
-    // inside the sheet, with the list)
+    /* ⚠⚠ B6: THE FIGURE IS THE DOOR NOW, FOR EVERYBODY (27 Sep 2026, the user:
+       "fix follow following for all profiles. list should open when clicked
+       from anywhere"). This pressed a small owner-only button in the member row
+       while the FIGURE two lines above it — which every visitor sees — was a
+       dead number. Both ends: the old control is gone, the figure opens the
+       same list, and the sheet reads its rows on the press. */
     await owner.goto(studioUrl);
-    await owner.getByRole("button", { name: "Followers — see who" }).click();
-    const followersSheet = owner.getByRole("dialog", { name: "Followers" });
+    await expect(owner.getByRole("button", { name: "Followers — see who" })).toHaveCount(0);
+    await owner.getByTestId("tenant-followers").click();
+    const followersSheet = owner.getByRole("dialog", { name: /^Followers of / });
     const learnerRow = followersSheet.getByRole("link", { name: /E2E Learner/ });
     await expect(learnerRow).toBeVisible();
     await expect(learnerRow).toHaveAttribute("href", `/person/${learnerId}`);
@@ -2265,7 +2314,11 @@ test.describe.serial("DanceOS, end to end", () => {
        own page, which prints the place WITH its population; a bare "#4" beside
        two follower counts said less than it implied. Both are asserted here
        because a rank row reappearing on either is the regression. */
-    const rankLink = /^Rank \d+ of \d+ — open global rankings$/;
+    /* ⚠ "global" is gone from the name (27 Sep 2026, the user: "remove global
+       from name as only for india") — this names a control that is already
+       absent on both screens, so it matches nothing either way; widened so it
+       would still catch a regression under either word. */
+    const rankLink = /^Rank \d+ of \d+ — open (global )?rankings$/;
     for (const page of [learner, trainer]) {
       await page.goto("/profile");
       await expect(page.getByRole("link", { name: rankLink })).toHaveCount(0);
@@ -2697,7 +2750,15 @@ test.describe.serial("DanceOS, end to end", () => {
     // sent it — which is the whole of the bug, since the studio is a draft's away
     await learner.goto("/inbox");
     await pressPill(learner, /^Requests — \d+ waiting/);
-    await expect(learner.getByText(`wants to list you as the artist on Salsa · All levels`)).toBeVisible({ timeout: 15_000 });
+    /* ⚠ A CLASS ASK IS A CLASS CARD SINCE 27 Sep 2026 (the user: "event and
+       class request cards should also look like class and event cards on
+       discover with accept and reject buttons"), so the row's own sentence —
+       "wants to list you as the artist on {class}" — is gone with the row. What
+       is drawn is the app's `ClassTile` for the class, with one line over it
+       saying who is asking and as what. Both are asserted, because the card
+       naming the right CLASS is the half the old wording carried. */
+    await expect(learner.getByText(`wants you as`)).toBeVisible({ timeout: 15_000 });
+    await expect(learner.getByTestId("request-row").filter({ hasText: "Salsa" })).toBeVisible();
     // and they say yes, so the only thing left in the way is the room
     await learner.getByRole("button", { name: "Accept Salsa · All levels" }).click();
     await expect(learner.getByText(/Accepted · you are the artist taking it/)).toBeVisible({ timeout: 15_000 });
@@ -2764,7 +2825,7 @@ test.describe.serial("DanceOS, end to end", () => {
     // the learner reads the ask in their own Inbox — a label on a public page is a claim about them — and says yes
     // (the ask names the organization BUSINESS, so the sentence carries its name)
     await learner.goto("/inbox");
-    await pressPill(learner, /^Requests — \d+ waiting/);
+    await pressPill(learner, /^Invites — \d+ waiting/);
     // ⚠ A JOIN CARD SINCE 27 Sep 2026 — the role is a chip and the sentence names
     // who invited them; the whole point of the ask (the organization's NAME being
     // readable, which `20260926140000` fixed) is now the card's own heading

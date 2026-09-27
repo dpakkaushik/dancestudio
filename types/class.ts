@@ -41,6 +41,10 @@ export interface DanceClass {
   /** The studio room this class runs in — its capacity caps the class. */
   roomId: string | null;
   poster: PosterChoice | null;
+  /** AN UPLOADED POSTER, in `media/posters/{business}/…` (27 Sep 2026). When it
+   *  is set the card and the sleeve draw the picture; null is the ordinary case
+   *  and `poster` above decides which sleeve is drawn instead. */
+  posterPath?: string | null;
   priceInr: number;
   capacity: number;
   status: ClassStatus;

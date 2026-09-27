@@ -12,7 +12,7 @@ import { findClassArtists, findMyConfirmedClaims } from "@/repositories/claims";
 import { findClassPublishState, findClassesByTenant, findWhyNoClass } from "@/repositories/classes";
 import { countEnrolledBySession, findMyEnrollments } from "@/repositories/enrollments";
 import { findMyMemberships } from "@/repositories/tenants";
-import type { MyClaimAsk } from "@/types/claim";
+import { askToTileClass, type MyClaimAsk } from "@/types/claim";
 import type { DanceClass } from "@/types/class";
 import type { MyEnrollment } from "@/types/enrollment";
 
@@ -43,31 +43,9 @@ const toTileClass = (e: MyEnrollment): DanceClass => ({
   allowsArtistMemberships: false,
 });
 
-/* the class behind a confirmed ask, as the tile draws it (19 Sep 2026) */
-const askToTileClass = (c: MyClaimAsk): DanceClass => ({
-  id: c.classId,
-  tenantId: "",
-  title: c.classTitle,
-  shareSlug: c.classShareSlug,
-  style: c.classStyle,
-  level: c.classLevel as DanceClass["level"],
-  room: c.classRoom,
-  roomId: null,
-  poster: null,
-  priceInr: c.classPriceInr,
-  capacity: c.classCapacity,
-  status: c.classStatus,
-  session: c.sessionId && c.startsAt && c.endsAt ? { id: c.sessionId, startsAt: c.startsAt, endsAt: c.endsAt } : null,
-  venueBusinessId: null,
-  venueStatus: null,
-  lat: null,
-  lng: null,
-  mapsUrl: null,
-  /* a card stands in for the class; whose pass pays is the class’s own answer,
-     read on its page — these carry the column defaults so the shape matches */
-  allowsStudioMemberships: true,
-  allowsArtistMemberships: false,
-});
+/* ⚠ `askToTileClass` MOVED TO `types/claim.ts` (27 Sep 2026) — the Inbox draws
+   the same card for the same ask now, and a second copy of a conversion is how
+   two screens come to disagree about one class. */
 
 /** YOUR CLASSES — the Home grid's Classes tile (18 Sep 2026, the user's list for
  *  every kind of account: "Classes — Booked, Assist", and for an artist

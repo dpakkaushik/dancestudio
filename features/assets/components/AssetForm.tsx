@@ -43,7 +43,12 @@ import { ASSET_CATEGORIES } from "@/repositories/assets";
  *  one never had an address to promise, so inventing one would add a page
  *  nothing links to and nothing checks. */
 
-export function AssetForm({ businessId, businessName }: { businessId: string; businessName: string }) {
+/* ⚠ `businessName` STAYS ON THE PROP and is no longer drawn (27 Sep 2026): the
+   two sentences that named the business went with the explanations, and the
+   desk this form opens over already says whose it is. Kept rather than removed
+   because every caller passes it and the name is what a heading would use if
+   this form ever grows one. */
+export function AssetForm({ businessId }: { businessId: string; businessName?: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState(false);
@@ -117,11 +122,11 @@ export function AssetForm({ businessId, businessName }: { businessId: string; bu
           style={FORM_INPUT}
         />
 
-        <FormNote blockers={blockers.length ? blockers : undefined}>
-          {worth > 0
-            ? `Counted as an expense on ${businessName}'s earnings, in the period it was added — an asset has no purchase date, so the screen does not pretend to one.`
-            : "₹0 means one you already had. It goes on the inventory and adds nothing to what was spent, which is the whole point of counting it as zero."}
-        </FormNote>
+        {/* ⚠ THE ₹0 RULE STAYS ON THE FIELD, NOT HERE — the placeholder reads
+            "₹ (0 = old)" and the row prints "₹0 (legacy)", so the one fact this
+            paragraph carried is said where the number is typed and where it is
+            read. Blockers only. */}
+        <FormNote blockers={blockers.length ? blockers : undefined} />
       </>
 
       <FormBar>
@@ -134,7 +139,6 @@ export function AssetForm({ businessId, businessName }: { businessId: string; bu
         <FormConfirm
           label="Add this asset?"
           title="Add this asset?"
-          sub={`It goes on ${businessName}'s inventory. You can change what it is worth, or take it off, from the desk.`}
           confirmWord={pending ? "Adding…" : "Add it"}
           busy={pending}
           onCancel={() => setConfirm(false)}

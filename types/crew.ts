@@ -86,6 +86,8 @@ export interface CrewEntry {
 /** A duet partner's ask (the Requests desk): somebody entered an event with you */
 export interface PartnerAsk {
   bookingId: string;
+  /** which event — the Inbox reads it by id to draw the event's own card */
+  eventId: string;
   status: "asked" | "confirmed" | "rejected";
   entrantName: string;
   entrantId: string | null;

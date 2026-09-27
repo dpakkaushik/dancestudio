@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setTenantPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
+import { addMyGalleryPhotoAction, setCrewPhotoAction, setMyAvatarAction, setPosterAction, setTenantPhotoAction, type PhotoActionResult } from "@/features/media/server-actions/photos";
 import { addStudioProofPhotoAction } from "@/features/tenants/server-actions/studioVerification";
 import { PHOTO_TYPES, photoPath, whyNotAPhoto, type PhotoOwner, MEDIA_BUCKET } from "@/lib/media/photo";
 import { PROOF_BUCKET } from "@/lib/media/proof";
@@ -51,6 +51,10 @@ const setter = (owner: PhotoOwner, path: string | null): Promise<PhotoActionResu
       return path ? addMyGalleryPhotoAction({ path }) : Promise.resolve({ error: "A header picture is removed from its own corner." });
     case "studioHeader":
       return path ? addStudioProofPhotoAction({ tenantId: owner.id, path }) : Promise.resolve({ error: "A header picture is removed from its own corner." });
+    /* a poster belongs to the BUSINESS's folder and to ONE class or event —
+       the folder is the authority, the subject is what it is a poster OF */
+    case "poster":
+      return setPosterAction({ kind: owner.subject.kind, id: owner.subject.id, path });
   }
 };
 

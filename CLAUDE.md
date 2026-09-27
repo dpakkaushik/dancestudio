@@ -2,6 +2,154 @@
 
 ## LAST SESSION (27 Sep 2026) — replaced on every push (Rule 13)
 
+> ### THE INBOX IS THREE DESKS, A POSTER IS A PICTURE, AN ARTIST HAS A TEAM, AND THE APP STOPS EXPLAINING ITSELF (27 Sep 2026, latest) — BUILT; ⚠⚠ THREE MIGRATIONS WRITTEN, DRY-RUN **16/16**, **15/15** AND HELD FOR THE USER'S WORD (NEXT TO DO #0ap)
+> Two rounds. First the user's own answers to a "what is left" question — *"an
+> artist's team, both ways"*, *"Posters"*, *"Warn the admin, one press to end
+> it"*, *"Delete the 3 real retired logins too"*, and a write-in: *"1. fix inbox
+> — different columns for join team requests. event and class request cards
+> should also look like class and event cards on discover with accept and reject
+> buttons. remove column with all request and enquiries together. 2. enquiries
+> cards to be also made in similar design."* Then, mid-build, a second list:
+> *"fix follow following for all profiles. list should open when clicked from
+> anywhere. fix all list drop downs should be within the app only not open a
+> seprate screen. remove unessesary explanations from earnings, all create forms
+> …, setting menu options their pages, subscriptions page for all. there should
+> be no extra details for everything in the app unless things are very
+> important. fix team layout for all types of profiles … arrange tools options in
+> top left with tools heading. fix stats page … show all metrics … even if its 0
+> … fix the rankings section properly … remove global from name as only for
+> india. make top half of stats page similar in all columns."*
+> * ⚠⚠ **1 · THE INBOX IS THREE DESKS AND "ALL" IS GONE.** All was a fourth list
+>   holding a flattened copy of the other two — one row shape for four different
+>   objects, and **no way to answer anything from it**: you pressed a row to be
+>   taken to the desk that could. A desk you cannot act on is a table of
+>   contents, and the pills above it already are one. **Requests** is what
+>   somebody wants you FOR (a class, a room, a duet), **Invites** what somebody
+>   wants you to BELONG to, **Enquiries** somebody wanting to book you.
+> * ⚠⚠ **AND A CLASS ASK IS A CLASS CARD NOW.** It was a violet row of the
+>   Inbox's own invention — a meta table of What / When / Asked by — describing a
+>   thing the app already knows how to draw. The desk draws `ClassTile` and
+>   `EventCard`, the same two components Discover uses, with **Accept · Reject**
+>   as their action row; an ask about a class can no longer describe it
+>   differently from the shelf it came off. The plain row survives as the
+>   FALLBACK for a card that could not be read. ⚠ Three reads had to widen for
+>   it (`VenueRequest.danceClass`, `PartnerAsk.eventId`, `findEventsByIds` — one
+>   query for the whole desk, never one per card) and `askToTileClass` moved out
+>   of `/my-classes` into `types/claim.ts` rather than being written twice.
+>   **Enquiries wear the join card's anatomy** for the same reason — there is no
+>   enquiry card elsewhere in the app to borrow, and an enquiry is the same shape
+>   of thing as an invitation: a proposal that leads with WHAT. ⚠ Its meta table
+>   of every field went: up to five label/value pairs on a list meant to be
+>   scanned, when the detail page one tap away has them in full.
+> * ⚠⚠ **2 · A POSTER IS A PICTURE** (`20260927130000`, HELD). Open since
+>   Step 11: `classes.poster` is one of four DRAWN designs and the prototype's
+>   `PosterCropper` (6604) was never lifted, so a studio with a real flyer had
+>   nowhere to put it. One folder `posters/{business_id}/` in the existing public
+>   bucket, three storage policies, two owner-or-trainer doors that re-check the
+>   same prefix. ⚠ **Keyed on the BUSINESS, not the uploader** — a studio's
+>   classes are posted by its owner AND its trainers and a class outlives whoever
+>   uploaded, so `routines/{person}/`'s shape (right for a routine) would scatter
+>   one studio's flyers across its team's folders. The cropper's square frame was
+>   already the right shape: a poster is `S × S`.
+> * ⚠⚠ **3 · AN ARTIST HAS A TEAM, BOTH WAYS** (`20260927120000`, HELD — ONE
+>   CLAUSE). `person_associations` has listed an artist page under "Artists
+>   associated with" since 20 Sep, so one direction always worked; the other
+>   never did, because `public_studio_team` ended with `b.type = 'studio'`.
+>   ⚠ **The dry run found that NOBODY IS SEATED ON A LISTED ARTIST PAGE on
+>   production** — which is the finding rather than a gap in the data: the team
+>   was unreadable, so nothing ever put anybody on one and could show it. The
+>   seat is planted inside the transaction and rolls back.
+> * ⚠⚠ **4 · AN ADMIN WHO HAS ACTED CAN STILL BE DELETED** (`20260927110000`,
+>   HELD, dry-run **16/16**). Four columns carry an FK into `auth.users` with NO
+>   `on delete` clause, so **any account that has ever acted as a platform admin
+>   is permanently undeletable** — which is why `jishnu.nanda@gmail.com`, one of
+>   the three retired logins the user asked to delete, answered `23503` over ONE
+>   audit row, and why every throwaway `sv-admin-*` the verification proof makes
+>   has been left on production since 14 Sep, one per run, its own cleanup
+>   refused in silence. ⚠ **`on delete set null` is not the fix**: `admin_audit`
+>   is immutable by trigger for EVERYBODY, service role included, so the SET NULL
+>   (an UPDATE) would be refused too. The fix is the one this database already
+>   uses everywhere else — a plain uuid — plus `actor_label`, the same NAME
+>   SNAPSHOT `subject_label` has been since 10 Sep, so the log still says who
+>   acted once the account is gone. ⚠ The backfill disables the immutability
+>   trigger for ONE statement and puts it back, said out loud in the file.
+>   **The other two of the three logins are already deleted.**
+> * **5 · THE REFUND GAP HAS A WARNING AND ONE PRESS.** Since `20260927100000`
+>   a studio pays BEFORE it is reviewed, so rejecting one can leave a live
+>   mandate on a studio that will never be on Discover. The verification desk
+>   reads each waiting studio's mandate (one RPC for the page) and shows
+>   **PAYING ₹1,200/mo**; rejecting offers **"End its subscription too"**, ticked
+>   by default. ⚠ The badge goes first and the mandate second: if the second call
+>   fails the studio is correctly unverified and the desk SAYS the subscription
+>   is still live, which is recoverable — the other order would take somebody's
+>   money away over a rejection that did not happen.
+> * ⚠⚠ **6 · THE FOLLOWERS FIGURE IS A DOOR ON ALL SEVEN SURFACES THAT PRINTED A
+>   DEAD NUMBER.** It opened a list on a person's own two screens and nowhere
+>   else; a business's list was reachable only through a separate small
+>   "Followers ›" button the owner alone could see, in a row about something
+>   else. ⚠ **The sheet reads its rows ON THE PRESS** (`loadFollowersAction`), so
+>   the figure is a door everywhere and costs nothing on the pages nobody presses
+>   it on — cheaper than what it replaces. ⚠ **The privacy line is the
+>   DATABASE's, untouched**: `follows` has no public SELECT policy, so a stranger
+>   pressing it on a studio's page gets the honest *"Nobody here you can see"*
+>   rather than somebody else's data. `TenantFollowersButton` is deleted.
+>   ⚠ **NULL IS STILL NOT ZERO** — a count that could not be read draws no figure,
+>   which is a different rule from the Stats one below and is kept.
+> * ⚠⚠ **7 · A NATIVE `<select>` IS A SEPARATE SCREEN, AND THAT IS THE WHOLE OF
+>   THE ASK.** `CitySelect` was an invisible native select stretched over a
+>   painted chip — on a phone Android and iOS answer that with a FULL-SCREEN OS
+>   picker, in the system's own type, with nothing of the app visible. On a
+>   laptop it is a small popup and reads fine, which is why it survived four
+>   months. It is the app's own bottom sheet now — `dosSheetUp`, a scrim,
+>   `useCloseOnBack` — with the same options, the same callbacks, the same
+>   accessible name, and **not one caller changed**. Stats' Metric select became
+>   a row of chips for the same reason (five metrics fit on one line).
+> * **8 · ARRANGE IS ON THE TOOLS HEADING**, which reverses C34 at the same
+>   person's word. ⚠ It needed a structural move first: `home-kit` imports
+>   `ArrangeTools`, so the head and the panel went to `tool-grid.tsx` — the LEAF
+>   the tile already lives in for exactly this reason (22 Sep) — and are
+>   re-exported at their old addresses.
+> * ⚠⚠ **9 · STATS: A ZERO IS A MEASUREMENT, A RANK OF ZERO IS NOT.** The small
+>   cards were `.filter((c) => c[1] > 0)`, so a record read as a different SHAPE
+>   for every person — three cards or four, and no way to tell a missing metric
+>   from a zero one — while the three BIG cards beside them had always drawn
+>   theirs. One rule now. ⚠ The thing still refused is a **rank** of zero, which
+>   is a different claim. **One top half on all three tabs** (it was three: gold
+>   with a figure, gold with none, and a violet-pink-amber card of its own) —
+>   and **"Global Rankings" is "Rankings"** under a **DanceOS · India** eyebrow,
+>   because every city on that board is one of the eight the user fixed on
+>   19 Sep. The **"How points work" card** became a disclosure beside the count
+>   (it stood full-width between the controls and the board on every load), and
+>   the **pinned "you" row** went: your own row is HIGHLIGHTED in the board
+>   instead, because a ranking is the list of people you are ranked among.
+> * **10 · AND THE APP STOPS EXPLAINING ITSELF.** Earnings' two empty-state
+>   paragraphs and its WHAT IS LEFT footnote; four line NOTES on the ledger; ten
+>   paragraphs across the five create forms (a `FormNote` and a confirm `sub`
+>   each); five on the Subscription page; two footnotes on Payments; the
+>   Arrange panel's own instruction line; two on `EntityStatsPage`. ⚠ **What
+>   stays is anything that changes a NUMBER or names a BLOCKER**: the 4,000-row
+>   warning, `FormNote`'s blockers, the state line on a live plan, "No … plan is
+>   on offer", and every empty state (shortened to one clause).
+> * **11 · ONE ROLE WORD, IN ONE SLOT, ON EVERY PROFILE PAGE.** A studio's page
+>   put the role in the grey `sub` where the city goes, a person's put it in the
+>   gold `right`, an organization gave Owner a `right` and Event team NOTHING,
+>   and a crew's page had its own fourth row component. `Row` has had the two
+>   slots all along — `sub` is WHERE, `right` is WHAT — and all four use them the
+>   same way now; `CrewPublicPage`'s local `Person` is `Row`.
+> * **Verified so far:** typecheck 0 · lint 0 · `next build` green · the three
+>   dry runs **16/16**, **15/15** and (the audit one) rolled back with the ACL
+>   multiset, anon's executable set and the policy count asserted unchanged.
+>   ⚠ **A stale `next start` from 04:37 was holding :3100** — the 21 Sep lesson
+>   met for the third time; stopped before the fresh bundle.
+> * ⚠ **AND I BROKE RULE 17 TWICE IN ONE SESSION, ON THE RULE'S OWN TERMS.** A
+>   one-line `Set-Content -Encoding utf8` to rename `m.memberRole` added a BOM to
+>   `PersonBody.tsx` (content intact — checked by reading HEAD's bytes through
+>   `git cat-file`, never through a shell redirect, which adds one of its own);
+>   and a `node -e` through PowerShell ate the backticks out of a template
+>   literal and left `aria-label={Followers — \}` in a source file. **Both were
+>   caught in the same minute and both were avoidable**: the Edit tool, or Node
+>   with a real script FILE, never `node -e` through this shell.
+
 > ### AND THEN THE CHECK THAT SHOULD HAVE CAUGHT IT (27 Sep 2026, after the push) — BUILT, no migration
 > The user: *"suggest next changes and fix issues."* So the two defect SHAPES
 > found earlier the same day were hunted for siblings, and the hunt paid three
@@ -5814,6 +5962,67 @@ summary; the report has the evidence.
    **3** (`node scripts/demo-data.js wipe` then `seed`) and **4** (delete the 14
    retired organizations' auth accounts).
 
+0ap. **⚠⚠ THREE MIGRATIONS WRITTEN, DRY-RUN AND HELD — THE LIST, FOR THE USER'S
+   WORD.** ⚠ Rule 9: one widens what a stranger reads, one drops four foreign
+   keys, one adds a storage folder. All three were applied inside `BEGIN …
+   ROLLBACK` against production and checked as real roles; each dry run asserts
+   the ACL multiset, anon's executable set and the policy count unchanged.
+   * **`20260927110000_an_admin_who_acted_can_still_be_deleted`** (dry-run
+     **16/16**). ⚠ **Any account that has ever acted as a platform admin is
+     permanently undeletable today** — four columns carry an FK into
+     `auth.users` with no `on delete` clause: `admin_audit.actor_id` (1591
+     rows, 483 distinct actors), `reports.decided_by` (1), 
+     `studio_verification_requests.decided_by` (15), `subscriptions.granted_by`
+     (25). It is why `jishnu.nanda@gmail.com` — one of the three retired logins
+     the user asked to delete — answered `23503` over ONE audit row, and why
+     every throwaway `sv-admin-*` the verification proof makes has been left on
+     production since 14 Sep, its own cleanup refused in silence. **The whole
+     file:** one new column `admin_audit.actor_label` (a NAME SNAPSHOT, exactly
+     what `subject_label` has been since 10 Sep) backfilled for all 1591 rows;
+     `log_admin_action` takes the snapshot as it writes (same signature, same
+     grants); `admin_audit_log` returns `coalesce(u.email, a.actor_label)` so a
+     LIVE admin still reads as their email and only a deleted one falls back;
+     and the four constraints are dropped. ⚠ The backfill DISABLES the
+     immutability trigger for one statement and re-enables it — said out loud
+     in the file, because that trigger refuses everybody including the service
+     role, which is also why `on delete set null` could never have been the fix.
+     ⚠ Nothing embeds through any of the four FKs (checked against every
+     `.select()` in the app), so no PostgREST relationship is lost.
+   * **`20260927120000_an_artist_has_a_team_too`** (dry-run **15/15** with the
+     one below). ONE CLAUSE: `public_studio_team`'s `b.type = 'studio'` becomes
+     `b.type in ('studio', 'artist_page')`. `create or replace`, same signature,
+     same ACL. ⚠ **What widens for a stranger:** the confirmed seats on a
+     LISTED artist page — name, picture, seat — exactly the shape a listed
+     studio's team has had since 19 Sep and no wider; an unlisted page still
+     answers nobody. ⚠ The dry run found **nobody is seated on a listed artist
+     page on production**, which is the finding rather than a gap: the team was
+     unreadable, so nothing ever put anybody on one and could show it.
+   * **`20260927130000_a_poster_is_a_picture`**. `classes.poster_path` and
+     `events.poster_path` (nothing backfilled — 0 rows carry one), the folder
+     `posters/{business_id}/` in the EXISTING public `media` bucket with three
+     storage policies, and two owner-or-trainer doors `set_class_poster` /
+     `set_event_poster` that re-check the same prefix. ⚠ Keyed on the BUSINESS,
+     not the uploader. ⚠ **The drawn poster stays** and is still what every one
+     of the 31 classes on production wears.
+   ⚠⚠ **AND THE APP IS HELD BACK ONE LINE EACH FOR THE POSTER ONE.** The moment
+   `poster_path` went into `CLASS_COLUMNS` and `EVENT_SELECT`, every class and
+   event read answered `column events.poster_path does not exist` and the
+   streamed boundary surfaced it as React #441 — found by `shoot-tiles` on a
+   studio's own home. So the two SELECTs do NOT ask for it yet and everything
+   else stands (the doors, the storage policies, the picker on the class page
+   and the event manager, `PosterBlock`'s image branch). **On apply, put
+   `poster_path` back into the two select strings and the feature is live.**
+   **On the user's word:**
+```
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 -DryRun   # must list exactly 20260927110000, 20260927120000, 20260927130000
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db-push.ps1 2>&1 | Select-String -NotMatch 'Skipping migration|Warning: failed to cache|prerequisite for local'
+   # ⚠ then RELOAD POSTGREST'S SCHEMA CACHE — two new columns the app will select (19 Sep lesson)
+   # then put poster_path back into CLASS_COLUMNS and EVENT_SELECT, rebuild, and:
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proofs.ps1 studio-verification profile-pages person-pages classes events
+```
+   Then the third retired login deletes cleanly, and the `sv-admin-*` pile can
+   be swept at last.
+
 0ao. **~~ONE MIGRATION WRITTEN, DRY-RUN 16/16 AND HELD~~ — ✅ APPLIED 27 Sep 2026**
    on the user's *"fix"*. `db-push -DryRun` listed exactly the one file, the apply
    printed it on the first try, and it read back live: `has_been_asked_by_business`
@@ -6860,6 +7069,39 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 
 ### Progress tracker — update after EVERY push (Rule 11)
 
+- **THE INBOX IS THREE DESKS, A POSTER IS A PICTURE, AN ARTIST HAS A TEAM, AND
+  THE APP STOPS EXPLAINING ITSELF — 27 Sep 2026, no step number ⚠ (Rule 9: one
+  held migration widens what a stranger reads, one drops four `auth.users`
+  foreign keys, one adds a storage folder) — THREE MIGRATIONS WRITTEN, DRY-RUN
+  **16/16** AND **15/15**, AND HELD (NEXT TO DO #0ap).** Two rounds of the
+  user's own list. **The Inbox is Requests · Invites · Enquiries** and "All" is
+  gone — it was a fourth list holding a flattened copy of the other two with no
+  way to answer anything from it; a class ask is drawn as the app's own
+  `ClassTile` and a duet ask as its `EventCard`, with **Accept · Reject** under
+  them, and an enquiry wears the join card's anatomy. **Posters** are real
+  pictures (one folder, three policies, two doors; the cropper's square frame
+  was already right). **An artist's team reads both ways** — one clause, and the
+  dry run found nobody has ever been seated on a listed artist page BECAUSE the
+  team was unreadable. ⚠⚠ **And any account that has ever acted as a platform
+  admin is permanently undeletable** — four NO ACTION FKs into `auth.users`,
+  which is why one of the three retired logins the user asked to delete answered
+  `23503` over ONE audit row and why every `sv-admin-*` the proofs make has been
+  left since 14 Sep; the fix is a NAME SNAPSHOT plus dropping the four, because
+  `on delete set null` is refused by the log's own immutability trigger.
+  Then the second list: **the Followers figure is a door on all seven surfaces**
+  that printed a dead number (one sheet, reading its rows on the press, the
+  duplicate owner-only button deleted); ⚠ **a native `<select>` IS a separate
+  screen on a phone**, so `CitySelect` is the app's own sheet and Stats' metric
+  is a chip row; **Arrange sits on the Tools heading**; **Stats draws its zeros**,
+  wears one top half on all three tabs, and says **Rankings** under a
+  **DanceOS · India** eyebrow with the points card as a disclosure and your own
+  row highlighted in the board; **one role word in one slot on every profile
+  page**; and ~30 explanatory paragraphs are gone from Earnings, the five create
+  forms, Subscription, Payments and the Stats pages. ⚠⚠ **And the app selecting
+  `poster_path` before its migration broke every class and event read** — found
+  by `shoot-tiles` as React #441 on a studio's own home; the two SELECTs are
+  held back one line each. **typecheck 0 · lint 0 · `next build` green ·
+  33/33 proofs · `shoot-tiles` 155/155 · `shoot-hero` 178/178.**
 - **THE USER'S FIFTEEN — 27 Sep 2026, no step number ⚠ (Rule 9: the held
   migration is money and admin authority; the plan-rights fix is a money claim) —
   ONE MIGRATION APPLIED (`20260926140000`), ONE HELD (dry run 30/30).** Their six

@@ -101,10 +101,6 @@ export function SubscriptionScreen({
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 900 }}>DanceOS Pro · Artist</div>
-                    {/* ⚠ "· 0.9% payments" WAS HERE TOO, on the card somebody
-                        already paying reads (27 Sep 2026). DanceOS charges no
-                        platform fee — see `planRights.ts` for the whole of it. */}
-                    <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2 }}>teaching tools on your own profile</div>
                   </div>
                   <span style={{ fontSize: 9.5, fontWeight: 900, padding: "3px 10px", borderRadius: 999, background: `${w.tone}22`, color: w.tone, whiteSpace: "nowrap" }}>{w.title.toUpperCase()}</span>
                 </div>
@@ -117,9 +113,6 @@ export function SubscriptionScreen({
                   <b style={{ fontFamily: DOS_MONO }} data-testid="plan-until">{live.currentPeriodEnd ? dateWords(live.currentPeriodEnd) : "—"}</b>
                 </div>
                 <div style={{ fontSize: 10.5, color: "var(--sub)", marginTop: 9, lineHeight: 1.5 }}>{w.line}</div>
-                <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>
-                  Classes and events can be scheduled up to the date you are paid through.
-                </div>
               </div>
             );
           })()}
@@ -155,7 +148,6 @@ export function SubscriptionScreen({
         <>
           <div style={{ ...bizCard, borderLeft: "3px solid #EC4899" }}>
             <div style={{ fontSize: 15, fontWeight: 900 }}>DanceOS Pro · Artist</div>
-            <div style={{ fontSize: 11, color: "var(--sub)", marginTop: 2 }}>Same profile, same followers, same stats — plus everything you need to teach and get paid.</div>
             {offers.length === 0 ? (
               <div style={{ fontSize: 11, color: "#F87171", marginTop: 10 }}>No artist plan is on offer right now.</div>
             ) : (
@@ -184,10 +176,6 @@ export function SubscriptionScreen({
               </button>
             )
           ) : null}
-          <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 8, textAlign: "center", lineHeight: 1.5 }}>
-            UPI AutoPay or card, set up once through Cashfree. The first month is paid when you authorise; every renewal is
-            notified a day before. Cancel any time — you keep what you paid for.
-          </div>
         </>
       )}
 
@@ -200,16 +188,11 @@ export function SubscriptionScreen({
       {studios.length > 0 ? (
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", padding: "0 2px 8px" }}>YOUR STUDIOS</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>
-            {studioPrice ? (
-              <>
-                Each studio has its own subscription — <b style={{ color: "var(--text)", fontFamily: DOS_MONO }}>{priceWords(studioPrice.priceInr, studioPrice.period)}</b> per studio, renewing on its own. A
-                studio you have not subscribed stays private; nothing in it is lost.
-              </>
-            ) : (
-              "No studio plan is on offer right now — message DanceOS from Settings › Help & support."
-            )}
-          </div>
+          {/* the price is on each strip's own Subscribe button; what is left
+              here is the one case where there IS no button */}
+          {studioPrice ? null : (
+            <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>No studio plan is on offer right now.</div>
+          )}
           {studios.map((t) =>
             t.state ? (
               <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} state={t.state} studioPrice={studioPrice} heading={t.name} />
@@ -223,16 +206,9 @@ export function SubscriptionScreen({
       {orgs.length > 0 ? (
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: 1, color: "var(--muted)", padding: "0 2px 8px" }}>YOUR ORGANIZATIONS</div>
-          <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>
-            {orgPrice ? (
-              <>
-                Each organization has its own subscription — <b style={{ color: "var(--text)", fontFamily: DOS_MONO }}>{priceWords(orgPrice.priceInr, orgPrice.period)}</b>, renewing on its own, once its
-                GST number is verified. An organization you have not subscribed stays private; its events are not.
-              </>
-            ) : (
-              "No organization plan is on offer right now — message DanceOS from Settings › Help & support."
-            )}
-          </div>
+          {orgPrice ? null : (
+            <div style={{ fontSize: 11.5, color: "var(--sub)", lineHeight: 1.55, padding: "0 2px 10px" }}>No organization plan is on offer right now.</div>
+          )}
           {orgs.map((t) =>
             t.state ? (
               <StudioSubscriptionStrip key={t.id} tenantId={t.id} tenantName={t.name} state={t.state} studioPrice={orgPrice} heading={t.name} />

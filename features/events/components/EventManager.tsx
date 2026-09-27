@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { photoUrl } from "@/lib/media/photo";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { PassSheet } from "@/features/classes/components/PassSheet";
 import { DOS_SLEEVE, DosPosterSleeve, dosPosterAuto, useDosFold } from "@/features/classes/components/poster";
+import { PhotoPicker } from "@/features/media/components/PhotoPicker";
 import { dosKey } from "@/features/classes/components/ShareSheet";
 import { addWalkInAction, checkInEventBookingAction } from "@/features/events/server-actions/events";
 import { DOS_DISPLAY, DOS_UI, GOLD } from "@/lib/design/tokens";
@@ -143,7 +145,7 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
   const counts = F.map(([k, l]) => [k, l, participants.filter((p) => p.entryFormat === k).length] as [EntryFormat, string, number]).filter((x) => x[2] > 0);
   const prizePool = ev.prizes.reduce((a, x) => a + (x || 0), 0);
   const isLive = ev.status === "published" && ev.startDate <= todayKey && todayKey <= ev.endDate;
-  const posterItem = { title: ev.title, style: ev.style, styleColor: col };
+  const posterItem = { title: ev.title, style: ev.style, styleColor: col, posterUrl: photoUrl(ev.posterPath) };
   const posterK = ev.poster && ev.poster !== "none" ? ev.poster : dosPosterAuto(ev.title);
   const pass = { code: `${host || ""}/e/${ev.shareSlug}`, label: "Booking link", note: ev.status === "published" ? "Anyone who scans this can book your event." : "A draft — publish it before handing this out." };
 
@@ -311,6 +313,19 @@ export function EventManager({ tenantId, event: ev, bookings, canRun, todayKey }
                   Maps
                 </a>
               </div>
+            </Card>
+            {/* THE POSTER, UPLOADED (27 Sep 2026) — the same control the class
+                page's poster sheet carries, on the one screen that is this
+                event's own. Take it down and the drawn sleeve comes back. */}
+            <Card col={col}>
+              <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--sub)", marginBottom: 8 }}>POSTER</div>
+              <PhotoPicker
+                owner={{ kind: "poster", id: ev.tenantId, subject: { kind: "event", id: ev.id } }}
+                hasPhoto={Boolean(ev.posterPath)}
+                label={ev.posterPath ? "Change the picture" : "Upload a picture"}
+                cropLabel="Poster"
+                compact
+              />
             </Card>
             <Card col={col}>
               <div style={{ fontSize: 10.5, fontWeight: 900, letterSpacing: 1.2, color: "var(--sub)", marginBottom: 8 }}>EVENT DETAILS</div>

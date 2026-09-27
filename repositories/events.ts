@@ -62,6 +62,8 @@ interface EventRow {
   status: EventStatus;
   share_slug: string;
   poster: string | null;
+  /** ⚠ OPTIONAL until `20260927130000` is applied and the select asks for it */
+  poster_path?: string | null;
   businesses: { name: string; city: string | null } | null;
   event_entry_tiers: EntryTierRow[] | null;
   event_ticket_tiers: TicketTierRow[] | null;
@@ -137,6 +139,8 @@ const toEvent = (r: EventRow, counts: CountRow[]): DanceEvent => ({
   status: r.status,
   shareSlug: r.share_slug,
   poster: r.poster,
+  /* ⚠ not in the select until `20260927130000` is applied — see classes.ts */
+  posterPath: (r as { poster_path?: string | null }).poster_path ?? null,
   entryTiers: (r.event_entry_tiers ?? [])
     .filter((t) => !t.deleted_at)
     .sort((a, b) => ["solo", "duo", "crew"].indexOf(a.format) - ["solo", "duo", "crew"].indexOf(b.format))
@@ -220,6 +224,20 @@ export async function findEventById(supabase: SupabaseClient, eventId: string): 
   }
   if (!data) return null;
   return (await hydrate(supabase, [data as unknown as EventRow]))[0];
+}
+
+/** SEVERAL EVENTS BY ID, IN ONE READ (27 Sep 2026) — the Inbox draws the app's
+ *  own event card for a duet-partner ask now, and one read for the whole desk
+ *  is the shape `findClassArtists` set for the class shelf: never one per card.
+ *  ⚠ Swallows its error to an empty map: an Inbox must not fail to open because
+ *  one card would have been prettier. */
+export async function findEventsByIds(supabase: SupabaseClient, eventIds: string[]): Promise<Map<string, DanceEvent>> {
+  const ids = [...new Set(eventIds.filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase.from("events").select(EVENT_SELECT).in("id", ids).is("deleted_at", null).limit(MAX_LIST);
+  if (error) return new Map();
+  const out = await hydrate(supabase, (data ?? []) as unknown as EventRow[]).catch(() => [] as DanceEvent[]);
+  return new Map(out.map((e) => [e.id, e]));
 }
 
 /** The public page's read — a stranger resolves a published event of a listed

@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
-import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { EntityBand } from "@/features/profiles/components/profile-band";
+import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityMark, Group, TYPE, smallBox } from "@/features/profiles/components/profile-kit";
+import { Group, Row, smallBox } from "@/features/profiles/components/profile-kit";
 import { DOS_UI, GOLD, INK, LILAC, LINE, MUTED, SUB } from "@/lib/design/tokens";
 import { photoUrl } from "@/lib/media/photo";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
@@ -40,21 +41,19 @@ const monthDay = (iso: string) => {
   return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }).format(new Date(Date.UTC(y, m - 1, d)));
 };
 
+/** ⚠⚠ THE APP'S OWN `Row`, NOT A FOURTH ONE (27 Sep 2026, the user: *"fix team
+ *  layout for all types of profiles should be clean. and the same should
+ *  reflect in profile pages for all profiles"*).
+ *
+ *  This was the fourth roster row in the app — its own `<Link>`, its own
+ *  spacing, its own chevron, and the role INSIDE the sub line beside the city
+ *  ("Member · Pune") where every other public page puts it in the gold `right`
+ *  slot. So a person read one way on a crew's page and another on their own,
+ *  which is exactly the gap. It is `Row` now: same face, same title, the CITY
+ *  in `sub` and the ROLE in `right`, like a studio's team and an
+ *  organization's. */
 function Person({ m, role }: { m: CrewMember; role: string }) {
-  return (
-    /* the roster opens the people on it — a name you can tap is the whole point of a roster */
-    <Link href={`/person/${m.userId}`} aria-label={`Open ${m.name}'s profile`} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 4px", minWidth: 0, color: INK, textDecoration: "none" }}>
-      <EntityMark name={m.name} photo={photoUrl(m.avatarPath)} />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</span>
-        <span style={{ display: "block", ...TYPE.micro, color: role === "Crew leader" ? GOLD : MUTED, marginTop: 3 }}>
-          {role}
-          {m.city ? ` · ${m.city}` : ""}
-        </span>
-      </span>
-      <span aria-hidden="true" style={{ flexShrink: 0, color: LINE, fontSize: 15, fontWeight: 600 }}>›</span>
-    </Link>
-  );
+  return <Row key={m.id} href={`/person/${m.userId}`} title={m.name} sub={m.city ?? ""} right={role} photo={photoUrl(m.avatarPath)} />;
 }
 
 export function CrewPublicPage({
@@ -126,7 +125,7 @@ export function CrewPublicPage({
               followers alone; `crews` has no `socials` column, so no links row —
               an empty rail is not a row. ── */}
           <EntityBand
-            figures={<Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />}
+            figures={<FollowerFigure n={followers} kind="crew" id={crew.id} name={crew.name} />}
             /* the three chips at the row's right edge (20 Sep 2026) — the QR, the
                crew board this crew is ranked on, and the Follow bell, drawn for
                every viewer and saying why when a press would be refused */

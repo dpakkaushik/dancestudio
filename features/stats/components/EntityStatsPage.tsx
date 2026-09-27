@@ -121,17 +121,23 @@ export function EntityStatsPage({
       {sides ? (
         <div style={{ position: "relative", marginTop: 18 }}>
           <div style={{ ...micro, color: MUTED, marginBottom: 8 }}>The record</div>
-          <div style={{ display: "flex", gap: 8 }}>
+          {/* ⚠ THE SAME THREE CARDS THE PERSON'S OWN SCREEN DRAWS (27 Sep 2026,
+              the user: *"make top half of stats page similar in all columns"*).
+              These were flat, centred, grey-bordered tiles with an 18px figure
+              where `StatsScreen` draws a tinted card with a 3px bar and a 23px
+              figure in the side's own colour — so the same record read as two
+              different screens depending on whose it was. One shape now.
+              ⚠ A ZERO IS DRAWN, as it always was here and as it now is there. */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             {sides.map(([label, n, h, col]) => (
-              <div key={label} style={{ flex: 1, background: CARD, border: `1.5px solid ${LINE}`, borderTop: `3px solid ${col}`, borderRadius: 14, padding: "10px 8px", textAlign: "center" }}>
-                <div style={{ ...figure, fontSize: 18, fontFamily: DOS_DISPLAY, fontWeight: 900 }}>{n}</div>
-                <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.3, textTransform: "uppercase", color: SUB, marginTop: 2 }}>{label}</div>
-                <div style={{ fontSize: 9.5, color: MUTED, marginTop: 3 }}>{hoursWords(h)}</div>
+              <div key={label} aria-label={`${label} — ${n} sessions, ${hoursWords(h)}`} style={{ position: "relative", overflow: "hidden", background: `${col}12`, border: `1.5px solid ${col}55`, borderRadius: 14, padding: "12px 11px 13px" }}>
+                <span aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, top: 0, height: 3, background: col }} />
+                <div style={{ ...figure, fontSize: 23, fontWeight: 900, lineHeight: 1, color: col }}>{n}</div>
+                <div style={{ ...micro, color: SUB, marginTop: 5, letterSpacing: 0.5 }}>{label}</div>
+                <div style={{ fontSize: 10.5, fontWeight: 800, color: col, marginTop: 3, fontVariantNumeric: "tabular-nums" }}>{hoursWords(h)}</div>
               </div>
             ))}
           </div>
-          {/* a booking nobody marked is not a session danced (Step 25) */}
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: 8, lineHeight: 1.45 }}>Sessions that have ended, and check-ins that were marked — a booking nobody marked is not counted.</div>
         </div>
       ) : null}
 
@@ -169,6 +175,10 @@ export function EntityStatsPage({
 
       <div style={{ position: "relative", marginTop: 18, background: CARD, border: `1.5px solid ${LINE}`, borderRadius: 16, padding: "12px 14px" }}>
         <div style={{ ...micro, color: MUTED, marginBottom: 6 }}>How points work</div>
+        {/* ⚠ the sentence under these went with its twin on the board
+            (27 Sep 2026): points are counted live and a battle win is not
+            counted because nothing records a score — both true, neither
+            something a reader needs before reading four numbers. */}
         {rules.map(([what, pts, col]) => (
           <div key={what} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", fontSize: 12 }}>
             <span style={{ width: 8, height: 8, borderRadius: 4, background: col, flexShrink: 0 }} />
@@ -176,8 +186,6 @@ export function EntityStatsPage({
             <b style={figure}>{pts}</b>
           </div>
         ))}
-        {/* the line the prototype's card claims and this app cannot make true (Step 25) */}
-        <div style={{ fontSize: 10.5, color: MUTED, marginTop: 6, lineHeight: 1.45 }}>Counted live. A battle win is not counted yet — no score is recorded anywhere.</div>
       </div>
 
       <Link href={`/stats?tab=charts&seg=${segment}`} aria-label={`Open the ${SEG_WORD[segment].many} board`} style={{ position: "relative", display: "block", marginTop: 14, textAlign: "center", padding: "12px", borderRadius: 12, background: "var(--text)", color: "var(--solid)", fontWeight: 900, fontSize: 12.5, textDecoration: "none" }}>

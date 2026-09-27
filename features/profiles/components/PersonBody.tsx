@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MembershipsOnSale } from "@/features/memberships/components/MembershipsOnSale";
 import type { MembershipOnSale } from "@/repositories/memberships";
 import type { PersonOrganization } from "@/repositories/organizationTeam";
+import type { PublicTeamMember } from "@/types/publicProfile";
 import type { PublicPerson } from "@/repositories/publicPerson";
 import type { Tenant } from "@/types/tenant";
 import { photoUrl } from "@/lib/media/photo";
@@ -60,6 +61,7 @@ export function PersonBody({
   omitStudioSeats = false,
   trainsAt = [],
   organizations = [],
+  artistTeam = [],
 }: {
   person: PublicPerson;
   isMe: boolean;
@@ -97,6 +99,17 @@ export function PersonBody({
    *  `findOrganizationsNaming` has the whole reason, including why it needs no
    *  migration. Empty for a screen that does not pass it. */
   organizations?: PersonOrganization[];
+  /** ⚠ THE PEOPLE ON THIS ARTIST'S OWN PAGE (27 Sep 2026, the user: "an
+   *  artist's team, both ways"). The link ran one way here too: a person seated
+   *  on an artist page has read "Artists associated with" on their own profile
+   *  since 20 Sep, and the artist's profile named nobody back — because
+   *  `public_studio_team` ended with `b.type = 'studio'` and refused an artist
+   *  page outright (`20260927120000` is the one clause that opens it).
+   *  ⚠ The OWNER row is dropped here and only here: they are whose page this
+   *  is, and a row opening the profile you are standing on is the loop C37
+   *  exists to stop. A studio's page still names its owner, which is a
+   *  different person from the reader. */
+  artistTeam?: PublicTeamMember[];
 }) {
   const { profile } = person;
   /** ⚠ NEVER THEIR OWN ARTIST PAGE as a place they teach (R24) — but a class
@@ -119,6 +132,10 @@ export function PersonBody({
      page is not an association with themselves, so it is left out. */
   const studiosWith = omitStudioSeats ? [] : person.associations.filter((a) => a.tenantType === "studio");
   const artistsWith = person.associations.filter((a) => a.tenantType === "artist_page" && a.role !== "owner");
+  /* who works WITH this artist, on their own page — the owner is the person
+     whose page it is, so their own row is not drawn (see the prop's comment) */
+  const teamFaculty = artistTeam.filter((m) => m.role === "trainer" || m.role === "visiting_faculty");
+  const teamAssistants = artistTeam.filter((m) => m.role === "assistant");
 
   /* ⚠ FOUR COLUMNS OF STUDIOS, NOT ONE (21 Sep 2026, the user: "Studios Should
      Have 3 Columns - Train Teach & Assist", and their own word for the fourth:
@@ -252,6 +269,24 @@ export function PersonBody({
               sub={o.city ?? ""}
               right={o.role === "owner" ? "Owner" : "Event team"}
             />
+          ))}
+        </Group>
+      ) : null}
+
+      {/* ⚠ THE OTHER END OF "Artists associated with" (27 Sep 2026) — the people
+          seated on this artist's own page, named the way a studio's page has
+          named its faculty since 19 Sep. Same read, same words, same seats. */}
+      {teamFaculty.length ? (
+        <Group title="Faculty" n={teamFaculty.length}>
+          {teamFaculty.map((m) => (
+            <Row key={m.userId} href={`/person/${m.userId}`} markName={m.name} photo={m.photoPath ? photoUrl(m.photoPath) : null} title={m.name} sub="" right={m.role === "visiting_faculty" ? "Visiting faculty" : "Faculty"} />
+          ))}
+        </Group>
+      ) : null}
+      {teamAssistants.length ? (
+        <Group title="Assistants" n={teamAssistants.length}>
+          {teamAssistants.map((m) => (
+            <Row key={m.userId} href={`/person/${m.userId}`} markName={m.name} photo={m.photoPath ? photoUrl(m.photoPath) : null} title={m.name} sub="" right="Assistant" />
           ))}
         </Group>
       ) : null}

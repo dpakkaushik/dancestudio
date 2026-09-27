@@ -12,10 +12,10 @@ import { MembershipsOnSale } from "@/features/memberships/components/Memberships
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import { FollowToggle } from "./FollowToggle";
 import { EntityBand, Figure } from "./profile-band";
+import { FollowerFigure } from "./FollowerFigure";
 import type { HeroShot } from "./HeroRail";
 import { ProfileLink, ProfileShare } from "./ProfileShare";
 import { StatsChip } from "./StatsChip";
-import { TenantFollowersButton } from "./TenantFollowersButton";
 import { memberNoWords } from "@/types/profile";
 import { HeroDot, HeroId, HeroPlace, IdentityHero } from "./hero-kit";
 import { Group, PROFILE_RING, Row, SchedIcon, bigWhite, smallBox } from "./profile-kit";
@@ -53,8 +53,6 @@ export function PublicProfile({
   signedIn,
   followingN = null,
   isMember,
-  canEdit = false,
-  followers = null,
   scheduleHref,
   manageHref,
   memberships = [],
@@ -79,9 +77,12 @@ export function PublicProfile({
    *  are changed on the studio's OWN HOME now — the ⊕ on the disc and the ⊕ on
    *  the posters rail, where a person's have been since 19 Sep — so this page
    *  neither offers them nor needs to know who may write them. */
-  /** the owner — the one who edits the name, Since, the number and the email */
+  /** ⚠ `canEdit` AND `followers` ARE GONE (27 Sep 2026). They existed only for
+   *  the owner-only "Followers ›" button in the member row, which the figure
+   *  above now replaces for everybody — so the page no longer asks who is
+   *  looking, and the route no longer reads a list on every visit to hand it
+   *  one control. The sheet reads its own rows on the press. */
   canEdit?: boolean;
-  /** the owner's list — null for everybody else, and nothing is drawn (B6) */
   followers?: TenantFollower[] | null;
   scheduleHref: string;
   manageHref: string;
@@ -121,7 +122,11 @@ export function PublicProfile({
    *  surviving legacy row — which is exactly the row it 404s on.
    *
    *  A studio's owner is a PERSON now, always, so there is one destination. */
-  const teamRow = (m: PublicTeamMember, sub: string) => <Row key={m.userId} href={`/person/${m.userId}`} title={m.name} sub={sub} photo={photoUrl(m.photoPath)} />;
+  /* ⚠ THE ROLE IS THE `right` WORD, NOT THE `sub` (27 Sep 2026) — the slot a
+     person's own page and an organization's have always used for it. `sub` is
+     where somebody IS, so it carries the business's own place here, the way a
+     city does on every other Row in the app. */
+  const teamRow = (m: PublicTeamMember, word: string) => <Row key={m.userId} href={`/person/${m.userId}`} title={m.name} sub={place} right={word} photo={photoUrl(m.photoPath)} />;
   /* ⚠ DRAWN FOR THE TEAM TOO, AND DISABLED (20 Sep 2026, the user: "Viewing your
      own profile should show same buttons which you see on discover it should
      look the same way"). `ActionRow` is a grid sized by its cell count, so
@@ -187,7 +192,7 @@ export function PublicProfile({
           <EntityBand
             figures={
               <>
-                <Figure n={profile.followers} label={profile.followers === 1 ? "Follower" : "Followers"} testId="tenant-followers" />
+                <FollowerFigure n={profile.followers} kind="business" id={tenant.id} name={tenant.name} testId="tenant-followers" />
                 {/* ⚠ THE SECOND FIGURE IS THE OWNER'S (20 Sep 2026, the user:
                     "Organization and Studio still dont have Following section in
                     profile and home"). A studio cannot follow — see the prop's
@@ -249,12 +254,20 @@ export function PublicProfile({
             person has had exactly one since C22, whose words were "all edit
             profile options to be removed from home AND PROFILE PAGES". Both are
             gone; Settings' THIS STUDIO block is the door. */}
+        {/* ⚠ THE OWNER'S "Followers ›" BUTTON IS GONE (27 Sep 2026, the user:
+            *"fix follow following for all profiles. list should open when
+            clicked from anywhere"*). It was a second control for the one list,
+            visible to the owner alone, in a row about something else — while
+            the FIGURE two lines above it, which everybody sees, was a dead
+            number. The figure is the door now, on this page and on the six
+            others that had neither. `TenantFollowersButton` is deleted rather
+            than left standing: this repo has paid twice for a component
+            nothing renders. */}
         {isMember ? (
-          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: canEdit && followers ? "2fr 1fr" : "1fr", gap: 6 }}>
+          <div style={{ marginTop: 12 }}>
             <Link href={manageHref} style={smallBox(false, RC)}>
               You are on this team · Manage ›
             </Link>
-            {canEdit && followers ? <TenantFollowersButton followers={followers} accent={RC} /> : null}
           </div>
         ) : null}
 

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
-import { ToolsPanel, type Tile } from "@/features/home/components/home-kit";
+import type { Tile } from "@/features/home/components/home-kit";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
 import { HeroDot, HeroId, IdentityHero } from "@/features/profiles/components/hero-kit";
 import { memberNoWords } from "@/types/profile";
-import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { EntityBand } from "@/features/profiles/components/profile-band";
+import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { ProfileLink, ProfileShare } from "@/features/profiles/components/ProfileShare";
 import { StatsChip } from "@/features/profiles/components/StatsChip";
 import { EyeIcon, cornerChip } from "@/features/profiles/components/profile-kit";
@@ -136,7 +137,7 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
               column — a crew publishes an email and a number, not handles — so
               the row is not drawn rather than drawn empty. ── */}
           <EntityBand
-            figures={<Figure n={followers} label="Followers" testId="crew-followers" />}
+            figures={<FollowerFigure n={followers} kind="crew" id={crew.id} name={crew.name} testId="crew-followers" />}
             /* the chips at the row's right edge (20 Sep 2026). No Follow bell:
                this is the crew's own home, and its own people cannot follow it. */
             chips={
@@ -189,14 +190,12 @@ export function CrewHome({ crew, members, entries, header = [], followers = 0, o
         <ContactEditButton target={{ kind: "crew", crew, socials: crew.socials }} />
 
         <div style={{ position: "relative", zIndex: 1, background: LILAC }}>
-          <ToolsPanel kind="crew">
-            {/* arranged on the server, so the first paint is already in this
-                leader's own order (22 Sep 2026). ⚠ The key carries the CREW's id,
-                so two people who lead crews each arrange their own — and a crew's
-                two tiles are the smallest grid in the app, which is exactly why
-                the control is offered rather than assumed unnecessary. */}
-            <ArrangeTools tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("crew", crew.id)} arranged={Boolean(order && order.length > 0)} />
-          </ToolsPanel>
+          {/* arranged on the server, so the first paint is already in this
+              leader's own order (22 Sep 2026). ⚠ The key carries the CREW's id,
+              so two people who lead crews each arrange their own — and a crew's
+              two tiles are the smallest grid in the app, which is exactly why
+              the control is offered rather than assumed unnecessary. */}
+          <ArrangeTools kind="crew" tiles={arrangeTiles(tiles, order)} defaultOrder={orderOf(tiles)} layoutKey={toolsLayoutKey("crew", crew.id)} arranged={Boolean(order && order.length > 0)} />
         </div>
       </div>
       {/* the form Settings sends you to, over the home it belongs to */}

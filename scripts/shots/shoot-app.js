@@ -62,7 +62,8 @@ async function signUp(page, email) {
        and any account opens a studio — the "Organization" tap is gone */
     await page.locator('input[name="name"]').fill("EEE Dance Company");
     /* the one city dropdown (19 Sep 2026): through "Search another city…" */
-    await page.getByLabel("Choose a city").first().selectOption("New Delhi");
+    await page.getByLabel("Choose a city").first().click();
+    await page.getByRole("option", { name: "New Delhi", exact: true }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     /* the four screens (U2): the photo is required, then styles, then socials, then the bow */
     await page.getByLabel("Add a photo").setInputFiles({ name: "face.png", mimeType: "image/png", buffer: PNG });
@@ -95,7 +96,8 @@ async function signUp(page, email) {
     await page.locator('input[name="area"]').fill("Kothrud");
     /* the city picker replaced the select (11 Sep 2026) — a Google city search,
        with the typed name as the fallback a test can rely on */
-    await page.getByLabel("Choose a city").first().selectOption("Pune");
+    await page.getByLabel("Choose a city").first().click();
+    await page.getByRole("option", { name: "Pune", exact: true }).click();
     /* the sheet asks for a number and an email now (26 Sep 2026) */
     await page.locator('input[name="phone"]').fill("+919876543210");
     await page.locator('input[name="contact_email"]').fill(`shots-studio-${stamp}@example.com`);

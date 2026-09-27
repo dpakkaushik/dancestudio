@@ -7,6 +7,7 @@ import { findAskedClaimsForTenants, findMyPendingClaims } from "@/repositories/c
 import { findMyVenueAsks, findVenueRequestsForTenants } from "@/repositories/classes";
 import { findAskedForMyCrews, findMyLedCrews, findMyPendingCrewAsks, findMyPendingPartnerAsks, findMyUnansweredPartners } from "@/repositories/crews";
 import { findReceivedEnquiries, findReceivedEnquiriesForCrews, findSentEnquiries } from "@/repositories/enquiries";
+import { findEventsByIds } from "@/repositories/events";
 import { findMyPendingInvites, findPendingInvites } from "@/repositories/invites";
 import { findAskedByOrganizations, findMyPendingOrganizationAsks } from "@/repositories/organizationTeam";
 import { findProfileById } from "@/repositories/profiles";
@@ -84,7 +85,14 @@ export default async function InboxPage() {
     ).catch(() => []),
   ]);
 
+  /* THE EVENTS BEHIND THE DUET ASKS, in one read (27 Sep 2026) — so the desk
+     draws the app's own event card rather than a row of its own invention. It
+     rides after the batch above because it is keyed on what that batch found;
+     usually there are none, and then it is not a round trip at all. */
+  const events = await findEventsByIds(supabase, [...partnerIn, ...partnerOut].map((p) => p.eventId));
+
   const { requestsIn, requestsOut } = buildRequests({
+    events,
     venueIn,
     claimsIn,
     invitesIn,

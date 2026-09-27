@@ -1,8 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { FigureHead } from "@/components/ui/FigureHead";
-import { InvertedPanel } from "@/components/ui/InvertedPanel";
 import { ArrangeTools } from "@/features/home/components/ArrangeTools";
-import { ToolGlyph, ToolGrid, type Tile } from "@/features/home/components/tool-grid";
+import { ToolGlyph, ToolGrid, ToolsHead, ToolsPanel, TOOLS_HEADING, type Tile, type ToolsKind } from "@/features/home/components/tool-grid";
 import { arrangeTiles, orderOf, toolsLayoutKey } from "@/features/home/toolOrder";
 import { DOS_TOOLS } from "@/features/tenants/components/biz-kit";
 import { DOS_DISPLAY, INK, MUTED } from "@/lib/design/tokens";
@@ -36,52 +35,9 @@ export const DosShelfHead = ({ children, right, pad = "0 16px 10px" }: { childre
  *  today a user's Home was headed "Artist Tools" (the prototype's word for a grid
  *  that carried artist tools, 2497), an organization's "Studio Tools" (a studio
  *  owner's word, 7616), and a studio's own home drew its own copy of the line. */
-export type ToolsKind = HomeKind | "studio" | "crew";
-export const TOOLS_HEADING: Record<ToolsKind, string> = { user: "User Tools", artist: "Artist Tools", org: "Organization Tools", studio: "Studio Tools", crew: "Crew Tools" };
-export function ToolsHead({ kind }: { kind: ToolsKind }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px" }}>
-      {/* `currentColor`, not INK (21 Sep 2026) — the panel below inverts the
-          theme, so the heading takes its colour from whatever ground it is on
-          rather than from the page's own ink, which would vanish into it */}
-      <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: -0.3, color: "currentColor", fontFamily: DOS_DISPLAY }}>{TOOLS_HEADING[kind]}</span>
-    </div>
-  );
-}
-
-/** THE TOOLS PANEL — ONE SQUIRCLE, INVERTED AGAINST THE THEME (21 Sep 2026).
- *
- *  The user: *"give the tools section on all profiles like squircle seprator and
- *  make it look opposite according to the dark and light theme. make sure only
- *  heading on top nothing else."*
- *
- *  Three things, and each is a real separation rather than decoration:
- *  · **A SQUIRCLE.** The grid used to sit on the page's own ground with a 17px
- *    line over it, so on a long Home the tools and whatever was above them ran
- *    together — there was nothing to say where one section ended.
- *  · **INVERTED.** `--text` and `--solid` are already the theme's own opposite
- *    pair (near-black and near-white, swapped by `html.dark` / `html.light`), so
- *    the panel is one declaration that follows the toggle by construction rather
- *    than a second palette to keep in step. The tiles are opaque gradients of
- *    their own colour, so what changes underneath them is the ground and the
- *    gaps — which is the whole point: the colours read louder against it.
- *  · **ONLY THE HEADING.** ⚠ The plan badge that sat on the head's right —
- *    ARTIST PLAN ACTIVE / 🔒 PRO · UNLOCK, the prototype's own at 2500-2520 —
- *    is GONE, and the `right` prop with it rather than left unread. Settings →
- *    Subscription is the door to the plan, and has been since 19 Sep; the badge
- *    was a second one on a line the user has now asked to hold one thing.
- *
- *  ⚠ **AND IT STANDS ON `InvertedPanel` SINCE 21 Sep 2026, rather than carrying
- *    its own two colours.** The literal here said `background: var(--text)` and
- *    nothing more, which is right ONLY for opaque tiles — the moment the user
- *    asked for the same treatment on Discover's shelf it turned out to hide every
- *    card in the app. The panel swaps the whole palette now, so both sections are
- *    one declaration rather than two copies drifting apart, which is this repo's
- *    own recurring bill (`linkChip` declared twice, the figure row written out
- *    three times, three copies of the identity band). */
-export function ToolsPanel({ kind, children }: { kind: ToolsKind; children: ReactNode }) {
-  return <InvertedPanel head={<ToolsHead kind={kind} />}>{children}</InvertedPanel>;
-}
+/* the head, the heading map and the panel moved to `tool-grid.tsx` on
+   27 Sep 2026 so the arranging control could live ON the head — see the block
+   there. They keep their old address here (re-exported at the foot). */
 
 /** WHO THE GRID IS FOR. A person is a user, or an artist while the plan is live.
  *  ⚠ `org` STAYS IN THE UNION AND NAMES NO LOGIN (26 Sep 2026): the organization
@@ -246,11 +202,19 @@ export function BizSection({
   /* ⚠ THE `plan` PROP IS GONE, not left unread (21 Sep 2026) — the badge it
      drew was the "nothing else" the user asked off this head, and a prop no
      branch renders is the same lie as a field no screen reads. */
+  /* ⚠ THE PANEL IS `ArrangeTools`' NOW (27 Sep 2026): its control sits on the
+     head, and a child cannot reach into its parent's head. Anything a caller
+     wants ABOVE the grid rides in as `children`. */
   return (
-    <ToolsPanel kind={kind}>
+    <ArrangeTools
+      kind={kind}
+      tiles={arrangeTiles(base, order)}
+      defaultOrder={orderOf(base)}
+      layoutKey={toolsLayoutKey(kind)}
+      arranged={Boolean(order && order.length > 0)}
+    >
       {children}
-      <ArrangeTools tiles={arrangeTiles(base, order)} defaultOrder={orderOf(base)} layoutKey={toolsLayoutKey(kind)} arranged={Boolean(order && order.length > 0)} />
-    </ToolsPanel>
+    </ArrangeTools>
   );
 }
 
@@ -258,5 +222,6 @@ export function BizSection({
    address here, because `StudioHome`, `CrewHome` and the studio's own page all
    import it from this kit (Rule 14's spirit, one level down: an import somebody
    was handed is a promise too) */
-export { ToolGlyph, ToolGrid };
+export { ToolGlyph, ToolGrid, ToolsHead, ToolsPanel, TOOLS_HEADING };
+export type { ToolsKind };
 export type { Tile };

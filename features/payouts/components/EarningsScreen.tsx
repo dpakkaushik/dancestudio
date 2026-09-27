@@ -168,41 +168,24 @@ export function EarningsScreen({
         {selected ? bucketLabelOf(selected, report.period).toUpperCase() : ""}
       </div>
 
-      {/* ⚠ A PERSON IS NOT A SELLER, AND THE EMPTY STATE SAID THEY WERE
-          (21 Sep 2026, found auditing my own screen from this morning). A person
-          has exactly ONE possible revenue line — "Paid by studios" — and a line
-          worth nothing is dropped, so EVERY brand-new user read *"When somebody
-          books a class, takes a membership or buys a ticket…"* about a business
-          they do not have, a few pixels above `MyEarnings`' own correct sentence
-          saying the opposite. `noExpenses` already knew a person is different;
-          this half did not. */}
-      <Breakup
-        title="REVENUE"
-        lines={here.revenue}
-        total={revenue}
-        tone="#22C55E"
-        empty={
-          noExpenses
-            ? "Nothing yet. Once a studio puts you on a class and it runs, what you have earned shows up here."
-            : "Nothing came in this time. When somebody books a class, takes a membership or buys a ticket, it shows up here — each source on its own."
-        }
-      />
+      {/* ⚠⚠ THE PROSE IS GONE (27 Sep 2026, the user: *"remove unessesary
+          explanations from earnings … there should be no extra details for
+          everything in the app unless things are very important"*).
+          What each empty state said was WHERE money comes from, which is a
+          description of the product on a screen that exists to print numbers —
+          and the revenue one said it differently for a person, which is how it
+          came to say the wrong thing in the first place (21 Sep). Four words
+          each, and the same words for everybody.
+          ⚠ The 4,000-row warning below STAYS: it is not an explanation, it is
+          the one line that says a printed total is short. */}
+      <Breakup title="REVENUE" lines={here.revenue} total={revenue} tone="#22C55E" empty="Nothing came in." />
 
-      {noExpenses ? null : (
-        <Breakup
-          title="EXPENSES"
-          lines={here.expenses}
-          total={expenses}
-          tone="#F87171"
-          empty="Nothing went out this time. What you pay your people, what you refunded and what you bought all land here."
-        />
-      )}
+      {noExpenses ? null : <Breakup title="EXPENSES" lines={here.expenses} total={expenses} tone="#F87171" empty="Nothing went out." />}
 
-      {/* ⚠ WHAT IS LEFT — the figure none of the four old screens ever printed.
-          It is revenue minus expenses and nothing else: there is no DanceOS fee,
-          no GST on a fee and no TDS rate anybody has set, so none is deducted.
-          The prototype's S_earn prints all three; printing them at ₹0 would be a
-          claim about money rather than a measurement of it. */}
+      {/* WHAT IS LEFT — revenue minus expenses and nothing else: there is no
+          DanceOS fee, no GST on a fee and no TDS rate anybody has set, so none
+          is deducted. Said here rather than on the screen, which was the whole
+          of what that paragraph did. */}
       <div style={{ ...card, background: left < 0 ? "rgba(248,113,113,.10)" : "rgba(34,197,94,.10)", border: `1.5px solid ${left < 0 ? "#F87171" : "#22C55E"}55` }}>
         <FigureHead
           title={<span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 0.7, color: "var(--muted)" }}>WHAT IS LEFT</span>}
@@ -212,11 +195,6 @@ export function EarningsScreen({
             </b>
           }
         />
-        <div style={{ fontSize: 10.5, color: SUB, marginTop: 5, lineHeight: 1.5 }}>
-          {noExpenses
-            ? "Everything a studio has paid you. DanceOS records it, it does not move the money."
-            : "What came in, less what went out. No platform fee, no GST on one and no TDS is taken off — DanceOS charges none of them."}
-        </div>
       </div>
 
       {report.complete ? null : (

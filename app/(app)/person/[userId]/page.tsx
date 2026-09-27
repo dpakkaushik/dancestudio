@@ -11,6 +11,7 @@ import { findPersonHeaderPhotos } from "@/repositories/headerPhotos";
 import { findMembershipsOnSale } from "@/repositories/memberships";
 import { findOrganizationsNaming } from "@/repositories/organizationTeam";
 import { findPublicPerson, isFollowingPerson } from "@/repositories/publicPerson";
+import { findPublicStudioTeam } from "@/repositories/publicProfile";
 import { ensureArtistPage, findMyMemberships as findMyTeams } from "@/repositories/tenants";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -104,7 +105,7 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
      address is not where an ORGANIZATION is followed — its public face is
      /org/{id}, which draws its own bell — and you do not follow yourself. */
   const canAskToFollow = !isMe && !isOrg;
-  const [following, header, memberships, organizations] = await Promise.all([
+  const [following, header, memberships, organizations, artistTeam] = await Promise.all([
     canAskToFollow && user ? isFollowingPerson(supabase, userId) : Promise.resolve(false),
     /* THE HEADER (15 Sep 2026): their own pictures, as many as their KIND shows —
        one for a user, five for an artist, ten for an organization (19 Sep 2026) */
@@ -117,7 +118,14 @@ export default async function PersonPage({ params }: { params: Promise<{ userId:
        and this page said nothing back. RLS hands a stranger the PUBLIC ones
        only, so it publishes exactly what those pages already print. */
     findOrganizationsNaming(supabase, userId),
+    /* AND WHO WORKS WITH THEM (27 Sep 2026) — the same link in the other
+       direction again: those people's own profiles have named this artist under
+       "Artists associated with" since 20 Sep, and this page named nobody back.
+       `public_studio_team` answers for an artist page since `20260927120000`,
+       and only while the page is LISTED, so it publishes nothing an unpaid plan
+       would have hidden. */
+    person.artistPageId ? findPublicStudioTeam(supabase, person.artistPageId).catch(() => []) : Promise.resolve([]),
   ]);
 
-  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} organizations={organizations} />;
+  return <PublicPersonPage person={person} header={header} isMe={isMe} following={following} signedIn={Boolean(user)} memberships={memberships} organizations={organizations} artistTeam={artistTeam} />;
 }

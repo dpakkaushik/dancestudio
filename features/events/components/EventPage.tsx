@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { photoUrl } from "@/lib/media/photo";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
@@ -318,7 +319,7 @@ export function EventPage({ event: ev, isSignedIn, isMember, canManage, mine, le
       {p}
     </svg>
   );
-  const posterItem = { title: ev.title, style: ev.style, styleColor: col };
+  const posterItem = { title: ev.title, style: ev.style, styleColor: col, posterUrl: photoUrl(ev.posterPath) };
   const posterK = ev.poster && ev.poster !== "none" ? ev.poster : dosPosterAuto(ev.title);
   const held = mine.length > 0;
   /* the pass behind the poster (dosCodeFor 115-121): a ticket you hold shows its

@@ -241,13 +241,19 @@ export async function findBusinessEarnings(
       { key: "classes", label: "Classes", by: classes, href: one ? `/business/${one}/invoices` : undefined },
       { key: "memberships", label: "Memberships", by: memberships, href: one ? `/business/${one}/memberships` : undefined },
       { key: "events", label: "Tickets & entries", by: events },
-      { key: "enquiries", label: "Enquiries", by: enquiries, note: "recorded by you as received", href: "/inbox" },
+      /* ⚠ THE NOTES ARE GONE (27 Sep 2026) — a line on a ledger says WHAT and
+         HOW MUCH, and each of these said a sentence about the accounting
+         instead. The two facts worth keeping are recorded here: an ENQUIRY's
+         money was recorded by the business as received (nothing moved through
+         DanceOS), and an ASSET falls in the period it was ADDED because an
+         asset carries no purchase date. */
+      { key: "enquiries", label: "Enquiries", by: enquiries, href: "/inbox" },
     ],
     [
       { key: "pay", label: "What you paid your people", by: pay, href: one ? `/business/${one}/earnings` : undefined },
       { key: "refunds", label: "Refunds", by: refunded, href: one ? `/business/${one}/refunds` : undefined },
-      { key: "assets", label: "Assets bought", by: bought, note: "counted in the period it was added", href: one ? `/business/${one}/assets` : undefined },
-      { key: "plan", label: "DanceOS subscription", by: plan, note: "what this studio pays to be on Discover", href: "/subscription" },
+      { key: "assets", label: "Assets bought", by: bought, href: one ? `/business/${one}/assets` : undefined },
+      { key: "plan", label: "DanceOS subscription", by: plan, href: "/subscription" },
     ],
     complete
   );
@@ -282,7 +288,7 @@ export async function findPersonEarnings(
   return assemble(
     period,
     keys,
-    [{ key: "teaching", label: "Paid by studios", by: taught, note: "for sessions taught, and anything else they paid you", href: "/earnings" }],
+    [{ key: "teaching", label: "Paid by studios", by: taught, href: "/earnings" }],
     [],
     (data?.length ?? 0) < MAX_ROWS
   );

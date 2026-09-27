@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ToolGlyph, ToolGrid, type Tile } from "@/features/home/components/home-kit";
+import { useState, useTransition, type ReactNode } from "react";
+/* ⚠ FROM THE LEAF, NOT THE KIT (22 Sep 2026, and it matters more since this
+   component started drawing its own panel): `home-kit` imports THIS file, so
+   reading the head and the grid out of the kit would be an import cycle across
+   the server/client boundary. `tool-grid.tsx` knows about neither of us. */
+import { ToolGlyph, ToolGrid, ToolsPanel, type Tile, type ToolsKind } from "@/features/home/components/tool-grid";
 import { setToolOrderAction } from "@/features/home/server-actions/toolOrder";
 import { arrangeTiles, moveTile, orderOf } from "@/features/home/toolOrder";
 import { useEditMode } from "@/features/profiles/components/EditMode";
@@ -53,6 +57,8 @@ export function ArrangeTools({
   defaultOrder,
   layoutKey,
   arranged = false,
+  kind,
+  children = null,
 }: {
   /** already in the order this person put them — the server arranges, so the
       first paint is right and nothing re-orders under them on hydration */
@@ -70,7 +76,11 @@ export function ArrangeTools({
   /** is there something stored to reset? A Reset that can only be a no-op is the
       kind of control this file has deleted three times */
   arranged?: boolean;
-}) {
+  /** which grid this is, for the heading it now draws itself (27 Sep 2026) */
+  kind: ToolsKind;
+  /** whatever the caller wants ABOVE the grid, inside the same panel */
+  children?: ReactNode;
+}): ReactNode {
   const { editing } = useEditMode();
   const [order, setOrder] = useState<Tile[]>(tiles);
   const [open, setOpen] = useState(false);
@@ -95,29 +105,33 @@ export function ArrangeTools({
      the same stored state rather than an empty array pretending to be a choice. */
   const reset = () => save(arrangeTiles(order, defaultOrder), false);
 
+  /** THE CONTROL, ON THE HEAD (27 Sep 2026) — drawn only behind the pencil and
+   *  only where the grid can be keyed, so a read-mode Home still carries the
+   *  heading and nothing else. */
+  const control =
+    layoutKey && editing ? (
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-pressed={open} style={quietBtn}>
+        {open ? "Done" : "Arrange"}
+      </button>
+    ) : null;
+
   if (!(open && editing)) {
     return (
-      <>
+      <ToolsPanel kind={kind} head={control}>
+        {children}
         <ToolGrid tiles={order} />
-        {layoutKey && editing ? (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-            <button type="button" onClick={() => setOpen(true)} style={quietBtn}>
-              Arrange tools
-            </button>
-          </div>
-        ) : null}
-      </>
+      </ToolsPanel>
     );
   }
 
   return (
-    <div>
-      {/* one line saying what the arrows do — the rows carry glyphs and arrows,
-          and neither says which direction is "first" on its own */}
-      <p style={{ margin: "0 0 10px", fontSize: 11, lineHeight: 1.5, color: SUB }}>
-        Move a tool up or down. The order is saved to your account, so it is the same on every device.
-      </p>
-
+    <ToolsPanel kind={kind} head={control}>
+      {children}
+      {/* ⚠ NO PARAGRAPH (27 Sep 2026, the user: *"there should be no extra
+          details for everything in the app unless things are very important"*).
+          It said the arrows move a tool and the order is kept on the account —
+          the arrows are labelled "Move Calendar up" and where the order lives
+          is not something anybody has to be told before pressing one. */}
       <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
         {order.map((t, i) => (
           <li
@@ -158,17 +172,16 @@ export function ArrangeTools({
         </p>
       ) : null}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        <button type="button" onClick={() => setOpen(false)} style={{ ...quietBtn, flex: 1, background: INK, color: CARD, borderColor: INK }}>
-          Done
-        </button>
-        {isStored ? (
+      {/* Done is on the head now; Reset is the only thing left that belongs
+          under the list it resets */}
+      {isStored ? (
+        <div style={{ display: "flex", marginTop: 12 }}>
           <button type="button" onClick={reset} style={quietBtn}>
             Reset to default
           </button>
-        ) : null}
-      </div>
-    </div>
+        </div>
+      ) : null}
+    </ToolsPanel>
   );
 }
 

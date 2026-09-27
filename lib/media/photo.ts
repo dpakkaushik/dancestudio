@@ -42,7 +42,15 @@ export type PhotoOwner =
    *  and the file goes into its OWNER's folder in the PRIVATE proof bucket,
    *  because a studio's header pictures ARE the photos it showed DanceOS to be
    *  verified; `orgId` is that owner */
-  | { kind: "studioHeader"; id: string; orgId: string };
+  | { kind: "studioHeader"; id: string; orgId: string }
+  /** AN UPLOADED POSTER for a class or an event (27 Sep 2026) — `id` is the
+   *  BUSINESS, not the class and not the uploader. A studio's flyers are the
+   *  studio's: its owner and its trainers both post, and a class outlives
+   *  whoever happened to upload for it, so keying on `auth.uid()` (as
+   *  `routines/` rightly does for a person's own track) would scatter one
+   *  studio's posters across its team's folders. The storage policy asks
+   *  `is_business_member` and `set_class_poster` re-checks the same prefix. */
+  | { kind: "poster"; id: string; subject: { kind: "class" | "event"; id: string } };
 
 /* ⚠ THESE ARE STORAGE FOLDERS, NOT TABLE NAMES, AND THEY ARE NEVER RENAMED (Rule
    16): objects live under them, the storage policies test them by name, and the
@@ -53,7 +61,7 @@ export type PhotoOwner =
    16 to 19 Sep 2026, and nothing typed could see it. Found by shoot-hero.js.
    A CREW's header pictures (19 Sep 2026) share the crew's own `crews/{id}/`
    folder with its disc: the leader is the one writer of both. */
-const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery" };
+const FOLDER: Record<Exclude<PhotoOwner["kind"], "studioHeader">, string> = { avatar: "avatars", tenant: "tenants", crew: "crews", gallery: "gallery", poster: "posters" };
 
 const extOf = (file: { type: string }): string => (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");
 const randomName = (): string => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`);

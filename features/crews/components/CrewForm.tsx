@@ -12,7 +12,6 @@ import {
   FORM_INPUT,
   FormBar,
   FormConfirm,
-  FormNote,
   FormPage,
   FormSummary,
   FormToast,
@@ -157,11 +156,10 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
             </div>
           ) : null}
 
-          <FormNote>
-            {members.length
-              ? `Nobody is put on a public roster without saying yes — each of the ${members.length} will be asked, and the crew is yours from the moment you create it.`
-              : "A crew of one is a real crew. You can ask people onto it any time from the crew's own desk."}
-          </FormNote>
+          {/* ⚠ CONSENT IS SAID WHERE IT HAPPENS, NOT HERE (27 Sep 2026): each
+              person added to the list already shows "asked", and the crew's own
+              desk says "⏳ Waiting on them to confirm" on every unanswered row.
+              A paragraph repeating it on the way in is the third telling. */}
       </>
 
       <FormBar>
@@ -180,7 +178,6 @@ export function CrewForm({ defaultCity, sheet = false }: { defaultCity: string |
         <FormConfirm
           label="Create this crew?"
           title="Create this crew?"
-          sub={members.length ? `${members.length} ${members.length === 1 ? "person is" : "people are"} asked to confirm — the crew is yours either way.` : "You will be its leader. Add people any time from the crew's desk."}
           confirmWord={busy ? "Creating…" : "Create crew"}
           busy={busy}
           onCancel={() => setConfirm(false)}

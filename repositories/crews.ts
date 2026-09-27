@@ -59,6 +59,7 @@ interface EntryRow {
 }
 interface PartnerRow {
   id: string;
+  event_id: string;
   user_id: string | null;
   partner_id: string | null;
   partner_name: string | null;
@@ -299,9 +300,15 @@ export async function findCrewEntries(supabase: SupabaseClient, crewId: string):
     .sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
-const PARTNER_COLUMNS = "id, user_id, partner_id, partner_name, partner_status, created_at, profiles!event_bookings_user_id_fkey (full_name), events (title, share_slug, start_date)";
+/* `event_id` since 27 Sep 2026: the Inbox draws the app's one EVENT CARD for a
+   duet ask now (the user: "event and class request cards should also look like
+   class and event cards on discover"), and the card needs the whole event —
+   its tiers and its counts — which the person's Inbox reads by id rather than
+   embedding two more tables into every partner ask. */
+const PARTNER_COLUMNS = "id, event_id, user_id, partner_id, partner_name, partner_status, created_at, profiles!event_bookings_user_id_fkey (full_name), events (title, share_slug, start_date)";
 const toPartnerAsk = (r: PartnerRow): PartnerAsk => ({
   bookingId: r.id,
+  eventId: r.event_id,
   status: r.partner_status ?? "asked",
   entrantName: r.profiles?.full_name ?? "Someone",
   entrantId: r.user_id,

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { decideStudioVerificationAction } from "@/features/admin/server-actions/admin";
+import { endSubscriptionAction } from "@/features/admin/server-actions/subscriptions";
 import { VerifiedTick, dateWords } from "@/features/settings/components/settings-kit";
 import { PLATFORM_TINT, handleOf, isPlatform, safeHref } from "@/lib/constants/socials";
 import { INK, SUB } from "@/lib/design/tokens";
@@ -113,6 +114,7 @@ export function VerificationDesk({
   studios = [],
   total,
   proof,
+  mandates = {},
   nowIso,
 }: {
   tab: VerificationTab;
@@ -123,6 +125,15 @@ export function VerificationDesk({
   requests: VerificationRequest[];
   /** the page of badged studios — on the Approved tab (11 Sep 2026) */
   studios?: StudioRow[];
+  /** ⚠ THE LIVE MANDATE ON EACH STUDIO IN FRONT OF THE ADMIN (27 Sep 2026),
+   *  keyed by business id. Since `20260927100000` a studio is PAID FOR before
+   *  it is reviewed — the user's own order ("payment before adding organization
+   *  and studio") — so rejecting one can leave money being taken every month
+   *  for a studio that will never be on Discover. Nothing in the database
+   *  cancels it, and it should not: a mandate is the payer's and an admin
+   *  ending one silently would be worse than the gap. So the desk SAYS it, and
+   *  offers the one press. */
+  mandates?: Record<string, { subscriptionId: string; priceInr: number; granted: boolean } | undefined>;
   /** how many match in all, on this tab */
   total: number;
   /** R16: the photos of the space, keyed by the STUDIO on THIS page of the
@@ -135,6 +146,10 @@ export function VerificationDesk({
   const [toast, setToast] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  /** ⚠ TICKED, NOT AUTOMATIC. Ending somebody's mandate is a money decision, so
+   *  the admin makes it on purpose — and it is on by default because a rejected
+   *  studio that goes on being billed is the failure this exists to stop. */
+  const [alsoEnd, setAlsoEnd] = useState(true);
   const [pending, start] = useTransition();
   const fire = (m: string) => {
     setToast(m);
@@ -150,8 +165,36 @@ export function VerificationDesk({
       fire(said);
       router.refresh();
     });
+  /** REJECT, AND — IF THE ADMIN SAID SO — STOP THE MONEY IN THE SAME PRESS.
+   *  ⚠ The badge goes FIRST and the mandate second, deliberately: if the second
+   *  call fails the studio is still correctly unverified and the desk says the
+   *  subscription is still live, which is recoverable. The other order would
+   *  take somebody's money away over a rejection that did not happen. */
+  const rejectAndMaybeEnd = (tenantId: string, name: string, withNote: string) => {
+    const m = mandates[tenantId];
+    const end = Boolean(m) && alsoEnd;
+    return start(async () => {
+      const out = await decideStudioVerificationAction({ tenantId, approve: false, note: withNote || null });
+      if (out.error) return fire(out.error);
+      if (end && m) {
+        const stopped = await endSubscriptionAction({ subscriptionId: m.subscriptionId, reason: `Studio not approved${withNote ? ` — ${withNote}` : ""}` });
+        if (stopped.error) {
+          setRejecting(null);
+          setNote("");
+          router.refresh();
+          return fire(`${name} not approved — but its subscription is STILL LIVE: ${stopped.error}`);
+        }
+      }
+      setRejecting(null);
+      setNote("");
+      fire(end ? `${name} not approved, and its subscription ended` : `${name} not approved`);
+      router.refresh();
+    });
+  };
+
   const answer = (r: VerificationRequest, approve: boolean, withNote?: string) => {
     const s = subjectOf(r);
+    if (!approve) return rejectAndMaybeEnd(s.id, s.name, (withNote ?? "").trim());
     return decideStudio(
       s.id,
       approve,
@@ -218,6 +261,15 @@ export function VerificationDesk({
                       {[`run by ${r.orgName}`, s.city, `asked ${agoWords(r.createdAt, nowIso)}`].filter(Boolean).join(" · ")}
                     </div>
                   </div>
+                  {/* ⚠ THEY ARE ALREADY PAYING (27 Sep 2026). Since the order
+                      changed, a studio in this queue has a live mandate — so
+                      the one fact an admin needs before saying no is on the
+                      card, not two desks away. */}
+                  {mandates[s.id] ? (
+                    <span data-testid="verification-mandate" style={{ flexShrink: 0, fontSize: 8.5, fontWeight: 900, letterSpacing: 0.6, padding: "4px 8px", borderRadius: 999, background: "#22C55E1e", border: "1.5px solid #22C55E55", color: "#22C55E" }}>
+                      {mandates[s.id]!.granted ? "COMPED" : `PAYING ₹${mandates[s.id]!.priceInr.toLocaleString("en-IN")}/mo`}
+                    </span>
+                  ) : null}
                 </div>
                 <div style={{ margin: "10px 0 4px" }}>
                   <Links socials={s.socials} />
@@ -229,6 +281,14 @@ export function VerificationDesk({
                 {rejecting === s.id ? (
                   <div style={{ marginTop: 10 }}>
                     <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="Why not — the owner reads this" aria-label="Reason for rejecting" style={{ width: "100%", boxSizing: "border-box", background: EL, border: `1.5px solid ${EL}`, borderRadius: 12, padding: "10px 12px", color: INK, fontSize: 13, fontFamily: "inherit", outline: "none" }} />
+                    {mandates[s.id] ? (
+                      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 9, cursor: "pointer" }}>
+                        <input type="checkbox" checked={alsoEnd} onChange={(e) => setAlsoEnd(e.target.checked)} aria-label={`End the subscription on ${s.name} too`} style={{ marginTop: 2, accentColor: "#EF4444", width: 15, height: 15, flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, color: SUB, lineHeight: 1.45 }}>
+                          <b style={{ color: INK }}>End its subscription too.</b> {s.name} {mandates[s.id]!.granted ? "holds a comped plan" : `is being charged ₹${mandates[s.id]!.priceInr.toLocaleString("en-IN")} a month`} and it renews whether or not this is approved. Leave it on and they keep paying for a studio that cannot go on Discover.
+                        </span>
+                      </label>
+                    ) : null}
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                       <button type="button" disabled={pending} onClick={() => answer(r, false, note.trim())} style={{ ...pill, background: "#EF4444", color: "#fff" }}>
                         {pending ? "Saving…" : "Reject"}

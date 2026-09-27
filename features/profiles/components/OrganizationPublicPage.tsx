@@ -1,6 +1,7 @@
 import { EnquiryButton } from "@/features/enquiries/components/EnquirySheet";
 import { EventCard, type EventCardHost } from "@/features/events/components/EventCard";
-import { EntityBand, Figure } from "@/features/profiles/components/profile-band";
+import { EntityBand } from "@/features/profiles/components/profile-band";
+import { FollowerFigure } from "@/features/profiles/components/FollowerFigure";
 import { ActionRow, CallButton, LocationButton, MailButton, MessageButton, mapsPinHref, whatsappHrefOf } from "@/features/profiles/components/ContactButtons";
 import { FollowToggle } from "@/features/profiles/components/FollowToggle";
 import type { HeroShot } from "@/features/profiles/components/HeroRail";
@@ -124,7 +125,7 @@ export function OrganizationPublicPage({
           <EntityBand
             figures={
               <>
-                <Figure n={followers} label={followers === 1 ? "Follower" : "Followers"} />
+                <FollowerFigure n={followers} kind="business" id={org.id} name={org.name} />
                 {/* ⚠ NO FOLLOWING FIGURE (26 Sep 2026): a business follows nothing —
                     `follows.follower_id` references `profiles` — and the login that
                     used to follow on the organization's behalf is retired */}
@@ -177,10 +178,13 @@ export function OrganizationPublicPage({
             ))}
           </Group>
         ) : null}
+        {/* ⚠ EVENT TEAM CARRIES ITS WORD TOO (27 Sep 2026) — the Owner group
+            above has had one since push 2 and this one had none, so one group
+            on one screen was labelled and the other was not. */}
         {eventTeam.length ? (
           <Group title="Event team" n={eventTeam.length}>
             {eventTeam.map((m) => (
-              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} />
+              <Row key={m.memberId} href={`/person/${m.userId}`} title={m.name} sub={[m.isArtist ? "Artist" : "User", m.city].filter(Boolean).join(" · ")} photo={photoUrl(m.photoPath)} right="Event team" />
             ))}
           </Group>
         ) : null}

@@ -121,7 +121,8 @@ async function deleteUser(id: string) {
 /** the one city dropdown (19 Sep 2026): always through "Search another city…" */
 async function pickCity(page: Page | Locator, city: string) {
   /* a closed list since later on 19 Sep 2026: the city is one of the registry's options */
-  await page.getByLabel("Choose a city").first().selectOption(city);
+  await page.getByLabel("Choose a city").first().click();
+  await page.getByRole("option", { name: city, exact: true }).click();
 }
 
 async function studioIdOf(name: string): Promise<string> {

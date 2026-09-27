@@ -4,6 +4,7 @@
    which is a client module — a server component (Discover) may RENDER this card but
    could never CALL dosPosterAuto itself (found by the e2e, 28 Aug 2026) */
 import Image from "next/image";
+import { photoUrl } from "@/lib/media/photo";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PosterBlock, dosPosterAuto } from "@/features/classes/components/poster";
@@ -92,7 +93,7 @@ export function EventCard({
       <div style={{ padding: "8px 11px 10px", display: "flex", gap: 10, alignItems: "stretch" }}>
         <div style={{ position: "relative", flexShrink: 0, lineHeight: 0 }}>
           <span style={{ lineHeight: 0, display: "block", borderRadius: 0, boxShadow: "0 6px 14px -3px rgba(0,0,0,.7)" }}>
-            <PosterBlock size={size} design={e.poster ?? dosPosterAuto(e.title)} item={{ title: e.title, style: e.style, styleColor: tint }} />
+            <PosterBlock size={size} design={e.poster ?? dosPosterAuto(e.title)} item={{ title: e.title, style: e.style, styleColor: tint, posterUrl: photoUrl(e.posterPath) }} />
           </span>
         </div>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>

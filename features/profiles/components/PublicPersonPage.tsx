@@ -9,6 +9,7 @@ import { EntityBand, Figure } from "./profile-band";
 import { ActionRow, CallButton, MailButton, MessageButton, whatsappHrefOf } from "./ContactButtons";
 import type { MembershipOnSale as MembershipOnSaleRow } from "@/repositories/memberships";
 import type { PersonOrganization } from "@/repositories/organizationTeam";
+import type { PublicTeamMember } from "@/types/publicProfile";
 import { FollowToggle } from "./FollowToggle";
 import type { HeroShot } from "./HeroRail";
 import { PersonBody } from "./PersonBody";
@@ -62,6 +63,7 @@ export function PublicPersonPage({
   signedIn,
   memberships = [],
   organizations = [],
+  artistTeam = [],
 }: {
   person: PublicPerson;
   /** THE HEADER PICTURES — this person's own, as many as their kind shows */
@@ -73,6 +75,8 @@ export function PublicPersonPage({
   memberships?: MembershipOnSaleRow[];
   /** the organizations whose Team desk names them (27 Sep 2026) */
   organizations?: PersonOrganization[];
+  /** the people seated on this artist's own page (27 Sep 2026) */
+  artistTeam?: PublicTeamMember[];
 }) {
   const { profile } = person;
   /* the word over the name is the KIND's: an organization, an artist while the plan is live, a user */
@@ -248,6 +252,7 @@ export function PublicPersonPage({
           /* the organizations naming them — RLS hands a stranger the PUBLIC ones
              only, which is exactly what those organizations' own pages print */
           organizations={organizations}
+          artistTeam={artistTeam}
           /* ⚠ AND A STRANGER GETS THE SCHEDULE TOO (20 Sep 2026, found by reading
              this very page on the live site after the push). `runs` comes from
              `business_members`, which RLS admits to a business's OWN MEMBERS —

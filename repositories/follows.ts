@@ -145,6 +145,38 @@ export async function findTenantFollowers(
   }));
 }
 
+/** WHO FOLLOWS THIS CREW (27 Sep 2026) — the business read's twin, on the other
+ *  column `follows` learned on 19 Sep. RLS admits the crew's LEADER and nobody
+ *  else ("crew leaders read their crew's followers"), so a member pressing the
+ *  figure gets an empty list and a stranger gets one too — the ceiling is the
+ *  policy's, not this function's.
+ *  ⚠ The embed names its key for the same reason the business read does: two
+ *  FKs from `follows` into `profiles` make an unqualified embed a 300. */
+export async function findCrewFollowers(supabase: SupabaseClient, crewId: string): Promise<TenantFollower[]> {
+  const { data, error } = await supabase
+    .from("follows")
+    .select("id, follower_id, created_at, profiles!follows_follower_id_fkey (full_name, role, city, profile_photo_path)")
+    .eq("crew_id", crewId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(MAX_LIST);
+  if (error) {
+    throw new Error(`follows.findCrewFollowers failed: ${error.message}`);
+  }
+  const rows = (data ?? []) as unknown as FollowerRow[];
+  const artists = await findArtistIds(supabase, rows.map((r) => r.follower_id));
+  return rows.map((r) => ({
+    followId: r.id,
+    userId: r.follower_id,
+    name: r.profiles?.full_name ?? "Someone",
+    role: r.profiles?.role ?? "user",
+    isArtist: artists.has(r.follower_id),
+    city: r.profiles?.city ?? null,
+    avatarPath: r.profiles?.profile_photo_path ?? null,
+    followedAt: r.created_at,
+  }));
+}
+
 /** One person in a person's Followers / Following sheet (S_profiletab 11335). */
 export interface PersonFollowRow {
   followId: string;

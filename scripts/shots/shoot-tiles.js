@@ -116,17 +116,22 @@ async function arrangeGrid(page, who, url) {
    *  one was cleared: the control is ABSENT in read mode, and appears when the
    *  corner pencil is pressed — with the ⊕s and the ＋s, which is the point of
    *  one toggle rather than a control per editor. */
-  const arrange = page.getByRole("button", { name: "Arrange tools", exact: true });
-  check((await arrange.count()) === 0, `${who} · read mode offers no "Arrange tools" — the home has no control on it`);
+  /* ⚠ ON THE HEAD SINCE 27 Sep 2026 (the user: "arrange tools options in top
+     left with tools heading"), and reading "Arrange" — beside a heading that
+     already says "Studio Tools", "Arrange tools" repeats the word next to it.
+     Both ends are still asserted: absent in read mode, there behind the
+     pencil. */
+  const arrange = page.getByRole("button", { name: "Arrange", exact: true });
+  check((await arrange.count()) === 0, `${who} · read mode offers no "Arrange" — the home has no control on it`);
   /* the corner pencil TOGGLES, and a reload puts the home back in read mode —
-     so every press of Arrange tools below opens edit mode again first */
+     so every press of Arrange below opens edit mode again first */
   const openEdit = async () => {
     await page.getByRole("button", { name: "Edit profile", exact: true }).click();
     await page.waitForTimeout(300);
   };
   await openEdit();
   await page.waitForTimeout(300);
-  check(await arrange.isVisible().catch(() => false), `${who} · the pencil brings it out, at the grid's foot and not on its head (C34, C64)`);
+  check(await arrange.isVisible().catch(() => false), `${who} · the pencil brings it out, ON THE TOOLS HEADING (C65)`);
   await arrange.click();
 
   /* the arranging list is ONE COLUMN, which is why the arrows are honest: in a
@@ -155,7 +160,7 @@ async function arrangeGrid(page, who, url) {
      thing and the list did not move until the next navigation. Reset is only
      honest if it is visible before a reload. */
   await openEdit();
-  await page.getByRole("button", { name: "Arrange tools", exact: true }).click();
+  await page.getByRole("button", { name: "Arrange", exact: true }).click();
   await page.getByRole("button", { name: "Reset to default", exact: true }).click();
   await page.waitForTimeout(600);
   await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -167,7 +172,7 @@ async function arrangeGrid(page, who, url) {
   check(reset.join("|") === before.join("|"), `${who} · Reset puts the code's own order back, and that survives a reload too`);
   /* nothing to reset, so nothing is offered — a control that can only be a no-op */
   await openEdit();
-  await page.getByRole("button", { name: "Arrange tools", exact: true }).click();
+  await page.getByRole("button", { name: "Arrange", exact: true }).click();
   check((await page.getByRole("button", { name: "Reset to default", exact: true }).count()) === 0, `${who} · and Reset is not offered when there is nothing to reset`);
   await page.getByRole("button", { name: "Done", exact: true }).click();
 }
@@ -192,7 +197,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.getByRole("button", { name: "Add studio" }).click();
   await page.locator('input[name="name"]').fill(name);
   await page.locator('input[name="area"]').fill("Baner");
-  await page.getByLabel("Choose a city").first().selectOption("Pune");
+  await page.getByLabel("Choose a city").first().click();
+  await page.getByRole("option", { name: "Pune", exact: true }).click();
   /* the sheet asks for a number and an email now (26 Sep 2026) */
   await page.locator('input[name="phone"]').fill("+919876543210");
   await page.locator('input[name="contact_email"]').fill(`tiles.${who}.studio.${stamp}@example.com`);
@@ -292,7 +298,10 @@ async function personOpensAStudio(page, who, acc, stamp) {
   await page.getByRole("button", { name: /^Requests/ }).click().catch(() => {});
   await page.getByRole("button", { name: "Sent requests" }).click().catch(() => {});
   const inbox = await page.locator("body").innerText().catch(() => "");
-  check(/Hip-Hop/.test(inbox) && /confirmed/i.test(inbox), `${who} · the Inbox keeps the line, wearing its answer`);
+  /* ⚠ "Accepted", not "Confirmed" (27 Sep 2026): a class ask is drawn as the
+     app's own class card with Accept / Reject under it, so the answer it wears
+     uses the same verb as the button that gave it. */
+  check(/Hip-Hop/.test(inbox) && /accepted/i.test(inbox), `${who} · the Inbox keeps the line, wearing its answer`);
   await page.goto(`${BASE}/notifications`, { waitUntil: "networkidle" });
   check(/You take Hip-Hop/.test(await page.locator("body").innerText().catch(() => "")), `${who} · and the bell says "You take …" — the log the user asked for`);
   return studioId;
@@ -403,7 +412,8 @@ async function personOpensAStudio(page, who, acc, stamp) {
     await p3.getByRole("button", { name: "Add organization" }).click();
     await p3.locator('input[name="name"]').fill(orgName);
     await p3.locator('input[name="area"]').fill("Kothrud");
-    await p3.getByLabel("Choose a city").first().selectOption("Pune");
+    await p3.getByLabel("Choose a city").first().click();
+    await p3.getByRole("option", { name: "Pune", exact: true }).click();
     await p3.locator('input[name="phone"]').fill("+919876543210");
     await p3.locator('input[name="contact_email"]').fill(`tiles.org.biz.${stamp}@example.com`);
     /* "Open organization" — the sheet's own word (a studio's is "Create studio") */

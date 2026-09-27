@@ -18,6 +18,7 @@ import { StatsChip } from "./StatsChip";
 import type { ArtistPlan } from "@/repositories/plans";
 import type { Tenant } from "@/types/tenant";
 import type { PersonOrganization } from "@/repositories/organizationTeam";
+import type { PublicTeamMember } from "@/types/publicProfile";
 import type { HeaderPhoto } from "@/repositories/headerPhotos";
 import type { HeroShot } from "./HeroRail";
 import { HeroId, HeroPlace, IdentityHero } from "./hero-kit";
@@ -69,6 +70,7 @@ export function MyProfilePage({
   memberships = [],
   trainsAt = [],
   organizations = [],
+  artistTeam = [],
   eventsHostId = null,
   plan,
 }: {
@@ -100,6 +102,8 @@ export function MyProfilePage({
    *  their OWN tab this carries the private ones too, because their own rows are
    *  theirs to read; a stranger's view of the same group is public-only */
   organizations?: PersonOrganization[];
+  /** the people seated on this artist's own page (27 Sep 2026) */
+  artistTeam?: PublicTeamMember[];
   /** an ORGANIZATION's own event-hosting row (R15) — where an enquiry to it
    *  lands, and the one id the button row needs that `person` cannot carry */
   eventsHostId?: string | null;
@@ -337,6 +341,7 @@ export function MyProfilePage({
           memberships={memberships}
           trainsAt={trainsAt}
           organizations={organizations}
+          artistTeam={artistTeam}
           scheduleHref={scheduleHref}
           accent={RC}
           /* an organization's only seats are the owner rows on its own studios,
