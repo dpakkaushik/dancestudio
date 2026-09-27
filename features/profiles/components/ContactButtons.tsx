@@ -11,7 +11,22 @@ import { mapsHref } from "./profile-kit";
  *  place to hand off to. Enquiry keeps its own island (`EnquiryButton`) because
  *  it opens a sheet. */
 
-const box: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", overflow: "hidden", whiteSpace: "nowrap", background: CARD, color: INK, border: `1.5px solid ${LINE}`, textDecoration: "none" };
+/** ⚠ THE BOX IS EXPORTED, BECAUSE `EnquiryButton` HAD A BYTE-IDENTICAL COPY OF
+ *  IT (28 Sep 2026). Enquiry is a cell of this same row, declared in its own
+ *  file because it opens a sheet — and it re-declared the anatomy rather than
+ *  importing it, so the two could drift and, on the label fix below, WOULD have:
+ *  four buttons would have stopped clipping and the fifth would have gone on
+ *  doing it. This repo has paid that bill three times (`linkChip` twice, the
+ *  figure row three times), so the literal lives once. */
+export const CONTACT_BOX: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: 38, borderRadius: 11, fontWeight: 800, fontSize: 11, boxSizing: "border-box", padding: "0 4px", overflow: "hidden", whiteSpace: "nowrap", background: CARD, color: INK, border: `1.5px solid ${LINE}`, textDecoration: "none" };
+/** ⚠ AND THE WORD SHRINKS BEFORE IT IS CUT. The box is `overflow: hidden` with
+ *  `nowrap`, so a label wider than its cell was CHOPPED MID-GLYPH with nothing
+ *  to say it had been — which is what "contact buttons getting cut" is. A label
+ *  that ellipsises is the floor, not the fix: the fix is `ActionRow` below
+ *  giving the cell enough room. This is what happens on a phone narrower than
+ *  any this app has measured. */
+export const CONTACT_LABEL: CSSProperties = { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" };
+const box = CONTACT_BOX;
 const glyph: CSSProperties = { flexShrink: 0, lineHeight: 0, color: SUB };
 
 /** Call — a real tel: hand-off to the number on record (10879); drawn only when
@@ -24,7 +39,7 @@ export function CallButton({ phone }: { phone: string }) {
           <path d="M6.6 3.6c.5-.5 1.4-.4 1.8.2l1.5 2.1c.4.5.3 1.2-.1 1.7l-.9 1c-.2.3-.3.8-.1 1.1a11 11 0 0 0 3 3c.3.2.8.2 1.1-.1l1-.9c.5-.4 1.2-.5 1.7-.1l2.1 1.5c.6.4.7 1.3.2 1.8l-1 1c-.6.6-1.4.8-2.2.6a15.6 15.6 0 0 1-6.8-4.1 15.6 15.6 0 0 1-4.1-6.8c-.2-.8 0-1.6.6-2.2z" />
         </svg>
       </span>
-      Call
+      <span style={CONTACT_LABEL}>Call</span>
     </a>
   );
 }
@@ -39,7 +54,7 @@ export function MailButton({ email }: { email: string }) {
           <path d="m3.5 7 8.5 6 8.5-6" />
         </svg>
       </span>
-      Mail
+      <span style={CONTACT_LABEL}>Mail</span>
     </a>
   );
 }
@@ -65,7 +80,7 @@ export function MessageButton({ href }: { href: string }) {
           <path d="M8 10h8M8 13h5" />
         </svg>
       </span>
-      Message
+      <span style={CONTACT_LABEL}>Message</span>
     </a>
   );
 }
@@ -85,7 +100,7 @@ export function LocationButton({ query, href }: { query?: string; href?: string 
           <circle cx="12" cy="10.8" r="2.3" />
         </svg>
       </span>
-      Location
+      <span style={CONTACT_LABEL}>Location</span>
     </a>
   );
 }
@@ -114,9 +129,29 @@ export function LocationButton({ query, href }: { query?: string; href?: string 
  *  A caller whose row follows something ELSE (a member's "You are on this team"
  *  strip, which is outside the hero and pads nothing) passes its own small
  *  positive value, which is why this is a default rather than a constant. */
+/** ⚠⚠ AND IT WRAPS PAST FOUR, WHICH IS WHY THE LABELS WERE BEING CUT (28 Sep
+ *  2026, the user: *"contact buttons getting cut on all profiles"*).
+ *  The row was `repeat(N, 1fr)` for every N, and a studio's home, an
+ *  organization's home and both of their public pages draw FIVE cells — Enquiry
+ *  · Call · Mail · Message · Location. Measured rather than argued about: the
+ *  hero's content is `430 − 32 = 398px` wide at the app's own `maxWidth`, five
+ *  cells with four 6px gaps leave **74.8px each**, and a cell spends 8px on
+ *  padding, 14px on its glyph and 4px on the gap before the word — so
+ *  **"Location" had ~48px for ~46px of text and "Message" ~46px for ~46px**. At
+ *  430 it was a hair; at the 360px phone this app is actually read on the cell
+ *  is 60.8px and the word had **34px**, so it was chopped mid-glyph.
+ *  ⚠ Four is the ceiling because four is what FITS: at 360px four cells are
+ *  77.5px each, which leaves 51px for the longest word in the set. Five never
+ *  can, at any type size worth reading, so the row wraps instead — and it wraps
+ *  BALANCED (`ceil(N/2)`), so five reads 3 + 2 rather than 4 + 1 with one button
+ *  stranded under a full row.
+ *  ⚠ The cells stay EQUAL (`1fr`) and the geometry is untouched — 38px tall,
+ *  11px type, radius 11 (the prototype's own 10875-10888). What changed is how
+ *  many of them share a line. */
 export function ActionRow({ children, gap = 6, marginTop = -6 }: { children: ReactNode; gap?: number; marginTop?: number }) {
   /* `Children.toArray` drops the nulls a `cond ? <X/> : null` leaves behind */
   const cells = Children.toArray(children);
   if (cells.length === 0) return null;
-  return <div style={{ display: "grid", gridTemplateColumns: `repeat(${cells.length}, 1fr)`, gap, marginTop }}>{cells}</div>;
+  const cols = cells.length <= 4 ? cells.length : Math.ceil(cells.length / 2);
+  return <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap, marginTop }}>{cells}</div>;
 }

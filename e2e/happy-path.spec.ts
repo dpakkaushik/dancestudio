@@ -1142,6 +1142,41 @@ test.describe.serial("DanceOS, end to end", () => {
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
     await expect(learner.getByRole("button", { name: "Train: 1" })).toBeVisible();
     await expect(learner.getByRole("button", { name: "Teach: 0" })).toBeVisible();
+
+    /* ⚠ THE CALENDAR DRAWS PILLS (28 Sep 2026, the user: "calendar should only
+       have pills with infor instead of cards"). The accessible name is the SAME
+       `Open {class}` the card carries on the public schedule — one control name
+       for one act — so what separates them is the shape, and that is what this
+       asserts. The other end of it is in the follows segment below, where the
+       same class on `/…/schedule` must still be a CARD. */
+    const calPill = learner.getByTestId("cal-pill").first();
+    await expect(calPill).toBeVisible();
+    const pillShape = await calPill.evaluate((el) => ({
+      radius: getComputedStyle(el).borderTopLeftRadius,
+      h: Math.round(el.getBoundingClientRect().height),
+    }));
+    expect(pillShape.radius).toBe("999px");
+    expect(pillShape.h).toBeLessThan(60);
+
+    /* ⚠⚠ AND "TODAY" IS SAID ONCE, AND IS NOT BLUE (28 Sep 2026, the user:
+       "should not repeat today teice it appears in blue which it should not on
+       all profile schedules and calendar").
+       The controls row carried a `TODAY` badge whenever the day you were on WAS
+       today — which it is on first load — immediately beside the `Today` button,
+       so one line said the word twice. Counting the LEAF elements whose whole
+       text is the word is what catches that: it read 2 before and reads 1 now.
+       And `PINK` is `#5AC8FA` — rgb(90, 200, 250) — which is what "blue" meant. */
+    const todayWords = await learner.evaluate(() =>
+      [...document.querySelectorAll("span,div,b")].filter((el) => el.children.length === 0 && /^today$/i.test((el.textContent || "").trim())).length
+    );
+    expect(todayWords).toBe(1);
+    const blueToday = await learner.evaluate(() =>
+      [...document.querySelectorAll("span,div,b")]
+        .filter((el) => el.children.length === 0 && /^today$/i.test((el.textContent || "").trim()))
+        .map((el) => getComputedStyle(el).color)
+        .filter((c) => c.replace(/\s/g, "") === "rgb(90,200,250)").length
+    );
+    expect(blueToday).toBe(0);
   });
 
   test("follows, the public page and the enquiry loop", async () => {
@@ -1164,6 +1199,15 @@ test.describe.serial("DanceOS, end to end", () => {
     await learner.getByRole("link", { name: "Schedule" }).click();
     await learner.waitForURL(/\/schedule$/);
     await expect(learner.locator(`[aria-label="Open ${classTitle}"]`)).toBeVisible();
+    /* ⚠ AND HERE IT IS STILL A CARD — the other end of the pill check in the
+       bookings segment, and the user's own narrowing of it in the same breath:
+       "pills should only be in calendar not on schedule on profiles visible
+       through discover", "or any public profile page". This IS that surface:
+       `PublicSchedulePage` is the only caller passing `mode="public"` and it is
+       what every public profile's Schedule button opens. A stranger deciding
+       whether to come needs the price, the seats and the teacher — which is what
+       a card carries and a pill does not. */
+    await expect(learner.getByTestId("cal-pill")).toHaveCount(0);
     // and the follow shows on their own profile — the Following figure opens the
     // sheet (S_profiletab 11335), and the studio is a row in it
     await learner.goto("/profile");

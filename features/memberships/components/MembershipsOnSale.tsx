@@ -99,8 +99,14 @@ export function MembershipsOnSale({
               {m.unit === "hours" ? `${m.units} hours` : `${m.units} classes`} · {m.leftCount > 0 ? `${m.leftCount} left` : "all taken"}
             </span>
           </span>
-          <span style={{ flexShrink: 0, fontSize: 12.5, fontWeight: 900 }}>{m.priceInr === 0 ? "Free" : rupees(m.priceInr)}</span>
-          {!signedIn ? (
+          {/* ⚠ THE PRICE AND THE BUTTON ARE ONE GROUP (28 Sep 2026, "together").
+              They were two children of a row spaced `gap: 10`, so the price sat
+              as far from the button it belongs to as it did from the name it
+              does not. 7px binds them and the row's own gap keeps them off the
+              name. */}
+          <span style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 900 }}>{m.priceInr === 0 ? "Free" : rupees(m.priceInr)}</span>
+            {!signedIn ? (
             <a href="/login" aria-label={`Buy ${m.name}`} style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, color: accent, textDecoration: "none" }}>
               Buy now ›
             </a>
@@ -113,15 +119,24 @@ export function MembershipsOnSale({
                  button that reads "Buy now" and is announced "Take …" is the
                  22 Sep mismatch, where a screen reader heard a different verb
                  from the one on the screen */
-              aria-label={m.priceInr === 0 ? `Buy ${m.name}` : `Buy ${m.name} for ${rupees(m.priceInr)}`}
+              aria-label={`Buy ${m.name}`}
               onClick={() => { setNote(null); setPaying(m); }}
               style={{ flexShrink: 0, fontSize: 11, fontWeight: 900, color: "#fff", background: accent, border: "none", borderRadius: 999, padding: "8px 14px", cursor: pending ? "wait" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", boxShadow: `0 3px 10px ${accent}44` }}
             >
               {/* ⚠ "BUY NOW", NOT "TAKE IT" (27 Sep 2026, the user's own word).
                   A free pass reads "Buy now" too: what the button does is the
                   same act, and two verbs for one act is what this file has had
-                  to undo before — the price beside it already says it is free. */}
-              {m.priceInr === 0 ? "Buy now" : `Buy · ${rupees(m.priceInr)}`}
+                  to undo before — the price beside it already says it is free.
+                  ⚠⚠ AND THE PRICE IS NOT ON IT (28 Sep 2026, the user: "membership
+                  price and buy button together and should not be repeated on
+                  it"). It read `Buy · ₹1,500` while the span DIRECTLY TO ITS LEFT
+                  already read `₹1,500` — the same number twice, 6px apart, which
+                  is the "86 students over a list of five" complaint in miniature:
+                  a figure said twice invites the reader to check whether the two
+                  agree. One price, and the button beside it names the act. The
+                  accessible name follows suit and says WHAT is being bought,
+                  which the visible word cannot. */}
+              Buy now
             </button>
           ) : (
             /* ⚠ SAY WHY, NOT "—" (19 Sep 2026, found by the e2e). The only
@@ -132,7 +147,8 @@ export function MembershipsOnSale({
             <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: "var(--muted)", textAlign: "right", maxWidth: 96, lineHeight: 1.35 }}>
               {m.leftCount === 0 ? "All taken" : "You are on this team"}
             </span>
-          )}
+            )}
+          </span>
         </div>
       ))}
       {note ? (

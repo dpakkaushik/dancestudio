@@ -222,15 +222,25 @@ const tomorrowIst = () => {
 
     /* ── 5 · THE CALENDARS ── */
     await leader.goto(`${BASE}/crews/${crewId}/manage/calendar`, { waitUntil: "networkidle" });
-    check(await leader.getByText(/Practice · Studio 4, Baner/).first().isVisible().catch(() => false), "the CREW's calendar carries it");
+    /* ⚠ THE CALENDAR ROW IS A PILL NOW (28 Sep 2026, the user: "calendar should
+       only have pills with infor instead of cards"), so it reads
+       `{crew} · {place}` on one line where the card read `{crew}` over
+       `Practice · {place}`. Better information, not less: the crew's NAME is the
+       fact a person on three crews needs and "Practice" was a word the Practice
+       half of the switch had already said. */
+    check(await leader.getByText(/Studio 4, Baner/).first().isVisible().catch(() => false), "the CREW's calendar carries it");
     check((await leader.getByRole("button", { name: /^Classes:/ }).count()) === 0, "…and is never offered the Classes · Events · Practice switch — a crew's calendar IS its practices");
     await member.goto(`${BASE}/calendar`, { waitUntil: "networkidle" });
     const switchBtn = member.getByRole("button", { name: /^Practice: 1$/ });
     check((await switchBtn.count()) === 1, "a PERSON's calendar offers Practice as the third half, counting one");
     await switchBtn.click();
     await member.waitForTimeout(800);
-    check(await member.getByText(/Practice · Studio 4, Baner/).first().isVisible().catch(() => false), "…and the practice is on it");
-    check(await member.getByText("COMING", { exact: true }).first().isVisible().catch(() => false), "…wearing what they said");
+    check(await member.getByText(/Studio 4, Baner/).first().isVisible().catch(() => false), "…and the practice is on it");
+    check(await member.getByText(crewName).first().isVisible().catch(() => false), "…naming WHICH crew, which the pill carries where the card said the word Practice");
+    /* ⚠ "Coming", not "COMING": the card uppercased in JS and the pill does it in
+       CSS, so the DOM text is the word itself — which is the right way round,
+       because a screen reader should not spell it out. */
+    check(await member.getByText("Coming", { exact: true }).first().isVisible().catch(() => false), "…wearing what they said");
 
     /* ── 6 · THE MEMBER CAN SEE IT AND ANSWER IT (28 Sep 2026, the user: *"no
        way to check practices you have been a part of fix that"*).

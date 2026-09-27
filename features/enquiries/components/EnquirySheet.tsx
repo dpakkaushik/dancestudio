@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Pick } from "@/components/ui/PickSheet";
 import { sendEnquiryAction } from "@/features/enquiries/server-actions/enquiries";
 import { CityPicker } from "@/features/geo/components/CityPicker";
+import { CONTACT_BOX, CONTACT_LABEL } from "@/features/profiles/components/ContactButtons";
 import { DOS_UI } from "@/lib/design/tokens";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import { enquiryTypesFor, enquiryTypesForCrew, type EnquiryField, type EnquiryType } from "@/types/enquiry";
@@ -90,27 +91,13 @@ export function EnquiryButton({
      is a business that takes none, so no button is drawn rather than one that
      opens a sheet with nothing in it. Null still means every type its kind allows. */
   if (Array.isArray(enquiryTypes) && enquiryTypes.length === 0) return null;
-  const box: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    height: 38,
-    borderRadius: 11,
-    cursor: "pointer",
-    fontWeight: 800,
-    fontSize: 11,
-    boxSizing: "border-box",
-    padding: "0 4px",
-    overflow: "hidden",
-    whiteSpace: "nowrap",
-    background: "var(--card)",
-    color: "var(--text)",
-    border: "1.5px solid var(--el)",
-    width: "100%",
-    fontFamily: "inherit",
-    textDecoration: "none",
-  };
+  /* ⚠ ONE LITERAL (28 Sep 2026). This was a byte-identical copy of
+     `CONTACT_BOX` — Enquiry is a cell of the same row and only lives in its own
+     file because it opens a sheet. The copy is why it had to be found by hand
+     when the labels stopped being cut: four buttons would have been fixed and
+     the fifth would have gone on clipping. What stays local is the three things
+     a BUTTON needs and an anchor does not. */
+  const box: React.CSSProperties = { ...CONTACT_BOX, cursor: "pointer", width: "100%", fontFamily: "inherit" };
   const icon = (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M21 3 10.5 13.5M21 3l-6.8 18-3.7-7.5L3 9.8z" />
@@ -119,21 +106,24 @@ export function EnquiryButton({
   if (cannotAsk) {
     return (
       <button type="button" disabled aria-label={cannotAsk} title={cannotAsk} style={{ ...box, opacity: 0.45, cursor: "not-allowed" }}>
-        <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>Enquiry
+        <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>
+        <span style={CONTACT_LABEL}>Enquiry</span>
       </button>
     );
   }
   if (!signedIn) {
     return (
       <Link href="/login" aria-label="Enquiry" style={box}>
-        <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>Enquiry
+        <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>
+        <span style={CONTACT_LABEL}>Enquiry</span>
       </Link>
     );
   }
   return (
     <>
       <button type="button" aria-label="Enquiry" onClick={() => setOpen(true)} style={box}>
-        <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>Enquiry
+        <span style={{ flexShrink: 0, lineHeight: 0, color: "var(--sub)" }}>{icon}</span>
+        <span style={CONTACT_LABEL}>Enquiry</span>
       </button>
       {open ? (
         <EnquirySheet tenantId={tenantId} tenantName={tenantName} tenantType={tenantType} accent={accent} enquiryTypes={enquiryTypes} crewId={crewId} onClose={() => setOpen(false)} />

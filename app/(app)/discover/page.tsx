@@ -52,7 +52,6 @@ const parsePage = (raw: string | undefined): number => {
 };
 
 const EL = "var(--el)";
-const micro: React.CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase" };
 
 /** ENTITY_TABS (prototype 4149) — the prototype's order, opening on Studios.
  *  The URL words are the ones the app has always used, so every existing link
@@ -345,36 +344,43 @@ export default async function DiscoverPage({
         transition: "background .25s",
       }}
     >
-      {/* THE TOP OF DISCOVER (4501-4531): a small word saying what this is, the title set large, THE PLACE ONCE */}
-      <div style={{ ...micro, letterSpacing: 2.2, color: "rgba(255,255,255,.9)" }}>DISCOVER</div>
-      {/* ⚠ WHERE YOU ARE, IN ONE CONTROL (21 Sep 2026, the user: "merge near me
-          and city filter on discover"). 18 Sep put the two chips on one line
-          because they answer the same question — measure from this city, or
-          measure from me — and one line was still one control too many: Near me
-          was never independent of the city, it only moves the point inside it.
-          One chip now, printing the answer and opening on Near me then the
-          cities. The title keeps the line above it, because a 27px display
-          heading and a chip cannot share a line on a 430px phone without the
-          heading losing words. */}
-      {/* ⚠ BIGGER, AND CLOSER TO THE CHIP (27 Sep 2026, the user: "fix the gap
-          between location drop down and Dance near you. bigger discover
-          heading"). 34px is not a new size — it is `DOS_TYPE.display`, what a
-          person's name is set at on their own profile — so Discover's title now
-          reads at the scale every other title in the app does. The chip's
-          `marginTop` is 5, which is not a taste call: MEASURED in a browser in
-          both themes, the eyebrow-to-title gap is 5px, so the head's three rows
-          now sit at one rhythm and read as one block instead of a title with
-          something floating under it. ⚠ The first cut of this was 2 and the
-          probe said so — 2 put the chip against the heading's descenders. The
-          27 Sep band fix is the method: measure the painted boxes, do not argue
-          about the CSS. ⚠ They stay on separate lines (C45's own finding): a
-          display heading and a chip cannot share one on a 430px phone without
-          the heading losing words, and it is bigger now, not smaller. */}
-      <div style={{ marginTop: 5, minWidth: 0 }}>
-        <span data-testid="discover-title" style={{ display: "block", fontSize: 34, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.1, lineHeight: 1.05, color: INK }}>Dance near you</span>
-        <div data-testid="discover-place-row" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 5, minWidth: 0, flexWrap: "wrap" }}>
-          <PlaceChip city={city} cities={cities.map((c) => c.city)} tab={tab} extra={{ ...filtersToParams(filters), ...(asRaw ? { as: asRaw } : {}) }} near={near !== null} offerNearMe={wantsBusinesses} />
-        </div>
+      {/* THE TOP OF DISCOVER (4501-4531): what this page IS, set large; what it
+          is doing for you, small; and THE PLACE ONCE.
+
+          ⚠⚠ THE TWO LINES CHANGED PLACES (28 Sep 2026, the user: "Discover
+          should be the bigger heading like other pages and dancer near you
+          smaller and in same line as the location dropdown"), which REVERSES the
+          hierarchy shipped the day before. 27 Sep read "bigger discover heading"
+          as *make the heading on Discover bigger* and set "Dance near you" to 34px
+          over a 9.5px DISCOVER eyebrow; it meant *make the word Discover the
+          heading*. Both readings are available in those four words and the user's
+          is the one that counts — so the eyebrow is gone and **"Discover" is the
+          page's `<h1>`**, which is also the first one this page has ever had:
+          `AppChrome` draws the wordmark over a TAB and no heading, so Discover
+          was a screen with no `<h1>` at all, the fifth time this repo has found
+          that shape (the desks 18 Sep, the studio Team desk 21 Sep, `EventForm`
+          and `/rooms` 22 Sep, the Inbox 27 Sep).
+
+          ⚠ 34px is not a new size — it is `DOS_TYPE.display`, what a person's
+          name is set at on their own profile — so it is the same scale the
+          27 Sep cut used, now on the word that earns it.
+
+          ⚠ AND THE CHIP SHARES ITS LINE NOW, which C45 refused on 21 Sep for a
+          reason that has stopped applying: *"a display heading and a chip cannot
+          share a line on a 430px phone without the heading losing words"*. True
+          of a 34px heading, and "Dance near you" is the SMALL line here — 12.5px
+          against a chip that is ~110px wide, so 398px of content holds both with
+          room to spare, and the sub-line ellipsises rather than pushing the chip
+          off if a longer sentence ever lands there. The 5px keeps the measured
+          rhythm the 27 Sep probe established. */}
+      <h1 data-testid="discover-title" style={{ margin: 0, fontSize: 34, fontWeight: 900, fontFamily: DOS_DISPLAY, letterSpacing: -1.1, lineHeight: 1.05, color: INK }}>
+        Discover
+      </h1>
+      <div data-testid="discover-place-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 5, minWidth: 0 }}>
+        <span data-testid="discover-sub" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12.5, fontWeight: 700, color: SUB }}>
+          Dance near you
+        </span>
+        <PlaceChip city={city} cities={cities.map((c) => c.city)} tab={tab} extra={{ ...filtersToParams(filters), ...(asRaw ? { as: asRaw } : {}) }} near={near !== null} offerNearMe={wantsBusinesses} />
       </div>
 
       {/* the search box, the five tabs, the style rail, Filters + quick chips, the filter sheet (Step 23) */}

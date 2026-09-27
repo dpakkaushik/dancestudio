@@ -787,6 +787,44 @@ const enterEdit = async (page) => {
     const msg = org.getByRole("link", { name: "Message", exact: true });
     await msg.waitFor({ timeout: 15000 }).catch(() => {});
     check((await msg.count()) === 1 && (await msg.getAttribute("href")) === "https://wa.me/919876500001", "studio contact ⊕: a WhatsApp number becomes the Message button, a wa.me link (26 Sep 2026)");
+
+    /* ⚠⚠ AND NOT ONE OF THOSE BUTTONS IS CUT (28 Sep 2026, the user: *"contact
+       buttons getting cut on all profiles"*). MEASURED rather than eyeballed,
+       which is this repo's own method and has paid three times now: the label is
+       CLIPPED exactly when its own `scrollWidth` exceeds its `clientWidth`, so
+       the check reads the painted box instead of arguing about the CSS.
+       ⚠ Twice — at the app's own 430px and again at 360px, the narrowest phone
+       this is really read on, because 430 was only ever a hair short and 360 is
+       where the word lost half its letters. */
+    const measureContacts = () =>
+      org.evaluate(() => {
+        const btn = [...document.querySelectorAll("a,button")].find((el) => (el.getAttribute("aria-label") || "") === "Message");
+        const grid = btn ? btn.parentElement : null;
+        if (!grid) return null;
+        const cells = [...grid.children];
+        /* the label is the span that is not the glyph's wrapper */
+        const words = cells
+          .map((c) => [...c.querySelectorAll("span")].find((s) => !s.querySelector("svg") && s.textContent.trim().length > 1))
+          .filter(Boolean)
+          .map((s) => ({ word: s.textContent.trim(), over: Math.round(s.scrollWidth - s.clientWidth) }));
+        return {
+          cells: cells.length,
+          cols: getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length,
+          rowW: Math.round(grid.getBoundingClientRect().width),
+          words,
+        };
+      });
+    for (const w of [430, 360]) {
+      await org.setViewportSize({ width: w, height: 932 });
+      await org.waitForTimeout(150);
+      const cr = await measureContacts();
+      check(Boolean(cr && cr.words.length), `contact row @${w}: the row is on the studio's home with its labels readable`);
+      if (!cr) continue;
+      const cut = cr.words.filter((x) => x.over > 0);
+      check(cut.length === 0, `contact row @${w}: NOT ONE label is cut — ${cr.words.map((x) => x.word).join(" · ")}${cut.length ? ` (cut: ${cut.map((x) => `${x.word} by ${x.over}px`).join(", ")})` : ""}`);
+      check(cr.cols <= 4, `contact row @${w}: at most four to a line — ${cr.cells} buttons over ${cr.cols} columns in ${cr.rowW}px`);
+    }
+    await org.setViewportSize({ width: 430, height: 932 });
     /* …and the other end: the Enquiries DESK, opened the way its tile opens it —
        `?as={studio}`, because one screen serves the whole account and the settings
        would otherwise have no subject at all. */

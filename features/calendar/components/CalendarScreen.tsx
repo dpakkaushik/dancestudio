@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ClassTile } from "@/features/classes/components/ClassTile";
-import { EnrollButton } from "@/features/enrollments/components/EnrollButton";
-import { EventCard } from "@/features/events/components/EventCard";
 import { dosStyleColor } from "@/lib/constants/styles";
 import { CARD, DOS_DISPLAY, DOS_UI, INK, LILAC, LINE, MUTED, PINK, SUB } from "@/lib/design/tokens";
 import {
@@ -16,9 +14,10 @@ import {
   monthOfDay,
   monthShortOf,
 } from "@/lib/format/month";
+import { timeOf } from "@/lib/format/session";
 import { useCloseOnBack } from "@/lib/hooks/useCloseOnBack";
 import type { CalendarEntry, CalendarEventEntry, CalendarMonth, CalendarPracticeEntry, CalendarSide } from "@/types/calendar";
-import { PRACTICE_TINT, PRACTICE_WORD, practiceClock, practiceWhen } from "@/types/crewPractice";
+import { PRACTICE_TINT, PRACTICE_WORD, practiceWhen } from "@/types/crewPractice";
 import type { DanceClass } from "@/types/class";
 
 /** The calendar, lifted from prototype S_profiletab in its `calendarOnly` dress
@@ -59,6 +58,30 @@ const EVENTS_TINT = "#F59E0B";
 /* and the practices half wears the Practice tool's own green, for the same
    reason: the switch says which half you are in before you read the words */
 const PRACTICE_C = "#15803D";
+
+/** ⚠⚠ TODAY IS INK, AND IT IS SAID ONCE (28 Sep 2026, the user: *"should not
+ *  repeat today teice it appears in blue which it should not on all profile
+ *  schedules and calendar"*). Both halves of that were true, on the calendar AND
+ *  on a public schedule, which is the same component in `public` mode.
+ *
+ *  ⚠ TWICE: the controls row carried a `TODAY` badge whenever the day you were
+ *  on WAS today — sitting immediately beside the `Today` button, so one line
+ *  held the word twice, saying two different things (*you are on it* and *go to
+ *  it*) in the same nine pixels. Below it the schedule's own divider said it a
+ *  third time. The badge is gone: the title already prints the date and the
+ *  button already carries the word, so what the badge added was the repetition.
+ *  What SURVIVES is the divider, because it is the only one of the three that
+ *  marks a POSITION — where today falls in a list that runs from the past — and
+ *  the button, because it is a control rather than a label.
+ *
+ *  ⚠ BLUE: every one of those markers was `PINK`, which has been `#5AC8FA` — a
+ *  cyan — since the palette swap, and the calendar's own tool colour `#06B6D4`
+ *  is no escape from that. So the marker is the page's own ink now, and the two
+ *  states in the day picker read as a pair instead of two blues: **the day you
+ *  PICKED is a filled ink circle, today-you-have-not-picked is an ink ring.**
+ *  Nothing else moves — `SIDES.hosting` keeps its tint, because Teach is not
+ *  today. */
+const TODAY_INK = INK;
 
 type View = "sched" | "day" | "week" | "month";
 const VIEWS: Array<[View, string]> = [
@@ -176,44 +199,54 @@ const practiceRow = (e: CalendarPracticeEntry): Row => ({
   e,
 });
 
-/** ONE PRACTICE ON THE CALENDAR (27 Sep 2026) — the crew, when, where, and what
- *  you said. ⚠ Deliberately NOT `ClassTile` or `EventCard`: a practice has no
- *  poster, no price, no seats and no teacher, so either of those cards would be
- *  mostly empty boxes, and the Inbox's own lesson from this morning is that a
- *  card describing a thing the app knows nothing about is worse than a row that
- *  says the four facts there are. */
-function PracticeRowCard({ e }: { e: CalendarPracticeEntry }) {
-  const tint = PRACTICE_TINT[e.standing];
-  return (
-    <Link
-      href={e.href}
-      aria-label={`${e.crewName} practice, ${practiceWhen(e.startsAt)}`}
-      style={{
-        display: "block",
-        textDecoration: "none",
-        color: INK,
-        background: CARD,
-        border: `1.5px solid ${LINE}`,
-        borderLeft: `4px solid ${e.cancelled ? LINE : PRACTICE_C}`,
-        borderRadius: 16,
-        padding: "11px 13px",
-        marginBottom: 10,
-        opacity: e.cancelled ? 0.65 : 1,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <b style={{ fontSize: 13.5 }}>{e.crewName}</b>
-        <span style={{ fontSize: 11, color: SUB }}>{practiceClock(e.startsAt)}</span>
-        <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 900, letterSpacing: 0.6, padding: "3px 7px", borderRadius: 999, background: `${tint}22`, color: tint }}>
-          {e.cancelled ? "CALLED OFF" : PRACTICE_WORD[e.standing].toUpperCase()}
-        </span>
-      </div>
-      <div style={{ fontSize: 11.5, color: SUB, marginTop: 3 }}>
-        Practice · {e.place}
-      </div>
-    </Link>
-  );
-}
+/** ⚠⚠ A SESSION ON THE CALENDAR IS A PILL (28 Sep 2026, the user: *"calendar
+ *  should only have pills with infor instead of cards"*).
+ *
+ *  ⚠ AND ONLY ON THE CALENDAR — the same person, narrowing it twice in the same
+ *  breath: *"pills should only be in calendar not on schedule on profiles
+ *  visible through discover"*, then *"or any public profile page"*. So the
+ *  boundary is `mode === "public"`, which IS that line: `PublicSchedulePage` is
+ *  the only caller that passes it, it is what every public profile's Schedule
+ *  button opens, and it is the one surface a stranger reaches from Discover.
+ *  There a class keeps the app's one `ClassTile`, because a stranger deciding
+ *  whether to come needs the price, the seats left and the teacher's face —
+ *  which is the whole of what a card carries and a pill does not.
+ *
+ *  ⚠ WHAT A PILL CARRIES, and why it is enough on YOUR OWN calendar: you are
+ *  not deciding whether to come, you are reading WHEN — so the row is the time,
+ *  the name, a dot in the thing's own colour and one chip saying what it is to
+ *  you. Four sessions now fit where one card did.
+ *
+ *  ⚠ ONE CLOCK for all three kinds (`timeOf`), where the practice card had its
+ *  own (`practiceClock`) — two grammars for one fact on one screen is what this
+ *  file has had to undo before. */
+const PILL: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 9,
+  minWidth: 0,
+  background: CARD,
+  border: `1.5px solid ${LINE}`,
+  borderRadius: 999,
+  padding: "8px 13px",
+  marginBottom: 7,
+  textDecoration: "none",
+  color: INK,
+};
+const PILL_TIME: React.CSSProperties = { flexShrink: 0, fontSize: 11, fontWeight: 900, color: SUB };
+const PILL_NAME: React.CSSProperties = { flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+const pillDot = (tint: string): React.CSSProperties => ({ flexShrink: 0, width: 8, height: 8, borderRadius: 4, background: tint });
+const pillChip = (tint: string): React.CSSProperties => ({
+  flexShrink: 0,
+  fontSize: 9,
+  fontWeight: 900,
+  letterSpacing: 0.5,
+  textTransform: "uppercase",
+  padding: "3px 8px",
+  borderRadius: 999,
+  background: `${tint}1f`,
+  color: tint,
+});
 
 export interface CalendarScreenProps {
   /** personal: a person's own, classes AND events; studio: the venue's classes,
@@ -430,9 +463,10 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
             lineHeight: "28px",
             margin: showLetter ? "3px auto 0" : "0 auto",
             borderRadius: 14,
-            color: on ? "#fff" : today ? PINK : ev.length ? INK : MUTED,
-            background: on ? PINK : "transparent",
-            boxShadow: today && !on ? `inset 0 0 0 1.5px ${PINK}` : "none",
+            /* the day you PICKED is filled ink; today-not-picked is an ink ring */
+            color: on ? "var(--solid)" : today ? TODAY_INK : ev.length ? INK : MUTED,
+            background: on ? TODAY_INK : "transparent",
+            boxShadow: today && !on ? `inset 0 0 0 1.5px ${TODAY_INK}` : "none",
             transition: "background .12s",
           }}
         >
@@ -456,67 +490,75 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
     );
   };
 
-  const sideChip = (s: CalendarSide): React.CSSProperties => ({
-    fontSize: 10.5,
-    fontWeight: 900,
-    padding: "6px 11px",
-    borderRadius: 999,
-    background: `${SIDES[s].tint}1c`,
-    color: SIDES[s].tint,
-  });
-
-  /* what an event is to you, in the deck's own words, under its card */
-  const roleChip: React.CSSProperties = {
-    display: "inline-block",
-    marginTop: 6,
-    fontSize: 10.5,
-    fontWeight: 900,
-    padding: "5px 10px",
-    borderRadius: 999,
-    background: `${EVENTS_TINT}1c`,
-    color: EVENTS_TINT,
-  };
-
-  const card = (r: Row) => {
+  /** ONE PILL — the time, the name, a dot in the thing's own colour, and one
+   *  chip saying what it is to you. See `PILL` above for why, and for the one
+   *  surface this is NOT used on. */
+  const pill = (r: Row) => {
     if (r.k === "event") {
       const e = r.e;
       return (
-        <div key={r.id} style={{ marginBottom: 10 }}>
-          <EventCard event={e.event} href={e.href} compact />
-          <span style={roleChip}>{e.roleLabel}</span>
-        </div>
+        <Link key={r.id} data-testid="cal-pill" href={e.href} aria-label={`${e.title}, ${timeOf(e.startsAt)} — ${e.roleLabel}`} style={PILL}>
+          <span aria-hidden="true" style={pillDot(EVENTS_TINT)} />
+          <span style={PILL_TIME}>{timeOf(e.startsAt)}</span>
+          <span style={PILL_NAME}>{e.title}</span>
+          <span style={pillChip(EVENTS_TINT)}>{e.roleLabel}</span>
+        </Link>
       );
     }
-    if (r.k === "practice") return <PracticeRowCard key={r.id} e={r.e} />;
+    if (r.k === "practice") {
+      const e = r.e;
+      /* a called-off practice keeps its row and says so — the 27 Sep rule that
+         cancelling is a STATUS and never a delete, said on the calendar too */
+      const tint = e.cancelled ? MUTED : PRACTICE_TINT[e.standing];
+      return (
+        <Link
+          key={r.id}
+          data-testid="cal-pill"
+          href={e.href}
+          aria-label={`${e.crewName} practice, ${practiceWhen(e.startsAt)}${e.cancelled ? " — called off" : ""}`}
+          style={{ ...PILL, opacity: e.cancelled ? 0.65 : 1 }}
+        >
+          <span aria-hidden="true" style={pillDot(e.cancelled ? LINE : PRACTICE_C)} />
+          <span style={PILL_TIME}>{timeOf(e.startsAt)}</span>
+          <span style={PILL_NAME}>
+            {e.crewName} · {e.place}
+          </span>
+          <span style={pillChip(tint)}>{e.cancelled ? "Called off" : PRACTICE_WORD[e.standing]}</span>
+        </Link>
+      );
+    }
     const e = r.e;
+    /* ⚠ `Open {title}` — the SAME accessible name `ClassTile` gives the same
+       class on the public schedule and on Discover. One control name for one
+       act, so a screen reader and a locator both find the class by the name the
+       app uses everywhere else rather than by the shape it is drawn in. */
     return (
-      <ClassTile
-        key={r.id}
-        danceClass={toTileClass(e)}
-        filled={e.filled}
-        artist={e.artist}
-        city={e.tenantCity}
-        href={`/c/${e.shareSlug}`}
-        actions={
-          mode === "personal" ? (
-            <>
-              <span style={sideChip(e.side)}>{SIDES[e.side].name}</span>
-              {e.side === "attending" && e.enrollment ? (
-                <EnrollButton
-                  sessionId={e.sessionId}
-                  isFull={e.filled >= e.capacity}
-                  isSignedIn
-                  mine={e.enrollment}
-                  priceInr={e.priceInr}
-                  shareSlug={e.shareSlug}
-                />
-              ) : null}
-            </>
-          ) : undefined
-        }
-      />
+      <Link key={r.id} data-testid="cal-pill" href={`/c/${e.shareSlug}`} aria-label={`Open ${e.title}`} style={PILL}>
+        <span aria-hidden="true" style={pillDot(dosStyleColor(e.style))} />
+        <span style={PILL_TIME}>{timeOf(e.startsAt)}</span>
+        <span style={PILL_NAME}>{e.title}</span>
+        {/* what this class is to YOU on your own calendar; which ROOM it is in on
+            a studio's, which is the one fact that calendar is read for */}
+        {mode === "personal" ? (
+          <span style={pillChip(SIDES[e.side].tint)}>{SIDES[e.side].name}</span>
+        ) : e.room ? (
+          <span style={pillChip(TOOL_COLOUR)}>{e.room}</span>
+        ) : null}
+      </Link>
     );
   };
+
+  /** THE PUBLIC SCHEDULE KEEPS THE CARD (28 Sep 2026 — the user's own
+   *  narrowing). `PublicSchedulePage` passes `entries` and nothing else, so a
+   *  class is the only kind that reaches here; anything else would be a caller
+   *  that does not exist yet, and it gets a pill rather than nothing. */
+  const publicCard = (r: Row) => {
+    if (r.k !== "class") return pill(r);
+    const e = r.e;
+    return <ClassTile key={r.id} danceClass={toTileClass(e)} filled={e.filled} artist={e.artist} city={e.tenantCity} href={`/c/${e.shareSlug}`} />;
+  };
+
+  const card = (r: Row) => (isPublic ? publicCard(r) : pill(r));
 
   const nothing = isPublic ? (
     <div style={emptyCard}>
@@ -857,9 +899,8 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
                 {title}
               </b>
             </span>
-            {view !== "month" && isToday(sel) ? (
-              <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 900, letterSpacing: 0.5, color: PINK }}>TODAY</span>
-            ) : null}
+            {/* ⚠ NO `TODAY` BADGE HERE (28 Sep 2026) — it stood beside the
+                button below, which already carries the word. See TODAY_INK. */}
             <span
               role="button"
               tabIndex={0}
@@ -957,7 +998,9 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
             <span style={{ fontSize: 10.5, color: MUTED, fontWeight: 700 }}>
               {agenda.length ? `${agenda.length} session${agenda.length === 1 ? "" : "s"}` : "nothing on"}
             </span>
-            {isToday(sel) ? <span style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, color: PINK }}>TODAY</span> : null}
+            {/* the month's own marker — it never shares a screen with the
+                schedule's divider, so this one is not a repeat, only blue */}
+            {isToday(sel) ? <span style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 900, letterSpacing: 0.5, color: TODAY_INK }}>TODAY</span> : null}
           </div>
           {agenda.length === 0 ? nothing : agenda.map(card)}
         </>
@@ -1001,7 +1044,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
                 {gi === firstToday && firstToday > 0 ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "4px 0 10px", scrollMarginTop: 70 }}>
                     <span style={{ flex: 1, height: 1, background: LINE }} />
-                    <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: PINK, textTransform: "uppercase" }}>Today</span>
+                    <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: 0.8, color: TODAY_INK, textTransform: "uppercase" }}>Today</span>
                     <span style={{ flex: 1, height: 1, background: LINE }} />
                   </div>
                 ) : null}
@@ -1016,7 +1059,7 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
                 >
                   {isPublic ? null : (
                   <div style={{ width: 46, textAlign: "center", paddingTop: 6, flexShrink: 0 }}>
-                    <div style={{ fontSize: 9.5, fontWeight: 800, color: isToday(dayKey) ? PINK : MUTED }}>{dowOf(dayKey)}</div>
+                    <div style={{ fontSize: 9.5, fontWeight: 800, color: isToday(dayKey) ? TODAY_INK : MUTED }}>{dowOf(dayKey)}</div>
                     <div
                       style={{
                         fontSize: 16,
@@ -1026,8 +1069,8 @@ export function CalendarScreen({ mode, months, todayKey, entries, events = [], p
                         lineHeight: "30px",
                         margin: "2px auto 0",
                         borderRadius: 15,
-                        color: isToday(dayKey) ? "#fff" : INK,
-                        background: isToday(dayKey) ? PINK : "transparent",
+                        color: isToday(dayKey) ? "var(--solid)" : INK,
+                        background: isToday(dayKey) ? TODAY_INK : "transparent",
                       }}
                     >
                       {dayNumberOf(dayKey)}

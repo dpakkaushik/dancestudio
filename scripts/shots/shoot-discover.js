@@ -7,6 +7,12 @@
  * studio, artist and crew discover cards. fix the gap between location drop down
  * and Dance near you. bigger discover heading."*
  *
+ * ⚠ AND THE HEAD WAS RE-CUT THE NEXT DAY, by the same person: *"Discover should
+ * be the bigger heading like other pages and dancer near you smaller and in same
+ * line as the location dropdown."* The head checks below describe that, and the
+ * ones they replaced described the day before — which is what a check measuring
+ * a DECISION is for.
+ *
  * ⚠ WHY THIS SCRIPT EXISTS AT ALL: not one listed studio on production has a
  * header photo, so the rail is correct and INVISIBLE there — every card falls
  * back to the empty gradient square. Measuring the real thing needs a studio with
@@ -21,8 +27,9 @@
  *   · a CREW for the Crews tab.
  *
  * Then, SIGNED OUT — Discover is public, and a stranger is the hardest reader:
- *   1. the head, MEASURED in both themes: the heading is bigger, still one line,
- *      and the gap to the place chip is the head's own rhythm;
+ *   1. the head, MEASURED in both themes: "Discover" is the <h1> at display
+ *      scale, "Dance near you" is smaller and SHARES the place chip's line, and
+ *      the retired eyebrow is gone;
  *   2. the studio card's rail is SQUARE — the shape the cropper cut — with every
  *      picture really loaded (naturalWidth > 0, so a signed URL that 404s fails
  *      this rather than passing as "an img exists");
@@ -93,21 +100,49 @@ const check = (ok, what) => {
   else fail += 1;
 };
 
-/** every painted box this script judges on, read from the DOM in one go */
+/** every painted box this script judges on, read from the DOM in one go.
+ *
+ *  ⚠ RE-CUT 28 Sep 2026, AND THAT IS THE CHECK WORKING RATHER THAN BREAKING.
+ *  The three assertions this replaced described the hierarchy shipped the day
+ *  before — "Dance near you" at 34px over a DISCOVER eyebrow — and the user
+ *  then said the opposite: *"Discover should be the bigger heading like other
+ *  pages and dancer near you smaller and in same line as the location
+ *  dropdown"*. A test that describes a decision is a test that has to move when
+ *  the decision does. It now asserts BOTH ENDS — the word that IS the heading,
+ *  and that the old eyebrow is gone — because a check that only looks at the new
+ *  place cannot tell you the old one was cleared. */
 const measureHead = (page) =>
   page.evaluate(() => {
     const title = document.querySelector('[data-testid="discover-title"]');
     const row = document.querySelector('[data-testid="discover-place-row"]');
+    const sub = document.querySelector('[data-testid="discover-sub"]');
+    /* the retired eyebrow: a DIV whose whole text was the word */
     const eyebrow = [...document.querySelectorAll("div")].find((d) => d.textContent.trim() === "DISCOVER");
-    if (!title || !row) return null;
+    if (!title || !row || !sub) return null;
     const t = title.getBoundingClientRect();
     const r = row.getBoundingClientRect();
+    const s = sub.getBoundingClientRect();
+    /* the chip is CitySelect's own trigger, named by the control it replaced */
+    const chipEl = row.querySelector('[aria-label="Where to look"]');
+    const c = chipEl ? chipEl.getBoundingClientRect() : null;
     const lh = parseFloat(getComputedStyle(title).lineHeight);
+    const tallest = c ? Math.max(s.height, c.height) : s.height;
     return {
+      tag: title.tagName,
+      titleText: title.textContent.trim(),
+      subText: sub.textContent.trim(),
       font: Math.round(parseFloat(getComputedStyle(title).fontSize) * 10) / 10,
+      subFont: Math.round(parseFloat(getComputedStyle(sub).fontSize) * 10) / 10,
       oneLine: t.height <= lh * 1.4,
-      gapToChip: Math.round((r.top - t.bottom) * 10) / 10,
-      gapEyebrow: eyebrow ? Math.round((t.top - eyebrow.getBoundingClientRect().bottom) * 10) / 10 : null,
+      gapToRow: Math.round((r.top - t.bottom) * 10) / 10,
+      eyebrowGone: !eyebrow,
+      chipFound: Boolean(c),
+      /* ⚠ ONE LINE IS A HEIGHT, NOT A GUESS: a row holding two boxes side by
+         side is as tall as the taller of them; stacked, it is their sum. */
+      rowH: Math.round(r.height * 10) / 10,
+      tallest: Math.round(tallest * 10) / 10,
+      sameLine: r.height <= tallest + 4,
+      subLeftOfChip: c ? s.right <= c.left + 1 : null,
     };
   });
 
@@ -226,9 +261,17 @@ const measureRail = (page, selector) =>
       const h = await measureHead(page);
       check(Boolean(h), `${theme}: the Discover head is on the page`);
       if (!h) continue;
-      check(h.font >= 32, `${theme}: the heading is bigger — ${h.font}px, where it was 27`);
+      check(h.titleText === "Discover", `${theme}: the heading is the word Discover — read "${h.titleText}"`);
+      check(h.tag === "H1", `${theme}: and it is the page's own <h1>, the first Discover has ever had — read <${h.tag.toLowerCase()}>`);
+      check(h.font >= 32, `${theme}: set at the app's display scale — ${h.font}px`);
       check(h.oneLine, `${theme}: and still fits one line`);
-      check(h.gapToChip >= 4 && h.gapToChip <= 8, `${theme}: the gap to the place chip is the head's own rhythm — ${h.gapToChip}px beside the eyebrow's ${h.gapEyebrow}px`);
+      check(h.eyebrowGone, `${theme}: the old DISCOVER eyebrow is GONE — the half a check that only looked at the new place could not tell you`);
+      check(h.subText === "Dance near you", `${theme}: "Dance near you" is the small line — read "${h.subText}"`);
+      check(h.subFont < h.font, `${theme}: and it is SMALLER than the heading — ${h.subFont}px against ${h.font}px, which is yesterday's hierarchy the other way up`);
+      check(h.chipFound, `${theme}: the place chip is in that row`);
+      check(h.sameLine, `${theme}: and SHARES its line — the row is ${h.rowH}px against a tallest child of ${h.tallest}px, so the two are side by side and not stacked`);
+      check(h.subLeftOfChip === true, `${theme}: with the chip to its right`);
+      check(h.gapToRow >= 4 && h.gapToRow <= 8, `${theme}: and the gap under the heading is the head's own measured rhythm — ${h.gapToRow}px`);
     }
 
     /* 2. THE STUDIO CARD */
