@@ -106,6 +106,17 @@
 >   suite pass**: the leftovers were checked and every one belonged to them,
 >   `C:\Program Files\Google\Chrome`, not Playwright's cache. My own runs had
 >   left nothing behind.
+>   **PUSHED AND LIVE (`b5fdf83`), read back off the DEPLOYMENT rather than
+>   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
+>   · **`shoot-discover.js` 43/43 ON THE DEPLOYMENT** — the head measured in both
+>   themes on the live bundle, the row **34px against a tallest child of 32px**,
+>   so "Dance near you" really does share the chip's line there · **`shoot-hero.js`
+>   189/189 on the deployment**, the contact row measured at **430 AND 360** with
+>   all five labels whole — Enquiry · Call · Mail · Message · Location over three
+>   columns · **`shoot-practice.js` 38/38 on the deployment**, two real accounts
+>   through the whole loop with the calendar drawing pills · **`shoot-tiles.js`
+>   155/155 against the live host**, no page error.
 
 > ### A CARD IS ITS PICTURES, A MEMBER CAN SEE THEIR PRACTICES, AND BOTH "OWED" MIGRATIONS TURNED OUT NOT TO BE (28 Sep 2026, latest) — ⚠ ONE MIGRATION APPLIED (dry run **21/21**, rolled back first)
 > The user, in one message: *"no way to check practices you have been a part of
@@ -8109,6 +8120,11 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   MACHINE, proven twice: two different tests, both a five-second wait after a
   mutation, never a wrong value — **commit charge at 14.2 of 19.4 GB** with the
   user's own Chrome holding 16 processes, which was not there yesterday.
+  **PUSHED AND LIVE (`b5fdf83`), read back off the deployment:** Vercel's own
+  list for THIS sha BUILDING → READY · `stranger-smoke.ps1` 11/11 ·
+  **`shoot-discover` 43/43**, **`shoot-hero` 189/189** (the contact row measured
+  at 430 and 360 on the live bundle), **`shoot-practice` 38/38** and
+  **`shoot-tiles` 155/155** all against the deployment.
 - **A CARD IS ITS PICTURES, A MEMBER SEES THEIR PRACTICES, AND BOTH "OWED"
   MIGRATIONS TURNED OUT NOT TO BE — 28 Sep 2026, no step number ⚠ (Rule 9: a
   trigger on eight tables including `orders`) — ONE MIGRATION APPLIED (dry run
