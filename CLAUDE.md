@@ -119,10 +119,18 @@
 >   19 Sep, "Since 2016" 18 Sep). ⚠ The two tests after it were never findings:
 >   the spec is not `describe.serial`, so a red restarts the worker with a fresh
 >   stamp and everything later hunts names that no longer exist.
->   **PUSHED AND LIVE (`425d250`), read back off the DEPLOYMENT rather than
->   assumed:** Vercel's own list for THIS sha, BUILDING → READY ·
+>   **PUSHED AND LIVE (`425d250`, then `c9d5ef2`), read back off the DEPLOYMENT
+>   rather than assumed:** Vercel's own list for each sha, BUILDING → READY ·
 >   **`stranger-smoke.ps1` 11/11** against `https://dancestudio-orcin.vercel.app`
->   · **`shoot-tiles.js` 155/155 against the live host**, no page error.
+>   after both · **`shoot-tiles.js` 155/155 against the live host**, no page error.
+> * ⚠⚠ **AND THE GITHUB → VERCEL WEBHOOK DID NOT FIRE FOR `c9d5ef2` — THE SECOND
+>   TIME (21 Sep was the first), AND ONLY READING THE LIST CAUGHT IT.** `origin/main`
+>   carried the sha and Vercel's newest deployment was still the one before it:
+>   no BUILDING, no ERROR, simply absent. Triggered by hand through the API
+>   (`POST /v13/deployments` with the project's own `repoId` read from
+>   `/v9/projects/dancestudio`, `ref: main`, the sha), BUILDING → READY in ~40 s.
+>   **A green push is not a deployment** — a stale bundle and a missing feature
+>   look identical from outside, and a smoke check against the old one passes.
 > * **Verified:** typecheck 0 · lint 0 · `next build` green · **`shoot-hero`
 >   191/191** · **`shoot-tiles` 155/155** · the whole e2e suite **54 passed / 1
 >   failed / 3 did not run**, then **the happy path 20/20 ALONE in 8.1 min** — so
