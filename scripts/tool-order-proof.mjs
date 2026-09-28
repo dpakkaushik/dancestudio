@@ -69,14 +69,26 @@ check(isArranged(null) === false && isArranged([]) === false && isArranged(["a"]
 /* the key must match the CHECK the database carries, or the door refuses it */
 const KEY = /^[a-z][a-z0-9_:-]{0,79}$/;
 const uuid = "3f1b9c8e-2a44-4d7e-9b10-0c5e6f7a8b90";
-/* ⚠ RE-CUT 26 Sep 2026: an organization is a BUSINESS a person opens, so its grid
-   is keyed by the organization (`tools:org:{id}`) like a studio's — `tools:org`
-   was the retired organization LOGIN's one grid, and with no id there is no key */
-check(toolsLayoutKey("user") === "tools:user" && toolsLayoutKey("artist") === "tools:artist" && toolsLayoutKey("org") === null && toolsLayoutKey("org", uuid) === `tools:org:${uuid}`, "A14 the two person grids are keyed as the migration says, and an organization's BY THE ORGANIZATION (26 Sep 2026)");
+/* ⚠ RE-CUT 29 Sep 2026: ORGANIZATIONS ARE GONE, so there is no organization grid
+   left to key. `GridKind` is `user | artist | studio | crew` now, and only a
+   studio's and a crew's grid take an id — so the `tools:org:{id}` key 26 Sep
+   introduced can no longer be BUILT, which is the third clause below.
+   ⚠ Asserted at BOTH ENDS on purpose: a check that only looks at what survives
+   cannot tell you the retired thing was cleared.
+   ⚠ And a layout somebody arranged before today may still carry a retired
+   `tools:org:{id}` entry. That is harmless by construction rather than by luck:
+   `profiles.layout` is keyed BY GRID, so a key no screen asks for is simply
+   never read — the same tolerance A4 proves for a retired TILE. */
+check(
+  toolsLayoutKey("user") === "tools:user" &&
+  toolsLayoutKey("artist") === "tools:artist" &&
+  toolsLayoutKey("org", uuid) !== `tools:org:${uuid}`,
+  "A14 the two person grids are keyed as the migration says, and an organization's grid can no longer be built (29 Sep 2026)"
+);
 check(toolsLayoutKey("studio", uuid) === `tools:studio:${uuid}`, "A15 a studio's grid is keyed BY THE STUDIO");
 check(toolsLayoutKey("crew", uuid) === `tools:crew:${uuid}`, "A16 a crew's grid is keyed BY THE CREW");
 check(
-  ["user", "artist", "org"].every((k) => KEY.test(toolsLayoutKey(k))) && KEY.test(toolsLayoutKey("studio", uuid)) && KEY.test(toolsLayoutKey("crew", uuid)),
+  ["user", "artist"].every((k) => KEY.test(toolsLayoutKey(k))) && KEY.test(toolsLayoutKey("studio", uuid)) && KEY.test(toolsLayoutKey("crew", uuid)),
   "A17 every key this app can build satisfies the DATABASE's own CHECK pattern"
 );
 check(toolsLayoutKey("studio", null) === null && toolsLayoutKey("crew", "") === null, "A18 no id, no key - the grid draws and simply offers no arranging");
