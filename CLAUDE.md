@@ -125,6 +125,85 @@
 >   TIME** — stopped before the e2e could be run against a pre-removal bundle,
 >   which is the one thing that would have made a green suite meaningless. Mine
 >   was stopped afterwards too.
+> * ✅ **THEN THE THREE LOOSE ENDS, on the user's *"fix all 3"*.**
+>   **(1) THE ORGANIZATION PLAN CAME OFF THE PRICE LIST** —
+>   `20260929100000_the_organization_plan_is_off_offer.sql`, dry run **12/12
+>   rolled back**, applied: `org_monthly.active = false`, so the column and the
+>   Plans desk's own label ("nobody — organizations are retired … it cannot be
+>   bought") finally agree. ⚠ **The ROW stays**, because six subscriptions name
+>   it in `plan_key` and **a ledger row that cannot say what it was for is a row
+>   nobody can audit** — the event tombstones' reasoning, one table further on;
+>   and the migration REFUSES to run at all if an org subscription is somehow
+>   live, because taking a plan off offer while somebody is paying for it is the
+>   wrong tool. **(2) THE PROOF-LEFTOVER PILE (#0aa) WENT** — 88 businesses, 17
+>   profiles, 4 seats and 1 session soft-deleted after its kept set had been
+>   read, leaving **33 profiles and 12 businesses**: the user's own accounts and
+>   their two businesses (`11ft down`, `test2`), the fifteen demo accounts and
+>   the test-phone pair; `ensure-test-phone-profiles` ran after it, which is the
+>   standing rule. **(3) THE RETIRED ORGANIZATION LOGINS WENT — 51 deleted, 0
+>   failed, 1 HELD BACK.**
+> * ⚠⚠ **AND THAT ONE HELD-BACK ACCOUNT IS THE POINT OF THE WHOLE STEP.**
+>   Deleting an auth account is **the only irreversible thing in this entire
+>   removal** — every other step was a soft delete with one `UPDATE` back, and
+>   `auth.users` has no such column. `jishnu.nanda@gmail.com` ("Dancing Curve")
+>   is a REAL address that **signed in on 28 Sep, the day before**, and the same
+>   user asked about the same set on 27 Sep answered **"test addresses only"**.
+>   So `scripts/delete-retired-org-logins.js` deletes `@example.com` and nothing
+>   else, and NAMES what it skipped. ⚠ **The rail is in the CODE, not in the
+>   query, deliberately: a filter in SQL can be widened by accident, and this one
+>   cannot be widened without editing the guard and reading the comment above
+>   it.** It runs at all only because `20260927110000` dropped the four
+>   `auth.users` foreign keys that made an account which had ever acted as an
+>   admin permanently undeletable (#0ar's own finding, paid off two days later).
+> * ⚠⚠⚠ **AND ASKING "WHAT ELSE IS LEFT" FOUND A LIVE PLATFORM-ADMIN LOGIN ON
+>   PRODUCTION, WHICH IS THE MOST SERIOUS THING IN THIS WHOLE RECORD.** The
+>   aftermath check printed **485 `platform_admins` rows on a pilot with 35
+>   people**, and 484 of them belonged to `@example.com` accounts the proof
+>   scripts and the e2e suite make — one per run, since 14 Sep. That is not
+>   clutter: `rls-proof-studio-verification.ps1` creates its admin with a
+>   password that is a **LITERAL COMMITTED IN THIS REPO** (`Proof-passw0rd!`),
+>   and signing in as `sv-admin-062757@example.com` with it against production
+>   **worked** — `is_platform_admin()` answered **true**. A platform admin reads
+>   every account, every business and every support thread, and can suspend
+>   anybody. ⚠ **The session was revoked unused and nothing was acted on.**
+>   **FIXED, REVERSIBLY, THE SAME HOUR**: `scripts/revoke-throwaway-admins.js`
+>   soft-deleted all 484 — `is_platform_admin()` tests `deleted_at is null`, so
+>   it took effect at once and one `UPDATE` puts any of it back, which is why
+>   revoking beat deleting 484 auth accounts. **Verified after: the same account
+>   still signs in (nothing was destroyed) and `is_platform_admin()` answers
+>   FALSE, with `admin_dashboard()` refusing it "not a platform admin".** One
+>   live admin remains and it is `ai@eeetaxi.com`.
+> * ⚠⚠ **AND THE ROOT CAUSE WAS ALREADY FIXED, WHICH IS WHY THIS IS A BACKLOG
+>   RATHER THAN A LEAK.** Re-running the studio-verification proof afterwards
+>   revoked **0** — it cleans up its own admin now. It could not before:
+>   `20260927110000` dropped the four `auth.users` foreign keys that had made an
+>   account which had ever acted as an admin undeletable, and until then that
+>   cleanup **failed in silence, one row per run, for thirteen days**. So the 484
+>   are residue from 14–27 Sep and the tap is already off. ⚠ **A cleanup that
+>   does not read its own status is not a cleanup** — this file's own 20 Sep
+>   lesson, and here it cost thirteen days of accumulating admin rights nobody
+>   knew existed.
+> * ⚠ **AND MY OWN SECURITY CHECK AIMED AT THE WRONG ACCOUNT ON ITS FIRST RUN.**
+>   It picked its target with `find(sv-admin) || sample[0]`, and the fallback
+>   resolved to **`ai@eeetaxi.com` — the owner's own real admin address**, the
+>   one account it must never touch. It was refused, and the rail is a hard
+>   `@example.com` filter now. **A fallback that can widen the target set is the
+>   same defect as a SQL filter that can be widened** — which is exactly the
+>   reasoning that had put the rail in the CODE for the auth deletions an hour
+>   earlier, and I did not apply it to the check itself.
+> * ⚠ **AND ONE SCARE THAT WAS MY OWN CHECK RATHER THAN A DEFECT, WORTH KEEPING
+>   BECAUSE IT IS A SHAPE THIS FILE MEETS OFTEN.** Asked what was left, a first
+>   pass found **2** live notifications pointing at a removed route and read as
+>   "nearly clean"; a wider pattern found **282, 280 of them unread, held by 9
+>   people** — the first had missed `/business/{id}/events/{id}`, which was 256
+>   of them. Then the answer turned out to be that it does not matter: **every
+>   one of those shapes returns 307 on the live host**, so a tap lands on the
+>   studio's home, Home or Discover. **Rule 14 doing exactly what it is for** —
+>   and a reminder that a narrow pattern reports a small number and reads like
+>   good news. ⚠ A second one the same hour: a check comparing `count(*)`'s
+>   BIGINT (which `pg` hands back as a STRING) against the number `0` reported a
+>   live trace that was not there. **A check that can misread a pass as a fail is
+>   not a proof** — this file's own 11 Sep lesson, met again.
 > * ⚠⚠ **AND WRITING THE MIGRATION OFF THE LIVE CATALOG IS WHAT SAVED IT: THE
 >   PROPOSAL WOULD HAVE BROKEN STUDIO CREATION.** Seven of the functions it named
 >   do not exist, and five more have surviving callers — `why_no_organization` is
@@ -7556,6 +7635,28 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
+0az. **⚠ ONE AUTH ACCOUNT IS HELD BACK, AND IT IS THE USER'S WORD (29 Sep 2026).**
+   The organization/event removal is finished and everything else about it is
+   done. What is left is a single, **irreversible** decision:
+   **`jishnu.nanda@gmail.com` ("Dancing Curve")** is the last auth account still
+   sitting on a soft-deleted `role = 'org'` profile. The other 51 were
+   `@example.com` and are deleted.
+   ⚠ **It is NOT deleted because it is a real address that signed in on 28 Sep**
+   — the day before the sweep — and because the same user, asked about this same
+   set on 27 Sep, answered *"test addresses only"*. Deleting an auth account is
+   the one step in this whole removal with no way back: `auth.users` has no
+   `deleted_at`, so the person simply stops being able to sign in with that
+   address, for ever.
+   ⚠ **What it can still do today:** its PROFILE is soft-deleted, so signing in
+   lands on onboarding and makes a fresh USER profile. It owns nothing — its
+   organization went with the sweep. So leaving it costs nothing but a row.
+   **On their word:**
+```
+   node scripts/delete-retired-org-logins.js            # dry run — names what it would skip
+   # then, to include it, widen DELETABLE in that file (the rail is in the CODE
+   # on purpose) or delete the one account from the Supabase dashboard.
+```
+
 0ay. **~~ORGANIZATIONS AND EVENTS: THE MIGRATION AND THE SWEEP ARE HELD~~ — ✅
    APPLIED, SWEPT AND PUSHED 29 Sep 2026**, on the user's *"All of it"* after the
    corrected list and the counts had been in front of them. ⚠ Rule 9: it dropped
@@ -8605,8 +8706,14 @@ summary; the report has the evidence.
    DELETE's status — one leaked studio per COMPLETED run since 10 Sep, not per
    killed run. **A cleanup that does not read its own status is not a cleanup.**
 
-0aa. **~~NINE PROOFS CANNOT RUN: THE 15-STUDIO CAP~~ — ✅ SWEPT 20 Sep 2026, AND
-   AGAIN 22 Sep 2026** on the user's *"do both"*, after the kept set had been
+0aa. **~~NINE PROOFS CANNOT RUN: THE 15-STUDIO CAP~~ — ✅ SWEPT 20 Sep 2026, AGAIN
+   22 Sep 2026, AND AGAIN 29 Sep 2026** — the third run on the user's *"fix all
+   3"*: **88 businesses, 17 profiles, 4 seats and 1 session**, after its kept set
+   had been read, leaving 33 profiles and 12 businesses. ⚠ **The pile regrows by
+   roughly one row per proof and e2e run**, so this is a standing chore rather
+   than a one-off: it went 479 → (two months) → 88 in a week. `--show-kept`
+   first, `ensure-test-phone-profiles` after, every time.
+   **The 22 Sep run**, on the user's *"do both"*, after the kept set had been
    listed by email: **479 businesses and 14 profiles** soft-deleted (with 27
    events, 15 seats, 2 classes, 3 sessions beneath them). Read back off the live
    catalog: **Pune 56 → 3 listed studios**, so `admin-moderation`'s red — outside
