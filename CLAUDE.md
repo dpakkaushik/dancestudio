@@ -93,16 +93,38 @@
 >   27 Sep, met twice more today. **The Edit tool, or a real script FILE.**
 > * **Verified:** typecheck 0 · lint 0 · **`next build` green**, with every one of
 >   the fourteen deleted routes absent from the manifest and every redirect in
->   `next.config.ts`. ⚠ **The proofs, the shoot scripts and the e2e have NOT been
->   run**, and that is not an omission: nine of them would fail against a database
->   that still has the organization doors, because what they now assert is the
->   absence of a feature the database still offers. **They run after the apply**,
->   which is the sequence in #0ay.
-> * ⚠⚠ **NOTHING IS APPLIED AND NOTHING IS PUSHED.** The migration and the sweep
->   are now WRITTEN, DRY-RUN and COMMITTED (`0594f67`) — **33/33 rolled back**
->   and **528 rows rolled back** respectively — and they still go in front of the
->   user first, which is this file's standing rule; the sweep is production data,
->   which is the second one. The corrected list is NEXT TO DO #0ay.
+>   `next.config.ts`. ⚠ **The proofs, the shoot scripts and the e2e were NOT run
+>   at this point**, and that was not an omission: nine of them would have failed
+>   against a database that still had the organization doors, because what they
+>   now assert is the ABSENCE of a feature the database still offered. **They ran
+>   after the apply** — 30/30 and 56/56, in the bullet above.
+> * ✅ **APPLIED, SWEPT AND PUSHED (29 Sep 2026)**, on the user's *"All of it"*
+>   after the corrected list and the sweep's counts had been in front of them,
+>   and their *"Sweep it with the rest"* on Deepak Kaushik's organization.
+>   ⚠⚠ **THE APP WENT FIRST, AND THAT ORDER IS THE WHOLE POINT OF THE SPLIT**:
+>   the bundle that was live still drew organizations and events and called the
+>   functions the migration drops, so applying first would have broken the live
+>   site until the deploy caught up. The new bundle calls none of them and is
+>   safe against the pre-migration database — so **push, verify, THEN apply**.
+>   **Verified in this order:** typecheck 0 · lint 0 · `next build` green ·
+>   pushed `4798963`, **Vercel's own list read for THIS sha, BUILDING → READY in
+>   68 s** · `stranger-smoke` **8/8** on the deployment BEFORE the apply ·
+>   dry run **33/33 rolled back** · `db-push -DryRun` listing **exactly** the one
+>   file · applied on the FIRST try · read back off the **LIVE CATALOG 24/24**
+>   (anon **45 → 39**, public policies **108 → 103**, storage **21** unchanged,
+>   functions **291 → 256**, the 4 orders and 4 captured payments intact, all
+>   five tombstones carrying their comment) · **PostgREST's cache reloaded**
+>   (the step an apply does not take) · the sweep **528 rows** soft-deleted,
+>   matching its dry run exactly · **an orphan check: 0 live rows anywhere
+>   pointing at a swept organization or event** · `ensure-test-phone-profiles`
+>   · **30/30 proofs** · **the whole e2e suite 56/56 in ONE run, 12.8 min on one
+>   worker, no red at any point** · `stranger-smoke` **8/8** again after the
+>   database changed under the live site · **`shoot-tiles` 130/130 against the
+>   deployment**.
+> * ⚠ **AND A STALE `next start` FROM 00:12 WAS HOLDING :3100 — THE ELEVENTH
+>   TIME** — stopped before the e2e could be run against a pre-removal bundle,
+>   which is the one thing that would have made a green suite meaningless. Mine
+>   was stopped afterwards too.
 > * ⚠⚠ **AND WRITING THE MIGRATION OFF THE LIVE CATALOG IS WHAT SAVED IT: THE
 >   PROPOSAL WOULD HAVE BROKEN STUDIO CREATION.** Seven of the functions it named
 >   do not exist, and five more have surviving callers — `why_no_organization` is
@@ -7534,17 +7556,15 @@ summary; the report has the evidence.
 
 ## NEXT TO DO — replaced on every push (Rule 13)
 
-0ay. **⚠⚠ ORGANIZATIONS AND EVENTS: EVERYTHING IS BUILT, PROVEN AND COMMITTED —
-   THE MIGRATION AND THE PRODUCTION SWEEP ARE HELD FOR THE USER'S WORD
-   (29 Sep 2026).** ⚠ Rule 9: it drops policies and definer functions, and the
-   sweep soft-deletes live rows on production. **Nothing is applied and nothing
-   is pushed.** Two commits sit on local `main`: `e556eef` (the app side, 173
-   files) and `0594f67` (the migration and the sweep, both HELD).
-   **Verified:** typecheck 0 · lint 0 · `next build` green · the migration's dry
-   run **33/33 rolled back, nothing persisted** · the sweep's dry run **528 rows,
-   rolled back** · `db-push -DryRun` lists **exactly `20260929090000`** and
-   nothing else, so no second file can ride in on the apply (the trap this file
-   has recorded twice).
+0ay. **~~ORGANIZATIONS AND EVENTS: THE MIGRATION AND THE SWEEP ARE HELD~~ — ✅
+   APPLIED, SWEPT AND PUSHED 29 Sep 2026**, on the user's *"All of it"* after the
+   corrected list and the counts had been in front of them. ⚠ Rule 9: it dropped
+   policies and definer functions, and the sweep soft-deleted production rows.
+   The whole tally is in the top block; the rest of this row is kept because the
+   two lessons in it are the reusable part. **The order that mattered: the app
+   bundle went FIRST** — the live bundle still called the functions the migration
+   drops, so applying first would have broken the site until the deploy caught
+   up. Push, verify, then apply.
    * **WHAT IS ALREADY DONE AND NEEDS NO DECISION**: every screen, route,
      repository, type and harness. Fourteen routes deleted with a 307 each
      (Rule 14), `types/event.ts` and four repositories gone, the tool grids, the
@@ -9319,9 +9339,8 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
 ### Progress tracker — update after EVERY push (Rule 11)
 
 - **ORGANIZATIONS AND EVENTS ARE GONE — 29 Sep 2026, no step number ⚠ (Rule 9:
-  the held migration drops policies and definer functions; the held sweep
-  soft-deletes production rows) — THE APP SIDE IS BUILT; THE MIGRATION AND THE
-  SWEEP ARE HELD (#0ay).** The user: *"Remove Organization and Events completely
+  the migration drops policies and definer functions; the sweep soft-deletes
+  production rows) — BUILT, APPLIED, SWEPT, PUSHED AND LIVE (`4798963`).** The user: *"Remove Organization and Events completely
   from the system … without hampering the other parts."* Fourteen routes deleted
   with a 307 each, `types/event.ts` and four repositories gone, the tool grids,
   the calendar's third half, Discover's Events tab, the crews' battle record, the
@@ -9338,10 +9357,18 @@ for the database schema. **The UI is not redesigned** — see Rule 2.
   opens a 404 is worse than no row) — the same word, opposite answers, each with
   its reason. ⚠ And one money claim was still live: `PLAN_RIGHTS.org` sold
   "public events" on the screen where somebody pays ₹5,000 a month. Deviation
-  rows **R57** and **R58**. **typecheck 0 · lint 0 · `next build` green**, every
-  deleted route absent from the manifest. ⚠ The proofs and the e2e are NOT run
-  and that is deliberate — nine of them now assert the absence of a feature the
-  DATABASE still offers, so they run after the apply.
+  rows **R57** and **R58**. ⚠⚠ **AND WRITING THE MIGRATION OFF THE LIVE CATALOG
+  RATHER THAN OFF THE PLAN IS WHAT SAVED IT**: seven of the functions the plan
+  named do not exist, and five more have surviving callers —
+  `why_no_organization` is called by `create_business_with_owner`, **the door
+  every studio creation goes through**, so the planned drop would have made it
+  impossible to open a studio, silently. **typecheck 0 · lint 0 · `next build`
+  green, every deleted route absent from the manifest · dry run 33/33 rolled
+  back · applied, read back off the LIVE catalog 24/24 (anon 45 → 39, policies
+  108 → 103, functions 291 → 256, the money intact) · the sweep 528 rows with
+  0 orphans · 30/30 proofs · the whole e2e suite 56/56 in ONE run, 12.8 min on
+  one worker, no red at any point · `stranger-smoke` 8/8 and `shoot-tiles`
+  130/130 against the deployment.**
 - **ONLY THE PEOPLE WHO RUN IT — 28 Sep 2026, no step number ⚠ (Rule 9: who may
   act for a business, and one label now grants a real seat) — ONE MIGRATION
   APPLIED (`20260928110000`, dry run 31/31 rolled back, read back live 13/13).**
